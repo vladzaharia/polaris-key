@@ -43,6 +43,13 @@ export const MAVEN_PACKAGE_RULES: PackageEcosystemRules<"maven"> = {
           .map((n) => n.split(":")[0]!.toLowerCase())
           .filter((g) => g !== ""),
       );
+      // A one-segment groupId (`com`) as a prefix would admit every `com.*` group: too wide.
+      const wide = groups.filter((g) => !g.includes("."));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the groupId ${wide.join(", ")} has one segment, which as a prefix would admit every group under it; an operator sets the namespace`,
+        };
       return {
         namespace: groups.length === 0 ? {} : { groupPrefixes: groups },
         ambiguous: null,

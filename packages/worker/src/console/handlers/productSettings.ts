@@ -60,6 +60,7 @@ import {
   type ResolvedSetting,
 } from "../../core/settings/resolve.js";
 import { snapshotValue } from "../../core/settings/snapshot.js";
+import { forgetRegistrySettings } from "../../services/distribution/public.js";
 import { writeSetting, type WriteRefusal } from "../../core/settings/write.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import { tryParseJson } from "../../platform/json.js";
@@ -223,6 +224,14 @@ interface Request_ {
  * The request after a write: the product row is read again, because the resolver decodes a
  * column-backed value from the row it is handed.
  */
+/**
+ * A Distribution registry setting written here (`distribution.packageFeeds` and its kin) is read
+ * through a per-isolate cache; drop it so the write takes effect on this isolate at once.
+ */
+function forgetRegistryOf(key: string, slug: string): void {
+  if (key.startsWith("distribution.")) forgetRegistrySettings(slug);
+}
+
 async function afterWrite(r: Request_): Promise<Request_> {
   return {
     ...r,
@@ -654,6 +663,7 @@ export async function handleProductSettings(
       },
     );
     if (!res.ok) return writeRefusal(r, def, res);
+    forgetRegistryOf(def.key, product.slug);
     return adminJson({
       ok: true,
       claimed: res.written[0]?.claimed === true,
@@ -753,7 +763,11 @@ export async function handleProductSettings(
         ...(def.storage.kind === "rich" && adapter?.reset
           ? {
               statements: (guard) =>
-                adapter.reset!({ ctx: adapterCtx(r), guard }),
+                adapter.reset!({
+                  ctx: adapterCtx(r),
+                  guard,
+                  by: session.sub,
+                }),
             }
           : {}),
       },
@@ -768,6 +782,7 @@ export async function handleProductSettings(
       },
     );
     if (!res.ok) return writeRefusal(r, def, res);
+    forgetRegistryOf(def.key, product.slug);
     return adminJson({
       ok: true,
       applied,

@@ -13016,7 +13016,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-manifest/dist/chunk-NYQMK6PG.js
+// ../shared-manifest/dist/chunk-3D7AAKB4.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 function sortedUnique(values) {
   return [...new Set(values)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
@@ -13066,6 +13066,12 @@ var GO_PACKAGE_RULES = {
     // sub-paths (`example.com/m` takes `example.com/m/sub`): the narrowest it expresses.
     derive(names) {
       const modules = sortedUnique(names.filter((n) => n !== ""));
+      const wide = modules.filter((m) => !m.includes("/"));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the module ${wide.join(", ")} is only a host, which as a prefix would admit every module on it; an operator sets the namespace`
+        };
       return {
         namespace: modules.length === 0 ? {} : { modulePrefixes: modules },
         ambiguous: null
@@ -13226,6 +13232,12 @@ var MAVEN_PACKAGE_RULES = {
       const groups = sortedUnique(
         names.map((n) => n.split(":")[0].toLowerCase()).filter((g) => g !== "")
       );
+      const wide = groups.filter((g) => !g.includes("."));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the groupId ${wide.join(", ")} has one segment, which as a prefix would admit every group under it; an operator sets the namespace`
+        };
       return {
         namespace: groups.length === 0 ? {} : { groupPrefixes: groups },
         ambiguous: null

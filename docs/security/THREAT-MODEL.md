@@ -1141,12 +1141,17 @@ one `deriveFeedNamespace` gives for the declared names; the size ceiling the pla
 missing `dist_registry_owners` row (enabled) only when the product has no owner row and no feed
 row. Every statement is `ON CONFLICT DO NOTHING`: a manifest never updates a row, so it cannot
 re-enable an owner or feed an operator turned off, flip a feed to public, or overwrite a namespace
-an operator set; widening is operator-only. Publishing still needs a registry token the operator
-minted. Two ecosystems have a prefix-list namespace (Maven `groupPrefixes`, Go `modulePrefixes`):
+an operator set; widening is operator-only. Publishing needs an owner-bound credential: an
+operator-issued `pkeyr_`/`pkeyci_`, or the manifest's own trusted publisher (P2-02), whose
+OIDC-minted `pkeyci_` carries `release:publish`. So a repository that declares a package and
+`publishing.trustedPublisher` publishes into its provisioned feed with no operator step. Repo
+write access chooses the namespace once, at creation; insert-only freezes it after that. Two ecosystems have a prefix-list namespace (Maven `groupPrefixes`, Go `modulePrefixes`):
 the exact groupId or module also admits its sub-groups or sub-paths, the narrowest those fields
 express. An ecosystem whose names have no one namespace (several npm or Swift scopes) provisions
-nothing, and the ingest answer says why (`facts.feedProvision.skipped`); a feed is never created
-with an empty or wide namespace. The system product is skipped (its bootstrap writes its public
+nothing, and the ingest, link and resync answers say why (`feedProvisionSkipped`). A one-segment
+Maven groupId and a host-only Go module count as ambiguous. The namespace is the narrowest the
+ecosystem's fields express, not always a closed list: Cargo and OCI feeds are created with `{}`,
+which admits any name under the owner's path. The system product is skipped (its bootstrap writes its public
 feeds). Each created feed writes one `distribution.feed.provision` audit row. The rows are
 written whether Distribution is on or off; the feed ladder refuses reads and publishes while it
 is off.

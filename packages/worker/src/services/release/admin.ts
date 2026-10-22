@@ -257,6 +257,9 @@ async function handleLink(
     remainingSecrets: result.remainingSecrets,
     ...(result.refused ? { refused: result.refused } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
+    ...(result.feedProvisionSkipped
+      ? { feedProvisionSkipped: result.feedProvisionSkipped }
+      : {}),
   });
 }
 
@@ -516,6 +519,9 @@ export async function handleReleaseAdmin(
       : {}),
     ...(result.conflicts ? { conflicts: result.conflicts } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
+    ...(result.feedProvisionSkipped
+      ? { feedProvisionSkipped: result.feedProvisionSkipped }
+      : {}),
   });
 }
 

@@ -415,7 +415,12 @@ export interface SettingAdapter {
     by?: string;
   }): DbStatement[];
   /** A RICH key's reset (hand back to the manifest). Absent: the key cannot be reset. */
-  reset?(a: { ctx: SettingAdapterContext; guard: SqlGuard }): DbStatement[];
+  reset?(a: {
+    ctx: SettingAdapterContext;
+    guard: SqlGuard;
+    /** The author of the reset (an admin subject), for a table that records `updated_by`. */
+    by?: string;
+  }): DbStatement[];
 }
 
 /**
