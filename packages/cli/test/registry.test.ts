@@ -112,6 +112,7 @@ describe("the command table", () => {
         .map((c) => c.name)
         .sort(),
     ).toEqual([
+      "bundle",
       "dev",
       "doctor",
       "feeds",

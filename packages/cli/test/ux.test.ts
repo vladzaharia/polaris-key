@@ -239,17 +239,11 @@ describe("a failed request says what to check", () => {
 });
 
 describe("no stack trace reaches a person", () => {
-  // A reply whose body throws a TypeError where pkey reads it: a bug in pkey, not a refusal.
-  const crash: typeof fetch = (async () => ({
-    ok: true,
-    status: 200,
-    text: async () => {
-      throw new TypeError("x is not a function");
-    },
-    json: async () => {
-      throw new TypeError("x is not a function");
-    },
-  })) as unknown as typeof fetch;
+  // A request that throws a TypeError with no code where pkey makes it: a bug in pkey, not a
+  // refusal and not a network failure.
+  const crash: typeof fetch = (async () => {
+    throw new TypeError("x is not a function");
+  }) as unknown as typeof fetch;
 
   it("a bug prints one line and how to get the detail", async () => {
     const r = await run(["migrate", "list"], {

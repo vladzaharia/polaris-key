@@ -1183,3 +1183,39 @@ describe("the Action bundle", () => {
     expect(text).toContain('throw new Error("pkey-action-no-keyring")');
   });
 });
+
+describe("whoami: the review's minors (m11, M2)", () => {
+  it("no roles shows None, as login does", async () => {
+    const { f } = fakeFetch(() =>
+      json(200, { ...ME, permissions: { roles: [] } }),
+    );
+    const r = await run(["whoami", ...BASE], {
+      store: async () => signedIn(FAR, LABELLED),
+      fetchImpl: f,
+    });
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("Roles   None\n");
+  });
+
+  it("a narrowed role shows its areas after the role, with the console's product name", async () => {
+    const { f } = fakeFetch(() =>
+      json(200, {
+        ...ME,
+        permissions: {
+          roles: [
+            {
+              ...role("product_admin", "product:djdl"),
+              areas: ["license", "signin"],
+            },
+            role("product_admin", "product:diceroll"),
+          ],
+        },
+      }),
+    );
+    const r = await run(["whoami", ...BASE], {
+      store: async () => signedIn(FAR, LABELLED),
+      fetchImpl: f,
+    });
+    expect(r.out).toContain("DJDL admin - Licensing, Sign-in, Diceroll admin");
+  });
+});

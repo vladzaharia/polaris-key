@@ -225,7 +225,7 @@ describe("pkey bundle — the request", () => {
     expect(io.out()).toContain(BUNDLE_ID);
     expect(io.out()).toContain(DEFAULT_FILE);
     expect(io.out()).toContain("30 days offline");
-    expect(io.out()).toContain("transfer this file to the offline device");
+    expect(io.out()).toContain("Take it to the offline device");
     expect(io.err()).toBe("");
   });
 
@@ -393,9 +393,9 @@ describe("pkey bundle — the --base-url allow-list", () => {
       }),
     ).toBe(2);
 
-    expect(io.err()).toContain("--base-url must be https:");
-    expect(io.err()).toContain("http://evil.example");
-    expect(io.err()).toContain("localhost/127.0.0.1");
+    expect(io.err()).toContain("▲  pkey bundle needs an https address.");
+    expect(io.err()).toContain("http works only on localhost");
+    expect(io.err()).not.toContain("PKEY_ADMIN_TOKEN");
     // The refusal is the point: the token must never leave the machine over plaintext, not even
     // once, so this cannot be a post-hoc complaint about a request already sent.
     expect(m.calls).toHaveLength(0);
@@ -411,7 +411,7 @@ describe("pkey bundle — the --base-url allow-list", () => {
       await runPkey(argv().slice(0, -1).concat("key.plrs.im"), { cwd, ...io }),
     ).toBe(2);
 
-    expect(io.err()).toContain("--base-url is not a valid URL");
+    expect(io.err()).toContain("▲  pkey bundle needs an https address.");
     expect(m.calls).toHaveLength(0);
   });
 });
@@ -428,7 +428,7 @@ describe("pkey bundle — the output file", () => {
 
     expect(await readFile(path.join(cwd, DEFAULT_FILE), "utf8")).toBe(JWS);
     // Reported RELATIVE to the cwd the handler was given, not to process.cwd().
-    expect(io.out()).toContain(`- File: ${DEFAULT_FILE}\n`);
+    expect(io.out()).toContain(`✓  Wrote ${DEFAULT_FILE} (`);
   });
 
   it("honours --out, resolving it against the handler's cwd", async () => {
@@ -749,8 +749,9 @@ describe("pkey bundle — server failures", () => {
     expect(err).toContain(
       "licenseId is required when the License service is enabled",
     );
-    expect(err).toContain("400 bad_request");
-    expect(err).toContain("fields: licenseId");
+    expect(err).toContain("key.example couldn't mint a bundle (HTTP 400)");
+    expect(err).toContain("Add --license <id>.");
+    expect(err).not.toContain("/manage/api");
   });
 
   it("blames the API token for a 401 on the mint", async () => {
@@ -761,11 +762,14 @@ describe("pkey bundle — server failures", () => {
       server({ mint: apiError(401, "unauthorized", "no session") }),
     );
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    expect(io.err()).toContain("PKEY_ADMIN_TOKEN");
-    expect(io.err()).toContain("unknown, revoked and expired alike");
-    expect(io.err()).toContain("API tokens");
+    const err = io.err().replace(/\s+/g, " ");
+    expect(err).toContain(
+      "▲ PKEY_ADMIN_TOKEN was refused. It may have ended, been revoked, or not be an admin token.",
+    );
+    expect(err).toContain("unset it and run pkey login");
+    expect(io.err()).not.toContain("unknown, revoked and expired alike");
     expect(m.calls).toHaveLength(1);
   });
 
@@ -781,9 +785,7 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    // Both causes answer 403 and look identical from the client, so the hint names both.
     expect(io.err()).toContain("bundles:mint");
-    expect(io.err()).toContain("not allowed to do this");
   });
 
   it("reports a non-JSON body rather than a bare status", async () => {
@@ -812,9 +814,10 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain(
-      `Could not reach ${ORIGIN}/manage/api/products/${PRODUCT}/bundles`,
-    );
+    expect(io.err()).toContain("✗  Can't reach key.example.");
+    expect(io.err()).toContain("Check your network, or --base-url.");
+    expect(io.err()).not.toContain("/manage/api");
+    expect(io.err()).not.toContain("fetch failed");
   });
 
   it("refuses a 200 that carries no bundle", async () => {

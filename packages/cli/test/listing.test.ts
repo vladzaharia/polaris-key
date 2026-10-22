@@ -435,10 +435,8 @@ describe("pkey listing import --godot", () => {
         refused.io as never,
       ),
     ).toBe(2);
-    expect(refused.err()).toContain("--base-url must be https:");
-    expect(refused.err()).toContain("http://key.example");
     expect(refused.err()).toContain(
-      `${ADMIN_TOKEN_ENV} is sent to this origin`,
+      "▲  pkey listing import needs an https address.",
     );
     // The refusal is the point: the credential never leaves, not even once.
     expect(remote.calls).toEqual([]);
@@ -459,7 +457,7 @@ describe("pkey listing import --godot", () => {
         notAUrl.io as never,
       ),
     ).toBe(2);
-    expect(notAUrl.err()).toContain("--base-url is not a valid URL");
+    expect(notAUrl.err()).toContain("needs an https address");
     expect(remote.calls).toEqual([]);
 
     const loopback = fakeAdmin({ preview: PREVIEW }, "http://127.0.0.1:8787");

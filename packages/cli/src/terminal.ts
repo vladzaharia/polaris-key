@@ -72,6 +72,15 @@ export function termFor(
   };
 }
 
+/**
+ * The lines above a spinner: `head` is a heading a resize may push out of view (it is not drawn
+ * again once it has gone), `body` always stays (a link, a code the person is acting on).
+ */
+export interface Heading {
+  head: readonly string[];
+  body: readonly string[];
+}
+
 /** The width of a progress bar beside a spinner label. */
 const BAR_WIDTH = 20;
 
@@ -84,6 +93,8 @@ export class Spinner implements StageProgress {
   private readonly term: Term;
   private readonly region: LiveRegion | null;
   private label = "";
+  /** Lines held above the spinner in the same live region (a command's heading); already styled. */
+  private header: ((columns: number) => Heading) | null = null;
   /** Lines held under the spinner in the same live region (key hints); already styled. */
   private footer: ((columns: number) => readonly string[]) | null = null;
   private done = 0;
@@ -112,7 +123,10 @@ export class Spinner implements StageProgress {
             if (err.rows) caps.rows = err.rows;
           },
           render,
-          fit: (rows) => ({ lines: render(rows), head: 0 }),
+          fit: (rows) => ({
+            lines: render(rows),
+            head: rows.filter((r) => r.role === "header").length,
+          }),
         })
       : null;
   }
@@ -144,6 +158,16 @@ export class Spinner implements StageProgress {
   }
 
   /**
+   * Lines drawn above the spinner, inside its live region: laid out again at each redraw, so a
+   * resize reflows them as a fresh launch would. `null` takes them away (the caller prints its
+   * own copy, since the region erases them).
+   */
+  setHeader(lines: ((columns: number) => Heading) | null): void {
+    this.header = lines;
+    if (this.region && this.label) this.draw();
+  }
+
+  /**
    * Lines drawn under the spinner, inside its live region (laid out again at each redraw, so a
    * resize reflows them); `null` takes them away.
    */
@@ -165,6 +189,7 @@ export class Spinner implements StageProgress {
     this.stopTicking = null;
     this.label = "";
     this.footer = null;
+    this.header = null;
     this.region?.close();
   }
 
@@ -194,14 +219,20 @@ export class Spinner implements StageProgress {
 
   private draw(): void {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw(() =>
-      [this.line(), ...(this.footer?.(this.term.caps.columns) ?? [])].map(
-        (text) => ({
-          mark: "none" as const,
-          spans: [{ text }],
-        }),
-      ),
-    );
+    this.region.draw(() => {
+      const header = this.header?.(this.term.caps.columns);
+      const row = (text: string, role?: "header") => ({
+        mark: "none" as const,
+        spans: [{ text }],
+        ...(role ? { role } : {}),
+      });
+      return [
+        ...(header?.head ?? []).map((t) => row(t, "header")),
+        ...(header?.body ?? []).map((t) => row(t)),
+        row(this.line()),
+        ...(this.footer?.(this.term.caps.columns) ?? []).map((t) => row(t)),
+      ];
+    });
   }
 
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */
