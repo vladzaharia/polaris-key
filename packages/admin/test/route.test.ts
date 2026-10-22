@@ -497,8 +497,7 @@ describe("the nav model (nav.ts)", () => {
       "personal-tokens",
       "platform-connections",
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-stores",
       "platform-feeds",
       "platform-override-migration",
@@ -709,7 +708,7 @@ describe("global pages", () => {
       "product-new",
       "api-tokens",
       "personal-tokens",
-      "platform-deployment",
+      "platform-status",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();
     }
@@ -718,8 +717,7 @@ describe("global pages", () => {
   it("the Platform section's pages are one sidebar group; Home is a link", () => {
     expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
@@ -741,8 +739,7 @@ describe("global pages", () => {
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
@@ -755,7 +752,7 @@ describe("global pages", () => {
   it("#/platform redirects to Settings; every Platform page renders in place", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
-    expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/status").redirect).toBeUndefined();
     expect(
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
@@ -764,7 +761,7 @@ describe("global pages", () => {
       parseLocation("#/platform/override-migration").redirect,
     ).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
-    expect(r.platformDeployment()).toBe("#/platform/deployment");
+    expect(r.platformStatus()).toBe("#/platform/status");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
     const wizard = parseLocation("#/products/new?via=manual&step=basics");
     expect(wizard.redirect).toBeUndefined();

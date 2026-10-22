@@ -1,9 +1,10 @@
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { CirclePause, CirclePlay, RefreshCw } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { formatRelative } from "../lib/format.js";
 import { ActionMenu } from "./ActionMenu.js";
 import { Button } from "./Button.js";
+import { IconButton } from "./IconButton.js";
 import { RefetchBar } from "./loading.js";
 import { crumbItemsOf, useMasthead } from "./Masthead.js";
 import { Switch } from "./Switch.js";
@@ -40,6 +41,13 @@ export interface PageHeaderProps {
     onRefresh: () => void;
     refreshing?: boolean;
     now?: number;
+    /** The word before the age: "Updated" (default) or "Checked". */
+    verb?: string;
+    /**
+     * An icon button that pauses the page's own refreshing (Platform → Status), instead of the
+     * switch. While it runs there is no Refresh button; paused, Refresh returns.
+     */
+    pause?: { paused: boolean; onToggle: () => void };
     /** An auto-refresh switch, last in the cluster (flush right). */
     auto?: {
       checked: boolean;
@@ -152,11 +160,12 @@ export function PageHeader({
   // 640 px the inline secondaries are hidden and the primary action has its own row, so the
   // question is asked per breakpoint.
   const refreshTrailsPhone = Boolean(
-    freshness && !freshness.auto && mobileMenu.length === 0,
+    freshness && !freshness.auto && !freshness.pause && mobileMenu.length === 0,
   );
   const refreshTrailsWide = Boolean(
     freshness &&
     !freshness.auto &&
+    !freshness.pause &&
     inline.length === 0 &&
     desktopMenu.length === 0 &&
     !primaryAction,
@@ -273,24 +282,41 @@ export function PageHeader({
               <span className="inline-flex flex-wrap items-center justify-end gap-x-1 text-sm text-fg-muted">
                 {/* Shown on a phone too: the freshness is the page's one trust cue (B-022). */}
                 <span className="whitespace-nowrap">
-                  Updated {formatRelative(freshness.updatedAt, freshness.now)}
+                  {freshness.verb ?? "Updated"}{" "}
+                  {formatRelative(freshness.updatedAt, freshness.now)}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-trailing-ghost={
-                    refreshTrailsPhone || refreshTrailsWide ? "" : undefined
-                  }
-                  className={cn(
-                    refreshTrailsPhone && "-me-3",
-                    refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
-                  )}
-                  loading={freshness.refreshing}
-                  iconStart={<RefreshCw aria-hidden />}
-                  onClick={freshness.onRefresh}
-                >
-                  Refresh
-                </Button>
+                {freshness.pause ? (
+                  <IconButton
+                    label={
+                      freshness.pause.paused
+                        ? "Resume refreshing"
+                        : "Pause refreshing"
+                    }
+                    size="sm"
+                    icon={
+                      freshness.pause.paused ? <CirclePlay /> : <CirclePause />
+                    }
+                    onClick={freshness.pause.onToggle}
+                  />
+                ) : null}
+                {freshness.pause && !freshness.pause.paused ? null : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-trailing-ghost={
+                      refreshTrailsPhone || refreshTrailsWide ? "" : undefined
+                    }
+                    className={cn(
+                      refreshTrailsPhone && "-me-3",
+                      refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
+                    )}
+                    loading={freshness.refreshing}
+                    iconStart={<RefreshCw aria-hidden />}
+                    onClick={freshness.onRefresh}
+                  >
+                    Refresh
+                  </Button>
+                )}
                 {freshness.auto ? (
                   <Switch
                     className="ms-2"

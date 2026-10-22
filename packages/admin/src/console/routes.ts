@@ -443,8 +443,7 @@ export const r = {
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),
-  platformDeployment: () => globalPage("platform-deployment"),
-  platformOperations: () => globalPage("platform-operations"),
+  platformStatus: () => globalPage("platform-status"),
   platformStores: () => globalPage("platform-stores"),
   platformConnections: (query?: QueryInit) =>
     globalPage("platform-connections", query),
