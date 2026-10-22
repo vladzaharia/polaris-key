@@ -423,6 +423,11 @@ Platform admin and a Superadmin see each member's display name, address, roles (
 who granted it), whether they hold the root rule, when they last signed in, and the address of every open
 invite. A person is shown by a random member id (`mbr_…`); the Polaris Key account id is never in a response.
 Only people with a role appear: the page cannot be used to look up anyone else. A Product admin cannot read it.
+A product's **Members** tab (Product → Members) shows a Product admin who holds `members` on it the people
+with a role on that product, its open invites, and, read-only, the Superadmins and all-products admins who reach it
+from above. Platform admins are never named there. The sign-in screens' "who can give you access" list names up to three
+people: that product's admins (only to someone who already holds an area of it) and then Superadmins, by name and
+address; anyone else gets the Superadmins alone, the same answer whether or not the product exists.
 Platform → Personal tokens (`/account-tokens`) shows a Platform admin or Superadmin the address of each account
 that holds a personal token, whether or not that person is a console member, with the token's label, last four
 characters and times, never the token.

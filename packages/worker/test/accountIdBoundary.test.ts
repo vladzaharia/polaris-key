@@ -178,6 +178,8 @@ describe("the account id never reaches a developer (PX-W17)", () => {
         `/api/me`,
         // ST-31.4: the Members roster names people by member id only.
         `/api/members`,
+        // ST-31.5: the product's members.
+        `/api/products/${slug}/members`,
         `/api/access/admins?scope=product:${slug}&area=license`,
       ]) {
         const res = await handleAdmin(

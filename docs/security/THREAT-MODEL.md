@@ -7017,6 +7017,30 @@ here). Session only (no `tokenScope`). Read-only.
   last sign-in, and every open invite's address (`docs/PRIVACY.md`, "What an admin can see"). Product-scoped
   members appear here too; the page is the platform's roster.
 
+### Console Members: the product read and `/access/admins` from bindings (ST-31.5)
+
+**What arrived.** `GET /manage/api/products/:slug/members` (product scope, area `members`; session only) and
+`GET /access/admins` now answers from stored bindings and the root rule, no longer from the audit trail.
+
+**Control.**
+
+- **Area gate.** The dispatcher loads the product (404) and checks `members` on it (403), so a narrowed admin
+  without `members` is refused (`consoleProductMembers.test.ts`).
+- **No account id.** Both bodies name a person by member id, display name and address only; the account id is
+  a join key inside the handler (`accountIdBoundary.test.ts` reads the product route).
+- **Platform admins are never named**, by either route: they hold no product area, and naming them would
+  disclose nothing the asker can use. `products:*` admins appear only in the product route's read-only
+  `platformRoles`, not in `/access/admins`.
+- **No slug oracle in `/access/admins`.** The product is never looked up. A product's admins are read only when
+  the caller already holds an area of `product:<slug>` (`can()`); every other caller, for a real or a
+  nonexistent slug, gets the Superadmins alone. Equal answers are tested. (The dispatcher's own 404-before-403
+  on `/products/:slug/*` is the older behaviour and unchanged.)
+- **Real Superadmins.** The source is `consoleRootHolders` (the principal's own rule) plus stored platform
+  Superadmin bindings, both on active accounts. The old rule counted every recent `admin.signin` actor, which
+  could name a person the principal no longer treats as a Superadmin.
+- **Bounded.** At most three people are named; the product route reads at most 500 bindings, 500 invites and
+  the 200 stored Superadmin rows.
+
 **`/account-tokens` (ST-31.2 re-review item).** It stays a `platform` row. Platform admins see the address of
 every account that holds a personal token, which includes people who are not console members. Kept because
 revoking an abused token is an incident response a Platform admin owns and needs the owner to be identifiable;

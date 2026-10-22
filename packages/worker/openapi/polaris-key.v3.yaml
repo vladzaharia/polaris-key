@@ -20026,6 +20026,118 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404": { description: No such destination. }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/members:
+    get:
+      operationId: listProductMembersAdmin
+      tags: [admin]
+      summary: Who holds access to one product
+      description: >
+        ST-31.5. The product's role bindings, its open invites, and, read-only, the platform roles
+        that reach it from above: Superadmins (the root rule's holders and stored bindings) and
+        `products:*` admins, each with a `source`. Platform admins are not listed. A person is named by
+        an opaque `memberId` (`mbr_…`), display name and address, never by an account id.
+        Needs the Members area on this product (a Product admin of it, or a Superadmin); admin session
+        cookie. A token cannot call it. A caller without that area on an existing product gets 403.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: The product's members.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product, members, invites, platformRoles]
+                properties:
+                  product: { type: string }
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [memberId, name, email, lastSignInAt, you, roles]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        lastSignInAt: { type: [integer, "null"] }
+                        you: { type: boolean }
+                        roles:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              [
+                                role,
+                                areas,
+                                source,
+                                bindingId,
+                                grantedBy,
+                                grantedAt,
+                              ]
+                            properties:
+                              role: { type: string }
+                              areas:
+                                type: [array, "null"]
+                                items: { type: string }
+                              source:
+                                { type: string, enum: [grant, invite, creator] }
+                              bindingId: { type: string }
+                              grantedBy:
+                                type: [object, "null"]
+                                properties:
+                                  name: { type: [string, "null"] }
+                              grantedAt: { type: integer }
+                  invites:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          bindingId,
+                          email,
+                          role,
+                          areas,
+                          invitedBy,
+                          sentAt,
+                          expiresAt,
+                        ]
+                      properties:
+                        bindingId: { type: string }
+                        email: { type: string }
+                        role: { type: string }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        invitedBy:
+                          type: [object, "null"]
+                          properties:
+                            name: { type: [string, "null"] }
+                        sentAt: { type: integer }
+                        expiresAt: { type: integer }
+                  platformRoles:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [memberId, name, email, role, scope, areas, source]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+                        scope: { type: string, enum: [platform, "products:*"] }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        source: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such product. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/products/{product}/alerts:
     get:
       operationId: listProductAlertDestinations

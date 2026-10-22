@@ -59,6 +59,7 @@ import {
   handleAccountTokenList,
   handleAccountTokenRevoke,
 } from "./handlers/accountTokens.js";
+import { handleProductMembers } from "./handlers/productMembers.js";
 import { handleMemberGet, handleMembersList } from "./handlers/members.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
@@ -366,6 +367,8 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["PATCH"], P, "core", registry),
   ...rows(["DELETE"], P, "settings", registry, { stepUp: true }),
 
+  // ST-31.5: who holds this product (bindings, invites) and, read-only, who reaches it from above.
+  ...rows(["GET"], `${P}/members`, "members", handleProductMembers),
   // ── One product: the services, by prefix ──────────────────────────────────────────────────
   // Approving a minted token's recipe lets the product's signing key mint for every device it
   // names (P0-12, U-31): a sign-in proven in the last five minutes, ahead of Config's prefix.

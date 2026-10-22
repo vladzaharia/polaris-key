@@ -252,6 +252,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-31.5: who holds this product (Members area at product scope).
+    ["/manage/api/products/{product}/members", ["get"]],
     // ST-27: a product's alert destinations (the override of the platform's).
     ["/manage/api/products/{product}/alerts", ["get", "post"]],
     ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
