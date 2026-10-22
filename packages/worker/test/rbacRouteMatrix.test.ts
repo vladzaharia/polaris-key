@@ -196,6 +196,8 @@ async function call(
       },
       opts.stepUpAt ?? NOW,
     );
+    // The console resolves the member id from the account; the seam is keyed by it.
+    SYNTHETIC.set(session.sub, p);
     headers.cookie = `${ADMIN_COOKIE}=${token}`;
     if (opts.csrf !== false) headers[CSRF_HEADER] = session.csrf;
   }

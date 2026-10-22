@@ -318,10 +318,12 @@ export async function admin(
   method: string,
   path: string,
   body?: unknown,
+  /** Where the operator signs in, when that must not be `db` (a query-counting wrapper). */
+  signInDb: Db = db,
 ): Promise<Response> {
   const { token, session } = await consoleTestSession(
     env,
-    db,
+    signInDb,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

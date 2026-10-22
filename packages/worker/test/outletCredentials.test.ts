@@ -28,7 +28,7 @@ import {
   validateOutletCredential,
   type OutletCredentialKind,
 } from "../src/core/outletCredentials.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const pem = (k: { export(o: object): string | Buffer }, type: string) =>
   (k.export({ type, format: "pem" }) as string).trim();
@@ -265,7 +265,7 @@ describe("outlet credentials: the admin API", () => {
       meta: { keyId: "ABC123DEFG" },
       status: "active",
       createdAt: NOW,
-      createdBy: "admin-1",
+      createdBy: await consoleActor(env, db, "admin-1"),
       lastUsedAt: null,
       lastOkAt: null,
       lastError: null,
@@ -367,7 +367,7 @@ describe("outlet credentials: the admin API", () => {
     expect(info).toMatchObject({
       rotatedAt: NOW,
       lastError: null,
-      createdBy: "admin-1",
+      createdBy: await consoleActor(env, db, "admin-1"),
     });
     const other = await call(env, db, "PUT", `${BASE}/asc`, {
       kind: "asc-webhook-secret",
@@ -393,8 +393,12 @@ describe("outlet credentials: the admin API", () => {
     expect(
       mine.map((a) => [a.action, a.actor_sub, a.target_id]).sort(),
     ).toEqual([
-      ["outlet_credential.delete", "admin-1", "asc"],
-      ["outlet_credential.set", "admin-1", "asc"],
+      [
+        "outlet_credential.delete",
+        await consoleActor(env, db, "admin-1"),
+        "asc",
+      ],
+      ["outlet_credential.set", await consoleActor(env, db, "admin-1"), "asc"],
     ]);
     for (const a of mine)
       expect(a.summary ?? "").not.toContain(SECRET_PARTS["asc-api-key"][0]);

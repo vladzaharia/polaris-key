@@ -39,7 +39,7 @@ import {
   parseOfferPaths,
   resolveListing,
 } from "../src/core/storefront/polarisKeyListing.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");
@@ -341,12 +341,12 @@ async function fixture() {
       PATH,
       { now: NOW },
     );
-  return { db, patch };
+  return { db, env, patch };
 }
 
 describe("the portal-settings route's listing fields (PS-02)", () => {
   it("accepts and returns the listing fields, and audits the change", async () => {
-    const { db, patch } = await fixture();
+    const { db, env, patch } = await fixture();
     const res = await patch({
       storeListed: "listed",
       storeOfferPaths: ["open", "group"],
@@ -377,17 +377,17 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
       [
         "storefront.polarisKey.groupLabels",
         "Changed the Polaris Locker listing for djdl: group labels for 1 group(s)",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
       [
         "storefront.polarisKey.listed",
         "Changed the Polaris Locker listing for djdl: listing auto → listed",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
       [
         "storefront.polarisKey.offerPaths",
         "Changed the Polaris Locker listing for djdl: ways to obtain all → group, open",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
     ]);
   });
@@ -400,7 +400,7 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
   });
 
   it("refuses invalid listing values and names each field", async () => {
-    const { db, patch } = await fixture();
+    const { db, env, patch } = await fixture();
     const res = await patch({
       storeListed: "public",
       storeAudience: "anyone",

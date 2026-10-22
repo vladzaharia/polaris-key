@@ -202,7 +202,7 @@ async function get(
   now = NOW,
 ) {
   const sub = as === "root" ? "u-root" : PRINCIPALS[as]!.memberId;
-  const { token } = await consoleTestSession(
+  const { token, session } = await consoleTestSession(
     w.env,
     w.db,
     {
@@ -213,6 +213,9 @@ async function get(
     },
     now,
   );
+  // The console resolves the member id from the account; the seam is keyed by it.
+  const synthetic = SYNTHETIC.get(sub);
+  if (synthetic) SYNTHETIC.set(session.sub, synthetic);
   const res = await handleAdminApi(
     new Request(`https://key.plrs.im/manage/api${path}`, {
       headers: { cookie: `${ADMIN_COOKIE}=${token}` },

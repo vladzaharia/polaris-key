@@ -31,7 +31,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 /** A placeholder — never a real Sentry client secret. */
 const CLIENT_SECRET = "sentry-test-client-secret-0000";
@@ -407,8 +407,11 @@ describe("confirming and dismissing a candidate", () => {
       ].includes(r.action),
     );
     expect(audits.map((a) => [a.action, a.actor_sub])).toEqual([
-      ["distribution.rollout.halt", "u1"],
-      ["distribution.sentry.candidate.confirm", "u1"],
+      ["distribution.rollout.halt", await consoleActor(w.env, w.db, "u1")],
+      [
+        "distribution.sentry.candidate.confirm",
+        await consoleActor(w.env, w.db, "u1"),
+      ],
     ]);
     const again = await admin(
       w,

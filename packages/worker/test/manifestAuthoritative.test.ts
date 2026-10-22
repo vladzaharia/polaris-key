@@ -38,7 +38,7 @@ import {
 } from "../src/core/settingsClaims.js";
 import { getManifestSnapshot } from "../src/core/manifestSnapshot.js";
 import { withDefaultHead } from "./githubHead.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -393,7 +393,7 @@ describe("a break-glass claim (ST-20)", () => {
     expect((await productJson(ctx)).claims).toEqual([
       expect.objectContaining({
         key: KEY,
-        claimedBy: "u1",
+        claimedBy: await consoleActor(ctx.env, ctx.db, "u1"),
         breakGlass: { reason: REASON, expiresAt: EXPIRES },
       }),
     ]);
@@ -415,7 +415,7 @@ describe("a break-glass claim (ST-20)", () => {
     expect(res.breakGlass).toEqual([
       {
         key: KEY,
-        claimedBy: "u1",
+        claimedBy: await consoleActor(ctx.env, ctx.db, "u1"),
         claimedAt: NOW + 1,
         reason: REASON,
         expiresAt: EXPIRES,

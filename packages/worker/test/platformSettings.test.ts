@@ -36,7 +36,7 @@ import { makeTestDb } from "./helpers.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, TEST_KEK } from "./seed.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -823,7 +823,9 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       value: 7,
       source: "runtime",
       version: 1,
-      stored: { updatedBy: "admin-1" },
+      stored: {
+        updatedBy: await consoleActor(env, db, "admin-1"),
+      },
     });
     // The writer's isolate sees its own write at once.
     expect(await platformSetting(env, db, "BLOB_GC_GRACE_DAYS")).toBe(7);
@@ -857,7 +859,7 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       // The registry key and the column `setting_key` name the entry (ST-05a), not its A-13 alias.
       target_id: "blobs.gc.graceDays",
       setting_key: "blobs.gc.graceDays",
-      actor_sub: "admin-1",
+      actor_sub: await consoleActor(env, db, "admin-1"),
       actor_email: "admin@example.com",
     });
     expect(JSON.parse(latest.before_json!)).toEqual({

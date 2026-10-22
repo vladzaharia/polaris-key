@@ -37,7 +37,7 @@ import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import { withDefaultHead } from "./githubHead.js";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -416,7 +416,9 @@ describe("a console edit to a claimable field survives a following resync (ST-01
       "core.name",
       "license.defaults.deviceLimit",
     ]);
-    expect(view.claims[0]!.claimedBy).toBe("u1");
+    expect(view.claims[0]!.claimedBy).toBe(
+      await consoleActor(ctx.env, ctx.db, "u1"),
+    );
   });
 });
 

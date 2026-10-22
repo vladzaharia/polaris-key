@@ -35,6 +35,7 @@ import {
   CLIENT_EMAIL,
   type PlayWorld,
 } from "./playWorld.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -269,7 +270,10 @@ describe("the pin decides whether the Play connector runs", () => {
       (a) => a.action === "outlet_credential.pin",
     );
     expect(pins).toHaveLength(1);
-    expect(pins[0]).toMatchObject({ actor_sub: "u1", target_id: "play" });
+    expect(pins[0]).toMatchObject({
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
+      target_id: "play",
+    });
     expect(pins[0]!.summary).toBe(
       `Pinned channel credential play (google-service-account) to packageName ${OTHER_PACKAGE} (was ${PLAY_PACKAGE})`,
     );

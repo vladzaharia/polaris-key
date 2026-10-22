@@ -69,7 +69,7 @@ import { NOW } from "./seed.js";
 import { setAssetHosting, setProductAssetSetting } from "./hostedFixture.js";
 import { assetUsage } from "../src/core/assets/assetQuota.js";
 import { mirrorNow } from "../src/services/release/mirror.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -1048,7 +1048,10 @@ describe("backfill and the operator's action", () => {
         "SELECT actor_sub, action FROM audit WHERE product = ? AND action = 'assets.mirror'",
         SLUG,
       ),
-    ).toEqual({ actor_sub: "u1", action: "assets.mirror" });
+    ).toEqual({
+      actor_sub: await consoleActor(env, db, "u1"),
+      action: "assets.mirror",
+    });
 
     // Repeated while those messages are in flight: nothing is queued (and downloaded) twice.
     const again = await post();

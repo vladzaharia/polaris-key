@@ -63,7 +63,7 @@ import {
   type BackfillReport,
 } from "../src/core/ops/settingsBackfill.js";
 import type { ProductSettingRow } from "../src/core/settingsClaims.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -453,7 +453,9 @@ describe("classification over fixtures", () => {
     expect(item(report, "setting", "core.name")).toMatchObject({
       class: "differs",
       owner: "console",
-      claim: { by: "u1" },
+      claim: {
+        by: await consoleActor(ctx.env, ctx.db, "u1"),
+      },
       action: "revert",
       evidence: { verdict: "console-edit" },
     });
