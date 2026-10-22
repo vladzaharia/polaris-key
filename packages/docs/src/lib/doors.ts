@@ -293,6 +293,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/licensing/attestation",
           "features/licensing/server-verification",
           "features/licensing/server-node",
+          "features/licensing/server-kotlin",
           "features/licensing/model",
           "features/licensing/activation",
           "features/licensing/access",
