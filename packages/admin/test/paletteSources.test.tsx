@@ -90,7 +90,7 @@ describe("the registry", () => {
       "Support code",
       "Pages",
       "Licenses",
-      "People",
+      "Users",
       "Actions",
       "Settings",
       "Products",

@@ -171,7 +171,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // I-41: a support code resolved to {product, subject}; the handler checks the caller's product access.
   ...rows(["GET"], "/support-codes/:code", "console", supportCodes),
   // ST-52: the palette's entity search and pasted-key resolution; each product is held to its own area.
-  ...rows(["GET"], "/search", "console", search),
+  ...rows(["POST"], "/search", "console", search),
   // The product list, filtered the same way.
   ...rows(["GET"], "/products", "console", registry),
   // NoAccessPage: who can give the caller access to a scope and area.

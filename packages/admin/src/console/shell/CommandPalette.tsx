@@ -16,6 +16,7 @@ import { rankPalette } from "./palette/rank.js";
 import {
   readRecents,
   pushRecent,
+  rememberRecordName,
   resolveRecents,
   useRecordRecents,
 } from "./palette/recents.js";
@@ -147,16 +148,22 @@ export function CommandPalette({
   const count = groups.reduce((n, g) => n + g.items.length, 0);
   // The announced count is of results, not of the "See all" row, and says when a group is capped.
   const cappedRow = groups.flatMap((g) => g.items).find((i) => i.capped);
-  const results = count - (cappedRow ? 1 : 0);
+  // A status line (searching, nothing found, failed) says something and is no result.
+  const statusRows = groups
+    .flatMap((g) => g.items)
+    .filter((i) => !i.capped && (i.inert || i.keepOpen));
+  const results = count - (cappedRow ? 1 : 0) - statusRows.length;
   const announced = !open
     ? ""
     : count === 0
       ? "No results"
-      : `${results} result${results === 1 ? "" : "s"}${
-          cappedRow?.capped
-            ? `, ${cappedRow.capped.shown} of ${cappedRow.capped.total} ${cappedRow.capped.noun}`
-            : ""
-        }`;
+      : results === 0 && statusRows.length > 0
+        ? statusRows[0]!.label
+        : `${results} result${results === 1 ? "" : "s"}${
+            cappedRow?.capped
+              ? `, ${cappedRow.capped.shown} of ${cappedRow.capped.total} ${cappedRow.capped.noun}`
+              : ""
+          }`;
   // Typing re-ranks on every key: announce when the person pauses, not on each letter.
   const spoken = useDebounced(announced, 500);
   const valueOf = (heading: string, item: PaletteItem): string =>
@@ -165,9 +172,13 @@ export function CommandPalette({
     groups.flatMap((g) => g.items.map((i) => [valueOf(g.heading, i), i])),
   );
 
-  const firstValue = groups[0]
-    ? valueOf(groups[0].heading, groups[0].items[0]!)
-    : undefined;
+  // The row Enter opens when nothing is picked: the first that does something.
+  const firstRow =
+    groups
+      .flatMap((g) => g.items.map((i) => [g.heading, i] as const))
+      .find(([, i]) => !i.inert) ??
+    (groups[0] && ([groups[0].heading, groups[0].items[0]!] as const));
+  const firstValue = firstRow ? valueOf(firstRow[0], firstRow[1]) : undefined;
 
   // cmdk points the input's `aria-activedescendant` at the selected row's id, but only re-reads it
   // when the selected *value* changes. Re-ranking can remount the row under the same value (the
@@ -211,7 +222,12 @@ export function CommandPalette({
       });
       return;
     }
-    setRecentIds(pushRecent(item.id, recentIds));
+    // An entity row is a record: the route hook records the visit, so it takes one slot, and
+    // the name the operator picked is kept for it.
+    if (item.id.startsWith("entity:")) {
+      if (item.href && item.recordName)
+        rememberRecordName(item.href, item.recordName);
+    } else setRecentIds(pushRecent(item.id, recentIds));
     onOpenChange(false);
     if (newTab && item.href && !item.perform) {
       openInNewTab(item.href);
@@ -266,7 +282,9 @@ export function CommandPalette({
               vimBindings={false}
               onKeyDown={(e) => {
                 if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
-                const item = byValue.get(selected);
+                const item = byValue.get(
+                  byValue.has(selected) ? selected : (firstValue ?? ""),
+                );
                 if (!item) return;
                 e.preventDefault();
                 run(item, true);
@@ -305,10 +323,19 @@ export function CommandPalette({
                         value={valueOf(g.heading, item)}
                         disabled={item.inert}
                         onSelect={() => run(item)}
-                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong forced-colors:data-[selected=true]:[outline:2px_solid_Highlight] forced-colors:data-[selected=true]:-outline-offset-2"
+                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[disabled=true]:bg-transparent! data-[selected=true]:text-fg-strong forced-colors:data-[selected=true]:[outline:2px_solid_Highlight] forced-colors:data-[selected=true]:-outline-offset-2"
                       >
                         <span className="text-fg-muted">{item.icon}</span>
-                        <span className="flex min-w-0 flex-col max-sm:flex-1 sm:contents">
+                        <span
+                          className={cn(
+                            "flex min-w-0 flex-col",
+                            // An entity row stacks name over detail at every width: the product
+                            // is what tells two of them apart.
+                            item.id.startsWith("entity:")
+                              ? "flex-1"
+                              : "max-sm:flex-1 sm:contents",
+                          )}
+                        >
                           <span
                             className={cn(
                               "min-w-0",

@@ -1,12 +1,15 @@
 /**
- * `GET /manage/api/search?q=` (ST-52, EXPERIENCE.md §0.3 J-1): what the command palette asks for
+ * `POST /manage/api/search` with `{ q }` (ST-52, EXPERIENCE.md §0.3 J-1): what the command palette asks for
  * a typed query, across every product the caller may read.
  *
  *   200 { key, licenses, people }
  *
+ * The query travels in a JSON body, never the URL: a pasted licence key must not reach request
+ * logs.
+ *
  * - `key`: set only when the query IS a licence key (`pkey_<product>_<22>`). The key is hashed
- *   with the pepper and looked up in `keys_index`; the answer names the licence
- *   (`{ product, licenseId }`) and never echoes the key. A key that is unknown, or of a licence
+ *   with the pepper and looked up in `keys_index`; the answer is the licence, shaped like a
+ *   `licenses` row plus `licenseId`, and never echoes the key. A key that is unknown, or of a licence
  *   the caller may not read, answers `null` either way, so the route is no oracle for another
  *   product's keys. A key-shaped query is not searched as text.
  * - `licenses`: by id, name or email, among products where the caller holds Licensing (view).
@@ -17,12 +20,18 @@
  * product is then held to its own area. Rate-limited per operator. A query is never logged.
  */
 
-import { adminJson, err } from "../../core/console/respond.js";
+import {
+  adminJson,
+  AdminBodyError,
+  err,
+  readBody,
+} from "../../core/console/respond.js";
+import { parseServices } from "../../core/services.js";
 import { ErrorCode } from "../../core/errors.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { listProducts } from "../../core/products/store.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
-import type { Db } from "../../db/types.js";
+import type { Db, DbParam } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { hashKey, LICENSE_KEY_SHAPE } from "../../platform/crypto.js";
 import { can, productScope, type AreaId } from "../authz.js";
@@ -44,6 +53,7 @@ export interface SearchLicenseDto {
   email: string | null;
   status: string;
   expiresAt: number | null;
+  tier: string | null;
 }
 
 export interface SearchPersonDto {
@@ -55,7 +65,7 @@ export interface SearchPersonDto {
 }
 
 export interface SearchResponse {
-  key: { product: string; licenseId: string } | null;
+  key: (SearchLicenseDto & { licenseId: string }) | null;
   licenses: SearchLicenseDto[];
   people: SearchPersonDto[];
 }
@@ -79,7 +89,7 @@ export async function handleSearch(
   session: AdminSession,
   now: number,
 ): Promise<Response> {
-  if (req.method !== "GET")
+  if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
   if (
     !(await rateLimitOk(
@@ -95,7 +105,14 @@ export async function handleSearch(
     ))
   )
     return err(429, "rate_limited", "too many searches");
-  const q = (new URL(req.url).searchParams.get("q") ?? "")
+  let body: Record<string, unknown>;
+  try {
+    body = await readBody(req);
+  } catch (e) {
+    if (e instanceof AdminBodyError) return err(e.status, e.code, e.message);
+    throw e;
+  }
+  const q = (typeof body.q === "string" ? body.q : "")
     .trim()
     .slice(0, SEARCH_QUERY_MAX);
   const empty: SearchResponse = { key: null, licenses: [], people: [] };
@@ -105,9 +122,15 @@ export async function handleSearch(
     (p) => p.system !== 1 && p.status !== "deleted",
   );
   const names = new Map(products.map((p) => [p.slug, p.name ?? p.slug]));
+  // A product whose Licensing is off is left out of licence results: its pages are a dead end.
   const readable = (area: AreaId): string[] =>
     products
       .filter((p) => can(session.principal, productScope(p), area, "view"))
+      .filter(
+        (p) =>
+          area !== "license" ||
+          parseServices(p.services_json).services.license.enabled,
+      )
       .map((p) => p.slug);
 
   // A pasted key: resolved by its hash, never searched as text.
@@ -115,14 +138,17 @@ export async function handleSearch(
   if (keyed) {
     const slug = keyed[1]!;
     if (!readable("license").includes(slug)) return adminJson(empty);
-    const row = await db.first<{ license_id: string }>(
+    const hit = await db.first<{ license_id: string }>(
       "SELECT license_id FROM keys_index WHERE product = ? AND key_hash = ?",
       slug,
       await hashKey(q, env.KEY_HASH_PEPPER),
     );
+    const [row] = hit
+      ? await licenseRows(db, [slug], "l.id = ?", [hit.license_id], 1, names)
+      : [];
     return adminJson({
       ...empty,
-      key: row ? { product: slug, licenseId: row.license_id } : null,
+      key: row ? { ...row, licenseId: row.id } : null,
     });
   }
 
@@ -130,36 +156,17 @@ export async function handleSearch(
   const licenses: SearchLicenseDto[] = [];
   for (const slugs of chunks(readable("license"), PRODUCTS_PER_STATEMENT)) {
     if (licenses.length >= SEARCH_KIND_CAP) break;
-    const marks = slugs.map(() => "?").join(",");
-    const rows = await db.all<{
-      product: string;
-      id: string;
-      name: string | null;
-      email: string | null;
-      status: string;
-      expires_at: number | null;
-    }>(
-      `SELECT product, id, name, email, status, expires_at FROM licenses
-        WHERE product IN (${marks})
-          AND (id = ? OR LOWER(COALESCE(name, '')) LIKE ? ESCAPE '\\'
-               OR LOWER(COALESCE(email, '')) LIKE ? ESCAPE '\\')
-        ORDER BY modified_at DESC LIMIT ?`,
-      ...slugs,
-      q,
-      like,
-      like,
-      SEARCH_KIND_CAP - licenses.length,
+    licenses.push(
+      ...(await licenseRows(
+        db,
+        slugs,
+        `(l.id = ? OR LOWER(COALESCE(l.name, '')) LIKE ? ESCAPE '\\'
+          OR LOWER(COALESCE(l.email, '')) LIKE ? ESCAPE '\\')`,
+        [q, like, like],
+        SEARCH_KIND_CAP - licenses.length,
+        names,
+      )),
     );
-    for (const r of rows)
-      licenses.push({
-        product: r.product,
-        productName: names.get(r.product) ?? r.product,
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        status: r.status,
-        expiresAt: r.expires_at,
-      });
   }
 
   const people: SearchPersonDto[] = [];
@@ -193,4 +200,43 @@ export async function handleSearch(
       });
   }
   return adminJson({ key: null, licenses, people });
+}
+
+/** Licence rows of `slugs` where `where` holds (columns of `l`), newest first, with the tier's name. */
+async function licenseRows(
+  db: Db,
+  slugs: string[],
+  where: string,
+  params: DbParam[],
+  limit: number,
+  names: Map<string, string>,
+): Promise<SearchLicenseDto[]> {
+  const marks = slugs.map(() => "?").join(",");
+  const rows = await db.all<{
+    product: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+    status: string;
+    expires_at: number | null;
+    tier: string | null;
+  }>(
+    `SELECT l.product, l.id, l.name, l.email, l.status, l.expires_at, t.label AS tier
+       FROM licenses l LEFT JOIN tiers t ON t.product = l.product AND t.id = l.tier_id
+      WHERE l.product IN (${marks}) AND ${where}
+      ORDER BY l.modified_at DESC LIMIT ?`,
+    ...slugs,
+    ...params,
+    limit,
+  );
+  return rows.map((r) => ({
+    product: r.product,
+    productName: names.get(r.product) ?? r.product,
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    status: r.status,
+    expiresAt: r.expires_at,
+    tier: r.tier,
+  }));
 }

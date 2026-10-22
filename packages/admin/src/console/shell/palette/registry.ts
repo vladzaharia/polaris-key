@@ -35,7 +35,7 @@ export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
   { heading: "Pages", order: 20 },
   // ST-52: server-side entity search across the products the member can read.
   { heading: "Licenses", order: 30 },
-  { heading: "People", order: 35 },
+  { heading: "Users", order: 35 },
   { heading: "Actions", order: 40 },
   // ST-10: the generated settings index, shown for typed text only.
   { heading: "Settings", order: 50 },
