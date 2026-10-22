@@ -60,7 +60,7 @@ Verified against the code. Corrections to the brief:
 - `CORS_SERVICE_PATHS` and `CORS_CORE_KINDS` are gone from `core/cors.ts`; coverage is `cors: true` on `ServiceRouteDecl` rows (carried out by the descriptor `surface`) and `cors` on the core rows. `isCorsCoveredRoute` and a derived `CORS_SERVICE_PATHS` are exported by `publicRoutes.ts`; the CORS tests changed only in their import path.
 - The oracle is `test/publicRouteOracle.test.ts` (3,144 requests, recorded before the move); `test/corsFlags.test.ts` holds the flags to the old list verbatim.
 - No 405 tightening, no spec change, no transcript change.
-- Not done (named follow-up slice, P0-25b-2): `handlePortalApi`'s own path walk in `portal/api.ts` (CSRF and session gates per route). The brief's "no hand dispatch left in `handlePortal`" holds: `handlePortal` has none.
+- Done in the follow-up slice P0-25b-2: `handlePortalApi`'s own path walk is `PORTAL_API_ROUTES` in `portal/api.ts`. Each row names `auth` (`none` | `session`), `csrf` (`change` | `always`) and `sweep` (the per-request licence-link sweep), and the `**` row carries the session and CSRF gate for every path no other row names. `test/portalApiOracle.test.ts` (10,092 requests, recorded from the hand dispatch before the move, with the licence link and session count each request leaves behind) and `test/portalApiRouteTable.test.ts` (path to row, and every row's gates) hold it. The brief's "no hand dispatch left in `handlePortal`" holds: `handlePortal` has none.
 - The full green gate was not run here (scoped checks only, per the lead); the last box is left for the lead's gate.
 
 ## Verify
