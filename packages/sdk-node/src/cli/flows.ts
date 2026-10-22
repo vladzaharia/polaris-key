@@ -136,8 +136,14 @@ function failed(
   ctx: KitContext,
   e: unknown,
   lead: readonly RailRow[] = [],
+  /** The client, when the flow reaches a service: with no discovery yet, "not available" is "offline". */
+  client?: PolarisKeyClient,
 ): FlowResult {
-  const code = errorCode(e);
+  const raw = errorCode(e);
+  const code =
+    raw === "service-unavailable" && client && undiscovered(client)
+      ? "network"
+      : raw;
   const error = codeError(ctx, code);
   show(ctx, [
     ...lead,
@@ -295,6 +301,17 @@ export async function ensureDiscovery(client: PolarisKeyClient): Promise<void> {
   } catch {
     // The flow decides from what the client already believes.
   }
+}
+
+/**
+ * No discovery document has been loaded and none could be: the client only guesses which services
+ * the product runs, so "this service is off" cannot be told from "cannot connect". The Python kit
+ * reports the second (`network`); so does this one.
+ */
+function undiscovered(client: PolarisKeyClient): boolean {
+  const c = client as Partial<PolarisKeyClient>;
+  if (c.servicesPinned === true) return false;
+  return typeof c.discovery === "function" && c.discovery() === null;
 }
 
 const lastPercent = new WeakMap<KitContext, Map<string, number>>();
@@ -1245,6 +1262,11 @@ export async function loginFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   await ensureDiscovery(client);
+  if (!client.capabilities().identity?.enabled && undiscovered(client))
+    return {
+      ...failed(ctx, { code: "network" }, productHeader(ctx, "login")),
+      result: { state: "error" },
+    };
   if (!client.capabilities().identity?.enabled) {
     // What happened, then the fix: this product takes a license key, not an account.
     const notice = t("cli.identityOff.notice", { product: ctx.product.name });
@@ -2179,7 +2201,7 @@ export async function updateCheckFlow(
       result: { state: view.state, decision: r.decision, channel: r.channel },
     };
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
 }
 
@@ -2375,7 +2397,7 @@ export async function updateApplyFlow(
       header,
     );
   } catch (e) {
-    return failed(ctx, e, header());
+    return failed(ctx, e, header(), client);
   }
   const d = r.decision;
   if (d.action !== "binary" && d.action !== "store") {
@@ -2699,7 +2721,7 @@ export async function packsStatusFlow(
   try {
     s = await client.update.packs.state();
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
   const active = Object.values(s.active);
   const rows: RailRow[] = [];
@@ -2842,7 +2864,7 @@ export async function packsEnsureFlow(
     };
   } catch (e) {
     live?.close();
-    return failed(ctx, e, header());
+    return failed(ctx, e, header(), client);
   } finally {
     off();
   }
@@ -3030,7 +3052,7 @@ export async function configWriteFlow(
     if (value === undefined) await client.config.clear(key);
     else await client.config.set(key, value);
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
   const r = getConfig(client, key);
   const d = r.ok
