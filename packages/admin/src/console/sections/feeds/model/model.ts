@@ -286,3 +286,27 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
   cargo: "Sparse index",
   go: "Module proxy",
 };
+
+/**
+ * F-34.8: the switch as a `version_conflict` 409 from `PUT …/package-feeds` reports it, or `null`
+ * for any other failure. The refusal carries the owner row (its `version`, not the generic
+ * settings counter), so a retry sends a counter that matches.
+ */
+export function packageFeedsConflict(
+  error: unknown,
+): import("../../../../api.js").PackageFeedsSwitch | null {
+  const e = error as { status?: unknown; packageFeeds?: unknown } | null;
+  return e?.status === 409 &&
+    e.packageFeeds &&
+    typeof e.packageFeeds === "object"
+    ? (e.packageFeeds as import("../../../../api.js").PackageFeedsSwitch)
+    : null;
+}
+
+/** "Ana Lima", or what a row the ingest or the system wrote reads as. */
+export function offByLabel(by: string | null | undefined): string | null {
+  if (!by) return null;
+  if (by === "manifest") return "the manifest";
+  if (by === "system") return "the system";
+  return by;
+}

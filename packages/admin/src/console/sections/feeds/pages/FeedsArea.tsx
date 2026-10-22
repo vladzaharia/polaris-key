@@ -52,6 +52,8 @@ import {
   isEcosystem,
   overviewHref,
   tokensHref,
+  offByLabel,
+  packageFeedsConflict,
   type FeedScope,
 } from "../model/model.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
@@ -59,8 +61,10 @@ import { PackageRecord } from "./PackageRecord.js";
 import {
   FeedCards,
   PackagesEmpty,
+  PackagesFoot,
   provisionedFeeds,
 } from "./PackagesOverview.js";
+import { TurnOffFeeds } from "./TurnOffFeeds.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
 
 /** The area's page for a route: the overview, a feed, or a package. */
@@ -130,28 +134,54 @@ function PackageFeedsOff({
   const overview = useFeedsOverview({ kind: "product", slug });
   // Only feeds that were set up: what the registry refuses now and keeps for later.
   const feeds = (overview.data?.feeds ?? []).filter((f) => f.configured);
+  const product = useProduct(slug);
   const [busy, setBusy] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);
+  // The owner row's counter, never the generic settings one; a 409 hands back the fresh row.
+  const version = React.useRef(0);
+  version.current = sw.data?.packageFeeds.version ?? 0;
   const turnOn = async (): Promise<void> => {
     setBusy(true);
     setFailure(null);
     try {
       const result = await mutate("savePackageFeeds", slug, {
         enabled: true,
-        expectedVersion: sw.data?.packageFeeds.version ?? 0,
+        expectedVersion: version.current,
       });
       queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
         packageFeeds: result.packageFeeds,
       });
       toast.success("Package feeds turned on");
     } catch (e) {
+      const current = packageFeedsConflict(e);
+      if (current) {
+        queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
+          packageFeeds: current,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: qk.product(slug),
+          exact: true,
+        });
+      }
       setFailure(e);
     } finally {
       setBusy(false);
     }
   };
-  const at = sw.data?.packageFeeds.updatedAt;
-  const failureCopy = failure ? errorCopy(failure) : null;
+  const summary = product.data?.packages;
+  const at = summary?.offAt ?? sw.data?.packageFeeds.updatedAt ?? null;
+  const by = offByLabel(summary?.offBy);
+  const conflict = packageFeedsConflict(failure);
+  const failureCopy = conflict
+    ? {
+        title: "Package feeds changed since you opened this",
+        description: conflict.enabled
+          ? "They are on now."
+          : "They are still off. Turn them on to continue.",
+      }
+    : failure
+      ? errorCopy(failure, { area: "distribution", thing: "Package feeds" })
+      : null;
   return (
     <div className="space-y-6">
       <PageHeader title="Packages" />
@@ -161,13 +191,20 @@ function PackageFeedsOff({
         title={`Package feeds are off for ${name}`}
         description={
           <>
-            Declared packages aren't served: installs and CI publishes on its
-            feeds are refused.
-            {at ? (
+            Declared packages aren't served: installs and CI publishes on its{" "}
+            {feeds.length > 1 ? `${feeds.length} feeds` : "feeds"} are refused.
+            {at || by ? (
               <>
                 {" "}
-                Turned off on{" "}
-                <Timestamp at={fromSeconds(at)} format="absolute" />.
+                Turned off
+                {by ? ` by ${by}` : ""}
+                {at ? (
+                  <>
+                    {" "}
+                    on <Timestamp at={fromSeconds(at)} format="absolute" />
+                  </>
+                ) : null}
+                .
               </>
             ) : null}{" "}
             Nothing was deleted.
@@ -183,6 +220,7 @@ function PackageFeedsOff({
       {failureCopy ? (
         <p role="alert" className="text-sm text-danger">
           {failureCopy.title}
+          {failureCopy.description ? `. ${failureCopy.description}` : ""}
         </p>
       ) : null}
       {feeds.length ? (
@@ -420,6 +458,7 @@ export function FeedsOverview({
   const query = useFeedsOverview(scope);
   const product = useProduct(scope.kind === "product" ? scope.slug : null);
   useLoadingAnnouncement("package feeds", query.isPending);
+  const [turningOff, setTurningOff] = React.useState(false);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
   const data = query.data;
   const host = data?.registryOrigin
@@ -475,7 +514,18 @@ export function FeedsOverview({
       <div className="space-y-6">
         {header}
         {feeds.length ? (
-          <FeedCards scope={scope} feeds={feeds} />
+          <>
+            <FeedCards scope={scope} feeds={feeds} />
+            <PackagesFoot onTurnOff={() => setTurningOff(true)} />
+            <TurnOffFeeds
+              open={turningOff}
+              onOpenChange={setTurningOff}
+              slug={scope.slug}
+              name={product.data?.name ?? scope.slug}
+              feedCount={feeds.length}
+              packageCount={feeds.reduce((n, f) => n + f.packages, 0)}
+            />
+          </>
         ) : (
           <PackagesEmpty
             slug={scope.slug}

@@ -13,6 +13,7 @@ import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
+import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Section } from "../../../../ui/Section.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
@@ -141,6 +142,31 @@ export function FeedCards({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The quiet foot card (packages.feeds): the one place to turn the feeds off. The button opens
+ * `TurnOffFeeds`, and Escape gives focus back to it.
+ */
+export function PackagesFoot({
+  onTurnOff,
+}: {
+  onTurnOff: () => void;
+}): React.ReactElement {
+  return (
+    <div
+      data-feeds-foot=""
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border px-4 py-3 text-sm"
+    >
+      <div>
+        <p className="m-0 font-medium">Package feeds</p>
+        <p className="m-0 text-fg-muted">Stops every install and CI publish.</p>
+      </div>
+      <Button variant="outline" onClick={onTurnOff}>
+        Turn off package feeds
+      </Button>
+    </div>
   );
 }
 

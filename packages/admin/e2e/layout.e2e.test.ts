@@ -244,6 +244,33 @@ function cases(): Case[] {
         await page.getByRole("dialog").first().waitFor();
       },
     },
+    // F-34.8: the off page, and the Turn off package feeds dialog over the Packages cards.
+    { name: "feedsoff:package-feeds", hash: "#/p/feedsoff/distribution/feeds" },
+    {
+      name: "dialog:turn-off-feeds",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      name: "dialog:turn-off-feeds-409",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByLabel(/Type djdl to confirm/).fill("djdl");
+        await dialog
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await dialog.getByText(/changed since you opened this/).waitFor();
+      },
+    },
     {
       name: "dialog:set-secret",
       hash: "#/p/djdl/settings/keys",
@@ -326,6 +353,7 @@ const TEXT200_CASES = [
   // F-34.7: the Packages cards (the access chip beside a long title) at 200 % text.
   "djdl:package-feeds",
   "empty:package-feeds",
+  "feedsoff:package-feeds",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -601,6 +629,24 @@ async function open(
         },
       });
     if (url.pathname.startsWith("/manage/api/")) {
+      // F-34.8: the switch's PUT meets a newer owner row (the 409 `version_conflict` case).
+      if (
+        route.request().method() === "PUT" &&
+        url.pathname.endsWith("/distribution/package-feeds")
+      )
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "bad_request",
+            reason: "version_conflict",
+            packageFeeds: {
+              enabled: false,
+              version: 4,
+              updatedAt: Math.floor(Date.now() / 1000) - 60,
+              updatedBy: "Ana Lima",
+            },
+          },
+        });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
       const body = resolve(url.pathname);

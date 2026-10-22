@@ -4978,6 +4978,8 @@ export class ApiError extends Error {
   retryAfter?: number;
   /** The area a `no_access` 403 names (worker `forbiddenArea`): `settings`, `license`, … */
   area?: string;
+  /** F-34.8: a `version_conflict` 409 from `PUT …/package-feeds` carries the switch as it stands. */
+  packageFeeds?: PackageFeedsSwitch;
 }
 
 async function call<T>(
@@ -5046,6 +5048,7 @@ async function send(
     let reason: string | undefined;
     let retryAfter: number | undefined;
     let area: string | undefined;
+    let packageFeeds: PackageFeedsSwitch | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -5065,8 +5068,11 @@ async function send(
         reason?: string;
         area?: string;
         retryAfter?: number;
+        packageFeeds?: PackageFeedsSwitch;
       };
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
+      if (body.packageFeeds && typeof body.packageFeeds === "object")
+        packageFeeds = body.packageFeeds;
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
         errors = body.error.errors ?? body.errors;
@@ -5088,6 +5094,7 @@ async function send(
     if (message) error.message = message;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (area) error.area = area;
+    if (res.status === 409 && packageFeeds) error.packageFeeds = packageFeeds;
     if (
       res.status === 403 &&
       code === "step_up_required" &&
