@@ -31,6 +31,10 @@ import { syncIntegration } from "./integration.js";
 import { SYNC_ROUTES } from "./routes.js";
 import { CLOUD_SYNC_STORE, cloudSyncStore } from "./subjectStore.js";
 
+/** The Durable Object class, re-exported for the Worker entry point (a composition module reads
+ *  a service only through its index). */
+export { CloudSyncDO } from "./do/cloudSyncDo.js";
+
 export const syncService: ServiceDescriptor = {
   slug: "sync",
   contributes: {

@@ -442,7 +442,8 @@ describe("CloudSyncDO: isolation (SR-1)", () => {
 
   it("holds no reference to D1, the catalog or the environment", () => {
     const dir = join(__dirname, "../src/services/sync/do");
-    for (const f of readdirSync(dir)) {
+    // `client.ts` is the Worker's side of the wire (it reads the binding); the rest is the object.
+    for (const f of readdirSync(dir).filter((f) => f !== "client.ts")) {
       const code = readFileSync(join(dir, f), "utf8").replace(
         /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
         "",

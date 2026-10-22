@@ -7089,6 +7089,26 @@ clock the server must not trust.
 - **A `max` or `min` field is not anti-cheat** (§13.6): a device can claim a larger value, and the
   better value wins whatever its clock.
 
+### Cloud Sync's Durable Object: binding, naming and reach (U-05.7)
+
+`CloudSyncDO` holds one person's synced settings for one product. U-05.7 binds it (`CLOUD_SYNC`,
+migration tag `v4`, in every environment) and makes it a claimed subject store; no route reaches it
+yet. SR-1 (isolation) follows U-05.8.
+
+- **The id is the pair.** Only `services/sync/do/client.ts` calls `idFromName`, with
+  `"<product>:<subject>"`, the subject taken from the authenticated principal (`syncAccess`), never
+  from a request. The same pair goes in the body and the object pins it on its first write: any other
+  pair on that object is `403 pin_mismatch` and touches nothing. Product slugs and pairwise subjects
+  hold no `:`, so two pairs cannot share a name.
+- **What an unauthenticated caller reaches: nothing.** There is no Sync route (discovery stays
+  `settings: false`), the namespace is a binding and not a URL, and a Durable Object answers only
+  through the Worker's stub.
+- **Deletion and export reach the object** through the subject-store registry: `delete` clears the
+  alarm and then the storage (`deleteAll` leaves an alarm set), then the directory row; `export` adds
+  the object's settings dump. A merge that would drop an object's data **throws** until U-05.8 absorbs
+  it, so nothing is lost silently and the merge is retried.
+- **The tag is append-only.** `v4` is created by the first deploy; a deployed tag is never edited.
+
 ### The account override layer and the licence-override migration (U-03)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

@@ -3,20 +3,26 @@
  * §3), registered with Core's subject-store registry (`core/accounts/subjectHooks.ts`) so an
  * account merge, a deletion and an export reach it without Sync importing Identity (rule 6).
  *
- * This is the D1 half. It claims `sync_directory`, the one table here keyed by a pairwise
- * subject. The per-person Durable Object (U-05.7) joins the same store as `durableObjects` when it
- * lands; until then no object exists to re-key.
+ * It claims `sync_directory`, the one table here keyed by a pairwise subject, and the per-person
+ * Durable Object `CloudSyncDO` (U-05.7), named by `(product, subject)` through `do/client.ts`.
+ * Until U-05.8 `merge` refuses (throws) when the absorbed subject's object holds data, so a merge
+ * never drops it silently; U-05.8 replaces that with the absorb.
  *
  *   merge   the absorbed subject's counters are added to the survivor's (the survivor row is made
  *           if absent), the quota is the larger of the two, the platform and tier follow whichever
  *           side was active last, and the absorbed row goes, all in ONE batch, so a retry finds no
  *           absorbed row and does nothing.
- *   delete  the subject's row.
- *   export  the subject's directory counters (no content: the data itself is the object's).
+ *   delete  the object (its alarm, then its storage), then the subject's row.
+ *   export  the subject's directory counters and the object's settings dump.
  *   size    `bytes + revision_bytes`, what the person's data takes on the Users page (I-12).
  */
 
 import type { SubjectStore } from "../../core/accounts/subjectHooks.js";
+import {
+  cloudSyncHoldsData,
+  deleteCloudSync,
+  exportCloudSync,
+} from "./do/client.js";
 
 /** The registry name (stable: the export document is keyed by it). */
 export const CLOUD_SYNC_STORE = "sync.cloudSync";
@@ -36,8 +42,18 @@ interface DirectoryRow {
 
 export const cloudSyncStore: SubjectStore = {
   tables: ["sync_directory"],
+  durableObjects: ["CloudSyncDO"],
 
-  async merge({ db, now }, { product, from, to }) {
+  async merge({ db, env, now }, { product, from, to }) {
+    // U-05.8 absorbs the object; until then a merge that would drop data stops here, and the
+    // retry (idempotent: nothing was written) finds the same state.
+    if (
+      from !== to &&
+      (await cloudSyncHoldsData(env, { product, subject: from }))
+    )
+      throw new Error(
+        "cloud sync: the absorbed subject holds synced data, and the absorb is not built yet (U-05.8)",
+      );
     const absorbed = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
@@ -90,7 +106,9 @@ export const cloudSyncStore: SubjectStore = {
     ]);
   },
 
-  async delete({ db }, { product, subject }) {
+  async delete({ db, env }, { product, subject }) {
+    // The object first: a crash between the two leaves a directory row, which a retry removes.
+    await deleteCloudSync(env, { product, subject });
     await db.run(
       "DELETE FROM sync_directory WHERE product = ? AND subject = ?",
       product,
@@ -98,13 +116,15 @@ export const cloudSyncStore: SubjectStore = {
     );
   },
 
-  async export({ db }, { product, subject }) {
+  async export({ db, env }, { product, subject }) {
+    const settings = await exportCloudSync(env, { product, subject });
     const r = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       subject,
     );
     return {
+      settings,
       directory: r
         ? {
             bytes: r.bytes,
