@@ -16,7 +16,7 @@
 //             system face. JetBrains Mono has no ✓ ✗ ○ or braille: those fall back (Menlo).
 //   - icons:  lucide-react (ISC) at the version the console ships, so a mockup draws exactly
 //             the glyph the built console will; the platform glyphs from the portal
-//             (packages/admin/src/portal/components/Glyphs.tsx); the Pinned K and the Star Cut from
+//             (packages/admin/src/ui/Glyphs.tsx); the Pinned K and the Star Cut from
 //             @polaris-key/brand (packages/brand/src/svg.ts).
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";

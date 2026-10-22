@@ -218,8 +218,8 @@ _offered_ in the first place.
 ## The console: Feed
 
 **Ship builds → Feed** edits the settings `update.metadataAccess`, `release.compatWindow` and
-`update.operatorPolicy` (`/manage/api/products/<product>/settings/<key>`) in three sections, each
-saved on its own with only its own setting:
+`update.operatorPolicy` (`/manage/api/products/<product>/settings/<key>`), each in its own section, saved on its own with
+only its own setting:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
   and install script).

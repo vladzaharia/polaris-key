@@ -551,7 +551,7 @@ export const GENERATORS: Generator[] = [
       "packages/brand/css/tokens.css",
       "packages/brand/css/kit.css",
       "packages/brand/src/svg.ts",
-      "packages/admin/src/portal/components/Glyphs.tsx",
+      "packages/admin/src/ui/Glyphs.tsx",
       "pnpm-lock.yaml",
     ],
     outputs: ["docs/design/mockups/kit/mockup.css"],
