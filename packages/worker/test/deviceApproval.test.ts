@@ -780,13 +780,19 @@ describe("what the page shows", () => {
     expect(html).toContain('<h1 tabindex="-1" autofocus>');
     expect(html).not.toContain("autofocus><span>");
     expect(html).toContain('name="decision" value="deny">Deny</button>');
-    expect(html).not.toContain("Not you?");
-    expect(html).toContain("Only sign in if");
-    expect(html).toContain("Didn't start this? Deny.");
+    // The person row (SIGN-IN.md §3.11): the account and a quiet Not you? that is a Deny.
+    expect(html).toContain('class="person"');
+    expect(html).toContain(
+      'form="pk-approve" name="decision" value="deny">Not you?</button>',
+    );
+    expect(html).toContain(
+      "Didn&#x27;t start this? Deny, and nothing signs in.",
+    );
     expect(html).toContain("Ada");
     expect(html).toContain("ada<wbr>@example<wbr>.com");
     expect(html).toContain(`<span class="code">${c.userCode}</span>`);
-    expect(html).toMatch(/just now from Portugal/);
+    expect(html).toMatch(/just now\. Expires at \d\d:\d\d UTC\./);
+    expect(html).toContain("This sign-in started in Portugal.");
     expect(html).toContain("wants you to sign in");
     expect(html).toContain('class="ac-passport"');
     expect(html).toContain("Polaris Locker signs you in for");
@@ -855,7 +861,7 @@ describe("what the page shows", () => {
       await getApprove(nowhere.cookie, { "cf-ipcountry": "PT" })
     ).text();
     expect(html).toContain("We can&#x27;t tell where this sign-in started.");
-    expect(html).not.toMatch(/Started .* from /);
+    expect(html).not.toContain("Portugal");
   });
 
   it("the place comes from the edge only: client headers and body cannot set it", async () => {
@@ -1004,7 +1010,7 @@ describe("the facts list keeps each label with its value (TV and 200% text)", ()
     expect(BRAND_PAGE_CSS_LOCKER).toContain("white-space:nowrap");
   });
 
-  it("the TV approval page is the same pairs, in order, with a breakable email", async () => {
+  it("the TV approval page keeps the person row, with a breakable email", async () => {
     const st = await startFlow("tv-w", "Living room TV");
     const c = await confirmCode(st);
     await callback(c);
@@ -1013,15 +1019,8 @@ describe("the facts list keeps each label with its value (TV and 200% text)", ()
     await artefacts(env).put(key, JSON.stringify({ ...f, tv: true }));
     const html = await (await getApprove(c.cookie)).text();
     expect(html).toContain('<body class="tv">');
-    const dl = /<dl>(.*?)<\/dl>/s.exec(html)![1]!;
-    expect([...dl.matchAll(/<(dt|dd)>/g)].map((m) => m[1])).toEqual([
-      "dt",
-      "dd",
-      "dt",
-      "dd",
-      "dt",
-      "dd",
-    ]);
-    expect(dl).toContain("ada<wbr>@example<wbr>.com");
+    const row = /<div class="person">(.*?)<\/button><\/div>/s.exec(html)![1]!;
+    expect(row).toContain("ada<wbr>@example<wbr>.com");
+    expect(row).toContain("Not you?");
   });
 });

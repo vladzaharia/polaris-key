@@ -259,6 +259,8 @@ const AUTH_CARD_RULES = [
   `.ac-foot svg{margin-top:.125rem}`,
   // Under the card: Help and Privacy, quiet, with 24 px targets.
   `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
+  `.ac-links a+a{position:relative}`,
+  `.ac-links a+a::before{content:"\\00b7";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
   `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
@@ -274,6 +276,12 @@ const AUTH_CARD_RULES = [
   `.callout-text{display:grid;gap:.125rem;min-width:0}`,
   `.callout-text p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.callout-text .callout-title{color:var(--strong);font-size:.9375rem;line-height:1.375rem;font-weight:600}`,
+  // The person row (SIGN-IN.md §3.6): initial avatar, name, email and the quiet "Not you?" action.
+  `.person{display:flex;gap:.75rem;align-items:center;padding:.5rem .5rem .5rem .75rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken)}`,
+  `.person .ac-mono{width:2.5rem;height:2.5rem;border-radius:50%}`,
+  `.person-text{display:grid;min-width:0;flex:1;font-size:.875rem;line-height:1.25rem;color:var(--muted)}`,
+  `.person-name{color:var(--strong);font-weight:600}`,
+  `.person .quiet{flex:none;min-height:2.75rem;padding:0 .5rem;border:0;background:none;color:var(--strong);font:inherit;font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em;cursor:pointer}`,
   `.note{display:flex;gap:.5rem;align-items:flex-start;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.note>.ic{margin-top:.125rem}`,
   // The code field: big mono caps, centred; its error sits under it, never above the form.
@@ -423,6 +431,8 @@ export interface BrandPageOptions {
   brand?: BrandPageBrand;
   /** Locker only: TRUSTED markup for the card's header slot (`appHeader`). Wins over `app`. */
   header?: string;
+  /** Locker only: TRUSTED markup above the `<h1>` inside the card body (the person row, `personRow`). */
+  preface?: string;
   /** Locker only: initial focus on the `<h1>` (`tabindex=-1`), so a carried-over Enter presses nothing. */
   focusHeading?: boolean;
   /** Locker only: the card's footer line, plain text beside an icon. */
@@ -509,6 +519,30 @@ export function callout(
   detail?: string,
 ): string {
   return `<div class="callout">${icon(name)}<div class="callout-text"><p class="callout-title">${escapeHtml(title)}</p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div></div>`;
+}
+
+/**
+ * The signed-in person row: the initial in a round avatar, the name over the email, and (with
+ * `notYouForm`) a quiet **Not you?** submit that belongs to that form. `name` and `email` plain text.
+ */
+export function personRow(opts: {
+  name: string;
+  email?: string | null;
+  notYouForm?: { form: string; field: string; value: string };
+}): string {
+  const initial = [...opts.name][0]?.toUpperCase() ?? "?";
+  const email =
+    opts.email && opts.email !== opts.name
+      ? `<span>${escapeHtml(opts.email).replace(/[@.]/g, "<wbr>$&")}</span>`
+      : "";
+  return (
+    `<div class="person"><span class="ac-mono" aria-hidden="true">${escapeHtml(initial)}</span>` +
+    `<div class="person-text"><span class="person-name">${escapeHtml(opts.name)}</span>${email}</div>` +
+    (opts.notYouForm
+      ? `<button class="quiet" type="submit" form="${escapeHtml(opts.notYouForm.form)}" name="${escapeHtml(opts.notYouForm.field)}" value="${escapeHtml(opts.notYouForm.value)}">Not you?</button>`
+      : "") +
+    `</div>`
+  );
 }
 
 /** The one-line note under a form: an icon and muted text. */
@@ -732,6 +766,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     header,
     wide ? passportPane(opts.passport!) : "",
     `<div class="ac-body">`,
+    opts.preface ?? "",
     opts.focusHeading
       ? `<h1 tabindex="-1" autofocus>${escapeHtml(opts.heading)}</h1>`
       : `<h1>${escapeHtml(opts.heading)}</h1>`,

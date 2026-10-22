@@ -248,10 +248,12 @@ export function deviceGonePage(
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: expired ? "That code expired" : "This page is out of date",
     heading: expired ? "That code expired" : "This page is out of date",
-    ...(product
+    // B9.3: the app is named only when the page already knew it (a confirm drew it). A bare
+    // expired or stale code names nothing: a forwarded link must not borrow a name.
+    ...(product && view.app
       ? {
           header: appHeader({
-            name: product.name,
+            name: view.app.name || product.name,
             iconUrl: shown.app.iconUrl,
           }),
         }

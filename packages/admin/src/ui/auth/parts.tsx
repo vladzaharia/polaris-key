@@ -46,13 +46,19 @@ export function OrDivider(): React.ReactElement {
  */
 export function QuietLinks({
   children,
+  stacked = false,
 }: {
   children: React.ReactNode;
+  /** One link per line at body size (the direct card's mockup, portal.signin). */
+  stacked?: boolean;
 }): React.ReactElement {
   return (
     <div
       data-quiet-links
-      className="-mb-3 flex flex-wrap items-center justify-center gap-x-5 border-t border-border pt-3 text-sm text-fg-muted sm:-mb-5"
+      className={
+        "-mb-3 flex items-center justify-center border-t border-border pt-3 text-fg-muted sm:-mb-5 " +
+        (stacked ? "flex-col text-base" : "flex-wrap gap-x-5 text-sm")
+      }
     >
       {children}
     </div>
