@@ -6,6 +6,8 @@ package im.plrs.key.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,7 @@ import im.plrs.key.core.initialBootState
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.DeviceInfo
+import kotlinx.serialization.json.JsonPrimitive
 
 internal const val NOW: Long = 1_790_000_000
 
@@ -64,17 +67,22 @@ internal val samplePrompt = SignInPrompt(
 )
 
 internal val sampleDevices = listOf(
-    DeviceInfo(id = "dev_1", current = true, status = LicenseStatus.ok, lastVerifiedAt = NOW * 1000 - 120_000, label = "Pixel 9 Pro"),
-    DeviceInfo(id = "dev_2", current = false, status = LicenseStatus.ok, lastVerifiedAt = NOW * 1000 - 3 * 86_400_000L, label = "Ada's tablet"),
-    DeviceInfo(id = "dev_3", current = false, status = LicenseStatus.ok, lastVerifiedAt = null, label = null),
+    DeviceInfo(id = "dev_1", current = true, status = LicenseStatus.ok, lastVerifiedAt = NOW * 1000 - 120_000, label = "Pixel 9 Pro", platform = "android", lastSeenAt = NOW * 1000 - 120_000),
+    DeviceInfo(id = "dev_2", current = false, status = LicenseStatus.ok, label = "Ada's tablet", platform = "android", lastSeenAt = NOW * 1000 - 3 * 86_400_000L),
+    DeviceInfo(id = "dev_3", current = false, status = LicenseStatus.ok, lastVerifiedAt = null, label = null, platform = "macos", lastSeenAt = NOW * 1000 - 9 * 86_400_000L),
 )
 
 internal val sampleSettings = PolarisSettingsUi(
     loading = false,
     license = PolarisLicenseSummary(LicenseStatus.ok, holder = "Ada Lovelace", entitlements = listOf("dlc.frost", "multiplayer", "soundtrack")),
     entries = listOf(
-        PolarisSettingEntry("audio.volume", "Music volume", "80", ConfigSource.remoteDefault),
-        PolarisSettingEntry("graphics.quality", "Graphics quality", "high", ConfigSource.local),
+        PolarisSettingEntry("audio.volume", "Music volume", "80", ConfigSource.remoteDefault, editor = PolarisSettingEditor.Number("80", integer = true, min = 0.0, max = 100.0)),
+        PolarisSettingEntry(
+            "graphics.quality", "Graphics quality", "high", ConfigSource.local,
+            editor = PolarisSettingEditor.Choice(listOf("Low" to JsonPrimitive("low"), "Medium" to JsonPrimitive("medium"), "High" to JsonPrimitive("high")), selected = 2),
+        ),
+        PolarisSettingEntry("hints.enabled", "Show hints", "true", ConfigSource.remoteDefault, editor = PolarisSettingEditor.Toggle(true)),
+        PolarisSettingEntry("player.name", "Display name", "Ada", ConfigSource.fallback, editor = PolarisSettingEditor.Text("Ada", maxLength = 24), description = "Shown on the leaderboard."),
         PolarisSettingEntry("telemetry.enabled", "Share diagnostics", "false", ConfigSource.enforced),
         PolarisSettingEntry("server.region", "Server region", "eu-west", ConfigSource.fallback),
     ),
@@ -159,7 +167,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "sign-in-expired" to { PolarisSignInScreen(PolarisSignInUi.Expired) },
     "sign-in-failed" to { PolarisSignInScreen(PolarisSignInUi.Failed) },
     "sign-in-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
-    "settings" to { PolarisSettingsScreen(sampleSettings) },
+    "settings" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
     "devices" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
     "update-banner" to {
         Column(Modifier.fillMaxSize()) {
@@ -173,4 +181,55 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
         }
     },
     "pack-progress" to { PolarisPackProgressScreen(samplePacks) },
+    // The styled parts (UI-KITS.md 4.1), from the matrix's own rows.
+    "license-choice" to { MatrixCases.case("licenseChoice-many").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
+    "license-choice-full" to { MatrixCases.case("licenseChoice-all-full").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
+    "paywall" to { samplePaywall().let { (screen, rows) -> PolarisPaywall(screen, rows.features) } },
+    "release-notes" to { MatrixCases.case("releaseNotes-list").let { PolarisReleaseNotes(it.screen, it.rows.releaseNotes) } },
+    "entitlement-locked" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Export")
+            Spacer(Modifier.height(16.dp))
+            PolarisEntitlementLocked("Pro", onUnlock = {})
+        }
+    },
+    "cloud-sync" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Cloud Sync")
+            Spacer(Modifier.height(16.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.Synced, syncedAtMillis = NOW * 1000 - 300_000, nowMillis = NOW * 1000, onOpen = {})
+            Spacer(Modifier.height(12.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.Conflict, onOpen = {})
+            Spacer(Modifier.height(12.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = {})
+        }
+    },
+    "about" to {
+        PolarisAbout(
+            PolarisAboutInfo(version = "2.4.1", build = "build 241", diagnostics = "Diceroll 2.4.1 (241)\nAndroid 15"),
+            onPrivacy = {}, onSupport = {}, onLicenses = {},
+        )
+    },
 )
+
+internal val sampleFeatures = listOf("Export to PDF and PNG", "Unlimited projects", "Priority support")
+
+/**
+ * The Paywall's offers state with the tier and what it adds: the matrix pins the lines and not the
+ * product's features, so the sample brings them (`offers.tier`, `offers.features`). [pending] is the
+ * matrix's `pending` member ("purchase", "restore").
+ */
+internal fun samplePaywall(pending: String? = null, purchased: Boolean = false): Pair<KitScreen, KitRowData> {
+    val base = MatrixCases.case("paywall-offers").inputs!!
+    var inputs = base.with(
+        "offers",
+        kotlinx.serialization.json.buildJsonObject {
+            put("available", JsonPrimitive(true))
+            put("tier", JsonPrimitive("Pro"))
+            if (purchased) put("purchased", JsonPrimitive(true))
+            put("features", kotlinx.serialization.json.JsonArray(sampleFeatures.map(::JsonPrimitive)))
+        },
+    )
+    if (pending != null) inputs = inputs.with("pending", JsonPrimitive(pending))
+    return KitStates.resolve(KitComponent.paywall, inputs) to KitRowData.from(inputs)
+}
