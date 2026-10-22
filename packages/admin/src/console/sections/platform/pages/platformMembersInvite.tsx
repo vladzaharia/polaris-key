@@ -202,6 +202,9 @@ export function InviteDialog({
           );
           const ids = done.flatMap((r) => (r.bindingId ? [r.bindingId] : []));
           const skipped = result.counts.exists;
+          const unsent = result.emailOff
+            ? []
+            : result.results.filter((r) => r.link);
           toast.success(
             done.length === 0
               ? "Nobody new to invite"
@@ -210,6 +213,9 @@ export function InviteDialog({
               description:
                 [
                   skipped > 0 ? `${skipped} already had this role.` : "",
+                  unsent.length > 0
+                    ? `${unsent.length === 1 ? "1 email" : `${unsent.length} emails`} didn't go out.`
+                    : "",
                   !result.emailOff && result.notified.nobodyNotified
                     ? "Nobody was notified."
                     : "",
@@ -239,7 +245,7 @@ export function InviteDialog({
                 : {}),
             },
           );
-          if (result.emailOff && done.some((r) => r.link)) setLinks(result);
+          if (result.results.some((r) => r.link)) setLinks(result);
         }}
       />
       <InviteLinksDialog result={links} onClose={() => setLinks(null)} />
@@ -247,7 +253,10 @@ export function InviteDialog({
   );
 }
 
-/** With email off the Worker returns the links: each is a sign-in link with the address as a hint. */
+/**
+ * The Worker returns a sign-in link for an address it did not email: every address with email
+ * off, or the ones whose send failed.
+ */
 function InviteLinksDialog({
   result,
   onClose,
@@ -256,13 +265,23 @@ function InviteLinksDialog({
   onClose: () => void;
 }): React.ReactElement {
   const rows = (result?.results ?? []).filter((r) => r.link);
+  const off = result?.emailOff ?? false;
+  const unsent = rows.length;
   return (
     <Dialog
       open={result !== null}
       onOpenChange={(o) => !o && onClose()}
       size="md"
-      title="Send these links"
-      description="Email is off, so nobody was emailed. Each link opens the console sign-in for that address."
+      title={
+        off
+          ? "Send these links"
+          : `${unsent === 1 ? "1 email" : `${unsent} emails`} didn't go out. Send ${unsent === 1 ? "this link" : "these links"}`
+      }
+      description={
+        off
+          ? "Email is off, so nobody was emailed. Each link opens the console sign-in for that address."
+          : `No email reached ${rows.map((r) => r.email).join(", ")}. Each link opens the console sign-in for that address.`
+      }
     >
       <DialogBody className="space-y-3 text-sm">
         <ul className="space-y-3">

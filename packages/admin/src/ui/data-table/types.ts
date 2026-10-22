@@ -189,6 +189,15 @@ export interface DataTableProps<T> {
   mobileCard?: (row: T, primary: React.ReactNode) => React.ReactNode;
   /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
+  /**
+   * With `mobile="cards"`: the width, in root-font rems, below which the rows stack (default:
+   * the 1023 px media query). In rems the stacked rows also take over at 200 % text.
+   */
+  cardsBelowRem?: number;
+  /** With `mobile="cards"`: the rows are not cards: no border or fill, a rule between them (Members). */
+  flatCards?: boolean;
+  /** Below `sm` the filter bar stays on one row that scrolls sideways. */
+  filtersOneRow?: boolean;
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
   /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */

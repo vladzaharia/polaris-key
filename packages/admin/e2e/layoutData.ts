@@ -137,6 +137,16 @@ function membersView() {
         sentAt: 1_789_800_000,
         expiresAt: 1_790_400_000,
       },
+      {
+        bindingId: "b_inv_3",
+        email: "olu@example.com",
+        role: "platform_admin",
+        scope: "platform",
+        areas: null,
+        invitedBy: { name: "Ada Lindqvist" },
+        sentAt: 1_789_700_000,
+        expiresAt: 1_790_300_000,
+      },
     ],
   };
 }
@@ -2094,7 +2104,7 @@ export const DATA_ROUTES: Record<string, unknown> = {
     ],
     nextCursor: null,
   },
-  // ST-31.11: Platform → Members. Twelve people (a root holder, both admin kinds, a narrowed
+  // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
   // Product admin, a long name and address) and three invites, one of them for a platform role.
   "/manage/api/members": membersView(),
   "/manage/api/platform/operations": operations(),

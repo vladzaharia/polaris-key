@@ -12,6 +12,7 @@
 
 import * as React from "react";
 import {
+  ApiError,
   type AreaId,
   type Me,
   type Member,
@@ -91,44 +92,72 @@ export function RevokeInviteDialog({
 // ── Remove from console ─────────────────────────────────────────────────────────────────────
 
 export function RemoveMemberDialog({
-  member,
+  memberId,
+  members,
   me,
   onClose,
   productName,
 }: {
-  member: Member | null;
+  memberId: string | null;
+  members: readonly Member[];
   me: Me | undefined;
   onClose: () => void;
   productName: ProductName;
 }): React.ReactElement {
+  // Read from the live roster, so a retry after a partial failure sees what is left. The last
+  // member seen stays on screen while the roster refetches.
+  const live = members.find((m) => m.memberId === memberId) ?? null;
+  const last = React.useRef<Member | null>(null);
+  if (live) last.current = live;
+  const member = memberId === null ? null : (live ?? last.current);
+  // Bindings this dialog already deleted (a refetch may not have landed yet).
+  const gone = React.useRef(new Set<string>());
+  React.useEffect(() => {
+    if (memberId === null) {
+      gone.current.clear();
+      last.current = null;
+    }
+  }, [memberId]);
   const roles = (member?.roles ?? []).filter(
-    (r) => r.bindingId !== null && cannotTake(me, r) === undefined,
+    (r) =>
+      r.bindingId !== null &&
+      !gone.current.has(r.bindingId) &&
+      cannotTake(me, r, productName) === undefined,
   );
   return (
     <ConfirmDialog
-      open={member !== null}
+      open={memberId !== null}
       onOpenChange={(o) => !o && onClose()}
       intent="danger"
       title={`Remove ${member?.name || member?.email || "this person"} from the console?`}
       consequences={[
-        `They lose ${roles
-          .map((r) => roleLabel({ ...r, source: "" }, productName).label)
-          .join(", ")}.`,
+        roles.length > 0
+          ? `They lose ${roles
+              .map((r) => roleLabel({ ...r, source: "" }, productName).label)
+              .join(", ")}.`
+          : "They have no roles left to remove.",
         "They can't open the console until someone gives them a role again.",
         "Every Superadmin is told.",
       ]}
       confirmLabel="Remove from console"
       describeError={describeMembersError}
       onConfirm={async () => {
+        const todo = roles.filter((r) => !gone.current.has(r.bindingId!));
         let done = 0;
         try {
-          for (const r of roles) {
-            await mutate("revokeBinding", r.bindingId!);
+          for (const r of todo) {
+            try {
+              await mutate("revokeBinding", r.bindingId!);
+            } catch (e) {
+              // Already removed (a retry, or someone else): that is the outcome we want.
+              if (!(e instanceof ApiError && e.status === 404)) throw e;
+            }
+            gone.current.add(r.bindingId!);
             done += 1;
           }
         } catch (e) {
           if (done > 0)
-            toast.error(`Removed ${done} of ${roles.length} roles`, {
+            toast.error(`Removed ${done} of ${todo.length} roles`, {
               description: "Try again to remove the rest.",
             });
           throw e;
@@ -181,7 +210,7 @@ export function EditRolesDialog({
         <DialogBody className="space-y-4 text-sm">
           <ul className="divide-y divide-border">
             {(member?.roles ?? []).map((r, i) => {
-              const why = cannotTake(me, r);
+              const why = cannotTake(me, r, productName);
               const narrowable =
                 r.role === "product_admin" &&
                 r.scope.startsWith("product:") &&

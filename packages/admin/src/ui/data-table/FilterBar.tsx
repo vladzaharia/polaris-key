@@ -51,6 +51,8 @@ export interface FilterBarProps {
   className?: string;
   /** Below `sm` the search field takes a row of its own, full width (Home). */
   stackSearch?: boolean;
+  /** Below `sm` the search and the facet menus stay on one row that scrolls sideways (Members). */
+  oneRow?: boolean;
   /**
    * The page's own filters, drawn first on the bar's row, so a page that filters above its table
    * keeps one band (Home's Table view) instead of stacking a second toolbar.
@@ -345,6 +347,7 @@ export function FilterBar({
   actions,
   className,
   stackSearch,
+  oneRow,
   lead,
 }: FilterBarProps): React.ReactElement {
   const [q, setQ] = useDebouncedField(
@@ -366,13 +369,20 @@ export function FilterBar({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          oneRow &&
+            "max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-0.5 max-sm:[&>*]:shrink-0",
+        )}
+      >
         {lead}
         {search ? (
           <label
             className={cn(
               "relative flex min-w-[min(12rem,100%)] flex-1 basis-[min(12rem,100%)] items-center sm:max-w-sm",
               stackSearch && "max-sm:basis-full",
+              oneRow && "max-sm:min-w-40 max-sm:basis-40",
             )}
           >
             <span className="sr-only">

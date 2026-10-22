@@ -10,6 +10,8 @@ export interface RadioCardOption<V extends string = string> {
   description?: React.ReactNode;
   icon?: React.ReactNode;
   disabled?: boolean;
+  /** Why the card is off: full-strength muted text under the dimmed label. */
+  reason?: React.ReactNode;
 }
 
 export interface RadioCardsProps<V extends string = string> {
@@ -97,13 +99,13 @@ export function RadioCards<V extends string = string>({
               "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
               check &&
                 "data-[state=checked]:shadow-[inset_3px_0_0_var(--pk-locker-accent,var(--pk-accent))]",
-              "disabled:cursor-not-allowed disabled:opacity-50",
+              "disabled:cursor-not-allowed disabled:opacity-100",
             )}
           >
             <span
               aria-hidden
               className={cn(
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent",
+                "mt-0.5 flex size-4 shrink-0 items-center group-disabled:opacity-50 justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent",
                 check &&
                   "order-last ms-auto size-5 group-data-[state=checked]:border-fg-strong group-data-[state=checked]:bg-fg-strong",
               )}
@@ -118,7 +120,7 @@ export function RadioCards<V extends string = string>({
               )}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong group-disabled:opacity-50">
                 {o.icon ? (
                   <span aria-hidden className="[&_svg]:size-4">
                     {o.icon}
@@ -129,9 +131,14 @@ export function RadioCards<V extends string = string>({
               {o.description ? (
                 <span
                   id={`${itemId}-desc`}
-                  className="mt-0.5 block text-xs text-fg-muted"
+                  className="mt-0.5 block text-xs text-fg-muted group-disabled:opacity-50"
                 >
                   {o.description}
+                </span>
+              ) : null}
+              {o.reason ? (
+                <span className="mt-0.5 block text-xs text-fg-muted">
+                  {o.reason}
                 </span>
               ) : null}
             </span>

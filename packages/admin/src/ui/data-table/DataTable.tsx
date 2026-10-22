@@ -130,6 +130,27 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+/** Whether the window is narrower than `rem` root-font units (false without `rem`, or in jsdom). */
+function useNarrowRem(rem: number | undefined): boolean {
+  const get = (): boolean => {
+    if (rem === undefined || typeof window === "undefined") return false;
+    const px = parseFloat(
+      window.getComputedStyle(document.documentElement).fontSize,
+    );
+    return Number.isFinite(px) && px > 0 && window.innerWidth / px < rem;
+  };
+  const [narrow, setNarrow] = React.useState(get);
+  React.useEffect(() => {
+    if (rem === undefined) return;
+    const on = (): void => setNarrow(get());
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rem]);
+  return narrow;
+}
+
 /** A column's id: its `id`, else its `accessorKey`. */
 export function columnId<T>(col: DataColumn<T>): string {
   const c = col as { id?: string; accessorKey?: string };
@@ -402,6 +423,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     noResults: noResultsOverride,
     mobile = "scroll",
     mobileCard,
+    cardsBelowRem,
+    flatCards,
+    filtersOneRow,
     toolbarActions,
     toolbarMode = "full",
     errorThing,
@@ -468,7 +492,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   // sideways and hide its end-most columns, Actions included.
   const compactBar = toolbarMode === "compact";
   const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
-  const isCardWidth = useMediaQuery("(max-width: 1023px)");
+  const narrowQuery = useMediaQuery("(max-width: 1023px)");
+  const narrowRem = useNarrowRem(cardsBelowRem);
+  const isCardWidth = cardsBelowRem === undefined ? narrowQuery : narrowRem;
   const isMobileCards = isCardWidth && mobile === "cards";
 
   const serverSide =
@@ -1133,6 +1159,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       </Presence>
     ) : (
       <FilterBar
+        oneRow={filtersOneRow}
         lead={toolbarLead}
         search={
           search
@@ -1553,7 +1580,14 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   );
 
   const cards = (
-    <ul ref={setList} aria-label={caption} className="pk-vt-table space-y-2">
+    <ul
+      ref={setList}
+      aria-label={caption}
+      className={cn(
+        "pk-vt-table",
+        flatCards ? "divide-y divide-border" : "space-y-2",
+      )}
+    >
       {pageRows.map((row) => {
         const label = labelOf(row.original);
         const cells = row.getVisibleCells();
@@ -1571,7 +1605,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "@container relative rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+              flatCards
+                ? "@container relative px-4 py-3 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle"
+                : "@container relative rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
@@ -1785,7 +1821,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ) : null}
       {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
           of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
-      <div className={cn("pk-vt-scope", isMobileCards && "space-y-3 p-3")}>
+      <div
+        className={cn(
+          "pk-vt-scope",
+          isMobileCards && !flatCards && "space-y-3 p-3",
+        )}
+      >
         {unloaded &&
         narrowedLoaded &&
         (pageRows.length > 0 || unloaded.searchingAll) ? (
@@ -1834,7 +1875,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         <div onKeyDown={onKeyDown}>
           {isMobileCards && (error || showSkeleton || noResults) ? (
             // Cards draw rows; a state is one full-width block, never a table in a scroller.
-            <div className="rounded-lg border border-border bg-surface-raised p-4">
+            <div
+              className={cn(
+                "rounded-lg border border-border bg-surface-raised p-4",
+                flatCards && "m-3",
+              )}
+            >
               {error ? (
                 <ErrorState
                   error={error}

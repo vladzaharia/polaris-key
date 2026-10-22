@@ -9,11 +9,12 @@ import type { Me } from "../../../../api.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
 import { Select } from "../../../../ui/Select.js";
-import { AREA_NAMES } from "../../../access/can.js";
+import { AREA_NAMES, listOf } from "../../../access/can.js";
 import {
   cannotGive,
   grantOf,
   PRODUCT_AREAS,
+  SUPERADMIN_ONLY,
   type RoleChoice,
   type RoleDraft,
 } from "./platformMembersModel.js";
@@ -79,6 +80,24 @@ export function RoleForm({
   const roleId = React.useId();
   const productId = React.useId();
   const areaMode = draft.areaMode;
+  // The cards that are off, and the reason once for the group.
+  const offChoices = CHOICES.filter(
+    (c) => c.value !== "product_admin" && cannotGive(me, c.value) !== undefined,
+  ).map((c) => c.value);
+  const offId = React.useId();
+  const superOnly = CHOICES.filter(
+    (c) => SUPERADMIN_ONLY.includes(c.value) && offChoices.includes(c.value),
+  ).map((c) => c.label);
+  const offReason = [
+    superOnly.length > 0
+      ? `Only a Superadmin can give ${listOf(superOnly)}.`
+      : "",
+    offChoices.includes("console_access")
+      ? "Only a Platform admin or a Superadmin can give Console access."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -87,21 +106,23 @@ export function RoleForm({
         </span>
         <RadioCards<RoleChoice>
           aria-labelledby={roleId}
+          aria-describedby={offReason ? offId : undefined}
           columns={2}
           value={draft.choice}
           disabled={disabled}
           onChange={(choice) => onChange({ ...draft, choice })}
-          options={CHOICES.map((c) => {
-            const reason =
-              c.value === "product_admin" ? undefined : cannotGive(me, c.value);
-            return {
-              value: c.value,
-              label: c.label,
-              description: reason ?? c.description,
-              disabled: reason !== undefined,
-            };
-          })}
+          options={CHOICES.map((c) => ({
+            value: c.value,
+            label: c.label,
+            description: c.description,
+            disabled: offChoices.includes(c.value),
+          }))}
         />
+        {offReason ? (
+          <p id={offId} className="text-xs text-fg-muted">
+            {offReason}
+          </p>
+        ) : null}
       </div>
       {draft.choice === "product_admin" ? (
         <>

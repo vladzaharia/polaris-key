@@ -203,14 +203,17 @@ describe("Members: the roster", () => {
     answer = view({ truncated: true });
     open();
     await table();
-    expect(await screen.findByText(/The list is cut/)).toBeTruthy();
+    expect(
+      await screen.findByText("Showing the first 500 members and 500 invites."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Search to find/)).toBeNull();
   });
 
   it("shows the first-run state when nobody holds a role", async () => {
     answer = view({ members: [], invites: [], rootRule: { group: null } });
     open();
     await screen.findByRole("heading", { level: 1, name: "Members" });
-    expect(await screen.findByText("No one has a role yet")).toBeTruthy();
+    expect(await screen.findByText("No members to show")).toBeTruthy();
     expect(screen.queryByText(/Root rule:/)).toBeNull();
   });
 
@@ -488,10 +491,12 @@ describe("Members: Superadmin and Platform admin", () => {
           radio.getAttribute("aria-disabled") === "true",
       ).toBe(true);
     }
+    // The reason once for the group, not on every card.
     expect(
-      within(dialog).getAllByText("Only a Superadmin can give this role.")
-        .length,
-    ).toBe(3);
+      within(dialog).getAllByText(
+        "Only a Superadmin can give All products admin, Platform admin and Superadmin.",
+      ).length,
+    ).toBe(1);
     // Console access they can give.
     expect(
       within(dialog)
@@ -666,5 +671,150 @@ describe("Members: remove from console", () => {
         log.calls.filter((c) => c.method === "DELETE").map((c) => c.path),
       ).toEqual(["/manage/api/bindings/b_kenji_djdl"]),
     );
+  });
+});
+
+describe("Members: the second round (ST-31.11 fix)", () => {
+  const two: Member = {
+    ...kenji,
+    roles: [
+      kenji.roles[0]!,
+      {
+        ...kenji.roles[0]!,
+        scope: "product:acme",
+        bindingId: "b_kenji_acme",
+        areas: null,
+      },
+    ],
+  };
+
+  async function openRemove(user: ReturnType<typeof userEvent.setup>) {
+    const t = await table();
+    await user.click(
+      within(t).getByRole("button", { name: "Actions for Kenji Mori" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Remove from console/ }),
+    );
+    return screen.findByRole("alertdialog");
+  }
+
+  it("retries a partly failed removal with only the roles that are left", async () => {
+    const user = userEvent.setup();
+    let roster: Member = two;
+    answer = view({ members: [ada, priya, roster] });
+    let acme = 0;
+    const log = open({
+      [PATH]: () => view({ members: [ada, priya, roster] }),
+      "DELETE /manage/api/bindings/b_kenji_djdl": () => {
+        roster = { ...two, roles: [two.roles[1]!] };
+        return { ok: true };
+      },
+      "DELETE /manage/api/bindings/b_kenji_acme": () =>
+        acme++ === 0 ? json({ error: "boom" }, 500) : { ok: true },
+    });
+    const confirm = await openRemove(user);
+    expect(
+      within(confirm).getByText(/They lose DJDL admin, Acme admin/),
+    ).toBeTruthy();
+    await user.click(
+      within(confirm).getByRole("button", { name: "Remove from console" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.filter((c) => c.method === "DELETE").length).toBe(2),
+    );
+    // The dialog now lists only what is left.
+    await waitFor(() =>
+      expect(screen.getByText(/They lose Acme admin\./)).toBeTruthy(),
+    );
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Remove from console",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.filter((c) => c.method === "DELETE").map((c) => c.path),
+      ).toEqual([
+        "/manage/api/bindings/b_kenji_djdl",
+        "/manage/api/bindings/b_kenji_acme",
+        "/manage/api/bindings/b_kenji_acme",
+      ]),
+    );
+  });
+
+  it("treats a 404 on a binding delete as already removed", async () => {
+    const user = userEvent.setup();
+    answer = view({ members: [ada, priya, two] });
+    const log = open({
+      "DELETE /manage/api/bindings/b_kenji_djdl": json({ error: "nf" }, 404),
+      "DELETE /manage/api/bindings/b_kenji_acme": { ok: true },
+    });
+    const confirm = await openRemove(user);
+    await user.click(
+      within(confirm).getByRole("button", { name: "Remove from console" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.filter((c) => c.method === "DELETE").length).toBe(2),
+    );
+    expect(screen.queryByText(/not found/i)).toBeNull();
+  });
+
+  it("tells a Platform admin what it takes to remove a product admin", async () => {
+    const user = userEvent.setup();
+    answer = view({ members: [ada, priya, two] });
+    open({}, asRole("platform_admin"));
+    const t = await table();
+    await user.click(
+      within(t).getByRole("button", { name: "Actions for Kenji Mori" }),
+    );
+    const item = await screen.findByRole("menuitem", {
+      name: /Remove from console/,
+    });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(item.textContent).toMatch(
+      /Only a Superadmin or an admin of DJDL with Members can remove DJDL admin\./i,
+    );
+    expect(item.textContent).not.toMatch(/Platform admin or an All products/);
+  });
+
+  it("opens the links dialog when one email fails with email on", async () => {
+    const user = userEvent.setup();
+    open({
+      [`POST ${BINDINGS}`]: {
+        ok: true,
+        results: [
+          {
+            email: "a@example.com",
+            status: "invited",
+            bindingId: "b1",
+            emailed: true,
+          },
+          {
+            email: "b@example.com",
+            status: "invited",
+            bindingId: "b2",
+            emailed: false,
+            link: "https://key.example/manage/?login_hint=b%40example.com",
+          },
+        ],
+        counts: { invited: 2, updated: 0, exists: 0, merged: 0, invalid: 0 },
+        emailOff: false,
+        notified: { sent: 1, of: 2, nobodyNotified: false },
+        confirm: "L1",
+      },
+    });
+    const dialog = await openInvite(user);
+    await typeEmails(user, dialog, "a@example.com b@example.com");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Invite 2 people" }),
+    );
+    const links = await screen.findByRole("dialog", {
+      name: /1 email didn't go out/,
+    });
+    expect(
+      within(links).getByText(/No email reached b@example.com/),
+    ).toBeTruthy();
+    expect(within(links).queryByText(/a@example.com\b.*login_hint/)).toBeNull();
   });
 });

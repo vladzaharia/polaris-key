@@ -73,9 +73,10 @@ export function ActionMenu({
                 disabled={Boolean(item.disabledReason)}
                 onSelect={() => item.onSelect()}
                 className={cn(
-                  "relative flex cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 outline-hidden",
-                  "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus data-[disabled]:cursor-not-allowed",
-                  "[&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0",
+                  // Only the label of a disabled item is dimmed; its reason stays readable (4.5:1).
+                  "group relative flex cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 outline-hidden",
+                  "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus data-[disabled]:cursor-not-allowed data-[disabled]:opacity-100",
+                  "[&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 group-data-[disabled]:[&_svg]:opacity-50",
                   item.tone === "danger"
                     ? "text-danger focus:bg-danger-subtle"
                     : "focus:text-fg-strong",
@@ -87,11 +88,15 @@ export function ActionMenu({
                   </span>
                 ) : null}
                 <span className="flex min-w-0 flex-col">
-                  <span className={cn(item.disabledReason && "text-fg-muted")}>
+                  <span
+                    className={cn(
+                      item.disabledReason && "text-fg-muted opacity-50",
+                    )}
+                  >
                     {item.label}
                   </span>
                   {item.disabledReason || item.description ? (
-                    <span className="text-xs text-fg-subtle">
+                    <span className="text-xs text-fg-muted">
                       {item.disabledReason ?? item.description}
                     </span>
                   ) : null}

@@ -12,14 +12,13 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, Mail, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { api, type Member, type MemberInvite } from "../../../../api.js";
-import { cn } from "../../../../lib/cn.js";
-import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import {
   DataTable,
+  useMediaQuery,
   type DataColumn,
   type Facet,
   type RowActionItem,
@@ -28,7 +27,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
+import { roleLabel } from "../../../access/can.js";
 import { RoleTags } from "../../../access/RoleTag.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
@@ -38,97 +37,28 @@ import { r as routes } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { InviteDialog } from "./platformMembersInvite.js";
+import type { ProductName } from "./platformMembersRoleForm.js";
 import {
   EditRolesDialog,
   RemoveMemberDialog,
   RevokeInviteDialog,
 } from "./platformMembersDialogs.js";
 import {
+  AccessLines,
+  accessLines,
+  Avatar,
+  inviteLines,
+  LastSeen,
+  StackedRow,
+} from "./platformMembersParts.js";
+import {
   cannotTake,
-  initialsOf,
+  removable,
   productOfScope,
   rowsOf,
   visibleRoles,
   type MemberRow,
 } from "./platformMembersModel.js";
-
-type ProductName = (slug: string) => string;
-
-function Avatar({
-  name,
-  email,
-  pending,
-}: {
-  name: string;
-  email: string;
-  pending?: boolean;
-}): React.ReactElement {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-        pending
-          ? "border border-dashed border-border-strong text-fg-muted"
-          : "bg-surface-sunken text-fg-strong",
-      )}
-    >
-      {pending ? <Mail className="size-4" /> : initialsOf(name, email)}
-    </span>
-  );
-}
-
-/** One "Access from" line per distinct source of a member's roles. */
-function accessLines(
-  m: Member,
-  group: string | null,
-  productName: ProductName,
-): React.ReactNode[] {
-  const seen = new Set<string>();
-  const lines: React.ReactNode[] = [];
-  for (const r of m.roles) {
-    const by = r.grantedBy?.name ?? null;
-    const key = `${r.source}:${by ?? ""}:${r.grantedAt ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (r.source === "root")
-      lines.push(
-        <span
-          key={key}
-          className="inline-flex items-center gap-1.5 min-[1440px]:whitespace-nowrap"
-        >
-          <Lock className="size-3.5 shrink-0" aria-hidden="true" />
-          Root rule
-          {group ? <code className="font-mono text-xs">{group}</code> : null}
-        </span>,
-      );
-    else if (r.source === "creator") {
-      const slug = productOfScope(r.scope);
-      lines.push(
-        <span key={key}>
-          Created {slug ? productName(slug) : "a product"}
-          {r.grantedAt ? <Dated at={r.grantedAt} /> : null}
-        </span>,
-      );
-    } else
-      lines.push(
-        <span key={key}>
-          {r.source === "invite" ? "Invite from " : "Added by "}
-          {by ?? "a former member"}
-          {r.grantedAt ? <Dated at={r.grantedAt} /> : null}
-        </span>,
-      );
-  }
-  return lines;
-}
-
-function Dated({ at }: { at: number }): React.ReactElement {
-  return (
-    <span className="ms-1.5 text-fg-muted max-sm:hidden">
-      <Timestamp at={fromSeconds(at)} format="date" />
-    </span>
-  );
-}
 
 const ROLE_OPTIONS = [
   { value: "superadmin", label: "Superadmin" },
@@ -158,7 +88,7 @@ export function PlatformMembers(): React.ReactElement {
   });
   const [inviting, setInviting] = React.useState(false);
   const [editing, setEditing] = React.useState<string | null>(null);
-  const [removing, setRemoving] = React.useState<Member | null>(null);
+  const [removing, setRemoving] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<MemberInvite | null>(null);
 
   const products = React.useMemo(
@@ -169,6 +99,7 @@ export function PlatformMembers(): React.ReactElement {
     (slug) => products.find((p) => p.slug === slug)?.name ?? slug,
     [products],
   );
+  const folded = useMediaQuery("(max-width: 1365px)");
   const group = view.data?.rootRule.group ?? null;
   const rows = React.useMemo(() => rowsOf(view.data), [view.data]);
   const editingMember =
@@ -233,12 +164,12 @@ export function PlatformMembers(): React.ReactElement {
         const name = r.kind === "member" ? r.member.name : "";
         const email = r.kind === "member" ? r.member.email : r.invite.email;
         return (
-          <span className="flex min-w-0 max-w-[22rem] items-center gap-3 max-sm:max-w-none">
+          <span className="flex min-w-0 max-w-[17rem] items-center gap-3 min-[1440px]:max-w-[22rem]">
             <Avatar name={name} email={email} pending={r.kind === "invite"} />
             <span className="flex min-w-0 flex-col">
               <span className="flex min-w-0 items-center gap-2">
                 <span
-                  className="truncate font-medium text-fg-strong max-sm:whitespace-normal max-sm:break-words"
+                  className="truncate font-medium text-fg-strong"
                   title={name || email}
                 >
                   {name || email}
@@ -250,12 +181,21 @@ export function PlatformMembers(): React.ReactElement {
                   <span className="text-xs text-warning">Disabled</span>
                 ) : null}
               </span>
-              {name ? (
-                <span
-                  className="truncate text-xs text-fg-muted max-sm:whitespace-normal max-sm:break-all"
-                  title={email}
-                >
-                  {email}
+              {name || (folded && r.kind === "member") ? (
+                <span className="flex min-w-0 text-xs text-fg-muted">
+                  {name ? (
+                    <span className="truncate" title={email}>
+                      {email}
+                    </span>
+                  ) : null}
+                  {folded && r.kind === "member" ? (
+                    <span className="shrink-0 whitespace-nowrap">
+                      {name ? (
+                        <span aria-hidden="true">&nbsp;·&nbsp;</span>
+                      ) : null}
+                      <LastSeen row={r} />
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </span>
@@ -266,10 +206,15 @@ export function PlatformMembers(): React.ReactElement {
     {
       id: "roles",
       header: "Roles",
+      // Sorted by what the tags say, not by the role ids.
       accessorFn: (r) =>
-        r.kind === "member"
-          ? r.member.roles.map((x) => x.role).join(" ")
-          : r.invite.role,
+        (r.kind === "member"
+          ? visibleRoles(r.member.roles)
+          : [{ ...r.invite, source: "invite" }]
+        )
+          .map((x) => roleLabel(x, productName).label)
+          .sort()
+          .join(" "),
       meta: { priority: 1, label: "Roles" },
       cell: ({ row }) => {
         const r = row.original;
@@ -291,61 +236,46 @@ export function PlatformMembers(): React.ReactElement {
       meta: { priority: 1, label: "Access from" },
       cell: ({ row }) => {
         const r = row.original;
-        if (r.kind === "invite")
-          return (
-            <span className="flex flex-col gap-0.5 min-[1440px]:whitespace-nowrap text-sm">
-              <span>
-                Invited by {r.invite.invitedBy?.name ?? "a former member"}
-                <Dated at={r.invite.sentAt} />
-              </span>
-              {r.invite.expiresAt ? (
-                <span className="text-xs text-fg-muted">
-                  Expires{" "}
-                  <Timestamp
-                    at={fromSeconds(r.invite.expiresAt)}
-                    format="relative"
-                  />
-                </span>
-              ) : null}
-            </span>
-          );
         return (
-          <span className="flex flex-col gap-0.5 min-[1440px]:whitespace-nowrap text-sm">
-            {accessLines(r.member, group, productName).map((l, i) => (
-              <span key={i}>{l}</span>
-            ))}
-          </span>
+          <AccessLines
+            lines={
+              r.kind === "invite"
+                ? inviteLines(r.invite)
+                : accessLines(r.member, group, productName)
+            }
+          />
         );
       },
     },
-    {
-      id: "lastSignIn",
-      header: "Last sign-in",
-      accessorFn: (r) =>
-        r.kind === "member" ? (r.member.lastSignInAt ?? 0) : 0,
-      meta: { priority: 2, numeric: true, label: "Last sign-in" },
-      cell: ({ row }) => {
-        const r = row.original;
-        if (r.kind === "invite")
-          return <span className="tabular-nums text-fg-muted">Not yet</span>;
-        return r.member.lastSignInAt ? (
-          <Timestamp at={fromSeconds(r.member.lastSignInAt)} />
-        ) : (
-          <span className="tabular-nums text-fg-muted">Never</span>
-        );
-      },
-    },
+    ...(folded
+      ? []
+      : [
+          {
+            id: "lastSignIn",
+            header: "Last sign-in",
+            accessorFn: (r: MemberRow) =>
+              r.kind === "member" ? (r.member.lastSignInAt ?? 0) : 0,
+            meta: { priority: 2, numeric: true, label: "Last sign-in" },
+            cell: ({ row }: { row: { original: MemberRow } }) => (
+              <LastSeen row={row.original} />
+            ),
+          } satisfies DataColumn<MemberRow>,
+        ]),
   ];
 
   const rowActions = (r: MemberRow): RowActionItem[] => {
     if (r.kind === "invite") {
-      const why = cannotTake(me, {
-        ...r.invite,
-        source: "invite",
-        bindingId: r.invite.bindingId,
-        grantedBy: null,
-        grantedAt: r.invite.sentAt,
-      });
+      const why = cannotTake(
+        me,
+        {
+          ...r.invite,
+          source: "invite",
+          bindingId: r.invite.bindingId,
+          grantedBy: null,
+          grantedAt: r.invite.sentAt,
+        },
+        productName,
+      );
       return [
         {
           label: "Revoke invite…",
@@ -358,16 +288,12 @@ export function PlatformMembers(): React.ReactElement {
     const m = r.member;
     const hasRoot = m.roles.some((x) => x.bindingId === null);
     // Removing someone takes back every role; one that stays would leave them in the console.
-    const stuck = m.roles.some(
-      (x) => x.bindingId !== null && cannotTake(me, x) !== undefined,
-    );
+    const stuck = removable(me, m, productName).why;
     const removeWhy = write.disabledReason
       ? write.disabledReason
       : hasRoot
         ? `In the root rule${group ? ` (${group})` : ""}. Take them out of the group at your identity provider.`
-        : stuck
-          ? "Only a Superadmin can remove a Superadmin, a Platform admin or an All products admin."
-          : undefined;
+        : stuck;
     return [
       {
         label: "Edit roles…",
@@ -377,14 +303,19 @@ export function PlatformMembers(): React.ReactElement {
       {
         label: "Remove from console…",
         tone: "danger",
-        onSelect: () => setRemoving(m),
+        onSelect: () => setRemoving(m.memberId),
         disabledReason: removeWhy,
       },
       { type: "separator" },
       {
         label: "Show activity",
         onSelect: () => {
-          navigate(routes.platformActivity({ actor: m.memberId }));
+          navigate(
+            routes.platformActivity({
+              actor: m.memberId,
+              who: m.name || m.email,
+            }),
+          );
         },
       },
     ];
@@ -396,7 +327,6 @@ export function PlatformMembers(): React.ReactElement {
       header={
         <PageHeader
           title="Members"
-          description="Everyone who can sign in to the console, and the roles they hold."
           refetching={view.isFetching && !view.isPending}
           primaryAction={
             <Button
@@ -427,14 +357,18 @@ export function PlatformMembers(): React.ReactElement {
           </span>
         </Callout>
       ) : null}
-      {roster?.truncated ? (
+      {roster?.truncated || roster?.incomplete ? (
         <Callout tone="warning">
-          The list is cut. Search to find someone who isn't shown.
-        </Callout>
-      ) : null}
-      {roster?.incomplete ? (
-        <Callout tone="warning">
-          Some people couldn't be listed. Reload to try again.
+          {[
+            roster.truncated
+              ? "Showing the first 500 members and 500 invites."
+              : "",
+            roster.incomplete
+              ? "Some people couldn't be listed. Reload to try again."
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         </Callout>
       ) : null}
       {view.isError && !roster ? (
@@ -467,22 +401,18 @@ export function PlatformMembers(): React.ReactElement {
           loading={view.isPending}
           exportCsv={false}
           mobile="cards"
+          cardsBelowRem={64}
+          flatCards
+          filtersOneRow
+          mobileCard={(r) => (
+            <StackedRow row={r} group={group} productName={productName} />
+          )}
           chrome="minimal"
           empty={
             <EmptyState
               kind="first-run"
-              title="No one has a role yet"
+              title="No members to show"
               description="Invite people to give them access to the console."
-              primaryAction={
-                <Button
-                  variant="primary"
-                  disabled={!write.allowed}
-                  disabledReason={write.disabledReason}
-                  onClick={() => setInviting(true)}
-                >
-                  Invite people
-                </Button>
-              }
             />
           }
         />
@@ -503,7 +433,8 @@ export function PlatformMembers(): React.ReactElement {
         onClose={() => setEditing(null)}
       />
       <RemoveMemberDialog
-        member={removing}
+        memberId={removing}
+        members={roster?.members ?? []}
         me={me}
         productName={productName}
         onClose={() => setRemoving(null)}

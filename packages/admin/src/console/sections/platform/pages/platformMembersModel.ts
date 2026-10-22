@@ -196,10 +196,14 @@ export function cannotGive(
     : "You can give Product admin only on products you administer, with the areas you hold.";
 }
 
-/** Why the signed-in member cannot take this role back, else `undefined` (G2, D-c, B1). */
+/**
+ * Why the signed-in member cannot take this role back, else `undefined` (G2, D-c, B1). Says what
+ * it takes to remove it (not to give it), for the role named.
+ */
 export function cannotTake(
   me: Me | undefined,
   role: MemberRole,
+  productName: (slug: string) => string = (s) => s,
 ): string | undefined {
   if (role.bindingId === null)
     return "This comes from the root rule. It can't be removed here.";
@@ -209,7 +213,35 @@ export function cannotTake(
         ? "all_products"
         : "product_admin"
       : role.role;
-  return cannotGive(me, choice, productOfScope(role.scope) ?? "", role.areas);
+  const slug = productOfScope(role.scope) ?? "";
+  if (cannotGive(me, choice, slug, role.areas) === undefined) return undefined;
+  if (choice === "console_access")
+    return "Only a Platform admin or a Superadmin can remove Console access.";
+  if (choice === "product_admin") {
+    const product = productName(slug);
+    return `Only a Superadmin or an admin of ${product} with Members can remove ${product} admin.`;
+  }
+  const word = {
+    all_products: "All products admin",
+    platform_admin: "Platform admin",
+    superadmin: "Superadmin",
+  }[choice as "all_products" | "platform_admin" | "superadmin"];
+  return `Only a Superadmin can remove ${word}.`;
+}
+
+/** The roles of a member the signed-in one can take back; `why` is the first refusal, if any. */
+export function removable(
+  me: Me | undefined,
+  member: Member,
+  productName: (slug: string) => string,
+): { roles: MemberRole[]; why: string | undefined } {
+  const held = member.roles.filter((r) => r.bindingId !== null);
+  let why: string | undefined;
+  for (const r of held) {
+    why = cannotTake(me, r, productName);
+    if (why) break;
+  }
+  return { roles: held, why };
 }
 
 // ── errors ──────────────────────────────────────────────────────────────────────────────────
