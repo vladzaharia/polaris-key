@@ -43,7 +43,7 @@ import { LegalNav } from "../components/signin/LegalNav.js";
 import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
-import { portalKeys, useCapabilities } from "../data.js";
+import { useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import {
   blocksResend,
@@ -71,6 +71,7 @@ import {
 } from "../components/signin/RequestHeader.js";
 import { requestHandleFromUrl } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
+import { qk } from "../queries.js";
 
 /**
  * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
@@ -1027,7 +1028,7 @@ function CodeStep({
       rememberVia("email");
       // A new address finishes first (I-33): the account is created there.
       if (out?.status === "finish") return void onFinish();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
+      await qc.invalidateQueries({ queryKey: qk.me() });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
       if (err instanceof PortalApiError && err.next)

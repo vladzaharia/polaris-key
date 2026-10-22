@@ -17,7 +17,6 @@ import {
   type SignInContinueRequest,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
-import { portalKeys } from "../../data.js";
 import { useDocumentTitle } from "../../router.js";
 import {
   firstName,
@@ -29,7 +28,6 @@ import {
   type DeviceRowModel,
 } from "../../model/signInRequest.js";
 import {
-  requestKeys,
   useSignInConsent,
   useSignInLicenses,
   useSignInRequest,
@@ -43,6 +41,7 @@ import { ReplacedDone } from "./ReplacedDone.js";
 import { ReturnStep } from "./ReturnStep.js";
 import { RequestFooter, RequestHeader } from "./RequestHeader.js";
 import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
+import { qk, qkFamily } from "../../queries.js";
 
 /**
  * The signed-in half of an app sign-in (SIGN-IN.md §3.6 to §3.8, §4.16; PX-14a): one card at
@@ -131,9 +130,9 @@ export function RequestFlow({
     } catch {
       // The session check below says what is true.
     }
-    qc.removeQueries({ queryKey: ["portal", "signinLicenses"] });
-    qc.removeQueries({ queryKey: ["portal", "signinConsent"] });
-    await qc.invalidateQueries({ queryKey: portalKeys.me });
+    qc.removeQueries({ queryKey: qkFamily("signinLicenses") });
+    qc.removeQueries({ queryKey: qkFamily("signinConsent") });
+    await qc.invalidateQueries({ queryKey: qk.me() });
   };
 
   const leave = (redirect: string): void => {
@@ -207,7 +206,7 @@ export function RequestFlow({
         );
         setChosen(null);
         await qc.invalidateQueries({
-          queryKey: requestKeys.signinLicenses(handle),
+          queryKey: qk.signinLicenses(handle),
         });
         go({ kind: "choice" }, "back");
         return;

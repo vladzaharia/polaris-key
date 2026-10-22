@@ -51,6 +51,7 @@ import {
   type PortalRoute,
 } from "./router.js";
 import { portalApi } from "./api.js";
+import { qkFamily } from "./queries.js";
 import { t } from "../lib/copy.js";
 
 /**
@@ -118,7 +119,7 @@ function Boot(): React.ReactElement {
       "discover",
       "storefront",
     ])
-      qc.removeQueries({ queryKey: ["portal", key] });
+      qc.removeQueries({ queryKey: qkFamily(key) });
   }, [signedOut, qc]);
   // B-065: this tab was signed out and is signed in now. The code or sign-in control that had focus
   // is gone, so focus would fall to `body`: it goes to the page's h1 instead, as a navigation does.

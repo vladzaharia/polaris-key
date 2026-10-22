@@ -12,7 +12,6 @@ import {
 } from "../../api.js";
 import {
   capabilitiesOrNone,
-  portalKeys,
   refreshSession,
   useCapabilities,
 } from "../../data.js";
@@ -24,6 +23,7 @@ import {
   passkeysSupported,
 } from "../../webauthn.js";
 import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
+import { qk } from "../../queries.js";
 
 /**
  * "Confirm it's you first" (PORTAL.md §4.26; PX-W12's step-up rule): an account change needs a
@@ -385,7 +385,7 @@ function SignInAgain({
 /** This browser's session row, before a step-up replaces it. */
 async function currentSessionId(qc: QueryClient): Promise<string | null> {
   const cached = qc.getQueryData<{ id: string; current: boolean }[] | null>(
-    portalKeys.sessions,
+    qk.sessions(),
   );
   const found = cached?.find((s) => s.current)?.id;
   if (found) return found;
@@ -423,8 +423,8 @@ async function afterStepUp(
       // Best effort: the old session expires by itself.
     }
   }
-  void qc.invalidateQueries({ queryKey: portalKeys.sessions });
-  await qc.invalidateQueries({ queryKey: portalKeys.methods });
+  void qc.invalidateQueries({ queryKey: qk.sessions() });
+  await qc.invalidateQueries({ queryKey: qk.methods() });
 }
 
 function passkeyErrorText(err: unknown): string {

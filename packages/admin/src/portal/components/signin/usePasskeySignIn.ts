@@ -2,7 +2,6 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../lib/copy.js";
 import { portalApi, PortalApiError } from "../../api.js";
-import { portalKeys } from "../../data.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import {
@@ -12,6 +11,7 @@ import {
   passkeysSupported,
   signalUnknownPasskey,
 } from "../../webauthn.js";
+import { qk } from "../../queries.js";
 
 /** What a failed passkey sign-in says, from the catalog (never the Worker's prose). */
 function passkeyText(err: unknown): string {
@@ -72,7 +72,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       rememberVia("passkey");
       if (out.nudge) rememberNudge();
       announceSignedIn();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
+      await qc.invalidateQueries({ queryKey: qk.me() });
     },
     [qc, returnTo],
   );

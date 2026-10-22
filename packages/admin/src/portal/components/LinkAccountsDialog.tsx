@@ -15,16 +15,12 @@ import {
   type PortalLinkReason,
   type PortalLinkView,
 } from "../api.js";
-import {
-  portalKeys,
-  refreshAfterMethodChange,
-  useLinkView,
-  useSession,
-} from "../data.js";
+import { refreshAfterMethodChange, useLinkView, useSession } from "../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { beginSecondSignIn } from "../linkSecond.js";
 import { focusPageHeading, href, navigate } from "../router.js";
 import { StepUpInline } from "./account/StepUpInline.js";
+import { qk } from "../queries.js";
 
 /**
  * Link an existing account (SIGN-IN.md D-27, PORTAL.md §4.11; PX-W12's `/api/me/link`): the signed-in
@@ -117,7 +113,7 @@ export function LinkAccountsDialog({
         flow: null,
         undoable: view.data?.undoable ?? [],
       };
-      qc.setQueryData(portalKeys.link, reset);
+      qc.setQueryData(qk.link(), reset);
       return setAction({ kind: "idle", error: t("signin.join.expired") });
     }
     if (err instanceof PortalApiError && err.reason === "same_account")
@@ -187,7 +183,7 @@ export function LinkAccountsDialog({
     try {
       const out = await portalApi.linkConfirm();
       refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      void qc.invalidateQueries({ queryKey: qk.link() });
       setAction({
         kind: "joined",
         undoUntil: out.merge?.undoUntil ?? null,
@@ -204,7 +200,7 @@ export function LinkAccountsDialog({
     try {
       await portalApi.linkUndo(merge);
       refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      void qc.invalidateQueries({ queryKey: qk.link() });
       setAction({ kind: "undone" });
     } catch (err) {
       if (isStepUpRequired(err))
@@ -216,7 +212,7 @@ export function LinkAccountsDialog({
             ? portalErrorCopy(err).title
             : t("signin.join.undoFailed");
       if (err instanceof PortalApiError && err.status === 404)
-        void qc.invalidateQueries({ queryKey: portalKeys.link });
+        void qc.invalidateQueries({ queryKey: qk.link() });
       // Back where the person was, with the reason: the Undo they pressed stays in reach.
       if (before.kind === "joined") setAction({ ...before, error: msg });
       else setAction({ kind: "idle", error: msg });

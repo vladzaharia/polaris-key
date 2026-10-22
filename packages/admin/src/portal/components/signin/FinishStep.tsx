@@ -21,7 +21,7 @@ import {
   type PortalGateChoice,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
-import { portalKeys, useCapabilities } from "../../data.js";
+import { useCapabilities } from "../../data.js";
 import { toast } from "../../../ui/toast.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
@@ -33,6 +33,7 @@ import {
   GoogleGlyph,
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
+import { qk } from "../../queries.js";
 
 /**
  * FinishStep (identity.finish, SIGN-IN.md §3.5, I-27 §2.4; API I-33): every new account finishes
@@ -188,7 +189,7 @@ export function FinishStep({
     } catch {
       window.history.replaceState(null, "", "/");
     }
-    await qc.invalidateQueries({ queryKey: portalKeys.me });
+    await qc.invalidateQueries({ queryKey: qk.me() });
   };
 
   const cancel = async (): Promise<void> => {
