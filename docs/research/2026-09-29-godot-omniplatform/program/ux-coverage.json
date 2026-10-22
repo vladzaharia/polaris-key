@@ -816,8 +816,8 @@
       "area": "admin-3",
       "resolution": "merged-into null (WP CM-29b/CM-29)",
       "owners": ["CM-29b", "CM-29"],
-      "built": "mockup-only",
-      "evidence": "derived: target=CM-29b; res=E4: merged-into(CM-29b re-scope to B1; brief and plans/CM-29.md amende; briefs citing=CM-29b"
+      "built": "built",
+      "evidence": "verified 2026-10-22: Resolved by CM-29b (B1, 2026-10-09): Commerce draws in the Distribution green family, no ninth family; packages/brand/src/tokens/source.ts (commerce: 'green', accent 'distribution') and packages/brand/src/tokens/icons.ts (commerce glyph ShoppingBag, accent distribution)"
     },
     {
       "id": "admin-3-02",
@@ -1634,8 +1634,8 @@
       "area": "auth",
       "resolution": "applied-to-WP",
       "owners": ["I-38a", "P0-38", "PX-14a"],
-      "built": "mockup-only",
-      "evidence": "derived: target=wp P0-38 (UX-43 Worker twin) + packages/worker/src/securityHeaders.ts ; res=E2: applied (Worker CSP image origin via cspImageOrigin(), script-free; briefs citing=I-38,P0-38"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/worker/src/core/securityHeaders.ts brandedHtmlCsp(imgOrigin): a branded page's img-src adds exactly the image host when the page draws product art (core/brandPage.ts pageApp returns imgOrigin); tests packages/worker/test/passportLayout.test.ts (imgOrigin), packages/worker/test/downloadPageIcon.test.ts ('img-src may name data:, the image host, or both')"
     },
     {
       "id": "auth-15",
@@ -4660,8 +4660,8 @@
       "resolvedBy": ["ST-48"],
       "resolution": "Assert that a selected nav item with a count badge keeps the badge's own status colour; the label drops font-bold (B7).",
       "owners": ["ST-48"],
-      "built": "partial",
-      "evidence": "Sidebar.tsx:393 selected style sets font-bold + text-fg-strong; badge colour inheritance not verified, no e2e asserts it"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/shell/Sidebar.tsx (the selected row: subtle fill and 3 px marker, font-medium, the badge keeps its status colour); test packages/admin/test/shellV2.test.tsx ('keeps the badge's own status colour and drops font-bold'); ST-48 UX pass"
     },
     {
       "id": "B3.4",
@@ -4710,8 +4710,8 @@
       "source": "_brand/DECISIONS.md B4",
       "area": "decisions",
       "owners": ["ST-48"],
-      "built": "mockup-only",
-      "evidence": "console/shell/StatePages.tsx:29 uses text-2xl font-bold; no 36/44 scale"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/PageHeader.tsx masthead scale; test packages/admin/test/shellV2.test.tsx ('sets 36/44 on a collection, 32/40 on a record and 24/32 on a phone'); ST-48"
     },
     {
       "id": "B4.5",
@@ -4756,8 +4756,8 @@
       "source": "_brand/DECISIONS.md B4",
       "area": "decisions",
       "owners": ["ST-48"],
-      "built": "partial",
-      "evidence": "packages/admin/src/console/components/PageTabs.tsx:17-24 (border-b-2 underline, role=tablist, overflow-x-auto); overflow fade not present; active label font-bold"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/components/PageTabs.tsx (underline tablist; an edge mask only on the side that still has tabs behind it); test packages/admin/test/shellV2.test.tsx ('has no glow, wash or gradient in the shell's own rules (the tab fade is a mask)'); ST-48"
     },
     {
       "id": "B4.9",
@@ -4806,8 +4806,8 @@
       "source": "_brand/DECISIONS.md B4",
       "area": "decisions",
       "owners": ["ST-48", "ST-45"],
-      "built": "mockup-only",
-      "evidence": "Sidebar.tsx:327 text-xs font-bold uppercase tracking-wider labels; no accent bar"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/shell/Sidebar.tsx (feature group labels neutral, each with a 3 px bar in its accent, w-[3px] bg-accent); tests packages/admin/test/shellV2.test.tsx; ST-48/ST-45"
     },
     {
       "id": "B4.14",
@@ -5183,8 +5183,8 @@
       "source": "_brand/DECISIONS.md B7",
       "area": "decisions",
       "owners": ["ST-50"],
-      "built": "mockup-only",
-      "evidence": "grep font-bold/font-weight 700 in packages/admin/src: 427 hits"
+      "built": "built",
+      "evidence": "verified 2026-10-22: No font-bold left in packages/admin/src (grep: 0); guarded by packages/admin/test/fontWeights.test.ts ('uses no 700 weight outside the allow-list'); ST-50"
     },
     {
       "id": "B7.3",
@@ -7909,9 +7909,8 @@
       "source": "docs/design/PORTAL.md@a8b6431e4^ 4.1 The login card (P0-41 rewrote PORTAL.md as the current-state reference; now §4.1 Sign in)",
       "area": "PORTAL",
       "owners": ["PX-05", "PX-12", "PX-14a", "UK-02b"],
-      "built": "partial",
-      "evidence": "packages/admin/src/portal/pages/SignInPage.tsx, components/signin/LoginCard.tsx, ProviderRow.tsx",
-      "note": "Card with email + Continue, code step, provider row, license-key link built; identifier-first with passkey button/conditional UI, per-product providers, UsualMethodHint not (PX-12 todo)."
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/portal/pages/SignInPage.tsx on packages/admin/src/ui/auth/AuthCard.tsx (identifier-first email with conditional passkey UI, provider row, last-method hint lastMethod.ts, code step, key step); tests packages/admin/test/portalSignIn.test.tsx, portalSignInPasskey.test.tsx; PX-12/P0-38"
     },
     {
       "id": "doc:PORTAL#4.2",
@@ -7975,7 +7974,7 @@
       "area": "PORTAL",
       "owners": ["PX-14a", "PX-W13", "PX-33", "I-13", "I-16"],
       "built": "mockup-only",
-      "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx (only variant 'context')",
+      "evidence": "packages/admin/src/ui/auth/AuthCard.tsx (P0-38 replaced the portal's LoginCard) (only variant 'context') [paths re-pointed 2026-10-22; status not re-verified]",
       "note": "App sign-in card header (app/device variants, AppConsent) not built. PX-33 optional cover parked."
     },
     {
@@ -8602,9 +8601,8 @@
       "source": "docs/design/PORTAL.md@a8b6431e4^ Appendix F · Owner feedback applied (2026-10-04, third round) (P0-41 rewrote PORTAL.md as the current-state reference; no current section: history only)",
       "area": "PORTAL",
       "owners": ["PX-12", "PX-06"],
-      "built": "partial",
-      "evidence": "packages/admin/src/portal/components/signin/ProviderRow.tsx, KeyField.tsx",
-      "note": "Logo-only provider row and real key format built; 1/2/3-provider per-product variants depend on PX-12."
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/auth/ProviderRow.tsx (logo-only Apple/Google/Steam in one row: three in thirds, two in halves, one a centred half row) + portal KeyField.tsx; test packages/admin/test/portalSignIn.test.tsx"
     },
     {
       "id": "doc:ADMIN#0",
@@ -8832,9 +8830,8 @@
       "source": "docs/design/ADMIN.md@a8b6431e4^ T4 Settings (P0-41 rewrote ADMIN.md as the current-state reference; now §3 Shipped navigation and pages, §4 Data, mutations, and screen states)",
       "area": "ADMIN",
       "owners": ["ST-07", "ST-08"],
-      "built": "partial",
-      "evidence": "packages/admin/src/console/templates/Settings.tsx, pages/core/Settings.tsx",
-      "note": "Sectioned-form template and sticky SaveBar built; superseded by the S-18 hub and SettingsRow v2 (ST-07/ST-08, todo)."
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/templates/Settings.tsx + sections/core/pages/SettingsHub.tsx (the S-18 hub: Features, Presentation, Keys and secrets, Members) and SettingsAll.tsx; tests packages/admin/test/settingsTemplate.test.tsx, settingsHub.test.tsx; ST-07/ST-08 UX passes"
     },
     {
       "id": "doc:ADMIN#T5",
@@ -9181,7 +9178,7 @@
       "area": "ADMIN",
       "owners": ["LX-14", "LX-44"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/pages/license/LicenseRecord.tsx (LICENSE_TABS = overview, keys, devices, config)",
+      "evidence": "packages/admin/src/console/sections/license/pages/LicenseRecord.tsx (LICENSE_TABS = overview, keys, devices, config) [paths re-pointed 2026-10-22; status not re-verified]",
       "note": "Record built, but with the old tabs; Status/Entitlements/Keys/Devices/Activity (LX-14) is todo."
     },
     {
@@ -9268,9 +9265,8 @@
       "source": "docs/design/ADMIN.md@a8b6431e4^ 6.8 Activity (P0-41 rewrote ADMIN.md as the current-state reference; now §3 Product context)",
       "area": "ADMIN",
       "owners": ["ST-45", "ST-04"],
-      "built": "partial",
-      "evidence": "packages/admin/src/console/pages/core/Activity.tsx",
-      "note": "Per-product Activity with server filters (A-2) built; the global Activity page (EXPERIENCE O6) is not (nav.ts has no global activity)."
+      "built": "built",
+      "evidence": "verified 2026-10-22: Per-product packages/admin/src/console/sections/core/pages/Activity.tsx and the platform's sections/platform/pages/platformActivity.tsx (ST-51); tests packages/admin/test/activity.test.tsx, packages/admin/test/platformActivity.test.tsx"
     },
     {
       "id": "doc:ADMIN#6.9",
@@ -9279,9 +9275,8 @@
       "source": "docs/design/ADMIN.md@a8b6431e4^ 6.9 Settings (P0-41 rewrote ADMIN.md as the current-state reference; now §3 Product context)",
       "area": "ADMIN",
       "owners": ["ST-07", "ST-08"],
-      "built": "partial",
-      "evidence": "packages/admin/src/console/pages/core/Settings.tsx, ProductSettingsSection.tsx, Services.tsx",
-      "note": "Per-page settings and Services page built; the S-18 hub with SettingsRow v2 is todo."
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/core/pages/SettingsHub.tsx (product settings hub tabs) + Settings.tsx, SettingsAll.tsx, components/ProductSettingsSection.tsx; tests packages/admin/test/settingsHub.test.tsx, settings.test.tsx, settingsAll.test.tsx; ST-07/ST-08"
     },
     {
       "id": "doc:ADMIN#6.10",
@@ -10229,7 +10224,7 @@
         "UK-05"
       ],
       "built": "partial",
-      "evidence": "opened packages/worker/src/services/identity/licenseChoice.ts, packages/admin/src/portal/pages/SignInPage.tsx, packages/admin/src/portal/components/signin/LoginCard.tsx: only O-1/O-3 (choice instead of second licence, via I-26 Worker page) and O-5/O-6 (portal ..."
+      "evidence": "opened packages/worker/src/services/identity/licenseChoice.ts, packages/admin/src/portal/pages/SignInPage.tsx, packages/admin/src/ui/auth/AuthCard.tsx (P0-38 replaced the portal's LoginCard): only O-1/O-3 (choice instead of second licence, via I-26 Worker page) and O-5/O-6 (portal ... [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SIGN-IN#1",
@@ -10292,7 +10287,7 @@
       "area": "SIGN-IN",
       "owners": ["PX-14a", "I-10a", "I-10b", "UK-05", "I-36"],
       "built": "mockup-only",
-      "evidence": "searched packages/sdk-react/src/components/PolarisLogin.tsx, sdks/*/ui: no hosted passthrough card at /signin?request= and no presentation option"
+      "evidence": "searched packages/sdk-react/src/kit/signin.tsx (the legacy PolarisLogin is gone), sdks/*/ui: no hosted passthrough card at /signin?request= and no presentation option [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SIGN-IN#3",
@@ -10302,7 +10297,8 @@
       "area": "SIGN-IN",
       "owners": ["PX-12", "P0-38"],
       "built": "partial",
-      "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx"
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/auth/AuthCard.tsx + parts.tsx (P0-38 replaced the portal's LoginCard) hosting SignInPage.tsx's steps (methods, code, key, SSO, device, finish, refused) and the console card",
+      "note": "2026-10-22: Step model built for the portal and console cards; the kits' steps are tracked on their own rows."
     },
     {
       "id": "doc:SIGN-IN#3.1",
@@ -10311,8 +10307,8 @@
       "source": "docs/design/SIGN-IN.md §3.1",
       "area": "SIGN-IN",
       "owners": ["P0-38", "PX-12", "PX-14a"],
-      "built": "partial",
-      "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx is the built LoginCard (header slot, footer, star field, morph); packages/admin/src/ui/auth does not exist (P0-38 todo); persistent \"<App> wants you to sign in\" header not hosted in portal"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/auth/AuthCard.tsx (the shared card: brand slot, app header and passport, footer; focus to the step h1) used by the portal SignInPage.tsx and the console ConsoleSignIn.tsx; the Worker twin packages/worker/src/core/brandHtml.ts renderAuthCard; tests packages/admin/test/authCardPassport.test.tsx, packages/worker/test/passportLayout.test.ts; P0-38"
     },
     {
       "id": "doc:SIGN-IN#3.2",
@@ -10430,8 +10426,8 @@
       "source": "docs/design/SIGN-IN.md §3.12",
       "area": "SIGN-IN",
       "owners": ["ST-30", "P0-38"],
-      "built": "mockup-only",
-      "evidence": "packages/worker/src/admin/auth.ts: /manage/login is a straight PKCE redirect to the IdP; no console card"
+      "built": "built",
+      "evidence": "verified 2026-10-22: Worker packages/worker/src/console/signinPage.ts (GET /manage/login serves the console card; Continue POSTs, then the IdP; states signin/signedOut/ended/stepUp) and packages/admin/src/console/shell/ConsoleSignIn.tsx (AuthCard under the Polaris Key lockup); tests packages/worker/test/brandPages.test.ts, packages/admin/test/sessionEnded.test.tsx; ST-30 UX pass"
     },
     {
       "id": "doc:SIGN-IN#3.13",
@@ -10450,8 +10446,8 @@
       "source": "docs/design/SIGN-IN.md §3.14",
       "area": "SIGN-IN",
       "owners": ["PX-12", "PX-20", "P0-38"],
-      "built": "partial",
-      "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx (h1 focus, polite live region, height morph, reduced motion); portal quality bar e2e (admin/e2e/portalQuality.e2e.test.ts); steps not yet built have no coverage"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/auth/AuthCard.tsx focusStep (focus to the step h1, or the code field described by it), polite announcements, reduced motion; tests packages/admin/test/portalSignIn.test.tsx and the portal e2e (packages/admin/e2e/portal.e2e.test.ts); P0-38"
     },
     {
       "id": "doc:SIGN-IN#3.15",
@@ -10461,7 +10457,8 @@
       "area": "SIGN-IN",
       "owners": ["PX-W7", "I-18", "I-07"],
       "built": "partial",
-      "evidence": "packages/worker/src/services/identity/portal/email.ts ('Your Polaris Key code: {code}', signin.email.* comments) and deviceLogin.ts newDeviceSignInNotice; exact signin.mail.newDevice.* wording not verified"
+      "evidence": "verified 2026-10-22: packages/worker/src/core/notify/templates.ts + send.ts (P0-21 moved the mail out of identity/portal; sendSignInEmail, sendMagicLink on the Locker identity, LK-07b); test packages/worker/test/customerEmailHtml.test.ts",
+      "note": "2026-10-22: The exact signin.mail.* wording against SIGN-IN 3.15 was not re-verified (UXCOV-BOOK)."
     },
     {
       "id": "doc:SIGN-IN#3.16",
@@ -10506,7 +10503,8 @@
       "area": "SIGN-IN",
       "owners": ["PX-12", "UK-04", "UK-05", "MO-02"],
       "built": "partial",
-      "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx implements step travel + height morph on S-23 tokens; per-flow stagger/success moment and kit equivalents absent"
+      "evidence": "verified 2026-10-22: packages/admin/src/ui/auth/AuthCard.tsx (step travel and height morph on the motion tokens, none under reduced motion)",
+      "note": "2026-10-22: The per-flow list stagger and the success moment were not re-verified (UXCOV-BOOK)."
     },
     {
       "id": "doc:SIGN-IN#4",
@@ -10607,7 +10605,8 @@
       "area": "SIGN-IN",
       "owners": ["I-09", "ST-30", "PX-07"],
       "built": "partial",
-      "evidence": "portal sign-out in AccountMenu/SessionsCard.tsx built; app sign-out + console 'You're signed out' card absent"
+      "evidence": "verified 2026-10-22: Portal sign-out: packages/admin/src/portal/components/AccountMenu.tsx + components/account/SessionsCard.tsx; console signed-out card: packages/worker/src/console/signinPage.ts (signedOut state)",
+      "note": "2026-10-22: App sign-out in the kits was not re-verified (UXCOV-BOOK)."
     },
     {
       "id": "doc:SIGN-IN#4.10",
@@ -10626,8 +10625,8 @@
       "source": "docs/design/SIGN-IN.md §4.11",
       "area": "SIGN-IN",
       "owners": ["ST-30"],
-      "built": "mockup-only",
-      "evidence": "packages/worker/src/admin/auth.ts straight IdP redirect"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/worker/src/console/signinPage.ts (console operator card) + packages/worker/src/console/auth.ts, packages/admin/src/console/shell/ConsoleSignIn.tsx and SessionEnded.tsx (session ended overlay, Sign in again in a second tab); tests packages/worker/test/brandPages.test.ts, packages/admin/test/sessionEnded.test.tsx; ST-30"
     },
     {
       "id": "doc:SIGN-IN#4.12",
@@ -10795,8 +10794,8 @@
       "resolvedBy": ["DOC-14"],
       "resolution": "The doc amendments had no owner: new package DOC-14.",
       "owners": ["PX-W18", "UK-44", "DOC-14"],
-      "built": "mockup-only",
-      "evidence": "PX-W18 and UK-44 are dropped; searched worker passthrough/request.ts: no loginHint"
+      "built": "built",
+      "evidence": "verified 2026-10-22: As SIGN-IN 6.6 now states: the SDK members are dropped (PX-W18, UK-44), the wire parameters stay. packages/worker/src/services/identity/passthrough/authorize.ts (login_hint and name_hint prefill the card, verify nothing, a malformed hint is dropped) + passthrough/request.ts; test packages/worker/test/identityAuthorize.test.ts ('carries the hints and the extensions to the card, which verify nothing', 'drops a hint that does not normalise instead of failing')"
     },
     {
       "id": "doc:SIGN-IN#7",
@@ -10890,7 +10889,7 @@
       "area": "SIGN-IN",
       "owners": ["PX-12", "P0-38", "ST-30", "I-08", "UK-05", "UK-07", "UK-11"],
       "built": "partial",
-      "evidence": "packages/admin/src/portal/model/library.ts FROM_SIGNING_IN and LicenseCard.tsx 'Lifetime' applied; oidc.ts still 'Authorize <Product>'/'Connect a device to'; worker/src/admin/auth.ts still straight redirect; sdks/swift/godot/kotlin sign-in not reworked"
+      "evidence": "packages/admin/src/portal/model/library.ts FROM_SIGNING_IN and LicenseCard.tsx 'Lifetime' applied; oidc.ts still 'Authorize <Product>'/'Connect a device to'; packages/worker/src/console/auth.ts still straight redirect; sdks/swift/godot/kotlin sign-in not reworked [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SIGN-IN#10.6",
@@ -11145,7 +11144,7 @@
       "area": "SETUP",
       "owners": ["A-19", "A-20", "A-21", "A-22", "A-23", "A-24"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/storefronts/StorefrontsPage.tsx (A-18j tile page) built; catalogue/state machine/wizard not"
+      "evidence": "packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx (A-18j tile page) built; catalogue/state machine/wizard not [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SETUP#2.1",
@@ -11195,7 +11194,7 @@
       "area": "SETUP",
       "owners": ["A-20"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/storefronts/FitReport.tsx (A-18j fit report); catalogue-entry fit read model absent"
+      "evidence": "packages/admin/src/console/sections/storefronts/components/FitReport.tsx (A-18j fit report); catalogue-entry fit read model absent [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SETUP#2.6",
@@ -11215,7 +11214,7 @@
       "area": "SETUP",
       "owners": ["A-21", "A-22"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/storefronts/StorefrontsPage.tsx (tile page, no scope chips/state groups)"
+      "evidence": "packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx (tile page, no scope chips/state groups) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SETUP#2.8",
@@ -11265,7 +11264,7 @@
       "area": "SETUP",
       "owners": ["PS-06", "A-21", "A-22"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/storefronts/PolarisKeyPanel.tsx + polarisKeyCopy.ts (PS-06 done as a panel, not in the shared page shell)"
+      "evidence": "packages/admin/src/console/sections/storefronts/components/PolarisKeyPanel.tsx + polarisKeyCopy.ts (PS-06 done as a panel, not in the shared page shell) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SETUP#2.11",
@@ -11295,7 +11294,7 @@
       "area": "SETUP",
       "owners": ["A-22", "ST-38"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/storefronts/ImportPanel.tsx, FollowUpNote.tsx (some states); catalogue-level states absent"
+      "evidence": "packages/admin/src/console/sections/storefronts/components/ImportPanel.tsx, FollowUpNote.tsx (some states); catalogue-level states absent [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:SETUP#2.14",
@@ -11396,7 +11395,7 @@
       "area": "SETUP",
       "owners": ["ST-41", "ST-40"],
       "built": "mockup-only",
-      "evidence": "packages/admin/src/console/pages/core/KeysCi.tsx, KeysSecrets.tsx have no Release keys section",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/core/pages/Keys.tsx, KeysCi.tsx, KeysSecrets.tsx, KeysContent.tsx, KeysTrust.tsx: no Release keys section",
       "note": "2026-10-22: Not built: Keys and secrets has no read-only Release keys section (Keys.tsx: Signing keys, Verification, Content keys; KeysTrust.tsx: Device trust); release keys only feed Integration's One command (--release-key)."
     },
     {
@@ -11458,7 +11457,8 @@
       "area": "SETUP",
       "owners": ["ST-41", "ST-14", "ST-12", "I-31"],
       "built": "mockup-only",
-      "evidence": "packages/admin/src/console/pages/identity/SignIn.tsx is the read-out"
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 replaced pages/identity/SignIn.tsx: one App sign-in page, email and passkeys always on) and the own-issuer path in sections/platform/pages/platformConnectionWizard.tsx (I-31)",
+      "note": "2026-10-22: No customer sign-in setup wizard: App sign-in is one page with defaults on, and an own issuer is added through Platform -> Connections. Whether that supersedes SETUP 4.5 is a design call."
     },
     {
       "id": "doc:SETUP#4.6",
@@ -11488,7 +11488,8 @@
       "area": "SETUP",
       "owners": ["ST-41"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/pages/core/Overview.tsx (launched moment, Welcome.tsx)"
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/core/pages/Overview.tsx + components/IntegrationSteps.tsx, OverviewHero.tsx (the launch path became Overview's computed next step and the per-feature Integration steps, CX-OVW); Welcome.tsx is retired",
+      "note": "2026-10-22: SETUP 5's launch-path rows were not re-verified one by one against the Integration steps (UXCOV-BOOK)."
     },
     {
       "id": "doc:SETUP#5.1",
@@ -11497,8 +11498,9 @@
       "source": "docs/design/SETUP.md §5.1",
       "area": "SETUP",
       "owners": ["ST-43", "ST-41"],
-      "built": "mockup-only",
-      "evidence": "packages/admin/src/console/pages/core/Welcome.tsx is the old welcome"
+      "built": "partial",
+      "evidence": "verified 2026-10-22: Per the FLOWS F5 amendment the goals and platforms are asked in New product: packages/admin/src/console/sections/global/components/NewProductSteps.tsx PurposeStep (features, planned platforms); test packages/admin/test/productNew.test.tsx; Welcome.tsx is retired",
+      "note": "2026-10-22: Open: Overview's two questions for a product created through the API or pkey, or after I'll choose later (Overview offers Enable features instead)."
     },
     {
       "id": "doc:SETUP#5.2",
@@ -11508,7 +11510,8 @@
       "area": "SETUP",
       "owners": ["ST-41"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/pages/core/Overview.tsx computes launched state; new steps (Connect, Presentation, Get on storefronts) absent"
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/core/pages/Overview.tsx + components/IntegrationSteps.tsx (one step per feature, platform badges) and the hero's computed next step",
+      "note": "2026-10-22: The table's steps (Presentation, Get on storefronts, Create tiers...) were not re-verified one by one (UXCOV-BOOK)."
     },
     {
       "id": "doc:SETUP#5.3",
@@ -11889,8 +11892,8 @@
       "source": "docs/design/FLOWS.md §1.1 C-16",
       "area": "FLOWS",
       "owners": ["ST-30", "P0-38"],
-      "built": "mockup-only",
-      "evidence": "packages/worker/src/admin/auth.ts straight redirect"
+      "built": "built",
+      "evidence": "verified 2026-10-22: packages/worker/src/console/signinPage.ts (sign in, signed out, session ended, step-up states) + packages/admin/src/console/shell/SessionEnded.tsx, ConsoleSignIn.tsx; tests packages/worker/test/brandPages.test.ts, packages/admin/test/sessionEnded.test.tsx; ST-30/P0-38"
     },
     {
       "id": "doc:FLOWS#1.1-licensing",
@@ -11910,7 +11913,7 @@
       "area": "FLOWS",
       "owners": ["ST-41", "ST-14", "A-32", "A-24"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/pages/identity/SignIn.tsx, release/ pages (older form)"
+      "evidence": "packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 replaced packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 retired the old Identity -> Sign-in page)), release/ pages (older form) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:FLOWS#1.1-distribution",
@@ -11920,7 +11923,7 @@
       "area": "FLOWS",
       "owners": ["A-23", "A-22", "A-24", "A-21", "F-34", "ST-44"],
       "built": "partial",
-      "evidence": "packages/admin/src/console/areas/distribution/AppStorePage.tsx, CredentialsPage.tsx (live check built)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx, CredentialsPage.tsx (live check built) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "doc:FLOWS#1.1-platform",
@@ -14552,7 +14555,7 @@
       "owners": ["ST-31", "ST-28"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "worker/src/admin/authz.ts: one privilege level (PLATFORM_ADMIN_GROUP), no bindings/invites; no invite drawer in packages/admin/src | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "packages/worker/src/console/authz.ts: one privilege level (PLATFORM_ADMIN_GROUP), no bindings/invites; no invite drawer in packages/admin/src | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "admin.members",
@@ -14565,7 +14568,7 @@
       "owners": ["ST-31", "ST-29", "ST-30", "ST-32", "ST-45"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "nav.ts has no Members page; authz.ts single platform-admin group; searched ssoRule/role_binding/invite: nothing in console | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)",
+      "evidence": "nav.ts has no Members page; authz.ts single platform-admin group; searched ssoRule/role_binding/invite: nothing in console | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22",
       "note": "2026-10-22: Not built: no Platform -> Members page in packages/admin/src/console/nav.ts (Members/SSO rules/Roles tabs, invites); ST-31 owns it."
     },
     {
@@ -14678,7 +14681,7 @@
       "owners": ["ST-31", "ST-28", "ST-35"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "nav.ts: no Roles/Members pages; authz.ts has no role model, no route-table matrix generator | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "nav.ts: no Roles/Members pages; authz.ts has no role model, no route-table matrix generator | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22"
     },
     {
       "id": "admin.sso-rules",
@@ -14691,7 +14694,7 @@
       "owners": ["ST-32", "ST-28", "LX-36"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "No SSO rules page; only the Identity -> Sign-in group->tier map (pages/identity/SignIn.tsx GroupGrant) exists, which maps groups to licence tiers, not console roles | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, ..."
+      "evidence": "No SSO rules page; only the Identity -> Sign-in group->tier map (packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 retired the old Identity -> Sign-in page) GroupGrant) exists, which maps groups to licence tiers, not console roles | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "licenses.access-confirm",
@@ -14704,7 +14707,7 @@
       "owners": ["P2-10", "LX-36", "PS-12"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "No Access page or Access confirmations; nearest is Identity -> Sign-in group->tier (pages/identity/SignIn.tsx) | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "No Access page or Access confirmations; nearest is Identity -> Sign-in group->tier (packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 retired the old Identity -> Sign-in page)) | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "licenses.access-rule-states",
@@ -14717,7 +14720,7 @@
       "owners": ["LX-36", "P2-10"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "No RuleEditor / Add rule dialog; searched 'Access rule', 'Automatic licenses' in packages/admin/src: only SignIn.tsx group map | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "No RuleEditor / Add rule dialog; searched 'Access rule', 'Automatic licenses' in packages/admin/src: only SignIn.tsx group map | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22"
     },
     {
       "id": "licenses.access-rule",
@@ -14730,7 +14733,7 @@
       "owners": ["LX-36", "P2-10", "LX-38"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "No RuleEditor / Add rule dialog in packages/admin/src/console (group->tier rows are inline in pages/identity/SignIn.tsx) | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "No RuleEditor / Add rule dialog in packages/admin/src/console (group->tier rows are inline in packages/admin/src/console/sections/identity/pages/AppSignIn.tsx (I-29 retired the old Identity -> Sign-in page)) | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "licenses.access",
@@ -14743,7 +14746,7 @@
       "owners": ["P2-10", "LX-36", "LX-38", "PS-12", "F-34", "P4-34"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "nav.ts License section: Licenses, Tiers, Enrollment, Batches, Settings; no Access page (P2-10 todo). Group->tier map lives in Identity -> Sign-in | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)"
+      "evidence": "nav.ts License section: Licenses, Tiers, Enrollment, Batches, Settings; no Access page (P2-10 todo). Group->tier map lives in Identity -> Sign-in | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22"
     },
     {
       "id": "licenses.bulk-keys-done",
@@ -14784,9 +14787,10 @@
       "resolvedBy": ["LX-14"],
       "resolution": "Add the Change tier dialog (licenses.change-tier) to the acceptance; it builds on LX-33's tier-change rules.",
       "owners": ["LX-32", "LX-33", "LX-38", "LX-41", "LX-14"],
-      "built": "mockup-only",
-      "brandV2": "no",
-      "evidence": "searched pages/license for a Change tier dialog: none; tier is shown in LicenseRecord.tsx / LicenseTerms.tsx without the control or old->new limit card | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.ts..."
+      "built": "partial",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/license/components/ChangeTierDialog.tsx (from the record's tier control: pick the tier, each changed limit old -> new through the Worker's one resolver, what the license sets itself stays; saving sends tier alone); tests packages/admin/test/changeTier.test.ts, packages/admin/test/licenseRecord.test.tsx ('license record: Status (Limits, Duration, Change tier)'); LX-33 slices",
+      "note": "2026-10-22: Open: the moving-down warning that an Access rule moves it back at the next sign-in waits for LX-38 (CONSOLE-UX D1)."
     },
     {
       "id": "licenses.detail-holders",
@@ -14821,7 +14825,7 @@
       ],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "pages/license/LicenseRecord.tsx, LicenseTerms.tsx, LicenseConfig.tsx, LicenseDevices.tsx, LicenseKeys.tsx: record with terms/config overrides/devices exist; no limit-source table with per-field Override, Duration/keeps-last-version, add-ons, Automatic grant ca..."
+      "evidence": "packages/admin/src/console/sections/license/pages/LicenseRecord.tsx, LicenseTerms.tsx, LicenseConfig.tsx, LicenseDevices.tsx, LicenseKeys.tsx: record with terms/config overrides/devices exist; no limit-source table with per-field Override, Duration/keeps-last-version, add-ons, Automatic grant ca... [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "licenses.list-states",
@@ -14832,9 +14836,9 @@
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-30", "P0-29"],
-      "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/LicensesPage.tsx has EmptyState and ErrorState and a client-mode table (LX-30 holder facets); virtual paging/set queries (P0-29) not built | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.t..."
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/admin/src/console/sections/license/pages/LicensesPage.tsx + components/LicenseListParts.tsx, noMatchText.ts (first run, no match in human words, skeleton, inline error with Retry keeping the filters, 403 permission state, Load more failure keeps rows); test packages/admin/test/licenses.test.tsx; CXF-TABLE, P0-29"
     },
     {
       "id": "licenses.list",
@@ -14868,8 +14872,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-44", "LX-41", "LX-33", "LX-43"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/TiersPage.tsx (Used by, Delete disabled with reason), TierForm.tsx, TierRecord.tsx exist; no Moves-to-another-tier, drag/menu reorder, locked stable track, grouped editor states | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/license/pages/TiersPage.tsx (Used by, Delete disabled with reason), TierForm.tsx, TierRecord.tsx exist; no Moves-to-another-tier, drag/menu reorder, locked stable track, grouped editor states | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "licenses.tiers",
@@ -14881,8 +14885,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-44", "LX-33", "LX-34", "LX-41", "LX-43"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/TiersPage.tsx + TierRecord.tsx + TierForm.tsx: tier list and record editor exist; no Order card with rank/drag, Duration/Limits/Includes/Profile groups, Preview at a date | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShel..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/license/pages/TiersPage.tsx + TierRecord.tsx + TierForm.tsx: tier list and record editor exist; no Order card with rank/drag, Duration/Limits/Includes/Profile groups, Preview at a date | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "products.features",
@@ -14958,7 +14962,7 @@
       "owners": ["ST-41", "ST-40", "ST-44"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has none of the A layout (rail, Integration checklist) | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)",
+      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has none of the A layout (rail, Integration checklist) | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22",
       "exempt": "Exploration superseded: the owner chose B's board with C's steps (2026-10-08, admin-1-03); built as products.overview (CX-OVW)"
     },
     {
@@ -14972,7 +14976,7 @@
       "owners": ["ST-41", "ST-40", "ST-44"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has no hero band/feature board | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)",
+      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has no hero band/feature board | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22",
       "exempt": "Exploration merged into products.overview (owner 2026-10-08, admin-1-03: B's board + C's steps); built there (CX-OVW)"
     },
     {
@@ -14986,7 +14990,7 @@
       "owners": ["ST-41", "ST-40", "ST-44"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has no setup stepper | brandV2=no: shell on font-bold, bg-accent, no inset canvas (shell/AppShell.tsx, Sidebar.tsx, BrandBlock.tsx)",
+      "evidence": "Exploration superseded by products.overview; pages/core/Overview.tsx has no setup stepper | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22",
       "exempt": "Exploration merged into products.overview (owner 2026-10-08, admin-1-03: B's board + C's steps); built there (CX-OVW)"
     },
     {
@@ -15012,8 +15016,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["ST-08", "ST-34", "ST-28"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/core/Keys.tsx, KeysSecrets.tsx, KeysCi.tsx (signing keys, secrets, trusted publisher, pkeyci tokens) exist as a top-level 'Keys & secrets' page, not a Settings hub tab; no step-up on writes, no exposure ordering confirmed | brandV2=no: shell on font-bold..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/core/pages/Keys.tsx, KeysSecrets.tsx, KeysCi.tsx (signing keys, secrets, trusted publisher, pkeyci tokens) exist as a top-level 'Keys & secrets' page, not a Settings hub tab; no step-up on writes, no exposure ordering confirmed | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "products.settings-presentation",
@@ -15066,7 +15070,7 @@
       "owners": ["LX-35", "LX-44", "LX-25", "LX-36", "CM-23"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched packages/admin/src and worker/src/services/license for add-on definitions: nothing; pages/license has no add-on record | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accen..."
+      "evidence": "searched packages/admin/src and worker/src/services/license for add-on definitions: nothing; pages/license has no add-on record | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 "
     },
     {
       "id": "entitlements.addons",
@@ -15079,7 +15083,7 @@
       "owners": ["LX-35", "LX-44", "CM-23"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched admin/src/console, console/nav.ts (no add-ons page id): nothing | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent: no inset canvas, condensed masthead, underline tabs ..."
+      "evidence": "searched admin/src/console, console/nav.ts (no add-ons page id): nothing | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 "
     },
     {
       "id": "entitlements.catalog",
@@ -15092,7 +15096,7 @@
       "owners": ["LX-34", "LX-44", "LX-09"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "console/nav.ts ProductPageId has licenses/tiers/enrollment/license-settings/license-batches only; no entitlement catalog page | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent:..."
+      "evidence": "console/nav.ts ProductPageId has licenses/tiers/enrollment/license-settings/license-batches only; no entitlement catalog page | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 "
     },
     {
       "id": "entitlements.consumables",
@@ -15117,8 +15121,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-41", "LX-43", "LX-44"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/TierForm.tsx has only a 'policyExpiryDays' term field ('Blank: no expiry'); no trial, onExpiry or keep-version model | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=ac..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/license/components/TierForm.tsx has only a 'policyExpiryDays' term field ('Blank: no expiry'); no trial, onExpiry or keep-version model | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "entitlements.duration-version",
@@ -15130,8 +15134,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-41", "LX-43", "LX-44", "LX-33"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "TierForm.tsx term field only; no version-scoped duration or major-line helper | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent: no inset canvas, condensed masthead, underline ..."
+      "brandV2": "yes",
+      "evidence": "TierForm.tsx term field only; no version-scoped duration or major-line helper | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 "
     },
     {
       "id": "entitlements.duration",
@@ -15143,8 +15147,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-41", "LX-43", "LX-44", "LX-33"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "TierForm.tsx term field only; no renewing/keeps-last-version choice | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent: no inset canvas, condensed masthead, underline tabs or in..."
+      "brandV2": "yes",
+      "evidence": "TierForm.tsx term field only; no renewing/keeps-last-version choice | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 "
     },
     {
       "id": "entitlements.extend-major",
@@ -15169,8 +15173,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-41", "LX-14", "LX-32", "LX-40"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/LicenseRecord.tsx shows expiry only (~L231-241); no subscription state or renewal | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent: no inset canvas, condensed ma..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/license/pages/LicenseRecord.tsx shows expiry only (~L231-241); no subscription state or renewal | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "entitlements.new-major",
@@ -15182,8 +15186,8 @@
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["LX-43", "LX-41", "LX-14", "LX-23"],
       "built": "partial",
-      "brandV2": "no",
-      "evidence": "pages/license/LicensesPage.tsx exists; no new-major notice or duration states (searched 'major': nothing) | brandV2: console/shell/{TopBar,Sidebar,AppShell}.tsx use a 4rem top bar, left-bar active item, font-bold; ui/Button.tsx link=accent: no inset canvas, co..."
+      "brandV2": "yes",
+      "evidence": "packages/admin/src/console/sections/license/pages/LicensesPage.tsx exists; no new-major notice or duration states (searched 'major': nothing) | shell: brand v2 since ST-48/ST-50 (done; no font-bold left in packages/admin/src/console or src/ui), re-checked 2026-10-22 [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "entitlements.renew",
@@ -15576,7 +15580,7 @@
       "owners": ["U-32", "ST-42", "ST-45"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/config/CatalogPage.tsx (empty state present, no platform templates / Publish v2 from Game)"
+      "evidence": "packages/admin/src/console/sections/config/pages/CatalogPage.tsx (empty state present, no platform templates / Publish v2 from Game) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.catalog-invalid",
@@ -15635,7 +15639,7 @@
       "owners": ["U-05", "ST-16", "U-32"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/sync/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin); worker has services/sync/settings.ts only"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin); worker has services/sync/settings.ts only [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.cloud-sync-product-role",
@@ -15648,7 +15652,7 @@
       "owners": ["U-32", "ST-16", "ST-28"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/sync/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin)"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.cloud-sync-usage",
@@ -15661,7 +15665,7 @@
       "owners": ["U-32", "U-05"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/sync/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin)"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.cloud-sync",
@@ -15683,7 +15687,7 @@
       ],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/sync/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin)"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.effective",
@@ -15696,7 +15700,7 @@
       "owners": ["U-29", "U-28", "U-27", "ST-45"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/license/LicenseConfig.tsx (effective values with per-layer source exist; no five-step chain strip, filters, blocked-override callout, last-picked-up)"
+      "evidence": "packages/admin/src/console/sections/license/pages/LicenseConfig.tsx (effective values with per-layer source exist; no five-step chain strip, filters, blocked-override callout, last-picked-up) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.entry-draft-stale",
@@ -15754,7 +15758,7 @@
       "owners": ["U-30", "U-29", "ST-45"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/config/CatalogEntryForm.tsx / CatalogEditorPage.tsx (review cross-checks removed keys; inline move-to picker not verified)"
+      "evidence": "packages/admin/src/console/sections/config/components/CatalogEntryForm.tsx / CatalogEditorPage.tsx (review cross-checks removed keys; inline move-to picker not verified) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.entry-setting",
@@ -15767,7 +15771,7 @@
       "owners": ["U-30", "U-29", "U-01b", "ST-45"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/config/CatalogEntryForm.tsx (entry form built; unified Type/In-the-app vocabulary is U-30, todo)"
+      "evidence": "packages/admin/src/console/sections/config/components/CatalogEntryForm.tsx (entry form built; unified Type/In-the-app vocabulary is U-30, todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.mint-wizard",
@@ -15807,7 +15811,7 @@
       "owners": ["U-28", "U-29", "ST-45"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/config/ProfilePage.tsx, ProfilesPage.tsx (profile record, Used by, unsaved guard; one-profile-per-tier/Default chain is U-28 todo)"
+      "evidence": "packages/admin/src/console/sections/config/pages/ProfilePage.tsx, ProfilesPage.tsx (profile record, Used by, unsaved guard; one-profile-per-tier/Default chain is U-28 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "config.storage-default",
@@ -15833,7 +15837,7 @@
       "owners": ["A-22", "A-28", "A-26", "P2-08", "CM-23"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/AppStorePage.tsx (App Store distribute flow, stepper, not the Status/Releases/Listing/Sales/Setup channel page)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx (App Store distribute flow, stepper, not the Status/Releases/Listing/Sales/Setup channel page) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.channel-setup",
@@ -15846,7 +15850,7 @@
       "owners": ["A-23", "A-33", "A-28", "ST-39", "A-18k"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched console for channel setup wizard: only areas/storefronts/StepDialog.tsx StepCard (storefront provisioning steps); no human-steps wizard + Polaris-Key-does card"
+      "evidence": "searched console for channel setup wizard: only packages/admin/src/console/sections/storefronts/components/StepDialog.tsx StepCard (storefront provisioning steps); no human-steps wizard + Polaris-Key-does card [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.channels-no-release",
@@ -15859,7 +15863,7 @@
       "owners": ["A-20", "A-24", "A-33"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead; release/FirstReleasePanel.tsx i..."
+      "evidence": "packages/admin/src/console/sections/release/pages/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead; packages/admin/src/console/sections/release/components/FirstReleasePanel.tsx i... [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.channels-product-role",
@@ -15872,7 +15876,7 @@
       "owners": ["A-20", "A-24", "ST-28"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead"
+      "evidence": "packages/admin/src/console/sections/release/pages/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.channels",
@@ -15885,7 +15889,7 @@
       "owners": ["A-19", "A-20", "A-21", "A-33", "A-28"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead"
+      "evidence": "packages/admin/src/console/sections/release/pages/ChannelsPage.tsx + ChannelLanes.tsx are RELEASE-track lanes (stable/beta), not the mockup's distribution channel catalogue; nav.ts has outlets/storefronts/listing/app-store pages instead [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.download-page",
@@ -15923,7 +15927,7 @@
       "owners": ["A-24", "P2-08"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched console/portal for Publish everywhere dialog: nothing (areas/distribution/RolloutDialogs.tsx are per-rollout dialogs)"
+      "evidence": "searched console/portal for Publish everywhere dialog: nothing (packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx are per-rollout dialogs) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "distribution.publish",
@@ -15949,7 +15953,7 @@
       "owners": ["CM-23", "CM-22", "CM-20", "CM-29b"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched admin/src and worker/src for offers/purchases ledger: nothing; only App Store product mappings in packages/admin/src/console/areas/distribution/CommercePage.tsx"
+      "evidence": "searched admin/src and worker/src for offers/purchases ledger: nothing; only App Store product mappings in packages/admin/src/console/sections/distribution/pages/CommercePage.tsx [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.connect-app-store-error",
@@ -15962,7 +15966,7 @@
       "owners": ["CM-29", "CM-21", "A-33", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/AppStorePage.tsx, ascShared.tsx (ASC key connect + errors exist; not the one-confirmation channel+storefront enable, A-33 todo)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx, ascShared.tsx (ASC key connect + errors exist; not the one-confirmation channel+storefront enable, A-33 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.connect-app-store",
@@ -15975,7 +15979,7 @@
       "owners": ["CM-29", "CM-21", "A-33", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/AppStorePage.tsx, ascShared.tsx (connect exists; no single confirmation enabling channel and storefront)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx, ascShared.tsx (connect exists; no single confirmation enabling channel and storefront) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.create-iap",
@@ -15988,7 +15992,7 @@
       "owners": ["CM-23", "A-17g", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/CommercePage.tsx (creates In-App Purchases from a product mapping with an action dialog; not from an offer)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx (creates In-App Purchases from a product mapping with an action dialog; not from an offer) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.features-blocked",
@@ -16040,7 +16044,7 @@
       "owners": ["CM-29", "CM-21", "CM-23", "CM-29b"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/nav.ts: no Commerce group/Storefronts setup card; packages/admin/src/console/areas/storefronts/StorefrontsPage.tsx is the Distribution storefronts tile board only"
+      "evidence": "packages/admin/src/console/nav.ts: no Commerce group/Storefronts setup card; packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx is the Distribution storefronts tile board only [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.first-run",
@@ -16053,7 +16057,7 @@
       "owners": ["CM-29", "CM-21", "CM-23", "A-33", "A-21", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/storefronts/StorefrontsPage.tsx, StepCard.tsx (storefront tiles with resumable steps exist; no three-step commerce setup card)"
+      "evidence": "packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx, StepCard.tsx (storefront tiles with resumable steps exist; no three-step commerce setup card) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.lists-states",
@@ -16092,7 +16096,7 @@
       "owners": ["CM-23", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/CommercePage.tsx (per-product price change via ASC only; no multi-store result rows)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx (per-product price change via ASC only; no multi-store result rows) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.offer-price-invalid",
@@ -16105,7 +16109,7 @@
       "owners": ["CM-23", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/CommercePage.tsx (price chosen from Apple price points; no typed price with nearest-point fixes)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx (price chosen from Apple price points; no typed price with nearest-point fixes) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.offer-price",
@@ -16118,7 +16122,7 @@
       "owners": ["CM-23", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/CommercePage.tsx (typed-confirm price change with Apple warning, App Store only)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx (typed-confirm price change with Apple warning, App Store only) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.offer-stop-selling",
@@ -16131,7 +16135,7 @@
       "owners": ["CM-23", "A-17g", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/distribution/CommercePage.tsx (typed availability writes on App Store; no multi-store Stop selling)"
+      "evidence": "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx (typed availability writes on App Store; no multi-store Stop selling) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.offer",
@@ -16196,7 +16200,7 @@
       "owners": ["CM-23", "LX-23", "LX-41", "CM-29b"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched admin/src: no purchase drawer; worker has packages/worker/src/core/storeGrants.ts only"
+      "evidence": "searched admin/src: no purchase drawer; worker has packages/worker/src/core/licensing/storeGrants.ts only [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.purchase",
@@ -16209,7 +16213,7 @@
       "owners": ["CM-22", "CM-23", "CM-29b"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched admin/src: no purchases ledger/drawer; packages/worker/src/core/storeGrants.ts is server grant logic only"
+      "evidence": "searched admin/src: no purchases ledger/drawer; packages/worker/src/core/licensing/storeGrants.ts is server grant logic only [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.purchases-empty",
@@ -16282,7 +16286,7 @@
       "owners": ["CM-23", "A-22", "CM-21", "A-18k", "CM-29b"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "no channel page with Sales tab; packages/admin/src/console/areas/storefronts/StepDialog.tsx is the storefront step flow (A-22 todo)"
+      "evidence": "no channel page with Sales tab; packages/admin/src/console/sections/storefronts/components/StepDialog.tsx is the storefront step flow (A-22 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.sales",
@@ -16308,7 +16312,7 @@
       "owners": ["CM-23", "A-21", "A-22", "CM-21", "CM-29", "CM-29b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/storefronts/StorefrontsPage.tsx (Distribution Storefronts tile list exists; no commerce columns: sells, 28-day purchases/refunds, attention)"
+      "evidence": "packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx (Distribution Storefronts tile list exists; no commerce columns: sells, 28-day purchases/refunds, attention) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "commerce.turn-off-licensing",
@@ -16350,7 +16354,7 @@
       "owners": ["P2-09", "A-24"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched admin/src, worker/src for demote: only license demote (packages/admin/src/console/pages/license/LicenseConfig.tsx); no release demote (P2-09 todo)"
+      "evidence": "searched admin/src, worker/src for demote: only license demote (packages/admin/src/console/sections/license/pages/LicenseConfig.tsx); no release demote (P2-09 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.feeds-empty",
@@ -16363,7 +16367,7 @@
       "owners": ["F-34"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/feeds/FeedsArea.tsx (feeds list exists; empty-state copy/declaration snippet not verified against mockup)"
+      "evidence": "packages/admin/src/console/sections/feeds/pages/FeedsArea.tsx (feeds list exists; empty-state copy/declaration snippet not verified against mockup) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.feeds-install-refused",
@@ -16389,7 +16393,7 @@
       "owners": ["F-34"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/feeds/FeedsArea.tsx (PackageFeedsOff page exists; no who/when, kept-data copy, per-feed refusal list)"
+      "evidence": "packages/admin/src/console/sections/feeds/pages/FeedsArea.tsx (PackageFeedsOff page exists; no who/when, kept-data copy, per-feed refusal list) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.feeds-setup",
@@ -16414,7 +16418,7 @@
       "owners": ["F-34"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/feeds/FeedsArea.tsx, FeedSettings.tsx (packageFeeds switch exists; typed confirmation listing stops not found)"
+      "evidence": "packages/admin/src/console/sections/feeds/pages/FeedsArea.tsx, FeedSettings.tsx (packageFeeds switch exists; typed confirmation listing stops not found) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.feeds",
@@ -16427,7 +16431,7 @@
       "owners": ["F-34", "F-36", "F-33", "F-37", "F-35", "P2-10", "A-21"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/feeds/FeedsArea.tsx, FeedPage.tsx, FeedSettings.tsx, PackageRecord.tsx (feeds, packages, retention settings built; no cleanup notice, refused-publish row, Customers/Public read-only access card)"
+      "evidence": "packages/admin/src/console/sections/feeds/pages/FeedsArea.tsx, FeedPage.tsx, FeedSettings.tsx, PackageRecord.tsx (feeds, packages, retention settings built; no cleanup notice, refused-publish row, Customers/Public read-only access card) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.packs",
@@ -16440,7 +16444,7 @@
       "owners": ["P4-33", "P4-34"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/PackRecord.tsx, PackGateForm.tsx, ChannelsPage.tsx (pack records and gate form built; no Packs tab table or one-click gate/Update warning, P4-34 todo)"
+      "evidence": "packages/admin/src/console/sections/release/pages/PackRecord.tsx, PackGateForm.tsx, ChannelsPage.tsx (pack records and gate form built; no Packs tab table or one-click gate/Update warning, P4-34 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.portal-packages",
@@ -16453,7 +16457,7 @@
       "owners": ["F-33", "F-37", "F-34", "F-35", "PX-31a", "PX-31b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/portal/components/product/PackageAccessCard.tsx (per-product card with feeds, tokens, setup, Create token); no Account -> Packages page grouped by product with combined setup"
+      "evidence": "packages/admin/src/portal/components/account/PackagesCard.tsx + components/product/PackagesPointer.tsx (PackageAccessCard retired) (per-product card with feeds, tokens, setup, Create token); no Account -> Packages page grouped by product with combined setup [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.portal-token-create",
@@ -16477,9 +16481,9 @@
       "surface": "portal",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["F-33"],
-      "built": "partial",
-      "brandV2": "no",
-      "evidence": "packages/admin/src/portal/components/product/PackageAccessCard.tsx (Revoke exists; machine-naming confirmation not verified)"
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/admin/src/portal/components/account/PackagesCard.tsx (Revoke after an inline confirmation, Escape backs out, focus to the next row; per-app tokens revoked through their licence); test packages/admin/test/portalPackages.test.tsx ('revokes after an inline confirmation...'); F-33"
     },
     {
       "id": "packages.portal-token",
@@ -16490,9 +16494,9 @@
       "surface": "dialog",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["F-33"],
-      "built": "partial",
-      "brandV2": "no",
-      "evidence": "packages/admin/src/portal/components/product/PackageAccessCard.tsx (shows token once with setup via manifest renderFeedSetup; pkeyp_ prefix/combined setup unverified)"
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/admin/src/portal/components/account/PackagesCard.tsx (Account -> Packages: a new personal token shown once with the shell line; Escape and the scrim cannot close it before it is copied); test packages/admin/test/portalPackages.test.tsx; F-33, PX-31a"
     },
     {
       "id": "packages.promote",
@@ -16534,7 +16538,7 @@
       "owners": ["P2-09", "P2-08", "A-24"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/ChannelLanes.tsx is a channel policy lane view; no tracks (P2-08 todo)"
+      "evidence": "packages/admin/src/console/sections/release/components/ChannelLanes.tsx is a channel policy lane view; no tracks (P2-08 todo) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.release-tracks",
@@ -16547,7 +16551,7 @@
       "owners": ["P2-08", "P2-09", "A-24", "F-36", "LX-33"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/release/ChannelsPage.tsx, ChannelLanes.tsx (channel lanes per deliverable exist; no release tracks page, demote result or track-to-store map)"
+      "evidence": "packages/admin/src/console/sections/release/pages/ChannelsPage.tsx, ChannelLanes.tsx (channel lanes per deliverable exist; no release tracks page, demote result or track-to-store map) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.updates-failing",
@@ -16560,7 +16564,7 @@
       "owners": ["P2-11", "P2-12"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "searched packages/admin/src/console/areas/update/FeedPage.tsx: no per-platform updater cards with Verified status or signature failures"
+      "evidence": "searched packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx: no per-platform updater cards with Verified status or signature failures [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.updates-godot",
@@ -16573,7 +16577,7 @@
       "owners": ["P2-11", "A-20", "P2-09", "A-24", "P2-10"],
       "built": "mockup-only",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/update/FeedPage.tsx is the Update -> Feed policy page; no Godot/Play in-app updater cards"
+      "evidence": "packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx is the Update -> Feed policy page; no Godot/Play in-app updater cards [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "packages.updates",
@@ -16586,7 +16590,7 @@
       "owners": ["P2-11", "A-20", "P2-08", "P2-10", "P2-12"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/areas/update/FeedPage.tsx (Sparkle/WinSparkle feeds listed per shipped platform per P0-47; no Verified status or generated-code section)"
+      "evidence": "packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx (Sparkle/WinSparkle feeds listed per shipped platform per P0-47; no Verified status or generated-code section) [paths re-pointed 2026-10-22; status not re-verified]"
     },
     {
       "id": "portal.signin",
@@ -16871,9 +16875,9 @@
       "source": "docs/design/SIGN-IN.md §3.1-3.4; identity.sign-in; portal.signin",
       "area": "hosted",
       "owners": ["PX-12", "P0-38", "PX-14a", "I-08"],
-      "built": "partial",
-      "brandV2": "no",
-      "evidence": "packages/admin/src/portal/pages/SignInPage.tsx + components/signin/LoginCard.tsx (built by PX-05/I-07/PX-W4, done); Worker routes packages/worker/src/services/identity/card/*; no AuthCard (grep AuthCard: nothing), primary is section accent not ink, no app head..."
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/admin/src/portal/pages/SignInPage.tsx on packages/admin/src/ui/auth/AuthCard.tsx (P0-38: brand slot, neutral-ink primary) with methods, code, key, passkey (conditional UI), provider row, finish and device steps; tests packages/admin/test/portalSignIn.test.tsx, portalSignInPasskey.test.tsx, authCardPassport.test.tsx; PX-12/P0-38 UX passes"
     },
     {
       "id": "hosted:app-header-passport",
@@ -16882,9 +16886,9 @@
       "source": "identity.sign-in, device-confirm, key-step; B8; I-38",
       "area": "hosted",
       "owners": ["PX-14a", "I-38a", "P0-38", "PX-33"],
-      "built": "mockup-only",
-      "brandV2": "no",
-      "evidence": "searched passport in packages/worker/src, admin/src: nothing; packages/worker/src/securityHeaders.ts brandedHtmlCsp() img-src 'self' data: only (no cspImageOrigin widening on branded pages; cspImageOrigin exists at :63 for the app policy)"
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/worker/src/core/brandHtml.ts renderAuthCard passport pane (landscape at least 60 rem wide and 1.2:1) and the app-request strip; tests packages/worker/test/passportLayout.test.ts, packages/worker/test/hostedSigninPages.test.ts ('ac-passport', 'on <bdi>Living room PC</bdi>'); PX-33/I-38a"
     },
     {
       "id": "hosted:csp-img-src-branded",
@@ -16893,9 +16897,9 @@
       "source": "BRAND-TRANSITION B8; I-38",
       "area": "hosted",
       "owners": ["I-38a"],
-      "built": "mockup-only",
-      "brandV2": "no",
-      "evidence": "packages/worker/src/securityHeaders.ts:110 brandedHtmlCsp img-src 'self' data:, unchanged; test packages/worker/test/brandPages.test.ts has no img-src assertion"
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/worker/src/core/securityHeaders.ts brandedHtmlCsp(imgOrigin) via brandedHtmlSecurityHeaders({ imgOrigin }); tests packages/worker/test/passportLayout.test.ts, packages/worker/test/downloadPageIcon.test.ts"
     },
     {
       "id": "hosted:device-code-entry",
@@ -17102,9 +17106,9 @@
       "resolvedBy": ["LK-07b"],
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
       "owners": ["LK-07b"],
-      "built": "partial",
-      "brandV2": "no",
-      "evidence": "packages/worker/test/portalNotices.test.ts + __snapshots__/portalNotices.test.ts.snap snapshot subject+plain text of every notice template and the HTML of only 2 (licenseAdded, methodRemoved) plus dark-palette/escaping assertions; sign-in code/magic-link email..."
+      "built": "built",
+      "brandV2": "yes",
+      "evidence": "verified 2026-10-22: packages/worker/test/customerEmailHtml.test.ts snapshots the HTML of every customer email, sign-in code and magic link included (send.ts sendSignInEmail/sendMagicLink), and checks the brand rules (Locker only, ink actions, neutral callouts, plain-text part); __snapshots__/customerEmailHtml.test.ts.snap; LK-07b"
     },
     {
       "id": "sdk.macos-gate",
