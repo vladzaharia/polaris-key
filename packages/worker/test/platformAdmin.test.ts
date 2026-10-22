@@ -15,7 +15,7 @@ import {
   issueSession,
   type AdminSession,
 } from "../src/core/console/session.js";
-import { platformAudit } from "../src/core/audit.js";
+import { appendAudit, platformAudit } from "../src/core/audit.js";
 import {
   appliedMigrations,
   deployIdentity,
@@ -29,7 +29,7 @@ import {
 import { listPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW } from "./seed.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -396,6 +396,69 @@ describe("platform audit (A-12)", () => {
       "a.0",
     ]);
     expect(second.body.nextCursor).toBeNull();
+  });
+
+  it("GET /api/platform/activity?product= unions the product trails with the platform's (ST-51)", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "alpha");
+    await seedProduct(db, "beta");
+    await platformAudit(db, session, NOW, "p.one", null, "platform");
+    await appendAudit(db, {
+      product: "alpha",
+      at: NOW + 1,
+      actor_sub: "u1",
+      action: "license.revoke",
+      summary: "alpha",
+    } as never);
+    await appendAudit(db, {
+      product: "beta",
+      at: NOW + 2,
+      actor_sub: null,
+      action: "key.rotate",
+      summary: "beta",
+    } as never);
+    const env = adminEnv();
+    const get = async (q: string) =>
+      (await call(env, db, `/api/platform/activity?${q}`)).body;
+    // Default: the platform trail alone.
+    expect((await get("")).items.map((x: { action: string }) => x.action)).toEqual(
+      ["p.one"],
+    );
+    const all = await get("product=all");
+    expect(
+      all.items.map((x: { action: string; product: string | null }) => [
+        x.action,
+        x.product,
+      ]),
+    ).toEqual([
+      ["key.rotate", "beta"],
+      ["license.revoke", "alpha"],
+      ["p.one", null],
+    ]);
+    expect(
+      (await get("product=alpha")).items.map((x: { action: string }) => x.action),
+    ).toEqual(["license.revoke"]);
+    // Filters apply to every branch; the cursor spans the union.
+    expect(
+      (await get("product=all&action=key.")).items.map(
+        (x: { action: string }) => x.action,
+      ),
+    ).toEqual(["key.rotate"]);
+    const first = await get("product=all&limit=2");
+    const c = first.nextCursor;
+    const next = await get(
+      `product=all&limit=2&beforeAt=${c.beforeAt}&beforeId=${c.beforeId}`,
+    );
+    expect(next.items.map((x: { action: string }) => x.action)).toEqual([
+      "p.one",
+    ]);
+    expect(
+      (await get(`product=all&id=${all.items[1].id}`)).items.map(
+        (x: { action: string }) => x.action,
+      ),
+    ).toEqual(["license.revoke"]);
+    const bad = await call(env, db, "/api/platform/activity?since=nope");
+    expect(bad.status).toBe(422);
   });
 
   it("GET /api/platform/activity?format=ndjson downloads the trail (ST-24)", async () => {
