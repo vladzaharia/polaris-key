@@ -229,6 +229,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/frameworks/compose",
               "build/ui/frameworks/godot",
               "build/ui/frameworks/terminal-node",
+              "build/ui/frameworks/qt",
               "build/ui/frameworks/terminal-python",
             ),
           },

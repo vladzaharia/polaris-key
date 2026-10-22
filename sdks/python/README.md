@@ -39,6 +39,8 @@ uv add "polaris-key[keyring]"
 uv add polaris-key
 # the terminal kit's styled output (rich), and its optional Textual app
 uv add "polaris-key[keyring,cli]"        # or [tui]
+# the Qt Quick kit (PySide6)
+uv add "polaris-key[keyring,qt]"
 # alternate CLI front ends
 uv add "polaris-key[keyring,click,typer]"
 ```
@@ -721,6 +723,16 @@ To mount the commands onto your own program, import the adapter you use: the cli
 exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an `app`
 (`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
 `polaris_key.cli.register_argparse(subparsers, client_factory=…)`.
+
+### The Qt kit
+
+A desktop app on PySide6 gates a window with the Qt kit, `polaris_key.ui.qt`: `run_gate(client, window)`
+shows the license's state in the product's identity over your window and hides it when the app may
+proceed. `KitView` embeds one kit screen (the devices, settings and account rows included) in your
+own layout, and its `row_invoked` signal reports the row a user pressed. Install `polaris-key[qt]`.
+
+The kit's page, with the embedding, the signals, theming and accessibility:
+[Qt (Python)](https://key.plrs.im/docs/build/ui/frameworks/qt/). Sample: `examples/ui/qt/`.
 
 ## Update decisions (wire v4)
 

@@ -113,6 +113,11 @@ Each kit has a tab with its badge. A kit that has not built the theme API says *
   <TabItem label="Qt">
     <KitStatus kit="qt" />
 
+    `Theme` goes to `KitView(theme)` and `run_gate(theme=…)`, and `kit.bridge.set_theme(theme)`
+    switches it later. The kit honours `color_scheme`, `accent`, `product`, `platform`, `motion`,
+    `powered_by` and `copy`; the rest have no effect yet. What each does is on the
+    [framework page](/docs/build/ui/frameworks/qt/#theming).
+
   </TabItem>
   <TabItem label="Terminal (Node)">
     <KitStatus kit="terminal-node" />

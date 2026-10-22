@@ -1,0 +1,389 @@
+---
+title: "Qt (Python)"
+description: "The Python Qt kit: a Qt Quick view for PySide6 that gates a window on the license and draws the devices, settings and account screens in the product's identity."
+sidebar:
+  order: 21
+type: "reference"
+lastReviewed: "2026-10-21"
+lanes: ["kit"]
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The Python SDK's Qt kit, `polaris_key.ui.qt`. It is a Qt Quick view that draws the kit's screens
+(the gate, activation, devices, replace-a-device, updates, settings and account) under the product
+header: the product's icon or monogram, then its name. It owns no event loop. You create the
+`QApplication`, run `exec()` and keep the kit in your window; the kit never sets the application
+palette or style. PySide6 is the primary binding. PyQt6 works through `qtpy`.
+
+<KitFacts kit="qt" />
+
+## Install
+
+```sh
+uv add "polaris-key[keyring,qt]"    # PySide6-Essentials 6.7 or later
+```
+
+The feed is an explicit index in `pyproject.toml`, never an extra index; the snippet, and pip and
+Poetry, are in [Installing the SDKs from the feeds](/docs/build/install-from-feeds/#python-pip-uv-and-poetry).
+
+Importing `polaris_key.ui.qt` does not import Qt. The first call that needs it does, and raises one
+error that says how to install it when no binding is present. For PyQt6, install PyQt6 and `qtpy`
+instead of the extra.
+
+## The one-line flow
+
+`run_gate(client, window)` builds one `KitView` from the client's own state, shows it as a window
+transient for yours while the app may not proceed, and hides it when the license is usable. It
+returns a `GateController`, which you keep for as long as the window lives.
+
+```python
+import sys
+
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
+
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.core import Theme
+from polaris_key.ui.qt import run_gate
+
+import polaris_config
+
+app = QApplication(sys.argv)
+client = PolarisKeyClient.create(**polaris_config.CONFIG, version="1.0.0")
+
+window = QMainWindow()
+window.setWindowTitle("Tidewater Studio")
+window.setCentralWidget(QLabel("Tidewater Studio is licensed."))
+window.resize(520, 640)
+window.show()
+
+gate = run_gate(client, window, theme=Theme(color_scheme="dark"))
+raise SystemExit(app.exec())
+```
+
+`polaris_config` is the module `pkey sdk --lang python --write` generates
+([quickstart](/docs/build/quickstart/python/)). The product's name, developer, accent and icon come
+from the client's presentation source, so the gate shows the product with nothing to pass.
+
+While the status is `ok`, the gate is hidden. In offline grace it is a window that does not block
+the app and shows the grace banner. Any other status shows the gate over `window`, modal to it, with
+the state's words and its fix. The gate reads `client.status()` when it is created and when you call
+`gate.refresh()`; a Try again or Reconnect press calls it for you. `gate.open` says whether the
+app may proceed, and `on_open=` runs when it may:
+
+```python
+from typing import Optional
+
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.qt import GateController
+
+
+def activate(client: PolarisKeyClient, gate: GateController, key: str) -> Optional[str]:
+    """Your own key entry calls the client; the gate redraws from its new state."""
+    client.license.activate_with_key(key)
+    gate.refresh()
+    return None if gate.open else gate.view.state if gate.view is not None else None
+```
+
+The activation and sign-in screens are not part of `run_gate` yet (see
+[What it doesn't do yet](#what-it-doesnt-do-yet)). Until then your window collects the key, or
+starts the sign-in, and calls the client as above.
+
+## Embed the view
+
+`KitView` is the layer under the gate: one kit screen in a `QQuickView`. Wrap `kit.view` in a
+widget container to put it in a layout, or `show()` it as a window of its own:
+
+```python
+import sys
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
+
+from polaris_key.ui.core import ProductIdentity, Theme
+from polaris_key.ui.qt import KitView
+
+app = QApplication(sys.argv)
+
+theme = Theme(
+    color_scheme="light",
+    product=ProductIdentity(name="Tidewater Studio", developer="Harbor Audio", accent="#1f7a8c"),
+)
+kit = KitView(theme, size=(480, 640))
+
+window = QMainWindow()
+window.setCentralWidget(QWidget.createWindowContainer(kit.view, window))
+window.resize(480, 640)
+window.show()
+raise SystemExit(app.exec())
+```
+
+`KitView` takes these options after the theme:
+
+| Option              | Default      | What it does                                                                            |
+| ------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `source=`           | `None`       | A presentation source: `client.presentation_source`, or `presentation_source(client)`   |
+| `size=`             | `(520, 640)` | The initial size; call `kit.resize(w, h)` after                                         |
+| `font_scale=`       | `1.0`        | Multiplies every text size, for the app's own text scale                                |
+| `system_scheme=`    | `"dark"`     | What `color_scheme="system"` means: the kit does not read the OS, so pass what you read |
+| `loading_delay_ms=` | `250`        | How long a load shows nothing before the product header and the shimmer                 |
+
+`kit.close()` tears the QML down before the bridge. Call it when the window closes. `kit.grab()`
+renders one frame to an image, offscreen-safe, and `render(view, theme)` is the one-shot of the
+same: that is how the kit's baselines are made.
+
+## Feed it views
+
+A `KitView` draws a **view**: the renderer-neutral result of the headless layer, a component, a
+state and the catalog keys and actions it shows. You build the view from the input the screen
+needs, and pass the same input as `data=` when the screen has rows. The views are the functions of
+`polaris_key.ui.core` (`ui_devices`, `ui_settings`, `ui_gate`, `ui_activate`, `ui_update`), each
+taking `context_of(input)`:
+
+```python
+from typing import Any, Dict
+
+from polaris_key.ui.core import ui_devices
+from polaris_key.ui.core.ui_contract import context_of
+from polaris_key.ui.qt import KitView
+
+
+def show_devices(kit: KitView) -> None:
+    state: Dict[str, Any] = {
+        "devices": [
+            {"id": "d1", "name": "Studio iMac", "platform": "macos", "formFactor": "mac", "lastSeenDays": 0, "current": True},
+            {"id": "d2", "name": "Laptop", "platform": "windows", "formFactor": "computer", "lastSeenDays": 3},
+        ]
+    }
+    kit.set_view(ui_devices.devices_view(context_of(state)), data=state)
+```
+
+The input is the shape of the `ui-matrix.json` rows (the corpus pins every state of every
+component), so a row you can describe there is a screen you can draw. Without `data=`, the screen
+draws the rows its view carries.
+
+`data=` also takes the rich models of `polaris_key.ui.core.models`: a `SettingsView`, a
+`DevicesView`, a `GateView` (the account rows) or an `ActivateView` (the seat meter). Settings are
+the usual case, because `models.settings_view` takes the catalog entries as the client returns them
+and sorts out which are locked:
+
+```python
+from polaris_key.ui.core import models, ui_settings
+from polaris_key.ui.core.ui_contract import context_of
+from polaris_key.ui.qt import KitView
+
+
+def show_settings(kit: KitView) -> None:
+    entries = [
+        {"key": "ui.compact", "value": True, "source": "local"},
+        {"key": "net.proxy", "value": "proxy.harbor.example", "enforced": True, "org": "Harbor Audio"},
+    ]
+    config = [{"key": "ui.compact", "type": "boolean", "source": "local", "value": True}]
+    view = ui_settings.settings_view(context_of({"config": config}))
+    kit.set_view(view, data=models.settings_view(entries))
+```
+
+What the rows draw, from the data:
+
+- **Settings:** a switch for a boolean, a choice for options, a slider for a number with `min` and
+  `max`, a field otherwise. Each row carries where its value came from (default, this device,
+  environment) and a Reset button when it is local. A row the organization enforces is locked: it
+  reads "Set by" the organization, shows the value without a control and says it is locked.
+- **Devices:** one row per device with a glyph for its form factor, "This Mac" on the current one,
+  the platform and last-used time, a Rename button and, except on the current device, a Remove
+  button. The count is said once.
+- **Replace a device:** a radio list of the devices with the least recent preselected, the seat
+  meter above it and a confirm that names the chosen device.
+- **Account:** the tier, the devices used of the limit, the version and channel, and the Manage,
+  Check for updates and Sign out buttons. The words come from the catalog; a button that has no
+  words of its own is named by the row it sits on.
+
+`set_view` replaces the screen. A new component or state starts at its own preselection; setting
+the same screen again keeps the user's pick in a radio list.
+
+## Handle events
+
+`kit.bridge` is the `KitBridge` the QML binds to, and carries the signals:
+
+| Signal                          | Fires with                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `invoked(key, action)`          | A button: its catalog key and the model's action (`retry`, `cancel`, …)                                |
+| `row_invoked(key, action, row)` | A row's button or radio: the catalog key, the action and the row's id (a device's id, a setting's key) |
+| `edited(key, text)`             | A field or switch changed: the catalog key and the text                                                |
+
+A row's button fires both `row_invoked` and `invoked`, so a handler that does not care which row
+listens to the second. A radio row also fires `row_invoked("", "select", row)` after the kit has
+redrawn with the new choice. A switch reports `("config:ui.compact", "false")`, the key of a setting
+being `config:` and its name. The rename field is `devices.renameLabel`.
+
+The kit holds no state of the screen beyond the radio choice and the advanced-settings toggle. When
+the user presses Rename, you decide what happens: put the edit in the input, pass it again, and the
+row becomes a field with Save and Cancel. A device list that renames in place and removes after a
+confirm:
+
+```python
+from typing import Any, Dict, List
+
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.core import ui_devices
+from polaris_key.ui.core.ui_contract import context_of
+from polaris_key.ui.qt import KitView
+
+
+class DevicesPane:
+    def __init__(self, client: PolarisKeyClient, kit: KitView) -> None:
+        self.client = client
+        self.kit = kit
+        self.draft = ""
+        self.edit: Dict[str, Any] = {}
+        kit.bridge.row_invoked.connect(self.on_row)
+        kit.bridge.edited.connect(self.on_edited)
+        self.show()
+
+    def rows(self) -> List[Dict[str, Any]]:
+        return [
+            {"id": d.id, "name": d.label, "platform": d.platform, "current": d.current}
+            for d in self.client.list_devices()
+        ]
+
+    def show(self) -> None:
+        devices = self.rows()
+        state: Dict[str, Any] = {"devices": devices}
+        if self.edit:
+            state["edit"] = {"kind": self.edit["kind"], "device": self.edit["name"]}
+            state["selected"] = next(i for i, d in enumerate(devices) if d["id"] == self.edit["id"])
+        self.kit.set_view(ui_devices.devices_view(context_of(state)), data=state)
+
+    def on_edited(self, key: str, text: str) -> None:
+        if key == "devices.renameLabel":
+            self.draft = text
+
+    def on_row(self, key: str, action: str, row: str) -> None:
+        device = row.split(":")[0]  # the confirm row is "<id>:confirm"
+        if action in ("rename", "remove") and not self.edit:
+            name = next(d["name"] for d in self.rows() if d["id"] == device)
+            self.draft = name or ""
+            self.edit = {"kind": action, "id": device, "name": name}
+        elif action == "save":
+            self.client.rename_device(device, self.draft or None)
+            self.edit = {}
+        elif action == "remove":
+            self.client.deauthorize_device(device)
+            self.edit = {}
+        elif action == "cancel":
+            self.edit = {}
+        self.show()
+```
+
+The `edit` member of the input picks the state: `{"kind": "rename"}` shows the field with focus,
+`{"kind": "remove"}` the confirm under the row, and `selected` is the row's index. a non-empty
+`error` member shows the state's failure with its Try again.
+
+Signals arrive on the thread that owns the bridge, the GUI thread. A client call that waits
+(`sync()`, the sign-in wait) belongs on another thread; hand its result back with
+`kit.bridge.post(fn)`, which runs `fn` on the GUI thread. A presentation source you pass as
+`source=` is subscribed for you: when the product's name, accent or icon changes, the kit redraws.
+
+## Theming
+
+`Theme` (`polaris_key.ui.core`) goes to `KitView(theme)` and `run_gate(theme=…)`; the fields are on
+[Theming](/docs/build/ui/theming/). In Qt:
+
+```python
+from polaris_key.ui.core import ProductIdentity, Theme
+from polaris_key.ui.qt import KitView
+
+
+def themed() -> KitView:
+    theme = Theme(
+        color_scheme="light",
+        platform="windows",
+        motion="reduced",
+        powered_by="line",
+        product=ProductIdentity(name="Tidewater Studio", developer="Harbor Audio", accent="#1f7a8c", accent_dark="#5cc3d6"),
+        copy={"locale": "de"},
+    )
+    kit = KitView(theme)
+    kit.bridge.set_theme(theme.with_(color_scheme="dark"))  # switch later without a new view
+    return kit
+```
+
+- `color_scheme` is `dark` or `light`. `system` uses the `system_scheme` option of the view, which
+  you set from the application palette.
+- `platform` picks the look: `macos`, `windows` or `linux` (the GNOME look). `auto` takes it from the
+  OS the app runs on. It sets the measures and the type scale of the screen, not the window frame.
+- `accent` and `product`: the accent for the buttons and the focus ring is, in order, the theme's
+  `ProductIdentity`, the SDK's presentation source, one derived from the product's icon, else ink.
+  Without an accent the kit draws ink, never Polaris violet. `accent_dark` is the dark scheme's form.
+- The product header is the product's icon from the presentation source (48 points, at the display's
+  scale) with its name beside it, bidi-isolated; with no icon, a monogram tile holds the name's
+  initial.
+- `powered_by` is `"line"` or `"badge"` to draw the Polaris Locker attribution under the screen.
+- `copy` takes a `locale` and overrides, as in the other kits; the table is
+  `polaris_key.ui.kit_copy_generated`, falling back to English key by key.
+- `motion` set to `reduced` or `none` stops the animations (below).
+- `preset`, `colors`, `radius`, `typography`, `density`, `ambient`, `service_cues` and `symbols`
+  have no effect in this kit yet.
+
+The loading state follows the same delay as the other kits: for the first 250 ms a load draws
+nothing, then the product header, a label and a 2 px shimmer. A screen that is a load again (a new
+`set_view` of the same loading state) keeps its clock, so a refresh does not restart it.
+
+Buttons come in four weights. The primary action is the one filled button; the rest are outlined or
+text. A destructive action is a danger button (Remove, once confirmed: the danger solid with a white
+label), and Sign out is danger text (outlined, in the danger color). A busy button keeps its label
+and its focus and adds an indicator.
+
+### Piecemeal
+
+The styled parts are plain QML under `polaris_key/ui/qt/kit/` over the generated `Theme.qml`
+(`KitScreen.qml`, `KitButton.qml`, `KitGroup.qml`, `KitSeatMeter.qml`, `KitGlyph.qml`). Load them in your own scene
+to compose a screen of your own; they read the same `bridge` object.
+
+## Accessibility
+
+- **Names.** Every control has an accessible name from the catalog. A row's buttons say which row
+  they act on: "Rename Laptop", "Remove Laptop", never two buttons named "Remove". The product
+  icon is named from the catalog ("Tidewater Studio icon"); the monogram and the attribution mark
+  are hidden from the accessibility tree, and a device's glyph is named by its form factor. A locked setting says it is
+  locked.
+- **Roles.** The screen is a pane; the title is a heading; sentences are static text; fields are
+  editable text with their label as the name and their error or hint as the description; the
+  buttons are buttons, a switch is a switch and the shimmer is a progress bar named by the screen.
+- **Focus order.** The tab order is the reading order: the heading, then the fields, then the rows,
+  then the buttons in catalog order with the primary action first among equals. When a state has a
+  field (the key, the rename), it takes focus; when it has none, the heading does, so a screen reader
+  lands on the title of a new screen. Every button and field is a tab stop, and the focus ring is
+  drawn in the product's accent at the platform's width.
+- **Motion.** The shimmer and a busy button's indicator run only when `motion` is `system`. With
+  `reduced` or `none` they hold still, and the state is still readable from its label.
+- **Size.** `font_scale` on the view scales the text with the app's. The screen scrolls when it does
+  not fit and nothing is cut: a long name is elided by the row, and the model never truncates it.
+
+## What it doesn't do yet
+
+- **Activation and sign-in inside `run_gate`.** The gate shows the state and its fix, and retries.
+  Collecting the key and running the browser or device-code sign-in is yours, with
+  `client.license.activate_with_key` and the sign-in calls on the
+  [Python SDK](/docs/build/sdks/python/your-own-ui/); then call `refresh()`.
+- **The OS color scheme.** `color_scheme="system"` uses the view's `system_scheme` option and does
+  not follow a change of the OS appearance by itself.
+- **Theme fields.** Those listed under [Theming](#theming) as having no effect.
+- **A PyQt6 baseline.** PyQt6 works through `qtpy`, but the kit's tests and baselines run on PySide6.
+- **Widgets.** The screens are QML. A widgets-only app embeds them with a window container, as
+  above; there is no `QWidget` subclass of the kit.
+
+## Baselines
+
+The kit's golden screens, one PNG per state in both schemes, are rendered offscreen with the
+software scene graph, so the same pixels come out on a machine with no display. Record them with
+`PKEY_GOLDEN=record` in `sdks/python`, as `tests/ui/test_qt_snapshots.py` says.
+
+<KitCoverage kit="qt" />
+
+## Sample
+
+`examples/ui/qt/` is the `tidewater_qt` demo: Tidewater Studio by Harbor Audio, a PySide6 window
+gated with `run_gate`, running against the terminal sample's fixture adapter with no Worker
+(`python tidewater_qt.py`), or against a real Worker with `--live`. `--scheme` and `--platform`
+choose the look.

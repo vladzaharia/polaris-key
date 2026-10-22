@@ -234,12 +234,13 @@ def render(client: PolarisKeyClient, typed: str, now: int) -> None:
 ```
 
 The views are `gate_view`, `parse_key`, `activation_view`, `update_view`, `boot_view`,
-`settings_view` and `release_notes_view`, plus the `SignInModel` state machine. `run_gate` and
-`ActivateViewModel` are planned: do not build on them yet.
+`settings_view` and `release_notes_view`, plus the `SignInModel` state machine. `ActivateViewModel` is planned: do not build on it yet.
+`run_gate` belongs to the [Qt kit](#qt).
 
 ## Qt
 
-A Qt kit is planned. Until then, draw your own on the library: build the client once, run
+The [Qt kit](/docs/build/ui/frameworks/qt/) draws the gate, devices, settings and account in a Qt
+Quick view; `run_gate(client, window)` is its drop-in. To draw your own, build the client once, run
 `sync()` and the sign-in wait off the GUI thread (a `QThread`, or `AsyncClient` under `qasync`),
 deliver results to widgets through signals as in [the thread contract](#the-thread-contract), and
 render from `gate_view` and `activation_message` above. Install `polaris-key[keyring]` so the token
