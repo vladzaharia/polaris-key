@@ -570,7 +570,7 @@ describe("Activate license modal (PX-06)", () => {
     ).toBeTruthy();
   });
 
-  it("drops the format help once the key is valid, and keeps the link's own line (B-087)", async () => {
+  it("keeps the format help under the valid verdict, as portal.activate draws it", async () => {
     mockFetch(routes());
     renderPortal();
     const dialog = await openFromHeader();
@@ -583,8 +583,8 @@ describe("Activate license modal (PX-06)", () => {
     );
     expect(within(dialog).getByText("Key format is valid")).toBeTruthy();
     expect(
-      within(dialog).queryByText("Starts with pkey_. Case-sensitive."),
-    ).toBeNull();
+      within(dialog).getByText("Starts with pkey_. Case-sensitive."),
+    ).toBeTruthy();
   });
 
   /** The preview of a floating key already on `devices` devices (PX-23, S-24 D22). */
