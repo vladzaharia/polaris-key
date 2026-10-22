@@ -1772,6 +1772,11 @@ msgstr "Canal de publication"
 msgid "channel.locked"
 msgstr "{store} définit le canal."
 
+#. Your license includes this channel only.
+#. ChannelPicker: the license allows one release channel, so the choice is locked.
+msgid "channel.lockedLicense"
+msgstr "Votre licence n’inclut que ce canal."
+
 #. Undo
 #. Toast action.
 msgid "toast.undo"

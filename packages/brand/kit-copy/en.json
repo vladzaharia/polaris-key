@@ -1401,6 +1401,11 @@
       "role": "body",
       "note": "ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam)."
     },
+    "channel.lockedLicense": {
+      "value": "Your license includes this channel only.",
+      "role": "body",
+      "note": "ChannelPicker: the license allows one release channel, so the choice is locked."
+    },
     "toast.undo": {
       "value": "Undo",
       "role": "button",

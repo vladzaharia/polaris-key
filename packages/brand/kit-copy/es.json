@@ -283,6 +283,7 @@
     "about.diagnosticsCopied": "Diagnóstico copiado",
     "channel.title": "Canal de versiones",
     "channel.locked": "{store} establece el canal.",
+    "channel.lockedLicense": "Tu licencia solo incluye este canal.",
     "toast.undo": "Deshacer",
     "toast.updateAvailable": "{product} {version} está disponible",
     "signin.methods.title": "Inicia sesión en Polaris Locker",

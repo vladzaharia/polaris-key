@@ -276,6 +276,7 @@
   "about.diagnosticsCopied": "Diagnosedaten kopiert",
   "channel.title": "Release-Kanal",
   "channel.locked": "{store} legt den Kanal fest.",
+  "channel.lockedLicense": "Ihre Lizenz umfasst nur diesen Kanal.",
   "toast.undo": "Rückgängig",
   "toast.updateAvailable": "{product} {version} ist verfügbar",
   "signin.methods.title": "Bei Polaris Locker anmelden",

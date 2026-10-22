@@ -138,6 +138,21 @@ public struct AccountAndLicenseSection: View {
     var onSignOut: () -> Void
     @Binding var autoUpdate: Bool
     var onCheckNow: () -> Void
+    /// Manage ↗ and the automatic-update switch draw only when the host can act on them
+    /// (UI-KITS decision 7). True keeps the pane's earlier behaviour for a host that passes both.
+    var canManage = true
+    var canAutoUpdate = true
+    /// The ChannelPicker row, and the host's way to switch (nil: the row is a value or locked).
+    var channel: KitChannelState = .hidden
+    var onChannel: ((String) -> Void)?
+    /// Check now in flight, and its one-line answer.
+    var checking = false
+    var checkNote: CopyLine?
+    /// Which groups to draw: the whole pane, or the part above or below the Devices and Settings
+    /// sections `PolarisKeySettings` puts between them.
+    var part: Part = .all
+
+    public enum Part: Sendable { case all, top, bottom }
 
     @State private var confirmingSignOut = false
     @Environment(\.polarisKeyStrings) private var strings
@@ -146,8 +161,17 @@ public struct AccountAndLicenseSection: View {
         screen: KitScreen<AccountState>, tier: String? = nil, holder: String? = nil,
         version: String? = nil, devices: String? = nil, autoUpdate: Binding<Bool> = .constant(true),
         onManage: @escaping () -> Void, onSignOut: @escaping () -> Void,
-        onCheckNow: @escaping () -> Void = {}
+        onCheckNow: @escaping () -> Void = {}, canManage: Bool = true, canAutoUpdate: Bool = true,
+        channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
+        checking: Bool = false, checkNote: CopyLine? = nil, part: Part = .all
     ) {
+        self.canManage = canManage
+        self.canAutoUpdate = canAutoUpdate
+        self.channel = channel
+        self.onChannel = onChannel
+        self.checking = checking
+        self.checkNote = checkNote
+        self.part = part
         self.screen = screen
         self.tier = tier
         self.holder = holder
@@ -161,6 +185,13 @@ public struct AccountAndLicenseSection: View {
 
     public var body: some View {
         kitStyle { style in
+            if part != .bottom { top(style) }
+            if part != .top { bottom(style) }
+        }
+    }
+
+    @ViewBuilder private func top(_ style: KitResolvedStyle) -> some View {
+        Group {
             Section {
                 HStack(spacing: style.space(.sm)) {
                     ProductIcon(size: 56)
@@ -187,7 +218,7 @@ public struct AccountAndLicenseSection: View {
                 .padding(.vertical, 4)
                 .frame(minHeight: 64)
                 .accessibilityElement(children: .combine)
-                if screen.shows("common.manage") {
+                if screen.shows("common.manage"), canManage {
                     Button(action: onManage) {
                         HStack {
                             PaneText(CopyLine("common.manage"), .body, color: .default)
@@ -199,7 +230,7 @@ public struct AccountAndLicenseSection: View {
                         .frame(minHeight: 52)
                     }
                 }
-                if screen.shows("account.devices") {
+                if screen.shows("account.devices"), devices != nil {
                     LabeledContent {
                         Text(devices ?? "")
                     } label: {
@@ -214,11 +245,12 @@ public struct AccountAndLicenseSection: View {
             }
             // A group header only over rows that render (never an empty "Updates").
             if screen.shows("account.updates"),
-                screen.shows("account.autoUpdate") || screen.shows("update.checkNow")
+                (screen.shows("account.autoUpdate") && canAutoUpdate) || screen.shows("update.checkNow")
+                    || channel != .hidden
                     || (version != nil && screen.shows("account.version"))
             {
                 Section {
-                    if screen.shows("account.autoUpdate") {
+                    if screen.shows("account.autoUpdate"), canAutoUpdate {
                         Toggle(isOn: $autoUpdate) {
                             PaneText(CopyLine("account.autoUpdate"), .body, color: .default)
                         }
@@ -232,11 +264,24 @@ public struct AccountAndLicenseSection: View {
                         )
                         .frame(minHeight: 52, alignment: .leading)
                     }
+                    if screen.shows("account.channel") { channelRow(style) }
                     if screen.shows("update.checkNow") {
                         Button(action: onCheckNow) {
-                            PaneText(CopyLine("update.checkNow"), .body, color: .accent)
-                                .frame(minHeight: 52, alignment: .leading)
+                            HStack {
+                                PaneText(CopyLine("update.checkNow"), .body, color: .accent)
+                                Spacer()
+                                if checking {
+                                    ProgressView()
+                                        .accessibilityLabel(strings.string("a11y.busy"))
+                                }
+                            }
+                            .frame(minHeight: 52, alignment: .leading)
                         }
+                        .disabled(checking)
+                    }
+                    if let checkNote {
+                        PaneText(checkNote, .footnote, color: .muted)
+                            .frame(minHeight: 52, alignment: .leading)
                     }
                 } header: {
                     HStack(spacing: 6) {
@@ -245,6 +290,11 @@ public struct AccountAndLicenseSection: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder private func bottom(_ style: KitResolvedStyle) -> some View {
+        Group {
             if screen.shows("common.signOut") {
                 Section {
                     Button(role: .destructive) {
@@ -272,6 +322,52 @@ public struct AccountAndLicenseSection: View {
             }
         }
     }
+
+    /// The ChannelPicker (UI-KITS §4.1): a menu where the host can switch, else the channel as a
+    /// value, with the lock and its reason when the store or the license fixes it.
+    @ViewBuilder private func channelRow(_ style: KitResolvedStyle) -> some View {
+        switch channel {
+        case .hidden:
+            EmptyView()
+        case .value(let current):
+            LabeledContent {
+                Text(Self.channelName(current)).foregroundStyle(style.palette.textMuted)
+            } label: {
+                PaneText(CopyLine("account.channel"), .body, color: .default)
+            }
+            .frame(minHeight: 52)
+        case .choose(let current, let options):
+            Picker(
+                selection: Binding(get: { current }, set: { onChannel?($0) })
+            ) {
+                ForEach(options, id: \.self) { Text(Self.channelName($0)).tag($0) }
+            } label: {
+                PaneText(CopyLine("account.channel"), .body, color: .default)
+            }
+            .pickerStyle(.menu)
+            .tint(style.palette.accentSolid)
+            .frame(minHeight: 52)
+        case .locked(let current, let reason):
+            LabeledContent {
+                HStack(spacing: style.space(.xxs)) {
+                    Image(systemName: "lock.fill").imageScale(.small)
+                        .accessibilityLabel(strings.string("a11y.locked"))
+                    Text(Self.channelName(current))
+                }
+                .foregroundStyle(style.palette.textMuted)
+            } label: {
+                VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                    PaneText(CopyLine("account.channel"), .body, color: .default)
+                    PaneText(reason, .footnote, color: .muted)
+                }
+            }
+            .frame(minHeight: 64)
+        }
+    }
+
+    static func channelName(_ id: String) -> String {
+        id.prefix(1).uppercased() + id.dropFirst()
+    }
 }
 
 /// The license's devices as a section: rename inline, remove with a confirm (never a dead end).
@@ -281,15 +377,31 @@ public struct DevicesSection: View {
     var onRemove: (KitDevice) -> Void
     var onRetry: () -> Void
     var onManage: () -> Void
+    /// Rename in place; nil: the host cannot save a name, so no Rename is drawn.
+    var onRename: ((KitDevice, String) -> Void)?
+    /// A failed rename or remove, under the list (the list stays).
+    var failure: CopyLine?
+    /// Draws the browser-mode "Manage devices" link only when the host can open it.
+    var canManage = true
     /// The device a Remove waits on, confirmed first (it signs that device out).
     @State private var removing: KitDevice?
+    /// The device being renamed, and the name typed so far.
+    @State private var renaming: KitDevice?
+    @State private var draft = ""
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<DevicesState>, devices: [KitDevice],
         onRemove: @escaping (KitDevice) -> Void,
-        onRetry: @escaping () -> Void, onManage: @escaping () -> Void = {}
+        onRetry: @escaping () -> Void, onManage: @escaping () -> Void = {},
+        onRename: ((KitDevice, String) -> Void)? = nil, failure: CopyLine? = nil,
+        canManage: Bool = true, renaming: KitDevice? = nil
     ) {
+        self._renaming = State(initialValue: renaming)
+        self._draft = State(initialValue: renaming?.name ?? "")
+        self.onRename = onRename
+        self.failure = failure
+        self.canManage = canManage
         self.screen = screen
         self.devices = devices
         self.onRemove = onRemove
@@ -315,7 +427,7 @@ public struct DevicesSection: View {
                 case .browserMode:
                     // The sentence and the way there: never a dead end.
                     PaneText(CopyLine("devices.browser"), .body, color: .muted)
-                    if screen.shows("devices.manage") {
+                    if screen.shows("devices.manage"), canManage {
                         Button(action: onManage) {
                             HStack {
                                 PaneText(CopyLine("devices.manage"), .body, color: .accent)
@@ -328,21 +440,15 @@ public struct DevicesSection: View {
                     }
                 default:
                     ForEach(Array(devices.enumerated()), id: \.offset) { _, device in
-                        DeviceRow(
-                            name: device.name, formFactor: device.formFactor.rawValue,
-                            meta: strings.string(
-                                "devices.meta",
-                                [
-                                    "platform": .text(KitFormat.platformName(device.platform)),
-                                    "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
-                                ])
-                        )
-                        .swipeActions {
-                            Button(strings.string("devices.remove"), role: .destructive) {
-                                removing = device
-                            }
+                        if renaming == device {
+                            renameRow(device, style)
+                        } else {
+                            row(device, style)
                         }
                     }
+                }
+                if let failure {
+                    PaneText(failure, .footnote, color: .danger)
                 }
             } header: {
                 PaneText(CopyLine("devices.title"), .footnote, color: .muted)
@@ -368,6 +474,85 @@ public struct DevicesSection: View {
             }
         }
     }
+
+    private func name(_ device: KitDevice) -> String {
+        device.name ?? strings.string("devices.unnamed")
+    }
+
+    @ViewBuilder private func row(_ device: KitDevice, _ style: KitResolvedStyle) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            DeviceRow(
+                name: device.name, formFactor: device.formFactor.rawValue,
+                meta: strings.string(
+                    "devices.meta",
+                    [
+                        "platform": .text(KitFormat.platformName(device.platform)),
+                        "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
+                    ])
+            )
+            if device.current {
+                PaneText(
+                    CopyLine("part.thisDeviceTitle", ["formFactor": .text(device.formFactor.rawValue)]),
+                    .footnote, color: .muted
+                )
+                .padding(.bottom, style.space(.xs))
+            }
+        }
+        .swipeActions {
+            if !device.current {
+                Button(strings.string("devices.remove"), role: .destructive) { removing = device }
+                    .accessibilityLabel(
+                        strings.string("a11y.removeDevice", ["device": .text(name(device))]))
+            }
+            if onRename != nil {
+                Button(strings.string("devices.rename")) { beginRename(device) }
+                    .tint(.accentColor)
+                    .accessibilityLabel(
+                        strings.string("a11y.renameDevice", ["device": .text(name(device))]))
+            }
+        }
+        .contextMenu {
+            if onRename != nil {
+                Button(strings.string("devices.rename")) { beginRename(device) }
+            }
+            if !device.current {
+                Button(strings.string("devices.remove"), role: .destructive) { removing = device }
+            }
+        }
+    }
+
+    private func beginRename(_ device: KitDevice) {
+        draft = device.name ?? ""
+        renaming = device
+    }
+
+    /// The row as a field: Return or Save keeps the name, Cancel puts the old one back.
+    @ViewBuilder private func renameRow(_ device: KitDevice, _ style: KitResolvedStyle)
+        -> some View
+    {
+        VStack(alignment: .leading, spacing: style.space(.xs)) {
+            TextField(strings.string("devices.renameLabel"), text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .submitLabel(.done)
+                .onSubmit { commitRename(device) }
+            HStack {
+                Button(strings.string("common.cancel")) { renaming = nil }
+                    .frame(minWidth: 44, minHeight: 44)
+                Spacer()
+                Button(strings.string("common.save")) { commitRename(device) }
+                    .fontWeight(.semibold)
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, style.space(.xs))
+        .frame(minHeight: 64)
+    }
+
+    private func commitRename(_ device: KitDevice) {
+        onRename?(device, draft)
+        renaming = nil
+    }
 }
 
 /// Catalog-driven settings as sections: typed controls (a switch for a boolean, a slider for a
@@ -378,14 +563,25 @@ public struct SettingsSection: View {
     let screen: KitScreen<SettingsState>
     let rows: [KitConfigRow]
     var onChange: (String, KitConfigValue) -> Void
+    /// A select row's choices, by key (the catalog's `enum`); a row without choices is read-only.
+    var options: [String: [String]] = [:]
+    var onRetry: (() -> Void)?
+    /// Reset a changed row to its default; nil: no Reset is drawn.
+    var onReset: ((String) -> Void)?
     @State private var edits: [String: KitConfigValue] = [:]
+    @State private var query = ""
     @Environment(\.polarisKeyStrings) private var strings
 
     /// `onChange` reports an edit by the row's key; the host saves it (the kit never writes).
     public init(
         screen: KitScreen<SettingsState>, rows: [KitConfigRow],
-        onChange: @escaping (String, KitConfigValue) -> Void = { _, _ in }
+        onChange: @escaping (String, KitConfigValue) -> Void = { _, _ in },
+        options: [String: [String]] = [:], onRetry: (() -> Void)? = nil,
+        onReset: ((String) -> Void)? = nil
     ) {
+        self.options = options
+        self.onRetry = onRetry
+        self.onReset = onReset
         self.screen = screen
         self.rows = rows
         self.onChange = onChange
@@ -403,10 +599,12 @@ public struct SettingsSection: View {
 
     /// The control a row gets (§4.3): a switch for a boolean, a slider for a bounded number, a
     /// stepper for an open one, text otherwise; a locked row is always text.
-    enum Control: Equatable { case locked, toggle, slider, stepper, text }
+    enum Control: Equatable { case locked, toggle, slider, stepper, text, select, field }
 
-    static func control(_ row: KitConfigRow) -> Control {
+    static func control(_ row: KitConfigRow, options: [String: [String]] = [:]) -> Control {
         if row.locked { return .locked }
+        if row.type == "select", !(options[row.key] ?? []).isEmpty { return .select }
+        if row.type == "string" { return .field }
         switch (row.type, row.value) {
         case ("boolean", .bool?): return .toggle
         case ("number", .number?):
@@ -418,22 +616,64 @@ public struct SettingsSection: View {
 
     public var body: some View {
         kitStyle { style in
+            if screen.state == .loading {
+                Section { LoadingIndicator(CopyLine("common.loading")) } header: { head(.yours, style) }
+            }
+            if screen.state == .error {
+                Section {
+                    if let line = screen.copy.first { PaneText(line, .body, color: .danger) }
+                    if let onRetry {
+                        Button(strings.string("common.tryAgain"), action: onRetry)
+                            .frame(minHeight: 52, alignment: .leading)
+                    }
+                } header: {
+                    head(.yours, style)
+                }
+            }
+            if screen.shows("settings.search"), !rows.isEmpty {
+                Section {
+                    TextField(strings.string("settings.search"), text: $query)
+                        .frame(minHeight: 52)
+                }
+            }
             ForEach([Group.yours, .developer, .managed], id: \.self) { group in
-                let members = rows.filter { Self.group($0) == group }
+                let members = rows.filter { Self.group($0) == group && matches($0) }
                 if !members.isEmpty {
                     Section {
                         ForEach(members, id: \.key) { row in
                             settingRow(row, style)
+                            if row.source == "local", !row.locked, let onReset {
+                                Button(strings.string("settings.reset")) {
+                                    edits[row.key] = nil
+                                    onReset(row.key)
+                                }
+                                .font(.footnote)
+                                .frame(minHeight: 44, alignment: .leading)
+                            }
                         }
                     } header: {
-                        HStack(spacing: 6) {
-                            if group == .yours { ServiceCue(service: .config) }
-                            PaneText(header(group, style), .footnote, color: .muted)
+                        head(group, style)
+                    } footer: {
+                        // Saving, then Saved, once (the host saves; the kit only says so).
+                        if group == .yours, screen.state == .saving, let line = screen.copy.first {
+                            PaneText(line, .footnote, color: .muted)
                         }
                     }
                 }
             }
         }
+    }
+
+    private func head(_ group: Group, _ style: KitResolvedStyle) -> some View {
+        HStack(spacing: 6) {
+            if group == .yours { ServiceCue(service: .config) }
+            PaneText(header(group, style), .footnote, color: .muted)
+        }
+    }
+
+    private func matches(_ row: KitConfigRow) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty || title(row).localizedCaseInsensitiveContains(q)
     }
 
     private func header(_ group: Group, _ style: KitResolvedStyle) -> CopyLine {
@@ -459,7 +699,7 @@ public struct SettingsSection: View {
     @ViewBuilder private func settingRow(_ row: KitConfigRow, _ style: KitResolvedStyle)
         -> some View
     {
-        if Self.control(row) == .locked {
+        if Self.control(row, options: options) == .locked {
             // A value as text with its lock and its source, never a dimmed control.
             LabeledContent {
                 HStack(spacing: 4) {
@@ -477,7 +717,31 @@ public struct SettingsSection: View {
                 }
             }
             .frame(minHeight: 64)
-        } else if Self.control(row) == .toggle, case .bool(let on)? = current(row) {
+        } else if Self.control(row, options: options) == .select, case .string(let chosen)? = current(row),
+            let choices = options[row.key]
+        {
+            Picker(
+                selection: Binding(get: { chosen }, set: { set(row, .string($0)) })
+            ) {
+                ForEach(choices, id: \.self) { Text($0).tag($0) }
+            } label: {
+                Text(title(row))
+            }
+            .pickerStyle(.menu)
+            .tint(style.palette.accentSolid)
+            .frame(minHeight: 52)
+        } else if Self.control(row, options: options) == .field {
+            TextField(
+                title(row),
+                text: Binding(
+                    get: { if case .string(let s)? = current(row) { return s } else { return "" } },
+                    set: { edits[row.key] = .string($0) }),
+                prompt: nil
+            )
+            .onSubmit { if let value = edits[row.key] { onChange(row.key, value) } }
+            .submitLabel(.done)
+            .frame(minHeight: 52)
+        } else if Self.control(row, options: options) == .toggle, case .bool(let on)? = current(row) {
             Toggle(
                 title(row),
                 isOn: Binding(get: { on }, set: { set(row, .bool($0)) })

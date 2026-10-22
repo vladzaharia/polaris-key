@@ -276,6 +276,7 @@
   "about.diagnosticsCopied": "诊断信息已复制",
   "channel.title": "发布渠道",
   "channel.locked": "渠道由{store}设置。",
+  "channel.lockedLicense": "你的许可证仅包含此渠道。",
   "toast.undo": "撤销",
   "toast.updateAvailable": "{product} {version}现已推出",
   "signin.methods.title": "登录Polaris Locker",

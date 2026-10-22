@@ -290,6 +290,7 @@ export type KitCopyKey =
   | "about.diagnosticsCopied"
   | "channel.title"
   | "channel.locked"
+  | "channel.lockedLicense"
   | "toast.undo"
   | "toast.updateAvailable"
   | "signin.methods.title"

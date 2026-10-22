@@ -512,6 +512,32 @@ extension PolarisKeyPreviewState {
                 $0.account = KitAccount(signedIn: true, holder: "account")
                 $0.gate = KitGate(status: .grace, graceDaysLeft: 5)
             }),
+        // The settings drop-in (`PolarisKeySettings`): the whole pane, with the ChannelPicker as a
+        // choice, locked by the store, and locked by the license.
+        .init(
+            .accountAndLicense, "signed-in", variant: "pane",
+            base {
+                $0.account = KitAccount(signedIn: true, holder: "account")
+                $0.devices = devices
+                $0.config = config
+            }),
+        .init(
+            .accountAndLicense, "signed-in", variant: "channel-locked",
+            base { $0.account = KitAccount(signedIn: true, holder: "account") }),
+        .init(
+            .accountAndLicense, "signed-in", variant: "channel-license",
+            base { $0.account = KitAccount(signedIn: true, holder: "account") }),
+        .init(
+            .settings, "list", variant: "controls",
+            base {
+                $0.config =
+                    config + [
+                        KitConfigRow(
+                            key: "player.name", type: "string", source: "local",
+                            value: .string("Mara"), label: "Display name")
+                    ]
+            }),
+        .init(.settings, "error", base { $0.error = KitError(code: "config_load_failed") }),
     ]
 
     static let devicesAndPaywall: [PolarisKeyPreviewState] = [
@@ -521,6 +547,14 @@ extension PolarisKeyPreviewState {
                 var list = devices
                 list[2].current = true
                 $0.devices = list
+            }),
+        .init(
+            .devices, "renaming",
+            base {
+                var list = devices
+                list[2].current = true
+                $0.devices = list
+                $0.edit = KitEdit(kind: "rename", device: "Mara's iPad")
             }),
         .init(.devices, "empty", base { $0.devices = [] }),
         .init(.devices, "error", base { $0.error = KitError(code: "device_list_failed") }),
