@@ -75,6 +75,9 @@ export async function handleMe(
     // LK-17: where an old portal hash goes; `null` while there is no customer host.
     customerOrigin: hostOrigin("customer", env),
     sessionExpiresAt: session.exp,
+    // ST-30c.1: a break-glass session (no account, one hour): the console says so and hides
+    // the account screens.
+    breakGlass: session.breakGlass === true,
     // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
     // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.
     authAt: session.stepUpAt ?? null,

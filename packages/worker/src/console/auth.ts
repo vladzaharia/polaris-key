@@ -75,9 +75,13 @@ import {
 } from "../core/rbac/bindings.js";
 import { memberIdFor } from "../core/console/memberId.js";
 import { convertInvites } from "./inviteConversion.js";
+import { notifySuperadmins } from "./lib/operatorNotices.js";
+import { breakGlassUsedNotice } from "../core/notify/templates.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
+  buildBreakGlassCookie,
   buildSessionCookie,
+  issueBreakGlassSession,
   issueSessionV2,
   type SessionIdentity,
 } from "../core/console/session.js";
@@ -108,6 +112,8 @@ interface FlowRecord {
   returnTo?: string;
   /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
   stepUp?: boolean;
+  /** ST-30c.1: the explicit break-glass sign-in (`/manage/login?breakGlass=1`). */
+  breakGlass?: boolean;
   /** Hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
   bindingHash: string;
 }
@@ -223,6 +229,8 @@ const clientIdTokenVerifier: IdTokenVerifier = {
 interface Ctx {
   returnTo?: string | null;
   stepUp?: boolean;
+  /** ST-30c.1: the break-glass link; it forces a fresh login at the IdP. */
+  breakGlass?: boolean;
   hint?: string | null;
   /** "Use another account": the IdP's chooser, or a fresh login. */
   other?: boolean;
@@ -232,6 +240,7 @@ function ctxOf(url: URL): Ctx {
   return {
     returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
     stepUp: url.searchParams.get("stepUp") === "1",
+    breakGlass: url.searchParams.get("breakGlass") === "1",
     hint: loginHint(url.searchParams.get("login_hint")),
     other: url.searchParams.get("other") === "1",
   };
@@ -242,6 +251,7 @@ function ctxOfForm(form: URLSearchParams): Ctx {
   return {
     returnTo: sanitizeReturnTo(form.get("returnTo")),
     stepUp: form.get("stepUp") === "1",
+    breakGlass: form.get("breakGlass") === "1",
     hint: loginHint(form.get("login_hint")),
     other: form.get("other") === "1",
   };
@@ -252,6 +262,7 @@ function loginHref(ctx: Ctx, extra: Record<string, string> = {}): string {
   const q = new URLSearchParams(extra);
   if (ctx.returnTo) q.set("returnTo", ctx.returnTo);
   if (ctx.stepUp) q.set("stepUp", "1");
+  if (ctx.breakGlass) q.set("breakGlass", "1");
   if (ctx.hint) q.set("login_hint", ctx.hint);
   const qs = q.toString();
   return qs ? `/manage/login?${qs}` : "/manage/login";
@@ -267,6 +278,7 @@ function startAgain(label: string, ctx: Ctx, viaPost: boolean): NoticeAction {
   const fields: Record<string, string> = {};
   if (ctx.returnTo) fields.returnTo = ctx.returnTo;
   if (ctx.stepUp) fields.stepUp = "1";
+  if (ctx.breakGlass) fields.breakGlass = "1";
   if (ctx.hint) fields.login_hint = ctx.hint;
   if (ctx.other) fields.other = "1";
   return { label, post: { action: "/manage/login", fields } };
@@ -499,6 +511,7 @@ async function startSignIn(
   const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = ctx.returnTo ?? null;
   const stepUp = ctx.stepUp === true;
+  const breakGlass = ctx.breakGlass === true;
   const hint = ctx.hint ?? null;
   const binding = randomToken(32);
   const flow: FlowRecord = {
@@ -508,6 +521,7 @@ async function startSignIn(
     bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
     ...(returnTo ? { returnTo } : {}),
     ...(stepUp ? { stepUp: true } : {}),
+    ...(breakGlass ? { breakGlass: true } : {}),
   };
   await putArtefact(
     env,
@@ -525,9 +539,10 @@ async function startSignIn(
     // I-12: a step-up re-authenticates now, not a silent SSO. The callback checks `auth_time`
     // when the IdP sends one, so an IdP that ignores these still cannot pass off an old sign-in.
     extra: {
-      ...(stepUp ? { prompt: "login", max_age: "0" } : {}),
+      // Break-glass is a fresh authentication too (ST-30c.1).
+      ...(stepUp || breakGlass ? { prompt: "login", max_age: "0" } : {}),
       // "Use another account": the IdP's chooser when it has one, else a fresh login.
-      ...(!stepUp && ctx.other
+      ...(!stepUp && !breakGlass && ctx.other
         ? {
             prompt: discovered.promptValuesSupported?.includes("select_account")
               ? "select_account"
@@ -618,6 +633,7 @@ export async function handleAdminCallback(
   const flowCtx: Ctx = {
     returnTo: sanitizeReturnTo(peekedFlow?.returnTo ?? null),
     stepUp: peekedFlow?.stepUp === true,
+    breakGlass: peekedFlow?.breakGlass === true,
   };
   const tookTooLong = () =>
     htmlError(400, "This sign-in took too long", {
@@ -655,6 +671,9 @@ export async function handleAdminCallback(
       action: again(flowCtx),
     });
   }
+
+  if (flow.breakGlass === true)
+    return breakGlassCallback(req, env, db, now, identity, flowCtx, flow);
 
   // The sign-in gate is the console's membership check (ST-29, ST-31.8): membership is "holds a
   // grant". This PRE-gate runs before anything is written and admits exactly three people: the
@@ -802,6 +821,96 @@ export async function handleAdminCallback(
     headers: new Headers([
       ["location", location],
       ["set-cookie", buildSessionCookie(token)],
+      ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
+      ["cache-control", "no-store"],
+    ]),
+  });
+}
+
+/** The most Superadmin addresses one break-glass sign-in mails. */
+const BREAK_GLASS_NOTICE_CAP = 25;
+
+/**
+ * ST-30c.1: the callback of an explicit break-glass flow (`/manage/login?breakGlass=1`). The
+ * identity must hold the root group NOW (the IdP's groups at this sign-in, no stored binding,
+ * no invite) and must have authenticated within the step-up window. It skips `consoleSignIn` and
+ * every ST-31.8 gate and conversion: no account, link or session row is written, and no invite
+ * converts. The cookie is the one-hour break-glass realm; the audit row and the Superadmin notice
+ * make the use loud.
+ */
+async function breakGlassCallback(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+  identity: SessionIdentity,
+  flowCtx: Ctx,
+  flow: FlowRecord,
+): Promise<Response> {
+  const retry = {
+    label: "Use another account",
+    href: loginHref({ returnTo: flowCtx.returnTo }, { go: "1", other: "1" }),
+  };
+  if (!holdsRoot(env, identity.groups)) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Admin break-glass refused: not in the platform admin group",
+      now,
+    });
+    return htmlError(
+      403,
+      identity.email
+        ? `${identity.email} can’t use break-glass`
+        : "This account can’t use break-glass",
+      { lede: "Break-glass is for Superadmins only.", action: retry },
+    );
+  }
+  // A fresh authentication is the point: an IdP that ignored `prompt=login` and `max_age=0`, or
+  // sent no `auth_time` at all, never opens the emergency path.
+  if (
+    typeof identity.authTime !== "number" ||
+    now - identity.authTime > STEP_UP_MAX_AGE_SECONDS
+  ) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Admin break-glass refused: sign-in was not recent",
+      now,
+    });
+    return htmlError(401, "Your provider didn’t ask you to sign in again", {
+      lede: "Sign out of it, then try again.",
+      action: {
+        label: "Sign in again",
+        href: loginHref({}, { breakGlass: "1", go: "1" }),
+      },
+    });
+  }
+  const { token } = await issueBreakGlassSession(env, identity, now);
+  await recordPlatformSecurityEvent(db, {
+    action: "rbac.breakglass",
+    sub: identity.sub,
+    summary: "Break-glass console sign-in",
+    now,
+  });
+  await notifySuperadmins(
+    env,
+    db,
+    now,
+    breakGlassUsedNotice({
+      who: identity.email || identity.name || identity.sub,
+      at: now,
+      network: clientNetwork(req),
+      origin: env.CONSOLE_ORIGIN,
+    }),
+    { left: BREAK_GLASS_NOTICE_CAP },
+    true,
+  );
+  return new Response(null, {
+    status: 302,
+    headers: new Headers([
+      ["location", sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/"],
+      ["set-cookie", buildBreakGlassCookie(token)],
       ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
       ["cache-control", "no-store"],
     ]),

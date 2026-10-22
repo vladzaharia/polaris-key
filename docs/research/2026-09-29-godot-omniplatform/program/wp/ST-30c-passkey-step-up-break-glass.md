@@ -37,6 +37,30 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
 
 - Work owned by the packages in the Depends on and Unblocks rows, and everything ST-30 already shipped.
 
+## Verified against the code (ST-30c.1)
+
+- **C5.** The "full platform authority" invariant was `session.ts:1-6`. ST-30c.1 rewrote that header
+  (v2 pointer, the break-glass realm with no account, the v1 reader kept until ST-30c.8). `docs.ts`
+  is on `can(platform, docs)`, not on a group.
+- **C6.** The card lockup is already 52 px since 81d8c9e04. ST-30c.2 confirms it against frame 13
+  rather than enlarging it.
+- **C7.** `docs/RUNBOOK.md:2105` already holds the break-glass exit facts (at least 30 days from the
+  deploy, 14 days with no `rbac.breakglass` row, two accounts with a Superadmin binding and a strong
+  passkey). The clock starts at the release that carries ST-30c.1.
+- **C8.** SEC-adminsession is not implemented, so the 8 h `ADMIN_SESSION_TTL_SECONDS` is reused and
+  never hardcoded. Break-glass has its own `BREAK_GLASS_TTL_SECONDS` = 3600.
+- **C9.** The sign-in card is script-free (strict CSP); D-S2 applies to later slices.
+- **C10.** Console step-up is `stepUpAt` (`isSteppedUp`, `STEP_UP_MAX_AGE_SECONDS`), not a flag.
+- **C11.** About 110 test files mint v1 cookies, which is why ST-30c.7 exists.
+- **ST-31.8 review note.** `convertInvites(..., via: "passkey")` has no caller yet. ST-30c.5 must pass
+  `via` honestly when its passkey sign-in lands. Break-glass skips every ST-31.8 gate and
+  conversion, and a test pins that it converts no invite.
+- **Done in ST-30c.1.** The break-glass cookie realm, flow flag, callback branch, audit row, the
+  Superadmin notice (`console/lib/operatorNotices.ts`, moved out of `bindings.ts`) and
+  `requireAccountSession` (`console/lib/accountSession.ts`). ST-34's personal-token rows are not on
+  this base; they adopt `requireAccountSession` when the chains merge. The link on the card is
+  ST-30c.2, so the "explicit link" acceptance item stays open until then.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

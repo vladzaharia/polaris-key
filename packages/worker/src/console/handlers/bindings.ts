@@ -102,14 +102,14 @@ import {
   sendOperatorNotice,
   superadminAccountIds,
 } from "./accessShared.js";
+import { requireAccountSession } from "../lib/accountSession.js";
+import { NOTICE_CAP, notifySuperadmins } from "../lib/operatorNotices.js";
 
 /** The write budget per member: generous for a person, a wall for a stolen session. */
 const WRITE_LIMIT = 30;
 const WRITE_WINDOW_SECONDS = 300;
 /** The most accounts read to resolve a member id (as `GET /members/<id>`). */
 const RESOLVE_LIMIT = 20000;
-/** The most addresses one change mails. */
-const NOTICE_CAP = 25;
 /** The most addresses one invitation request takes (ST-31.7). */
 const MAX_INVITE_ADDRESSES = 20;
 /** Invitations one member may send per hour, counted per address (mail abuse). */
@@ -150,9 +150,11 @@ interface Writer {
 
 /** A write needs a signed-in account and its member id (1 above). */
 function writerOf(c: AdminCtx): Writer | Response {
-  const accountId = c.session.aid;
+  const acct = requireAccountSession(c.session);
+  if (acct instanceof Response) return acct;
+  const accountId = acct.accountId;
   const memberId = c.session.principal?.memberId;
-  if (!accountId || !memberId || !isMemberId(memberId))
+  if (!memberId || !isMemberId(memberId))
     return forbiddenReason(
       "account_session_required",
       "Sign in again to change who has access.",
@@ -814,7 +816,9 @@ async function createInvites(
   }
   if (invited.length > 0) {
     const n = await notifySuperadmins(
-      c,
+      c.env,
+      c.db,
+      c.now,
       accessInvitesSentNotice({
         actor: c.session.name || c.session.email,
         count: invited.length,
@@ -861,43 +865,6 @@ async function productNameOf(
   const slug = spec.scope.slice("product:".length);
   if (c.product?.slug === slug) return c.product.name ?? null;
   return (await getProduct(c.db, slug))?.name ?? null;
-}
-
-/** One notice to every active Superadmin that has an address (G5), within `mails`. */
-async function notifySuperadmins(
-  c: AdminCtx,
-  message: ReturnType<typeof accessInvitesSentNotice>,
-  mails: { left: number },
-  priority = false,
-): Promise<{ sent: number; of: number }> {
-  try {
-    const ids = (await superadminAccountIds(c.env, c.db, c.now)).map(
-      (s) => s.id,
-    );
-    const dir = await consoleDirectory(c.env, c.db, ids, c.now);
-    const seen = new Set<string>();
-    const to: string[] = [];
-    for (const id of ids) {
-      const e = dir.get(id);
-      const addr = e?.email.trim();
-      if (!e || e.disabled || !addr || seen.has(addr.toLowerCase())) continue;
-      seen.add(addr.toLowerCase());
-      to.push(addr);
-    }
-    const recipients = to.slice(
-      0,
-      Math.max(0, Math.min(NOTICE_CAP, mails.left)),
-    );
-    mails.left -= recipients.length;
-    const ok = await Promise.all(
-      recipients.map((a) =>
-        sendOperatorNotice(c.env, c.db, a, message, c.now, priority),
-      ),
-    );
-    return { sent: ok.filter(Boolean).length, of: recipients.length };
-  } catch {
-    return { sent: 0, of: 0 };
-  }
 }
 
 function exists(bindingId: string): Response {

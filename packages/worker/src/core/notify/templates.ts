@@ -939,3 +939,36 @@ export function accessInvitesSentNotice(input: {
     }),
   };
 }
+
+/**
+ * ST-30c.1: the break-glass console sign-in was used. Sent as Polaris Key to every Superadmin on
+ * every use. Names who, when and from which network; carries no link and no token.
+ */
+export function breakGlassUsedNotice(input: {
+  /** The identity that signed in (an address or the IdP subject). */
+  who: string | null | undefined;
+  /** When, epoch seconds. */
+  at: number;
+  /** The caller's network as the limiter sees it, when known. */
+  network: string | null | undefined;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const who = operatorText(input.who, "An operator");
+  const when = new Date(input.at * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const from = input.network ? ` from ${displayValue(input.network, "")}` : "";
+  const subject = "Break-glass console sign-in used";
+  const line = `${who} signed in to the Polaris Key console with break-glass at ${when}${from}.`;
+  const footer =
+    "You get this because you are a Superadmin. If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the audit.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}

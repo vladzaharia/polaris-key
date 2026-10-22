@@ -108,7 +108,10 @@ async function logout(c: AdminCtx): Promise<Response> {
     await revokeAdminSessions(c.env, c.session.sub, c.now);
     // A v2 session's `sub` is the member id; the operator's v1 cookies (signed before the deploy)
     // carry the IdP subject, so the mark goes there too.
-    if (c.session.idpSub)
+    if (c.session.breakGlass) {
+      // ST-30c.1: a break-glass session has no account; the mark under its IdP subject ends it,
+      // and the operator's ordinary sessions are not touched.
+    } else if (c.session.idpSub)
       await revokeAdminSessions(c.env, c.session.idpSub, c.now);
     else {
       // A v1 cookie: its `sub` is the IdP subject. The operator's v2 sessions read the mark under

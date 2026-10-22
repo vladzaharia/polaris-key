@@ -7330,6 +7330,55 @@ failures are silent to the caller, by design (no oracle on why).
 
 **Tests:** `test/consoleInviteConversion.test.ts`; `identityErasureFence`.
 
+### Break-glass (ST-30c.1)
+
+**What it is.** The emergency path in to the console when the account layer cannot be used (ST-28
+plan §2.6): `/manage/login?breakGlass=1` (or the card's POST field). It is an explicit link, never
+a fallback: no error page offers it and no ordinary sign-in turns into it.
+
+- **The path.** The flow is the ordinary OIDC flow at the console IdP with `breakGlass` on the flow
+  record, `prompt=login` and `max_age=0` forced (`other=1` cannot weaken it). The callback branches
+  after the ID token verifies and before anything else: no `consoleSignIn`, no ST-31.8 pre-gate,
+  conversion or post-gate.
+- **The gate is the group.** `holdsRoot(env, identity.groups)` on the groups the IdP asserted at
+  this sign-in. A stored binding, an invite or a known link admits no one: otherwise 403 and
+  `admin.signin.refused`. The authentication must be fresh: an `auth_time` no older than
+  `STEP_UP_MAX_AGE_SECONDS`, and an ID token with no `auth_time` is refused (401), so an IdP that
+  ignored `prompt=login` cannot open the path from an old sign-in.
+- **Browser binding.** As every console flow: the flow record names the hash of the
+  `ADMIN_FLOW_COOKIE` of the browser that started it, checked before the single-use consume, so
+  another browser cannot finish it or burn it. A missing or foreign cookie is refused.
+- **No account.** It writes no `accounts`, `account_links` or `account_sessions` row and converts
+  no invite (`test/consoleBreakGlass.test.ts` pins all three at zero). The session names no `aid`
+  or `sid`, so `resolvePrincipal` reads no stored binding: its only grant is the root rule,
+  computed per request from the cookie's IdP groups, so removing the group from the environment
+  ends the authority at the next request. Account self-service (`requireAccountSession`,
+  `console/lib/accountSession.ts`, used by the binding writes) refuses it with 403 reason
+  `break_glass_session`; `/me` returns `breakGlass: true`.
+- **The realm.** Cookie `pkey.admin.bg1|`, exact field set (`sub`, `name`, `email`, `groups`,
+  `csrf`, `exp`, `authAt`, `stepUpAt?`, `bg: true`; an extra or mistyped field fails), a lifetime of
+  `BREAK_GLASS_TTL_SECONDS` = 3600 s in code and never a setting, and an `exp` that outlives the
+  realm is refused. A v1, v2 or portal token with the same body fails to verify in it, and a
+  break-glass body signed under the v1 tag reads as a v1 session that cannot claim `breakGlass`.
+  Sign-out writes the operator-subject mark and the reader refuses a session minted at or before it;
+  logout of a break-glass session leaves the operator's ordinary sessions alone.
+- **Audit and notice.** Every use writes `rbac.breakglass` to `platform_audit` (actor: the IdP
+  `sub`; a fixed summary with no secret) and emails every Superadmin (`breakGlassUsedNotice`: who,
+  when, from which network, "If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the
+  audit"), at most 25 addresses and exempt from the per-recipient budget so it cannot be silenced.
+- **Residual.** Whoever holds the IdP login of a group member can open an hour of Superadmin
+  authority with a fresh login. The group is deploy-time and the realm, the audit row and the
+  notice are what bound and expose it.
+- **Exit facts.** `docs/RUNBOOK.md` (Windows table, "Break-glass"): at least 30 days from the deploy
+  that added it, 14 consecutive days with no `rbac.breakglass` row, and two accounts with a
+  Superadmin binding and a strong passkey. The clock starts at the release that carries this.
+- **Review trigger (§9).** The break-glass branch gains a caller: any new route, link, error page
+  or code path that sends someone to `breakGlass=1`, or that mints `issueBreakGlassSession`
+  outside `breakGlassCallback`.
+
+**Tests:** `test/consoleBreakGlass.test.ts`; `consoleSessionV2`, `adminSessions`,
+`consoleSessionReader`, `rbacStoredPrincipal`, `rbacInvites`, `consoleInviteConversion`.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product
@@ -10047,6 +10096,7 @@ Obtain admin authority
 ├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
+├── Use the break-glass link ─────────────► needs the root group at a fresh IdP login in the browser that started the flow; one hour, no account, audited and mailed to every Superadmin (Break-glass, ST-30c.1)
 ├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)
 ├── Reach an unguarded route ─────────────► deny-by-default route table; route × principal matrix test (ST-29)
 ├── Write a key outside your area ────────► writeSettings() checks can() on the key's rbacArea (ST-29)
