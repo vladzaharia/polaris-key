@@ -161,3 +161,15 @@ def test_a_result_line_names_the_command_by_its_id(tmp_path: Any, capsys: pytest
         args = parser.parse_args(argv)
         args.func(args)
         assert _result(capsys.readouterr().out)["command"] == command
+
+
+def test_yes_is_y_and_deactivate_accepts_it(tmp_path: Any, capsys: pytest.CaptureFixture) -> None:
+    """Node takes `-y, --yes` on logout and deactivate; so does Python."""
+    parser = GroupedHelpParser(prog="tidewater")
+    sub = parser.add_subparsers(dest="command", required=True)
+    register_argparse(sub, config={**GOOD, "base_url": "http://127.0.0.1:9", "config_dir": str(tmp_path)}, version="1.0.0")
+    for argv in (["logout", "-y", "--json"], ["deactivate", "-y", "--json"], ["deactivate", "--yes", "--json"]):
+        args = parser.parse_args(argv)
+        assert args.func(args) in (0, 1)
+        assert _result(capsys.readouterr().out)["event"] == "result"
+    assert "yes" not in sub.choices["deactivate"].format_help()

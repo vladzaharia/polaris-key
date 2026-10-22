@@ -172,10 +172,11 @@ def register_argparse(
             p.add_argument("words", nargs="*", default=None, metavar="ARG", help=argparse.SUPPRESS if not legacy else verb.help)
         for o in verb.opts:
             flag = f"--{o.name}"
+            names = [f"-{o.short}", flag] if o.short else [flag]
             hide = (not legacy) and bool(allowed) and o.name == "to" and "download" not in allowed
             text = mount.option_help(o, hide) if not legacy else o.help
             if o.kind == "flag":
-                p.add_argument(flag, action="store_true", help=text)
+                p.add_argument(*names, action="store_true", help=text)
             else:
                 p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=text)
         p.set_defaults(func=_verb(binding.factory, verb, theme, shown, binding, plan.actions or None, plan.ids))

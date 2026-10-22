@@ -54,6 +54,8 @@ class Opt:
     kind: str = "str"
     help: str = ""
     default: Any = None
+    #: A one-letter alias (``y`` for ``--yes``).
+    short: str = ""
 
 
 @dataclass(frozen=True)
@@ -309,14 +311,15 @@ _REVEAL = (
     Opt("reveal", "flag", "Print the value."),
     Opt("allow-workflow-commands", "flag", "Print the value even if a CI log would run a line of it as a command."),
 )
-_YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
+_YES = (Opt("yes", "flag", "Do not ask for confirmation.", short="y"),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
 VERBS: Tuple[Verb, ...] = (
     Verb("activate", "license", "Add a license key (a masked prompt, stdin or a file).", activate,
          opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
-    Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate),
+    Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate,
+         opts=(Opt("yes", "flag", "Accepted for compatibility; deactivate does not ask.", short="y"),)),
     Verb("status", "license", "License, devices and offline time.", status),
     Verb("sign-in", "identity", "Sign in in your browser, or with a code.", sign_in, opts=_SIGN_IN),
     Verb("login", "identity", "Same as sign-in.", sign_in, opts=_SIGN_IN),

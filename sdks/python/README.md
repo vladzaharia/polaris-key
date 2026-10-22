@@ -659,9 +659,17 @@ verbs under your own command so the kit names it:
 
 ```python
 from polaris_key.cli import register_argparse
+from polaris_key.cli.argparse_cli import GroupedHelpParser
 
-register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
+import polaris_config
+
+parser = GroupedHelpParser(prog="tidewater")
+register_argparse(parser.add_subparsers(dest="command", required=True), config=polaris_config.CONFIG, version="2.4.1")
 ```
+
+`polaris_config` is what `pkey sdk --lang python --write` generates; a config with no slug, no pins
+or a placeholder pin fails the registration with `polaris-bad-config` and that command. Bare
+`devices` and `update` run `devices list` and `update check`.
 
 **Scripts read `--json`, never the human lines.** The human output is localized catalog copy: its
 words, layout and language can change between releases. `--json` is versioned (`"v": 1`). The
@@ -719,10 +727,10 @@ the CLI's out-of-the-box invocation requested a document that skipped version _a
 enforcement. Pass your application's real version when you mount these commands into your
 own CLI.
 
-To mount the commands onto your own program, import the adapter you use: the click adapter
-exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an `app`
-(`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
-`polaris_key.cli.register_argparse(subparsers, client_factory=…)`.
+To mount the commands onto your own program, use the hook for its framework:
+`polaris_key.cli.register_argparse(subparsers, config=…, version=…)`, `register_click(group, …)` or
+`register_typer(app, …)`, which take the same options. The click and typer adapters also expose a
+ready group (`polaris_key.cli.click_cli.cli`) and app (`polaris_key.cli.typer_cli.app`).
 
 ### The Qt kit
 

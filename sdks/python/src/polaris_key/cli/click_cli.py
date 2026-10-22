@@ -222,7 +222,7 @@ def _click_verb(
         params.append(click.Argument(["words"], nargs=-1))
     for o in verb.opts + verbs_mod.UI_OPTS:
         if o.kind == "flag":
-            params.append(click.Option([f"--{o.name}"], is_flag=True, default=False, help=_help(o), hidden=o.help.startswith("Accepted for compatibility")))
+            params.append(click.Option(([f"-{o.short}"] if o.short else []) + [f"--{o.name}"], is_flag=True, default=False, help=_help(o), hidden=o.help.startswith("Accepted for compatibility")))
         else:
             hide = bool(actions) and o.name == "to" and "download" not in (actions.get(verb.name) or ("download",))
             params.append(click.Option([f"--{o.name}"], type=int if o.kind == "int" else str, default=o.default, help=_help(o), hidden=hide))

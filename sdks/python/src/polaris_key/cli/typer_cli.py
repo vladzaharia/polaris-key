@@ -165,7 +165,7 @@ def _typer_verb(
         ann: Any = bool if o.kind == "flag" else (Optional[int] if o.kind == "int" else Optional[str])
         text = mount.option_help(o)
         default = typer.Option(
-            False if o.kind == "flag" else o.default, f"--{o.name}", help=None if text == "==SUPPRESS==" else text, hidden=text == "==SUPPRESS=="
+            False if o.kind == "flag" else o.default, *([f"-{o.short}"] if o.short else []), f"--{o.name}", help=None if text == "==SUPPRESS==" else text, hidden=text == "==SUPPRESS=="
         )
         params.append(P(verbs_mod.option_dest(o.name), P.KEYWORD_ONLY, default=default, annotation=ann))
 
