@@ -11,7 +11,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { getProduct, listProducts } from "../../core/products/store.js";
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import { SYSTEM_PRODUCT_SLUG, channelLabel } from "@polaris-key/manifest";
 import { storesMissingAccount } from "../../services/distribution/public.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { settingsWarnings } from "../handlers/platformSettings.js";
@@ -33,10 +33,10 @@ export interface PlatformReady {
 }
 
 const STORE_LABEL: Readonly<Record<string, string>> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  "google-play": channelLabel("google-play"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  steam: channelLabel("steam"),
 };
 
 /** What each store's platform account is, in the sentence that asks for it. */

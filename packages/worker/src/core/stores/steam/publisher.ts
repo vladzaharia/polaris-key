@@ -11,6 +11,7 @@
  * `steam.appIds`.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -258,7 +259,7 @@ export async function checkSteamPublisherKey(o: {
     );
   } catch (e) {
     return storeUnavailable(
-      "Steam",
+      channelLabel("steam"),
       e instanceof StoreUnavailable ? e.status : 0,
     );
   }

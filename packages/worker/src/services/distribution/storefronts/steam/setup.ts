@@ -14,7 +14,7 @@
  * Without all of that the adapter is inert and says why, in the connectors' vocabulary.
  */
 
-import { effectiveTrackMap } from "@polaris-key/manifest";
+import { effectiveTrackMap, channelLabel } from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../../../platform/json.js";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
@@ -179,7 +179,14 @@ export async function resolveSteamSetup(
     if (!f.ok)
       return inert(
         f.reason,
-        platformFallbackMessage("Steam", "steam", "app id", appId, product, f),
+        platformFallbackMessage(
+          channelLabel("steam"),
+          "steam",
+          "app id",
+          appId,
+          product,
+          f,
+        ),
         appId,
       );
     return setupWith(f.handle, "platform");
