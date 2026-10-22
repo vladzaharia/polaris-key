@@ -32,10 +32,14 @@ _ROWS: List[Dict[str, Any]] = [
 ]
 
 
+# The core refuses an empty pin set (nothing could verify); a row with no keys gets one pin that signed
+# nothing, which is the same verdict.
+_NO_SIGNER = {"unused-pin": "A" * 43}
+
 def _app(row: Dict[str, Any], **kw: Any) -> TestClient:
     o = row["input"]["options"]
     slug = o["products"][0]
-    cfg = {"product_slug": slug, "base_url": "https://key.plrs.im", "trust": row["input"]["trust"][slug]}
+    cfg = {"product_slug": slug, "base_url": "https://key.plrs.im", "trust": row["input"]["trust"][slug] or _NO_SIGNER}
     polaris = PolarisKey(config=cfg, trust_refresh=False, clock=lambda: row["input"]["now"], **kw)
     app = FastAPI()
     polaris.install(app)

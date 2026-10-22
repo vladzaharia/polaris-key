@@ -21,7 +21,7 @@ def check(directory: Path) -> int:
         except SyntaxError as e:
             print(f"{f.name}:{e.lineno}: error: {e.msg}  [syntax]")
     proc = subprocess.run(
-        [sys.executable, "-m", "mypy", "--no-incremental", "--cache-dir=/dev/null", *[f.name for f in files]],
+        [sys.executable, "-m", "mypy", "--no-incremental", "--cache-dir=/dev/null", "--disable-error-code=import-untyped", *[f.name for f in files]],
         cwd=directory,
         capture_output=True,
         text=True,

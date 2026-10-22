@@ -443,7 +443,7 @@
     },
     "server.license": {
       "status": "implemented",
-      "note": "polaris_key.server: PolarisKey (verdict, trust refresh, verified-document cache), with FastAPI/Starlette, Django/DRF and Flask adapters that import their framework lazily (extras starlette, fastapi, flask, django, drf). Replays backend-matrix.json's verdict and problem sections (tests/test_server_matrix.py) and gates a route in each framework."
+      "note": "polaris_key.server: PolarisKey (verdict, trust refresh, verified-document cache), with FastAPI/Starlette, Django/DRF and Flask adapters that import their framework lazily (extras starlette, fastapi, flask, django, drf). Replays backend-matrix.json's verdict and problem sections (tests/test_server_matrix.py) and gates a route in each framework. require_tier / require_all, get_polaris_license, CORS preflight pass, start-up config errors and polaris_key.server.testing: tests/test_server_dx.py."
     },
     "server.signin": {
       "status": "implemented",

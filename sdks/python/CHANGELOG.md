@@ -11,6 +11,25 @@ Kit screens.
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
   Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, (Renew needs nothing: the host handles its press).
 
+- **`polaris_key.server` developer pass.** Brings the drop-ins level with `@polaris-key/server`.
+  A bad config (none, no `product_slug`, no or empty `trust`, a pin that is not a 43-character
+  base64url Ed25519 key, a `base_url` that is not an http(s) origin, a product twice) raises
+  `PolarisKeySetupError` at construction, naming the fix (`pkey sdk --lang python --write`);
+  `base_url` defaults to `https://key.plrs.im`, and Django's `POLARIS_KEY` rejects unknown keys.
+  New: `require_tier(*tiers)` and `require_all(*requirements)` in every adapter (`has_tier`,
+  `has_all` in DRF; `require` stays), the builders `tier()`, `sign_in()`, `entitlement()`;
+  `get_polaris_license(...)`, a non-`Optional` accessor that raises on an ungated route; a CORS
+  preflight (`OPTIONS` with `Access-Control-Request-Method`) now passes every gate, and
+  `preflight="gate"` restores the refusal; a gated response gets `Cache-Control: private` unless it
+  has one; `on_refusal` takes `(problem)` or `(problem, request)` in every adapter and DRF's
+  `exception_handler` honors it; `Problem.with_status()`, `ProblemBody`, `RefusalCode`,
+  `problem_response()`; a failed trust fetch is logged at debug level with its reason and says it
+  keeps the last verified keys and the pins (a 404 says to check `base_url` and the slug); Django
+  gates accept async views and class-based methods; Flask raises when a gate sits above `@app.get`;
+  a DRF permission without `PolarisKeyAuthentication` raises with the fix. New
+  `polaris_key.server.testing`: `create_test_kit()` with `options()`, `signed_headers()`,
+  `headers_for(verdict)`, a clock and a fake trust service. Verdicts are unchanged (the corpus rows
+  replay as before); the default statuses stay 401 and 403.
 - **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
 - **The Qt kit's `run_gate` runs activation and sign-in.** The gate shows Welcome, license-key entry
   (Paste, a live verdict, refusals as an info callout with their next step), sign-in in the browser or

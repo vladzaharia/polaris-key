@@ -6,31 +6,57 @@ declares an ``APIKeyHeader("X-PKey-License")`` scheme, so ``/docs`` shows it.
 
     @app.get("/api/export")
     def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]):
-        return {"tier": auth.license.tier}
+        return {"tier": get_polaris_license(auth).tier}
+
+``get_polaris_license(auth)`` is the license without the ``Optional``. Dependencies:
+``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
+``require_sign_in()`` and ``require_all(*requirements)`` (``require`` is the same). ``install``
+registers the refusal handler and the ``Cache-Control: private`` middleware. A CORS preflight
+passes every gate (``PolarisKey(preflight="gate")`` refuses it).
 """
 
 from __future__ import annotations
 
 from typing import Any, Callable, Optional, Sequence, Tuple
 
-from fastapi import Request, Security
+from fastapi import Request, Response, Security
 from fastapi.security import APIKeyHeader
 
 from ._core import PolarisAuth
-from ._verdict import HEADER_LICENSE, Requirement, entitlement, signin
-from .starlette import PolarisHTTPError, PolarisKey as _StarlettePolarisKey, PolarisKeyMiddleware
+from ._verdict import HEADER_LICENSE, Requirement, as_requirements, entitlement, signin, tier
+from .starlette import (
+    PolarisCacheControlMiddleware,
+    PolarisHTTPError,
+    PolarisKey as _StarlettePolarisKey,
+    PolarisKeyMiddleware,
+    get_polaris_license,
+    problem_response,
+)
 
-__all__ = ["PolarisKey", "PolarisKeyMiddleware", "PolarisAuth", "PolarisHTTPError"]
+__all__ = [
+    "PolarisKey",
+    "PolarisKeyMiddleware",
+    "PolarisCacheControlMiddleware",
+    "PolarisAuth",
+    "PolarisHTTPError",
+    "get_polaris_license",
+    "problem_response",
+]
 
-_scheme = APIKeyHeader(name=HEADER_LICENSE, auto_error=False, description="The app's signed licence document")
+_scheme = APIKeyHeader(name=HEADER_LICENSE, auto_error=False, description="The app's signed license document")
 
 
 class PolarisKey(_StarlettePolarisKey):
     """The Starlette adapter whose ``require_*`` methods return FastAPI dependencies."""
 
     def _dependency(self, require: Tuple[Requirement, ...]) -> Callable[..., Any]:
-        async def dependency(request: Request, _license: Optional[str] = Security(_scheme)) -> PolarisAuth:
-            return await self.gate(request, require)
+        async def dependency(
+            request: Request, response: Response, _license: Optional[str] = Security(_scheme)
+        ) -> PolarisAuth:
+            auth = await self.gate(request, require)
+            if auth.license is not None and "cache-control" not in response.headers:
+                response.headers["Cache-Control"] = "private"
+            return auth
 
         return dependency
 
@@ -42,9 +68,16 @@ class PolarisKey(_StarlettePolarisKey):
     ) -> Callable[..., Any]:
         return self._dependency((entitlement(name, test),))
 
+    def require_tier(self, *tiers: str) -> Callable[..., Any]:  # type: ignore[override]
+        """The license's tier is one of ``tiers``."""
+        return self._dependency((tier(*tiers),))
+
     def require_sign_in(self) -> Callable[..., Any]:  # type: ignore[override]
         return self._dependency((signin(),))
 
-    def require(self, *requirements: Requirement) -> Callable[..., Any]:
-        """Several requirements in order, for example ``require(entitlement("pro"), signin())``."""
-        return self._dependency(tuple(requirements))
+    def require_all(self, *requirements: Requirement) -> Callable[..., Any]:  # type: ignore[override]
+        """Several requirements in order, for example ``require_all(signin(), tier("pro"))``;
+        the first that fails refuses."""
+        return self._dependency(as_requirements(requirements, "require_all"))
+
+    require = require_all

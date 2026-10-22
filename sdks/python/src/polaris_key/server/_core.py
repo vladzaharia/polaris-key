@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
 import logging
+import re
 import threading
 import time
 from collections import OrderedDict
@@ -37,7 +39,17 @@ from ._verdict import (
     parse_credential,
 )
 
-__all__ = ["PolarisKey", "PolarisAuth", "PolarisKeyError", "TRUST_REFRESH_SECONDS", "UNKNOWN_KID_SECONDS"]
+__all__ = [
+    "PolarisKey",
+    "PolarisAuth",
+    "PolarisKeyError",
+    "PolarisKeySetupError",
+    "TRUST_REFRESH_SECONDS",
+    "UNKNOWN_KID_SECONDS",
+    "DEFAULT_BASE_URL",
+    "get_polaris_license",
+    "is_cors_preflight",
+]
 
 log = logging.getLogger("polaris_key.server")
 
@@ -48,6 +60,17 @@ UNKNOWN_KID_SECONDS = 60
 _FETCH_TIMEOUT = 5.0
 #: A signed trust manifest is a few KiB; the read stops here.
 MANIFEST_MAX_BYTES = 262_144
+DEFAULT_BASE_URL = "https://key.plrs.im"
+CONFIG_HINT = "pass the module `pkey sdk --lang python --write` generates: PolarisKey(config=polaris_config)"
+#: A raw Ed25519 public key, base64url: what a pin is.
+_PIN = re.compile(r"[A-Za-z0-9_-]{43}")
+_ORIGIN = re.compile(r"https?://[^/\s]+", re.IGNORECASE)
+
+
+class PolarisKeySetupError(RuntimeError, TypeError, ValueError):
+    """The drop-in is misconfigured or misused: a bad config at start-up, or a license read on
+    a route with no gate. The message says what to change. (A ``TypeError`` and a ``ValueError``
+    too, which is what a bad option raised before this class existed.)"""
 
 
 class PolarisKeyError(Exception):
@@ -68,15 +91,59 @@ class PolarisKeyError(Exception):
 
 @dataclass(frozen=True)
 class PolarisAuth:
-    """What the request carries after the licence check. ``problem`` is set whenever ``license``
-    is None, and also when the licence passed but the route's requirement did not."""
+    """What the request carries after the license check. ``problem`` is set whenever ``license``
+    is None, and also when the license passed but the route's requirement did not."""
 
     license: Optional[PolarisLicense]
     user: Optional[PolarisUser]
     problem: Optional[Problem]
+    #: True for a CORS preflight the gate let through (``preflight="pass"``): no license was checked.
+    preflight: bool = False
 
     def __repr__(self) -> str:
         return f"PolarisAuth(license={self.license!r}, signed_in={self.user is not None}, problem={self.problem.code if self.problem else None})"
+
+
+def get_polaris_license(auth: Optional[PolarisAuth]) -> PolarisLicense:
+    """The license of a gated request, never ``None``. Raises :class:`PolarisKeySetupError`
+    when the request carries none: an ungated route, a refused request or a CORS preflight.
+    The framework modules offer the same function taking their request."""
+    if auth is not None and auth.license is not None and auth.problem is None:
+        return auth.license
+    if auth is not None and auth.preflight:
+        why = "this request is a CORS preflight, which carries no license; answer OPTIONS before reading it"
+    elif auth is not None and auth.problem is not None:
+        why = f"the request was refused ({auth.problem.code})"
+    else:
+        why = "the route has no Polaris Key gate; add require_license() (or require_entitlement, require_tier, require_sign_in) to it"
+    raise PolarisKeySetupError(f"get_polaris_license: no license on this request: {why}")
+
+
+def is_cors_preflight(method: str, headers: HeadersLike) -> bool:
+    """Whether a request is a CORS preflight: ``OPTIONS`` carrying ``Access-Control-Request-Method``.
+    A browser sends no custom header on it, so a gate that refused it would break every
+    cross-origin call before the real request ran."""
+    if method.upper() != "OPTIONS":
+        return False
+    return any(k.lower() == "access-control-request-method" for k, _ in _pairs(headers))
+
+
+def _adapt_refusal(fn: Optional[Callable[..., Any]]) -> Optional[Callable[[Problem, Any], Any]]:
+    """``on_refusal`` takes ``(problem)`` or ``(problem, request)``; the adapters always call it with both."""
+    if fn is None:
+        return None
+    if not callable(fn):
+        raise PolarisKeySetupError("PolarisKey: on_refusal is a function f(problem, request) returning the response")
+    try:
+        params = list(inspect.signature(fn).parameters.values())
+    except (TypeError, ValueError):
+        return fn
+    if any(p.kind is p.VAR_POSITIONAL for p in params):
+        return fn
+    positional = [p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+    if len(positional) >= 2:
+        return fn
+    return lambda problem, _ctx: fn(problem)
 
 
 def _config_fields(config: Any) -> Tuple[str, str, Dict[str, str], Optional[List[str]]]:
@@ -95,9 +162,32 @@ def _config_fields(config: Any) -> Tuple[str, str, Dict[str, str], Optional[List
                 "trust": getattr(config, "PINNED_KEYS", None),
                 "expected_services": getattr(config, "EXPECTED_SERVICES", None),
             }
+    if isinstance(config, str):
+        raise PolarisKeySetupError(f"PolarisKey: config is the string {config!r}; import the module and {CONFIG_HINT}")
     slug, base, pins = src.get("product_slug"), src.get("base_url"), src.get("trust")
-    if not isinstance(slug, str) or not slug or not isinstance(base, str) or not isinstance(pins, Mapping):
-        raise TypeError("PolarisKey: config needs product_slug, base_url and trust (the pkey sdk output)")
+    if not isinstance(slug, str) or not slug:
+        raise PolarisKeySetupError(f"PolarisKey: config.product_slug is missing; {CONFIG_HINT}")
+    if not isinstance(pins, Mapping):
+        raise PolarisKeySetupError(
+            f"PolarisKey: config for {slug!r} has no trust (the pinned keys); run `pkey sdk --lang python --write` to write them"
+        )
+    if not pins:
+        raise PolarisKeySetupError(
+            f"PolarisKey: the pinned keys for {slug!r} are empty, so no license could verify; "
+            "run `pkey sdk --lang python --write` to write the product's keys"
+        )
+    for kid, key in pins.items():
+        if not isinstance(key, str) or not _PIN.fullmatch(key):
+            raise PolarisKeySetupError(
+                f"PolarisKey: the pinned key {kid!r} for {slug!r} is not a raw Ed25519 public key "
+                "(43 base64url characters); copy it from Core > Keys & secrets or rerun `pkey sdk`"
+            )
+    if base is None:
+        base = DEFAULT_BASE_URL
+    if not isinstance(base, str) or not _ORIGIN.match(base):
+        raise PolarisKeySetupError(
+            f"PolarisKey: base_url {base!r} for {slug!r} is not an http(s) origin such as {DEFAULT_BASE_URL}"
+        )
     services = src.get("expected_services")
     return slug, base.rstrip("/"), dict(pins), list(services) if services is not None else None
 
@@ -157,29 +247,37 @@ class PolarisKey:
         http_client: Any = None,
         clock: Optional[Callable[[], float]] = None,
         cache_size: int = 1000,
+        preflight: str = "pass",
     ) -> None:
         configs = list(products) if products is not None else ([config] if config is not None else [])
         if not configs:
-            raise TypeError("PolarisKey: pass config= (or products=[...])")
+            raise PolarisKeySetupError(f"PolarisKey: the options need a config; {CONFIG_HINT}")
         if errors == "throw":
             errors = "raise"
         if errors not in ("respond", "raise"):
-            raise ValueError('PolarisKey: errors is "respond" or "raise"')
+            raise PolarisKeySetupError('PolarisKey: errors is "respond" or "raise"')
+        if preflight not in ("pass", "gate"):
+            raise PolarisKeySetupError('PolarisKey: preflight is "pass" or "gate"')
         if max_age_seconds is not None and (
             isinstance(max_age_seconds, bool) or not isinstance(max_age_seconds, int) or max_age_seconds < 0
         ):
-            raise ValueError("PolarisKey: max_age_seconds is a non-negative integer")
+            raise PolarisKeySetupError("PolarisKey: max_age_seconds is a non-negative integer")
         self._trust: Dict[str, _Trust] = {}
         for c in configs:
             slug, base, pins, services = _config_fields(c)
             # A misconfiguration fails at start, not as a refusal of every request later.
             if services is not None and "license" not in services:
-                raise ValueError(f"PolarisKey: product {slug!r} does not enable the license service")
+                raise PolarisKeySetupError(
+                    f"PolarisKey: product {slug!r} does not enable the license service, so it issues no license to verify"
+                )
+            if slug in self._trust:
+                raise PolarisKeySetupError(f"PolarisKey: product {slug!r} is configured twice")
             self._trust[slug] = _Trust(slug, base, pins)
         self.products: Tuple[str, ...] = tuple(self._trust)
         self.max_age_seconds = max_age_seconds
         self.errors = errors
-        self.on_refusal = on_refusal
+        self.on_refusal = _adapt_refusal(on_refusal)
+        self.preflight = preflight
         self.on_verdict = on_verdict
         self.trust_refresh = trust_refresh
         self._http = http_client
@@ -243,6 +341,13 @@ class PolarisKey:
                 },
             ) as res:
                 if res.status_code != 200:
+                    log.debug(
+                        "trust manifest: %s answered %s for %s; check base_url and the product slug; "
+                        "keeping the last verified keys and the pins",
+                        t.base_url,
+                        res.status_code,
+                        t.slug,
+                    )
                     return False
                 body = bytearray()
                 for chunk in res.iter_bytes():
@@ -259,11 +364,19 @@ class PolarisKey:
                 last_trust_issued_at=floor,
                 now=now,
             )
-        except Exception:
-            log.debug("trust manifest fetch failed for %s", t.slug)
+        except Exception as exc:
+            log.debug(
+                "trust manifest fetch failed for %s (%s); keeping the last verified keys and the pins",
+                t.slug,
+                _reason(exc),
+            )
             return False
         if result.doc is None:
-            log.debug("trust manifest for %s was not accepted", t.slug)
+            log.debug(
+                "trust manifest for %s was not accepted (bad signature, wrong product or not newer); "
+                "keeping the last verified keys and the pins",
+                t.slug,
+            )
             return False
         issued = result.doc.get("issuedAt")
         # Install and invalidate together: a verification that began under the older set
@@ -423,8 +536,19 @@ class PolarisKey:
                 log.debug("on_verdict raised")
         return PolarisAuth(auth.license, auth.user, backend_problem(failed, self.realm, accept_language))
 
+    def lets_through(self, method: str, headers: HeadersLike) -> bool:
+        """Whether a gate passes this request without a license: a CORS preflight, unless ``preflight="gate"``."""
+        return self.preflight == "pass" and is_cors_preflight(method, headers)
+
     def refusal(self, problem: Problem) -> PolarisKeyError:
         return PolarisKeyError(problem)
+
+
+def _reason(exc: BaseException) -> str:
+    """A short, secret-free reason for a failed fetch: the error's class and message."""
+    cause = exc.__cause__ or exc.__context__
+    inner = f": {cause}" if cause is not None and str(cause) else ""
+    return f"{type(exc).__name__}: {exc}{inner}"[:200]
 
 
 def _status(code: str) -> int:
