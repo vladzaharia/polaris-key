@@ -125,6 +125,7 @@ function renderPage() {
 beforeEach(() => {
   stepUpRedirect.mockReset();
   setStepUpRedirectForTests(() => stepUpRedirect());
+  sessionStorage.clear();
   gate.value = { allowed: true, canView: true, disabledReason: undefined };
   for (const m of [
     product,
@@ -276,6 +277,38 @@ describe("Cloud Sync → Setup", () => {
       within(dialog).getByRole("button", { name: "Sign in again" }),
     );
     expect(stepUpRedirect).toHaveBeenCalled();
+
+    // The page comes back from the sign-in: the dialog opens again with the reason.
+    cleanup();
+    patch.mockReset();
+    renderPage();
+    const again = await screen.findByRole("alertdialog");
+    expect(
+      (within(again).getByLabelText(/Reason/) as HTMLTextAreaElement).value,
+    ).toBe("Outage");
+    await user.click(
+      within(again).getByRole("button", { name: /Pause writes for/ }),
+    );
+    expect(patch).toHaveBeenCalledWith(
+      "cloudSync.writesPaused",
+      expect.objectContaining({ value: "on", reason: "Outage" }),
+    );
+  });
+
+  it("says who paused writes, and shows an error with Try again when the settings read fails", async () => {
+    const user = userEvent.setup();
+    platformSettings.mockResolvedValue(view([PAUSED(true), QUOTA]));
+    renderPage();
+    expect(await screen.findByText(/Paused .* by ana\./)).toBeTruthy();
+    cleanup();
+    platformSettings.mockReset();
+    platformSettings.mockRejectedValueOnce(new ApiError(500));
+    platformSettings.mockResolvedValue(view([PAUSED(false), QUOTA]));
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /Try again/ }));
+    expect(
+      await screen.findByRole("button", { name: "Pause writes…" }),
+    ).toBeTruthy();
   });
 
   it("shows the paused banner and resumes", async () => {
@@ -332,16 +365,12 @@ describe("Cloud Sync → Setup", () => {
         "Ask Ana Lima (ana@example.com) for Platform edit access.",
     };
     renderPage();
-    const change = await screen.findByRole("button", { name: "Change…" });
-    expect(change.getAttribute("aria-disabled")).toBe("true");
+    // Who can change them is said once, and no control implies a state the member cannot read.
     expect(
-      screen
-        .getByRole("button", { name: "Pause writes…" })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
-    expect(
-      screen.getAllByText(/Platform admins only\. Ask Ana Lima/).length,
-    ).toBeGreaterThan(0);
+      await screen.findAllByText(/Platform admins only\. Ask Ana Lima/),
+    ).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Change…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pause writes/ })).toBeNull();
     expect(platformSettings).not.toHaveBeenCalled();
   });
 });

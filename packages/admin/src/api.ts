@@ -5430,14 +5430,10 @@ const rawApi = {
    * (fixes PRD-4: an auto-filled guard guards nothing).
    */
   deleteProduct: (slug: string, confirmSlug: string) =>
-    call<{ ok: true; slug: string }>(
-      p(slug),
-      {
-        method: "DELETE",
-        body: JSON.stringify({ confirmSlug }),
-      },
-      { stepUpRedirect: true },
-    ),
+    call<{ ok: true; slug: string }>(p(slug), {
+      method: "DELETE",
+      body: JSON.stringify({ confirmSlug }),
+    }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   /** The resync's dry run: reads the manifest and plans. Writes nothing. */
@@ -5604,7 +5600,6 @@ const rawApi = {
         method: "POST",
         body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
       },
-      { stepUpRedirect: true },
     ),
   retireProductKey: (slug: string, kid: string) =>
     call<{ ok: true; kid: string; status: "retired" }>(
@@ -6386,7 +6381,6 @@ const rawApi = {
     call<{ ok: true; stores: string[] }>(
       `${p(slug)}/users/${enc(subject)}/data/delete`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   detachProductUserLicense: (
     slug: string,
@@ -6396,7 +6390,6 @@ const rawApi = {
     call<{ ok: true }>(
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   /** Needs a step-up (403 `step_up_required` otherwise). */
   relinkProductUserLicense: (

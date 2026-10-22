@@ -179,7 +179,7 @@ describe("api — request shaping", () => {
 describe("api — step-up refusals", () => {
   afterEach(() => setStepUpRedirectForTests());
 
-  it("a gated action refused for a stale step-up goes to the step-up sign-in", async () => {
+  it("a gated action refused for a stale step-up reaches the caller, whose dialog shows the step-up state", async () => {
     const redirect = vi.fn();
     setStepUpRedirectForTests(redirect);
     stubFetch(() =>
@@ -192,7 +192,8 @@ describe("api — step-up refusals", () => {
       status: 403,
       code: "step_up_required",
     });
-    expect(redirect).toHaveBeenCalledTimes(1);
+    // Inside a ConfirmDialog the page must not leave before the dialog can keep what was typed.
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it("a 401 says the session ended only when the Worker marks an expired session", async () => {
