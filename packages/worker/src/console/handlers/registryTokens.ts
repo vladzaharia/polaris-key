@@ -179,8 +179,12 @@ async function serviceRevocations(
       ? await listPlatformAudit(db, filter)
       : await listAudit(db, owner, filter);
   for (const t of revoked) {
+    // The row that revoked it, not a later idempotent re-revoke (which writes a row too).
     const own = rows.find(
-      (r) => r.target_kind === "ci_token" && r.target_id === t.tokenId,
+      (r) =>
+        r.target_kind === "ci_token" &&
+        r.target_id === t.tokenId &&
+        r.at === t.revokedAt,
     );
     const all = rows.find(
       (r) =>
