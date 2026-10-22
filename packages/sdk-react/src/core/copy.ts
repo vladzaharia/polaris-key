@@ -21,10 +21,11 @@
 // A code with no entry falls back to COPY_FALLBACK, which NAMES the code and never shows the raw
 // server body: a body is not copy, and it is not localised.
 //
-// French is the proof locale and stays a hand table until SP-03 generates the locales; more
-// locales are content, not code (`registerCopyLocale`). A non-English bundle is keyed by error
-// code, gate status and §3.1 activation kind (camelCase, as `ActivationOutcome.kind`), and every
-// key it lacks falls back to the generated English.
+// French is a hand table (the bundle size budget keeps the full generated packs out of the
+// entry) whose every sentence is conformance/parity/copy.fr.json's, pinned by test/copy.test.ts;
+// more locales are content, not code (`registerCopyLocale`). A non-English bundle is keyed by
+// error code, gate status and §3.1 activation kind (camelCase, as `ActivationOutcome.kind`), and
+// every key it lacks falls back to the generated English.
 
 import {
   COPY_ACTIVATION,
@@ -40,6 +41,12 @@ export interface CopyBundle {
   titles?: Record<string, string>;
   /** The fallback sentence; `{code}` is replaced by the code. */
   generic: string;
+  /** Activation results (keyed by the camelCase kind) whose entry differs from the error code
+   *  or gate status of the same name; read before `messages` and `titles` for an activation. */
+  activation?: {
+    messages?: Record<string, string>;
+    titles?: Record<string, string>;
+  };
 }
 
 /** A §3.1 activation kind (`deviceLimit`) as its activationResult (`device-limit`). */
@@ -75,11 +82,11 @@ const EN: CopyBundle = {
 };
 
 const FR: CopyBundle = {
-  generic: "Une erreur s'est produite ({code}). Veuillez réessayer.",
+  generic: "Une erreur s’est produite ({code}). Réessayez.",
   titles: {
-    deviceLimit: "Limite d'appareils atteinte",
-    device_limit: "Limite d'appareils atteinte",
-    key_entry_limit: "Plus aucune saisie de clé",
+    deviceLimit: "Limite d’appareils atteinte",
+    device_limit: "Limite d’appareils atteinte",
+    key_entry_limit: "Aucune saisie restante",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
     licenseExpired: "Licence expirée",
@@ -88,226 +95,244 @@ const FR: CopyBundle = {
     enroll_claimed: "Connectez-vous pour continuer",
     rateLimited: "Trop de tentatives",
     rate_limited: "Trop de tentatives",
-    unauthorized: "Clé refusée",
-    network: "Vous êtes hors ligne",
-    "network-error": "Vous êtes hors ligne",
-    attestation_required: "Vérification de l'appareil requise",
-    attestationRequired: "Vérification de l'appareil requise",
-    "needs-activation": "Activation requise",
-    revoked: "Licence révoquée",
+    unauthorized: "Non connecté",
+    network: "Connexion impossible",
+    "network-error": "Connexion impossible",
+    attestation_required: "Vérification de l’appareil requise",
+    attestationRequired: "Vérification de l’appareil requise",
+    "needs-activation": "Activer",
+    revoked: "Déconnecté",
     expired: "Licence expirée",
     grace: "Période de grâce hors ligne",
     "version-too-old": "Mise à jour requise",
-    "version-too-new": "Version non autorisée",
+    "version-too-new": "Indisponible avec cette licence",
     "channel-not-entitled": "Canal non inclus",
   },
   messages: {
     deviceLimit:
-      "Cette licence a atteint sa limite d'appareils. Libérez un appareil depuis votre compte, puis réessayez.",
+      "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.",
     fingerprintRequired:
-      "Cette licence exige une vérification d'appareil que cette application ne peut pas fournir ici. Contactez le développeur.",
+      "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil.",
     hardwareMismatch:
-      "Cet appareil a changé depuis son activation. Activez-le à nouveau pour le lier.",
+      "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici.",
     enrollClaimed:
-      "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l'utiliser.",
+      "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser.",
     licenseDisabled:
-      "Cette licence a été désactivée. Contactez le vendeur ou votre administrateur.",
-    licenseExpired:
-      "Cette licence a expiré. Renouvelez-la pour continuer à utiliser l'application.",
+      "Cette licence a été désactivée. Contactez le développeur.",
+    licenseExpired: "Cette licence a expiré. Renouvelez-la pour continuer.",
     attestationRequired:
-      "Ce produit ne fonctionne que sur des appareils vérifiés, et cet appareil n'a pas pu être vérifié.",
+      "Cette licence nécessite un appareil vérifié. Laissez l’app vérifier cet appareil, puis réessayez.",
     rateLimited: "Trop de tentatives. Patientez un instant, puis réessayez.",
     enrollDisabled:
-      "L'activation gratuite n'est pas proposée pour ce produit. Saisissez une clé ou connectez-vous.",
-    refused: "Le service de licences a refusé cette demande ({code}).",
+      "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.",
+    refused: "L’activation a été refusée ({code}).",
     error:
-      "Impossible de joindre le service de licences. Vérifiez votre connexion et réessayez.",
+      "L’activation n’a pas abouti. Vérifiez votre connexion, puis réessayez.",
     unauthorized:
-      "Cette clé ou cette session n'a pas été acceptée. Vérifiez-la et réessayez.",
-    not_found: "Cet élément n'existe pas, ou ce produit ne le propose pas.",
+      "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou réactivez-le.",
+    not_found: "Cet élément est introuvable. Il a peut-être été supprimé.",
     bad_request:
-      "La demande n'était pas valide. Mettez l'application à jour et réessayez.",
-    forbidden: "Votre licence ne vous permet pas de faire cela.",
+      "La requête n’était pas valide. Mettez l’app à jour, puis réessayez.",
+    forbidden: "Vous n’avez pas l’autorisation d’effectuer cette action.",
     attestation_required:
-      "Ce produit ne fonctionne que sur des appareils vérifiés, et cet appareil n'a pas pu être vérifié.",
-    attestation_rejected:
-      "Cet appareil n'a pas pu être vérifié. Réessayez plus tard.",
+      "Un appareil vérifié est nécessaire. Laissez l’app vérifier cet appareil, puis réessayez.",
+    attestation_rejected: "Cet appareil n’a pas pu être vérifié. Réessayez.",
     attestation_unavailable:
-      "La vérification des appareils n'est pas encore configurée pour ce produit.",
+      "La vérification des appareils n’est pas disponible pour cette app pour le moment. Réessayez dans quelques minutes.",
     rate_limited: "Trop de tentatives. Patientez un instant, puis réessayez.",
-    body_too_large: "C'était trop volumineux pour être envoyé.",
+    body_too_large: "Cet élément est trop volumineux pour être envoyé.",
     method_not_allowed:
-      "Cette application a envoyé une demande que le service n'accepte pas. Mettez-la à jour.",
+      "La requête n’était pas valide. Mettez l’app à jour, puis réessayez.",
     misconfigured:
-      "Ce produit n'est pas encore entièrement configuré. Contactez le développeur.",
+      "Ce service n’est pas correctement configuré. Contactez le développeur.",
     registration_closed:
-      "Ce produit exige une clé de licence ou une connexion avant que cet appareil puisse le rejoindre.",
+      "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez cet appareil avec une clé de licence ou connectez-vous.",
     value_not_representable:
-      "Cette valeur ne peut pas être enregistrée. Retirez les caractères inhabituels et réessayez.",
+      "Une valeur n’a pas pu être enregistrée. Modifiez-la, puis réessayez.",
     document_not_representable:
-      "La configuration du développeur ne peut pas être livrée pour le moment. Réessayez plus tard.",
+      "Le service n’a pas pu préparer vos paramètres. Contactez le développeur.",
     signing_unavailable:
       "Le service ne peut pas signer de document pour le moment. Réessayez dans quelques minutes.",
     device_limit:
-      "Cette licence a atteint sa limite d'appareils. Libérez un appareil depuis votre compte, puis réessayez.",
+      "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.",
     key_entry_limit:
-      "Cette clé n'a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
+      "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
     license_disabled:
-      "Cette licence a été désactivée. Contactez le vendeur ou votre administrateur.",
+      "Cette licence a été désactivée. Contactez le développeur.",
     license_unusable:
-      "Cette licence n'est plus utilisable (désactivée, expirée ou supprimée). Contactez le vendeur ou votre administrateur.",
-    license_expired:
-      "Cette licence a expiré. Renouvelez-la pour continuer à utiliser l'application.",
-    not_entitled: "Votre licence n'inclut pas cela.",
+      "Votre licence n’est plus valide, les paramètres ne peuvent donc pas être chargés. Connectez-vous ou réactivez-la.",
+    license_expired: "Cette licence a expiré. Renouvelez-la pour continuer.",
+    not_entitled: "Votre licence n’inclut pas cet élément.",
     version_blocked:
-      "Cette version de l'application n'est pas autorisée par votre licence. Mettez l'application à jour.",
-    channel_not_allowed: "Votre licence n'inclut pas ce canal de publication.",
+      "Cette version ne peut pas être utilisée avec votre licence. Mettez l’app à jour pour continuer.",
+    channel_not_allowed: "Votre licence n’inclut pas ce canal.",
     hardware_mismatch:
-      "Cet appareil a changé depuis son activation. Activez-le à nouveau pour le lier.",
+      "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici.",
     fingerprint_required:
-      "Cette licence exige une vérification d'appareil que cette application ne peut pas fournir ici. Contactez le développeur.",
+      "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil.",
     enroll_disabled:
-      "L'activation gratuite n'est pas proposée pour ce produit. Saisissez une clé ou connectez-vous.",
+      "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.",
     enroll_claimed:
-      "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l'utiliser.",
+      "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser.",
     enroll_failed:
-      "L'activation gratuite n'a pas pu aboutir. Réessayez dans un instant.",
-    managed_by_admin: "Votre administrateur gère ce paramètre.",
+      "Une licence gratuite n’a pas pu être émise. Réessayez dans quelques minutes.",
+    managed_by_admin:
+      "Ce paramètre est géré par votre organisation et ne peut pas être modifié ici.",
     catalog_unavailable:
-      "Les paramètres ne peuvent pas être livrés pour le moment. Réessayez plus tard.",
-    disabled: "La connexion n'est pas configurée pour ce produit.",
-    oidc_error:
-      "Le fournisseur de connexion n'a pas répondu correctement. Réessayez.",
+      "Les paramètres ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes.",
+    disabled: "La connexion n’est pas activée pour cette app.",
+    oidc_error: "La connexion n’a pas abouti. Réessayez.",
     unavailable:
-      "La connexion est saturée pour le moment. Réessayez dans un instant.",
+      "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.",
     erasure_ledger_unavailable:
-      "Nous ne pouvons pas vérifier l'état de votre compte pour le moment. Réessayez dans quelques minutes.",
+      "Nous n’avons pas pu confirmer l’état de votre compte pour le moment. Réessayez dans quelques minutes.",
     identity_disabled:
-      "La connexion via cette application est désactivée. Vos installations et licences continuent de fonctionner.",
-    unknown_app: "La connexion n'est pas disponible pour cette application.",
+      "La connexion via cette app est désactivée. Vos installations et vos licences continuent de fonctionner.",
+    unknown_app: "La connexion n’est pas disponible pour cette app.",
     // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the OAuth-shaped passthrough.
     invalid_request:
-      "L'application a envoyé une demande de connexion illisible. Réessayez.",
+      "L’app a envoyé une demande de connexion illisible. Réessayez.",
     invalid_client:
-      "Cette application n'est pas configurée pour la connexion. Contactez son développeur.",
+      "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
     invalid_grant:
       "Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau.",
     unsupported_grant_type:
-      "L'application a demandé un type de connexion non pris en charge. Contactez son développeur.",
+      "L’app a demandé un type de connexion que nous ne prenons pas en charge. Contactez son développeur.",
     invalid_scope:
-      "L'application a demandé un accès que cette connexion ne propose pas. Contactez son développeur.",
+      "L’app a demandé un accès que cette connexion ne propose pas. Contactez son développeur.",
     redirect_uri_mismatch:
-      "L'adresse de retour de cette application n'est pas enregistrée ; nous ne vous y avons pas renvoyé. Contactez son développeur.",
+      "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
     license_choice_required:
       "Choisissez la licence que cet appareil utilise, puis continuez.",
-    auth_method_disabled: "Cette méthode de connexion est désactivée.",
+    auth_method_disabled:
+      "Cette méthode de connexion est désactivée. Choisissez-en une autre.",
     email_unavailable:
-      "La connexion par e-mail n'est pas disponible pour le moment.",
+      "La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion.",
     turnstile_failed:
-      "La vérification de sécurité a échoué. Rechargez la page et réessayez.",
+      "La vérification de sécurité a échoué. Rechargez la page, puis réessayez.",
     signin_expired: "Cette connexion a expiré. Recommencez.",
-    invalid_code:
-      "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
-    code_expired: "Ce code a expiré. Envoyez un nouveau code.",
+    invalid_code: "Ce code est incorrect. Vérifiez l’e-mail, puis réessayez.",
+    code_expired: "Ce code a expiré. Demandez un nouveau code.",
     email_in_use:
       "Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.",
     terms_required: "Acceptez les conditions pour continuer.",
     license_owned:
-      "Cette licence appartient à un autre compte. Connectez-vous avec ce compte.",
+      "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
     // I-09 (WIRE-CONTRACT-V4 §12.3): the device attach's two account refusals.
     license_email_bound:
-      "Cette licence appartient à une adresse e-mail que votre compte Polaris Locker n'a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.",
+      "Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.",
     account_required:
       "Connectez-vous à votre compte Polaris Locker sur cet appareil, puis réessayez.",
-    email_mismatch: "Cette licence a été vendue à une autre adresse e-mail.",
+    email_mismatch:
+      "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez.",
     link_conflict:
-      "Cette méthode de connexion est déjà liée à un autre compte.",
-    last_link: "Vous ne pouvez pas retirer votre seule méthode de connexion.",
-    step_up_required: "Reconnectez-vous pour confirmer votre identité.",
-    not_eligible: "Cette offre n'est plus disponible.",
+      "Cette méthode de connexion appartient à un autre compte Polaris Locker. Connectez-vous à ce compte, ou fusionnez les deux comptes.",
+    last_link:
+      "C’est la seule méthode de connexion de votre compte. Ajoutez-en une autre avant de la supprimer.",
+    step_up_required:
+      "Pour votre sécurité, connectez-vous à nouveau pour continuer.",
+    not_eligible:
+      "Cette offre n’est plus disponible pour votre compte. Actualisez, puis réessayez.",
     not_removable:
-      "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste dans votre bibliothèque.",
+      "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque.",
     download_auth_required:
-      "Connectez-vous ou activez l'application pour télécharger ceci.",
+      "Connectez-vous ou activez une licence pour télécharger cet élément.",
     delivery_gate_missing:
-      "Ce téléchargement n'est pas encore disponible. Contactez le développeur.",
+      "Ce téléchargement n’est pas encore configuré. Contactez le développeur.",
     upstream_rate_limited:
-      "Les téléchargements sont saturés pour le moment. Réessayez dans un instant.",
+      "Les téléchargements sont très sollicités pour le moment. Réessayez dans quelques minutes.",
     server_misconfigured:
-      "Ce produit n'est pas encore entièrement configuré. Contactez le développeur.",
+      "Ce service n’est pas correctement configuré. Contactez le développeur.",
     internal_error:
-      "Le service de téléchargement a échoué. Réessayez dans un instant.",
-    release_record_rejected: "Cette version n'a pas pu être publiée.",
-    release_tag_is_pack_release: "Cette version n'a pas pu être publiée.",
+      "Le serveur de téléchargement a rencontré un problème. Réessayez dans quelques minutes.",
+    release_record_rejected:
+      "La version n’a pas été publiée, car une vérification a échoué. Le journal de publication indique laquelle.",
+    release_tag_is_pack_release:
+      "Une version a été ignorée, car son tag correspond à une version de pack de contenu. Renommez le tag.",
     asset_unreachable:
-      "Une image n'a pas pu être récupérée depuis sa source. La copie précédente reste affichée.",
+      "Une image n’a pas pu être récupérée depuis sa source. La copie précédente reste affichée, et une nouvelle tentative aura lieu automatiquement.",
     feed_not_composable:
-      "Impossible de vérifier les mises à jour pour le moment. Réessayez plus tard.",
+      "Les mises à jour ne peuvent pas être vérifiées pour le moment. Réessayez dans quelques minutes.",
     network:
-      "Impossible de joindre le service de licences. Vérifiez votre connexion et réessayez.",
+      "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez.",
     "network-error":
-      "Impossible de joindre le service de licences. Vérifiez votre connexion et réessayez.",
+      "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez.",
     "server-error":
-      "Le service de licences a rencontré un problème. Réessayez dans un instant.",
+      "Le service a rencontré un problème. Réessayez dans quelques minutes.",
     timeout:
-      "Le service de licences a mis trop de temps à répondre. Réessayez.",
-    "service-disabled": "Cette fonction n'est pas activée pour ce produit.",
-    "service-unavailable":
-      "Cette fonction n'est pas disponible pour ce produit.",
+      "Le service a mis trop de temps à répondre. Vérifiez votre connexion, puis réessayez.",
+    "service-disabled": "Ce service est désactivé pour cette app.",
+    "service-unavailable": "Cette app n’utilise pas ce service.",
     "key-entry-unsupported":
-      "La saisie de clé n'est pas disponible ici. Utilisez plutôt le bouton de connexion.",
+      "Les clés de licence ne peuvent pas être saisies ici. Connectez-vous à la place.",
     "device-management-unsupported":
-      "Cette application ne peut pas gérer les appareils ici. Ouvrez votre compte pour les consulter.",
+      "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte.",
     "refresh-failed":
-      "Impossible d'actualiser votre licence. Réessayez dans un instant.",
+      "Votre licence et vos paramètres n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez.",
     "bridge-missing":
-      "Le service de licences n'est pas disponible dans cette application. Réinstallez-la ou contactez l'assistance.",
-    "sign-in-failed": "La connexion a échoué. Veuillez réessayer.",
-    "sign-in-expired": "Le code de connexion a expiré. Recommencez.",
-    "sign-in-denied": "La connexion a été refusée.",
+      "Le pont de licence de l’app est introuvable. Réinstallez l’app ou contactez le développeur.",
+    "sign-in-failed": "La connexion n’a pas abouti. Réessayez.",
+    "sign-in-expired":
+      "Le code a expiré avant la fin de la connexion. Recommencez.",
+    "sign-in-denied": "La connexion a été refusée. Recommencez.",
     "sign-in-unavailable":
-      "La connexion ne peut pas démarrer pour le moment. Réessayez dans un instant.",
-    "sign-out-failed": "Impossible de vous déconnecter. Réessayez.",
-    "bundle-rejected":
-      "Ce fichier d'activation n'est pas valide pour cet appareil.",
+      "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.",
+    "sign-out-failed": "La déconnexion n’a pas abouti. Réessayez.",
+    "bundle-rejected": "Le fichier d’activation a été refusé.",
     "bundle-import-unsupported":
-      "Cette application ne peut pas importer de fichiers d'activation ici.",
+      "L’activation hors ligne n’est pas disponible ici.",
     "bundle-jws-rejected":
-      "La signature de ce fichier d'activation n'est pas valide.",
+      "La signature du fichier d’activation n’est pas valide.",
     "bundle-claims-rejected":
-      "Ce fichier d'activation est destiné à un autre appareil, ou il a expiré.",
+      "Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré.",
     "bundle-trust-rejected":
-      "Ce fichier d'activation n'a pas été émis pour cette application.",
+      "Le fichier d’activation est signé par une clé que cette app ne reconnaît pas.",
     "inner-doc-rejected":
-      "Une partie de ce fichier d'activation n'a pas passé la vérification.",
-    "release-refused": "Votre licence n'inclut pas ce téléchargement.",
+      "La licence contenue dans le fichier d’activation n’est pas valide.",
+    "release-refused": "Votre licence n’inclut pas cette version.",
     "report-unsupported":
-      "Cette application ne peut pas envoyer de rapports d'appareil ici.",
-    unsupported: "Ce n'est pas pris en charge ici.",
-    "no-token": "Activez l'application ou connectez-vous d'abord.",
-    "mint-unavailable":
-      "Ce jeton de service ne peut pas être émis pour le moment.",
+      "Les rapports d’appareil ne sont pas disponibles ici.",
+    unsupported: "Cette fonction n’est pas disponible ici.",
+    "no-token":
+      "Cet appareil n’est pas encore activé. Activez-le ou connectez-vous.",
+    "mint-unavailable": "Cette fonction n’est pas disponible pour cette app.",
     "not-configured":
-      "Cette application n'est pas encore configurée pour cela.",
+      "La gestion des licences de l’app n’est pas encore configurée. Contactez le développeur.",
     "store-failed":
-      "Ce navigateur n'a pas pu enregistrer votre connexion. Vérifiez ses paramètres de stockage.",
-    cancelled: "Annulé.",
+      "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.",
+    cancelled: "La connexion a été annulée.",
     ok: "Votre licence est active.",
     grace:
-      "Le service de licences est hors ligne. Vous pouvez continuer jusqu'à la fin de la période de grâce.",
+      "Le service de licence est inaccessible. Vous pouvez continuer à utiliser l’app jusqu’à la fin de la période de grâce.",
     expired:
-      "Votre licence ou votre période de grâce hors ligne est terminée. Connectez-vous ou activez une clé pour continuer.",
+      "Connectez-vous à Internet ou renouvelez votre licence pour continuer.",
     revoked:
-      "Cette licence n'est plus active sur cet appareil. Contactez votre administrateur.",
+      "Cet appareil a été déconnecté. Connectez-vous ou réactivez-le pour continuer.",
     "needs-activation":
-      "Connectez-vous ou saisissez une clé de licence pour déverrouiller cette application.",
+      "Saisissez une clé de licence ou connectez-vous pour continuer.",
     "version-too-old":
-      "Cette version n'est plus prise en charge. Mettez l'application à jour.",
+      "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.",
     "version-too-new":
-      "Cette version de l'application est plus récente que ce que votre licence autorise.",
-    "channel-not-entitled":
-      "Votre licence n'inclut pas ce canal de publication. Changez de canal ou contactez votre administrateur.",
-    "not-applicable": "Ce produit ne fait pas l'objet d'une licence distincte.",
+      "Ce build est plus récent que ce que votre licence autorise.",
+    "channel-not-entitled": "Votre licence n’inclut pas ce canal.",
+    "not-applicable": "Cette app n’a pas besoin de licence.",
+  },
+  // An activation result whose name is also an error code or a gate status reads its own
+  // entry here (the error code `unauthorized` is "Non connecté", the activation result
+  // "Clé non acceptée").
+  activation: {
+    titles: {
+      ok: "Activé",
+      unauthorized: "Clé non acceptée",
+      keyEntryLimit: "Aucune saisie restante",
+    },
+    messages: {
+      ok: "Votre licence est active sur cet appareil.",
+      unauthorized:
+        "Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez.",
+      keyEntryLimit:
+        "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
+    },
   },
 };
 
@@ -418,7 +443,7 @@ export function copyTitle(code: string, locale?: string): string {
     own(bundle.titles, code) ??
     own(EN.titles, code) ??
     englishEntry(code)?.title ??
-    (bundle === FR ? "Une erreur s'est produite" : COPY_FALLBACK.title)
+    (bundle === FR ? "Une erreur s’est produite" : COPY_FALLBACK.title)
   );
 }
 
@@ -433,7 +458,10 @@ function activationText(
   // A bundle is keyed by the camelCase kind; accept the activationResult spelling too.
   const key = kind.replace(/-(\w)/g, (_m, c: string) => c.toUpperCase());
   const pick = (b: CopyBundle) =>
-    own(field === "message" ? b.messages : b.titles, key);
+    own(
+      field === "message" ? b.activation?.messages : b.activation?.titles,
+      key,
+    ) ?? own(field === "message" ? b.messages : b.titles, key);
   return (
     pick(bundle) ??
     pick(EN) ??

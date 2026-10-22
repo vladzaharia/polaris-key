@@ -1,6 +1,6 @@
 {
   "$schema": "./copy.schema.json",
-  "$comment": "fr translation of copy.en.json, produced against packages/brand/kit-copy/glossary.json and not yet reviewed by a native speaker (reviewed: false; a release follow-up, not a merge blocker). Register: \"vous\", modern and concise software French (French spelling \"licence\").",
+  "$comment": "fr translation of copy.en.json, produced against packages/brand/kit-copy/glossary.json; native-quality review pass 2026-10-21, a human native-speaker sign-off still pending (reviewed: false). Register: \"vous\", modern and concise software French (French spelling \"licence\"). Same terms and typography as packages/brand/kit-copy/fr.json (its $comment).",
   "copyVersion": 1,
   "locale": "fr",
   "reviewed": false,
@@ -11,7 +11,7 @@
   "codes": {
     "unauthorized": {
       "title": "Non connecté",
-      "message": "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau."
+      "message": "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou réactivez-le."
     },
     "not_found": {
       "title": "Introuvable",
@@ -23,7 +23,7 @@
     },
     "forbidden": {
       "title": "Non autorisé",
-      "message": "Vous n’avez pas l’autorisation de faire cela."
+      "message": "Vous n’avez pas l’autorisation d’effectuer cette action."
     },
     "attestation_required": {
       "title": "Vérification de l’appareil requise",
@@ -43,7 +43,7 @@
     },
     "body_too_large": {
       "title": "Trop volumineux",
-      "message": "C’est trop volumineux pour être envoyé."
+      "message": "Cet élément est trop volumineux pour être envoyé."
     },
     "method_not_allowed": {
       "title": "Requête refusée",
@@ -54,8 +54,8 @@
       "message": "Ce service n’est pas correctement configuré. Contactez le développeur."
     },
     "registration_closed": {
-      "title": "Inscription fermée",
-      "message": "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous."
+      "title": "Enregistrement fermé",
+      "message": "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez cet appareil avec une clé de licence ou connectez-vous."
     },
     "value_not_representable": {
       "title": "Valeur refusée",
@@ -63,7 +63,7 @@
     },
     "document_not_representable": {
       "title": "Problème de service",
-      "message": "Le service n’a pas pu préparer vos réglages. Contactez le développeur."
+      "message": "Le service n’a pas pu préparer vos paramètres. Contactez le développeur."
     },
     "signing_unavailable": {
       "title": "Signature indisponible",
@@ -74,8 +74,8 @@
       "message": "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
     },
     "key_entry_limit": {
-      "title": "Plus d’utilisations de la clé",
-      "message": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+      "title": "Aucune saisie restante",
+      "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
     },
     "license_disabled": {
       "title": "Licence désactivée",
@@ -99,7 +99,7 @@
     },
     "hardware_mismatch": {
       "title": "Appareil modifié",
-      "message": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+      "message": "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
     },
     "fingerprint_required": {
       "title": "Échec de la vérification de l’appareil",
@@ -119,15 +119,15 @@
     },
     "managed_by_admin": {
       "title": "Défini par votre organisation",
-      "message": "Ce réglage est géré par votre organisation et ne peut pas être modifié ici."
+      "message": "Ce paramètre est géré par votre organisation et ne peut pas être modifié ici."
     },
     "catalog_unavailable": {
-      "title": "Réglages indisponibles",
-      "message": "Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
+      "title": "Paramètres indisponibles",
+      "message": "Les paramètres ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
     },
     "license_unusable": {
-      "title": "Licence plus valide",
-      "message": "Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau."
+      "title": "Licence non valide",
+      "message": "Votre licence n’est plus valide, les paramètres ne peuvent donc pas être chargés. Connectez-vous ou réactivez-la."
     },
     "disabled": {
       "title": "Connexion indisponible",
@@ -162,7 +162,7 @@
       "message": "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
     },
     "invalid_grant": {
-      "title": "Connexion plus valide",
+      "title": "Connexion non valide",
       "message": "Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau."
     },
     "unsupported_grant_type": {
@@ -190,8 +190,8 @@
       "message": "La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion."
     },
     "turnstile_failed": {
-      "title": "Vérification non réussie",
-      "message": "La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez."
+      "title": "Échec de la vérification",
+      "message": "La vérification de sécurité a échoué. Rechargez la page, puis réessayez."
     },
     "signin_expired": {
       "title": "Connexion expirée",
@@ -199,11 +199,11 @@
     },
     "invalid_code": {
       "title": "Code incorrect",
-      "message": "Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez."
+      "message": "Ce code est incorrect. Vérifiez l’e-mail, puis réessayez."
     },
     "code_expired": {
       "title": "Code expiré",
-      "message": "Ce code a expiré. Envoyez-vous un nouveau code."
+      "message": "Ce code a expiré. Demandez un nouveau code."
     },
     "email_in_use": {
       "title": "E-mail déjà utilisé",
@@ -215,7 +215,7 @@
     },
     "license_owned": {
       "title": "Licence dans un autre compte",
-      "message": "Cette licence {product} est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé."
+      "message": "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
     },
     "license_email_bound": {
       "title": "E-mail non vérifié",
@@ -247,7 +247,7 @@
     },
     "not_removable": {
       "title": "Suppression impossible",
-      "message": "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
+      "message": "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
     },
     "download_auth_required": {
       "title": "Connectez-vous pour télécharger",
@@ -295,7 +295,7 @@
     },
     "local-only": {
       "title": "Mode hors ligne",
-      "message": "Cette app fonctionne hors ligne, elle ne s’est donc pas connectée."
+      "message": "Cette app fonctionne hors ligne et ne s’est donc pas connectée."
     },
     "backend-origin-not-allowed": {
       "title": "Requête non envoyée",
@@ -314,8 +314,8 @@
       "message": "Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré."
     },
     "bundle-trust-rejected": {
-      "title": "Fichier d’activation non approuvé",
-      "message": "Le fichier d’activation est signé par une clé que cette app n’approuve pas."
+      "title": "Fichier d’activation non fiable",
+      "message": "Le fichier d’activation est signé par une clé que cette app ne reconnaît pas."
     },
     "inner-doc-rejected": {
       "title": "Fichier d’activation non valide",
@@ -331,11 +331,11 @@
     },
     "network": {
       "title": "Connexion impossible",
-      "message": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+      "message": "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
     },
     "refresh-failed": {
       "title": "Actualisation impossible",
-      "message": "Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
+      "message": "Votre licence et vos paramètres n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
     },
     "sync-failed": {
       "title": "Vérification de la licence impossible",
@@ -355,7 +355,7 @@
     },
     "release-refused": {
       "title": "Non inclus",
-      "message": "Votre licence n’inclut pas cet élément."
+      "message": "Votre licence n’inclut pas cette version."
     },
     "bundle-rejected": {
       "title": "Fichier d’activation non valide",
@@ -371,7 +371,7 @@
     },
     "device-management-unsupported": {
       "title": "Indisponible ici",
-      "message": "Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte."
+      "message": "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte."
     },
     "device_list_failed": {
       "title": "Chargement des appareils impossible",
@@ -382,8 +382,8 @@
       "message": "L’appareil n’a pas pu être renommé. Réessayez."
     },
     "device_deauthorize_failed": {
-      "title": "Suppression de l’appareil impossible",
-      "message": "L’appareil n’a pas pu être supprimé. Réessayez."
+      "title": "Retrait de l’appareil impossible",
+      "message": "L’appareil n’a pas pu être retiré. Réessayez."
     },
     "key-entry-unsupported": {
       "title": "Indisponible ici",
@@ -403,7 +403,7 @@
     },
     "network-error": {
       "title": "Connexion impossible",
-      "message": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+      "message": "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
     },
     "server-error": {
       "title": "Problème de service",
@@ -495,19 +495,19 @@
     },
     "feed-rollback": {
       "title": "Échec de la vérification des mises à jour",
-      "message": "Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées."
+      "message": "Les informations de mise à jour étaient plus anciennes que celles de cet appareil et ont donc été refusées."
     },
     "record-rejected": {
       "title": "Mise à jour non vérifiée",
-      "message": "La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée."
+      "message": "La mise à jour n’a pas pu être vérifiée et n’a donc pas été installée."
     },
     "record-mismatch": {
       "title": "Mise à jour non vérifiée",
-      "message": "La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée."
+      "message": "La mise à jour ne correspondait pas à la version publiée et n’a donc pas été installée."
     },
     "payload-mismatch": {
       "title": "Téléchargement corrompu",
-      "message": "La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez."
+      "message": "La mise à jour ne s’est pas téléchargée correctement et n’a donc pas été installée. Réessayez."
     },
     "swap-refused": {
       "title": "Mise à jour impossible ici",
@@ -523,7 +523,7 @@
     },
     "files-unsafe-path": {
       "title": "Contenu refusé",
-      "message": "Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux."
+      "message": "Certains contenus ont été refusés, car ils contiennent un chemin de fichier non sécurisé."
     },
     "files-duplicate-path": {
       "title": "Contenu non valide",
@@ -655,7 +655,7 @@
     },
     "pack-type-check-failed": {
       "title": "Contenu non valide",
-      "message": "Certains contenus n’ont pas passé leur vérification et n’ont pas été installés."
+      "message": "Certains contenus n’ont pas réussi leur vérification et n’ont pas été installés."
     },
     "pack-not-pinned": {
       "title": "Contenu indisponible",
@@ -725,7 +725,7 @@
     },
     "revoked": {
       "title": "Déconnecté",
-      "message": "Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer."
+      "message": "Cet appareil a été déconnecté. Connectez-vous ou réactivez-le pour continuer."
     },
     "needs-activation": {
       "title": "Activer",
@@ -763,7 +763,7 @@
     },
     "hardware-mismatch": {
       "title": "Appareil modifié",
-      "message": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+      "message": "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
     },
     "enroll-claimed": {
       "title": "Connectez-vous pour continuer",
@@ -794,8 +794,8 @@
       "message": "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous."
     },
     "key-entry-limit": {
-      "title": "Plus d’utilisations de la clé",
-      "message": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+      "title": "Aucune saisie restante",
+      "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
     },
     "refused": {
       "title": "Activation refusée",

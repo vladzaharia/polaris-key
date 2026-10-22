@@ -753,7 +753,7 @@ msgstr "Lien copié"
 #. Choose Sign in on {device} on the sign-in page to finish.
 #. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "Choisissez Sign in on {device} sur la page de connexion pour terminer."
+msgstr "Choisissez « Sign in on {device} » sur la page de connexion pour terminer."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -1156,7 +1156,7 @@ msgstr "Téléchargement · {size} sur {total}"
 #. About {time} left
 #. UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
 msgid "update.timeLeft"
-msgstr "Environ {time} restant"
+msgstr "Il reste environ {time}"
 
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
@@ -1241,7 +1241,7 @@ msgstr "Steam l’installe. Redémarrez Steam si elle n’est pas encore arrivé
 #. The itch app installs it.
 #. UpdatePrompt: an app update. Platform-managed update.
 msgid "update.platform.itch"
-msgstr "L’application itch l’installe."
+msgstr "L’app itch l’installe."
 
 #. Your software center installs it.
 #. UpdatePrompt: an app update. Platform-managed update (Linux).
@@ -1306,7 +1306,7 @@ msgstr "En attente de téléchargement"
 #. {size} of {total} · {time} left
 #. UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
 msgid "updateProgress.downloading"
-msgstr "{size} sur {total} · {time} restant"
+msgstr "{size} sur {total} · il reste {time}"
 
 #. Installing…
 #. UpdateProgress: compact progress for an app update or a content pack.
@@ -1600,7 +1600,7 @@ msgstr "Désactivé"
 #. Get more with {product} {tier}
 #. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "paywall.title"
-msgstr "Profitez de plus avec {product} {tier}"
+msgstr "Allez plus loin avec {product} {tier}"
 
 #. {tier} includes
 #. Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated).
@@ -1725,12 +1725,12 @@ msgstr "Confidentialité"
 #. Get help
 #. About: product and build information. Opens the developer's support page.
 msgid "about.support"
-msgstr "Obtenir de l'aide"
+msgstr "Obtenir de l’aide"
 
 #. macos: Get Help
 msgctxt "macos"
 msgid "about.support"
-msgstr "Obtenir de l'aide"
+msgstr "Obtenir de l’aide"
 
 #. Version {version}
 #. About: product and build information. Arguments: {version} = a version string such as 2.4.1.
@@ -1805,7 +1805,7 @@ msgstr "E-mail"
 #. Enter a full email address, like name@example.com.
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
 msgid "signin.email.invalid"
-msgstr "Saisissez une adresse e-mail complète, par exemple nom@exemple.com."
+msgstr "Saisissez une adresse e-mail complète, par exemple nom@example.com."
 
 #. Continue
 #. Hosted sign-in card (SIGN-IN.md).
@@ -1900,7 +1900,7 @@ msgstr "Votre licence, vos téléchargements et vos appareils"
 #. Code · {code} · Check it matches the screen
 #. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.header.codePanel"
-msgstr "Code · {code} · Vérifiez qu'il correspond à l'écran"
+msgstr "Code · {code} · Vérifiez qu’il correspond à l’écran"
 
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
@@ -1994,7 +1994,7 @@ msgstr[2] "{n} essais restants."
 #. Too many tries. Send a new code.
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.tooMany"
-msgstr "Trop d’essais. Envoyez un nouveau code."
+msgstr "Trop d’essais. Demandez un nouveau code."
 
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
@@ -2567,7 +2567,7 @@ msgstr "Votre profil et votre adresse e-mail"
 #. It gets its own id for you, and won't see your other products or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "L’application reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion."
+msgstr "L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion."
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -2676,7 +2676,7 @@ msgstr "Revenir à {app}"
 #. Returning by itself in {s} s
 #. Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds.
 msgid "signin.return.timer"
-msgstr "Retour automatique dans {s} s"
+msgstr "Retour automatique dans {s} s"
 
 #. Stay here
 #. Return step (SIGN-IN.md §3.10).
@@ -2811,7 +2811,7 @@ msgstr "Se connecter…"
 #. We opened Polaris Locker in your browser. Sign in there and {app} continues by itself.
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.handoff.browserBody"
-msgstr "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous-y et {app} continuera tout seul."
+msgstr "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous dans le navigateur et {app} continuera tout seul."
 
 #. Waiting for your browser…
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
@@ -3001,12 +3001,12 @@ msgstr "N’approuvez que si vous êtes à l’origine de cette demande, sur un 
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.approve"
-msgstr "Approuver et le connecter"
+msgstr "Approuver et connecter"
 
 #. macos: Approve and Sign It In
 msgctxt "macos"
 msgid "signin.approve.approve"
-msgstr "Approuver et le connecter"
+msgstr "Approuver et connecter"
 
 #. Deny
 #. Sign in with another device (SIGN-IN.md §3.11).
@@ -3071,7 +3071,7 @@ msgstr "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes
 #. A new code goes to {email}.
 #. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
 msgid "signin.expired.sendTo"
-msgstr "Un nouveau code est envoyé à {email}."
+msgstr "Le nouveau code sera envoyé à {email}."
 
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
@@ -3175,7 +3175,7 @@ msgstr "Un nouvel appareil s’est connecté à votre compte Polaris Locker"
 #. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{device} s’est connecté le {date} depuis {place}. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, section Où vous êtes connecté."
+msgstr "{device} s’est connecté le {date} depuis {place}. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, rubrique « Où vous êtes connecté »."
 
 #. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
@@ -3280,7 +3280,7 @@ msgstr "Retirer votre licence de cet appareil et libérer sa place"
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
 msgid "cli.verb.status"
-msgstr "Licence, appareils et durée hors ligne"
+msgstr "Afficher la licence, les appareils et le temps hors ligne"
 
 #. Print the request code for offline activation
 #. Terminal help: what the offline-request command does.
@@ -3500,7 +3500,7 @@ msgstr "Pour continuer à utiliser {product} :"
 #. Next step on the {product} page:
 #. Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "cli.status.portal"
-msgstr "Prochaine étape sur la page de {product} :"
+msgstr "Prochaine étape sur la page de {product} :"
 
 #. Use the license on your account
 #. Terminal status: what the login command does as a fix for a blocked license.
@@ -3570,7 +3570,7 @@ msgstr "Aucun secret nommé {name} n’est fourni à cet appareil."
 #. The value was not printed: this CI log would run a line of it as a command. To print it anyway, run {command}.
 #. Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands).
 msgid "cli.output.workflowCommand"
-msgstr "La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez {command}."
+msgstr "La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez {command}."
 
 #. Then run {command} with the file you get back.
 #. Terminal offline activation: what to do with the activation file. {command} is a command line.
@@ -3650,7 +3650,7 @@ msgstr "{size}/{total}"
 #. {time} left
 #. Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'.
 msgid "cli.update.timeLeft"
-msgstr "{time} restant"
+msgstr "il reste {time}"
 
 #. {version} is ready · {size}
 #. Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product.
@@ -3730,12 +3730,12 @@ msgstr "Exécutez {command} avec votre clé de licence."
 #. Use this device's license key on your account? (y/N)
 #. Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press.
 msgid "cli.login.attach"
-msgstr "Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)"
+msgstr "Associer la clé de licence de cet appareil à votre compte ? (y/N)"
 
 #. y yes · n no · Esc cancel sign-in
 #. Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "cli.keys.confirm"
-msgstr "y oui · n non · Esc annuler la connexion"
+msgstr "y oui · n non · Échap annuler la connexion"
 
 #. Signed in as {name}
 #. Terminal: the sign-in finished and only the name is known. {name} = the account's name.
@@ -3760,7 +3760,7 @@ msgstr "Les mises à jour ne sont pas configurées"
 #. Download it here:
 #. Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link.
 msgid "cli.update.download"
-msgstr "Téléchargez-la ici :"
+msgstr "Téléchargez-la ici :"
 
 #. This license key no longer works
 #. Terminal status: a device activated with a license key only, and the license is no longer valid.
@@ -3770,12 +3770,12 @@ msgstr "Cette clé de licence ne fonctionne plus"
 #. It may have expired or been turned off:
 #. Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.
 msgid "cli.status.keyRevoked.message"
-msgstr "Elle a peut-être expiré ou été désactivée :"
+msgstr "Elle a peut-être expiré ou été désactivée :"
 
 #. Check it for typos. If it's right, it may have expired or been turned off:
 #. Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.
 msgid "cli.activate.unauthorized"
-msgstr "Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :"
+msgstr "Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :"
 
 #. Print the value
 #. Terminal help: what the --reveal flag does. A command-line flag; keep it as is.
@@ -3855,7 +3855,7 @@ msgstr "watchOS"
 #. The license key is now on your account.
 #. Terminal sign-in: the person said yes to adding this device's license key to the account just signed in.
 msgid "cli.login.attached"
-msgstr "La clé de licence est maintenant sur votre compte."
+msgstr "La clé de licence est maintenant associée à votre compte."
 
 #. Get the new version from where you got {product}.
 #. Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated).
@@ -3910,7 +3910,7 @@ msgstr "Approuver un nouvel appareil"
 #. Enter the code shown on the other device.
 #. Approve dialog, when the link carried no code.
 msgid "signin.approve.enter"
-msgstr "Saisissez le code affiché sur l'autre appareil."
+msgstr "Saisissez le code affiché sur l’autre appareil."
 
 #. Code
 #. Approve dialog: the field's label.
@@ -3955,12 +3955,12 @@ msgstr "Lieu inconnu"
 #. It's asking from a different place than you're in now, or from a place we can't tell.
 #. Approve dialog: why the person must confirm it's them first.
 msgid "signin.approve.stepUpWhy"
-msgstr "La demande vient d'un autre endroit que le vôtre, ou d'un endroit inconnu."
+msgstr "La demande provient d’un autre lieu que le vôtre, ou d’un lieu inconnu."
 
 #. approve it
 #. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
 msgid "signin.approve.stepUpVerb"
-msgstr "l'approuver"
+msgstr "l’approuver"
 
 #. Approved. {device} is signed in.
 #. Approve dialog outcome. Arguments: {device} = the device label.
@@ -3970,27 +3970,27 @@ msgstr "Approuvé. {device} est connecté."
 #. Denied. Nothing changed.
 #. Approve dialog outcome.
 msgid "signin.approve.deniedDone"
-msgstr "Refusé. Rien n'a changé."
+msgstr "Refusé. Rien n’a changé."
 
 #. That didn't go through. Try again.
 #. Approve dialog: a decision that failed.
 msgid "signin.approve.failed"
-msgstr "Cela n'a pas abouti. Réessayez."
+msgstr "Cela n’a pas abouti. Réessayez."
 
 #. Your passkey wasn't used. Try again, or use another way.
 #. Passkey prompt closed or timed out.
 msgid "signin.passkey.cancelled"
-msgstr "Votre passkey n'a pas été utilisée. Réessayez ou utilisez une autre méthode."
+msgstr "Votre clé d’accès n’a pas été utilisée. Réessayez ou utilisez une autre méthode."
 
 #. This browser can't use your passkey here. Use another way.
 #. Passkey not usable in this browser.
 msgid "signin.passkey.unsupported"
-msgstr "Ce navigateur ne peut pas utiliser votre passkey ici. Utilisez une autre méthode."
+msgstr "Ce navigateur ne peut pas utiliser votre clé d’accès ici. Utilisez une autre méthode."
 
 #. Your passkey didn't work. Try again, or use another way.
 #. Passkey refused.
 msgid "signin.passkey.failed"
-msgstr "Votre passkey n'a pas fonctionné. Réessayez ou utilisez une autre méthode."
+msgstr "Votre clé d’accès n’a pas fonctionné. Réessayez ou utilisez une autre méthode."
 
 #. Signed in with {provider}
 #. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
@@ -4030,12 +4030,12 @@ msgstr "Utiliser mes initiales"
 #. Use my {provider} picture
 #. Finish step: back to the provider's picture. Arguments: {provider} = a provider's name.
 msgid "signin.gate.pictureProvider"
-msgstr "Utiliser mon image {provider}"
+msgstr "Utiliser ma photo {provider}"
 
 #. macos: Use My {provider} Picture
 msgctxt "macos"
 msgid "signin.gate.pictureProvider"
-msgstr "Utiliser mon image {provider}"
+msgstr "Utiliser ma photo {provider}"
 
 #. Add my birth date from {org}
 #. Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it.
@@ -4045,12 +4045,12 @@ msgstr "Ajouter ma date de naissance depuis {org}"
 #. Only you can see it. Apps never get it.
 #. Finish step: under the birth date choice.
 msgid "signin.gate.birthdateHelp"
-msgstr "Vous seul pouvez la voir. Les apps ne la reçoivent jamais."
+msgstr "Elle n’est visible que par vous. Les apps ne la reçoivent jamais."
 
 #. I agree to the {term}
 #. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
 msgid "signin.gate.productTerms"
-msgstr "J'accepte les {term}"
+msgstr "J’accepte les {term}"
 
 #. I agree to {term}
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
@@ -4065,17 +4065,17 @@ msgstr "Cette connexion a expiré. Reconnectez-vous."
 #. Join your accounts
 #. Finish step: the join offer (SIGN-IN.md §3.5).
 msgid "signin.gate.joinTitle"
-msgstr "Réunir vos comptes"
+msgstr "Fusionner vos comptes"
 
 #. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
 #. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
 msgid "signin.gate.joinLede"
-msgstr "{email} appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez un autre e-mail."
+msgstr "{email} appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez une autre adresse e-mail."
 
 #. To join, sign in to that account in this browser first, then add this sign-in from Account.
 #. Finish step: the join offer cannot be taken until the other account is proven.
 msgid "signin.gate.joinProve"
-msgstr "Pour les réunir, connectez-vous d'abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte."
+msgstr "Pour les fusionner, connectez-vous d’abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte."
 
 #. We sent a code to {email}.
 #. Finish step, code stage. Arguments: {email} = an address.
@@ -4085,7 +4085,7 @@ msgstr "Nous avons envoyé un code à {email}."
 #. On this browser, last time {when}
 #. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
 msgid "signin.hint.when"
-msgstr "Sur ce navigateur, dernière fois {when}"
+msgstr "Dernière connexion sur ce navigateur : {when}"
 
 #. Welcome back
 #. HintStep title when the browser kept no name.
@@ -4095,7 +4095,7 @@ msgstr "Bon retour"
 #. a passkey
 #. HintStep: completes 'You usually sign in with {method}'.
 msgid "signin.hint.method.passkey"
-msgstr "une passkey"
+msgstr "une clé d’accès"
 
 #. an email code
 #. HintStep: completes 'You usually sign in with {method}'.
@@ -4105,22 +4105,22 @@ msgstr "un code par e-mail"
 #. Use a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
-msgstr "Utiliser une passkey"
+msgstr "Utiliser une clé d’accès"
 
 #. macos: Use a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
-msgstr "Utiliser une passkey"
+msgstr "Utiliser une clé d’accès"
 
 #. Email me a code
 #. HintStep: sends a sign-in code.
 msgid "signin.hint.emailCode"
-msgstr "M'envoyer un code par e-mail"
+msgstr "M’envoyer un code par e-mail"
 
 #. macos: Email Me a Code
 msgctxt "macos"
 msgid "signin.hint.emailCode"
-msgstr "M'envoyer un code par e-mail"
+msgstr "M’envoyer un code par e-mail"
 
 #. Change
 #. HintStep: back to the email field.
@@ -4135,7 +4135,7 @@ msgstr "Connectez-vous pour ajouter {product}"
 #. Your key is ready. Sign in or create an account, and {product} joins your library.
 #. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
 msgid "signin.key.carriedLede"
-msgstr "Votre clé est prête. Connectez-vous ou créez un compte, et {product} rejoint votre bibliothèque."
+msgstr "Votre clé est prête. Connectez-vous ou créez un compte, et {product} rejoindra votre bibliothèque."
 
 #. Sign in without the key
 #. Sign-in card: drops the carried license key.
@@ -4150,7 +4150,7 @@ msgstr "Se connecter sans la clé"
 #. Paste the key from your receipt email. Sign in next, and it joins your library.
 #. Have a license key? step, under the title.
 msgid "signin.key.onrampLede"
-msgstr "Collez la clé de votre e-mail de reçu. Connectez-vous ensuite, et elle rejoint votre bibliothèque."
+msgstr "Collez la clé de votre reçu par e-mail. Connectez-vous ensuite pour l’ajouter à votre bibliothèque."
 
 #. That sign-in has expired. Continue to get a new code.
 #. Sign-in card, back at the email step after the sign-in ran out.
@@ -4180,22 +4180,22 @@ msgstr "Obligatoire pour les adresses {host}."
 #. Email me a code in {time}
 #. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
 msgid "signin.sso.codeIn"
-msgstr "M'envoyer un code par e-mail dans {time}"
+msgstr "M’envoyer un code par e-mail dans {time}"
 
 #. macos: Email Me a Code in {time}
 msgctxt "macos"
 msgid "signin.sso.codeIn"
-msgstr "M'envoyer un code par e-mail dans {time}"
+msgstr "M’envoyer un code par e-mail dans {time}"
 
 #. Email me a code instead
 #. Sign-in card, a routed step that is not enforced.
 msgid "signin.sso.code"
-msgstr "M'envoyer plutôt un code par e-mail"
+msgstr "M’envoyer plutôt un code par e-mail"
 
 #. macos: Email Me a Code Instead
 msgctxt "macos"
 msgid "signin.sso.code"
-msgstr "M'envoyer plutôt un code par e-mail"
+msgstr "M’envoyer plutôt un code par e-mail"
 
 #. This account can't sign in
 #. Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4).
@@ -4205,7 +4205,7 @@ msgstr "Ce compte ne peut pas se connecter"
 #. {email} belongs to an account that can't sign in. Try a different email or another way to sign in.
 #. Sign-in card, account disabled. Arguments: {email} = an address.
 msgid "signin.refused.lede"
-msgstr "{email} appartient à un compte qui ne peut pas se connecter. Essayez un autre e-mail ou une autre méthode."
+msgstr "{email} appartient à un compte qui ne peut pas se connecter. Essayez une autre adresse e-mail ou une autre méthode."
 
 #. Sign-in is turned off
 #. Sign-in card: no way to sign in is enabled.
@@ -4235,22 +4235,22 @@ msgstr "les Conditions et la Politique de confidentialité de Polaris Locker"
 #. That code expired. Ask for a new one on the other device.
 #. Approve dialog: the code is spent or expired (410).
 msgid "signin.approve.expiredCode"
-msgstr "Ce code a expiré. Demandez-en un nouveau sur l'autre appareil."
+msgstr "Ce code a expiré. Demandez-en un nouveau sur l’autre appareil."
 
 #. No sign-in is waiting for that code. Check it on the other device.
 #. Approve dialog: no pending request has this code (404 or 422).
 msgid "signin.approve.notFound"
-msgstr "Aucune connexion n'attend ce code. Vérifiez-le sur l'autre appareil."
+msgstr "Aucune connexion n’attend ce code. Vérifiez-le sur l’autre appareil."
 
 #. you@example.com
 #. Placeholder of the email field on the sign-in card. Not translated.
 msgid "signin.email.placeholder"
-msgstr "you@example.com"
+msgstr "vous@example.com"
 
 #. single sign-on
 #. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
 msgid "signin.sso.name"
-msgstr "l'authentification unique"
+msgstr "l’authentification unique"
 
 #. its developer
 #. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
@@ -4260,7 +4260,7 @@ msgstr "son développeur"
 #. Change email
 #. Accessible name of the control that goes back to the email step.
 msgid "signin.code.changeEmail"
-msgstr "Modifier l'e-mail"
+msgstr "Modifier l’e-mail"
 
 #. Wait {time}
 #. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
@@ -4295,7 +4295,7 @@ msgstr "Trop de codes. Réessayez dans quelques minutes."
 #. Another Polaris Locker account uses this email. Sign in the way you did before.
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
-msgstr "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
+msgstr "Un autre compte Polaris Locker utilise cette adresse e-mail. Connectez-vous comme la dernière fois."
 
 #. Choose a license to continue.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4320,7 +4320,7 @@ msgstr "Remplacer et se connecter"
 #. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
-msgstr "L'appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
+msgstr "L’appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
 
 #. Device replaced
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4340,7 +4340,7 @@ msgstr "Cette connexion est terminée"
 #. Go back to the app and start signing in again.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.request.gone"
-msgstr "Retournez dans l'app et reconnectez-vous."
+msgstr "Retournez dans l’app et reconnectez-vous."
 
 #. on {device}
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name.
@@ -4365,12 +4365,12 @@ msgstr "Ne pas autoriser"
 #. Cloud Sync
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Synchronisation cloud"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
 msgid "signin.consent.newLicense"
-msgstr "Nouvelle : licence {tier}, créée quand vous continuez"
+msgstr "Nouvelle licence {tier}, créée lorsque vous continuez"
 
 #. Keep {product} in an account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -4380,7 +4380,7 @@ msgstr "Gardez {product} dans un compte"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
+msgstr "Avec un compte, vous pouvez le récupérer et le transférer vous-même sur un nouvel appareil."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4410,7 +4410,7 @@ msgstr "Créez un compte pour garder {product}"
 #. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntriesKeeps"
-msgstr "{product} continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte."
+msgstr "{product} continue de fonctionner sur les appareils où il est déjà. Seule une nouvelle saisie de la clé nécessite un compte."
 
 #. {used} of {limit} key entries used
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
@@ -4432,9 +4432,9 @@ msgstr "Polaris Locker vous connecte à {app}."
 #. Plural on {minutes}.
 msgid "signin.replace.rateLimitedMinutes"
 msgid_plural "signin.replace.rateLimitedMinutes"
-msgstr[0] "Trop de changements d'appareil. Réessayez dans {minutes} minute."
-msgstr[1] "Trop de changements d'appareil. Réessayez dans {minutes} de minutes."
-msgstr[2] "Trop de changements d'appareil. Réessayez dans {minutes} minutes."
+msgstr[0] "Trop de changements d’appareil. Réessayez dans {minutes} minute."
+msgstr[1] "Trop de changements d’appareil. Réessayez dans {minutes} de minutes."
+msgstr[2] "Trop de changements d’appareil. Réessayez dans {minutes} minutes."
 
 #. Too many tries. Wait a moment, then try again.
 #. PX-14a fix round.
@@ -4464,7 +4464,7 @@ msgstr "Affiché dans Polaris Locker et dans les e-mails."
 #. Picture
 #. Finish step: the picture group label.
 msgid "signin.gate.picture"
-msgstr "Image"
+msgstr "Photo"
 
 #. Initials
 #. Finish step: the initials picture tile.
@@ -4499,7 +4499,7 @@ msgstr "Ajouter une clé d’accès ensuite"
 #. Choose a PNG or JPEG up to 5 MB.
 #. Finish step: an upload that is not a PNG or JPEG.
 msgid "signin.gate.pictureInvalid"
-msgstr "Choisissez un PNG ou un JPEG de 5 Mo maximum."
+msgstr "Choisissez un PNG ou un JPEG de 5 Mo maximum."
 
 #. Add a passkey
 #. Finish: the step after the account exists, offering one passkey.
@@ -4539,12 +4539,12 @@ msgstr "Passer"
 #. Your upload
 #. Finish: the tile of a picture the person picked from their device.
 msgid "signin.gate.pictureYours"
-msgstr "Votre fichier"
+msgstr "Photo importée"
 
 #. Your picture wasn't saved. Add one in Account.
 #. Finish: shown on arrival when the picked picture could not be saved.
 msgid "signin.gate.uploadFailed"
-msgstr "Votre image n’a pas été enregistrée. Ajoutez-en une dans Compte."
+msgstr "Votre photo n’a pas été enregistrée. Ajoutez-en une dans Compte."
 
 #. We sent a new code to {email}.
 #. Finish: the code stage after a resend. Arguments: {email}.
@@ -4554,7 +4554,7 @@ msgstr "Nous avons envoyé un nouveau code à {email}."
 #. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
 #. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
 msgid "signin.gate.joinOtherLede"
-msgstr "{email} appartient déjà à un compte Polaris Locker. Utilisez un autre e-mail, ou connectez-vous d’abord à ce compte."
+msgstr "{email} appartient déjà à un compte Polaris Locker. Utilisez une autre adresse e-mail, ou connectez-vous d’abord à ce compte."
 
 #. Enter a screen name.
 #. Finish: the screen name field left empty.
@@ -4579,7 +4579,7 @@ msgstr "Ajouter une autre façon de se connecter"
 #. So you can always get back in.
 #. Nudge body.
 msgid "signin.nudge.body"
-msgstr "Pour toujours pouvoir revenir."
+msgstr "Pour ne jamais perdre l’accès à votre compte."
 
 #. Add a way
 #. Nudge primary: opens Account → Sign-in methods.
@@ -4609,17 +4609,17 @@ msgstr "Lier un compte existant"
 #. Sign in to your other account to join the two. Nothing moves until you confirm.
 #. Link dialog, before the second sign-in.
 msgid "signin.join.lede"
-msgstr "Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation."
+msgstr "Connectez-vous à votre autre compte pour fusionner les deux. Rien ne change avant votre confirmation."
 
 #. Sign in to the other account
 #. Link dialog primary: starts the second sign-in.
 msgid "signin.join.start"
-msgstr "Se connecter à l'autre compte"
+msgstr "Se connecter à l’autre compte"
 
 #. macos: Sign In to the Other Account
 msgctxt "macos"
 msgid "signin.join.start"
-msgstr "Se connecter à l'autre compte"
+msgstr "Se connecter à l’autre compte"
 
 #. This account
 #. Link dialog: the account the person started from.
@@ -4645,74 +4645,74 @@ msgstr[2] "{count} produits"
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "Une bibliothèque : {count} produit. {email} reste l'adresse principale."
-msgstr[1] "Une bibliothèque : {count} de produits. {email} reste l'adresse principale."
-msgstr[2] "Une bibliothèque : {count} produits. {email} reste l'adresse principale."
+msgstr[0] "Une bibliothèque : {count} produit. {email} reste l’adresse principale."
+msgstr[1] "Une bibliothèque : {count} de produits. {email} reste l’adresse principale."
+msgstr[2] "Une bibliothèque : {count} produits. {email} reste l’adresse principale."
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
 msgid "signin.join.done"
-msgstr "Réunis. Vous pouvez annuler pendant 72 heures."
+msgstr "Comptes fusionnés. Vous pouvez annuler pendant 72 heures."
 
 #. Undo join
 #. Link dialog: undo a join.
 msgid "signin.join.undo"
-msgstr "Annuler la réunion"
+msgstr "Annuler la fusion"
 
 #. macos: Undo Join
 msgctxt "macos"
 msgid "signin.join.undo"
-msgstr "Annuler la réunion"
+msgstr "Annuler la fusion"
 
 #. Join undone.
 #. Link dialog: join undone.
 msgid "signin.join.undone"
-msgstr "Réunion annulée."
+msgstr "Fusion annulée."
 
 #. Joined {email}. Undo until {date}.
 #. Link dialog: a join that can still be undone.
 msgid "signin.join.undoable"
-msgstr "{email} réuni. Annulable jusqu'au {date}."
+msgstr "Compte {email} fusionné. Annulable jusqu’au {date}."
 
 #. Linking took too long. Start again.
 #. Link dialog: the link flow is gone.
 msgid "signin.join.expired"
-msgstr "Le lien a pris trop de temps. Recommencez."
+msgstr "La liaison a pris trop de temps. Recommencez."
 
 #. Sign in to your other account first.
 #. Link dialog: confirm before the second sign-in.
 msgid "signin.join.signInOther"
-msgstr "Connectez-vous d'abord à votre autre compte."
+msgstr "Connectez-vous d’abord à votre autre compte."
 
 #. Sign in to both accounts again, then join.
 #. Link dialog: a proof is older than 5 minutes.
 msgid "signin.join.reasonStepUp"
-msgstr "Reconnectez-vous aux deux comptes, puis réunissez-les."
+msgstr "Reconnectez-vous aux deux comptes, puis fusionnez-les."
 
 #. One account was joined in the last 72 hours. Try again after that.
 #. Link dialog: an account was joined in the last 72 hours.
 msgid "signin.join.reasonPending"
-msgstr "Un compte a été réuni ces 72 dernières heures. Réessayez ensuite."
+msgstr "Un compte a été fusionné au cours des 72 dernières heures. Réessayez après ce délai."
 
 #. Cancel the scheduled deletion first, then join.
 #. Link dialog: a scheduled deletion blocks the join.
 msgid "signin.join.reasonUnavailable"
-msgstr "Annulez d'abord la suppression planifiée, puis réunissez."
+msgstr "Annulez d’abord la suppression programmée, puis fusionnez les comptes."
 
 #. That's the account you started from. Sign in to your other account.
 #. Link dialog: the second sign-in was the same account.
 msgid "signin.join.sameAccount"
-msgstr "C'est le compte de départ. Connectez-vous à votre autre compte."
+msgstr "C’est le compte de départ. Connectez-vous à votre autre compte."
 
 #. Couldn't join. Try again.
 #. Link dialog: a request failed.
 msgid "signin.join.failed"
-msgstr "Réunion impossible. Réessayez."
+msgstr "Fusion impossible. Réessayez."
 
 #. If that account is yours too, sign in to it and join the two.
 #. Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).
 msgid "signin.join.ownedNotice"
-msgstr "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux."
+msgstr "Si ce compte est aussi le vôtre, connectez-vous à ce compte et fusionnez les deux."
 
 #. Enter all 8 letters of the code.
 #. Approve dialog: Find it pressed with an incomplete code.
@@ -4732,7 +4732,7 @@ msgstr "Connectez-vous à votre autre compte"
 #. Use any way to sign in to it. You'll come back here to join them.
 #. Link dialog, second sign-in card: what happens next.
 msgid "signin.join.otherLede"
-msgstr "Utilisez n'importe quelle méthode. Vous reviendrez ici pour les réunir."
+msgstr "Utilisez n’importe quelle méthode. Vous reviendrez ici pour les fusionner."
 
 #. Signed in now
 #. Link dialog: the account this browser is signed in to now.
@@ -4762,7 +4762,7 @@ msgstr "Toutes les connexions des deux comptes continuent de fonctionner. Annula
 #. Joined. You can undo until {date}.
 #. Link dialog: joined.
 msgid "signin.join.doneUntil"
-msgstr "Réunis. Annulable jusqu'au {date}."
+msgstr "Comptes fusionnés. Annulable jusqu’au {date}."
 
 #. Sign in to {email} again
 #. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
@@ -4787,7 +4787,7 @@ msgstr "Recommencer"
 #. This join can no longer be undone.
 #. Link dialog: the join cannot be undone any more.
 msgid "signin.join.noUndo"
-msgstr "Cette réunion ne peut plus être annulée."
+msgstr "Cette fusion ne peut plus être annulée."
 
 #. Sign-in methods
 #. Link dialog: a link to Account → Sign-in methods.
@@ -4802,12 +4802,12 @@ msgstr "Méthodes de connexion"
 #. Couldn't undo the join. Try again.
 #. Link dialog: an undo failed.
 msgid "signin.join.undoFailed"
-msgstr "Impossible d'annuler la réunion. Réessayez."
+msgstr "Impossible d’annuler la fusion. Réessayez."
 
 #. Sign in to {email} again, then join.
 #. Link dialog: one account's proof is older than 5 minutes. {email}.
 msgid "signin.join.reasonStaleOne"
-msgstr "Reconnectez-vous à {email}, puis réunissez."
+msgstr "Reconnectez-vous à {email}, puis fusionnez les comptes."
 
 #. Signed in more than 5 minutes ago
 #. Link dialog: marks an account whose sign-in is older than 5 minutes.
@@ -4822,12 +4822,12 @@ msgstr "Toujours connecté en tant que {email}."
 #. Undo the join with {email}? You can until {date}.
 #. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
 msgid "signin.join.undoConfirm"
-msgstr "Annuler la réunion avec {email} ? Possible jusqu'au {date}."
+msgstr "Annuler la fusion avec {email} ? Possible jusqu’au {date}."
 
 #. Too many tries. Wait a minute, then try again.
 #. Approve dialog: too many tries (429).
 msgid "signin.approve.tooMany"
-msgstr "Trop d'essais. Attendez une minute, puis réessayez."
+msgstr "Trop d’essais. Attendez une minute, puis réessayez."
 
 #. Enter your license key.
 #. Activate dialog: Continue pressed with an empty field.
@@ -4837,7 +4837,7 @@ msgstr "Saisissez votre clé de licence."
 #. Didn't get a code?
 #. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
 msgid "signin.code.missing"
-msgstr "Pas de code reçu ?"
+msgstr "Pas de code reçu ?"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
@@ -4857,7 +4857,7 @@ msgstr "Non connecté"
 #. This device isn't signed in, or its license is no longer valid. Sign in or activate again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unauthorized.message"
-msgstr "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau."
+msgstr "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou réactivez-le."
 
 #. Not found
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4887,7 +4887,7 @@ msgstr "Non autorisé"
 #. You don't have permission to do that.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.forbidden.message"
-msgstr "Vous n’avez pas l’autorisation de faire cela."
+msgstr "Vous n’avez pas l’autorisation d’effectuer cette action."
 
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4937,7 +4937,7 @@ msgstr "Trop volumineux"
 #. That is too large to send.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.body_too_large.message"
-msgstr "C’est trop volumineux pour être envoyé."
+msgstr "Cet élément est trop volumineux pour être envoyé."
 
 #. Request refused
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4962,12 +4962,12 @@ msgstr "Ce service n’est pas correctement configuré. Contactez le développeu
 #. Registration closed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.registration_closed.title"
-msgstr "Inscription fermée"
+msgstr "Enregistrement fermé"
 
 #. New devices can't register right now. Activate with a license key or sign in.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.registration_closed.message"
-msgstr "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous."
+msgstr "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez cet appareil avec une clé de licence ou connectez-vous."
 
 #. Value not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4987,7 +4987,7 @@ msgstr "Problème de service"
 #. The service couldn't prepare your settings. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.document_not_representable.message"
-msgstr "Le service n’a pas pu préparer vos réglages. Contactez le développeur."
+msgstr "Le service n’a pas pu préparer vos paramètres. Contactez le développeur."
 
 #. Signing unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5012,12 +5012,12 @@ msgstr "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"
-msgstr "Plus d’utilisations de la clé"
+msgstr "Aucune saisie restante"
 
 #. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+msgstr "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5077,7 +5077,7 @@ msgstr "Appareil modifié"
 #. This device's hardware changed. Activate again to use your license here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.hardware_mismatch.message"
-msgstr "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+msgstr "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5127,27 +5127,27 @@ msgstr "Défini par votre organisation"
 #. This setting is managed by your organization and can't be changed here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.managed_by_admin.message"
-msgstr "Ce réglage est géré par votre organisation et ne peut pas être modifié ici."
+msgstr "Ce paramètre est géré par votre organisation et ne peut pas être modifié ici."
 
 #. Settings unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.catalog_unavailable.title"
-msgstr "Réglages indisponibles"
+msgstr "Paramètres indisponibles"
 
 #. Settings can't be loaded right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.catalog_unavailable.message"
-msgstr "Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
+msgstr "Les paramètres ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
 
 #. License no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_unusable.title"
-msgstr "Licence plus valide"
+msgstr "Licence non valide"
 
 #. Your license is no longer valid, so settings can't be loaded. Sign in or activate again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_unusable.message"
-msgstr "Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau."
+msgstr "Votre licence n’est plus valide, les paramètres ne peuvent donc pas être chargés. Connectez-vous ou réactivez-la."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5232,7 +5232,7 @@ msgstr "La connexion de cette app n’est pas correctement configurée. Elle s�
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "Connexion plus valide"
+msgstr "Connexion non valide"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5302,12 +5302,12 @@ msgstr "La connexion par e-mail n’est pas disponible pour le moment. Choisisse
 #. Check didn't pass
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.turnstile_failed.title"
-msgstr "Vérification non réussie"
+msgstr "Échec de la vérification"
 
 #. The security check didn't pass. Reload the page and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.turnstile_failed.message"
-msgstr "La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez."
+msgstr "La vérification de sécurité a échoué. Rechargez la page, puis réessayez."
 
 #. Sign-in expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5327,7 +5327,7 @@ msgstr "Code incorrect"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez."
+msgstr "Ce code est incorrect. Vérifiez l’e-mail, puis réessayez."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5337,7 +5337,7 @@ msgstr "Code expiré"
 #. That code has expired. Send a new code.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.message"
-msgstr "Ce code a expiré. Envoyez-vous un nouveau code."
+msgstr "Ce code a expiré. Demandez un nouveau code."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5367,7 +5367,7 @@ msgstr "Licence dans un autre compte"
 #. This {product} license is already in another Polaris Locker account. A license never moves by its key.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "Cette licence {product} est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé."
+msgstr "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5447,7 +5447,7 @@ msgstr "Suppression impossible"
 #. This license can't be added back with a key, so it stays in your library.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_removable.message"
-msgstr "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
+msgstr "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
 
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5567,7 +5567,7 @@ msgstr "Mode hors ligne"
 #. This app is running offline, so it didn't connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.local-only.message"
-msgstr "Cette app fonctionne hors ligne, elle ne s’est donc pas connectée."
+msgstr "Cette app fonctionne hors ligne et ne s’est donc pas connectée."
 
 #. Request not sent
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5612,12 +5612,12 @@ msgstr "Le fichier d’activation concerne un autre produit ou un autre appareil
 #. Activation file not trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-trust-rejected.title"
-msgstr "Fichier d’activation non approuvé"
+msgstr "Fichier d’activation non fiable"
 
 #. The activation file is signed by a key this app doesn't trust.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-trust-rejected.message"
-msgstr "Le fichier d’activation est signé par une clé que cette app n’approuve pas."
+msgstr "Le fichier d’activation est signé par une clé que cette app ne reconnaît pas."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5657,7 +5657,7 @@ msgstr "Connexion impossible"
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network.message"
-msgstr "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+msgstr "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
 
 #. Couldn't refresh
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5667,7 +5667,7 @@ msgstr "Actualisation impossible"
 #. Your license and settings couldn't be refreshed. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.refresh-failed.message"
-msgstr "Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
+msgstr "Votre licence et vos paramètres n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
 
 #. Couldn't check your license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5717,7 +5717,7 @@ msgstr "Non inclus"
 #. Your license doesn't include this release.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release-refused.message"
-msgstr "Votre licence n’inclut pas cet élément."
+msgstr "Votre licence n’inclut pas cette version."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5757,7 +5757,7 @@ msgstr "Indisponible ici"
 #. Devices can't be managed from here. Manage them in your account.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device-management-unsupported.message"
-msgstr "Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte."
+msgstr "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte."
 
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5782,12 +5782,12 @@ msgstr "L’appareil n’a pas pu être renommé. Réessayez."
 #. Couldn't remove device
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_deauthorize_failed.title"
-msgstr "Suppression de l’appareil impossible"
+msgstr "Retrait de l’appareil impossible"
 
 #. The device couldn't be removed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_deauthorize_failed.message"
-msgstr "L’appareil n’a pas pu être supprimé. Réessayez."
+msgstr "L’appareil n’a pas pu être retiré. Réessayez."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5837,7 +5837,7 @@ msgstr "Connexion impossible"
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network-error.message"
-msgstr "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+msgstr "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
 
 #. Service problem
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6067,7 +6067,7 @@ msgstr "Échec de la vérification des mises à jour"
 #. The update information was older than what this device already has, so it was refused.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rollback.message"
-msgstr "Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées."
+msgstr "Les informations de mise à jour étaient plus anciennes que celles de cet appareil et ont donc été refusées."
 
 #. Update not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6077,7 +6077,7 @@ msgstr "Mise à jour non vérifiée"
 #. The update couldn't be verified, so it wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-rejected.message"
-msgstr "La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée."
+msgstr "La mise à jour n’a pas pu être vérifiée et n’a donc pas été installée."
 
 #. Update not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6087,7 +6087,7 @@ msgstr "Mise à jour non vérifiée"
 #. The update didn't match what was published, so it wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-mismatch.message"
-msgstr "La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée."
+msgstr "La mise à jour ne correspondait pas à la version publiée et n’a donc pas été installée."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6097,7 +6097,7 @@ msgstr "Téléchargement corrompu"
 #. The update didn't download correctly, so it wasn't installed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.payload-mismatch.message"
-msgstr "La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez."
+msgstr "La mise à jour ne s’est pas téléchargée correctement et n’a donc pas été installée. Réessayez."
 
 #. Can't update here
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6137,7 +6137,7 @@ msgstr "Contenu refusé"
 #. Some content was refused because it contains an unsafe file path.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-unsafe-path.message"
-msgstr "Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux."
+msgstr "Certains contenus ont été refusés, car ils contiennent un chemin de fichier non sécurisé."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6467,7 +6467,7 @@ msgstr "Contenu non valide"
 #. Some content failed its check and wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-type-check-failed.message"
-msgstr "Certains contenus n’ont pas passé leur vérification et n’ont pas été installés."
+msgstr "Certains contenus n’ont pas réussi leur vérification et n’ont pas été installés."
 
 #. Content not available
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6637,7 +6637,7 @@ msgstr "Déconnecté"
 #. This device was signed out. Sign in or activate again to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.revoked.message"
-msgstr "Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer."
+msgstr "Cet appareil a été déconnecté. Connectez-vous ou réactivez-le pour continuer."
 
 #. Activate
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6727,7 +6727,7 @@ msgstr "Appareil modifié"
 #. This device's hardware changed. Activate again to use your license here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.hardware-mismatch.message"
-msgstr "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+msgstr "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
 
 #. Sign in to continue
 #. Core copy (conformance/parity/copy.en.json, activation).
@@ -6802,12 +6802,12 @@ msgstr "Cette app ne propose pas de licence gratuite. Saisissez une clé de lice
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.title"
-msgstr "Plus d’utilisations de la clé"
+msgstr "Aucune saisie restante"
 
 #. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+msgstr "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

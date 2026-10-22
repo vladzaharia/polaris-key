@@ -277,7 +277,7 @@
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Lien copié</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
-    <string name="signInHandoff_confirm">Choisissez Sign in on %1$s sur la page de connexion pour terminer.</string>
+    <string name="signInHandoff_confirm">Choisissez « Sign in on %1$s » sur la page de connexion pour terminer.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">Connecté</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -421,7 +421,7 @@
     <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
     <string name="update_downloading">Téléchargement · %1$s sur %2$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
-    <string name="update_timeLeft">Environ %1$s restant</string>
+    <string name="update_timeLeft">Il reste environ %1$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="update_readyTitle">%1$s %2$s est prêt</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -454,7 +454,7 @@
     <!-- UpdatePrompt: an app update. Platform-managed update. -->
     <string name="update_platform_steam">Steam l’installe. Redémarrez Steam si elle n’est pas encore arrivée.</string>
     <!-- UpdatePrompt: an app update. Platform-managed update. -->
-    <string name="update_platform_itch">L’application itch l’installe.</string>
+    <string name="update_platform_itch">L’app itch l’installe.</string>
     <!-- UpdatePrompt: an app update. Platform-managed update (Linux). -->
     <string name="update_platform_store">Votre logithèque l’installe.</string>
     <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -479,7 +479,7 @@
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_queued">En attente de téléchargement</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=size, 2=total, 3=time. -->
-    <string name="updateProgress_downloading">%1$s sur %2$s · %3$s restant</string>
+    <string name="updateProgress_downloading">%1$s sur %2$s · il reste %3$s</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_installing">Installation…</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. Paused on a metered connection. -->
@@ -594,7 +594,7 @@
     <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->
     <string name="settings_off">Désactivé</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="paywall_title">Profitez de plus avec %1$s %2$s</string>
+    <string name="paywall_title">Allez plus loin avec %1$s %2$s</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="paywall_includes">%1$s comprend</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -640,8 +640,8 @@
     <!-- About: product and build information. Opens the developer's privacy policy. -->
     <string name="about_privacy">Confidentialité</string>
     <!-- About: product and build information. Opens the developer's support page. -->
-    <string name="about_support">Obtenir de l'aide</string>
-    <string name="about_support__macos">Obtenir de l'aide</string>
+    <string name="about_support">Obtenir de l’aide</string>
+    <string name="about_support__macos">Obtenir de l’aide</string>
     <!-- About: product and build information. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="about_version">Version %1$s</string>
     <!-- About: product and build information. Opens the open-source notices. -->
@@ -669,7 +669,7 @@
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">E-mail</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
-    <string name="signin_email_invalid">Saisissez une adresse e-mail complète, par exemple nom@exemple.com.</string>
+    <string name="signin_email_invalid">Saisissez une adresse e-mail complète, par exemple nom@example.com.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_continue">Continuer</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
@@ -702,7 +702,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">Votre licence, vos téléchargements et vos appareils</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">Code · %1$s · Vérifiez qu'il correspond à l'écran</string>
+    <string name="signin_header_codePanel">Code · %1$s · Vérifiez qu’il correspond à l’écran</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker vous connecte à %1$s. %2$s ne voit jamais vos codes ni vos clés d’accès.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -739,7 +739,7 @@
         <item quantity="other">%1$d essais restants.</item>
     </plurals>
     <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_tooMany">Trop d’essais. Envoyez un nouveau code.</string>
+    <string name="signin_code_tooMany">Trop d’essais. Demandez un nouveau code.</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_differentEmail">Utiliser une autre adresse e-mail</string>
     <string name="signin_code_differentEmail__macos">Utiliser une autre adresse e-mail</string>
@@ -956,7 +956,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">Votre profil et votre adresse e-mail</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">L’application reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion.</string>
+    <string name="signin_consent_pairwise">L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">Ce n’est pas vous ?</string>
     <string name="signin_notYou__macos">Ce n’est pas vous ?</string>
@@ -996,7 +996,7 @@
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_button">Revenir à %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds. Arguments: 1=s. -->
-    <string name="signin_return_timer">Retour automatique dans %1$s s</string>
+    <string name="signin_return_timer">Retour automatique dans %1$s s</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_stay">Rester ici</string>
     <string name="signin_return_stay__macos">Rester ici</string>
@@ -1044,7 +1044,7 @@
     <string name="signin_menu_signIn">Se connecter…</string>
     <string name="signin_menu_signIn__macos">Se connecter…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_handoff_browserBody">Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous-y et %1$s continuera tout seul.</string>
+    <string name="signin_handoff_browserBody">Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous dans le navigateur et %1$s continuera tout seul.</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
     <string name="signin_handoff_waiting">En attente de votre navigateur…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -1115,8 +1115,8 @@
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_warning">N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Locker ni aucun développeur ne vous le demandera jamais.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_approve">Approuver et le connecter</string>
-    <string name="signin_approve_approve__macos">Approuver et le connecter</string>
+    <string name="signin_approve_approve">Approuver et connecter</string>
+    <string name="signin_approve_approve__macos">Approuver et connecter</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_deny">Refuser</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
@@ -1142,7 +1142,7 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
-    <string name="signin_expired_sendTo">Un nouveau code est envoyé à %1$s.</string>
+    <string name="signin_expired_sendTo">Le nouveau code sera envoyé à %1$s.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">Se reconnecter</string>
     <string name="signin_again__macos">Se reconnecter</string>
@@ -1182,7 +1182,7 @@
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">Un nouvel appareil s’est connecté à votre compte Polaris Locker</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%1$s s’est connecté le %2$s depuis %3$s. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, section Où vous êtes connecté.</string>
+    <string name="signin_mail_newDevice_body">%1$s s’est connecté le %2$s depuis %3$s. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, rubrique « Où vous êtes connecté ».</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_open">Ouvrir Polaris Locker</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
@@ -1224,7 +1224,7 @@
     <!-- Terminal help: what the deactivate command does. -->
     <string name="cli_verb_deactivate">Retirer votre licence de cet appareil et libérer sa place</string>
     <!-- Terminal help: what the status command shows. -->
-    <string name="cli_verb_status">Licence, appareils et durée hors ligne</string>
+    <string name="cli_verb_status">Afficher la licence, les appareils et le temps hors ligne</string>
     <!-- Terminal help: what the offline-request command does. -->
     <string name="cli_verb_offlineRequest">Afficher le code de demande pour l’activation hors ligne</string>
     <!-- Terminal help: what the import-bundle command does. -->
@@ -1312,7 +1312,7 @@
     <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
     <string name="cli_status_fixes">Pour continuer à utiliser %1$s :</string>
     <!-- Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="cli_status_portal">Prochaine étape sur la page de %1$s :</string>
+    <string name="cli_status_portal">Prochaine étape sur la page de %1$s :</string>
     <!-- Terminal status: what the login command does as a fix for a blocked license. -->
     <string name="cli_fix_signIn">Utiliser la licence de votre compte</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
@@ -1340,7 +1340,7 @@
     <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
     <string name="cli_secret_none">Aucun secret nommé %1$s n’est fourni à cet appareil.</string>
     <!-- Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with -allow-workflow-commands). Arguments: 1=command. -->
-    <string name="cli_output_workflowCommand">La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$s.</string>
+    <string name="cli_output_workflowCommand">La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$s.</string>
     <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
     <string name="cli_offline_import">Exécutez ensuite %1$s avec le fichier que vous recevrez en retour.</string>
     <!-- Terminal diagnostics: the row label for the SDK name and version. -->
@@ -1372,7 +1372,7 @@
     <!-- Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit. Arguments: 1=size, 2=total. -->
     <string name="cli_update_figuresShort">%1$s/%2$s</string>
     <!-- Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'. Arguments: 1=time. -->
-    <string name="cli_update_timeLeft">%1$s restant</string>
+    <string name="cli_update_timeLeft">il reste %1$s</string>
     <!-- Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
     <string name="cli_update_ready">%1$s est prête · %2$s</string>
     <!-- Terminal: the update is ready and its size is not known. {version} is the new version. Arguments: 1=version. -->
@@ -1404,9 +1404,9 @@
     <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
     <string name="cli_identityOff_fix">Exécutez %1$s avec votre clé de licence.</string>
     <!-- Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press. -->
-    <string name="cli_login_attach">Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)</string>
+    <string name="cli_login_attach">Associer la clé de licence de cet appareil à votre compte ? (y/N)</string>
     <!-- Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
-    <string name="cli_keys_confirm">y oui · n non · Esc annuler la connexion</string>
+    <string name="cli_keys_confirm">y oui · n non · Échap annuler la connexion</string>
     <!-- Terminal: the sign-in finished and only the name is known. {name} = the account's name. Arguments: 1=name. -->
     <string name="cli_signin_signedInName">Connecté en tant que %1$s</string>
     <!-- Update progress: the download finished and the update is being checked before it is installed. -->
@@ -1416,13 +1416,13 @@
     <!-- Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead. -->
     <string name="cli_update_notConfiguredTitle">Les mises à jour ne sont pas configurées</string>
     <!-- Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link. -->
-    <string name="cli_update_download">Téléchargez-la ici :</string>
+    <string name="cli_update_download">Téléchargez-la ici :</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">Cette clé de licence ne fonctionne plus</string>
     <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
-    <string name="cli_status_keyRevoked_message">Elle a peut-être expiré ou été désactivée :</string>
+    <string name="cli_status_keyRevoked_message">Elle a peut-être expiré ou été désactivée :</string>
     <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
-    <string name="cli_activate_unauthorized">Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :</string>
+    <string name="cli_activate_unauthorized">Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :</string>
     <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
     <string name="cli_option_reveal">Afficher la valeur</string>
     <!-- Terminal: the secret command without -reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name. Arguments: 1=name. -->
@@ -1454,7 +1454,7 @@
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
     <string name="cli_platform_watchos">watchOS</string>
     <!-- Terminal sign-in: the person said yes to adding this device's license key to the account just signed in. -->
-    <string name="cli_login_attached">La clé de licence est maintenant sur votre compte.</string>
+    <string name="cli_login_attached">La clé de licence est maintenant associée à votre compte.</string>
     <!-- Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="cli_update_downloadNoLink">Récupérez la nouvelle version là où vous avez obtenu %1$s.</string>
     <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
@@ -1474,7 +1474,7 @@
     <string name="signin_approve_open">Approuver un nouvel appareil</string>
     <string name="signin_approve_open__macos">Approuver un nouvel appareil</string>
     <!-- Approve dialog, when the link carried no code. -->
-    <string name="signin_approve_enter">Saisissez le code affiché sur l'autre appareil.</string>
+    <string name="signin_approve_enter">Saisissez le code affiché sur l’autre appareil.</string>
     <!-- Approve dialog: the field's label. -->
     <string name="signin_approve_codeLabel">Code</string>
     <!-- Approve dialog: looks the code up (reads only, never approves). -->
@@ -1491,21 +1491,21 @@
     <!-- Approve dialog: no coarse location was available. -->
     <string name="signin_approve_unknownPlace">Lieu inconnu</string>
     <!-- Approve dialog: why the person must confirm it's them first. -->
-    <string name="signin_approve_stepUpWhy">La demande vient d'un autre endroit que le vôtre, ou d'un endroit inconnu.</string>
+    <string name="signin_approve_stepUpWhy">La demande provient d’un autre lieu que le vôtre, ou d’un lieu inconnu.</string>
     <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
-    <string name="signin_approve_stepUpVerb">l'approuver</string>
+    <string name="signin_approve_stepUpVerb">l’approuver</string>
     <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
     <string name="signin_approve_approved">Approuvé. %1$s est connecté.</string>
     <!-- Approve dialog outcome. -->
-    <string name="signin_approve_deniedDone">Refusé. Rien n'a changé.</string>
+    <string name="signin_approve_deniedDone">Refusé. Rien n’a changé.</string>
     <!-- Approve dialog: a decision that failed. -->
-    <string name="signin_approve_failed">Cela n'a pas abouti. Réessayez.</string>
+    <string name="signin_approve_failed">Cela n’a pas abouti. Réessayez.</string>
     <!-- Passkey prompt closed or timed out. -->
-    <string name="signin_passkey_cancelled">Votre passkey n'a pas été utilisée. Réessayez ou utilisez une autre méthode.</string>
+    <string name="signin_passkey_cancelled">Votre clé d’accès n’a pas été utilisée. Réessayez ou utilisez une autre méthode.</string>
     <!-- Passkey not usable in this browser. -->
-    <string name="signin_passkey_unsupported">Ce navigateur ne peut pas utiliser votre passkey ici. Utilisez une autre méthode.</string>
+    <string name="signin_passkey_unsupported">Ce navigateur ne peut pas utiliser votre clé d’accès ici. Utilisez une autre méthode.</string>
     <!-- Passkey refused. -->
-    <string name="signin_passkey_failed">Votre passkey n'a pas fonctionné. Réessayez ou utilisez une autre méthode.</string>
+    <string name="signin_passkey_failed">Votre clé d’accès n’a pas fonctionné. Réessayez ou utilisez une autre méthode.</string>
     <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
     <string name="signin_gate_stripNoIdentity">Connecté avec %1$s</string>
     <!-- Finish step title when only the terms are asked. -->
@@ -1520,51 +1520,51 @@
     <string name="signin_gate_pictureInitials">Utiliser mes initiales</string>
     <string name="signin_gate_pictureInitials__macos">Utiliser mes initiales</string>
     <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
-    <string name="signin_gate_pictureProvider">Utiliser mon image %1$s</string>
-    <string name="signin_gate_pictureProvider__macos">Utiliser mon image %1$s</string>
+    <string name="signin_gate_pictureProvider">Utiliser ma photo %1$s</string>
+    <string name="signin_gate_pictureProvider__macos">Utiliser ma photo %1$s</string>
     <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
     <string name="signin_gate_birthdate">Ajouter ma date de naissance depuis %1$s</string>
     <!-- Finish step: under the birth date choice. -->
-    <string name="signin_gate_birthdateHelp">Vous seul pouvez la voir. Les apps ne la reçoivent jamais.</string>
+    <string name="signin_gate_birthdateHelp">Elle n’est visible que par vous. Les apps ne la reçoivent jamais.</string>
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
-    <string name="signin_gate_productTerms">J'accepte les %1$s</string>
+    <string name="signin_gate_productTerms">J’accepte les %1$s</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
     <string name="signin_gate_platformTerms">J’accepte %1$s</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">Cette connexion a expiré. Reconnectez-vous.</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
-    <string name="signin_gate_joinTitle">Réunir vos comptes</string>
+    <string name="signin_gate_joinTitle">Fusionner vos comptes</string>
     <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
-    <string name="signin_gate_joinLede">%1$s appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez un autre e-mail.</string>
+    <string name="signin_gate_joinLede">%1$s appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez une autre adresse e-mail.</string>
     <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
-    <string name="signin_gate_joinProve">Pour les réunir, connectez-vous d'abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte.</string>
+    <string name="signin_gate_joinProve">Pour les fusionner, connectez-vous d’abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte.</string>
     <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_codeSent">Nous avons envoyé un code à %1$s.</string>
     <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
-    <string name="signin_hint_when">Sur ce navigateur, dernière fois %1$s</string>
+    <string name="signin_hint_when">Dernière connexion sur ce navigateur : %1$s</string>
     <!-- HintStep title when the browser kept no name. -->
     <string name="signin_hint_welcomeNoName">Bon retour</string>
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
-    <string name="signin_hint_method_passkey">une passkey</string>
+    <string name="signin_hint_method_passkey">une clé d’accès</string>
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">un code par e-mail</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">Utiliser une passkey</string>
-    <string name="signin_hint_usePasskey__macos">Utiliser une passkey</string>
+    <string name="signin_hint_usePasskey">Utiliser une clé d’accès</string>
+    <string name="signin_hint_usePasskey__macos">Utiliser une clé d’accès</string>
     <!-- HintStep: sends a sign-in code. -->
-    <string name="signin_hint_emailCode">M'envoyer un code par e-mail</string>
-    <string name="signin_hint_emailCode__macos">M'envoyer un code par e-mail</string>
+    <string name="signin_hint_emailCode">M’envoyer un code par e-mail</string>
+    <string name="signin_hint_emailCode__macos">M’envoyer un code par e-mail</string>
     <!-- HintStep: back to the email field. -->
     <string name="signin_hint_change">Modifier</string>
     <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_key_carriedTitle">Connectez-vous pour ajouter %1$s</string>
     <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
-    <string name="signin_key_carriedLede">Votre clé est prête. Connectez-vous ou créez un compte, et %1$s rejoint votre bibliothèque.</string>
+    <string name="signin_key_carriedLede">Votre clé est prête. Connectez-vous ou créez un compte, et %1$s rejoindra votre bibliothèque.</string>
     <!-- Sign-in card: drops the carried license key. -->
     <string name="signin_key_withoutKey">Se connecter sans la clé</string>
     <string name="signin_key_withoutKey__macos">Se connecter sans la clé</string>
     <!-- Have a license key? step, under the title. -->
-    <string name="signin_key_onrampLede">Collez la clé de votre e-mail de reçu. Connectez-vous ensuite, et elle rejoint votre bibliothèque.</string>
+    <string name="signin_key_onrampLede">Collez la clé de votre reçu par e-mail. Connectez-vous ensuite pour l’ajouter à votre bibliothèque.</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
     <string name="signin_code_expiredRestart">Cette connexion a expiré. Continuez pour recevoir un nouveau code.</string>
     <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
@@ -1576,15 +1576,15 @@
     <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
     <string name="signin_sso_required">Obligatoire pour les adresses %1$s.</string>
     <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
-    <string name="signin_sso_codeIn">M'envoyer un code par e-mail dans %1$s</string>
-    <string name="signin_sso_codeIn__macos">M'envoyer un code par e-mail dans %1$s</string>
+    <string name="signin_sso_codeIn">M’envoyer un code par e-mail dans %1$s</string>
+    <string name="signin_sso_codeIn__macos">M’envoyer un code par e-mail dans %1$s</string>
     <!-- Sign-in card, a routed step that is not enforced. -->
-    <string name="signin_sso_code">M'envoyer plutôt un code par e-mail</string>
-    <string name="signin_sso_code__macos">M'envoyer plutôt un code par e-mail</string>
+    <string name="signin_sso_code">M’envoyer plutôt un code par e-mail</string>
+    <string name="signin_sso_code__macos">M’envoyer plutôt un code par e-mail</string>
     <!-- Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4). -->
     <string name="signin_refused_title">Ce compte ne peut pas se connecter</string>
     <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
-    <string name="signin_refused_lede">%1$s appartient à un compte qui ne peut pas se connecter. Essayez un autre e-mail ou une autre méthode.</string>
+    <string name="signin_refused_lede">%1$s appartient à un compte qui ne peut pas se connecter. Essayez une autre adresse e-mail ou une autre méthode.</string>
     <!-- Sign-in card: no way to sign in is enabled. -->
     <string name="signin_off_title">La connexion est désactivée</string>
     <!-- Sign-in card: the bot check refused. -->
@@ -1596,17 +1596,17 @@
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
     <string name="signin_gate_termsLinkPlatform">les Conditions et la Politique de confidentialité de Polaris Locker</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
-    <string name="signin_approve_expiredCode">Ce code a expiré. Demandez-en un nouveau sur l'autre appareil.</string>
+    <string name="signin_approve_expiredCode">Ce code a expiré. Demandez-en un nouveau sur l’autre appareil.</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
-    <string name="signin_approve_notFound">Aucune connexion n'attend ce code. Vérifiez-le sur l'autre appareil.</string>
+    <string name="signin_approve_notFound">Aucune connexion n’attend ce code. Vérifiez-le sur l’autre appareil.</string>
     <!-- Placeholder of the email field on the sign-in card. Not translated. -->
-    <string name="signin_email_placeholder">you@example.com</string>
+    <string name="signin_email_placeholder">vous@example.com</string>
     <!-- Names the platform's single sign-on in 'Continue with {provider}' when it has no display name. -->
-    <string name="signin_sso_name">l'authentification unique</string>
+    <string name="signin_sso_name">l’authentification unique</string>
     <!-- Stands for {developer} when a product has no developer name, in 'Contact {developer}'. -->
     <string name="signin_off_developer">son développeur</string>
     <!-- Accessible name of the control that goes back to the email step. -->
-    <string name="signin_code_changeEmail">Modifier l'e-mail</string>
+    <string name="signin_code_changeEmail">Modifier l’e-mail</string>
     <!-- Why a resend is disabled. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
     <string name="signin_sso_wait">Patientez %1$s</string>
     <!-- Have a license key? step, under a valid key. Arguments: {product} = the product's name. Arguments: 1=product. -->
@@ -1620,7 +1620,7 @@
     <!-- Rate limit with no wait given. -->
     <string name="signin_rateLimitedFew">Trop de codes. Réessayez dans quelques minutes.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
-    <string name="signin_code_emailInUse">Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.</string>
+    <string name="signin_code_emailInUse">Un autre compte Polaris Locker utilise cette adresse e-mail. Connectez-vous comme la dernière fois.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_pickOne">Choisissez une licence pour continuer.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1629,7 +1629,7 @@
     <string name="signin_choice_replaceAndSignIn">Remplacer et se connecter</string>
     <string name="signin_choice_replaceAndSignIn__macos">Remplacer et se connecter</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_choice_replaceSafety">L'appareil choisi sera déconnecté de %1$s. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail.</string>
+    <string name="signin_choice_replaceSafety">L’appareil choisi sera déconnecté de %1$s. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">Appareil remplacé</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
@@ -1637,7 +1637,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_request_goneTitle">Cette connexion est terminée</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_request_gone">Retournez dans l'app et reconnectez-vous.</string>
+    <string name="signin_request_gone">Retournez dans l’app et reconnectez-vous.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name. Arguments: 1=device. -->
     <string name="signin_header_onDevice">sur %1$s</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1646,13 +1646,13 @@
     <string name="signin_consent_deny">Ne pas autoriser</string>
     <string name="signin_consent_deny__macos">Ne pas autoriser</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Cloud Sync</string>
+    <string name="signin_consent_cloudSync">Synchronisation cloud</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
-    <string name="signin_consent_newLicense">Nouvelle : licence %1$s, créée quand vous continuez</string>
+    <string name="signin_consent_newLicense">Nouvelle licence %1$s, créée lorsque vous continuez</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">Gardez %1$s dans un compte</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil.</string>
+    <string name="signin_key_upgradeLede">Avec un compte, vous pouvez le récupérer et le transférer vous-même sur un nouvel appareil.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">Créer un compte</string>
     <string name="signin_key_createAccount__macos">Créer un compte</string>
@@ -1662,7 +1662,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntriesTitle">Créez un compte pour garder %1$s</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntriesKeeps">%1$s continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte.</string>
+    <string name="signin_key_noEntriesKeeps">%1$s continue de fonctionner sur les appareils où il est déjà. Seule une nouvelle saisie de la clé nécessite un compte.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers. Arguments: 1=used, 2=limit. -->
     <string name="signin_key_meter">%1$s saisies de clé sur %2$s utilisées</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1671,9 +1671,9 @@
     <string name="signin_footerNoDeveloper">Polaris Locker vous connecte à %1$s.</string>
     <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
     <plurals name="signin_replace_rateLimitedMinutes">
-        <item quantity="one">Trop de changements d'appareil. Réessayez dans %1$d minute.</item>
-        <item quantity="many">Trop de changements d'appareil. Réessayez dans %1$d de minutes.</item>
-        <item quantity="other">Trop de changements d'appareil. Réessayez dans %1$d minutes.</item>
+        <item quantity="one">Trop de changements d’appareil. Réessayez dans %1$d minute.</item>
+        <item quantity="many">Trop de changements d’appareil. Réessayez dans %1$d de minutes.</item>
+        <item quantity="other">Trop de changements d’appareil. Réessayez dans %1$d minutes.</item>
     </plurals>
     <!-- PX-14a fix round. -->
     <string name="signin_request_tooMany">Trop de tentatives. Patientez un instant, puis réessayez.</string>
@@ -1686,7 +1686,7 @@
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">Affiché dans Polaris Locker et dans les e-mails.</string>
     <!-- Finish step: the picture group label. -->
-    <string name="signin_gate_picture">Image</string>
+    <string name="signin_gate_picture">Photo</string>
     <!-- Finish step: the initials picture tile. -->
     <string name="signin_gate_pictureInitialsTile">Initiales</string>
     <!-- Finish step: under the initials tile. -->
@@ -1700,7 +1700,7 @@
     <!-- Finish step: the unticked passkey opt-in. -->
     <string name="signin_gate_passkey">Ajouter une clé d’accès ensuite</string>
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
-    <string name="signin_gate_pictureInvalid">Choisissez un PNG ou un JPEG de 5 Mo maximum.</string>
+    <string name="signin_gate_pictureInvalid">Choisissez un PNG ou un JPEG de 5 Mo maximum.</string>
     <!-- Finish: the step after the account exists, offering one passkey. -->
     <string name="signin_gate_passkeyTitle">Ajouter une clé d’accès</string>
     <!-- Finish: under the passkey step title. -->
@@ -1715,13 +1715,13 @@
     <!-- Finish: leaves the passkey step. -->
     <string name="signin_gate_passkeySkip">Passer</string>
     <!-- Finish: the tile of a picture the person picked from their device. -->
-    <string name="signin_gate_pictureYours">Votre fichier</string>
+    <string name="signin_gate_pictureYours">Photo importée</string>
     <!-- Finish: shown on arrival when the picked picture could not be saved. -->
-    <string name="signin_gate_uploadFailed">Votre image n’a pas été enregistrée. Ajoutez-en une dans Compte.</string>
+    <string name="signin_gate_uploadFailed">Votre photo n’a pas été enregistrée. Ajoutez-en une dans Compte.</string>
     <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
     <string name="signin_gate_resent">Nous avons envoyé un nouveau code à %1$s.</string>
     <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
-    <string name="signin_gate_joinOtherLede">%1$s appartient déjà à un compte Polaris Locker. Utilisez un autre e-mail, ou connectez-vous d’abord à ce compte.</string>
+    <string name="signin_gate_joinOtherLede">%1$s appartient déjà à un compte Polaris Locker. Utilisez une autre adresse e-mail, ou connectez-vous d’abord à ce compte.</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">Saisissez un nom d’affichage.</string>
     <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
@@ -1731,7 +1731,7 @@
     <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
     <string name="signin_nudge_title">Ajouter une autre façon de se connecter</string>
     <!-- Nudge body. -->
-    <string name="signin_nudge_body">Pour toujours pouvoir revenir.</string>
+    <string name="signin_nudge_body">Pour ne jamais perdre l’accès à votre compte.</string>
     <!-- Nudge primary: opens Account → Sign-in methods. -->
     <string name="signin_nudge_add">Ajouter</string>
     <string name="signin_nudge_add__macos">Ajouter</string>
@@ -1741,10 +1741,10 @@
     <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
     <string name="signin_join_title">Lier un compte existant</string>
     <!-- Link dialog, before the second sign-in. -->
-    <string name="signin_join_lede">Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation.</string>
+    <string name="signin_join_lede">Connectez-vous à votre autre compte pour fusionner les deux. Rien ne change avant votre confirmation.</string>
     <!-- Link dialog primary: starts the second sign-in. -->
-    <string name="signin_join_start">Se connecter à l'autre compte</string>
-    <string name="signin_join_start__macos">Se connecter à l'autre compte</string>
+    <string name="signin_join_start">Se connecter à l’autre compte</string>
+    <string name="signin_join_start__macos">Se connecter à l’autre compte</string>
     <!-- Link dialog: the account the person started from. -->
     <string name="signin_join_thisAccount">Ce compte</string>
     <!-- Link dialog: the account signed in second. -->
@@ -1757,35 +1757,35 @@
     </plurals>
     <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
     <plurals name="signin_join_result">
-        <item quantity="one">Une bibliothèque : %1$d produit. %2$s reste l'adresse principale.</item>
-        <item quantity="many">Une bibliothèque : %1$d de produits. %2$s reste l'adresse principale.</item>
-        <item quantity="other">Une bibliothèque : %1$d produits. %2$s reste l'adresse principale.</item>
+        <item quantity="one">Une bibliothèque : %1$d produit. %2$s reste l’adresse principale.</item>
+        <item quantity="many">Une bibliothèque : %1$d de produits. %2$s reste l’adresse principale.</item>
+        <item quantity="other">Une bibliothèque : %1$d produits. %2$s reste l’adresse principale.</item>
     </plurals>
     <!-- Link dialog: joined. -->
-    <string name="signin_join_done">Réunis. Vous pouvez annuler pendant 72 heures.</string>
+    <string name="signin_join_done">Comptes fusionnés. Vous pouvez annuler pendant 72 heures.</string>
     <!-- Link dialog: undo a join. -->
-    <string name="signin_join_undo">Annuler la réunion</string>
-    <string name="signin_join_undo__macos">Annuler la réunion</string>
+    <string name="signin_join_undo">Annuler la fusion</string>
+    <string name="signin_join_undo__macos">Annuler la fusion</string>
     <!-- Link dialog: join undone. -->
-    <string name="signin_join_undone">Réunion annulée.</string>
+    <string name="signin_join_undone">Fusion annulée.</string>
     <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
-    <string name="signin_join_undoable">%1$s réuni. Annulable jusqu'au %2$s.</string>
+    <string name="signin_join_undoable">Compte %1$s fusionné. Annulable jusqu’au %2$s.</string>
     <!-- Link dialog: the link flow is gone. -->
-    <string name="signin_join_expired">Le lien a pris trop de temps. Recommencez.</string>
+    <string name="signin_join_expired">La liaison a pris trop de temps. Recommencez.</string>
     <!-- Link dialog: confirm before the second sign-in. -->
-    <string name="signin_join_signInOther">Connectez-vous d'abord à votre autre compte.</string>
+    <string name="signin_join_signInOther">Connectez-vous d’abord à votre autre compte.</string>
     <!-- Link dialog: a proof is older than 5 minutes. -->
-    <string name="signin_join_reasonStepUp">Reconnectez-vous aux deux comptes, puis réunissez-les.</string>
+    <string name="signin_join_reasonStepUp">Reconnectez-vous aux deux comptes, puis fusionnez-les.</string>
     <!-- Link dialog: an account was joined in the last 72 hours. -->
-    <string name="signin_join_reasonPending">Un compte a été réuni ces 72 dernières heures. Réessayez ensuite.</string>
+    <string name="signin_join_reasonPending">Un compte a été fusionné au cours des 72 dernières heures. Réessayez après ce délai.</string>
     <!-- Link dialog: a scheduled deletion blocks the join. -->
-    <string name="signin_join_reasonUnavailable">Annulez d'abord la suppression planifiée, puis réunissez.</string>
+    <string name="signin_join_reasonUnavailable">Annulez d’abord la suppression programmée, puis fusionnez les comptes.</string>
     <!-- Link dialog: the second sign-in was the same account. -->
-    <string name="signin_join_sameAccount">C'est le compte de départ. Connectez-vous à votre autre compte.</string>
+    <string name="signin_join_sameAccount">C’est le compte de départ. Connectez-vous à votre autre compte.</string>
     <!-- Link dialog: a request failed. -->
-    <string name="signin_join_failed">Réunion impossible. Réessayez.</string>
+    <string name="signin_join_failed">Fusion impossible. Réessayez.</string>
     <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
-    <string name="signin_join_ownedNotice">Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux.</string>
+    <string name="signin_join_ownedNotice">Si ce compte est aussi le vôtre, connectez-vous à ce compte et fusionnez les deux.</string>
     <!-- Approve dialog: Find it pressed with an incomplete code. -->
     <string name="signin_approve_codeShort">Saisissez les 8 lettres du code.</string>
     <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
@@ -1793,7 +1793,7 @@
     <!-- Link dialog, second sign-in card: what this sign-in is for. -->
     <string name="signin_join_otherTitle">Connectez-vous à votre autre compte</string>
     <!-- Link dialog, second sign-in card: what happens next. -->
-    <string name="signin_join_otherLede">Utilisez n'importe quelle méthode. Vous reviendrez ici pour les réunir.</string>
+    <string name="signin_join_otherLede">Utilisez n’importe quelle méthode. Vous reviendrez ici pour les fusionner.</string>
     <!-- Link dialog: the account this browser is signed in to now. -->
     <string name="signin_join_signedNow">Connecté maintenant</string>
     <!-- Link dialog: the account that is not the current one. -->
@@ -1805,7 +1805,7 @@
     <!-- Link dialog: reassurance under the result. -->
     <string name="signin_join_keepsWorking">Toutes les connexions des deux comptes continuent de fonctionner. Annulable pendant 72 heures.</string>
     <!-- Link dialog: joined. Arguments: 1=date. -->
-    <string name="signin_join_doneUntil">Réunis. Annulable jusqu'au %1$s.</string>
+    <string name="signin_join_doneUntil">Comptes fusionnés. Annulable jusqu’au %1$s.</string>
     <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
     <string name="signin_join_again">Se reconnecter à %1$s</string>
     <string name="signin_join_again__macos">Se reconnecter à %1$s</string>
@@ -1813,26 +1813,26 @@
     <string name="signin_join_startAgain">Recommencer</string>
     <string name="signin_join_startAgain__macos">Recommencer</string>
     <!-- Link dialog: the join cannot be undone any more. -->
-    <string name="signin_join_noUndo">Cette réunion ne peut plus être annulée.</string>
+    <string name="signin_join_noUndo">Cette fusion ne peut plus être annulée.</string>
     <!-- Link dialog: a link to Account → Sign-in methods. -->
     <string name="signin_join_methodsLink">Méthodes de connexion</string>
     <string name="signin_join_methodsLink__macos">Méthodes de connexion</string>
     <!-- Link dialog: an undo failed. -->
-    <string name="signin_join_undoFailed">Impossible d'annuler la réunion. Réessayez.</string>
+    <string name="signin_join_undoFailed">Impossible d’annuler la fusion. Réessayez.</string>
     <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
-    <string name="signin_join_reasonStaleOne">Reconnectez-vous à %1$s, puis réunissez.</string>
+    <string name="signin_join_reasonStaleOne">Reconnectez-vous à %1$s, puis fusionnez les comptes.</string>
     <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
     <string name="signin_join_staleMark">Connecté il y a plus de 5 minutes</string>
     <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
     <string name="signin_join_stillSignedIn">Toujours connecté en tant que %1$s.</string>
     <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
-    <string name="signin_join_undoConfirm">Annuler la réunion avec %1$s ? Possible jusqu'au %2$s.</string>
+    <string name="signin_join_undoConfirm">Annuler la fusion avec %1$s ? Possible jusqu’au %2$s.</string>
     <!-- Approve dialog: too many tries (429). -->
-    <string name="signin_approve_tooMany">Trop d'essais. Attendez une minute, puis réessayez.</string>
+    <string name="signin_approve_tooMany">Trop d’essais. Attendez une minute, puis réessayez.</string>
     <!-- Activate dialog: Continue pressed with an empty field. -->
     <string name="signin_key_enterKey">Saisissez votre clé de licence.</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
-    <string name="signin_code_missing">Pas de code reçu ?</string>
+    <string name="signin_code_missing">Pas de code reçu ?</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Une erreur s’est produite</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -1840,7 +1840,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unauthorized_title">Non connecté</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unauthorized_message">Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau.</string>
+    <string name="core_codes_unauthorized_message">Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou réactivez-le.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_found_title">Introuvable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1852,7 +1852,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_forbidden_title">Non autorisé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_forbidden_message">Vous n’avez pas l’autorisation de faire cela.</string>
+    <string name="core_codes_forbidden_message">Vous n’avez pas l’autorisation d’effectuer cette action.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_attestation_required_title">Vérification de l’appareil requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1872,7 +1872,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_body_too_large_title">Trop volumineux</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_body_too_large_message">C’est trop volumineux pour être envoyé.</string>
+    <string name="core_codes_body_too_large_message">Cet élément est trop volumineux pour être envoyé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_method_not_allowed_title">Requête refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1882,9 +1882,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_misconfigured_message">Ce service n’est pas correctement configuré. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_registration_closed_title">Inscription fermée</string>
+    <string name="core_codes_registration_closed_title">Enregistrement fermé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_registration_closed_message">Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous.</string>
+    <string name="core_codes_registration_closed_message">Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez cet appareil avec une clé de licence ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_value_not_representable_title">Valeur refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1892,7 +1892,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_document_not_representable_title">Problème de service</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_document_not_representable_message">Le service n’a pas pu préparer vos réglages. Contactez le développeur.</string>
+    <string name="core_codes_document_not_representable_message">Le service n’a pas pu préparer vos paramètres. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_signing_unavailable_title">Signature indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1902,9 +1902,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_limit_title">Plus d’utilisations de la clé</string>
+    <string name="core_codes_key_entry_limit_title">Aucune saisie restante</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_limit_message">Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
+    <string name="core_codes_key_entry_limit_message">Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">Licence désactivée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1928,7 +1928,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_title">Appareil modifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_hardware_mismatch_message">Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici.</string>
+    <string name="core_codes_hardware_mismatch_message">Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_fingerprint_required_title">Échec de la vérification de l’appareil</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1948,15 +1948,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_managed_by_admin_title">Défini par votre organisation</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_managed_by_admin_message">Ce réglage est géré par votre organisation et ne peut pas être modifié ici.</string>
+    <string name="core_codes_managed_by_admin_message">Ce paramètre est géré par votre organisation et ne peut pas être modifié ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_catalog_unavailable_title">Réglages indisponibles</string>
+    <string name="core_codes_catalog_unavailable_title">Paramètres indisponibles</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_catalog_unavailable_message">Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes.</string>
+    <string name="core_codes_catalog_unavailable_message">Les paramètres ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_unusable_title">Licence plus valide</string>
+    <string name="core_codes_license_unusable_title">Licence non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_unusable_message">Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau.</string>
+    <string name="core_codes_license_unusable_message">Votre licence n’est plus valide, les paramètres ne peuvent donc pas être chargés. Connectez-vous ou réactivez-la.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_disabled_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1990,7 +1990,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Connexion plus valide</string>
+    <string name="core_codes_invalid_grant_title">Connexion non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2018,9 +2018,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_unavailable_message">La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_turnstile_failed_title">Vérification non réussie</string>
+    <string name="core_codes_turnstile_failed_title">Échec de la vérification</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_turnstile_failed_message">La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez.</string>
+    <string name="core_codes_turnstile_failed_message">La vérification de sécurité a échoué. Rechargez la page, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_signin_expired_title">Connexion expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2028,11 +2028,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_title">Code incorrect</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_message">Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez.</string>
+    <string name="core_codes_invalid_code_message">Ce code est incorrect. Vérifiez l’e-mail, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_code_expired_title">Code expiré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_message">Ce code a expiré. Envoyez-vous un nouveau code.</string>
+    <string name="core_codes_code_expired_message">Ce code a expiré. Demandez un nouveau code.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">E-mail déjà utilisé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2044,7 +2044,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Licence dans un autre compte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">Cette licence %1$s est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé.</string>
+    <string name="core_codes_license_owned_message">Cette licence %1$s est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">E-mail non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2076,7 +2076,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_removable_title">Suppression impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_removable_message">Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque.</string>
+    <string name="core_codes_not_removable_message">Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">Connectez-vous pour télécharger</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2124,7 +2124,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_only_title">Mode hors ligne</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_local_only_message">Cette app fonctionne hors ligne, elle ne s’est donc pas connectée.</string>
+    <string name="core_codes_local_only_message">Cette app fonctionne hors ligne et ne s’est donc pas connectée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_backend_origin_not_allowed_title">Requête non envoyée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2142,9 +2142,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_bundle_claims_rejected_message">Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_trust_rejected_title">Fichier d’activation non approuvé</string>
+    <string name="core_codes_bundle_trust_rejected_title">Fichier d’activation non fiable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_trust_rejected_message">Le fichier d’activation est signé par une clé que cette app n’approuve pas.</string>
+    <string name="core_codes_bundle_trust_rejected_message">Le fichier d’activation est signé par une clé que cette app ne reconnaît pas.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_inner_doc_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2160,11 +2160,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_title">Connexion impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez.</string>
+    <string name="core_codes_network_message">Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">Actualisation impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_refresh_failed_message">Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez.</string>
+    <string name="core_codes_refresh_failed_message">Votre licence et vos paramètres n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_failed_title">Vérification de la licence impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2184,7 +2184,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_refused_title">Non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_refused_message">Votre licence n’inclut pas cet élément.</string>
+    <string name="core_codes_release_refused_message">Votre licence n’inclut pas cette version.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_bundle_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2200,7 +2200,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_management_unsupported_message">Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte.</string>
+    <string name="core_codes_device_management_unsupported_message">Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">Chargement des appareils impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2210,9 +2210,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_rename_failed_message">L’appareil n’a pas pu être renommé. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_deauthorize_failed_title">Suppression de l’appareil impossible</string>
+    <string name="core_codes_device_deauthorize_failed_title">Retrait de l’appareil impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_deauthorize_failed_message">L’appareil n’a pas pu être supprimé. Réessayez.</string>
+    <string name="core_codes_device_deauthorize_failed_message">L’appareil n’a pas pu être retiré. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2232,7 +2232,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_title">Connexion impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez.</string>
+    <string name="core_codes_network_error_message">Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">Problème de service</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2324,19 +2324,19 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_rollback_title">Échec de la vérification des mises à jour</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rollback_message">Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées.</string>
+    <string name="core_codes_feed_rollback_message">Les informations de mise à jour étaient plus anciennes que celles de cet appareil et ont donc été refusées.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_record_rejected_title">Mise à jour non vérifiée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_rejected_message">La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée.</string>
+    <string name="core_codes_record_rejected_message">La mise à jour n’a pas pu être vérifiée et n’a donc pas été installée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_record_mismatch_title">Mise à jour non vérifiée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_mismatch_message">La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée.</string>
+    <string name="core_codes_record_mismatch_message">La mise à jour ne correspondait pas à la version publiée et n’a donc pas été installée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_payload_mismatch_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_payload_mismatch_message">La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez.</string>
+    <string name="core_codes_payload_mismatch_message">La mise à jour ne s’est pas téléchargée correctement et n’a donc pas été installée. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_swap_refused_title">Mise à jour impossible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2352,7 +2352,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_files_unsafe_path_title">Contenu refusé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_unsafe_path_message">Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux.</string>
+    <string name="core_codes_files_unsafe_path_message">Certains contenus ont été refusés, car ils contiennent un chemin de fichier non sécurisé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_files_duplicate_path_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2484,7 +2484,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pack_type_check_failed_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_type_check_failed_message">Certains contenus n’ont pas passé leur vérification et n’ont pas été installés.</string>
+    <string name="core_codes_pack_type_check_failed_message">Certains contenus n’ont pas réussi leur vérification et n’ont pas été installés.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pack_not_pinned_title">Contenu indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2552,7 +2552,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_revoked_title">Déconnecté</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_revoked_message">Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer.</string>
+    <string name="core_gate_revoked_message">Cet appareil a été déconnecté. Connectez-vous ou réactivez-le pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_needs_activation_title">Activer</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2588,7 +2588,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_hardware_mismatch_title">Appareil modifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_hardware_mismatch_message">Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici.</string>
+    <string name="core_activation_hardware_mismatch_message">Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_claimed_title">Connectez-vous pour continuer</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
@@ -2618,9 +2618,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_title">Plus d’utilisations de la clé</string>
+    <string name="core_activation_key_entry_limit_title">Aucune saisie restante</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
+    <string name="core_activation_key_entry_limit_message">Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activation refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

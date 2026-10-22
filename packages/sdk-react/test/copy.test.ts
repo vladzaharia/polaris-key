@@ -3,9 +3,9 @@
 // The error copy catalog (SDK-PARITY-PASS §3.2) and the typed activation table (§3.1).
 //
 // English is the generated module (src/copy.generated.ts, from conformance/parity/copy.en.json by
-// `pnpm gen constants`); French is the hand-written proof locale until SP-03. Every wire code in
-// conformance/parity/errors.json has an English AND a French sentence; an unknown code falls back
-// to COPY_FALLBACK naming it, never the server's body.
+// `pnpm gen constants`); French is a hand table whose sentences are copy.fr.json's (pinned below).
+// Every wire code in conformance/parity/errors.json has an English AND a French sentence; an
+// unknown code falls back to COPY_FALLBACK naming it, never the server's body.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -47,6 +47,21 @@ const COPY_EN = JSON.parse(
   gate: Record<string, { title: string; message: string }>;
   activation: Record<string, { title: string; message: string }>;
 };
+
+const COPY_FR = JSON.parse(
+  readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "..",
+      "conformance",
+      "parity",
+      "copy.fr.json",
+    ),
+    "utf8",
+  ),
+) as typeof COPY_EN;
 
 const ERRORS = JSON.parse(
   readFileSync(
@@ -116,7 +131,7 @@ describe("copy catalog (§3.2)", () => {
       COPY_CODES.key_entry_limit!.message,
     );
     expect(copyMessage("key_entry_limit")).not.toMatch(/[{}]/);
-    expect(copyTitle("device_limit", "fr")).toBe("Limite d'appareils atteinte");
+    expect(copyTitle("device_limit", "fr")).toBe("Limite d’appareils atteinte");
     registerCopyLocale("de", {
       generic: "Fehler ({code}).",
       messages: { device_limit: "Gerätelimit." },
@@ -222,9 +237,49 @@ describe("core.copy: English is the generated module", () => {
         { activation: { kind: "deviceLimit", code: "device_limit" } },
         "fr",
       ),
-    ).toMatch(/limite d'appareils/);
+    ).toMatch(/tous ses appareils/);
     expect(activationMessage("device-limit", { locale: "fr" })).toMatch(
-      /limite d'appareils/,
+      /tous ses appareils/,
+    );
+    // The error code and the activation result of the same name read their own entries.
+    expect(copyTitle("unauthorized", "fr")).toBe(
+      COPY_FR.codes.unauthorized!.title,
+    );
+    expect(activationTitle("unauthorized", "fr")).toBe(
+      COPY_FR.activation.unauthorized!.title,
+    );
+  });
+
+  it("every French sentence is copy.fr.json's", () => {
+    const P = { product: "DJDL" };
+    const fill = (s: string, code: string) =>
+      s.replace("{product}", "DJDL").replace("{code}", code);
+    for (const [code, e] of Object.entries(COPY_FR.codes)) {
+      if (!hasCopy(code, "fr")) continue;
+      expect(copyMessage(code, { locale: "fr", params: P }), code).toBe(
+        fill(e.message, code),
+      );
+      expect([e.title, COPY_EN.codes[code]!.title], code).toContain(
+        copyTitle(code, "fr"),
+      );
+    }
+    for (const [status, e] of Object.entries(COPY_FR.gate)) {
+      expect(copyMessage(status, { locale: "fr" }), status).toBe(e.message);
+      expect([e.title, COPY_EN.gate[status]!.title], status).toContain(
+        copyTitle(status, "fr"),
+      );
+    }
+    for (const kind of [...KINDS, "unauthorized", "ok", "keyEntryLimit"]) {
+      const e =
+        COPY_FR.activation[
+          kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+        ]!;
+      expect(activationMessage(kind, { locale: "fr" }), kind).toBe(
+        fill(e.message, kind),
+      );
+    }
+    expect(copyMessage("brand_new_code", { locale: "fr" })).toBe(
+      fill(COPY_FR.fallback.message, "brand_new_code"),
     );
   });
 });

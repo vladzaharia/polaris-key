@@ -1910,7 +1910,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Obtenir de l'aide"
+            "value": "Obtenir de l’aide"
           }
         },
         "es": {
@@ -4514,7 +4514,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :"
+            "value": "Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :"
           }
         },
         "es": {
@@ -7094,7 +7094,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "y oui · n non · Esc annuler la connexion"
+            "value": "y oui · n non · Échap annuler la connexion"
           }
         },
         "es": {
@@ -7334,7 +7334,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)"
+            "value": "Associer la clé de licence de cet appareil à votre compte ? (y/N)"
           }
         },
         "es": {
@@ -7394,7 +7394,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La clé de licence est maintenant sur votre compte."
+            "value": "La clé de licence est maintenant associée à votre compte."
           }
         },
         "es": {
@@ -8234,7 +8234,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$@."
+            "value": "La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$@."
           }
         },
         "es": {
@@ -9434,7 +9434,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elle a peut-être expiré ou été désactivée :"
+            "value": "Elle a peut-être expiré ou été désactivée :"
           }
         },
         "es": {
@@ -9734,7 +9734,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prochaine étape sur la page de %1$@ :"
+            "value": "Prochaine étape sur la page de %1$@ :"
           }
         },
         "es": {
@@ -10094,7 +10094,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléchargez-la ici :"
+            "value": "Téléchargez-la ici :"
           }
         },
         "es": {
@@ -10814,7 +10814,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ restant"
+            "value": "il reste %1$@"
           }
         },
         "es": {
@@ -12194,7 +12194,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licence, appareils et durée hors ligne"
+            "value": "Afficher la licence, les appareils et le temps hors ligne"
           }
         },
         "es": {
@@ -14954,7 +14954,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+            "value": "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
           }
         },
         "es": {
@@ -15074,7 +15074,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+            "value": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
           }
         },
         "es": {
@@ -15134,7 +15134,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plus d’utilisations de la clé"
+            "value": "Aucune saisie restante"
           }
         },
         "es": {
@@ -16994,7 +16994,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "C’est trop volumineux pour être envoyé."
+            "value": "Cet élément est trop volumineux pour être envoyé."
           }
         },
         "es": {
@@ -17714,7 +17714,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le fichier d’activation est signé par une clé que cette app n’approuve pas."
+            "value": "Le fichier d’activation est signé par une clé que cette app ne reconnaît pas."
           }
         },
         "es": {
@@ -17774,7 +17774,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fichier d’activation non approuvé"
+            "value": "Fichier d’activation non fiable"
           }
         },
         "es": {
@@ -18074,7 +18074,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
+            "value": "Les paramètres ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -18134,7 +18134,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réglages indisponibles"
+            "value": "Paramètres indisponibles"
           }
         },
         "es": {
@@ -20114,7 +20114,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce code a expiré. Envoyez-vous un nouveau code."
+            "value": "Ce code a expiré. Demandez un nouveau code."
           }
         },
         "es": {
@@ -20834,7 +20834,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte."
+            "value": "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte."
           }
         },
         "es": {
@@ -20954,7 +20954,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’appareil n’a pas pu être supprimé. Réessayez."
+            "value": "L’appareil n’a pas pu être retiré. Réessayez."
           }
         },
         "es": {
@@ -21014,7 +21014,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suppression de l’appareil impossible"
+            "value": "Retrait de l’appareil impossible"
           }
         },
         "es": {
@@ -21554,7 +21554,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le service n’a pas pu préparer vos réglages. Contactez le développeur."
+            "value": "Le service n’a pas pu préparer vos paramètres. Contactez le développeur."
           }
         },
         "es": {
@@ -22754,7 +22754,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées."
+            "value": "Les informations de mise à jour étaient plus anciennes que celles de cet appareil et ont donc été refusées."
           }
         },
         "es": {
@@ -23954,7 +23954,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux."
+            "value": "Certains contenus ont été refusés, car ils contiennent un chemin de fichier non sécurisé."
           }
         },
         "es": {
@@ -24194,7 +24194,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous n’avez pas l’autorisation de faire cela."
+            "value": "Vous n’avez pas l’autorisation d’effectuer cette action."
           }
         },
         "es": {
@@ -24434,7 +24434,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
+            "value": "Le matériel de cet appareil a changé. Réactivez-le pour utiliser votre licence ici."
           }
         },
         "es": {
@@ -25754,7 +25754,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez."
+            "value": "Ce code est incorrect. Vérifiez l’e-mail, puis réessayez."
           }
         },
         "es": {
@@ -25934,7 +25934,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connexion plus valide"
+            "value": "Connexion non valide"
           }
         },
         "es": {
@@ -26474,7 +26474,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+            "value": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
           }
         },
         "es": {
@@ -26534,7 +26534,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plus d’utilisations de la clé"
+            "value": "Aucune saisie restante"
           }
         },
         "es": {
@@ -27314,7 +27314,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette licence %1$@ est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé."
+            "value": "Cette licence %1$@ est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
           }
         },
         "es": {
@@ -27674,7 +27674,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau."
+            "value": "Votre licence n’est plus valide, les paramètres ne peuvent donc pas être chargés. Connectez-vous ou réactivez-la."
           }
         },
         "es": {
@@ -27734,7 +27734,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licence plus valide"
+            "value": "Licence non valide"
           }
         },
         "es": {
@@ -27914,7 +27914,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette app fonctionne hors ligne, elle ne s’est donc pas connectée."
+            "value": "Cette app fonctionne hors ligne et ne s’est donc pas connectée."
           }
         },
         "es": {
@@ -28034,7 +28034,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce réglage est géré par votre organisation et ne peut pas être modifié ici."
+            "value": "Ce paramètre est géré par votre organisation et ne peut pas être modifié ici."
           }
         },
         "es": {
@@ -28634,7 +28634,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+            "value": "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -28754,7 +28754,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
+            "value": "Impossible de joindre Polaris Locker. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -29474,7 +29474,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
+            "value": "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
           }
         },
         "es": {
@@ -30554,7 +30554,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Certains contenus n’ont pas passé leur vérification et n’ont pas été installés."
+            "value": "Certains contenus n’ont pas réussi leur vérification et n’ont pas été installés."
           }
         },
         "es": {
@@ -30914,7 +30914,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez."
+            "value": "La mise à jour ne s’est pas téléchargée correctement et n’a donc pas été installée. Réessayez."
           }
         },
         "es": {
@@ -31874,7 +31874,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée."
+            "value": "La mise à jour ne correspondait pas à la version publiée et n’a donc pas été installée."
           }
         },
         "es": {
@@ -31994,7 +31994,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée."
+            "value": "La mise à jour n’a pas pu être vérifiée et n’a donc pas été installée."
           }
         },
         "es": {
@@ -32234,7 +32234,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
+            "value": "Votre licence et vos paramètres n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -32354,7 +32354,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous."
+            "value": "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez cet appareil avec une clé de licence ou connectez-vous."
           }
         },
         "es": {
@@ -32414,7 +32414,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inscription fermée"
+            "value": "Enregistrement fermé"
           }
         },
         "es": {
@@ -32474,7 +32474,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre licence n’inclut pas cet élément."
+            "value": "Votre licence n’inclut pas cette version."
           }
         },
         "es": {
@@ -35714,7 +35714,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez."
+            "value": "La vérification de sécurité a échoué. Rechargez la page, puis réessayez."
           }
         },
         "es": {
@@ -35774,7 +35774,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vérification non réussie"
+            "value": "Échec de la vérification"
           }
         },
         "es": {
@@ -35834,7 +35834,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau."
+            "value": "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou réactivez-le."
           }
         },
         "es": {
@@ -37754,7 +37754,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer."
+            "value": "Cet appareil a été déconnecté. Connectez-vous ou réactivez-le pour continuer."
           }
         },
         "es": {
@@ -45032,7 +45032,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Profitez de plus avec %1$@ %2$@"
+            "value": "Allez plus loin avec %1$@ %2$@"
           }
         },
         "es": {
@@ -46796,7 +46796,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez Sign in on %1$@ sur la page de connexion pour terminer."
+            "value": "Choisissez « Sign in on %1$@ » sur la page de connexion pour terminer."
           }
         },
         "es": {
@@ -47312,7 +47312,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approuver et le connecter"
+            "value": "Approuver et connecter"
           }
         },
         "es": {
@@ -47732,7 +47732,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Refusé. Rien n'a changé."
+            "value": "Refusé. Rien n’a changé."
           }
         },
         "es": {
@@ -47972,7 +47972,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saisissez le code affiché sur l'autre appareil."
+            "value": "Saisissez le code affiché sur l’autre appareil."
           }
         },
         "es": {
@@ -48092,7 +48092,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce code a expiré. Demandez-en un nouveau sur l'autre appareil."
+            "value": "Ce code a expiré. Demandez-en un nouveau sur l’autre appareil."
           }
         },
         "es": {
@@ -48152,7 +48152,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cela n'a pas abouti. Réessayez."
+            "value": "Cela n’a pas abouti. Réessayez."
           }
         },
         "es": {
@@ -48404,7 +48404,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune connexion n'attend ce code. Vérifiez-le sur l'autre appareil."
+            "value": "Aucune connexion n’attend ce code. Vérifiez-le sur l’autre appareil."
           }
         },
         "es": {
@@ -48668,7 +48668,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "l'approuver"
+            "value": "l’approuver"
           }
         },
         "es": {
@@ -48728,7 +48728,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La demande vient d'un autre endroit que le vôtre, ou d'un endroit inconnu."
+            "value": "La demande provient d’un autre lieu que le vôtre, ou d’un lieu inconnu."
           }
         },
         "es": {
@@ -48848,7 +48848,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trop d'essais. Attendez une minute, puis réessayez."
+            "value": "Trop d’essais. Attendez une minute, puis réessayez."
           }
         },
         "es": {
@@ -51944,7 +51944,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'appareil choisi sera déconnecté de %1$@. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
+            "value": "L’appareil choisi sera déconnecté de %1$@. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
           }
         },
         "es": {
@@ -52904,7 +52904,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modifier l'e-mail"
+            "value": "Modifier l’e-mail"
           }
         },
         "es": {
@@ -53036,7 +53036,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
+            "value": "Un autre compte Polaris Locker utilise cette adresse e-mail. Connectez-vous comme la dernière fois."
           }
         },
         "es": {
@@ -53336,7 +53336,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas de code reçu ?"
+            "value": "Pas de code reçu ?"
           }
         },
         "es": {
@@ -53840,7 +53840,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trop d’essais. Envoyez un nouveau code."
+            "value": "Trop d’essais. Demandez un nouveau code."
           }
         },
         "es": {
@@ -54464,7 +54464,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Sync"
+            "value": "Synchronisation cloud"
           }
         },
         "es": {
@@ -54836,7 +54836,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nouvelle : licence %1$@, créée quand vous continuez"
+            "value": "Nouvelle licence %1$@, créée lorsque vous continuez"
           }
         },
         "es": {
@@ -54896,7 +54896,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’application reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion."
+            "value": "L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion."
           }
         },
         "es": {
@@ -56504,7 +56504,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saisissez une adresse e-mail complète, par exemple nom@exemple.com."
+            "value": "Saisissez une adresse e-mail complète, par exemple nom@example.com."
           }
         },
         "es": {
@@ -56624,7 +56624,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "you@example.com"
+            "value": "vous@example.com"
           }
         },
         "es": {
@@ -56864,7 +56864,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un nouveau code est envoyé à %1$@."
+            "value": "Le nouveau code sera envoyé à %1$@."
           }
         },
         "es": {
@@ -57164,7 +57164,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous seul pouvez la voir. Les apps ne la reçoivent jamais."
+            "value": "Elle n’est visible que par vous. Les apps ne la reçoivent jamais."
           }
         },
         "es": {
@@ -57608,7 +57608,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez un autre e-mail."
+            "value": "%1$@ appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez une autre adresse e-mail."
           }
         },
         "es": {
@@ -57668,7 +57668,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ appartient déjà à un compte Polaris Locker. Utilisez un autre e-mail, ou connectez-vous d’abord à ce compte."
+            "value": "%1$@ appartient déjà à un compte Polaris Locker. Utilisez une autre adresse e-mail, ou connectez-vous d’abord à ce compte."
           }
         },
         "es": {
@@ -57728,7 +57728,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pour les réunir, connectez-vous d'abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte."
+            "value": "Pour les fusionner, connectez-vous d’abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte."
           }
         },
         "es": {
@@ -57788,7 +57788,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réunir vos comptes"
+            "value": "Fusionner vos comptes"
           }
         },
         "es": {
@@ -58580,7 +58580,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Image"
+            "value": "Photo"
           }
         },
         "es": {
@@ -58892,7 +58892,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez un PNG ou un JPEG de 5 Mo maximum."
+            "value": "Choisissez un PNG ou un JPEG de 5 Mo maximum."
           }
         },
         "es": {
@@ -58964,7 +58964,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utiliser mon image %1$@"
+            "value": "Utiliser ma photo %1$@"
           }
         },
         "es": {
@@ -59144,7 +59144,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre fichier"
+            "value": "Photo importée"
           }
         },
         "es": {
@@ -59264,7 +59264,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "J'accepte les %1$@"
+            "value": "J’accepte les %1$@"
           }
         },
         "es": {
@@ -59996,7 +59996,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre image n’a pas été enregistrée. Ajoutez-en une dans Compte."
+            "value": "Votre photo n’a pas été enregistrée. Ajoutez-en une dans Compte."
           }
         },
         "es": {
@@ -60260,7 +60260,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous-y et %1$@ continuera tout seul."
+            "value": "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous dans le navigateur et %1$@ continuera tout seul."
           }
         },
         "es": {
@@ -61388,7 +61388,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code · %1$@ · Vérifiez qu'il correspond à l'écran"
+            "value": "Code · %1$@ · Vérifiez qu’il correspond à l’écran"
           }
         },
         "es": {
@@ -61700,7 +61700,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "M'envoyer un code par e-mail"
+            "value": "M’envoyer un code par e-mail"
           }
         },
         "es": {
@@ -61820,7 +61820,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "une passkey"
+            "value": "une clé d’accès"
           }
         },
         "es": {
@@ -61964,7 +61964,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utiliser une passkey"
+            "value": "Utiliser une clé d’accès"
           }
         },
         "es": {
@@ -62204,7 +62204,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sur ce navigateur, dernière fois %1$@"
+            "value": "Dernière connexion sur ce navigateur : %1$@"
           }
         },
         "es": {
@@ -62456,7 +62456,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réunis. Vous pouvez annuler pendant 72 heures."
+            "value": "Comptes fusionnés. Vous pouvez annuler pendant 72 heures."
           }
         },
         "es": {
@@ -62516,7 +62516,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réunis. Annulable jusqu'au %1$@."
+            "value": "Comptes fusionnés. Annulable jusqu’au %1$@."
           }
         },
         "es": {
@@ -62576,7 +62576,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le lien a pris trop de temps. Recommencez."
+            "value": "La liaison a pris trop de temps. Recommencez."
           }
         },
         "es": {
@@ -62636,7 +62636,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réunion impossible. Réessayez."
+            "value": "Fusion impossible. Réessayez."
           }
         },
         "es": {
@@ -62756,7 +62756,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation."
+            "value": "Connectez-vous à votre autre compte pour fusionner les deux. Rien ne change avant votre confirmation."
           }
         },
         "es": {
@@ -62948,7 +62948,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette réunion ne peut plus être annulée."
+            "value": "Cette fusion ne peut plus être annulée."
           }
         },
         "es": {
@@ -63068,7 +63068,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilisez n'importe quelle méthode. Vous reviendrez ici pour les réunir."
+            "value": "Utilisez n’importe quelle méthode. Vous reviendrez ici pour les fusionner."
           }
         },
         "es": {
@@ -63188,7 +63188,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux."
+            "value": "Si ce compte est aussi le vôtre, connectez-vous à ce compte et fusionnez les deux."
           }
         },
         "es": {
@@ -63572,7 +63572,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un compte a été réuni ces 72 dernières heures. Réessayez ensuite."
+            "value": "Un compte a été fusionné au cours des 72 dernières heures. Réessayez après ce délai."
           }
         },
         "es": {
@@ -63632,7 +63632,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconnectez-vous à %1$@, puis réunissez."
+            "value": "Reconnectez-vous à %1$@, puis fusionnez les comptes."
           }
         },
         "es": {
@@ -63692,7 +63692,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconnectez-vous aux deux comptes, puis réunissez-les."
+            "value": "Reconnectez-vous aux deux comptes, puis fusionnez-les."
           }
         },
         "es": {
@@ -63752,7 +63752,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annulez d'abord la suppression planifiée, puis réunissez."
+            "value": "Annulez d’abord la suppression programmée, puis fusionnez les comptes."
           }
         },
         "es": {
@@ -63856,7 +63856,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Une bibliothèque : %#@count@. %2$@ reste l'adresse principale."
+            "value": "Une bibliothèque : %#@count@. %2$@ reste l’adresse principale."
           },
           "substitutions": {
             "count": {
@@ -64076,7 +64076,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "C'est le compte de départ. Connectez-vous à votre autre compte."
+            "value": "C’est le compte de départ. Connectez-vous à votre autre compte."
           }
         },
         "es": {
@@ -64136,7 +64136,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connectez-vous d'abord à votre autre compte."
+            "value": "Connectez-vous d’abord à votre autre compte."
           }
         },
         "es": {
@@ -64328,7 +64328,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se connecter à l'autre compte"
+            "value": "Se connecter à l’autre compte"
           }
         },
         "es": {
@@ -64712,7 +64712,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annuler la réunion"
+            "value": "Annuler la fusion"
           }
         },
         "es": {
@@ -64772,7 +64772,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annuler la réunion avec %1$@ ? Possible jusqu'au %2$@."
+            "value": "Annuler la fusion avec %1$@ ? Possible jusqu’au %2$@."
           }
         },
         "es": {
@@ -64832,7 +64832,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible d'annuler la réunion. Réessayez."
+            "value": "Impossible d’annuler la fusion. Réessayez."
           }
         },
         "es": {
@@ -64892,7 +64892,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ réuni. Annulable jusqu'au %2$@."
+            "value": "Compte %1$@ fusionné. Annulable jusqu’au %2$@."
           }
         },
         "es": {
@@ -64952,7 +64952,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réunion annulée."
+            "value": "Fusion annulée."
           }
         },
         "es": {
@@ -65204,7 +65204,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre clé est prête. Connectez-vous ou créez un compte, et %1$@ rejoint votre bibliothèque."
+            "value": "Votre clé est prête. Connectez-vous ou créez un compte, et %1$@ rejoindra votre bibliothèque."
           }
         },
         "es": {
@@ -66284,7 +66284,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte."
+            "value": "%1$@ continue de fonctionner sur les appareils où il est déjà. Seule une nouvelle saisie de la clé nécessite un compte."
           }
         },
         "es": {
@@ -66404,7 +66404,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Collez la clé de votre e-mail de reçu. Connectez-vous ensuite, et elle rejoint votre bibliothèque."
+            "value": "Collez la clé de votre reçu par e-mail. Connectez-vous ensuite pour l’ajouter à votre bibliothèque."
           }
         },
         "es": {
@@ -66680,7 +66680,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
+            "value": "Avec un compte, vous pouvez le récupérer et le transférer vous-même sur un nouvel appareil."
           }
         },
         "es": {
@@ -67088,7 +67088,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ s’est connecté le %2$@ depuis %3$@. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, section Où vous êtes connecté."
+            "value": "%1$@ s’est connecté le %2$@ depuis %3$@. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, rubrique « Où vous êtes connecté »."
           }
         },
         "es": {
@@ -68096,7 +68096,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pour toujours pouvoir revenir."
+            "value": "Pour ne jamais perdre l’accès à votre compte."
           }
         },
         "es": {
@@ -68660,7 +68660,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre passkey n'a pas été utilisée. Réessayez ou utilisez une autre méthode."
+            "value": "Votre clé d’accès n’a pas été utilisée. Réessayez ou utilisez une autre méthode."
           }
         },
         "es": {
@@ -68720,7 +68720,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre passkey n'a pas fonctionné. Réessayez ou utilisez une autre méthode."
+            "value": "Votre clé d’accès n’a pas fonctionné. Réessayez ou utilisez une autre méthode."
           }
         },
         "es": {
@@ -68780,7 +68780,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce navigateur ne peut pas utiliser votre passkey ici. Utilisez une autre méthode."
+            "value": "Ce navigateur ne peut pas utiliser votre clé d’accès ici. Utilisez une autre méthode."
           }
         },
         "es": {
@@ -69476,7 +69476,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ appartient à un compte qui ne peut pas se connecter. Essayez un autre e-mail ou une autre méthode."
+            "value": "%1$@ appartient à un compte qui ne peut pas se connecter. Essayez une autre adresse e-mail ou une autre méthode."
           }
         },
         "es": {
@@ -71092,7 +71092,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trop de changements d'appareil. Réessayez dans %#@minutes@."
+            "value": "Trop de changements d’appareil. Réessayez dans %#@minutes@."
           },
           "substitutions": {
             "minutes": {
@@ -71432,7 +71432,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retournez dans l'app et reconnectez-vous."
+            "value": "Retournez dans l’app et reconnectez-vous."
           }
         },
         "es": {
@@ -72188,7 +72188,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retour automatique dans %1$@ s"
+            "value": "Retour automatique dans %1$@ s"
           }
         },
         "es": {
@@ -72956,7 +72956,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "M'envoyer plutôt un code par e-mail"
+            "value": "M’envoyer plutôt un code par e-mail"
           }
         },
         "es": {
@@ -73028,7 +73028,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "M'envoyer un code par e-mail dans %1$@"
+            "value": "M’envoyer un code par e-mail dans %1$@"
           }
         },
         "es": {
@@ -73148,7 +73148,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "l'authentification unique"
+            "value": "l’authentification unique"
           }
         },
         "es": {
@@ -75500,7 +75500,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’application itch l’installe."
+            "value": "L’app itch l’installe."
           }
         },
         "es": {
@@ -76388,7 +76388,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Environ %1$@ restant"
+            "value": "Il reste environ %1$@"
           }
         },
         "es": {
@@ -76808,7 +76808,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sur %2$@ · %3$@ restant"
+            "value": "%1$@ sur %2$@ · il reste %3$@"
           }
         },
         "es": {
