@@ -207,6 +207,12 @@ export function roleLabel(
         areas: role.areas,
       };
     }
+    default:
+      // A role this console does not know (a newer Worker): its id, never nothing.
+      return {
+        label: String((role as { role?: unknown }).role ?? ""),
+        areas: null,
+      };
   }
 }
 

@@ -25,6 +25,8 @@ import { Form, useAdminForm } from "../../../../ui/form.js";
 import { Select } from "../../../../ui/Select.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { toast } from "../../../../ui/toast.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import {
   EMPTY_TIER,
   TierFields,
@@ -46,6 +48,8 @@ export function TiersPage({
 }): React.ReactElement {
   const tiersQ = useTiers(slug);
   const usage = useTierUsage(slug);
+  // A view-only member reads the tier; its inputs and New tier are soft-disabled with the reason.
+  const gate = useWriteGate("license", slug);
   const [createOpen, setCreateOpen] = React.useState(false);
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const open =
@@ -57,7 +61,11 @@ export function TiersPage({
     <PageHeader
       title="Tiers"
       primaryAction={
-        <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+        <Button
+          iconStart={<Plus />}
+          disabledReason={gate.disabledReason}
+          onClick={() => setCreateOpen(true)}
+        >
           New tier
         </Button>
       }
@@ -84,7 +92,11 @@ export function TiersPage({
         title="No tiers yet"
         description="A tier bundles a profile and policy defaults that licenses can be put on."
         primaryAction={
-          <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+          <Button
+            iconStart={<Plus />}
+            disabledReason={gate.disabledReason}
+            onClick={() => setCreateOpen(true)}
+          >
             New tier
           </Button>
         }
@@ -147,12 +159,14 @@ export function TiersPage({
           </ul>
         </nav>
         {open ? (
-          <TierEditor
-            key={open.id}
-            slug={slug}
-            tier={open}
-            used={usage ? (usage.get(open.id) ?? 0) : null}
-          />
+          <WriteLock locked={!gate.allowed} reason={gate.disabledReason}>
+            <TierEditor
+              key={open.id}
+              slug={slug}
+              tier={open}
+              used={usage ? (usage.get(open.id) ?? 0) : null}
+            />
+          </WriteLock>
         ) : (
           <EmptyState
             kind="not-found"

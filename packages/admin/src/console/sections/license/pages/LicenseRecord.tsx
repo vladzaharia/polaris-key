@@ -38,6 +38,8 @@ import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { useRecordLock } from "../../../access/useRecordLock.js";
 import { toast } from "../../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
 import { LicenseDevices } from "./LicenseDevices.js";
@@ -60,7 +62,7 @@ import {
   useLicenseBatch,
   useLicenseHolderMoves,
 } from "../components/holders.js";
-import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
+import { DeleteLicenseDialog } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
 import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
 import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
@@ -70,6 +72,7 @@ import {
   HeaderStatus,
   RecordFacts,
   StatusTab,
+  recordMenu,
   useFocusTitleAfterUndo,
   type RecordDialog,
 } from "../components/LicenseRecordParts.js";
@@ -181,6 +184,8 @@ function LicenseRecordBody({
   const me = useMe().data;
   const product = useProduct(slug).data;
   const tiers = useTiers(slug).data?.tiers ?? [];
+  // A view-only member reads the record; its write controls are soft-disabled with the reason.
+  const { lock, writes } = useRecordLock("license", slug);
   const [handoff, setHandoff] = React.useState<{
     unsent: UnsentKey;
     email: string;
@@ -296,6 +301,15 @@ function LicenseRecordBody({
     />
   );
 
+  const menu = recordMenu({
+    license,
+    active,
+    floating,
+    resendable,
+    expired,
+    onDialog: setDialog,
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -323,67 +337,23 @@ function LicenseRecordBody({
         }
         // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
         primaryAction={
-          <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
-            {tierControl}
-            {mainAction}
-          </div>
+          <WriteLock {...lock}>
+            <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
+              {tierControl}
+              {mainAction}
+            </div>
+          </WriteLock>
         }
         inlineSecondary={0}
         menuLast
         secondaryActions={[
-          { label: "Change tier…", onSelect: () => setDialog("tier") },
-          ...(floating
-            ? active
-              ? []
-              : [{ label: "Assign…", onSelect: () => setDialog("assign") }]
-            : [{ label: "Edit holder…", onSelect: () => setDialog("holder") }]),
-          ...(active && !floating && !resendable
-            ? []
-            : [{ label: "Add key…", onSelect: () => setDialog("mint") }]),
-          { label: "Edit profiles…", onSelect: () => setDialog("profiles") },
-          {
-            label: "Mint offline bundle…",
-            onSelect: () => setDialog("bundle"),
-          },
-          { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
-          // LX-27: an assigned licence's key can be emailed anew (a floating one has no address).
-          ...(floating || !active || expired || !license.email?.trim()
-            ? []
-            : [
-                { label: "Send a new key…", onSelect: () => setDialog("send") },
-              ]),
-          // S-24 §8.8: Reassign lives in the overflow, beside Make floating in its danger part.
-          ...(floating
-            ? []
-            : [{ label: "Reassign…", onSelect: () => setDialog("reassign") }]),
+          ...writes(menu.secondary),
           {
             label: "View in activity",
             onSelect: () => navigate(r.activity(slug, { q: id })),
           },
         ]}
-        dangerActions={[
-          ...(floating
-            ? []
-            : [
-                {
-                  label: "Make floating…",
-                  onSelect: () => setDialog("floating"),
-                },
-              ]),
-          ...(active
-            ? [
-                {
-                  label: "Disable license…",
-                  onSelect: () => setDialog("disable"),
-                },
-              ]
-            : []),
-          {
-            label: "Delete license…",
-            onSelect: () => setDialog("delete"),
-            disabledReason: deletionBlockedReason(license.deletion),
-          },
-        ]}
+        dangerActions={writes(menu.danger)}
         factsRow={
           <span className="hidden sm:flex conbig:hidden short:hidden">
             {facts(true)}
@@ -440,30 +410,36 @@ function LicenseRecordBody({
           (S-23 §6.1); a hidden one is not rendered, so it takes no part. */}
       {tab === "overview" ? (
         <div className="pk-vt-tabpanel">
-          <StatusTab
-            slug={slug}
-            license={license}
-            tiers={tiers}
-            product={product}
-            seats={seats}
-            batch={batch}
-            me={me}
-            onDialog={setDialog}
-          />
+          <WriteLock {...lock}>
+            <StatusTab
+              slug={slug}
+              license={license}
+              tiers={tiers}
+              product={product}
+              seats={seats}
+              batch={batch}
+              me={me}
+              onDialog={setDialog}
+            />
+          </WriteLock>
         </div>
       ) : null}
       {tab === "keys" ? (
-        <div className="pk-vt-tabpanel space-y-6">
-          <LicenseKeys slug={slug} license={license} />
-          {/* F-21: tokens bound to this licence, while the product's package feeds are on. */}
-          {product?.packageFeeds ? (
-            <LicenseRegistryTokens slug={slug} licenseId={id} />
-          ) : null}
-        </div>
+        <WriteLock {...lock}>
+          <div className="pk-vt-tabpanel space-y-6">
+            <LicenseKeys slug={slug} license={license} />
+            {/* F-21: tokens bound to this licence, while the product's package feeds are on. */}
+            {product?.packageFeeds ? (
+              <LicenseRegistryTokens slug={slug} licenseId={id} />
+            ) : null}
+          </div>
+        </WriteLock>
       ) : null}
       {tab === "devices" ? (
         <div className="pk-vt-tabpanel">
-          <LicenseDevices slug={slug} license={license} seats={seats} />
+          <WriteLock {...lock}>
+            <LicenseDevices slug={slug} license={license} seats={seats} />
+          </WriteLock>
         </div>
       ) : null}
       {tab === "activity" ? (
@@ -473,7 +449,9 @@ function LicenseRecordBody({
       ) : null}
       {configOpened ? (
         <div hidden={tab !== "config"} className="pk-vt-tabpanel">
-          <LicenseConfig slug={slug} license={license} configOn={configOn} />
+          <WriteLock {...lock}>
+            <LicenseConfig slug={slug} license={license} configOn={configOn} />
+          </WriteLock>
         </div>
       ) : null}
 

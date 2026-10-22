@@ -40,7 +40,7 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/release/components/PolicyDialog.tsx": 655,
   "sections/release/pages/CompatibilityPage.tsx": 753,
   "sections/release/pages/PackRecord.tsx": 755,
-  "sections/release/pages/ReleaseRecord.tsx": 1244,
+  "sections/release/pages/ReleaseRecord.tsx": 1216,
   "sections/release/pages/SimulatorPage.tsx": 766,
   "sections/storefronts/components/PolarisKeyPanel.tsx": 888,
   "sections/storefronts/pages/ListingPage.tsx": 695,

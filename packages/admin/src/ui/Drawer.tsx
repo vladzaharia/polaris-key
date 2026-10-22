@@ -141,7 +141,9 @@ export function Drawer({
         >
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4 console:bg-(--pk-admin-band-overlay)"
+            // At large text on a phone the header is compact: Back on its own line, a smaller title, a
+            // two-line description, so the form keeps the room (P4).
+            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4 console:bg-(--pk-admin-band-overlay) bigtext:max-lg:flex-wrap conbig:max-lg:flex-wrap bigtext:max-lg:gap-x-2 conbig:max-lg:gap-x-2 bigtext:max-lg:gap-y-0 conbig:max-lg:gap-y-0 bigtext:max-lg:py-2 conbig:max-lg:py-2"
           >
             {closeStyle === "back" ? (
               <button
@@ -159,19 +161,19 @@ export function Drawer({
                 {glyph}
               </span>
             ) : null}
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1 bigtext:max-lg:basis-full conbig:max-lg:basis-full bigtext:max-lg:space-y-0.5 conbig:max-lg:space-y-0.5">
               {eyebrow ? (
                 <p className="truncate text-xs text-fg-muted">{eyebrow}</p>
               ) : null}
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none console:text-xl console:leading-7"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none console:text-xl console:leading-7 bigtext:max-lg:text-base conbig:max-lg:text-base"
               >
                 {title}
               </DialogPrimitive.Title>
               {description ? (
-                <DialogPrimitive.Description className="text-sm text-fg-muted">
+                <DialogPrimitive.Description className="text-sm text-fg-muted bigtext:max-lg:line-clamp-2 conbig:max-lg:line-clamp-2 bigtext:max-lg:text-xs conbig:max-lg:text-xs">
                   {description}
                 </DialogPrimitive.Description>
               ) : null}
@@ -235,7 +237,8 @@ export function DrawerFooter({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-end lg:px-6",
+        // At large text on a phone the actions share rows instead of stacking one per line (P4).
+        "flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-end lg:px-6 bigtext:max-lg:flex-row-reverse conbig:max-lg:flex-row-reverse bigtext:max-lg:flex-wrap conbig:max-lg:flex-wrap bigtext:max-lg:justify-start conbig:max-lg:justify-start bigtext:max-lg:gap-x-2 conbig:max-lg:gap-x-2 bigtext:max-lg:gap-y-1 conbig:max-lg:gap-y-1 bigtext:max-lg:py-2 conbig:max-lg:py-2",
         className,
       )}
       {...props}

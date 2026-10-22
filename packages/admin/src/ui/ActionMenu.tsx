@@ -4,6 +4,7 @@ import { MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import type { ButtonSize } from "./Button.js";
 import { IconButton } from "./IconButton.js";
+import { useInertOutside } from "./useInertOutside.js";
 
 export interface ActionMenuItem {
   type?: "item";
@@ -46,6 +47,7 @@ export function ActionMenu({
   align = "end",
   size = "sm",
 }: ActionMenuProps): React.ReactElement {
+  const inertRef = useInertOutside<HTMLDivElement>();
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
@@ -55,6 +57,7 @@ export function ActionMenu({
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Content
+          ref={inertRef}
           align={align}
           sideOffset={4}
           aria-label={label}

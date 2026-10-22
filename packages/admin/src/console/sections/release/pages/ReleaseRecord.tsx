@@ -1,3 +1,6 @@
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { releaseTabs } from "./releaseRecordTabs.js";
+import { useRecordLock } from "../../../access/useRecordLock.js";
 import * as React from "react";
 import { Ban, ExternalLink, OctagonPause, Pin, Undo2 } from "lucide-react";
 import type {
@@ -916,6 +919,8 @@ export function ReleaseRecord({
   const store = useReleaseStore(slug);
   const channelsQuery = useReleaseChannels(slug);
   const product = useProduct(slug);
+  // A view-only member reads the release: its write controls are soft-disabled with the reason.
+  const { gate, lock, writes } = useRecordLock("ship", slug);
   const distributionOn =
     product.data?.services?.distribution?.enabled !== false;
   const current: ReleaseTab =
@@ -1037,40 +1042,7 @@ export function ReleaseRecord({
         },
       ]
     : [];
-  const tabs = [
-    {
-      // The record's own URL: Status is the default, and nav.ts's record tabs (the router's
-      // accepted segments) name only the other tabs.
-      value: "status",
-      label: "Status",
-      to: r.release(slug, id),
-    },
-    {
-      value: "builds",
-      label: "Builds & files",
-      to: r.release(slug, id, "builds"),
-    },
-    {
-      value: "packs",
-      label: "Packs",
-      count: pins,
-      to: r.release(slug, id, "packs"),
-    },
-    {
-      value: "channels",
-      label: "Release tracks",
-      to: r.release(slug, id, "channels"),
-    },
-    ...(distributionOn
-      ? [
-          {
-            value: "distribution",
-            label: "Distribution",
-            to: r.release(slug, id, "distribution"),
-          },
-        ]
-      : []),
-  ];
+  const tabs = releaseTabs(slug, id, pins, distributionOn);
 
   return (
     <div className="space-y-6" data-template="record">
@@ -1105,7 +1077,7 @@ export function ReleaseRecord({
               variant="outline"
               className="border-danger-border text-danger"
               iconStart={<OctagonPause aria-hidden />}
-              disabledReason={haltBlocked}
+              disabledReason={gate.disabledReason ?? haltBlocked}
               onClick={() => setHalting(true)}
             >
               Halt everywhere…
@@ -1119,12 +1091,12 @@ export function ReleaseRecord({
             </Button>
           )
         }
-        secondaryActions={
+        secondaryActions={writes(
           distributionOn
             ? [rollBack, promote, pinOn, ...unyank]
-            : [rollBack, pinOn, ...unyank]
-        }
-        dangerActions={
+            : [rollBack, pinOn, ...unyank],
+        )}
+        dangerActions={writes(
           release.yank
             ? []
             : [
@@ -1136,8 +1108,8 @@ export function ReleaseRecord({
                       release: optionOfRelease(release),
                     }),
                 },
-              ]
-        }
+              ],
+        )}
         tabs={<PageTabs label="Release" items={tabs} value={current} />}
         sticky
       />
@@ -1168,47 +1140,49 @@ export function ReleaseRecord({
           </>
         ) : null}
       </p>
-      <div className="pk-vt-tabpanel">
-        {current === "status" ? (
-          <StatusTab
-            slug={slug}
-            release={release}
-            channels={appChannels}
-            previous={previous}
-            distributionOn={distributionOn}
-            rows={rows}
-            matrixLoading={distributionOn && matrix.isPending}
-            matrixError={distributionOn ? matrix.error : null}
-            onRetry={() => void matrix.refetch()}
-          />
-        ) : null}
-        {current === "builds" ? (
-          <BuildsTab slug={slug} release={release} />
-        ) : null}
-        {current === "packs" ? (
-          <PacksTab slug={slug} release={release} />
-        ) : null}
-        {current === "channels" ? (
-          <ChannelsTab
-            slug={slug}
-            release={release}
-            channels={appChannels}
-            loading={channelsQuery.isPending}
-            error={channelsQuery.error}
-            onRetry={() => void channelsQuery.refetch()}
-          />
-        ) : null}
-        {current === "distribution" && distributionOn ? (
-          <DistributionTab
-            slug={slug}
-            release={release}
-            matrix={matrix.data}
-            loading={matrix.isPending}
-            error={matrix.error}
-            onRetry={() => void matrix.refetch()}
-          />
-        ) : null}
-      </div>
+      <WriteLock {...lock}>
+        <div className="pk-vt-tabpanel">
+          {current === "status" ? (
+            <StatusTab
+              slug={slug}
+              release={release}
+              channels={appChannels}
+              previous={previous}
+              distributionOn={distributionOn}
+              rows={rows}
+              matrixLoading={distributionOn && matrix.isPending}
+              matrixError={distributionOn ? matrix.error : null}
+              onRetry={() => void matrix.refetch()}
+            />
+          ) : null}
+          {current === "builds" ? (
+            <BuildsTab slug={slug} release={release} />
+          ) : null}
+          {current === "packs" ? (
+            <PacksTab slug={slug} release={release} />
+          ) : null}
+          {current === "channels" ? (
+            <ChannelsTab
+              slug={slug}
+              release={release}
+              channels={appChannels}
+              loading={channelsQuery.isPending}
+              error={channelsQuery.error}
+              onRetry={() => void channelsQuery.refetch()}
+            />
+          ) : null}
+          {current === "distribution" && distributionOn ? (
+            <DistributionTab
+              slug={slug}
+              release={release}
+              matrix={matrix.data}
+              loading={matrix.isPending}
+              error={matrix.error}
+              onRetry={() => void matrix.refetch()}
+            />
+          ) : null}
+        </div>
+      </WriteLock>
       <HaltEverywhereDialog
         slug={slug}
         open={halting}

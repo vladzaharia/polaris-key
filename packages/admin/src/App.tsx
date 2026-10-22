@@ -10,6 +10,7 @@ import {
   ConsoleOffline,
   ConsoleRefused,
 } from "./console/shell/ConsoleSignIn.js";
+import { AppErrorBoundary } from "./ui/AppErrorBoundary.js";
 import { AppToaster } from "./ui/toast.js";
 import { SessionEnded, SignedInAgain } from "./console/shell/SessionEnded.js";
 import { SIGNED_IN_HASH } from "./console/shell/endedState.js";
@@ -28,7 +29,9 @@ export function App({
   return (
     <ConsoleQueryProvider client={queryClient}>
       <ThemeProvider>
-        {KIT_ENABLED ? <DevKitOr /> : <Boot />}
+        <AppErrorBoundary>
+          {KIT_ENABLED ? <DevKitOr /> : <Boot />}
+        </AppErrorBoundary>
         <SessionEnded />
         <AppToaster />
       </ThemeProvider>
