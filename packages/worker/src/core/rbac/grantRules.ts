@@ -11,7 +11,7 @@
  * on this area", these answer "may this member hand out (or take back) that role".
  */
 
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import { PRODUCT_SLUG_RE, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { PRODUCT_AREAS, type AreaId } from "./areas.js";
 import { normalizeAreas } from "./bindings.js";
 import {
@@ -35,13 +35,14 @@ export type GrantCheck =
   | { ok: true; grant: GrantSpec }
   | { ok: false; reason: string };
 
-/** `product:<slug>`, exactly lower case. The slug is letters, digits and hyphens. */
-const PRODUCT_SCOPE = /^product:([a-z0-9][a-z0-9-]*)$/;
-
-/** The slug of a `product:<slug>` scope, or `null` for the other two scopes. */
+/**
+ * The slug of a `product:<slug>` scope, or `null` for the other two scopes. The slug is the one
+ * product slug rule (P0-14: lower case, 1 to 64 characters), and `product:` is exactly lower case.
+ */
 export function productSlugOf(scope: string): string | null {
-  const m = PRODUCT_SCOPE.exec(scope);
-  return m ? m[1]! : null;
+  if (!scope.startsWith("product:")) return null;
+  const slug = scope.slice("product:".length);
+  return PRODUCT_SLUG_RE.test(slug) ? slug : null;
 }
 
 const refuse = (reason: string): GrantCheck => ({ ok: false, reason });
@@ -142,6 +143,7 @@ function someProductMembers(granter: Principal): boolean {
   return granter.grants.some(
     (g) =>
       g.role === "product_admin" &&
+      g.scope !== `product:${SYSTEM_PRODUCT_SLUG}` &&
       (g.areas === null || g.areas.includes("members")),
   );
 }
@@ -181,6 +183,10 @@ export function mayGrant(
  * every area it carries, or a Superadmin. Console access is taken back by `members` edit at
  * platform scope, not by a product admin, so a product admin cannot remove someone from the
  * console. A binding that does not validate is a Superadmin's alone.
+ *
+ * One ruling departs from "no one removes a grant it could not have made": a `products:*` binding
+ * is revoked or narrowed by a Superadmin alone (ST-31.3 review B1). A `products:*` holder could
+ * otherwise strip another holder, and G2 already keeps the grant itself a Superadmin's.
  */
 export function mayRevoke(
   granter: Principal | null | undefined,
@@ -193,6 +199,7 @@ export function mayRevoke(
   const b = v.grant;
   if (b.role === "superadmin" || b.role === "platform_admin") return false;
   if (b.role === "console_access") return platformMembers(granter);
+  if (b.scope === "products:*") return false;
   return holdsProductAdmin(granter, b.scope, b.areas);
 }
 
@@ -220,6 +227,24 @@ export function isWidening(before: unknown | null, after: unknown): boolean {
   const had = expand(b.grant.areas);
   for (const x of expand(a.grant.areas)) if (!had.has(x)) return true;
   return false;
+}
+
+/**
+ * May `granter` replace the stored binding `before` with `after`? An edit is a revoke of what was
+ * there and, when it widens (G4), a grant of what comes out. Checking only the grant would let a
+ * granter edit away areas it does not hold: `alpha [members, ship]` rewriting `alpha [core, keys]`
+ * to `alpha [ship]` passes `mayGrant` and drops `core` and `keys`. Handlers use this, not the two
+ * functions by hand.
+ */
+export function mayChange(
+  granter: Principal | null | undefined,
+  before: unknown,
+  after: unknown,
+): boolean {
+  return (
+    mayRevoke(granter, before) &&
+    (!isWidening(before, after) || mayGrant(granter, after))
+  );
 }
 
 export type ConfirmLevel = "L1" | "L2";

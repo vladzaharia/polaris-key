@@ -9,10 +9,13 @@ import {
   confirmLevel,
   inviteBootstrapAllowed,
   isWidening,
+  mayChange,
   mayGrant,
   mayRevoke,
   validateGrant,
 } from "../src/core/rbac/grantRules.js";
+import { PRODUCT_AREAS } from "../src/core/rbac/areas.js";
+import { can, PLATFORM, type Principal } from "../src/core/rbac/can.js";
 import { PRINCIPALS, EXTRA_GRANTERS } from "./rbacFixtures.js";
 
 // Column order of every oracle row.
@@ -108,14 +111,14 @@ const ORACLE: Row[] = [
     "products:*, every area",
     pa("products:*", null),
     [0, 0, 0, 0, 0, 0, 0, 1],
-    // D-c: a products:* holder with members edit may take back a products:* binding.
-    [0, 0, 0, 0, 0, 1, 0, 1],
+    // B1: a products:* binding is revoked or narrowed by a Superadmin alone.
+    [0, 0, 0, 0, 0, 0, 0, 1],
   ],
   [
     "products:* [ship]",
     pa("products:*", ["ship"]),
     [0, 0, 0, 0, 0, 0, 0, 1],
-    [0, 0, 0, 0, 0, 1, 0, 1],
+    [0, 0, 0, 0, 0, 0, 0, 1],
   ],
   [
     "system product (invalid)",
@@ -148,6 +151,44 @@ describe("grant rules: the hand-written oracle", () => {
         expect(mayRevoke(PRINCIPALS[name], target)).toBe(revoke[i] === 1);
       });
     });
+  }
+});
+
+describe("grant rules: soundness against can() (an upper bound, not the oracle)", () => {
+  const granters: [string, Principal][] = [
+    ...Object.entries(PRINCIPALS).filter(([, p]) => p !== null),
+    ...Object.entries(EXTRA_GRANTERS),
+  ] as [string, Principal][];
+  const product = (slug: string) =>
+    ({ kind: "product", slug, system: false }) as const;
+  for (const [name, g] of granters) {
+    for (const [label, target] of ORACLE) {
+      it(`${name} granting ${label} implies can() holds what it hands out`, () => {
+        if (!mayGrant(g, target)) return;
+        const v = validateGrant(target);
+        if (!v.ok) throw new Error("mayGrant accepted an invalid target");
+        const t = v.grant;
+        if (t.role === "product_admin") {
+          const slugs =
+            t.scope === "products:*"
+              ? ["alpha", "beta", "gamma"]
+              : [t.scope.slice("product:".length)];
+          for (const slug of slugs) {
+            expect(can(g, product(slug), "members", "edit")).toBe(true);
+            for (const a of t.areas ?? PRODUCT_AREAS)
+              expect(can(g, product(slug), a, "edit")).toBe(true);
+          }
+        } else if (t.role === "console_access") {
+          const slugs = ["alpha", "beta", "gamma"];
+          expect(
+            can(g, PLATFORM, "members", "edit") ||
+              slugs.some((s) => can(g, product(s), "members", "edit")),
+          ).toBe(true);
+        } else {
+          expect(can(g, PLATFORM, "platform", "edit")).toBe(true);
+        }
+      });
+    }
   }
 });
 
@@ -276,6 +317,94 @@ describe("grant rules: named cases", () => {
     expect(mayRevoke(g, pa("product:alpha", ["ship"]))).toBe(true);
     expect(mayRevoke(g, pa("product:alpha", ["ship", "core"]))).toBe(false);
     expect(mayRevoke(g, pa("product:alpha", null))).toBe(false);
+  });
+});
+
+describe("B1: products:* revoke is Superadmin-only", () => {
+  it("a products:* [members, ship] granter cannot revoke products:* [ship]", () => {
+    const g = {
+      memberId: "m-all-ms",
+      grants: [
+        {
+          role: "product_admin",
+          scope: "products:*",
+          areas: ["members", "ship"],
+          source: "grant",
+        },
+      ],
+    } as const;
+    expect(mayRevoke(g, pa("products:*", ["ship"]))).toBe(false);
+    expect(mayRevoke(g, pa("product:alpha", ["ship"]))).toBe(true);
+    expect(mayRevoke(PRINCIPALS.root, pa("products:*", ["ship"]))).toBe(true);
+  });
+});
+
+describe("mayChange (N2)", () => {
+  const g = EXTRA_GRANTERS.alphaMembersShip;
+  it("refuses editing away areas the granter does not hold", () => {
+    expect(
+      mayChange(
+        g,
+        pa("product:alpha", ["core", "keys"]),
+        pa("product:alpha", ["ship"]),
+      ),
+    ).toBe(false);
+  });
+  it("allows a narrowing inside its own areas", () => {
+    expect(
+      mayChange(
+        g,
+        pa("product:alpha", ["ship"]),
+        pa("product:alpha", ["members"]),
+      ),
+    ).toBe(true); // a widening, but members is within the granter's own areas
+    expect(
+      mayChange(
+        g,
+        pa("product:alpha", ["members", "ship"]),
+        pa("product:alpha", ["ship"]),
+      ),
+    ).toBe(true);
+  });
+  it("refuses a widening beyond what it can grant", () => {
+    expect(
+      mayChange(
+        g,
+        pa("product:alpha", ["ship"]),
+        pa("product:alpha", ["core"]),
+      ),
+    ).toBe(false);
+  });
+  it("fails closed on null and unreadable input", () => {
+    expect(
+      mayChange(
+        null,
+        pa("product:alpha", ["ship"]),
+        pa("product:alpha", ["ship"]),
+      ),
+    ).toBe(false);
+    expect(mayChange(g, { role: "x" }, pa("product:alpha", ["ship"]))).toBe(
+      false,
+    );
+  });
+});
+
+describe("N1: the system product scope", () => {
+  it("a product:<system> grant gives no members edit for console access", () => {
+    const g = {
+      memberId: "m-sys",
+      grants: [
+        {
+          role: "product_admin",
+          scope: "product:polaris-key",
+          areas: null,
+          source: "grant",
+        },
+      ],
+    } as const;
+    expect(
+      mayGrant(g, { role: "console_access", scope: "platform", areas: null }),
+    ).toBe(false);
   });
 });
 

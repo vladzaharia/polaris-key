@@ -9,6 +9,7 @@
  * role or scope outside the vocabulary) yields no grant rather than a wider one.
  */
 
+import { PRODUCT_SLUG_RE, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomToken } from "../../platform/random.js";
 import { AREA_IDS, PRODUCT_AREAS, isAreaId, type AreaId } from "./areas.js";
@@ -80,12 +81,18 @@ export function mergeAreas(
   return AREA_IDS.filter((id) => all.has(id));
 }
 
-/** `product:<slug>`, lower case, a slug of letters, digits and hyphens (never empty). */
-const PRODUCT_SCOPE = /^product:[a-z0-9][a-z0-9-]*$/;
-
+/**
+ * `product:<slug>`, lower case, the one product slug rule (P0-14). The system product is a
+ * platform resource and takes no product scope, so `product:<system>` is no scope here (the
+ * writer refuses it and the reader drops it, as `validateGrant` does).
+ */
 function validScope(scope: string): scope is GrantScope {
   return (
-    scope === "platform" || scope === "products:*" || PRODUCT_SCOPE.test(scope)
+    scope === "platform" ||
+    scope === "products:*" ||
+    (scope.startsWith("product:") &&
+      PRODUCT_SLUG_RE.test(scope.slice("product:".length)) &&
+      scope !== `product:${SYSTEM_PRODUCT_SLUG}`)
   );
 }
 
