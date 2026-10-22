@@ -409,6 +409,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
+	await _play(t)
 	await _dialogs_take_focus(t)
 	await _gate_limit_focus(t)
 	await _focus_follows_screen(t)
@@ -690,6 +691,125 @@ func _focus_follows_screen(t: PKeyTestContext) -> void:
 	f = _tree().root.gui_get_focus_owner()
 	t.check("focus follows the screen: an expired code moves focus to Get a new code", f != null and f.name == "TryAgain", str(f))
 	_free(d)
+
+
+## The kit in a running game (KX-GD-PLAY): it keeps running while the tree is paused, says when it
+## takes the input, shows an update only as a toast while `in_play`, and draws the changelog facts.
+func _play(t: PKeyTestContext) -> void:
+	# The headless runner's window is tiny, and a short screen gives the notes up (squeeze): measure on a game-sized one.
+	var saved_size := _tree().root.size
+	_tree().root.size = Vector2i(1152, 900)
+	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
+	var offer: PKeyUpdateCheck = _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
+	var locked: PKeyUpdateCheck = _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false})
+	var sdk: Node = load("res://addons/polaris_key/polaris_key.gd").new()
+	sdk.name = "PlaySdk"
+	_tree().root.add_child(sdk)
+	PKeyUiTheme.product_name = "Tidewater"
+	# Paused tree: every kit node runs, the autoload included; the game can override it.
+	var fresh_prompt := PKeyUpdatePrompt.new()
+	var fresh_toast := PKeyToast.new()
+	t.check("play: the SDK and every view run while the tree is paused", sdk.process_mode == Node.PROCESS_MODE_ALWAYS and fresh_prompt.process_mode == Node.PROCESS_MODE_ALWAYS and fresh_toast.process_mode == Node.PROCESS_MODE_ALWAYS)
+	fresh_prompt.free()
+	fresh_toast.free()
+	var p := PKeyUpdatePrompt.new()
+	p.modal = true
+	p.outlet = "direct"
+	p.release_url = "https://example.com/dl"
+	p.process_mode = Node.PROCESS_MODE_PAUSABLE
+	t.check("play: the game can override the process mode", p.process_mode == Node.PROCESS_MODE_PAUSABLE)
+	p.process_mode = Node.PROCESS_MODE_ALWAYS
+	p.auto_sdk = false
+	p.sdk = sdk
+	_tree().root.add_child(p)
+	_tree().paused = true
+	t.check("play: a prompt in a paused tree can process", p.can_process())
+	_tree().paused = false
+	# in_play: an available update is a toast; the prompt waits.
+	var caught: Array = []
+	sdk.input_captured.connect(func(on: bool) -> void: caught.append(on))
+	t.check("play: in_play is false by default and nothing is captured", sdk.in_play == false and not sdk.is_input_captured())
+	sdk.in_play = true
+	p.show_result(offer)
+	await _tree().process_frame
+	var host: PKeyToast = sdk.toasts()
+	t.check("play: in play an available update is only a toast", p.presentation() == "toast" and not p.visible and host.current.get("kind") == "update" and host.current.get("version") == "1.5.0", str(host.current))
+	t.check("play: the toast sits at the SDK's anchor (bottom centre by default) and takes no input", host.toast_anchor == "bottom_center" and caught.is_empty() and not sdk.is_input_captured())
+	sdk.toast_anchor = "top_right"
+	t.check("play: PolarisKey.toast_anchor places it", host.toast_anchor == "top_right")
+	sdk.toast_anchor = "bottom_center"
+	# A locked answer is a banner, in play too.
+	p.show_result(locked)
+	t.check("play: a mandatory answer stays the banner in play", p.presentation() == "banner" and p.visible)
+	p.show_result(offer)
+	await _tree().process_frame
+	# The toast runs out: the prompt still shows once play ends, the modal on Later with the guard.
+	host.dismiss()
+	t.check("play: Dismiss on the toast is Later", p.is_dismissed and not p.visible)
+	p.show_result(offer)
+	await _tree().process_frame
+	host._close("timeout")
+	t.check("play: a toast that ran out is not a dismissal", not p.is_dismissed and p.presentation() == "")
+	sdk.in_play = false
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("play: when play ends the modal opens", p.presentation() == "modal" and p.visible and host.current.is_empty())
+	var focus := _tree().root.gui_get_focus_owner()
+	t.check("play: the modal focuses Later and ignores input for 250 ms", focus != null and focus.name == "Dismiss" and p._guard_until > Time.get_ticks_msec(), str(focus))
+	t.check("play: the modal says the kit holds the input", caught == [true] and sdk.is_input_captured(), str(caught))
+	p._on_dismiss()
+	t.check("play: dismissing gives the input back", caught == [true, false] and not sdk.is_input_captured(), str(caught))
+	# What's new, You have, All changes.
+	p.is_dismissed = false
+	p._notes["1.5.0"] = {"lines": ["Faster loading", "New tide table"], "url": "https://example.com/r/1.5.0"}
+	p.show_result(offer)
+	await _tree().process_frame
+	var head := p.find_child("WhatsNew", true, false) as Label
+	var lines := p.find_child("WhatsNewLines", true, false) as Label
+	var all := p.find_child("AllChanges", true, false) as Button
+	t.check("play: the modal draws What's new, its lines and the All changes link", head.visible and head.text == "What's new" and lines.text == "Faster loading\nNew tide table" and all.visible and all.text == "All changes in 1.5.0", "%s|%s|%s" % [head.text, lines.text, all.text])
+	# A short screen gives the notes up before the action leaves it.
+	_tree().root.size = Vector2i(844, 390)
+	for i in 6:
+		await _tree().process_frame
+	var action := p.find_child("Action", true, false) as Button
+	t.check("play: on a short screen the notes give way and the action stays", (not lines.visible or lines.text.count("\n") < 2) and action.get_global_rect().end.y <= 390.5, "squeeze %d lines '%s' action %s" % [p.squeeze_level(), lines.text, action.get_global_rect()])
+	_tree().root.size = Vector2i(1152, 900)
+	for i in 3:
+		await _tree().process_frame
+	p._notes["1.5.0"] = {"lines": [], "url": ""}
+	p.refresh_view()
+	t.check("play: no summary hides the label, no page hides the link", not head.visible and not all.visible)
+	t.check("play: notes are at most three plain lines", PKeyUpdatePromptController.summary_lines("- one\n\n* two\r\n## three\nfour\n") == ["one", "two", "three"] and PKeyUpdatePromptController.summary_lines(null) == [] and PKeyUpdatePromptController.summary_lines("<b>x</b>") == ["<b>x</b>"])
+	var entries := [PKeyChangelogEntry.from_dict({"version": "1.4.0", "tag": "v1.4.0", "summary": "old", "url": "https://x/1.4"}), PKeyChangelogEntry.from_dict({"version": "1.5.0", "tag": "v1.5.0", "summary": "new", "url": "https://x/1.5"})]
+	t.check("play: the entry is the offered version's", PKeyUpdatePromptController.entry_for(entries, "1.5.0").url == "https://x/1.5" and PKeyUpdatePromptController.entry_for(entries, "9.9.9") == null)
+	_free(p)
+	await _tree().process_frame
+	t.check("play: freeing the modal gives the input back", not sdk.is_input_captured())
+	# Gate and boot: Signed in and Copied toasts through the shared host.
+	var g := PKeyGateView.new()
+	g.auto_sdk = false
+	g.sdk = sdk
+	_tree().root.add_child(g)
+	g._on_signed_in(PKeySignInResult.signed_in({"name": "Mara"}, "", true, null))
+	t.check("play: the gate toasts the sign-in", host.current.get("kind") == "success" and String(host.current.get("title")).contains("Mara") and String(host.current.get("title")).begins_with("Signed in as"), str(host.current))
+	g.note_copied()
+	t.check("play: the gate toasts a copied link", host.current.get("kind") == "copied")
+	var b := PKeyBoot.new()
+	b.auto_sdk = false
+	b.sdk = sdk
+	_tree().root.add_child(b)
+	host.dismiss()
+	b.gate.note_copied()
+	t.check("play: the boot toasts a copied code", host.current.get("kind") == "copied")
+	_free(g)
+	_free(b)
+	PKeyUiTheme.reset()
+	sdk.queue_free()
+	_tree().root.size = saved_size
+	# Let the frees land before the next test times a 250 ms input guard against its own frames.
+	for i in 3:
+		await _tree().process_frame
 
 
 func _update_prompt(t: PKeyTestContext) -> void:
@@ -1213,6 +1333,8 @@ const CATALOG_KEYS := {
 	"update_install": "update.install",
 	"update_restart": "update.restartNow",
 	"update_modal_title": "update.title",
+	"update_notes": "update.whatsNew",
+	"update_all_changes": "update.allChanges",
 	"status_update": "status.update",
 	"banner_last_day": "grace.lastDay",
 	"banner_reconnect": "common.reconnect",

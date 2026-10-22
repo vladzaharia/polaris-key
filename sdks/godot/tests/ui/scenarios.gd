@@ -133,6 +133,7 @@ func all() -> Array:
 	# ── PKeyUpdatePrompt: every decision state.
 	for c in update_cases():
 		out.append(["update_prompt", c[0], update_prompt.bind(c[1], c[2], c[3], c[4])])
+	out.append(["update_prompt", "binary, modal with release notes", update_prompt_notes])
 	# ── PKeyEntitlementBadge.
 	out.append(["badge", "two grants", badge.bind(["Supporter", "Founder"])])
 	out.append(["badge", "none", badge.bind([])])
@@ -172,7 +173,7 @@ func all() -> Array:
 	for c in [["queued: content", "queued-content"], ["queued: an app update", "queued-app"], ["downloading", "downloading"], ["downloading: no time left known", "downloading-no-eta"], ["downloading: verified, not yet installed", "verified"], ["installing", "installing"], ["paused: a metered connection", "paused"], ["failed", "failed"], ["done", "done"], ["compact", "compact"]]:
 		out.append(["update_progress", c[0], update_progress.bind(c[1])])
 	# ── PKeyToast (UI-KITS.md Toast).
-	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
+	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["success: signed in", "signed_in"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
 		out.append(["toast", c[0], toast.bind(c[1])])
 	# Every state starts from no presentation and no integrator name (the kit's identity is global).
 	for c in out:
@@ -618,6 +619,8 @@ func toast(kind: String) -> Control:
 			t.show_update("2.5.0")
 		"copied":
 			t.show_copied()
+		"signed_in":
+			t.show_success("Signed in as Mara", "Pro license")
 		"warning":
 			t.show_warning("Autosave is off", "Your progress is not being saved.")
 		"error":
@@ -679,6 +682,18 @@ func update_prompt(result: PKeyResult, outlet: String, release_url: String, moda
 	p.show_when_current = true
 	add(p)
 	p.show_result(result)
+	return p
+
+
+## The modal with the changelog entry of the offered version (up to three lines and the release page).
+func update_prompt_notes() -> Control:
+	var p := PKeyUpdatePrompt.new()
+	p.outlet = "direct"
+	p.release_url = "https://example.com/dl"
+	p.modal = true
+	p._notes["1.5.0"] = {"lines": ["Faster loading screens", "A new tide table", "Fixes a crash on resume"], "url": "https://example.com/r/1.5.0"}
+	add(p)
+	p.show_result(update_check({"action": "binary", "method": "download", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab"}, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
 	return p
 
 
