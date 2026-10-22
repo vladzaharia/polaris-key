@@ -1,7 +1,7 @@
 # @pkey-feature ui.signin
-"""The Python headless runner for the ``signIn`` family in ``ui-matrix.json``: SignIn and
-SignInHandoff. LicenseChoice rows are the grant roster's (a device-code sign-in never reaches it:
-the card chooses), so they are not run here."""
+"""The Python headless runner for the ``signIn`` family in ``ui-matrix.json``: SignIn, SignInHandoff
+and LicenseChoice. LicenseChoice reads the grant roster (a device-code sign-in never reaches it: the
+card chooses), so a runtime kit cannot show it before I-10b; the model runs against the matrix alone."""
 
 from __future__ import annotations
 
@@ -12,12 +12,13 @@ from typing import Any, Dict, Mapping
 import pytest
 
 from polaris_key.constants_generated import UI_MATRIX_VERSION
+from polaris_key.ui.core.ui_choice import license_choice_view
 from polaris_key.ui.core.ui_contract import context_of
 from polaris_key.ui.core.ui_signin import sign_in_handoff_view, sign_in_view
 
 ROOT = Path(__file__).resolve().parents[3]
 MATRIX = json.loads((ROOT / "conformance" / "corpus" / "v2" / "ui-matrix.json").read_text(encoding="utf-8"))
-MODELS = {"SignIn": sign_in_view, "SignInHandoff": sign_in_handoff_view}
+MODELS = {"SignIn": sign_in_view, "SignInHandoff": sign_in_handoff_view, "LicenseChoice": license_choice_view}
 ROWS = [row for row in MATRIX["signIn"] if row["expect"]["component"] in MODELS]
 
 
@@ -31,10 +32,9 @@ def _with_defaults(input: Mapping[str, Any]) -> Dict[str, Any]:
     return output
 
 
-def test_the_runner_covers_every_row_but_license_choice():
-    others = {row["expect"]["component"] for row in MATRIX["signIn"] if row["expect"]["component"] not in MODELS}
-    assert others == {"LicenseChoice"}
-    assert len(ROWS) > 80
+def test_the_runner_covers_every_row():
+    assert len(ROWS) == len(MATRIX["signIn"])
+    assert sum(1 for row in ROWS if row["expect"]["component"] == "LicenseChoice") >= 40
 
 
 @pytest.mark.parametrize("row", ROWS, ids=lambda row: str(row["name"]))

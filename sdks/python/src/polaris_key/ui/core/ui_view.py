@@ -48,7 +48,7 @@ _MISSING = object()
 #: The members of a model's input a row-drawing renderer reads (View.rows).
 ROW_INPUT_KEYS = (
     "config", "devices", "licenses", "account", "activation", "edit", "selected", "platform", "deviceCode",
-    "keyField",
+    "keyField", "choices", "replaceView",
 )
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
