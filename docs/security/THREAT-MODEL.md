@@ -7716,15 +7716,10 @@ binder across (`core/signInBind.ts`), each 120 s, each the address of a stored a
   refused and spent.
 - _Fixation (the B1 attack)._ The starter of a flow can open its own code with curl and forward the
   `device-start` hop URL. A victim's browser that follows it receives the API-host binder and, with
-  a live IdP session, signs in silently. Before the fix the `device-approve` token then handed the
-  customer-host cookie to that same browser, and the victim landed on the starter's approval page
-  without ever opening a code. Now the customer-host cookie exists only in the browser that opened
-  the code, so the victim's browser, which has none, gets the start-again page at the approval hop.
-  The first fix round still set B itself as the customer-host cookie, so the starter kept B from
-  its own start response and, once the victim's browser had signed in under that flow, read and
-  pressed the API host's approval route with it and no `Origin`: the starter's poll returned the
-  victim's token (R2-B1, critical). The two binders close it: the starter holds only C, the API
-  host's approval route no longer decides, and the starter's device stays pending. The residual is
+  a live IdP session, signs in silently. The customer-host cookie exists only in the browser that
+  opened the code, so the victim's browser, which has none, gets the start-again page at the
+  approval hop. The API-host binder B never appears in a customer-host response, so a starter that
+  keeps its own start response holds only C; the API host's approval route no longer decides, and the starter's device stays pending. The residual is
   the pre-existing R1-07 (a victim who presses Sign in on the approval page after reading it, in
   a browser that holds C). `customerDevicePage.test.ts` pins both browsers and the starter's
   attempts on the API host, the customer host and the chooser.
@@ -7735,7 +7730,7 @@ binder across (`core/signInBind.ts`), each 120 s, each the address of a stored a
   `Cache-Control: no-store`, and the token is dead after the first request.
 - _The chooser._ A device flow with a customer host goes from the callback through the customer
   host's approval hop before the chooser, which needs C and the hop's B-token to be shown there:
-  the hop marks the flow (`customerOk`) and sends the browser on to the API host's chooser
+  the customer host's `/device/approve` marks the flow (`customerOk`) after the hop and sends the browser on to the API host's chooser
   (built from configuration) until PX-14b retires it. The chooser answers a device flow only with
   B and `customerOk`; a B alone (a victim's browser, which has no C) gets the start-again page and
   nothing is dropped. Residual: the chooser page itself, once opened, is reached with B alone
