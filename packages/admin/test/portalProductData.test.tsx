@@ -24,7 +24,7 @@ import {
 } from "./portalDataKit.js";
 
 /**
- * Each product page's **Your data in <Product>** card (I-11; S-16 §5.5, §5.7): Download my data
+ * Each product page's **Your data** card (I-11; S-16 §5.5, §5.7): Download my data
  * from the product, and Remove my data from the product with the license kept unless the person
  * also chooses to remove it (D25). Everything is about one product: the account's own file and
  * its 14-day deletion are Account's, and these tests hold the two apart.
@@ -144,7 +144,7 @@ async function open(
   mockFetch(routes);
   renderPortal();
   await screen.findByRole("heading", { level: 1, name });
-  return screen.findByRole("region", { name: `Your data in ${name}` });
+  return screen.findByRole("region", { name: "Your data" });
 }
 
 async function openRemove(
@@ -401,7 +401,7 @@ describe("Remove my data from a product (I-11)", () => {
     // Still Mossgarden's page, still holding its license.
     expect(window.location.hash).toBe("#/p/mossgarden");
     expect(
-      await screen.findByRole("region", { name: "Your data in Mossgarden" }),
+      await screen.findByRole("region", { name: "Your data" }),
     ).toBeTruthy();
     expect(screen.getByRole("region", { name: "License" })).toBeTruthy();
     // This product's route alone: not the account's deletion, not another product.
@@ -802,9 +802,7 @@ describe("an open product's page (I-11)", () => {
     // The entry stays: the page is still its page, with its card.
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(window.location.hash).toBe("#/p/driftwood");
-    expect(
-      screen.getByRole("region", { name: "Your data in Driftwood Notes" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Your data" })).toBeTruthy();
   });
 
   it("saves that product's file", async () => {

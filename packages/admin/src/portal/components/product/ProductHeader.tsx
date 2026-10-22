@@ -2,7 +2,6 @@ import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import type { LibraryProduct, QuickAction } from "../../model/library.js";
-import { tierLabel } from "../../model/library.js";
 import { href } from "../../router.js";
 import { cn } from "../../../lib/cn.js";
 import { ProductArt } from "../ProductArt.js";
@@ -38,13 +37,10 @@ export function ProductHeader({
   menuTriggerRef?: React.Ref<HTMLButtonElement>;
 }): React.ReactElement {
   const pres = product.presentation;
-  const tier = product.best ? tierLabel(product.best.tier) : null;
-  // A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. The dot
-  // ends the run before it (never its own flex item), so it cannot wrap away from its neighbour.
-  const trailingDot =
-    !isIssueStatus(product.status) &&
-    product.status.tone !== "success" &&
-    Boolean(pres.developer || tier);
+  // The status is a pill beside the name when it is an issue; a quiet one ("From signing in")
+  // reads as text after the developer. The tier is the License card's, never repeated here.
+  const issue = isIssueStatus(product.status);
+  const quiet = !issue && product.status.tone !== "success";
   const dot = (
     <span aria-hidden className="ms-2">
       ·
@@ -94,58 +90,46 @@ export function ProductHeader({
           name={product.name}
           tint={pres.tint}
           src={pres.iconUrl}
-          size={112}
+          size={56}
           lift={hasCover}
-          tileClassName="outline-4 -outline-offset-4 outline-surface-page max-desk:text-3xl"
+          tileClassName="outline-4 -outline-offset-4 outline-surface-page"
           className={cn(
             // In front of the cover: the banner is positioned, so the icon needs its own
             // stacking position to paint over the banner's lower edge (§4.20). pk-vt-hero-icon:
             // the tile's icon flies into it with the art and the name (MO-05).
-            "pk-vt-hero-icon relative z-10 max-desk:size-20",
+            "pk-vt-hero-icon relative z-10",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
-            hasCover &&
-              "-mt-10 desk:-mt-16 desk:self-start short:mt-0 short:self-auto",
+            hasCover && "-mt-7 desk:self-start short:mt-0 short:self-auto",
           )}
         />
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
           {/* pk-vt-hero-title: the tile's name flies into it and back (MO-05). As wide as its
               text, like the tile's name, or the shared snapshot stretches (S-23 §3.4 item 4). */}
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            dir="auto"
-            className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-4xl"
-          >
-            {product.name}
-          </h1>
-          {/* A quiet non-issue status ("From signing in") reads as text after a dot, like the
-              tier; the dot ends the text run before it, never its own flex item. */}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
-            {pres.developer ? (
-              <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">
-                by{" "}
-                <span dir="auto" className="font-medium text-accent-fg">
-                  {pres.developer}
-                </span>
-                {trailingDot && !tier ? dot : null}
-              </span>
-            ) : null}
-            {tier ? (
-              <span>
-                {pres.developer ? (
-                  <span aria-hidden className="me-2">
-                    ·
-                  </span>
-                ) : null}
-                {tier}
-                {trailingDot ? dot : null}
-              </span>
-            ) : null}
-            <ProductStatusPill
-              status={product.status}
-              className={isIssueStatus(product.status) ? "ms-auto" : undefined}
-            />
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              dir="auto"
+              className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-4xl"
+            >
+              {product.name}
+            </h1>
+            {issue ? <ProductStatusPill status={product.status} /> : null}
           </div>
+          {pres.developer || quiet ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
+              {pres.developer ? (
+                <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+                  by{" "}
+                  <span dir="auto" className="font-medium text-accent-fg">
+                    {pres.developer}
+                  </span>
+                  {quiet ? dot : null}
+                </span>
+              ) : null}
+              {quiet ? <ProductStatusPill status={product.status} /> : null}
+            </div>
+          ) : null}
         </div>
         <div
           data-product-actions=""
