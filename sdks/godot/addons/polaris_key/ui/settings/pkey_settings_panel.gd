@@ -447,7 +447,7 @@ func _render() -> void:
 	var searchable := shown.size() > SEARCH_FROM
 	_search.visible = searchable or _search.text != ""
 	_search.placeholder_text = t.text("settings_search")
-	_search.accessibility_name = t.text("settings_search")
+	name_for_reader(_search, t.text("settings_search"))
 	if _search.visible and _search.text.strip_edges() != "":
 		var q := _search.text.strip_edges().to_lower()
 		shown = shown.filter(func(r): return String(r["label"]).to_lower().contains(q) or String(r["description"]).to_lower().contains(q))

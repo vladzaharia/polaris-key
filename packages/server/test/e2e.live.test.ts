@@ -257,7 +257,7 @@ describe.runIf(BASE)("client -> example backend -> pkey dev (Node)", () => {
     backends.push({ name: "express", origin: originOf(exp) });
 
     const hono = await import(join(examples, "server-hono", "app.ts"));
-    const honoApp = hono.createApp(config, options);
+    const honoApp = hono.createApp({ config, ...options });
     const hs = await listen((r) => honoApp.fetch(r));
     servers.push(hs);
     backends.push({ name: "hono", origin: originOf(hs) });
