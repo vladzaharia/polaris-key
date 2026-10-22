@@ -23,6 +23,7 @@ import {
 import type { StoreAdapter } from "../src/core/stores/adapter.js";
 import { STORE_ADAPTERS, storeAdapter } from "../src/core/stores/adapters.js";
 import { CONNECTORS } from "../src/services/distribution/connectors/index.js";
+import { DELIVERY_FACETS } from "../src/services/distribution/stores/index.js";
 import { FLOW_RUNTIMES } from "../src/services/distribution/storefronts/index.js";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
@@ -239,5 +240,52 @@ describe("the declaration files", () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+});
+
+describe("the delivery facets (P0-27.2)", () => {
+  it("has exactly one facet per store adapter, in the registry's order", () => {
+    const ids = DELIVERY_FACETS.map((f) => f.store);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const f of DELIVERY_FACETS)
+      expect(storeAdapter(f.store), f.store).not.toBeNull();
+    // Every store whose declaration has a delivery runtime has a facet, and the reverse.
+    const declared = STORE_ADAPTERS.filter(
+      (a) => a.delivery.connector || a.delivery.flow || a.id === "steam",
+    ).map((a) => a.id);
+    const registered = DELIVERY_FACETS.filter(
+      (f) => f.connector || f.flow || f.storefrontAdmin,
+    ).map((f) => f.store);
+    expect(registered).toEqual(declared);
+  });
+
+  it("implements exactly the connector and flow each declaration names", () => {
+    for (const f of DELIVERY_FACETS) {
+      const a = storeAdapter(f.store)!;
+      expect(f.connector?.kind ?? null, `${f.store} connector`).toBe(
+        a.delivery.connector,
+      );
+      expect(f.flow !== null, `${f.store} flow`).toBe(a.delivery.flow);
+      if (f.flow) expect(f.flow.id).toBe(f.store);
+    }
+  });
+
+  it("keeps CONNECTORS and FLOW_RUNTIMES as they were, in order", () => {
+    expect(CONNECTORS.map((c) => c.kind)).toEqual(["asc", "play", "ms-store"]);
+    expect(FLOW_RUNTIMES.map((r) => r.id)).toEqual([
+      "app-store",
+      "google-play",
+      "microsoft-store",
+    ]);
+    expect(CONNECTORS).toEqual(
+      DELIVERY_FACETS.flatMap((f) => (f.connector ? [f.connector] : [])),
+    );
+  });
+
+  it("names Steam's storefront admin module as its runtime", () => {
+    const steam = DELIVERY_FACETS.find((f) => f.store === "steam")!;
+    expect(steam.connector).toBeNull();
+    expect(steam.flow).toBeNull();
+    expect(typeof steam.storefrontAdmin).toBe("function");
   });
 });
