@@ -50,10 +50,10 @@ import {
   useRoute,
   type PortalRoute,
 } from "./router.js";
-import { portalApi } from "./api.js";
 import { bindWriteInvalidation } from "./mutations.js";
 import { qkFamily } from "./queries.js";
 import { t } from "../lib/copy.js";
+import { mutate } from "./mutations.js";
 
 /**
  * The customer site, Polaris Key at `key.plrs.im` (docs/design/PORTAL.md).
@@ -182,7 +182,7 @@ function Boot(): React.ReactElement {
           email: secondSignInEmail() ?? undefined,
           onCancel: () => {
             endSecondSignIn();
-            void portalApi.linkCancel().catch(() => undefined);
+            void mutate("linkCancel").catch(() => undefined);
             navigate("#/account");
             // Say which account this browser is still signed in to, once; focus goes to the page.
             toast.info(

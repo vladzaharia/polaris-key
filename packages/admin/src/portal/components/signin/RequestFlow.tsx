@@ -11,7 +11,6 @@ import {
 } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
-  portalApi,
   PortalApiError,
   type PortalAccount,
   type SignInContinueRequest,
@@ -41,7 +40,8 @@ import { ReplacedDone } from "./ReplacedDone.js";
 import { ReturnStep } from "./ReturnStep.js";
 import { RequestFooter, RequestHeader } from "./RequestHeader.js";
 import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
-import { qk, qkFamily } from "../../queries.js";
+import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * The signed-in half of an app sign-in (SIGN-IN.md §3.6 to §3.8, §4.16; PX-14a): one card at
@@ -126,13 +126,10 @@ export function RequestFlow({
 
   const notYou = async (): Promise<void> => {
     try {
-      await portalApi.signOutHere();
+      await mutate("signOutHere");
     } catch {
       // The session check below says what is true.
     }
-    qc.removeQueries({ queryKey: qkFamily("signinLicenses") });
-    qc.removeQueries({ queryKey: qkFamily("signinConsent") });
-    await qc.invalidateQueries({ queryKey: qk.me() });
   };
 
   const leave = (redirect: string): void => {
@@ -146,7 +143,7 @@ export function RequestFlow({
     setBusy("deny");
     setError(null);
     try {
-      leave((await portalApi.signinCancel(handle)).redirect);
+      leave((await mutate("signinCancel", handle)).redirect);
     } catch (err) {
       setBusy(null);
       setError(refusalText(err));
@@ -166,7 +163,7 @@ export function RequestFlow({
       };
     else if (chosen?.kind === "create") body.choice = { kind: "create" };
     try {
-      const out = await portalApi.signinContinue(handle, body);
+      const out = await mutate("signinContinue", handle, body);
       if (chosen?.kind === "license" && chosen.replace) {
         setBusy(null);
         go({

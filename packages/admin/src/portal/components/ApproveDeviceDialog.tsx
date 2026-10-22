@@ -7,13 +7,10 @@ import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
 import { PORTAL_FMT } from "../date.js";
 import { t } from "../../lib/copy.js";
-import {
-  portalApi,
-  PortalApiError,
-  type PortalDeviceLoginRequest,
-} from "../api.js";
+import { PortalApiError, type PortalDeviceLoginRequest } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { StepUpInline } from "./account/StepUpInline.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Approve a new device (SIGN-IN.md §3.11, PORTAL.md §4.24): the signed-in side of "Sign in with
@@ -79,7 +76,7 @@ export function ApproveDeviceDialog({
   const look = React.useCallback(async (value: string): Promise<void> => {
     setPhase({ kind: "looking" });
     try {
-      const { request } = await portalApi.deviceLoginLookup(value);
+      const { request } = await mutate("deviceLoginLookup", value);
       setPhase({ kind: "review", request });
     } catch (err) {
       setPhase({
@@ -112,7 +109,7 @@ export function ApproveDeviceDialog({
   ): Promise<void> => {
     setPhase({ kind: "deciding", request });
     try {
-      const out = await portalApi.deviceLoginDecide(request.code, decision);
+      const out = await mutate("deviceLoginDecide", request.code, decision);
       setPhase({ kind: "done", request, status: out.status });
     } catch (err) {
       if (isStepUpRequired(err))

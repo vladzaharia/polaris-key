@@ -74,7 +74,8 @@ export const PORTAL_MUTATIONS = {
   },
   verifySignInCode: {
     label: "Sign in with an emailed code",
-    invalidates: () => [exact(qk.me())],
+    invalidates: () => [],
+    why: "The status decides (a new address finishes first, signed out): the sign-in card invalidates the session, awaited, once the sign-in is complete.",
   },
   finishPendingSignIn: {
     label: "Finish a sign-in confirmed on another device",
@@ -88,7 +89,8 @@ export const PORTAL_MUTATIONS = {
   },
   passkeySignInVerify: {
     label: "Sign in, or step up, with a passkey",
-    invalidates: () => [exact(qk.me())],
+    invalidates: () => [],
+    why: "The sign-in card invalidates the session, awaited, once the assertion is accepted; a step-up refreshes the session itself (refreshSession).",
   },
   previewKeySignedOut: {
     label: "Preview what a key would do, before anyone signs in",
@@ -142,7 +144,9 @@ export const PORTAL_MUTATIONS = {
   },
   signOutHere: {
     label: 'Sign this browser out ("Not you?")',
-    invalidates: () => [exact(qk.me())],
+    invalidates: () => [],
+    // Awaited: the card waits for the session to say what is true.
+    settle: () => [exact(qk.me())],
     removes: () => [
       prefix(qkFamily("signinLicenses")),
       prefix(qkFamily("signinConsent")),

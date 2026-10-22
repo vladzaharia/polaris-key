@@ -14,10 +14,11 @@ import {
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
 import { t } from "../../../lib/copy.js";
-import { portalApi, PortalApiError, type PortalEmailSent } from "../../api.js";
+import { PortalApiError, type PortalEmailSent } from "../../api.js";
 import { initialsOf } from "../Avatar.js";
 import type { LastMethod } from "../../lastMethod.js";
 import { usePasskeySignIn } from "./usePasskeySignIn.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * HintStep (SIGN-IN.md §3.4, PORTAL.md §4.3): the typed address matches the one this browser last
@@ -88,7 +89,7 @@ export function HintStep({
     setSending(true);
     setError(null);
     try {
-      onSent(email, await portalApi.startEmailSignIn(email));
+      onSent(email, await mutate("startEmailSignIn", email));
     } catch (err) {
       setError(
         err instanceof PortalApiError &&

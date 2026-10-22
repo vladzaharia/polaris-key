@@ -214,17 +214,9 @@ describe("no portal write around the table", () => {
    * with none left.
    */
   const KNOWN: Record<string, string> = {
-    "App.tsx": "P0-32.6",
-    "pages/SignInPage.tsx": "P0-32.7",
-    "components/signin/FinishStep.tsx": "P0-32.7",
-    "components/signin/DeviceStep.tsx": "P0-32.7",
-    "components/signin/HintStep.tsx": "P0-32.7",
-    "components/signin/RequestFlow.tsx": "P0-32.7",
-    "components/signin/usePasskeySignIn.ts": "P0-32.7",
     "components/account/StepUp.tsx": "P0-32.8",
     "components/account/SignInMethods.tsx": "P0-32.8",
     "components/LinkAccountsDialog.tsx": "P0-32.8",
-    "components/ApproveDeviceDialog.tsx": "P0-32.8",
   };
 
   /** The transport and the engine's own file may call writes. `queries.ts` calls

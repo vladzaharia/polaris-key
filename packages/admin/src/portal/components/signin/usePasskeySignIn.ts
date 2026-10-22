@@ -12,6 +12,7 @@ import {
   signalUnknownPasskey,
 } from "../../webauthn.js";
 import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /** What a failed passkey sign-in says, from the catalog (never the Worker's prose). */
 function passkeyText(err: unknown): string {
@@ -55,7 +56,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       signal: AbortSignal | undefined,
       onAsserted: () => void,
     ): Promise<void> => {
-      const { options } = await portalApi.passkeySignInOptions(returnTo());
+      const { options } = await mutate("passkeySignInOptions", returnTo());
       const response = await passkeyAssertion(options, [], {
         mediation,
         signal,
@@ -63,7 +64,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       onAsserted();
       let out: Awaited<ReturnType<typeof portalApi.passkeySignInVerify>>;
       try {
-        out = await portalApi.passkeySignInVerify(response);
+        out = await mutate("passkeySignInVerify", response);
       } catch (err) {
         if (err instanceof PortalApiError && err.unknownCredential)
           signalUnknownPasskey(options, response.id);
