@@ -15,7 +15,12 @@ import {
   validateGrant,
 } from "../src/core/rbac/grantRules.js";
 import { PRODUCT_AREAS } from "../src/core/rbac/areas.js";
-import { can, PLATFORM, type Principal } from "../src/core/rbac/can.js";
+import {
+  can,
+  isSuperadmin,
+  PLATFORM,
+  type Principal,
+} from "../src/core/rbac/can.js";
 import { PRINCIPALS, EXTRA_GRANTERS } from "./rbacFixtures.js";
 
 // Column order of every oracle row.
@@ -161,34 +166,52 @@ describe("grant rules: soundness against can() (an upper bound, not the oracle)"
   ] as [string, Principal][];
   const product = (slug: string) =>
     ({ kind: "product", slug, system: false }) as const;
+  /** What `can()` says the granter holds of what the target hands out or takes away. */
+  const holds = (g: Principal, target: unknown, taking = false) => {
+    const v = validateGrant(target);
+    if (!v.ok) {
+      // Only a Superadmin may take away a binding that does not validate (clean-up).
+      if (taking && isSuperadmin(g)) return;
+      throw new Error("a rule accepted an invalid target");
+    }
+    const t = v.grant;
+    if (t.role === "product_admin") {
+      const slugs =
+        t.scope === "products:*"
+          ? ["alpha", "beta", "gamma"]
+          : [t.scope.slice("product:".length)];
+      for (const slug of slugs) {
+        expect(can(g, product(slug), "members", "edit")).toBe(true);
+        for (const a of t.areas ?? PRODUCT_AREAS)
+          expect(can(g, product(slug), a, "edit")).toBe(true);
+      }
+    } else if (t.role === "console_access") {
+      const slugs = ["alpha", "beta", "gamma"];
+      expect(
+        can(g, PLATFORM, "members", "edit") ||
+          slugs.some((s) => can(g, product(s), "members", "edit")),
+      ).toBe(true);
+    } else {
+      expect(can(g, PLATFORM, "platform", "edit")).toBe(true);
+    }
+  };
   for (const [name, g] of granters) {
     for (const [label, target] of ORACLE) {
       it(`${name} granting ${label} implies can() holds what it hands out`, () => {
-        if (!mayGrant(g, target)) return;
-        const v = validateGrant(target);
-        if (!v.ok) throw new Error("mayGrant accepted an invalid target");
-        const t = v.grant;
-        if (t.role === "product_admin") {
-          const slugs =
-            t.scope === "products:*"
-              ? ["alpha", "beta", "gamma"]
-              : [t.scope.slice("product:".length)];
-          for (const slug of slugs) {
-            expect(can(g, product(slug), "members", "edit")).toBe(true);
-            for (const a of t.areas ?? PRODUCT_AREAS)
-              expect(can(g, product(slug), a, "edit")).toBe(true);
-          }
-        } else if (t.role === "console_access") {
-          const slugs = ["alpha", "beta", "gamma"];
-          expect(
-            can(g, PLATFORM, "members", "edit") ||
-              slugs.some((s) => can(g, product(s), "members", "edit")),
-          ).toBe(true);
-        } else {
-          expect(can(g, PLATFORM, "platform", "edit")).toBe(true);
-        }
+        if (mayGrant(g, target)) holds(g, target);
+      });
+      it(`${name} revoking ${label} implies can() holds what it takes away`, () => {
+        if (mayRevoke(g, target)) holds(g, target, true);
       });
     }
+    it(`${name} changing a binding implies it may revoke the old and grant a widening`, () => {
+      for (const [, before] of ORACLE)
+        for (const [, after] of ORACLE) {
+          if (!mayChange(g, before, after)) continue;
+          holds(g, before, true);
+          if (isWidening(before, after)) holds(g, after);
+        }
+    });
   }
 });
 

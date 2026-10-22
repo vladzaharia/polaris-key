@@ -14,11 +14,17 @@
  *
  * Privacy. A person is named by member id, display name and address, and by nothing else: the
  * account id stays inside this file's joins (`accountIdBoundary.test.ts`). An account that is
- * not active is not named.
+ * not active is not named. `truncated: true` says a cap of 500 cut a list.
  */
 
 import { adminJson } from "../../core/console/respond.js";
-import { rowToGrant, type BindingRow } from "../../core/rbac/bindings.js";
+import {
+  listAllInvites,
+  listScopeBindings,
+  listStoredSuperadmins,
+  listWideProductAdmins,
+  rowToGrant,
+} from "../../core/rbac/bindings.js";
 import {
   consoleDirectory,
   consoleRootHolders,
@@ -30,15 +36,6 @@ import type { AdminCtx } from "../routes.js";
 
 const LIMIT = 500;
 
-/** Stored platform-scope Superadmin bindings of active accounts, as (account id, binding). */
-export async function storedSuperadmins(db: Db): Promise<BindingRow[]> {
-  return db.all<BindingRow>(
-    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
-      WHERE b.role = 'superadmin' AND b.scope = 'platform' AND a.status = 'active'
-      ORDER BY b.granted_at, b.id LIMIT 200`,
-  );
-}
-
 /** Every current Superadmin account: the root rule's holders plus stored bindings. */
 export async function superadminAccountIds(
   env: Env,
@@ -47,7 +44,7 @@ export async function superadminAccountIds(
 ): Promise<{ id: string; source: "root" | "grant" }[]> {
   const out = new Map<string, "root" | "grant">();
   for (const id of await consoleRootHolders(env, db, now)) out.set(id, "root");
-  for (const row of await storedSuperadmins(db)) {
+  for (const row of await listStoredSuperadmins(db)) {
     // A row the reader cannot understand grants nothing, so it is not listed either.
     if (rowToGrant(row) && !out.has(row.account_id!))
       out.set(row.account_id!, "grant");
@@ -67,19 +64,10 @@ export function byPerson(a: ConsoleDirectoryEntry, b: ConsoleDirectoryEntry) {
 export async function handleProductMembers(c: AdminCtx): Promise<Response> {
   const slug = c.product!.slug;
   const scope = `product:${slug}`;
-  const bound = await c.db.all<BindingRow>(
-    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
-      WHERE b.scope = ? AND a.status = 'active'
-      ORDER BY b.granted_at, b.id LIMIT ?`,
-    scope,
-    LIMIT,
-  );
-  const wide = await c.db.all<BindingRow>(
-    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
-      WHERE b.scope = 'products:*' AND b.role = 'product_admin' AND a.status = 'active'
-      ORDER BY b.granted_at, b.id LIMIT ?`,
-    LIMIT,
-  );
+  const boundAll = await listScopeBindings(c.db, scope, LIMIT);
+  const wideAll = await listWideProductAdmins(c.db, LIMIT);
+  const bound = boundAll.slice(0, LIMIT);
+  const wide = wideAll.slice(0, LIMIT);
   const supers = await superadminAccountIds(c.env, c.db, c.now);
   const ids = [
     ...new Set([
@@ -155,16 +143,14 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
     byPerson(a as ConsoleDirectoryEntry, b as ConsoleDirectoryEntry),
   );
 
-  const invites = await c.db.all<BindingRow>(
-    `SELECT * FROM console_role_bindings
-      WHERE email_norm IS NOT NULL AND scope = ? AND expires_at IS NOT NULL AND expires_at > ?
-      ORDER BY granted_at DESC, id LIMIT ?`,
-    scope,
-    c.now,
-    LIMIT,
-  );
+  const invitesAll = await listAllInvites(c.db, c.now, LIMIT, scope);
+  const invites = invitesAll.slice(0, LIMIT);
   return adminJson({
     product: slug,
+    truncated:
+      boundAll.length > LIMIT ||
+      wideAll.length > LIMIT ||
+      invitesAll.length > LIMIT,
     members,
     invites: invites.flatMap((row) => {
       const grant = rowToGrant(row);

@@ -453,6 +453,8 @@ export interface ConsoleDirectoryEntry {
   email: string;
   /** Epoch seconds of the latest `admin.signin` under any of the person's aliases, or `null`. */
   lastSignInAt: number | null;
+  /** The account is not active (disabled). Shown so a roster row explains a member who cannot sign in. */
+  disabled: boolean;
 }
 
 /** Bound parameters per statement stay under D1's limit of 100. */
@@ -471,13 +473,13 @@ function chunks<T>(items: readonly T[], size: number): T[][] {
  * accounts that hold a binding or the root rule), so nothing is learned about any other account.
  * The last sign-in is the newest `admin.signin` row under the person's member id or any IdP
  * subject of their console links (the `consoleActorAliases` set), through the
- * `(action, actor_sub, at)` index. Read-only; an unknown id is simply absent from the map.
+ * `(action, actor_sub, at)` index. An account on the erasure ledger is skipped. Read-only; an unknown id is simply absent from the map.
  */
 export async function consoleDirectory(
   env: Env,
   db: Db,
   accountIds: readonly string[],
-  _now: number,
+  now: number,
 ): Promise<Map<string, ConsoleDirectoryEntry>> {
   const out = new Map<string, ConsoleDirectoryEntry>();
   const ids = [...new Set(accountIds)];
@@ -487,7 +489,7 @@ export async function consoleDirectory(
   const aliasOf = new Map<string, string>(); // alias -> accountId
   const base = new Map<
     string,
-    { memberId: string; name: string; email: string }
+    { memberId: string; name: string; email: string; disabled: boolean }
   >();
   for (const part of chunks(ids, IN_CHUNK)) {
     const marks = part.map(() => "?").join(", ");
@@ -495,8 +497,9 @@ export async function consoleDirectory(
       id: string;
       display_name: string | null;
       primary_email: string | null;
+      status: string;
     }>(
-      `SELECT id, display_name, primary_email FROM accounts WHERE id IN (${marks})`,
+      `SELECT id, display_name, primary_email, status FROM accounts WHERE id IN (${marks})`,
       ...part,
     );
     const links = issuerKey
@@ -514,6 +517,8 @@ export async function consoleDirectory(
         )
       : [];
     for (const a of accounts) {
+      // An account on the erasure ledger is gone, whatever a restored D1 row says.
+      if ((await erasureVerdict(env, now, a.id)) !== "clear") continue;
       const mine = links.filter((l) => l.account_id === a.id);
       const memberId = await memberIdFor(env, a.id);
       aliasOf.set(memberId, a.id);
@@ -528,6 +533,7 @@ export async function consoleDirectory(
           first?.subject ??
           "",
         email: a.primary_email ?? first?.email ?? "",
+        disabled: a.status !== "active",
       });
     }
   }
@@ -568,6 +574,9 @@ export async function consoleRootHolders(
     !operatorIssuerAllowed(env, rp.issuer)
   )
     return [];
+  // Like `consoleSubject`, only the account's most recently used strong link speaks for it, so a
+  // stale link that still carries the group never lists someone the principal would not treat as
+  // a Superadmin.
   const rows = await db.all<{
     account_id: string;
     groups_json: string | null;
@@ -577,15 +586,18 @@ export async function consoleRootHolders(
     `SELECT l.account_id, l.groups_json, l.strong_at, l.asserted_at
        FROM account_links l JOIN accounts a ON a.id = l.account_id
       WHERE l.issuer_key = ? AND l.tenant_scope = '' AND l.strong_at IS NOT NULL
-        AND l.asserted_at IS NOT NULL AND l.asserted_at > ? AND a.status = 'active'
-      LIMIT 500`,
+        AND a.status = 'active'
+      ORDER BY l.last_used_at DESC, l.id
+      LIMIT 2000`,
     portalIdentityIssuerKey(rp.issuer),
-    now - ADMIN_SESSION_TTL_SECONDS,
   );
   const out = new Set<string>();
+  const seen = new Set<string>();
   for (const r of rows) {
+    if (seen.has(r.account_id)) continue;
+    seen.add(r.account_id);
     if (
-      rootRuleHolds(
+      !rootRuleHolds(
         env,
         {
           strongAt: r.strong_at,
@@ -596,6 +608,9 @@ export async function consoleRootHolders(
         ADMIN_SESSION_TTL_SECONDS,
       )
     )
+      continue;
+    // The erasure ledger outranks D1 (a restore can bring an erased account back); cached 30 s.
+    if ((await erasureVerdict(env, now, r.account_id)) === "clear")
       out.add(r.account_id);
   }
   return [...out];

@@ -428,9 +428,10 @@ with a role on that product, its open invites, and, read-only, the Superadmins a
 from above. Platform admins are never named there. The sign-in screens' "who can give you access" list names up to three
 people: that product's admins (only to someone who already holds an area of it) and then Superadmins, by name and
 address; anyone else gets the Superadmins alone, the same answer whether or not the product exists.
-Platform → Personal tokens (`/account-tokens`) shows a Platform admin or Superadmin the address of each account
-that holds a personal token, whether or not that person is a console member, with the token's label, last four
-characters and times, never the token.
+Platform → Personal tokens (`/account-tokens`) lists every personal token with its label, last four characters
+and times, never the token. Most holders are product customers, not console members, so the holder's address is
+shown to a Superadmin only; a Platform admin sees `null` there (as on the product Users page) and revokes a token
+by its id.
 
 ## What an end user can see
 

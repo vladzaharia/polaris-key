@@ -13,11 +13,20 @@
  * compares, so a forged or stale id is a 404 that says nothing. The directory is asked only about
  * accounts that hold a binding or the root rule, so a non-member is never read or named. A binding
  * granted by someone who is no longer a member shows `grantedBy: { name: null }`.
+ *
+ * Caps. The list answers 500 members and 500 invites from at most 2000 bindings and says
+ * `truncated: true` when any cap cut it. `/members/<id>` reads up to 20000 bindings so a real member
+ * past the list's cap is still found.
  */
 
 import { adminJson, notFound } from "../../core/console/respond.js";
 import { isMemberId } from "../../core/console/memberId.js";
-import { rowToGrant, type BindingRow } from "../../core/rbac/bindings.js";
+import {
+  listAccountBindings,
+  listAllInvites,
+  rowToGrant,
+  type BindingRow,
+} from "../../core/rbac/bindings.js";
 import {
   consoleDirectory,
   consoleRootHolders,
@@ -27,6 +36,10 @@ import type { AdminCtx } from "../routes.js";
 
 /** At most this many members and invites are answered (the page is a roster, not a log). */
 const LIMIT = 500;
+/** The most bindings read to build the roster. */
+const BINDING_LIMIT = 2000;
+/** `GET /members/<id>` reads far wider so a real member past the list's cap is still found. */
+const ONE_LIMIT = 20000;
 
 interface RoleView {
   role: string;
@@ -62,13 +75,16 @@ interface Built {
   /** memberId -> display name, for `grantedBy` and `invitedBy`. */
   names: Map<string, string>;
   bindings: BindingRow[];
+  /** A cap cut the bindings or the members. */
+  truncated: boolean;
 }
 
-async function build(c: AdminCtx): Promise<Built> {
-  const bound = await c.db.all<BindingRow>(
-    `SELECT * FROM console_role_bindings WHERE account_id IS NOT NULL
-      ORDER BY granted_at, id LIMIT 2000`,
-  );
+async function build(c: AdminCtx, one = false): Promise<Built> {
+  const bindingCap = one ? ONE_LIMIT : BINDING_LIMIT;
+  const memberCap = one ? ONE_LIMIT : LIMIT;
+  const fetched = await listAccountBindings(c.db, bindingCap);
+  let truncated = fetched.length > bindingCap;
+  const bound = fetched.slice(0, bindingCap);
   const roots = await consoleRootHolders(c.env, c.db, c.now);
   const ids = [...new Set([...bound.map((b) => b.account_id!), ...roots])];
   const dir = await consoleDirectory(c.env, c.db, ids, c.now);
@@ -105,28 +121,28 @@ async function build(c: AdminCtx): Promise<Built> {
         c.session.sub === entry.memberId,
       roles,
     });
-    if (members.length >= LIMIT) break;
   }
   members.sort(
     (a, b) =>
       (a.name || a.email).localeCompare(b.name || b.email) ||
       a.memberId.localeCompare(b.memberId),
   );
-  return { members, names, bindings: bound };
+  if (members.length > memberCap) {
+    members.length = memberCap;
+    truncated = true;
+  }
+  return { members, names, bindings: bound, truncated };
 }
 
 /** `GET /members`. */
 export async function handleMembersList(c: AdminCtx): Promise<Response> {
-  const { members, names } = await build(c);
-  const invites = await c.db.all<BindingRow>(
-    `SELECT * FROM console_role_bindings
-      WHERE email_norm IS NOT NULL AND expires_at IS NOT NULL AND expires_at > ?
-      ORDER BY granted_at DESC, id LIMIT ?`,
-    c.now,
-    LIMIT,
-  );
+  const built = await build(c);
+  const { members, names } = built;
+  const fetchedInvites = await listAllInvites(c.db, c.now, LIMIT);
+  const invites = fetchedInvites.slice(0, LIMIT);
   return adminJson({
     rootRule: { group: c.env.PLATFORM_ADMIN_GROUP ?? null },
+    truncated: built.truncated || fetchedInvites.length > LIMIT,
     members,
     invites: invites.flatMap((row) => {
       const grant = rowToGrant(row);
@@ -153,7 +169,7 @@ export async function handleMembersList(c: AdminCtx): Promise<Response> {
 export async function handleMemberGet(c: AdminCtx): Promise<Response> {
   const id = c.params.memberId ?? "";
   if (!isMemberId(id)) return notFound();
-  const { members } = await build(c);
+  const { members } = await build(c, true);
   const member = members.find((m) => m.memberId === id);
   return member ? adminJson({ member }) : notFound();
 }

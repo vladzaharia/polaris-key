@@ -223,3 +223,73 @@ export function stmtDeleteProductBindings(slug: string): DbStatement {
     params: [slug],
   };
 }
+
+/**
+ * The read side the Members pages use (ST-31.4/31.5). Each asks for `limit + 1` rows so a caller
+ * can tell that a cap cut the list (`truncated`) and slice back to `limit`.
+ */
+
+/** Every binding that names an account, oldest first. */
+export async function listAccountBindings(
+  db: Db,
+  limit: number,
+): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT * FROM console_role_bindings WHERE account_id IS NOT NULL
+      ORDER BY granted_at, id LIMIT ?`,
+    limit + 1,
+  );
+}
+
+/** The unexpired invites (address rows), newest first; one scope when `scope` is given. */
+export async function listAllInvites(
+  db: Db,
+  now: number,
+  limit: number,
+  scope?: string,
+): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT * FROM console_role_bindings
+      WHERE email_norm IS NOT NULL AND expires_at IS NOT NULL AND expires_at > ?
+        ${scope === undefined ? "" : "AND scope = ?"}
+      ORDER BY granted_at DESC, id LIMIT ?`,
+    ...(scope === undefined ? [now, limit + 1] : [now, scope, limit + 1]),
+  );
+}
+
+/** Bindings on one scope held by ACTIVE accounts. */
+export async function listScopeBindings(
+  db: Db,
+  scope: string,
+  limit: number,
+): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
+      WHERE b.scope = ? AND a.status = 'active'
+      ORDER BY b.granted_at, b.id LIMIT ?`,
+    scope,
+    limit + 1,
+  );
+}
+
+/** `products:*` Product admin bindings of active accounts. */
+export async function listWideProductAdmins(
+  db: Db,
+  limit: number,
+): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
+      WHERE b.scope = 'products:*' AND b.role = 'product_admin' AND a.status = 'active'
+      ORDER BY b.granted_at, b.id LIMIT ?`,
+    limit + 1,
+  );
+}
+
+/** Stored platform-scope Superadmin bindings of active accounts. */
+export async function listStoredSuperadmins(db: Db): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
+      WHERE b.role = 'superadmin' AND b.scope = 'platform' AND a.status = 'active'
+      ORDER BY b.granted_at, b.id LIMIT 200`,
+  );
+}

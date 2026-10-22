@@ -7005,8 +7005,10 @@ here). Session only (no `tokenScope`). Read-only.
   console links for exactly the accounts that hold a binding or the root rule, so a non-member is never read,
   counted or named. A person with a role is listed; a signed-in person with none is not.
 - **Root holders use the principal's own rule.** `consoleRootHolders` applies `rootRuleHolds` with
-  `ADMIN_SESSION_TTL_SECONDS` (the constant the principal uses), on active accounts, so the roster cannot show
-  a Superadmin the principal would not treat as one.
+  `ADMIN_SESSION_TTL_SECONDS` (the constant the principal uses), on active accounts, and only on the account's
+  most recently used strong link (as `consoleSubject` does). Each holder also passes `erasureVerdict` (cached
+  30 s), and `consoleDirectory` skips accounts on the erasure ledger, so the roster cannot show a Superadmin
+  the principal would not treat as one (ST-31.4 fix round; tested in `consoleMembers.test.ts`).
 - **Granter names.** `grantedBy` / `invitedBy` name a granter only while they are a member; a former member is
   `{ name: null }`, so the roster does not become a lookup of departed people.
 - **Last sign-in** is the newest `admin.signin` under the member id or any console IdP subject of the account
@@ -7041,14 +7043,15 @@ here). Session only (no `tokenScope`). Read-only.
 - **Bounded.** At most three people are named; the product route reads at most 500 bindings, 500 invites and
   the 200 stored Superadmin rows.
 
-**`/account-tokens` (ST-31.2 re-review item).** It stays a `platform` row. Platform admins see the address of
-every account that holds a personal token, which includes people who are not console members. Kept because
-revoking an abused token is an incident response a Platform admin owns and needs the owner to be identifiable;
-it returns no account id, no token and no hash. Follow-up, not done here: mask the address for a Platform
-admin if the owner wants Superadmin-only disclosure (`superadmin_only`, as `POST /tokens`).
+**`/account-tokens` (ST-31.2 re-review item; closed in the ST-31.4 fix round).** It stays a `platform` row, but the
+holder's address is returned to a Superadmin only, in the list and in the DELETE response (`email: null` for a
+Platform admin). Most holders are product customers, not console members, and the Platform admin has no consent
+to see them. Revoking works by token id; the label, last four characters and times identify the token. Tested in
+`consoleMembers.test.ts`. No account id, token or hash is returned.
 
-**Residual.** The roster is unpaginated (bounded). A binding for a disabled account is still listed as a role
-(inert; the account cannot sign in).
+**Residual.** The rosters are capped (500 members, 500 invites, 2000 bindings) and answer `truncated: true` when a cap
+cuts them; `GET /members/<id>` reads up to 20000 bindings so a real member past the cap is still found. A binding for
+a disabled account is listed with `disabled: true` (inert; the account cannot sign in).
 
 ### Console grant rules (ST-31.3)
 

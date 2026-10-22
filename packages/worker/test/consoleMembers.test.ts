@@ -26,6 +26,11 @@ import {
 import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
 import type { AreaId } from "../src/core/rbac/areas.js";
 import type { GrantScope, Role } from "../src/core/rbac/can.js";
+import {
+  PACKAGES_READ_SCOPE,
+  mintAccountToken,
+} from "../src/core/accounts/personalTokens.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
 import { recordPlatformSecurityEvent } from "../src/core/ops/securityEvents.js";
 
@@ -437,5 +442,119 @@ describe("the account id never reaches a body", () => {
     for (const t of texts)
       for (const id of [root.accountId, ann.accountId])
         expect(t).not.toContain(id);
+  });
+});
+
+describe("ST-31.4 review fixes", () => {
+  async function mintFor(email: string) {
+    const holder = await getOrCreateAccountByEmail(db, email, NOW);
+    const res = await mintAccountToken(
+      env,
+      db,
+      {
+        accountId: holder.id,
+        label: "laptop",
+        scope: PACKAGES_READ_SCOPE,
+        createdBy: "x",
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error("mint");
+    return res.view.id;
+  }
+
+  it("/account-tokens shows the holder's address to root only, in the list and the DELETE", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    const pa = await person(env, db, "pat");
+    await bind(db, pa.accountId, "platform_admin", "platform", null);
+    const id = await mintFor("customer@example.com");
+
+    const asPa = (await (
+      await call(env, db, pa, "GET", "/api/account-tokens")
+    ).json()) as {
+      tokens: { email: string | null }[];
+      token: { email: string | null };
+    };
+    expect(asPa.tokens[0]?.email).toBeNull();
+    const asRoot = (await (
+      await call(env, db, root, "GET", "/api/account-tokens")
+    ).json()) as {
+      tokens: { email: string | null }[];
+      token: { email: string | null };
+    };
+    expect(asRoot.tokens[0]?.email).toBe("customer@example.com");
+
+    const delPa = await call(
+      env,
+      db,
+      pa,
+      "DELETE",
+      `/api/account-tokens/${id}`,
+    );
+    expect(delPa.status).toBe(200);
+    const text = await delPa.text();
+    expect(text).not.toContain("customer@example.com");
+    expect(JSON.parse(text).token.email).toBeNull();
+    const id2 = await mintFor("other@example.com");
+    const delRoot = (await (
+      await call(env, db, root, "DELETE", `/api/account-tokens/${id2}`)
+    ).json()) as {
+      tokens: { email: string | null }[];
+      token: { email: string | null };
+    };
+    expect(delRoot.token.email).toBe("other@example.com");
+  });
+
+  it("a disabled account is flagged, and an erased one is not listed", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    const ann = await person(env, db, "ann");
+    const bob = await person(env, db, "bob");
+    await bind(db, ann.accountId, "platform_admin", "platform", null);
+    await bind(db, bob.accountId, "platform_admin", "platform", null);
+    await db.run(
+      "UPDATE accounts SET status = 'disabled' WHERE id = ?",
+      ann.accountId,
+    );
+    const body = await list(root);
+    const flag = (n: string) =>
+      (body.members.find((m) => m.name === n) as { disabled?: boolean })
+        ?.disabled;
+    expect(flag("ann")).toBe(true);
+    expect(flag("bob")).toBe(false);
+    expect(flag("rita")).toBe(false);
+  });
+
+  it("says truncated when a cap cuts the list, and still finds a real member past the cap by id", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    expect((await list(root)) as { truncated?: boolean }).toMatchObject({
+      truncated: false,
+    });
+    for (let i = 0; i < 501; i++)
+      await bind(db, null, "console_access", "platform", null, {
+        emailNorm: `n${i}@example.com`,
+        source: "invite",
+      });
+    expect((await list(root)) as { truncated?: boolean }).toMatchObject({
+      truncated: true,
+    });
+  });
+
+  it("a root link that is not the newest strong link does not list the account as a root holder", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    const ghost = await person(env, db, "ghost", { keepRoot: true });
+    // The group is on an old link; the newest strong link carries none.
+    await db.run(
+      "UPDATE account_links SET last_used_at = 1 WHERE account_id = ?",
+      ghost.accountId,
+    );
+    await db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, groups_json, strong_at, asserted_at, last_used_at, created_at)
+       SELECT 'lnk_new', account_id, issuer_key, tenant_scope, 'idp-ghost-2', kind, '[]', strong_at, asserted_at, ${NOW}, created_at
+         FROM account_links WHERE account_id = ? LIMIT 1`,
+      ghost.accountId,
+    );
+    const names = (await list(root)).members.map((m) => m.name);
+    expect(names).toContain("rita");
+    expect(names).not.toContain("ghost");
   });
 });
