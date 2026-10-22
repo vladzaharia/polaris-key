@@ -2466,6 +2466,8 @@ export interface CommerceStoreIdentity {
   assigned: string | null;
   /** A typed value that differs from the assigned one (the typed value is in force). */
   mismatch: boolean;
+  /** The store's own keys name different apps (D15; the lowest id is in force). */
+  ambiguous?: boolean;
 }
 
 export interface CommerceView {

@@ -12,6 +12,7 @@
  * that is about to expire, LX-41) join here when it lands.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
 import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
@@ -77,9 +78,9 @@ const CREDENTIAL_LABELS: Readonly<Record<string, string>> = {
 };
 
 const STORE_LABELS = {
-  "app-store": "App Store",
-  play: "Google Play",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  steam: channelLabel("steam"),
 } as const;
 
 const day = (epochSeconds: number): string =>

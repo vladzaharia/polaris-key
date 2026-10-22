@@ -21,6 +21,11 @@ import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import {
+  IdentityAttention,
+  StoreIdentityCell,
+  type StoreIdentityRow,
+} from "./StoreIdentity.js";
+import {
   STOREFRONT_DOCS,
   SET_UP_STOREFRONT,
 } from "../core/components/serviceFeatures.js";
@@ -38,7 +43,13 @@ function storefrontState(
   s: CommerceView["setup"][CommerceStore],
 ): "ready" | "unset" | "credential" {
   if (s.configured) return "ready";
-  return s.reason?.startsWith("no settings") ? "unset" : "credential";
+  // No settings, or settings with no app to sell for: not set up. Anything else is the key.
+  const r = s.reason ?? "";
+  return r.startsWith("no settings") ||
+    r === "no_app_assigned" ||
+    r === "own_credential_unpinned"
+    ? "unset"
+    : "credential";
 }
 
 const storeLabel = (id: string): string =>
@@ -94,6 +105,12 @@ export function CommerceOverviewPage({
       ...s,
       state: storefrontState(setup[s.id]),
       mapped: products.filter((p) => p.store === s.id).length,
+      identityRow: {
+        id: s.id,
+        label: s.label,
+        identity: view.data.identity?.[s.id],
+        reason: setup[s.id].reason,
+      } satisfies StoreIdentityRow,
     }));
     const latest = purchases.slice(0, 10);
     body = (
@@ -131,7 +148,11 @@ export function CommerceOverviewPage({
             )
           }
         >
-          <div className="px-5 py-4">
+          <div className="space-y-4 px-5 py-4">
+            <IdentityAttention
+              slug={slug}
+              rows={rows.map((s) => s.identityRow)}
+            />
             <ul
               className="divide-y divide-border sm:hidden"
               aria-label="Storefronts"
@@ -142,6 +163,7 @@ export function CommerceOverviewPage({
                     <span className="font-medium">{s.label}</span>
                     <StatusPill domain="storefront" state={s.state} size="sm" />
                   </div>
+                  <StoreIdentityCell slug={slug} row={s.identityRow} />
                   <p className="text-sm text-fg-muted">
                     {s.mapped} mapped {s.mapped === 1 ? "product" : "products"}
                   </p>
@@ -160,6 +182,9 @@ export function CommerceOverviewPage({
                       Store
                     </th>
                     <th scope="col" className="py-2 pe-4 font-medium">
+                      App
+                    </th>
+                    <th scope="col" className="py-2 pe-4 font-medium">
                       Status
                     </th>
                     <th scope="col" className="py-2 text-end font-medium">
@@ -174,6 +199,9 @@ export function CommerceOverviewPage({
                         {s.label}
                       </th>
                       <td className="py-2 pe-4">
+                        <StoreIdentityCell slug={slug} row={s.identityRow} />
+                      </td>
+                      <td className="py-2 pe-4">
                         <StatusPill
                           domain="storefront"
                           state={s.state}
@@ -186,7 +214,7 @@ export function CommerceOverviewPage({
                 </tbody>
               </ScrollTable>
             </div>
-            <p className="mt-3 text-sm text-fg-muted">
+            <p className="text-sm text-fg-muted">
               <Link to={r.commerce(slug)} className={LINK}>
                 Map App Store products
               </Link>

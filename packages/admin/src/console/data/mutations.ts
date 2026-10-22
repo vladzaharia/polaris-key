@@ -167,6 +167,7 @@ export type WriteMethod =
   | "rebuildFeed"
   | "bootstrapPlatformFeeds"
   | "savePackageFeeds"
+  | "commerceUseAssigned"
   | "mintRegistryToken"
   | "revokeRegistryToken"
   | "revokeAllRegistryTokens"
@@ -1120,6 +1121,15 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.hostedAssets(slug)),
       prefix(qk.activity(slug)),
+    ],
+  },
+  commerceUseAssigned: {
+    label: "store app",
+    // The typed identity is gone: the view, Home's items and the trail change.
+    invalidates: (slug) => [
+      prefix(qk.commerceView(slug)),
+      prefix(qk.activity(slug)),
+      attention(),
     ],
   },
   savePackageFeeds: {

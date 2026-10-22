@@ -223,6 +223,32 @@ const ROUTES: Record<string, unknown> = {
         action: { label: "Replace key", page: "storefronts" },
         area: "ship",
       },
+      {
+        id: "djdl:storefront.identity_mismatch:play",
+        product: { slug: "djdl", name: "DJDL" },
+        kind: "storefront.identity_mismatch",
+        tone: "warning",
+        service: "commerce",
+        short: "App mismatch",
+        lines: [
+          "Google Play purchases are checked against `gg.djdl.typo.with.a.long.package.name`, not the assigned app `gg.djdl.app`.",
+        ],
+        action: { label: "Review", page: "commerce-overview" },
+        area: "commerce",
+      },
+      {
+        id: `${LONG_SLUG}:channel.identity_mismatch:ios:bundleId`,
+        product: { slug: LONG_SLUG, name: LONG_NAME },
+        kind: "channel.identity_mismatch",
+        tone: "warning",
+        service: "distribution",
+        short: "App mismatch",
+        lines: [
+          "Channel `ios` names bundleId `com.djdl.typo`, not the assigned app `com.djdl.app`.",
+        ],
+        action: { label: "Review", page: "storefronts" },
+        area: "ship",
+      },
     ],
   },
   "/manage/api/platform/ready": {

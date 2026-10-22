@@ -652,6 +652,40 @@ describe("Distribution → Storefronts", () => {
     expect(skip).toBeTruthy();
   });
 
+  it("A-28.5: an identifier read from the assignment says so; a manifest one does not", async () => {
+    bootWith(
+      `${PAGE}?flow=add&step=prerequisites&stores=google-play`,
+      routes({
+        [SF()]: {
+          ...VIEW,
+          stores: [
+            {
+              ...PLAY,
+              identifiers: {
+                packageName: { value: "gg.djdl.app", source: "assigned" },
+                developerId: { value: "4321", source: "manifest" },
+              },
+            },
+            NEW_STORE,
+          ],
+        },
+      }),
+    );
+    const ids = await screen.findByLabelText("Google Play identifiers");
+    const rows = within(ids).getAllByText(/./, { selector: "dt" });
+    expect(rows.map((n) => n.textContent)).toEqual([
+      "packageName",
+      "developerId",
+    ]);
+    expect(within(ids).getByText("gg.djdl.app")).toBeTruthy();
+    expect(within(ids).getAllByText("From the assignment")).toHaveLength(1);
+    expect(
+      within(ids.querySelectorAll("div")[1] as HTMLElement).queryByText(
+        "From the assignment",
+      ),
+    ).toBeNull();
+  });
+
   it("a store without a connection is read-only, with the reason", async () => {
     bootWith(
       `${PAGE}?flow=add&step=prerequisites&stores=acme-arcade`,

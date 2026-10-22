@@ -1723,6 +1723,11 @@ const PLAY_STORE = {
     lastError: null,
   },
   app: { id: "gg.djdl.app", name: "DJDL" },
+  // A-28.4: one identifier from the manifest, one filled from the assignment.
+  identifiers: {
+    packageName: { value: "gg.djdl.app", source: "assigned" },
+    developerId: { value: "4976543210987654321", source: "manifest" },
+  },
   outlets: ["android"],
   readOnly: null,
   capabilities: [
@@ -1930,19 +1935,34 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // CM-29: Commerce's overview read.
   [`${PROD}/commerce`]: {
     licenseEnabled: true,
-    setup: {
-      "app-store": { configured: true, credential: "cred_asc", reason: null },
+    // A-28: derived (App Store), typed and differing (Google Play), no app (Steam).
+    identity: {
+      "app-store": {
+        value: "com.djdl.app",
+        source: "assigned",
+        assigned: "com.djdl.app",
+        mismatch: false,
+        ambiguous: false,
+      },
       play: {
-        configured: false,
-        credential: null,
-        reason: "no settings for this store",
+        value: "gg.djdl.typo.with.a.long.package.name",
+        source: "typed",
+        assigned: "gg.djdl.app",
+        mismatch: true,
+        ambiguous: false,
       },
       steam: {
-        configured: false,
-        credential: null,
-        reason:
-          "no active steam-publisher-key credential pinned to the configured app",
+        value: null,
+        source: null,
+        assigned: null,
+        mismatch: false,
+        ambiguous: false,
       },
+    },
+    setup: {
+      "app-store": { configured: true, credential: "cred_asc", reason: null },
+      play: { configured: true, credential: "cred_play", reason: null },
+      steam: { configured: false, credential: null, reason: "no_app_assigned" },
     },
     products: [
       {

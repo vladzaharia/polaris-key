@@ -115,6 +115,39 @@ export function prereqRows(store: StorefrontDto): Prereq[] {
   }));
 }
 
+/** The identifiers the flow shows; one the manifest leaves out is read from the assignment. */
+function Identifiers({
+  store,
+}: {
+  store: StorefrontDto;
+}): React.ReactElement | null {
+  const entries = Object.entries(store.identifiers ?? {});
+  if (entries.length === 0) return null;
+  return (
+    <dl
+      aria-label={`${store.label} identifiers`}
+      className="mt-4 divide-y divide-border text-sm"
+    >
+      {entries.map(([key, v]) => (
+        <div
+          key={key}
+          className="flex flex-wrap items-baseline justify-between gap-x-3 py-1.5"
+        >
+          <dt className="text-fg-muted">{key}</dt>
+          <dd className="min-w-0 break-all text-end">
+            <code className="font-mono text-xs text-fg-strong">{v.value}</code>
+            {v.source === "assigned" ? (
+              <span className="ms-2 text-xs text-fg-muted">
+                From the assignment
+              </span>
+            ) : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function Prerequisites({
   store,
 }: {
@@ -139,6 +172,7 @@ export function Prerequisites({
           words={PREREQ_WORDS}
         />
       )}
+      <Identifiers store={store} />
     </Panel>
   );
 }
