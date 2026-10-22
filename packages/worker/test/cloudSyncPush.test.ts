@@ -41,6 +41,7 @@ import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { callCloudSync } from "../src/services/sync/do/client.js";
 import { handlePush } from "../src/services/sync/handlers/push.js";
+import { syncProductPurge } from "../src/services/sync/productDeletion.js";
 import {
   markProductPurging,
   productIsPurging,
@@ -820,15 +821,31 @@ describe("POST /<p>/sync/ops: the object's refusals are mapped, never copied", (
     expect(await errorOf(res)).toBe("account_required");
   });
 
-  it("a subject merged away after the push is repeated against the survivor", async () => {
-    const w = await world();
-    const survivor = await signIn(
+  /** The device is re-bound while the first push is in the object (the second call is the pull). */
+  const rebindDuringPush = async (w: World, asMerge: boolean) => {
+    const other = await signIn(
       w.db,
       { issuerKey: "email", subject: "bo@example.com", kind: "email" },
       NOW,
       { unfenced: true, product: { slug: SLUG } },
     );
-    if (survivor.status !== "signed_in") throw new Error(survivor.status);
+    if (other.status !== "signed_in") throw new Error(other.status);
+    const merge = async (): Promise<void> => {
+      if (!asMerge) return;
+      // A merge: the old subject stops being live and becomes an alias of the survivor.
+      await w.db.run(
+        "DELETE FROM account_product_subjects WHERE product = ? AND subject = ?",
+        SLUG,
+        w.subject,
+      );
+      await w.db.run(
+        "INSERT INTO account_product_subject_aliases (product, alias, subject, merged_at) VALUES (?, ?, ?, ?)",
+        SLUG,
+        w.subject,
+        other.subject!,
+        NOW,
+      );
+    };
     const s = scripted((_n, body) => reply(body));
     const orig = s.ns.get.bind(s.ns);
     s.ns.get = ((id: DurableObjectId) => {
@@ -836,23 +853,43 @@ describe("POST /<p>/sync/ops: the object's refusals are mapped, never copied", (
       return {
         fetch: async (u: string, i?: RequestInit) => {
           const r = await stub.fetch(u, i as never);
-          if (s.seen.length === 2)
+          if (s.seen.length === 2) {
+            await merge();
             await w.db.run(
               "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
-              survivor.subject!,
+              other.subject!,
               SLUG,
               DEVICE,
             );
+          }
           return r;
         },
       };
     }) as never;
     w.env.CLOUD_SYNC = s.ns;
+    return { s, other: other.subject! };
+  };
+
+  it("a subject merged away after the push is repeated against the survivor", async () => {
+    const w = await world();
+    const { s, other } = await rebindDuringPush(w, true);
     const res = await push(w, [set("audio.gain", 1)]);
     expect(res.status).toBe(200);
-    expect(((await res.json()) as PushResponse).subject).toBe(survivor.subject);
+    expect(((await res.json()) as PushResponse).subject).toBe(other);
     expect(s.seen.filter((b) => b.op === "push")).toHaveLength(2);
-    expect(s.seen.at(-1)!.subject).toBe(survivor.subject);
+    expect(s.seen.at(-1)!.subject).toBe(other);
+  });
+
+  it("a device re-bound to an unrelated person is never replayed into that person's object (SR-2)", async () => {
+    const w = await world();
+    const { s, other } = await rebindDuringPush(w, false);
+    const res = await push(w, [set("audio.gain", 1)]);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      "account_required",
+    );
+    expect(s.seen.filter((b) => b.op === "push")).toHaveLength(1);
+    expect(s.seen.some((b) => b.subject === other)).toBe(false);
   });
 
   it("another object failure is retryable or 500 and never names the object's code", async () => {
@@ -927,9 +964,17 @@ describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the
     const product = (await loadProduct(w.env, w.db, SLUG))!;
     expect((await push(w, [set("audio.gain", 1)])).status).toBe(200);
     w.ns.calls.length = 0;
-    // The purge is bounded: a first run that is not done leaves the product row alone.
+    // The purge is bounded: a first run that is not done leaves the product row alone. More
+    // listed people than one run erases (400) keep it from finishing.
+    await w.db.run(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 450)
+       INSERT INTO sync_directory (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes, tier_id, platform, last_active_at, updated_at)
+       SELECT ?, 'sub_' || i, 0, 0, 0, 0, 0, 0, NULL, NULL, 0, 0 FROM n`,
+      SLUG,
+    );
     expect(await productIsPurging(w.env, SLUG)).toBe(false);
     await purgeProductData(w.db, w.env, SLUG, NOW);
+    w.ns.calls.length = 0;
     expect(await productIsPurging(w.env, SLUG)).toBe(true);
     expect(
       w.kv.ttlOf(w.kv.keys().find((k) => k.includes("sync-purging"))!),
@@ -938,6 +983,22 @@ describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the
     expect((await push(w, [set("audio.gain", 2)])).status).toBe(404);
     expect((await direct(w, product as Product)).status).toBe(404);
     expect(w.ns.calls).toEqual([]);
+  });
+
+  it("a finished purge deletes the flag, so a slug created again within the hour is not refused", async () => {
+    const w = await world();
+    await markProductPurging(w.env, SLUG);
+    expect(await productIsPurging(w.env, SLUG)).toBe(true);
+    // Nothing is listed: this run is the last, and clears the flag.
+    const out = await syncProductPurge({
+      db: w.db,
+      env: w.env,
+      product: SLUG,
+      now: NOW,
+    });
+    expect(out).toEqual({ done: true });
+    expect(await productIsPurging(w.env, SLUG)).toBe(false);
+    expect((await push(w, [set("audio.gain", 1)])).status).toBe(200);
   });
 
   it("the flag is per product, and reads (the pull) are not refused", async () => {

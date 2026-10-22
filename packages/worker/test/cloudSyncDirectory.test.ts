@@ -46,14 +46,21 @@ async function world(flushTimeoutMs?: number) {
     failAfterCommit: false,
     gate: null as Promise<void> | null,
   };
+  // The object flushes through `batchChanges` (the last statement's changed-row count tells it the
+  // product is gone); `batch` stays the same recorded, fault-injected path for older callers.
+  const through = async (s: DbStatement[]): Promise<number[]> => {
+    batches.push(s);
+    if (state.gate) await state.gate;
+    if (state.fail) throw new Error("d1 down");
+    const changes = await inner.batchChanges!(s);
+    if (state.failAfterCommit) throw new Error("reply lost");
+    return changes;
+  };
   const db: Db = Object.assign(Object.create(inner) as Db, {
     batch: async (s: DbStatement[]) => {
-      batches.push(s);
-      if (state.gate) await state.gate;
-      if (state.fail) throw new Error("d1 down");
-      await inner.batch(s);
-      if (state.failAfterCommit) throw new Error("reply lost");
+      await through(s);
     },
+    batchChanges: through,
   });
   const ns = new CloudSyncNamespaceMock({
     db: () => db,
@@ -302,6 +309,96 @@ describe("directory flush (U-05.9)", () => {
     ).toEqual([]);
   });
 
+  describe("the merge marker's cleanup alarm (SR-2)", () => {
+    const mergeDelete = async (w: Awaited<ReturnType<typeof world>>) => {
+      const doc = (
+        await callCloudSync<"exportAll">(
+          w.env,
+          { product: P, subject: A },
+          { op: "exportAll" },
+        )
+      ).document!;
+      return callCloudSync<"deleteAll">(
+        w.env,
+        { product: P, subject: A },
+        {
+          op: "deleteAll",
+          absorbedInto: B,
+          ifSeq: doc.seq,
+          ifWrites: doc.writes,
+        },
+      );
+    };
+
+    it("the alarm is set when the marker is written, a day out, and a retry does not push it out", async () => {
+      const w = await world();
+      await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+      expect((await mergeDelete(w)).deleted).toBe(true);
+      const due = T0 + ABSORBED_RETENTION_MS;
+      expect(w.ns.instance(NAME(A)).storage.alarm).toBe(due);
+      w.clock.t += 3_600_000;
+      // The retried delete finds the marker: still one day from the FIRST absorption.
+      const again = await callCloudSync<"deleteAll">(
+        w.env,
+        { product: P, subject: A },
+        { op: "deleteAll", absorbedInto: B, ifSeq: 0, ifWrites: 0 },
+      );
+      expect(again.deleted).toBe(true);
+      expect(w.ns.instance(NAME(A)).storage.alarm).toBe(due);
+      // The alarm erases the whole object.
+      w.clock.t = due;
+      await w.ns.fireAlarm(NAME(A));
+      expect(
+        w.ns
+          .instance(NAME(A))
+          .storage.sql.db.prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+          )
+          .all(),
+      ).toEqual([]);
+    });
+
+    it("a setAlarm that fails is a retryable failure and wipes nothing", async () => {
+      const w = await world();
+      await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+      const storage = w.ns.instance(NAME(A)).storage;
+      const real = storage.setAlarm.bind(storage);
+      storage.setAlarm = async () => {
+        throw new Error("alarm storage down");
+      };
+      await expect(mergeDelete(w)).rejects.toMatchObject({
+        status: 503,
+        code: "unavailable",
+      });
+      expect(
+        (
+          await callCloudSync<"usage">(
+            w.env,
+            { product: P, subject: A },
+            { op: "usage" },
+          )
+        ).empty,
+      ).toBe(false);
+      storage.setAlarm = real;
+      // The retry completes, with the first absorption time.
+      const doc = (
+        await callCloudSync<"exportAll">(
+          w.env,
+          { product: P, subject: A },
+          { op: "exportAll" },
+        )
+      ).document;
+      expect(doc).toBeNull();
+      const done = await callCloudSync<"deleteAll">(
+        w.env,
+        { product: P, subject: A },
+        { op: "deleteAll", absorbedInto: B, ifSeq: 0, ifWrites: 0 },
+      );
+      expect(done.deleted).toBe(true);
+      expect(storage.alarm).toBe(T0 + ABSORBED_RETENTION_MS);
+    });
+  });
+
   it("an absorb that changed the survivor is flushed", async () => {
     const w = await world();
     await write(w, B, [mut("k", "set", T0 - 1000, { value: 1 })]);
@@ -481,7 +578,25 @@ describe("the flush is idempotent under an at-least-once alarm (U-05.9 B1)", () 
     await w.ns.fireAlarm(NAME(A));
     expect(await dirRow(w, A)).toBeNull();
     expect((await dailyOf(w))?.syncs).toBeNull();
-    expect(metaOf(w, NAME(A), "dir_pending")).toBeUndefined();
+    // The object erased itself (SR-2 B2), pending flush included.
+    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
+  });
+
+  it("the object a stale push left for an erased product erases itself at its alarm (SR-2 B2)", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    const inst = w.ns.instance(NAME(A));
+    expect(inst.storage.alarm).not.toBeNull();
+    await w.db.run("UPDATE products SET status = 'deleted' WHERE slug = ?", P);
+    await w.ns.fireAlarm(NAME(A));
+    // Nothing is left: no setting, no alarm.
+    expect(inst.storage.alarm).toBeNull();
+    const usage = await callCloudSync<"usage">(
+      w.env,
+      { product: P, subject: A },
+      { op: "usage" },
+    );
+    expect(usage).toMatchObject({ empty: true, seq: 0 });
   });
 });
 

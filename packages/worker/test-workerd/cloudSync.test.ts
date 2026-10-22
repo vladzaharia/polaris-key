@@ -9,7 +9,7 @@ import {
   runDurableObjectAlarm,
   runInDurableObject,
 } from "cloudflare:test";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   absorbCloudSync,
   callCloudSync,
@@ -36,6 +36,15 @@ const set = (id: number, key: string, value: string) => ({
   op: "set" as const,
   value,
   editedHlc: formatHlc(NOW - 1000, 0),
+});
+
+// The first write schedules an alarm that the runtime delivers by itself, and an object whose
+// product is not live erases itself there (SR-2 B2): the product the tests write to must exist.
+beforeAll(async () => {
+  await seedProduct(env, new D1Db(env.DB), "wd", {
+    schemaVersion: 1,
+    entries: [],
+  });
 });
 
 const pushTo = (pin: { product: string; subject: string }, key: string) =>
@@ -354,5 +363,29 @@ describe("directory flush alarm under workerd (U-05.9)", () => {
     expect(
       (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
     ).toBe(true);
+  });
+
+  it("an object whose product was erased erases itself at its alarm (SR-2 B2)", async () => {
+    await seedProduct(env, new D1Db(env.DB), "wdgone", {
+      schemaVersion: 1,
+      entries: [],
+    });
+    const pin = { product: "wdgone", subject: "sub_orphan" };
+    await pushTo(pin, "theme");
+    await env.DB.prepare(
+      "UPDATE products SET status = 'deleted' WHERE slug = ?",
+    )
+      .bind(pin.product)
+      .run();
+    // Whichever alarm delivery sees the deleted product, the object ends empty and silent.
+    await vi.waitFor(
+      async () =>
+        expect(
+          (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
+        ).toBe(true),
+      { timeout: 5000 },
+    );
+    expect(await rowOf(pin)).toBeNull();
+    expect(await runDurableObjectAlarm(stubOf(pin))).toBe(false);
   });
 });

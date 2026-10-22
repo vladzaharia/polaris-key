@@ -2787,7 +2787,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "33:1ea0ca13adaba228"
@@ -2799,7 +2799,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
@@ -2821,7 +2821,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
@@ -2833,7 +2833,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
@@ -2845,7 +2845,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
@@ -2867,7 +2867,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "33:1ea0ca13adaba228"

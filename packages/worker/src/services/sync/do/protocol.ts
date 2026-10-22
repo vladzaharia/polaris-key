@@ -110,6 +110,8 @@ export type CloudSyncError = {
     | "bad_request"
     | "pin_mismatch"
     | "unsupported_schema"
+    /** The object could not set its cleanup alarm: the caller retries (a 5xx the Worker maps). */
+    | "unavailable"
     /** The object was absorbed by an account merge: it takes no more writes (SR-1 N3). */
     | "absorbed";
 };

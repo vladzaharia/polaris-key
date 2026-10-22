@@ -271,6 +271,9 @@ describe("GET /<p>/sync: the answer", () => {
     expect(b.lastMutationId).toBe(mid - 1);
     const etag = res.headers.get("etag")!;
     expect(etag).toBe(`"${b.cursor}.${b.lastMutationId}"`);
+    // The ETag does not name the subject: a shared cache must key on the credential (SR-2 B1).
+    const VARY = "Authorization, X-PKey-Device";
+    expect(res.headers.get("vary")).toContain(VARY);
 
     const again = await get(
       w,
@@ -278,6 +281,7 @@ describe("GET /<p>/sync: the answer", () => {
       authed(w, { "if-none-match": etag }),
     );
     expect(again.status).toBe(304);
+    expect(again.headers.get("vary")).toContain(VARY);
     expect(again.headers.get("etag")).toBe(etag);
     expect(await again.text()).toBe("");
     // A clientId of another device sees lastMutationId 0, so its tag differs.
@@ -336,6 +340,7 @@ describe("GET /<p>/sync: the answer", () => {
     expect(b1.more).toBe(true);
     expect(b1.changes.length + b1.tombstones.length).toBe(500);
     expect(p1.headers.get("etag")).toBeNull();
+    expect(p1.headers.get("vary")).toContain("Authorization, X-PKey-Device");
     // Even the store's current tag cannot stop the paging: a page with more is never 304.
     const again = await get(w, "", authed(w, { "if-none-match": '"1200.0"' }));
     expect(again.status).toBe(200);
