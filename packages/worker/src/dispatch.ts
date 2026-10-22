@@ -344,6 +344,7 @@ async function routeRequest(
     case "adminApi":
     case "adminLogin":
     case "adminCallback":
+    case "adminPasskey":
     case "products":
       return handleAdmin(
         req,

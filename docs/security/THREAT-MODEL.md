@@ -7437,6 +7437,70 @@ a passkey already in the account. A passkey added in the Locker account is never
 **Tests:** `test/consolePasskeys.test.ts`; `routeCoverage`, `rbacRouteAreas`, `rbacRouteMatrix`,
 `accountIdBoundary`, `consoleBreakGlass`, `identityPasskeys`.
 
+### Console passkey sign-in and step-up: SM-1, SM-5 and login CSRF (ST-30c.5)
+
+**What it is.** `POST /manage/login/passkey/options {stepUp?, returnTo?}` and `/verify {response}`
+(router kind `adminPasskey`, `console/passkeySignin.ts`; narrative-only in `routeCoverage`). A strong
+console passkey opens a v2 session (`amr: ["passkey"]`, the 8 h console TTL); with `stepUp` it also
+re-proves the person already signed in. This is the chain's highest-risk slice: it mints a console
+session from a credential that is not the console IdP.
+
+- **SM-1 at this door** (`consolePasskeySignIn`, `services/identity/consoleAccount.ts`). Order, every
+  step before the first write: the ceremony is taken (single use) and is for the console RP id; the
+  credential exists, its stored `rp_id` is the console's, the user handle is the one it was created
+  under and its link is the same account's; `verifyAssertion` (I-16, unchanged: challenge, the exact
+  console origin only, RP id hash, user verification, signature, then the counter); only then the link
+  must have `strong_at`, else `method`; the account is `active` and the erasure verdict is `clear`; a
+  step-up is answered by the account that asked. A passkey nobody marked strong (SM-4: one added in the
+  Locker account) is refused `method` with nothing written: no counter update, no session row, no audit
+  row. The `method` answer follows the signature check, so only the key's holder learns it. Every other
+  failure (unknown credential, another RP, wrong handle, bad signature, regressed counter, spent
+  ceremony) answers one shape, 401 or, for an absent ceremony, 400 `signin_expired`. A regressed counter
+  from a proven signature writes `account.passkey.counter_regressed` to the account's audit trail.
+- **SM-5, per request** (`subjectForAccount`, shared by `consoleSubject` and `consoleTokenSubject`, so a
+  cookie and a `pkeya_` token cannot disagree). An account is a member while it holds ANY strong method:
+  a strong link through the console IdP (as before), or a strong passkey link twinned with an
+  `account_passkeys` row of the same account whose `rp_id` equals the host of `CONSOLE_ORIGIN`. The
+  root rule is still computed ONLY from the console-IdP link (`rootRuleHolds`); a passkey carries no
+  groups, so a passkey-only member is root-less and is a member through stored bindings alone. Removing
+  the passkey deletes its link, so entry ends at the next 30 s check; a passkey re-enrolled under
+  another RP id, or whose strong mark is cleared, admits nobody. An unset `CONSOLE_ORIGIN` admits no
+  passkey (fail closed). Tests cover the removal, the RP and strength cases and the token subject.
+- **The gate on top** (`handleConsolePasskey` verify). A grant is required: `convertInvites(…, via:
+"passkey")` runs first (the account's verified primary email is the address; SM-6/SM-7 stop a passkey
+  bootstrapping a platform role or `products:*`), then the principal is resolved from the SAME subject
+  and `can(console, view)` is checked; a session row that ends with no grant is ended before any cookie
+  exists. A root-only operator whose console-IdP assertion is older than the root window has no grant
+  and is refused with "Sign in with Pocket ID first" (reason `idp_first`): a passkey never extends a
+  stale root group. `admin.signin` (summary `passkey`, actor the member id) and the hint cookie are
+  written only on success; every refusal writes `admin.signin.refused`.
+- **Login CSRF (checklist item 14).** (1) Before anything is read or spent, the shared house guard
+  (`readGuardedJsonObject`) refuses a request that is not same-origin (`Sec-Fetch-Site` must be
+  `same-origin`; with none, `Origin` must be ours) or not JSON, so a cross-site page can neither mint a
+  challenge nor burn the victim's. (2) The ceremony is bound to the browser by
+  `__Host-pkey_console_passkey` (`HttpOnly`, `Secure`, `SameSite=Strict`, 5 min), a cookie of its own:
+  the record's address is `hash("console-passkey-signin:" + secret)` under `KEY_HASH_PEPPER`, a
+  namespace the portal's `passkey-signin:` ceremony does not share, so neither door can finish the
+  other's challenge. (3) Verify consumes only the challenge issued to the cookie it carries, so an
+  attacker's own valid assertion presented in a victim's browser fails the challenge, and with no cookie
+  finishes nothing. The ceremony is taken before the response is parsed, so a failed try is spent.
+- **A step-up never crosses accounts.** `stepUp: true` needs a live account session (`resolveConsoleCaller`,
+  the sanctioned cookie reader; a break-glass session has no account and cannot). Its `aid` is stored in
+  the ceremony. At verify the ceremony's account, the browser's current session account and the
+  asserting passkey's account must all be equal, else `step_up_account` before any write. `stepUpAt`
+  is set only on that path (`issueSessionV2` with `authTime` = now); a plain passkey sign-in sets
+  `authAt` alone, so it can never satisfy a step-up. Only a passkey enrolled under the console RP id
+  with `strong_at` can answer either.
+- **Rate limit.** One budget for options and verify, 30 a minute per client network, bucket
+  `adminPasskey`, fail closed (`FAIL_MODE`).
+- **Residual.** A synced passkey's counter stays 0, so cloning is undetectable there; the strong mark,
+  the step-up that earned it, the audit row and the Superadmin mail (ST-30c.3) are the bound. A
+  passkey-only member is exactly as strong as its authenticator: an admin who wants IdP-grade assurance
+  keeps the console IdP as their only strong method.
+
+**Tests:** `test/consolePasskeySignin.test.ts`; `consoleSessionV2`, `consoleStrongMethod`,
+`consoleTokenSubject`, `identityErasureFence`, `routeCoverage`, `boundaries`, `rateLimit`.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product

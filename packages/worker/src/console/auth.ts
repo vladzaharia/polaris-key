@@ -130,7 +130,7 @@ export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 export const CONSOLE_HINT_COOKIE = "__Host-pkey_console_hint";
 const CONSOLE_HINT_TTL_SECONDS = 30 * 86400;
 
-function consoleHintCookie(email: string | null): string {
+export function consoleHintCookie(email: string | null): string {
   return [
     `${CONSOLE_HINT_COOKIE}=${email ? encodeURIComponent(email) : ""}`,
     "Path=/",
@@ -465,7 +465,7 @@ async function signinCard(
 }
 
 /** A usable `login_hint`: one plausible address, never longer than an email may be. */
-function loginHint(raw: string | null): string | null {
+export function loginHint(raw: string | null): string | null {
   const v = raw?.trim() ?? "";
   return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(v)
     ? v

@@ -97,6 +97,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   identityAttach: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
+  // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The
+  // assertion opens a console session, so an outage refuses.
+  adminPasskey: "closed",
   portalLogin: "closed",
   // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
   // user codes, so an outage must not make it unlimited.
