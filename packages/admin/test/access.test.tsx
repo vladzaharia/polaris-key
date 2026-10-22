@@ -487,6 +487,56 @@ describe("NoAccessPage", () => {
     );
   });
 
+  it("keeps the error body and the focused button through a failing retry", async () => {
+    let n = 0;
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: {
+        "/manage/api/access/admins": () => {
+          n++;
+          return new Response(JSON.stringify({ error: { code: "internal" } }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    });
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    retry.focus();
+    retry.click();
+    // The skeleton never replaces the error body during the retry.
+    expect(screen.queryByRole("list", { busy: true } as never)).toBeNull();
+    await waitFor(() => expect(n).toBeGreaterThan(1));
+    const again = await screen.findByRole("button", { name: "Try again" });
+    await waitFor(() => expect(document.activeElement).toBe(again));
+  });
+
+  it("leaves no empty Breadcrumb landmark on a refused page", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+  });
+
+  it("puts Use another account right after the address", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    await screen.findByRole("heading", { level: 1 });
+    const p = screen.getByRole("main").querySelector("header p")!;
+    const kids = Array.from(
+      p.querySelectorAll("strong, button, [data-role-tag]"),
+    );
+    expect(kids[0]!.tagName).toBe("STRONG");
+    expect(kids[1]!.textContent).toBe("Use another account");
+  });
+
   it("answers a Platform page for a member without the Platform area", async () => {
     boot("#/platform/settings", {
       me: SHIP_ONLY,

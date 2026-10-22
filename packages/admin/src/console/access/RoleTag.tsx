@@ -69,7 +69,11 @@ function AreaList({ areas }: { areas: readonly AreaId[] }): React.ReactElement {
       {areas.map((a) => {
         const accent = AREA_ACCENTS[a];
         return (
-          <span key={a} className="inline-flex items-center gap-1">
+          <span
+            key={a}
+            data-area-item
+            className="inline-flex items-center gap-1 whitespace-nowrap"
+          >
             {accent ? (
               <ServiceGlyph
                 id={accent as "core"}
@@ -97,9 +101,13 @@ export function RoleSet({
   return (
     <span
       data-role-set
-      className="inline-flex min-w-0 max-w-full items-center gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-1"
+      className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 max-sm:flex-col max-sm:flex-nowrap max-sm:items-start"
     >
-      <RoleTag role={role} productName={productName} />
+      <RoleTag
+        role={role}
+        productName={productName}
+        className="max-w-[min(24rem,100%)]"
+      />
       {areas && areas.length > 0 ? <AreaList areas={areas} /> : null}
     </span>
   );

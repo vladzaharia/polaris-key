@@ -114,16 +114,26 @@ export function Orientation({
 }): React.ReactElement {
   // The h1 is the page: the page's own last crumb names it, so the line stops at its parent.
   const crumbs = [...base, ...extra.slice(0, -1)];
+  const chipItem = (
+    <li
+      aria-hidden
+      data-orientation-chip=""
+      className={cn("flex", chipHiddenFromDesktop && "lg:hidden")}
+    >
+      {chip}
+    </li>
+  );
+  // No crumb, no landmark: a "Breadcrumb" nav holding only a hidden chip reads as empty.
+  if (crumbs.length === 0)
+    return (
+      <div data-orientation="" aria-hidden>
+        <ol className="flex min-h-5 items-center">{chipItem}</ol>
+      </div>
+    );
   return (
     <nav aria-label="Breadcrumb" data-orientation="">
       <ol className="flex min-h-5 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-fg-muted">
-        <li
-          aria-hidden
-          data-orientation-chip=""
-          className={cn("flex", chipHiddenFromDesktop && "lg:hidden")}
-        >
-          {chip}
-        </li>
+        {chipItem}
         {crumbs.map((c, i) => (
           <li key={i} className="flex items-center gap-1.5">
             {c.to ? (

@@ -124,6 +124,7 @@ const NO_ACCESS_CASES = [
   "no-access:nobody",
   "no-access:home",
   "no-access:long-name",
+  "no-access:long-address",
 ];
 
 /** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
@@ -247,6 +248,25 @@ function noAccessCases(): Case[] {
           area: "console",
           admins: people.slice(1),
         },
+      },
+    },
+    {
+      name: "no-access:long-address",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          email: "lucia.ortega@studio-operations.example.com",
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
       },
     },
     {

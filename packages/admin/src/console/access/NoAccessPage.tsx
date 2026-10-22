@@ -184,21 +184,19 @@ function SignedInLine({
       <span className="min-w-0 max-w-full">
         <strong className="break-all text-fg-strong">{me.email}</strong>
       </span>
+      {/* From 640 px the way out follows the address, as the mockup draws it; below, at the foot. */}
+      <UseAnotherAccount className="max-sm:hidden" />
       {roles.map((role) => (
         <span
           key={`${role.role}:${role.scope}`}
           className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1"
         >
-          <span className="inline-flex min-w-0 max-w-full sm:max-w-sm">
-            <RoleSet role={role} productName={productName} />
-          </span>
+          <RoleSet role={role} productName={productName} />
           {home && sourceLine(role, me.email) ? (
             <span>{sourceLine(role, me.email)}</span>
           ) : null}
         </span>
       ))}
-      {/* From 640 px the way out sits in this line; below it, at the foot of the page. */}
-      <UseAnotherAccount className="max-sm:hidden" />
     </span>
   );
 }
@@ -229,7 +227,7 @@ function PersonRow({
       </span>
       {/* On a phone the address goes on its own line under the name, so the name never wraps
           around it; from 640 px it ends the row. */}
-      <span className="flex min-w-0 max-w-full basis-full ps-12 sm:basis-auto sm:ps-0">
+      <span className="flex min-w-0 max-w-full basis-full sm:basis-auto">
         <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm bg-surface-sunken ps-2 font-mono text-xs text-fg">
           <span className="min-w-0 break-all">{person.email}</span>
           <CopyButton
@@ -251,17 +249,23 @@ function WhoCanHelp({
   productName?: string;
 }): React.ReactElement {
   const wrap = React.useRef<HTMLDivElement>(null);
-  const retried = React.useRef(false);
-  // After a retry the button is gone: focus moves to the panel's heading, never to <body>.
+  const [retrying, setRetrying] = React.useState(false);
+  const failedAt = React.useRef(0);
+  // A retry keeps the error body (and the focused button, with its spinner) until the answer
+  // arrives: a refetch with no data would otherwise swap in the skeleton and drop focus to
+  // <body>. On success focus moves to the panel's heading; on a failure the button keeps it.
   React.useEffect(() => {
-    if (!retried.current || !q.isSuccess) return;
-    retried.current = false;
-    const h = wrap.current?.querySelector<HTMLElement>("h2,h3");
-    h?.setAttribute("tabindex", "-1");
-    h?.focus();
-  }, [q.isSuccess]);
+    if (!retrying) return;
+    if (q.isSuccess) {
+      setRetrying(false);
+      const h = wrap.current?.querySelector<HTMLElement>("h2,h3");
+      h?.setAttribute("tabindex", "-1");
+      h?.focus();
+    } else if (q.isError && q.errorUpdatedAt > failedAt.current)
+      setRetrying(false);
+  }, [retrying, q.isSuccess, q.isError, q.errorUpdatedAt]);
   let body: React.ReactNode;
-  if (q.isPending)
+  if (q.isPending && !retrying)
     body = (
       <ul aria-busy="true" className="divide-y divide-border">
         {[0, 1, 2].map((i) => (
@@ -279,7 +283,7 @@ function WhoCanHelp({
         ))}
       </ul>
     );
-  else if (q.isError)
+  else if (q.isError || retrying)
     body = (
       <div className="space-y-3 text-sm text-fg-muted">
         <p>The list didn't load. Ask a Superadmin of this console.</p>
@@ -288,7 +292,8 @@ function WhoCanHelp({
           size="sm"
           loading={q.isFetching}
           onClick={() => {
-            retried.current = true;
+            failedAt.current = q.errorUpdatedAt;
+            setRetrying(true);
             void q.refetch();
           }}
         >
@@ -296,7 +301,7 @@ function WhoCanHelp({
         </Button>
       </div>
     );
-  else if (q.data.admins.length === 0)
+  else if (q.data!.admins.length === 0)
     body = (
       <p className="text-sm text-fg-muted">Ask a Superadmin of this console.</p>
     );
@@ -304,7 +309,7 @@ function WhoCanHelp({
     body = (
       <ul className="divide-y divide-border">
         {/* The product's admins first, whatever order they arrive in (the sort is stable). */}
-        {[...q.data.admins]
+        {[...q.data!.admins]
           .sort(
             (a, b) =>
               Number(b.role === "product_admin") -
@@ -339,13 +344,16 @@ function Destinations({
           key={d.key}
           asChild
           variant={i === 0 ? "primary" : "outline"}
-          className="h-auto justify-start whitespace-normal py-2 text-start max-sm:w-full"
+          className={cn(
+            "h-auto grow justify-center whitespace-normal py-2 text-center sm:grow sm:justify-start sm:text-start max-sm:w-full",
+            i > 0 && "hover:border-accent",
+          )}
           data-service={AREA_ACCENTS[d.area]}
         >
           <Link to={d.to}>
             <ServiceGlyph
               id={(AREA_ACCENTS[d.area] ?? "core") as "core"}
-              className="[&_svg]:size-[1.1em]"
+              className={cn("[&_svg]:size-[1.1em]", i === 0 && "text-current")}
             />
             {d.label}
           </Link>
@@ -372,7 +380,7 @@ function LibraryTile(): React.ReactElement {
   return (
     <a
       href="/"
-      className="group flex flex-col gap-3 self-start rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
+      className="group flex w-full flex-col gap-3 self-start rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
     >
       <span className="flex size-9 items-center justify-center rounded-md bg-surface-sunken">
         <LayoutGrid aria-hidden className="size-4" />
@@ -452,7 +460,7 @@ export function NoAccessPage({
           <WhoCanHelp q={q} productName={productName} />
         </div>
         {home ? (
-          <div className="flex lg:col-span-4">
+          <div className="lg:col-span-4">
             <LibraryTile />
           </div>
         ) : places.length > 0 ? (

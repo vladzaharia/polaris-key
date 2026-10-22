@@ -54,7 +54,8 @@ export function useAccessAdmins(
   return useQuery({
     queryKey: qk.accessAdmins(scope, area),
     queryFn: () => api.accessAdmins(scope, area),
-    // Platform access is given by Superadmins (and Platform admins), never a product's admin:
+    // Platform access is given by Superadmins, never a product's admin (the server lists no
+    // Platform admins either):
     // whatever a worker answers, a platform scope names none.
     select: (d) =>
       scope === "platform"

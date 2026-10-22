@@ -1192,6 +1192,48 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
               : 0)
           : 0;
       const limit = (twoLines || W < 640 ? 176 : 140) * textScale + extra;
+      // ST-31.15 R1: on a no-access masthead no inline item (address, role tag, area item, the
+      // "Use another account" link) breaks across lines, and no two of their boxes intersect.
+      // Element boxes, not text ranges: a truncated tag's hidden text is not a collision.
+      if (fixedCopy) {
+        const items = Array.from(
+          mast.querySelectorAll<HTMLElement>(
+            "p strong, p [data-role-tag], p [data-area-item], p button",
+          ),
+        ).filter((e) => e.getBoundingClientRect().width > 0);
+        for (const e of items) {
+          const line = px(cs(e).lineHeight) || 16;
+          // An address longer than a phone line at a large text size has to break (break-all);
+          // from 640 px it must not.
+          if (e.tagName === "STRONG" && W < 640) continue;
+          const broken =
+            e.getClientRects().length > 1 ||
+            e.getBoundingClientRect().height > line * 1.6;
+          if (broken)
+            out.push({
+              rule: "masthead",
+              kind: "facts-broken",
+              where: where(e),
+              detail: `"${(e.textContent ?? "").trim().slice(0, 40)}" breaks across lines inside the facts line`,
+              cause: cls(e),
+            });
+        }
+        for (let i = 0; i < items.length; i++)
+          for (let j = i + 1; j < items.length; j++) {
+            const x = items[i]!.getBoundingClientRect();
+            const y = items[j]!.getBoundingClientRect();
+            const w = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const h = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (w > 1 && h > 1)
+              out.push({
+                rule: "masthead",
+                kind: "facts-overlap",
+                where: where(items[j]!),
+                detail: `"${(items[i]!.textContent ?? "").trim().slice(0, 30)}" and "${(items[j]!.textContent ?? "").trim().slice(0, 30)}" overlap in the facts line`,
+                cause: cls(items[j]!),
+              });
+          }
+      }
       const height = mast.getBoundingClientRect().height - tabsH;
       if (height > limit + 0.5)
         out.push({
