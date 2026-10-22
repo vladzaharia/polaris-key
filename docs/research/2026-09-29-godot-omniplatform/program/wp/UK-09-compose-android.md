@@ -178,16 +178,16 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
-- [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
-- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
-- [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
-- [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/kotlin/ui/src/test/snapshots/`; a changed baseline fails CI until re-recorded with the reason in the commit.
+- [x] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
+- [x] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
+- [x] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
+- [x] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/kotlin/ui/src/test/snapshots/`; a changed baseline fails CI until re-recorded with the reason in the commit.
 - [ ] The §7.3 modernity lint passes on this kit (Compose equivalents), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
-- [ ] The §4.4 accessibility checks pass on the same renders (`AccessibilityTest`, 200 % font).
+- [x] The §4.4 accessibility checks pass on the same renders (`AccessibilityTest`, 200 % font).
 - [ ] The sample `examples/ui/compose-android/` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`android.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
-- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [x] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
@@ -315,3 +315,5 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 ## Split 2026-10-22 (triage)
 
 After the `ui.*` parity flip (45 min) UK-09 closes. The Android sample, Compose tabs, M3 Expressive, nav graph and deep links, tablet list-detail, ChannelPicker and the BUILT UX pass are **[UK-09b](UK-09b-compose-android-sample-and-expressive.md)**.
+
+Closed 2026-10-22 (SMALL-CLOSES): the ten `ui.*` rows (`gate`, `activate`, `signin`, `devicelimit`, `devices`, `update`, `settings`, `paywall`, `theme`, `i18n`) in `sdks/kotlin/parity.json` are `implemented`. Proof: `UIMatrixPresentationTest` in `:ui-core` runs every row of each ui-matrix.json family (11 tests, 0 failures, `./gradlew -Ppkey.jvmOnly=true :ui-core:test --tests '*UIMatrixPresentationTest*'`), and the Android `MatrixSnapshotTest` snapshots every distinct component and state in both themes. Boxes ticked: look and native preset, product identity, catalog copy, baselines, accessibility, parity rows. The rest of the open boxes move to UK-09b. The BUILT UX pass is not recorded for UK-09 (the `_mockups/review/compose-kit/` rounds carry no verdict file), so the status stays `in-review` until the lead records one with `check.mjs --ux-review UK-09 pass "<evidence>"` or takes it in UK-09b.

@@ -444,54 +444,44 @@
       "note": "This SDK ships a widget kit (ui.kit); UK-54's JVM terminal kit makes the contract required on jvm."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family gate, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisGate.kt and PolarisGateState (PolarisGateStateTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family activate, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: KitActivationStates, the activation screen (KitOfflineActivationTest, DeviceLimitStepTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.signin": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: KitSignIn(inputs, presentation) and PolarisKitScreen draw KitStates.resolve output, and MatrixSnapshotTest snapshots every distinct (component, state) of ui-matrix.json in both themes; the styled parts (fields, QR, lists) are still to come."
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family signIn, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: KitSignIn and PolarisSignInState (SignInScreenTest, SignInDoneTest, PolarisSignInStateTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family deviceLimit, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: DeviceLimitStepTest; MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family devices, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisDevices.kt (PolarisDevicesStateTest, DevicesInlineTest, DeviceRowsTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family update, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisUpdate.kt (PolarisUpdateStateTest, UpdateSurfacesTest, UpdateTvFocusTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family settings, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisSettings.kt (PolarisSettingsStateTest, SettingsRowsTest, SettingsEditorsTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family paywall, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisKitScreen paywall states (PartsTest, KitScreenLayoutTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.theme": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: the Polaris look is the default and PolarisBranding.None the native preset (BrandingTest); PolarisBranding.PolarisKey with no accent falls back to ink, never the core violet (PresentationThemeTest, BrandingTest); the full theme-row proof still to come."
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family theme, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisBranding (BrandingTest, PresentationThemeTest, BrandRulesTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "ui.i18n": {
-      "status": "planned",
-      "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "status": "implemented",
+      "note": "UK-09: UIMatrixPresentationTest (:ui-core, JVM; ui-matrix.json family i18n, every row; 11 tests, 0 failures); drawn by the Android Compose kit :ui: PolarisCopy over brand's generated strings (PolarisCopyCatalogTest, PolarisCopyMappingTest, PolarisCopyResourcesTest, ComposeResourcesTest); MatrixSnapshotTest snapshots every distinct (component, state) in both themes. Android kit; desktop via UK-10 (Compose Multiplatform); Android Views is a recipe."
     },
     "commerce.receipt": {
       "status": "implemented",
