@@ -82,6 +82,20 @@ export class PortalStore {
     });
   }
 
+  /**
+   * Delete the file that failed to read back, but only if it is still the bytes that failed: a
+   * session that discovered meanwhile (`accept`) has written a fresh one, which stays.
+   */
+  private async discard(stale: string): Promise<void> {
+    if (this.discovered) return;
+    try {
+      if ((await readFile(this.path, "utf8")) !== stale) return;
+      await rm(this.path, { force: true });
+    } catch {
+      // Gone already, or unreadable: nothing to delete.
+    }
+  }
+
   /** The member the file holds, or null; a file that does not read back to itself is deleted. */
   private async read(): Promise<ParsedPortal | null> {
     let raw: string;
@@ -107,7 +121,7 @@ export class PortalStore {
       m = parsePortal({ portal: v.portal });
       if (m !== null && !isDeepStrictEqual(wireOf(m), v.portal)) m = null;
     }
-    if (m === null) await rm(this.path, { force: true }).catch(() => undefined);
+    if (m === null) await this.discard(raw);
     return m;
   }
 }
