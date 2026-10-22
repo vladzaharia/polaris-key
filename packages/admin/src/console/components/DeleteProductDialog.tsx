@@ -48,6 +48,7 @@ export function DeleteProductDialog({
         "Audit and runtime history are preserved.",
       ]}
       typedConfirmation={{ value: slug, label: "Type the product slug" }}
+      focusTyped
       confirmLabel="Delete product"
       describeError={(e) => errorCopy(e, { thing: "Product" })}
       onConfirm={async () => {

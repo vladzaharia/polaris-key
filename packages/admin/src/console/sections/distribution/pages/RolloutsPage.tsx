@@ -138,7 +138,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       accessorFn: (r) => versionOf(r.releaseId),
       meta: { priority: 1, primary: true },
       cell: ({ row }) => (
-        <span className="font-mono text-xs">
+        <span className="font-mono text-xs whitespace-nowrap">
           {versionOf(row.original.releaseId)}
         </span>
       ),
@@ -322,7 +322,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : undefined
           }
-          description="A halt or pause reaches devices on their next feed check."
+          description="A halt lands on the next check."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}

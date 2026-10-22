@@ -338,7 +338,7 @@ export function TermsSection({
   return (
     <SettingsSection id="terms" title="Terms">
       <SettingsRow
-        label="Polaris Key’s Terms and Privacy Policy"
+        label="Polaris Key's Terms and Privacy Policy"
         help="Once per account"
       >
         <span className="text-sm text-fg-muted">Set by the platform</span>
@@ -355,7 +355,7 @@ export function TermsSection({
         <SettingsRow
           label={
             <>
-              {name}’s terms
+              {name}'s terms
               {value?.version ? (
                 <span className="ms-2 text-xs font-normal text-fg-muted">
                   {value.version}

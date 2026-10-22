@@ -35,20 +35,20 @@ export function iconShape(img: HTMLImageElement): IconShape {
 
 /**
  * The band behind a console product card that has no header art and no accent of its own: one of
- * eight muted tints, picked from the slug so a product keeps its colour everywhere and a row of
+ * eight quiet tints (the dark ones sit close to the page), picked from the slug so a product keeps its colour everywhere and a row of
  * cards is never grey. Dark tints carry white text at 4.5:1 or better, light tints carry near-black
  * text the same way (`productArt.test.ts` holds both).
  */
 export const FALLBACK_TINTS = {
   dark: [
-    "#4a4486",
-    "#2f5d8a",
-    "#1f6b6b",
-    "#3f6b3f",
-    "#80602a",
-    "#8a4a4a",
-    "#7a3f6e",
-    "#4e5a6e",
+    "#25233f",
+    "#1c2f45",
+    "#16363a",
+    "#233826",
+    "#3d3220",
+    "#40262a",
+    "#3a2336",
+    "#272e3a",
   ],
   light: [
     "#dcd8f5",

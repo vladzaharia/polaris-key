@@ -115,14 +115,14 @@ export function SessionEnded(): React.ReactElement | null {
       size="sm"
       role="alertdialog"
       title="Your session ended"
-      description="Sign in again to carry on. Changes you haven’t saved stay on this page."
+      description="Sign in again to carry on. Changes you haven't saved stay on this page."
     >
       <div
         aria-live="polite"
         className="px-6 text-sm text-fg-muted empty:hidden"
       >
         {opened
-          ? "Sign in in the new tab. This page carries on when you’re done."
+          ? "Sign in in the new tab. This page carries on when you're done."
           : ""}
       </div>
       <DialogFooter>
@@ -162,7 +162,7 @@ export function SignedInAgain(): React.ReactElement {
   }, []);
   return (
     <AuthCard brand={<ConsoleBrand />} stepKey="signed-in" focusKey={1}>
-      <AuthTitle>You’re signed in again</AuthTitle>
+      <AuthTitle>You're signed in again</AuthTitle>
       <p className="text-sm text-fg-muted">
         Close this tab to go back to your page. Your changes are still there.
       </p>

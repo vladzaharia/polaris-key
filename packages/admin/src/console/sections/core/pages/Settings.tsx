@@ -288,7 +288,7 @@ function SettingsBody({
                   Not enforced
                 </StatusPill>
               }
-              help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}Not enforced: console access is platform-wide.`}
+              help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}Console access is platform-wide.`}
             >
               {/* A long group (an LDAP DN) wraps under the label on a phone: read it from the left. */}
               <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere] max-sm:text-start">
@@ -613,7 +613,7 @@ function ManifestAuthorityRow({
       help={
         mode.locked
           ? "Always on for the system product: a console change to a license default is a break-glass claim with a reason, which ends within 7 days or at the first deploy that changes it."
-          : "When on, .pkey/ is the only writer of the display name, license defaults, web origins and catalog: a console change to one is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it. Other settings .pkey/ declares are not covered yet."
+          : "When on, .pkey/ is the only writer of the display name, license defaults, web origins and catalog: a console change to one is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it."
       }
     >
       {mode.locked ? (

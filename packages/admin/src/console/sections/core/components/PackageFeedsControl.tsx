@@ -114,7 +114,7 @@ export function PackageFeedsControl({
                 On <span className="font-mono">{registryHost}</span>
               </>
             ) : (
-              "On this product’s registry"
+              "On this product's registry"
             )
           ) : (
             "Off: no package feed answers installs or updates"

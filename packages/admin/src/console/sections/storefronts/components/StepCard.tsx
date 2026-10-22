@@ -152,7 +152,7 @@ function useVerifier(
 }
 
 /** A step's action names what it sends, so it wraps in a narrow column instead of running off it (B-217). */
-const WRAPS = "h-auto min-h-8 max-w-full whitespace-normal py-1 text-start";
+const WRAPS = "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start";
 
 export function StepCard({
   slug,
@@ -187,7 +187,6 @@ export function StepCard({
     actions.push(
       <Button
         key="run"
-        size="sm"
         className={WRAPS}
         variant={step.typed ? "danger" : "primary"}
         disabled={blocked}
@@ -206,7 +205,7 @@ export function StepCard({
     );
   if (step.handoff)
     actions.push(
-      <Button key="handoff" size="sm" variant="outline" asChild>
+      <Button key="handoff" variant="outline" asChild>
         <Link to={productPage(slug, step.handoff.page as ProductPageId)}>
           {step.handoff.label}
         </Link>
@@ -214,7 +213,7 @@ export function StepCard({
     );
   if (step.mode === "deep-link" && step.link?.url)
     actions.push(
-      <Button key="open" size="sm" variant="outline" asChild>
+      <Button key="open" variant="outline" asChild>
         <a href={step.link.url} target="_blank" rel="noreferrer noopener">
           <ExternalLink aria-hidden />
           Open {store.label}
@@ -225,7 +224,6 @@ export function StepCard({
     actions.push(
       <Button
         key="check"
-        size="sm"
         variant="outline"
         loading={verifier.checking}
         onClick={() => void verifier.checkNow()}
@@ -242,7 +240,6 @@ export function StepCard({
     actions.push(
       <Button
         key="assert"
-        size="sm"
         className={WRAPS}
         variant="outline"
         disabled={blocked}
@@ -268,7 +265,6 @@ export function StepCard({
     actions.push(
       <Button
         key="next"
-        size="sm"
         className={WRAPS}
         disabled={readOnly}
         disabledReason={gate}
@@ -286,7 +282,7 @@ export function StepCard({
 
   return (
     <li
-      className="rounded-md border border-border bg-surface-raised p-4"
+      className="rounded-md border border-border bg-surface-raised p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:not-first:border-t max-sm:not-first:border-border max-sm:not-first:pt-3"
       data-step={step.id}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">

@@ -18,7 +18,7 @@ import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
  *   cannot be dismissed. A rejection keeps the dialog open with the error inline under the
  *   consequences; pressing confirm again retries. On success the dialog closes.
  * - The confirm label repeats the verb ("Disable license"), never "Confirm".
- * - Focus lands on Cancel, the least destructive button.
+ * - Focus lands on Cancel, the least destructive button (`focusTyped` puts it on the typed field).
  */
 export type ConfirmIntent = "neutral" | "caution" | "danger";
 
@@ -38,6 +38,11 @@ export interface ConfirmDialogProps {
   closeButton?: boolean;
   /** `ignoreCase`: the match trims and ignores case (an email address). */
   typedConfirmation?: { value: string; label: string; ignoreCase?: boolean };
+  /**
+   * With a `typedConfirmation`, open with focus on its field instead of Cancel: nothing can be
+   * confirmed until it is typed, so Cancel's "least destructive" focus saves nothing (a Tab).
+   */
+  focusTyped?: boolean;
   onConfirm: () => void | Promise<void>;
   /**
    * An error the caller met outside `onConfirm` (a retry after a step-up prompt), shown inline like
@@ -100,6 +105,7 @@ export function ConfirmDialog({
   describeError = defaultDescribe,
   closeOnSuccess = true,
   confirmVariant,
+  focusTyped = false,
   loading = false,
   confirmDisabled = false,
 }: ConfirmDialogProps): React.ReactElement {
@@ -107,6 +113,7 @@ export function ConfirmDialog({
   const [error, setError] = React.useState<unknown>(null);
   const [typed, setTyped] = React.useState("");
   const cancelRef = React.useRef<HTMLButtonElement>(null);
+  const typedRef = React.useRef<HTMLInputElement>(null);
   const typedId = React.useId();
   const errorId = React.useId();
 
@@ -166,7 +173,7 @@ export function ConfirmDialog({
       className="max-sm:overflow-y-auto"
       dismissible={!busy}
       closeButton={closeButton}
-      initialFocusRef={cancelRef}
+      initialFocusRef={typedConfirmation && focusTyped ? typedRef : cancelRef}
     >
       {lead || consequences?.length || children || err || typedConfirmation ? (
         <DialogBody className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible">
@@ -214,6 +221,7 @@ export function ConfirmDialog({
                 </code>
               </label>
               <input
+                ref={typedRef}
                 id={typedId}
                 value={typed}
                 autoComplete="off"

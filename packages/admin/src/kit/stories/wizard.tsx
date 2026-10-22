@@ -85,7 +85,7 @@ function PageWizardDemo(): React.ReactElement {
     >
       <Callout
         tone="danger"
-        title="Kestrel Labs didn’t accept the client secret"
+        title="Kestrel Labs didn't accept the client secret"
         action={
           <Button size="sm" variant="outline">
             Try again
@@ -170,7 +170,7 @@ function StepsDemo(): React.ReactElement {
             },
             {
               id: "app",
-              label: "The product’s app",
+              label: "The product's app",
               detail: "Pick the app in App Store Connect.",
               state: "unmet",
               fix: (
@@ -292,7 +292,7 @@ export const stories: Story[] = [
     group: "Templates",
     title: "Stepper",
     description:
-      "Done steps say what was decided; a skipped step says so; future steps are disabled with a reason. Below, the drawer’s segments.",
+      "Done steps say what was decided; a skipped step says so; future steps are disabled with a reason. Below, the drawer's segments.",
     render: () => <StepperDemo />,
   },
   {

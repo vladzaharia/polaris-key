@@ -132,7 +132,7 @@ const toggleRows = (name: string) =>
       key: "claimByKey",
       id: "identity.keyEntry.claimByKey",
       label: "A key adds its license to whoever enters it",
-      help: "Off: only to the account with the buyer’s email.",
+      help: "Off: only to the account with the buyer's email.",
     },
   ] as const;
 

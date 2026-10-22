@@ -244,8 +244,10 @@ describe("Home", () => {
     // The worst first, with the word.
     expect(within(rows[0]!).getByText("Error")).toBeTruthy();
     expect(within(rows[0]!).getByText("Resync failed.")).toBeTruthy();
-    // B-054: the message stops at 72ch and the action follows it.
-    expect(rows[0]!.parentElement!.className).toContain("fit-content(72ch)");
+    // The message stops at 72ch; the action column sits at the card's far edge.
+    expect(rows[0]!.parentElement!.className).toContain(
+      "minmax(0,1fr)_max-content]",
+    );
     expect(within(rows[0]!).getByText("line 14 names switch.")).toBeTruthy();
     expect(
       within(rows[0]!)

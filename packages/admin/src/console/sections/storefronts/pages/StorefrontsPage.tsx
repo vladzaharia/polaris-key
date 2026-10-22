@@ -184,8 +184,8 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         <EmptyState
           kind="first-run"
           headingLevel={2}
-          title="No storefronts are registered"
-          description="Storefronts appear here as the Worker registers their adapters."
+          title="No storefronts yet"
+          description="Supported stores are listed here once they are available."
           docs={docsUrl("storefronts")}
         />
       ) : flow ? (

@@ -69,7 +69,7 @@
         "icon": "KeyRound",
         "group": "licensing"
       },
-      "docs": "/docs/services/license/"
+      "docs": "/docs/features/licensing/"
     },
     {
       "slug": "config",
@@ -83,7 +83,7 @@
         "icon": "SlidersHorizontal",
         "group": "managed-config"
       },
-      "docs": "/docs/services/config/"
+      "docs": "/docs/features/managed-config/"
     },
     {
       "slug": "release",
@@ -97,7 +97,7 @@
         "icon": "Package",
         "group": "ship-builds"
       },
-      "docs": "/docs/services/release/"
+      "docs": "/docs/features/ship-builds/releases/"
     },
     {
       "slug": "distribution",
@@ -111,12 +111,12 @@
         "icon": "Waypoints",
         "group": "ship-builds"
       },
-      "docs": "/docs/services/distribution/"
+      "docs": "/docs/features/ship-builds/channels/"
     },
     {
       "slug": "update",
       "label": "Update",
-      "summary": "The feed over Release’s truth store — appcasts, /version, and eligibility.",
+      "summary": "The feed over Release's truth store — appcasts, /version, and eligibility.",
       "defaultEnabled": false,
       "requires": ["distribution"],
       "legacyModules": ["releases"],
@@ -125,7 +125,7 @@
         "icon": "CircleArrowUp",
         "group": "ship-builds"
       },
-      "docs": "/docs/services/update/"
+      "docs": "/docs/features/ship-builds/updates/"
     },
     {
       "slug": "identity",
@@ -139,7 +139,7 @@
         "icon": "UserRound",
         "group": "sign-in"
       },
-      "docs": "/docs/services/identity/"
+      "docs": "/docs/features/sign-in/"
     },
     {
       "slug": "sync",
@@ -153,7 +153,7 @@
         "icon": "Cloud",
         "group": "cloud-sync"
       },
-      "docs": "/docs/services/sync/"
+      "docs": "/docs/features/cloud-sync/"
     },
     {
       "slug": "commerce",
@@ -167,7 +167,7 @@
         "icon": "ShoppingBag",
         "group": "commerce"
       },
-      "docs": "/docs/services/commerce/"
+      "docs": "/docs/features/commerce/"
     }
   ]
 }

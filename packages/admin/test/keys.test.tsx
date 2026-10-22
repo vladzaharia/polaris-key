@@ -176,7 +176,7 @@ describe("Keys & secrets → Secrets", () => {
       "Needed by Edge mint studio.",
       "Needed by OIDC sign-in.",
     ]);
-    expect(screen.queryByText(/Without it|won’t work|Required by/)).toBeNull();
+    expect(screen.queryByText(/Without it|won't work|Required by/)).toBeNull();
   });
 
   it("a required row's Set… preselects its name (SEC-4)", async () => {

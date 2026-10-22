@@ -115,7 +115,7 @@ export function LicenseKeysSection({
         htmlFor="sign-in-claim-by-key"
         help={
           <>
-            Off: only to the account with the buyer’s email.
+            Off: only to the account with the buyer's email.
             {claimChanged ? <> {NOT_SAVED}.</> : null}
           </>
         }
@@ -170,7 +170,7 @@ export function LockerSection({
   const rows = [
     {
       key: "portalEnabled",
-      label: `Show ${name} in players’ libraries`,
+      label: `Show ${name} in players' libraries`,
     },
     // "Let customers replace a lost key" is hidden until the Locker has the reissue action (G7).
   ] as const;

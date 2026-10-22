@@ -66,7 +66,7 @@ describe("admin SPA", () => {
     );
     render(<App />);
     expect(
-      await screen.findByRole("heading", { name: "Can’t reach Polaris Key" }),
+      await screen.findByRole("heading", { name: "Can't reach Polaris Key" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Sign in again" }).getAttribute("href"),
@@ -86,11 +86,11 @@ describe("admin SPA", () => {
     render(<App />);
     expect(
       await screen.findByRole("heading", {
-        name: "This account can’t open the console",
+        name: "This account can't open the console",
       }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
-    expect(screen.queryByText(/Can’t reach Polaris Key/)).toBeNull();
+    expect(screen.queryByText(/Can't reach Polaris Key/)).toBeNull();
     expect(
       screen
         .getByRole("link", { name: "Sign in with another account" })
