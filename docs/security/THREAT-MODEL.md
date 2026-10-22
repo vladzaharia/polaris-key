@@ -1866,16 +1866,18 @@ answer only; the row keeps its hash. The same page lists `serviceTokens` (static
 product whose scopes are exactly `["packages:read"]`) and revokes them. Tests:
 `test/serviceTokens.test.ts`, `test/adminFeeds.test.ts`, `test/registryAuth.test.ts`.
 
-**Who can mint.** The same console session and role as every other registry token on that page;
-the route is unchanged in the route table, the RBAC area map and the spec (narrative, response
-fields only). The body accepts a label and an expiry and nothing else: an `ecosystems`, `licenseId`,
+**Who can mint.** The route is unchanged in the route table, the RBAC area map and the spec
+(narrative, response fields only), but a service mint also needs the `keys` area on the product
+(`can(keys, edit)` in the handler, 403 `no_access`): it is a 365-day product-wide credential, like
+the CI tokens at `…/ci-tokens`. No step-up, matching the CI mint. The body accepts a label and an expiry and nothing else: an `ecosystems`, `licenseId`,
 `presentation` or `scopes` field is a 422, so the console cannot mint a service token with another
 scope, and `isServiceTokenScopes` is checked again on every list and revoke.
 
 **Revoke is scoped to what the page lists.** A `cit_…` id revokes only a token of this product whose
 scopes are exactly `["packages:read"]`; a publish-scoped, mixed-scope or other product's `cit_…` is
 a 404 and nothing changes (the Keys → CI tokens page still revokes those). Revoke-all on product
-scope also ends the product's service tokens; a licence filter never does. Both drop this isolate's
+scope also ends every live service token of the product (an unbounded select, no row window, and
+their unredeemed upload tickets expire as in `revokeCiToken`); a licence filter never does. Both drop this isolate's
 resolution cache; other isolates lag at most 30 seconds, as for every registry token.
 
 **The owner-wide read `pkeyr_` is retired.** `mintRegistryToken` refuses `binding: "owner"` without
@@ -1894,7 +1896,9 @@ the label, the expiry and the token id; never the token or its hash. Revoke-all 
 
 **Residual.** A service token is product-wide and lives up to a year (D-F1); a leaked one reads the
 product's non-public packages until it expires or is revoked. A per-product cap of 500 live service
-tokens bounds the table. **Review triggers:** a second scope accepted by the service mint; the
+tokens (counted over every live token, then re-checked after the insert so racing mints cannot both
+stay above it; the loser is revoked) bounds the table. The list returns every live token and the 100
+newest revoked or expired ones. A label refuses control characters. **Review triggers:** a second scope accepted by the service mint; the
 revoke or list matching on anything but exact `["packages:read"]`; an owner-bound read mint
 returning; a token or hash reaching an audit row, a log or the list.
 

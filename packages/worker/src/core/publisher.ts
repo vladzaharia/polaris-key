@@ -938,23 +938,54 @@ export function isServiceTokenScopes(scopes: readonly string[]): boolean {
   return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE;
 }
 
+// An exact match is enough only because `issueStaticCiToken` is the one writer of `scopes_json`
+// (always `JSON.stringify`); the JS re-filter below keeps the two definitions in step.
+const SERVICE_TOKEN_SCOPES_JSON = JSON.stringify([PACKAGES_READ_CI_SCOPE]);
+
+/** Every live (unrevoked, unexpired) read service token of the product: no window, no limit. */
+export async function liveServiceTokens(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<CiTokenListing[]> {
+  const rows = await db.all<CiTokenRow>(
+    `SELECT * FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND revoked_at IS NULL AND expires_at > ?
+      ORDER BY issued_at DESC, token_id DESC`,
+    product,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
+  );
+  return rows.map(listingOf).filter((t) => isServiceTokenScopes(t.scopes));
+}
+
 /**
- * A product's read service tokens (F-33b.3): its static `pkeyci_` tokens whose scopes are
- * exactly `["packages:read"]`, newest first. Never a hash, never a token.
+ * A product's read service tokens (F-33b.3), newest first: every live one, plus the `recent`
+ * newest revoked or expired ones. Static `ci_tokens` whose scopes are exactly
+ * `["packages:read"]`. Never a hash, never a token.
  */
 export async function listServiceTokens(
   db: Db,
   product: string,
-  limit = 100,
+  now: number,
+  recent = 100,
 ): Promise<CiTokenListing[]> {
+  const live = await liveServiceTokens(db, product, now);
   const rows = await db.all<CiTokenRow>(
     `SELECT * FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND NOT (revoked_at IS NULL AND expires_at > ?)
       ORDER BY issued_at DESC, token_id DESC LIMIT ?`,
     product,
-    JSON.stringify([PACKAGES_READ_CI_SCOPE]),
-    limit,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
+    recent,
   );
-  return rows.map(listingOf).filter((t) => isServiceTokenScopes(t.scopes));
+  const past = rows
+    .map(listingOf)
+    .filter((t) => isServiceTokenScopes(t.scopes));
+  return [...live, ...past].sort(
+    (a, b) => b.issuedAt - a.issuedAt || (a.tokenId < b.tokenId ? 1 : -1),
+  );
 }
 
 /**
@@ -983,17 +1014,41 @@ export async function revokeServiceToken(
   return after ? listingOf(after) : null;
 }
 
-/** Revoke every live read service token of the product; answers how many. */
+/**
+ * Revoke every live read service token of the product, however many there are (no window), and
+ * expire their unredeemed tickets; answers how many.
+ */
 export async function revokeAllServiceTokens(
   db: Db,
   product: string,
   now: number,
 ): Promise<number> {
-  const live = (await listServiceTokens(db, product, 1000)).filter(
-    (t) => t.revokedAt === null && t.expiresAt > now,
+  const live = await liveServiceTokens(db, product, now);
+  if (live.length === 0) return 0;
+  const hashes = await db.all<{ token_hash: string }>(
+    `SELECT token_hash FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND revoked_at IS NULL AND expires_at > ?`,
+    product,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
   );
-  for (const t of live) await revokeCiToken(db, product, t.tokenId, now);
-  return live.length;
+  const stmts: DbStatement[] = [];
+  for (const h of hashes) {
+    stmts.push(
+      {
+        sql: "UPDATE ci_tokens SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL",
+        params: [now, h.token_hash],
+      },
+      {
+        sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
+               WHERE token_hash = ? AND redeemed_at IS NULL`,
+        params: [now, h.token_hash],
+      },
+    );
+  }
+  for (let k = 0; k < stmts.length; k += 100)
+    await db.batch(stmts.slice(k, k + 100));
+  return hashes.length;
 }
 
 /** Revoke a token (and every unredeemed ticket it holds). False if no live token had that id. */

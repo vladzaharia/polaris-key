@@ -45,12 +45,14 @@ import {
   STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   issueStaticCiToken,
   listServiceTokens,
+  liveServiceTokens,
   revokeAllServiceTokens,
   revokeServiceToken,
   type CiTokenListing,
 } from "../../core/publisher.js";
 import { PACKAGES_READ_CI_SCOPE } from "../../core/ciVocabulary.js";
 import { getProduct } from "../../core/products/store.js";
+import { can, productScope } from "../authz.js";
 import { registryOrigin } from "../../core/hosts.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -181,7 +183,9 @@ async function list(
     ),
     serviceTokens: new URL(req.url).searchParams.get("license")
       ? []
-      : (await listServiceTokens(db, owner)).map((t) => serviceView(t, now)),
+      : (await listServiceTokens(db, owner, now)).map((t) =>
+          serviceView(t, now),
+        ),
     feeds: await feedsOf(env, db, owner),
     limits: {
       minDays: REGISTRY_TOKEN_MIN_DAYS,
@@ -318,6 +322,13 @@ async function createService(
       "the platform's package feeds take no service tokens; team members use a personal token",
       { reason: "system_service_tokens" },
     );
+  // A 365-day product-wide credential: the Keys area, as the CI token mint needs (N1).
+  if (!can(session.principal, productScope({ slug: owner }), "keys", "edit"))
+    return err(403, "forbidden", "You don't have access to this.", {
+      reason: "no_access",
+      scope: `product:${owner}`,
+      area: "keys",
+    });
   // A service token is product-wide: no ecosystem, licence, URL or scope narrowing exists.
   const extra = ["ecosystems", "licenseId", "presentation", "scopes"].filter(
     (k) => body[k] !== undefined,
@@ -325,7 +336,11 @@ async function createService(
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const days = body.expiresInDays ?? SERVICE_TOKEN_DEFAULT_DAYS;
   const fields = [...extra];
-  if (label === "" || label.length > REGISTRY_TOKEN_LABEL_MAX)
+  if (
+    label === "" ||
+    label.length > REGISTRY_TOKEN_LABEL_MAX ||
+    /[\u0000-\u001f\u007f]/.test(label)
+  )
     fields.push("label");
   if (
     typeof days !== "number" ||
@@ -339,9 +354,8 @@ async function createService(
       reason: "invalid_token",
       fields,
     });
-  const held = await listServiceTokens(db, owner, 1000);
   if (
-    held.filter((t) => t.revokedAt === null && t.expiresAt > now).length >=
+    (await liveServiceTokens(db, owner, now)).length >=
     MAX_LIVE_TOKENS_PER_OWNER
   )
     return err(
@@ -358,6 +372,18 @@ async function createService(
     createdBy: `admin:${session.email || session.sub}`,
     now,
   });
+  // The cap again after the insert: two racing mints cannot both stay above it.
+  if (
+    (await liveServiceTokens(db, owner, now)).length > MAX_LIVE_TOKENS_PER_OWNER
+  ) {
+    await revokeServiceToken(db, owner, issued.tokenId, now);
+    return err(
+      409,
+      "bad_request",
+      `at most ${MAX_LIVE_TOKENS_PER_OWNER} live service tokens per product; revoke one first`,
+      { reason: "token_limit" },
+    );
+  }
   await record(
     db,
     scope,
@@ -368,7 +394,7 @@ async function createService(
     { kind: "ci_token", id: issued.tokenId },
     `Created service token “${label}” (reads this product's package feeds; expires in ${days} days)`,
   );
-  const [view] = (await listServiceTokens(db, owner)).filter(
+  const [view] = (await liveServiceTokens(db, owner, now)).filter(
     (t) => t.tokenId === issued.tokenId,
   );
   return adminJson(
@@ -468,7 +494,24 @@ async function revokeAll(
   );
   // Product scope also ends the product's service tokens (a licence filter never does).
   if (!filter.licenseId) {
-    const svc = await revokeAllServiceTokens(db, owner, now);
+    let svc: number;
+    try {
+      svc = await revokeAllServiceTokens(db, owner, now);
+    } catch (e) {
+      // Batches commit one by one: the ones that ran stay revoked, and a retry finishes the rest.
+      forgetRegistryTokens();
+      await record(
+        db,
+        scope,
+        owner,
+        session,
+        now,
+        "service_token.revoke",
+        { kind: "product", id: owner },
+        "Revoking every live service token stopped part-way; run it again to finish",
+      );
+      throw e;
+    }
     forgetRegistryTokens();
     if (svc > 0)
       await record(
