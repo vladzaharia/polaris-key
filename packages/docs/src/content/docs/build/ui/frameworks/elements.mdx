@@ -13,8 +13,9 @@ import KitFacts from "../../../../../components/ui/KitFacts.astro";
 The web components kit is `@polaris-key/elements`. It runs in any page, Angular, Vue, Svelte or htmx
 app, with no framework of its own. Every catalog component is a `pk-*` element over the shared
 headless layer, and draws the same DOM under the same stylesheet as the [React kit](/docs/build/ui/frameworks/react/),
-so a state looks the same in both. The kit takes its product identity from the SDK. The package
-and its CDN module are not published yet.
+so a state looks the same in both. The kit takes its product identity from the SDK. The package is
+on the [feeds](/docs/build/install-from-feeds/) and its CDN module is served at
+`https://key.plrs.im/elements/<version>/pk.js`.
 
 <KitFacts kit="elements" />
 
@@ -29,6 +30,29 @@ its own styles and fonts.
 ```
 
 From the package, `import "@polaris-key/elements"` is the script line.
+
+### The CDN module
+
+`/elements/1/pk.js` follows the current 1.x release, cached for five minutes: a fix reaches your
+page within minutes, and you do not control when. To fix the bytes, name the exact version and pin its
+hash. `integrity.json` beside `pk.js` lists the sha384 of every file:
+
+```html
+<script
+  type="module"
+  src="https://key.plrs.im/elements/1.0.0/pk.js"
+  integrity="sha384-…"
+  crossorigin="anonymous"
+></script>
+```
+
+An exact-version URL is immutable, cached for a year, and its bytes never change. The module loads
+its locale packs and fonts from beside itself, and the hash covers the packs, which `pk.js` names by
+content. Do not put `integrity` on the floating URL: its bytes change with each release and the
+browser refuses the module. Before 1.0 the major is `0`, which is not stable: pin the exact version.
+
+A page with a Content-Security-Policy allows `https://key.plrs.im` in `script-src` and `font-src`.
+The route sends `access-control-allow-origin: *`, no cookie and no credentials.
 
 The gate builds the browser client from `config`, and never shows sign-in while a cached session is
 checked. It renders your app in its default slot once the license holds, under the grace banner

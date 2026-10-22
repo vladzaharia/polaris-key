@@ -2,8 +2,24 @@
   "name": "@polaris-key/elements",
   "version": "0.0.0",
   "description": "The Polaris Key UI kit as web components (Lit 3): every UI-KITS §4.1 component as a pk-* element over @polaris-key/ui-core, the shared styles.css and data-part contract, in the product's accent.",
+  "keywords": [
+    "polaris-key",
+    "web-components",
+    "lit",
+    "licensing",
+    "sign-in",
+    "ui-kit"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/elements"
+  },
+  "homepage": "https://key.plrs.im/docs/build/ui/frameworks/elements/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": [
     "./dist/index.js",

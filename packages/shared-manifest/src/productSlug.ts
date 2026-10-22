@@ -55,6 +55,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "signin",
   // DOC-03b: `/help` redirects to the public Help site, `/docs/help/`.
   "help",
+  // UK-04b: `/elements/<version>/pk.js`, the Elements CDN module.
+  "elements",
 ];
 
 /**

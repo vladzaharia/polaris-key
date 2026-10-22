@@ -8,10 +8,14 @@
 //   <version>/pk.js, <version>/chunks/*.js   the files, named for the exact version: immutable
 //   <version>/fonts/*                        Rubik and the kit's mono face, beside the module
 //   <version>/integrity.json                 the SRI hash of every file (sha384)
-//   <major>/…                                the same files again, for the floating major URL
+//   <major>/pk.js                            a one-line shim, `export * from "../<version>/pk.js"`,
+//                                            for the floating major URL
+//   <major>/integrity.json                   the shim's hash
 //
-// The server side (the Worker route, its headers and the cache policy) is a separate change; this
-// script only produces the files and the hashes it will serve.
+// The major URL is a shim, not a copy, so the chunks and fonts always resolve under the exact
+// version's URL (immutable, and consistent with the pk.js that names them): a page that cached
+// the shim across a deploy never meets a chunk that is gone. `assemble` runs this script into the
+// Worker's assets root; the Worker route (core/elements.ts) serves the result.
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -74,8 +78,24 @@ writeFileSync(
   JSON.stringify({ name: pkg.name, version, files: integrity }, null, 2) + "\n",
 );
 
-// The floating major URL serves the same files.
-cpSync(exact, join(out, major), { recursive: true });
+// The floating major URL is the shim.
+const shim = `export * from "../${version}/pk.js";\n`;
+mkdirSync(join(out, major), { recursive: true });
+writeFileSync(join(out, major, "pk.js"), shim);
+writeFileSync(
+  join(out, major, "integrity.json"),
+  JSON.stringify(
+    {
+      name: pkg.name,
+      version,
+      files: {
+        "pk.js": "sha384-" + createHash("sha384").update(shim).digest("base64"),
+      },
+    },
+    null,
+    2,
+  ) + "\n",
+);
 
 console.log(
   `bundle-cdn: ${Object.keys(integrity).length} files, pk.js ${integrity["pk.js"]} -> ${out}`,

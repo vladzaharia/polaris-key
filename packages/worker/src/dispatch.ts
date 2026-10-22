@@ -16,6 +16,7 @@ import {
   type ProductPublic,
 } from "./core/products.js";
 import type { ServiceHooks } from "./core/hooks.js";
+import { handleElements } from "./core/elements.js";
 import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
@@ -287,6 +288,9 @@ async function routeRequest(
     case "docs":
       return handleDocs(req, env, now, db);
     // `/help[/*]` → the public Help; no session, no database.
+    // The Elements CDN module: public bytes from the assets root, no session, no database.
+    case "elements":
+      return handleElements(req, env, url);
     case "helpAlias":
       return helpAliasResponse(req, env, url, onCustomerHost);
     case "webauthnOrigins":

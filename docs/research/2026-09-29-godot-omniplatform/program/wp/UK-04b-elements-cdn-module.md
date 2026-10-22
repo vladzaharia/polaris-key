@@ -58,3 +58,7 @@ Each acceptance item's test in its lane, then the full green gate in `AGENTS.md`
 
 The role agent sets `--set UK-04b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-04b done`.
+
+## Progress (2026-10-22)
+
+Built on `wp/UK-04b-elements-cdn`; merges after v0.9.15. Route `core/elements.ts` (`/elements/<major|version>/<file>`), assets by `assemble` via `bundle:cdn`; the floating major `pk.js` is a shim onto the exact version. `elements` is a reserved slug. `@polaris-key/elements` is public, `npm.elements` in release.yaml, publish tier 5 with cli. Threat-model section "The Elements CDN module". Known residual: only the current version is in the assets root, so older pinned URLs 404 after the next release (an archive is a follow-up). Release flow note: the first publish needs a deploy to register `npm.elements`. Ingest golden 11a/11b re-captured (one more deliverable row). The React size ratchet was not done.

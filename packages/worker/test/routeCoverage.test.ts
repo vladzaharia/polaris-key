@@ -101,6 +101,12 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // LK-05: WebAuthn Related Origin Requests, on the console host.
   webauthnOrigins: [["/.well-known/webauthn", ["get", "head"]]],
   helpAlias: [["/help", ["get", "head"]]],
+  // UK-04b: the Elements CDN module, `/elements/<major|version>/<file>` (`elements` is reserved).
+  elements: [
+    ["/elements/{version}/{file}", ["get", "head"]],
+    ["/elements/{version}/chunks/{file}", ["get", "head"]],
+    ["/elements/{version}/fonts/{file}", ["get", "head"]],
+  ],
   deviceEntry: [
     ["/device", ["get"]],
     ["/tv", ["get"]],
@@ -863,6 +869,8 @@ function concrete(template: string): string {
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",
+    // UK-04b: the Elements CDN module's file.
+    file: "pk.js",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

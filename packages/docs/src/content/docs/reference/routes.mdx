@@ -247,6 +247,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/device` | portal | Device-code entry page (HTML) |
+| GET | `/elements/{version}/{file}` | portal | Elements CDN module |
+| HEAD | `/elements/{version}/{file}` | portal | Elements CDN module, headers only |
+| GET | `/elements/{version}/chunks/{file}` | portal | Elements CDN module chunk |
+| HEAD | `/elements/{version}/chunks/{file}` | portal | Elements CDN module chunk, headers only |
+| GET | `/elements/{version}/fonts/{file}` | portal | Elements CDN module font |
+| HEAD | `/elements/{version}/fonts/{file}` | portal | Elements CDN module font, headers only |
 | GET | `/help` | portal | Help (alias) |
 | HEAD | `/help` | portal | Help (alias), headers only |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
