@@ -2121,6 +2121,11 @@
       "role": "body",
       "note": "Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "signin.return.product": {
+      "value": "{tier} · in your library",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10): the product row under \"<Product> is yours\". Arguments: {tier} = the tier's name (never translated)."
+    },
     "signin.return.signedIn": {
       "value": "You're signed in to {app}",
       "role": "body",

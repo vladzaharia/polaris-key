@@ -40,7 +40,10 @@ import {
   portalAudit,
 } from "./repo.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
-import { deviceRemovedNotice } from "../../../core/notify/templates.js";
+import {
+  deviceRemovedNotice,
+  deviceReplacedNotice,
+} from "../../../core/notify/templates.js";
 
 /** The rate-limit bucket device removal spends, on every surface. */
 export const DEVICE_DISCONNECT_BUCKET = "portalDeviceDisconnect";
@@ -172,12 +175,22 @@ export async function planFreeAccountDevice(
         db,
         actor.accountId,
         actor.email,
-        deviceRemovedNotice({
-          deviceLabel: device.label,
-          productName: (await getProduct(db, product))?.name,
-          productSlug: product,
-          origin: new URL(req.url).origin,
-        }),
+        // A Replace from the sign-in card says which device took the seat (SIGN-IN.md §3.15).
+        forLabel
+          ? deviceReplacedNotice({
+              deviceLabel: device.label,
+              newDeviceLabel: forLabel,
+              productName: (await getProduct(db, product))?.name,
+              productSlug: product,
+              at: now,
+              origin: new URL(req.url).origin,
+            })
+          : deviceRemovedNotice({
+              deviceLabel: device.label,
+              productName: (await getProduct(db, product))?.name,
+              productSlug: product,
+              origin: new URL(req.url).origin,
+            }),
         now,
       );
     },

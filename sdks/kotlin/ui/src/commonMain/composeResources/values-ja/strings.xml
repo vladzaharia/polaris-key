@@ -973,6 +973,8 @@
     <string name="signin_key_differentKey__macos">別のキーを使う</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$sがあなたのものになりました</string>
+    <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_product">%1$s・ライブラリに追加済み</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_signedIn">%1$sにサインインしました</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->

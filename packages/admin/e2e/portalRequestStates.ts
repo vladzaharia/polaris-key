@@ -332,6 +332,27 @@ export const REQUEST_STATES: ShippedState[] = [
     },
   },
   {
+    section: "3.10",
+    id: "app-return",
+    title:
+      "ReturnStep, native: signed in, Return to the app (timer on phones only)",
+    scenario: "empty",
+    path: PATH,
+    // A hash-only redirect: where the phone's timer takes the page stays on the page.
+    routes: signedInRoutes(CHOICES, {
+      [`POST ${REQ}/continue`]: { body: { redirect: "#/returned" } },
+    }),
+    ready: async (p) => {
+      await h1(p, "Choose a license for this device");
+      await p
+        .getByRole("button", { name: "Use this license and continue" })
+        .click();
+      await h1(p, "Continue to Diceroll as Mara?");
+      await p.getByRole("button", { name: "Continue to Diceroll" }).click();
+      await h1(p, "You're signed in to Diceroll");
+    },
+  },
+  {
     section: "3.9",
     id: "app-key-upgrade",
     title:

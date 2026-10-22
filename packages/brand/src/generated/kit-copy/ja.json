@@ -420,6 +420,7 @@
   "signin.key.ownedSignIn": "そのアカウントにサインイン",
   "signin.key.differentKey": "別のキーを使う",
   "signin.return.yours": "{product}があなたのものになりました",
+  "signin.return.product": "{tier}・ライブラリに追加済み",
   "signin.return.signedIn": "{app}にサインインしました",
   "signin.return.button": "{app}に戻る",
   "signin.return.timer": "{s}秒後に自動的に戻ります",

@@ -420,6 +420,7 @@
   "signin.key.ownedSignIn": "Se connecter à ce compte",
   "signin.key.differentKey": "Utiliser une autre clé",
   "signin.return.yours": "{product} est à vous",
+  "signin.return.product": "{tier} · dans votre bibliothèque",
   "signin.return.signedIn": "Vous êtes connecté à {app}",
   "signin.return.button": "Revenir à {app}",
   "signin.return.timer": "Retour automatique dans {s} s",

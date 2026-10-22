@@ -427,6 +427,7 @@
     "signin.key.ownedSignIn": "그 계정으로 로그인",
     "signin.key.differentKey": "다른 키 사용",
     "signin.return.yours": "이제 {product}을(를) 이용할 수 있어요",
+    "signin.return.product": "{tier} · 라이브러리에 있음",
     "signin.return.signedIn": "{app}에 로그인했어요",
     "signin.return.button": "{app} 앱으로 돌아가기",
     "signin.return.timer": "{s}초 후 자동으로 돌아가요",

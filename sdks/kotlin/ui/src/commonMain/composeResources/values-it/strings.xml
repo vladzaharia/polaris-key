@@ -991,6 +991,8 @@
     <string name="signin_key_differentKey__macos">Usa una chiave diversa</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$s è tuo</string>
+    <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_product">%1$s · nella tua libreria</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_signedIn">Hai effettuato l'accesso a %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->

@@ -973,6 +973,8 @@
     <string name="signin_key_differentKey__macos">다른 키 사용</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">이제 %1$s을(를) 이용할 수 있어요</string>
+    <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_product">%1$s · 라이브러리에 있음</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_signedIn">%1$s에 로그인했어요</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->

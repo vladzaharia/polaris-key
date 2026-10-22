@@ -42,6 +42,7 @@ import {
   accountDeletionScheduledNotice,
   appLink,
   deviceRemovedNotice,
+  deviceReplacedNotice,
   displayValue,
   downloadLinkEmail,
   licenseAddedNotice,
@@ -78,6 +79,15 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
       deviceLabel: "Studio PC",
       productName: "Tidewater Studio",
       productSlug: "tidewater",
+      origin: ORIGIN,
+    }),
+  deviceReplaced: () =>
+    deviceReplacedNotice({
+      deviceLabel: "Work laptop",
+      newDeviceLabel: "Mara's Pixel 8",
+      productName: "Diceroll",
+      productSlug: "diceroll",
+      at: NOW,
       origin: ORIGIN,
     }),
   newDeviceSignIn: () =>
@@ -135,6 +145,7 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
 
 const SECURITY: Record<string, true> = {
   deviceRemoved: true,
+  deviceReplaced: true,
   newDeviceSignIn: true,
   methodAdded: true,
   methodRemoved: true,
@@ -166,6 +177,13 @@ describe("notice templates: copy", () => {
     );
     expect(TEMPLATES.methodRemoved!().subject).toBe(
       "Steam was disconnected from your Polaris Locker account",
+    );
+    // SIGN-IN.md §3.15: signin.mail.replaced.subject and .body.
+    expect(TEMPLATES.deviceReplaced!().subject).toBe(
+      "Diceroll signed out on Work laptop",
+    );
+    expect(TEMPLATES.deviceReplaced!().text).toContain(
+      "Work laptop was replaced by Mara's Pixel 8 when you signed in to Diceroll on",
     );
     // SIGN-IN.md §3.15: signin.mail.newDevice.subject.
     expect(TEMPLATES.newDeviceSignIn!().subject).toBe(

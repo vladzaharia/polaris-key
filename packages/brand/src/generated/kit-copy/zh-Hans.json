@@ -420,6 +420,7 @@
   "signin.key.ownedSignIn": "登录那个账户",
   "signin.key.differentKey": "使用其他密钥",
   "signin.return.yours": "{product}已归你所有",
+  "signin.return.product": "{tier} · 已在你的库中",
   "signin.return.signedIn": "你已登录{app}",
   "signin.return.button": "返回{app}",
   "signin.return.timer": "{s}秒后自动返回",

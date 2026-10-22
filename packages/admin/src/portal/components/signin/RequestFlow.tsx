@@ -56,7 +56,7 @@ type Step =
   | { kind: "replace"; row: LicenseChoice }
   | { kind: "consent" }
   | { kind: "done"; replaced: string; redirect: string }
-  | { kind: "return"; redirect: string; yours: boolean };
+  | { kind: "return"; redirect: string; yours: boolean; tier: string | null };
 
 export function RequestFlow({
   account,
@@ -183,6 +183,7 @@ export function RequestFlow({
           yours:
             chosen?.kind === "create" ||
             (chosen === null && effectiveChosen.kind === "new"),
+          tier: lic?.create?.tierName ?? null,
         });
         return;
       }
@@ -304,6 +305,7 @@ export function RequestFlow({
         app={view.client.appName}
         product={view.client.appName}
         yours={current.yours}
+        tier={current.tier}
         onReturn={() => leave(current.redirect)}
       />
     );
