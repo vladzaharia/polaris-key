@@ -12873,112 +12873,191 @@
     "body": "30:61b5f4a46397ebc3"
   },
   "GET /djdl/sync": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "33:1ea0ca13adaba228"
   },
   "HEAD /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "POST /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "POST+body /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "PUT /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "PUT+body /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "PATCH /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "PATCH+body /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "DELETE /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "DELETE+body /djdl/sync": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
+      "content-type": "text/plain;charset=UTF-8"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "18:e3933184560739b7"
   },
   "OPTIONS /djdl/sync": {
-    "status": 404,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
+    "status": 204,
+    "headers": {},
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "0:e3b0c44298fc1c14"
   },
   "OPTIONS+body /djdl/sync": {
-    "status": 404,
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/sync/ops": {
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "30:61b5f4a46397ebc3"
+    "body": "33:1ea0ca13adaba228"
+  },
+  "POST+body /djdl/sync/ops": {
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "33:1ea0ca13adaba228"
+  },
+  "PUT /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/sync/ops": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/sync/ops": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/sync/ops": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
   },
   "GET /djdl/sync/pull": {
     "status": 404,
