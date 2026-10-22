@@ -135,11 +135,11 @@ export function OtherBuilds({
             open && "rotate-90",
           )}
         />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-fg-strong @max-[18rem]:text-xs">
+        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3">
+          <span className="font-semibold text-fg-strong @max-[18rem]:text-xs">
             {C["getIt.flow.otherBuilds"]}
           </span>{" "}
-          <span className="block text-sm text-fg-muted [overflow-wrap:anywhere]">
+          <span className="text-sm text-fg-muted [overflow-wrap:anywhere]">
             {summary}
           </span>
         </span>

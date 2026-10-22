@@ -158,7 +158,7 @@ export function TaskFrame({
       <h1
         ref={titleRef}
         tabIndex={-1}
-        className="flex items-start gap-3 text-page-title-sm @max-[18rem]:text-xl font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
+        className="flex items-start gap-3 text-2xl leading-tight @max-[18rem]:text-xl font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-[2rem] desk:leading-tight"
       >
         {titleIcon ? (
           <span

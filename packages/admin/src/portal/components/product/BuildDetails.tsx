@@ -64,7 +64,7 @@ function Fact({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="grid gap-x-4 gap-y-1 px-4 py-3 sm:min-h-14 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center">
+    <div className="grid gap-x-4 gap-y-1 px-4 py-2 sm:min-h-12 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center">
       <dt className="text-sm text-fg-muted">{term}</dt>
       <dd className="min-w-0 text-md text-fg-strong [overflow-wrap:anywhere]">
         {children}

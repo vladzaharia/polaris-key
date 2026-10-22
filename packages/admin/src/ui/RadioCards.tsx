@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Check } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { cn } from "../lib/cn.js";
 import { useWriteLock } from "./WriteLock.js";
@@ -17,6 +18,11 @@ export interface RadioCardsProps<V extends string = string> {
   onChange?: (value: V) => void;
   /** Columns at ≥ 640 px (one column below). */
   columns?: 1 | 2 | 3 | 4;
+  /**
+   * `dot` (default): the radio dot at the start. `check`: a filled check at the end and a 3 px
+   * accent marker on the selected card's start edge (the Locker's free-a-device list).
+   */
+  indicator?: "dot" | "check";
   name?: string;
   id?: string;
   disabled?: boolean;
@@ -41,6 +47,7 @@ export function RadioCards<V extends string = string>({
   value,
   onChange,
   columns = 2,
+  indicator = "dot",
   name,
   id,
   disabled,
@@ -50,6 +57,7 @@ export function RadioCards<V extends string = string>({
   ref,
   ...aria
 }: RadioCardsProps<V>): React.ReactElement {
+  const check = indicator === "check";
   const frozen = readOnly || useWriteLock().locked;
   const cols = {
     1: "grid-cols-[minmax(0,1fr)]",
@@ -87,16 +95,29 @@ export function RadioCards<V extends string = string>({
               "pk-pressable hover:border-border-strong",
               "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
               "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
+              check &&
+                "data-[state=checked]:shadow-[inset_3px_0_0_var(--pk-locker-accent,var(--pk-accent))]",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
             <span
               aria-hidden
-              className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent"
+              className={cn(
+                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent",
+                check &&
+                  "order-last ms-auto size-5 group-data-[state=checked]:border-fg-strong group-data-[state=checked]:bg-fg-strong",
+              )}
             >
-              <span className="size-2 scale-50 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[Highlight] opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
+              {check ? (
+                <Check
+                  className="size-3 text-surface-raised opacity-0 group-data-[state=checked]:opacity-100"
+                  strokeWidth={3}
+                />
+              ) : (
+                <span className="size-2 scale-50 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[Highlight] opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
+              )}
             </span>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
                 {o.icon ? (
                   <span aria-hidden className="[&_svg]:size-4">
