@@ -226,6 +226,17 @@ export async function handleTiers(
       return err(409, ErrorCode.BadRequest, "tier is still referenced", {
         references: refs,
       });
+    // LX-33.6: a License product keeps at least one tier, so a licence issued with none always
+    // has one to land on.
+    if ((await listTiers(db, slug)).length <= 1)
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "a product keeps at least one tier",
+        {
+          fields: ["tier"],
+        },
+      );
     await deleteTier(db, slug, id);
     await audit(
       db,

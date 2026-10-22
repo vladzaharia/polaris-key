@@ -16599,7 +16599,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry. A create that names no `tier` lands on the product's Default tier (LX-33.6)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16649,8 +16649,9 @@ paths:
         (LX-30): that is Reassign (`…/users/licenses/{licenseId}/reassign`). A case-only edit of
         the same address, and a first email on a licence in an account that has none, stay a
         PATCH. A tier or device-limit change also answers `overLimit` when the licence
-        already has more devices than the new effective limit. Platform admins only; admin
-        session cookie and CSRF header.
+        already has more devices than the new effective limit. `tier` is a tier id; `null` is refused
+        (`422`, `fields: [tier]`) because every licence has a tier (LX-33.6). Platform admins only;
+        admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -16696,7 +16697,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, `tier: null` (a licence always has a tier: `fields: [tier]`), a bad `deviceLimit`, or a value a signed document cannot carry."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16760,7 +16761,7 @@ paths:
       tags: [admin]
       summary: Create up to 500 floating licences in one labelled batch (keys shown once)
       description: >
-        Creates `count` licences (1 to 500) of one tier, each with its first key, in one labelled
+        Creates `count` licences (1 to 500) of one tier (absent: the product's Default tier), each with its first key, in one labelled
         batch (LX-28, notes/S-24 §5.6, §7.1, D10). Every licence is floating (no name, no email,
         no account; a name, an email or profiles are refused), `origin: admin`, and carries the
         batch's `batchId`. The batch row, the licences, their keys and the `license.batch.create`

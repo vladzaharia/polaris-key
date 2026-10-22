@@ -82,6 +82,7 @@ import {
 } from "../../../core/console/deviceLimit.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { tierExpiresAt } from "../../../core/licensing/authz.js";
+import { issueTierFor } from "../../../core/licensing/implicitTier.js";
 import {
   licenseEmail,
   subjectForOrNull,
@@ -485,7 +486,11 @@ export async function handleLicenses(
         name: typeof body.name === "string" ? body.name : null,
         email,
         groups_json: null,
-        tier_id: typeof body.tier === "string" ? body.tier : null,
+        tier_id: await issueTierFor(
+          db,
+          slug,
+          typeof body.tier === "string" ? body.tier : null,
+        ),
         activated_at: now,
         expires_at:
           "expiresAt" in body
@@ -676,6 +681,11 @@ export async function handleLicenses(
         typeof nextEmail === "string" && nextEmail !== currentEmail;
       const assigns =
         emailChanged && licenseHolder(license).kind === "floating";
+      // LX-33.6: every licence has a tier. `null` used to mean "no tier"; it now has no meaning.
+      if (body.tier === null)
+        return err(422, ErrorCode.BadRequest, "a license always has a tier", {
+          fields: ["tier"],
+        });
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,

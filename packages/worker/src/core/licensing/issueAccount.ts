@@ -31,6 +31,7 @@ import {
   type OidcIdentity,
 } from "./issue.js";
 import { provisionedColumn, signInProvisioning } from "./provisioning.js";
+import { issueTierFor } from "./implicitTier.js";
 import { stmtInsertLicense } from "./store.js";
 
 /** What the product's policy would grant `identity`, read-only (the card's "New" row). */
@@ -86,7 +87,7 @@ export async function issueAccountLicense(
       name: identity.name ?? null,
       email: identity.email ?? null,
       groups_json: JSON.stringify(identity.groups),
-      tier_id: tier.tierId,
+      tier_id: await issueTierFor(db, product.slug, tier.tierId),
       activated_at: now,
       expires_at: tier.expiresAt,
       max_offline_days: null,

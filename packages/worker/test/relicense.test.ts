@@ -272,7 +272,12 @@ describe("remote re-licensing", () => {
   });
 
   it("omits the tier entitlements when a license has no tier", async () => {
-    await adminPatch({ tier: null });
+    // LX-33.6: PATCH `tier: null` is refused now (test/issueTier.test.ts); a licence from before
+    // that, with `tier_id` NULL, still renders without tier entitlements.
+    await db.run(
+      "UPDATE licenses SET tier_id = NULL WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
     const doc = await docFrom(await config());
     expect(doc.entitlements["license.tier"]).toBeUndefined();
   });

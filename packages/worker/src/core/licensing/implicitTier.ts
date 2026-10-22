@@ -62,3 +62,19 @@ export async function customerTierId(
     ? null
     : license.tier_id;
 }
+
+/**
+ * LX-33.6: the tier a NEW licence is written with. The requested tier when one is named, else the
+ * product's implicit Default tier, else `null`: release N only, for a product the
+ * `license.limits-materialise` job has not seeded yet (the old chain treats NULL and the implicit
+ * tier alike, so nothing changes either way). Every `INSERT INTO licenses` goes through it
+ * (`test/issueTier.test.ts` scans for strays).
+ */
+export async function issueTierFor(
+  db: Db,
+  product: string,
+  requested: string | null | undefined,
+): Promise<string | null> {
+  if (requested) return requested;
+  return implicitTierIdOf(db, product);
+}

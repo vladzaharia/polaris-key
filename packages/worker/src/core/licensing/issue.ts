@@ -16,7 +16,7 @@ import {
   stmtInsertLicense,
 } from "./store.js";
 import { getProduct } from "../products/store.js";
-import { isImplicitTier } from "./implicitTier.js";
+import { isImplicitTier, issueTierFor } from "./implicitTier.js";
 import { guardedInsert, guardedWrite, oidcGrantStatements } from "./grants.js";
 import { licenseTransitionStatement } from "./lifecycleWrites.js";
 import { mergeLicenseInto, type LicenseMerge } from "./licenseMerge.js";
@@ -769,7 +769,7 @@ export async function issueLicense(
       name: identity.name ?? null,
       email: identity.email ?? null,
       groups_json: JSON.stringify(identity.groups),
-      tier_id: tierId,
+      tier_id: await issueTierFor(db, product.slug, tierId),
       activated_at: now,
       expires_at: expiresAt,
       max_offline_days: null,

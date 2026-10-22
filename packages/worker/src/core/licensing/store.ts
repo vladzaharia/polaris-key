@@ -125,7 +125,7 @@ export async function claimEnrolledLicense(
   at: number,
 ): Promise<void> {
   await db.run(
-    `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
+    `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = COALESCE(?, tier_id),
        expires_at = ?, origin = 'oidc', email_issuer_class = ?, modified_by = 'oidc',
        modified_at = ? WHERE product = ? AND id = ?`,
     identity.sub,
