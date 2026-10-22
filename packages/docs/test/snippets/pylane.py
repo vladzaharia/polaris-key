@@ -47,12 +47,37 @@ def symbols() -> int:
                         if not attr.startswith("_"):
                             names.add(attr)
 
+    def defined(body: list) -> list:
+        # The names a block binds, through if/try/with blocks (members a class defines only when
+        # an optional binding loads, such as the Qt signals) but not into nested functions.
+        out: list = []
+        for node in body:
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                out.append(node.name)
+                if isinstance(node, ast.ClassDef):
+                    out.extend(defined(node.body))
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                out.extend(t.id for t in targets if isinstance(t, ast.Name))
+            elif isinstance(node, (ast.If, ast.Try, ast.With)):
+                for block in ("body", "orelse", "finalbody"):
+                    out.extend(defined(getattr(node, block, [])))
+                for handler in getattr(node, "handlers", []):
+                    out.extend(defined(handler.body))
+        return out
+
     add(polaris_key)
-    for mod in pkgutil.walk_packages(polaris_key.__path__, "polaris_key."):
+    for mod in pkgutil.walk_packages(polaris_key.__path__, "polaris_key.", onerror=lambda _name: None):
+        # The source too: a module whose optional extra cannot load on this host (PySide6 without
+        # libEGL on a headless Linux runner) fails to import, or imports without its bindings, and
+        # still exports what it defines.
+        spec = mod.module_finder.find_spec(mod.name)  # type: ignore[call-arg]
+        if spec is not None and spec.origin and spec.origin.endswith(".py"):
+            names.update(n for n in defined(ast.parse(Path(spec.origin).read_text()).body) if not n.startswith("_"))
         try:
             add(importlib.import_module(mod.name))
-        except Exception:  # an optional extra that is not installed
-            continue
+        except Exception:  # an optional extra that is not installed, or cannot load on this host
+            pass
         names.add(mod.name.rsplit(".", 1)[-1])
     print(json.dumps(sorted(names)))
     return 0
