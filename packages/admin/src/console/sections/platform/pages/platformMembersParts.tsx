@@ -16,7 +16,7 @@ import {
   visibleRoles,
   type MemberRow,
 } from "./platformMembersModel.js";
-import type { ProductName } from "./platformMembersRoleForm.js";
+import type { ProductName } from "../../../access/InviteDrawerParts.js";
 
 export function Avatar({
   name,

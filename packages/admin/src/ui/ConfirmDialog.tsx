@@ -115,12 +115,12 @@ export function isStepUpRequired(error: unknown): boolean {
 const STEP_UP_TTL_MS = 15 * 60 * 1000;
 const stepUpStorageKey = (key: string): string => `pkey:step-up:${key}`;
 
-interface Stash {
+export interface Stash {
   typed: string;
   fields: Record<string, string>;
 }
 
-function stashStepUp(
+export function stashStepUp(
   key: string | undefined,
   typed: string,
   fields: Record<string, string> = {},
@@ -141,7 +141,10 @@ function stashStepUp(
   }
 }
 
-function readStash(key: string | undefined, remove: boolean): Stash | null {
+export function readStash(
+  key: string | undefined,
+  remove: boolean,
+): Stash | null {
   if (!key) return null;
   try {
     const raw = sessionStorage.getItem(stepUpStorageKey(key));

@@ -194,29 +194,62 @@ function cases(): Case[] {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
     },
-    // ST-31.11: Platform → Members' two overlays, the invite dialog and a member's roles.
+    // ST-31.11/12: Platform → Members' overlays: the Invite drawer (empty, and filled to its
+    // tallest), a member's roles, and the drawer's Add a role and Edit areas views. Each checks
+    // that the primary action is in view whatever the window.
     {
       name: "global:platform-members?invite",
       hash: "#/platform/members",
       act: async (page) => {
-        await page.getByRole("button", { name: "Invite people" }).click();
-        await page
-          .getByRole("alertdialog", { name: "Invite people" })
-          .waitFor();
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?invite-filled",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /^Product admin/ }).click();
+        await drawer.getByRole("combobox").click();
+        await page.getByRole("option").first().click();
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
       },
     },
     {
       name: "global:platform-members?edit-roles",
       hash: "#/platform/members",
       act: async (page) => {
-        await page
-          .getByRole("button", { name: "Actions for Sam Okoye" })
-          .first()
-          .click();
-        await page.getByRole("menuitem", { name: /Edit roles/ }).click();
-        await page
-          .getByRole("dialog", { name: /Edit roles for Sam Okoye/ })
-          .waitFor();
+        await openEditDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?add-role",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        await drawer.getByRole("button", { name: "Add a role" }).click();
+        await drawer.getByRole("radio", { name: /^Product admin/ }).waitFor();
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?edit-areas",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        const edit = drawer
+          .getByRole("button", { name: /Edit areas of/ })
+          .first();
+        if ((await edit.count()) > 0 && (await edit.isEnabled())) {
+          await edit.click();
+          await drawer.getByRole("button", { name: "Save areas" }).waitFor();
+          await primaryInView(page);
+        }
       },
     },
 
@@ -688,6 +721,41 @@ async function shoot(page: Page, file: string): Promise<void> {
 
 /** `PK_LAYOUT_ONLY=desktop/dark` narrows a local run to one combination. */
 const ONLY = process.env.PK_LAYOUT_ONLY;
+/** The Members drawer, opened from the header's Invite people. */
+async function openInviteDrawer(page: Page) {
+  await page.getByRole("button", { name: "Invite people" }).click();
+  const drawer = page.getByRole("dialog", { name: "Invite people" });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The Members drawer, opened from Sam Okoye's row menu. */
+async function openEditDrawer(page: Page) {
+  await page
+    .getByRole("button", { name: "Actions for Sam Okoye" })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: /Edit roles/ }).click();
+  const drawer = page.getByRole("dialog", { name: /Edit roles for Sam Okoye/ });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The drawer's last footer button is fully inside the window (the primary action is in view). */
+async function primaryInView(page: Page): Promise<void> {
+  const ok = await page.evaluate(() => {
+    const d = document.querySelector("[role=dialog]");
+    const buttons = d ? [...d.querySelectorAll("button")] : [];
+    const last = buttons.at(-1);
+    if (!last) return "no footer button";
+    const r = last.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= window.innerHeight + 0.5 && r.width > 0
+      ? "ok"
+      : `primary action out of view (${Math.round(r.top)}..${Math.round(r.bottom)} of ${window.innerHeight})`;
+  });
+  if (ok !== "ok") throw new Error(ok);
+}
+
 /** `PK_LAYOUT_CASES=overview,settings` narrows a local run to cases whose name contains one. */
 const ONLY_CASES = process.env.PK_LAYOUT_CASES?.split(",");
 

@@ -36,10 +36,9 @@ import { navigate } from "../../../router.js";
 import { r as routes } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
-import { InviteDialog } from "./platformMembersInvite.js";
-import type { ProductName } from "./platformMembersRoleForm.js";
+import { InviteDrawer } from "../../../access/InviteDrawer.js";
+import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import {
-  EditRolesDialog,
   RemoveMemberDialog,
   RevokeInviteDialog,
 } from "./platformMembersDialogs.js";
@@ -86,8 +85,10 @@ export function PlatformMembers(): React.ReactElement {
   const [state, setState] = useTableUrlState("platform-members", {
     facets: ["role", "product", "source"],
   });
-  const [inviting, setInviting] = React.useState(false);
-  const [editing, setEditing] = React.useState<string | null>(null);
+  // The invite / edit-roles drawer: `{ member: null }` invites, a member id edits that member.
+  const [drawer, setDrawer] = React.useState<{ member: string | null } | null>(
+    null,
+  );
   const [removing, setRemoving] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<MemberInvite | null>(null);
 
@@ -103,7 +104,7 @@ export function PlatformMembers(): React.ReactElement {
   const group = view.data?.rootRule.group ?? null;
   const rows = React.useMemo(() => rowsOf(view.data), [view.data]);
   const editingMember =
-    view.data?.members.find((m) => m.memberId === editing) ?? null;
+    view.data?.members.find((m) => m.memberId === drawer?.member) ?? null;
 
   const productOptions = React.useMemo(() => {
     const slugs = new Set<string>();
@@ -297,7 +298,7 @@ export function PlatformMembers(): React.ReactElement {
     return [
       {
         label: "Edit roles…",
-        onSelect: () => setEditing(m.memberId),
+        onSelect: () => setDrawer({ member: m.memberId }),
         disabledReason: write.disabledReason,
       },
       {
@@ -334,7 +335,7 @@ export function PlatformMembers(): React.ReactElement {
               iconStart={<UserPlus className="size-4" aria-hidden="true" />}
               disabledReason={write.disabledReason}
               disabled={!write.allowed}
-              onClick={() => setInviting(true)}
+              onClick={() => setDrawer({ member: null })}
             >
               Invite people
             </Button>
@@ -417,20 +418,16 @@ export function PlatformMembers(): React.ReactElement {
           }
         />
       )}
-      <InviteDialog
-        open={inviting}
-        onOpenChange={setInviting}
+      <InviteDrawer
+        open={drawer !== null && (drawer.member === null || !!editingMember)}
+        member={editingMember}
+        onReopen={(member) => setDrawer({ member })}
+        onClose={() => setDrawer(null)}
         me={me}
         members={roster?.members ?? []}
         products={products}
         productName={productName}
-      />
-      <EditRolesDialog
-        member={editingMember}
-        me={me}
-        products={products}
-        productName={productName}
-        onClose={() => setEditing(null)}
+        writeReason={write.disabledReason}
       />
       <RemoveMemberDialog
         memberId={removing}

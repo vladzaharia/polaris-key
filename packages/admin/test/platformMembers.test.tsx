@@ -14,7 +14,9 @@ import type {
   MemberInvite,
   MembersView,
 } from "../src/api.js";
-import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
+import { resetRouterForTests } from "../src/console/router.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
+import { ALL_ON, boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 
 /** Platform → Members (`#/platform/members`, ST-31.11): the roster, invites and role changes. */
 
@@ -157,17 +159,60 @@ const posts = (log: FetchLog) =>
 async function openInvite(user: ReturnType<typeof userEvent.setup>) {
   await table();
   await user.click(screen.getByRole("button", { name: "Invite people" }));
-  return screen.findByRole("alertdialog", { name: /Invite people/ });
+  return screen.findByRole("dialog", { name: /Invite people/ });
 }
 
 async function typeEmails(
   user: ReturnType<typeof userEvent.setup>,
-  dialog: HTMLElement,
+  drawer: HTMLElement,
   text: string,
 ) {
-  await user.click(within(dialog).getByLabelText("Email addresses"));
+  await user.click(within(drawer).getByLabelText("Email addresses"));
   await user.paste(text);
 }
+
+async function openEdit(user: ReturnType<typeof userEvent.setup>, who: string) {
+  const t = await table();
+  await user.click(
+    within(t).getByRole("button", { name: `Actions for ${who}` }),
+  );
+  await user.click(await screen.findByRole("menuitem", { name: /Edit roles/ }));
+  return screen.findByRole("dialog", {
+    name: new RegExp(`Edit roles for ${who}`),
+  });
+}
+
+const disabledOf = (el: HTMLElement): boolean =>
+  el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+
+const OK_INVITE = (
+  results: { email: string; status: string; bindingId?: string }[],
+  over: Record<string, unknown> = {},
+) => ({
+  ok: true,
+  results,
+  counts: {
+    invited: results.length,
+    updated: 0,
+    exists: 0,
+    merged: 0,
+    invalid: 0,
+  },
+  emailOff: false,
+  notified: { sent: 1, of: 1, nobodyNotified: false },
+  confirm: "L1",
+  ...over,
+});
+
+const STEP_UP = json(
+  {
+    error: {
+      code: "step_up_required",
+      message: "Sign in again to confirm it's you.",
+    },
+  },
+  403,
+);
 
 describe("Members: the roster", () => {
   it("lists members and invites in one table, with roles that add up and where each came from", async () => {
@@ -235,29 +280,17 @@ describe("Members: invite", () => {
   it("invites one person as Console access and offers Undo", async () => {
     const user = userEvent.setup();
     const log = open({
-      [`POST ${BINDINGS}`]: {
-        ok: true,
-        results: [
-          { email: "new@example.com", status: "invited", bindingId: "b_new" },
-        ],
-        counts: { invited: 1, updated: 0, exists: 0, merged: 0, invalid: 0 },
-        emailOff: false,
-        notified: { sent: 2, of: 2, nobodyNotified: false },
-        confirm: "L1",
-      },
+      [`POST ${BINDINGS}`]: OK_INVITE([
+        { email: "new@example.com", status: "invited", bindingId: "b_new" },
+      ]),
       "DELETE /manage/api/bindings/b_new": { ok: true },
     });
-    const dialog = await openInvite(user);
-    const send = within(dialog).getByRole("button", {
-      name: "Invite 0 people",
-    });
-    expect(
-      (send as HTMLButtonElement).disabled ||
-        send.getAttribute("aria-disabled") === "true",
-    ).toBe(true);
-    await typeEmails(user, dialog, "new@example.com");
+    const drawer = await openInvite(user);
+    const idle = within(drawer).getByRole("button", { name: "Invite people" });
+    expect(disabledOf(idle)).toBe(true);
+    await typeEmails(user, drawer, "new@example.com");
     await user.click(
-      within(dialog).getByRole("button", { name: "Invite 1 person" }),
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
     );
     await waitFor(() => expect(posts(log).length).toBe(1));
     expect(posts(log)[0]!.json).toEqual({
@@ -266,6 +299,7 @@ describe("Members: invite", () => {
       areas: null,
       emails: ["new@example.com"],
     });
+    expect(await screen.findByText("Invited 1 person")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
     await waitFor(() =>
       expect(
@@ -275,34 +309,31 @@ describe("Members: invite", () => {
         ),
       ).toBe(true),
     );
+    expect(await screen.findByText("Invitations withdrawn")).toBeTruthy();
   });
 
-  it("invites several people to one product, merges repeats and counts existing members", async () => {
+  it("makes chips, merges repeats, marks existing members and counts them apart", async () => {
     const user = userEvent.setup();
-    const log = open({
-      [`POST ${BINDINGS}`]: {
-        ok: true,
-        results: [],
-        counts: { invited: 2, updated: 1, exists: 0, merged: 0, invalid: 0 },
-        emailOff: false,
-        notified: { sent: 1, of: 1, nobodyNotified: false },
-        confirm: "L1",
-      },
-    });
-    const me = asRole("superadmin");
-    void me;
-    const dialog = await openInvite(user);
+    const log = open({ [`POST ${BINDINGS}`]: OK_INVITE([]) });
+    const drawer = await openInvite(user);
     await typeEmails(
       user,
-      dialog,
-      "a@example.com, b@example.com\nA@example.com priya@example.com",
+      drawer,
+      "a@example.com, b@example.com\nA@example.com priya@example.com ",
     );
-    await user.click(within(dialog).getByText("Product admin"));
-    await user.click(within(dialog).getByRole("combobox"));
-    await user.click(await screen.findByRole("option", { name: "DJDL" }));
-    // Three people after the repeat merged; one of them (Priya) is a member already.
+    // Three chips after the repeat merged; Priya's is a member chip with a note.
+    expect(drawer.querySelectorAll("[data-chip]").length).toBe(3);
+    expect(drawer.querySelectorAll('[data-chip="member"]').length).toBe(1);
+    expect(
+      within(drawer).getByText(/Priya Raman is already a member/),
+    ).toBeTruthy();
     await user.click(
-      within(dialog).getByRole("button", {
+      within(drawer).getByRole("radio", { name: /^Product admin/ }),
+    );
+    await user.click(within(drawer).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "DJDL" }));
+    await user.click(
+      within(drawer).getByRole("button", {
         name: "Invite 2 people and update 1",
       }),
     );
@@ -315,19 +346,49 @@ describe("Members: invite", () => {
     });
   });
 
-  it("refuses an address that is not one, before anything is sent", async () => {
+  it("marks a wrong address as an error chip and leaves it out of the count", async () => {
     const user = userEvent.setup();
-    const log = open();
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "ok@example.com, not-an-address");
+    const log = open({
+      [`POST ${BINDINGS}`]: OK_INVITE([
+        { email: "ok@example.com", status: "invited", bindingId: "b1" },
+      ]),
+    });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "ok@example.com, not-an-address");
+    await user.keyboard("{Enter}");
+    expect(drawer.querySelectorAll('[data-chip="invalid"]').length).toBe(1);
     expect(
-      await within(dialog).findByText(/Not an email address: not-an-address/),
+      await within(drawer).findByText(
+        /not-an-address isn't an email address, so it isn't counted/,
+      ),
     ).toBeTruthy();
-    await user.click(within(dialog).getByRole("button", { name: /^Invite/ }));
-    expect(posts(log)).toEqual([]);
+    await user.click(
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
+    );
+    await waitFor(() => expect(posts(log).length).toBe(1));
+    expect((posts(log)[0]!.json as { emails: string[] }).emails).toEqual([
+      "ok@example.com",
+    ]);
   });
 
-  it("says so when the invitation budget is spent", async () => {
+  it("removes a chip with its button and with Backspace", async () => {
+    const user = userEvent.setup();
+    open();
+    const drawer = await openInvite(user);
+    await typeEmails(
+      user,
+      drawer,
+      "a@example.com b@example.com c@example.com ",
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Remove a@example.com" }),
+    );
+    await user.keyboard("{Backspace}");
+    expect(drawer.querySelectorAll("[data-chip]").length).toBe(1);
+    expect(within(drawer).getByText("b@example.com")).toBeTruthy();
+  });
+
+  it("says so when the invitation budget is spent, and keeps what was entered", async () => {
     const user = userEvent.setup();
     open({
       [`POST ${BINDINGS}`]: json(
@@ -341,45 +402,40 @@ describe("Members: invite", () => {
         429,
       ),
     });
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "one@example.com");
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "one@example.com");
     await user.click(
-      within(dialog).getByRole("button", { name: "Invite 1 person" }),
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
     );
     expect(
-      await within(dialog).findByText("Too many invitations"),
+      await within(drawer).findByText("Too many invitations"),
     ).toBeTruthy();
-    // The input is kept for another try.
+    expect(within(drawer).getByText("one@example.com")).toBeTruthy();
     expect(
-      (within(dialog).getByLabelText("Email addresses") as HTMLTextAreaElement)
-        .value,
-    ).toContain("one@example.com");
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
+    ).toBeTruthy();
   });
 
   it("lists the links, each with Copy, when email is off", async () => {
     const user = userEvent.setup();
     open({
-      [`POST ${BINDINGS}`]: {
-        ok: true,
-        results: [
+      [`POST ${BINDINGS}`]: OK_INVITE(
+        [
           {
             email: "one@example.com",
             status: "invited",
             bindingId: "b1",
             emailed: false,
             link: "https://key.example/manage/?login_hint=one%40example.com",
-          },
+          } as never,
         ],
-        counts: { invited: 1, updated: 0, exists: 0, merged: 0, invalid: 0 },
-        emailOff: true,
-        notified: { sent: 0, of: 1, nobodyNotified: true },
-        confirm: "L1",
-      },
+        { emailOff: true },
+      ),
     });
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "one@example.com");
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "one@example.com");
     await user.click(
-      within(dialog).getByRole("button", { name: "Invite 1 person" }),
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
     );
     const links = await screen.findByRole("dialog", {
       name: "Send these links",
@@ -394,34 +450,112 @@ describe("Members: invite", () => {
     ).toBeTruthy();
   });
 
+  it("opens the links dialog when one email fails with email on", async () => {
+    const user = userEvent.setup();
+    open({
+      [`POST ${BINDINGS}`]: OK_INVITE(
+        [
+          { email: "a@example.com", status: "invited", bindingId: "b1" },
+          {
+            email: "b@example.com",
+            status: "invited",
+            bindingId: "b2",
+            link: "https://key.example/manage/?login_hint=b%40example.com",
+          } as never,
+        ],
+        { notified: { sent: 1, of: 2, nobodyNotified: false } },
+      ),
+    });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "a@example.com b@example.com");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Invite 2 people" }),
+    );
+    const links = await screen.findByRole("dialog", {
+      name: /1 email didn't go out/,
+    });
+    expect(
+      within(links).getByText(/No email reached b@example.com/),
+    ).toBeTruthy();
+    expect(within(links).queryByText(/a@example.com\b.*login_hint/)).toBeNull();
+  });
+
+  it("counts invited and updated apart in the toast, and Undo says what it took back", async () => {
+    const user = userEvent.setup();
+    const log = open({
+      [`POST ${BINDINGS}`]: OK_INVITE(
+        [
+          { email: "new@example.com", status: "invited", bindingId: "b_new" },
+          { email: "priya@example.com", status: "updated", bindingId: "b_up" },
+        ],
+        {
+          counts: { invited: 1, updated: 1, exists: 0, merged: 0, invalid: 0 },
+        },
+      ),
+      "DELETE /manage/api/bindings/b_new": { ok: true },
+      "DELETE /manage/api/bindings/b_up": { ok: true },
+    });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "new@example.com priya@example.com ");
+    await user.click(
+      within(drawer).getByRole("button", {
+        name: "Invite 1 person and update 1",
+      }),
+    );
+    expect(
+      await screen.findByText("Invited 1 person and updated 1"),
+    ).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(log.calls.filter((c) => c.method === "DELETE").length).toBe(2),
+    );
+    expect(
+      await screen.findByText("Invitations withdrawn and roles taken back"),
+    ).toBeTruthy();
+  });
+
+  it("reports an Undo that stops half way", async () => {
+    const user = userEvent.setup();
+    open({
+      [`POST ${BINDINGS}`]: OK_INVITE([
+        { email: "a@example.com", status: "invited", bindingId: "b1" },
+        { email: "b@example.com", status: "invited", bindingId: "b2" },
+      ]),
+      "DELETE /manage/api/bindings/b1": { ok: true },
+      "DELETE /manage/api/bindings/b2": json({ error: "boom" }, 500),
+    });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "a@example.com b@example.com ");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Invite 2 people" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    expect(await screen.findByText("Took back 1 of 2")).toBeTruthy();
+  });
+
   it("asks for a typed word for a Superadmin invite and sends the L2 confirmation", async () => {
     const user = userEvent.setup();
     const log = open({
-      [`POST ${BINDINGS}`]: {
-        ok: true,
-        results: [
-          { email: "x@example.com", status: "invited", bindingId: "b9" },
-        ],
-        counts: { invited: 1, updated: 0, exists: 0, merged: 0, invalid: 0 },
-        emailOff: false,
-        notified: { sent: 1, of: 1, nobodyNotified: false },
-        confirm: "L2",
-      },
+      [`POST ${BINDINGS}`]: OK_INVITE(
+        [{ email: "x@example.com", status: "invited", bindingId: "b9" }],
+        { confirm: "L2" },
+      ),
     });
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "x@example.com");
-    await user.click(within(dialog).getByText("Superadmin"));
-    const send = within(dialog).getByRole("button", {
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "x@example.com");
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Superadmin/ }),
+    );
+    const send = within(drawer).getByRole("button", {
       name: "Invite 1 person",
     });
-    await user.click(send);
-    expect(posts(log)).toEqual([]);
+    expect(disabledOf(send)).toBe(true);
     await user.type(
-      within(dialog).getByLabelText(/Type the role to confirm/),
+      within(drawer).getByLabelText(/Type the role to confirm/),
       "superadmin",
     );
     await user.click(
-      within(dialog).getByRole("button", { name: "Invite 1 person" }),
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
     );
     await waitFor(() => expect(posts(log).length).toBe(1));
     expect(posts(log)[0]!.json).toMatchObject({
@@ -431,34 +565,101 @@ describe("Members: invite", () => {
     });
   });
 
-  it("turns a stale sign-in into the one sign-in callout and keeps what was typed", async () => {
+  it("writes the sentence the people will live by", async () => {
     const user = userEvent.setup();
-    open({
-      [`POST ${BINDINGS}`]: json(
-        {
-          error: {
-            code: "step_up_required",
-            message: "Sign in again to confirm it's you.",
-          },
-        },
-        403,
+    open();
+    const drawer = await openInvite(user);
+    expect(
+      within(drawer).getByText(
+        /They will open the console and see nothing else/,
       ),
-    });
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "one@example.com");
+    ).toBeTruthy();
+    await typeEmails(user, drawer, "hana@example.com theo@example.com ");
     await user.click(
-      within(dialog).getByRole("button", { name: "Invite 1 person" }),
+      within(drawer).getByRole("radio", { name: /^Product admin/ }),
+    );
+    await user.click(within(drawer).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "DJDL" }));
+    await user.click(
+      within(drawer).getByRole("radio", { name: /Only these areas/ }),
+    );
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: "Commerce" }),
+    );
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: "Ship builds" }),
     );
     expect(
-      await within(dialog).findByText("Sign in again to confirm it's you"),
+      within(drawer).getByText(
+        "hana@ and theo@ will manage Ship builds and Commerce in DJDL.",
+      ),
+    ).toBeTruthy();
+    expect(within(drawer).getByText(/^Expires /)).toBeTruthy();
+    expect(within(drawer).getByText("Every Superadmin is told")).toBeTruthy();
+  });
+
+  it("offers only the product's enabled features and names the missing ones", async () => {
+    const user = userEvent.setup();
+    boot("#/platform/members", {
+      me: asRole("superadmin"),
+      extra: { [PATH]: () => answer },
+      perProduct: {
+        djdl: {
+          ...ALL_ON,
+          identity: { enabled: false },
+          sync: { enabled: false },
+        },
+      },
+    });
+    const drawer = await openInvite(user);
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Product admin/ }),
+    );
+    await user.click(within(drawer).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "DJDL" }));
+    await user.click(
+      within(drawer).getByRole("radio", { name: /Only these areas/ }),
+    );
+    expect(
+      within(drawer).getByRole("checkbox", { name: "Commerce" }),
     ).toBeTruthy();
     expect(
-      within(dialog).getByRole("button", { name: "Sign in again" }),
-    ).toBeTruthy();
+      within(drawer).queryByRole("checkbox", { name: "Sign-in" }),
+    ).toBeNull();
     expect(
-      (within(dialog).getByLabelText("Email addresses") as HTMLTextAreaElement)
-        .value,
-    ).toContain("one@example.com");
+      within(drawer).queryByRole("checkbox", { name: "Cloud Sync" }),
+    ).toBeNull();
+    expect(
+      await within(drawer).findByText(
+        "Sign-in and Cloud Sync are off for DJDL.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("moves focus into the drawer and gives it back to the opener", async () => {
+    const user = userEvent.setup();
+    open();
+    await table();
+    const opener = screen.getByRole("button", { name: "Invite people" });
+    await user.click(opener);
+    const drawer = await screen.findByRole("dialog", { name: /Invite people/ });
+    expect(drawer.contains(document.activeElement)).toBe(true);
+    await user.click(within(drawer).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /Invite people/ }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it("asks before throwing away what was typed", async () => {
+    const user = userEvent.setup();
+    open();
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "one@example.com ");
+    await user.keyboard("{Escape}");
+    expect(await screen.findByText(/Discard your changes\?/)).toBeTruthy();
   });
 });
 
@@ -466,43 +667,54 @@ describe("Members: Superadmin and Platform admin", () => {
   it("lets a Superadmin give every role", async () => {
     const user = userEvent.setup();
     open();
-    const dialog = await openInvite(user);
-    for (const name of ["Superadmin", "Platform admin", "All products admin"]) {
-      const radio = within(dialog).getByRole("radio", {
-        name: new RegExp(`^${name}`),
-      });
+    const drawer = await openInvite(user);
+    for (const name of [
+      "Console access",
+      "Product admin",
+      "Platform admin",
+      "Superadmin",
+    ]) {
       expect(
-        radio.hasAttribute("disabled") ||
-          radio.getAttribute("aria-disabled") === "true",
+        disabledOf(
+          within(drawer).getByRole("radio", { name: new RegExp(`^${name}`) }),
+        ),
       ).toBe(false);
     }
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Product admin/ }),
+    );
+    expect(
+      disabledOf(within(drawer).getByRole("radio", { name: /^All products/ })),
+    ).toBe(false);
   });
 
-  it("keeps the platform roles and All products from a Platform admin, saying why", async () => {
+  it("keeps the platform roles and All products from a Platform admin, saying why once", async () => {
     const user = userEvent.setup();
     open({}, asRole("platform_admin"));
-    const dialog = await openInvite(user);
-    for (const name of ["Superadmin", "Platform admin", "All products admin"]) {
-      const radio = within(dialog).getByRole("radio", {
-        name: new RegExp(`^${name}`),
-      });
+    const drawer = await openInvite(user);
+    for (const name of ["Platform admin", "Superadmin"]) {
       expect(
-        radio.hasAttribute("disabled") ||
-          radio.getAttribute("aria-disabled") === "true",
+        disabledOf(
+          within(drawer).getByRole("radio", { name: new RegExp(`^${name}`) }),
+        ),
       ).toBe(true);
     }
-    // The reason once for the group, not on every card.
     expect(
-      within(dialog).getAllByText(
-        "Only a Superadmin can give All products admin, Platform admin and Superadmin.",
+      within(drawer).getAllByText(
+        "Only a Superadmin can give Platform admin, Superadmin and All products.",
       ).length,
     ).toBe(1);
-    // Console access they can give.
     expect(
-      within(dialog)
-        .getByRole("radio", { name: /Console access/ })
-        .hasAttribute("disabled"),
+      disabledOf(within(drawer).getByRole("radio", { name: /Console access/ })),
     ).toBe(false);
+    // They administer no product, so Product admin would be a dead end: off, with its reason.
+    const pa = within(drawer).getByRole("radio", { name: /^Product admin/ });
+    expect(disabledOf(pa)).toBe(true);
+    expect(
+      within(drawer).getByText(
+        "You can give it only on products you administer.",
+      ),
+    ).toBeTruthy();
   });
 
   it("stops a Platform admin removing a Platform admin", async () => {
@@ -516,6 +728,324 @@ describe("Members: Superadmin and Platform admin", () => {
       name: /Remove from console/,
     });
     expect(item.getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+/** The sign-in round trip: the page unloads with the stash in sessionStorage, then loads again. */
+async function signInAgain(
+  user: ReturnType<typeof userEvent.setup>,
+  drawer: HTMLElement,
+  extra: Record<string, unknown>,
+): Promise<FetchLog> {
+  let left = 0;
+  setStepUpRedirectForTests(() => {
+    left += 1;
+  });
+  await user.click(
+    await within(drawer).findByRole("button", { name: "Sign in again" }),
+  );
+  expect(left).toBe(1);
+  cleanup();
+  resetRouterForTests();
+  return open(extra);
+}
+
+describe("Members: the sign-in round trip keeps the drawer", () => {
+  afterEach(() => setStepUpRedirectForTests());
+
+  it("Invite: the addresses, role, product, areas and typed word come back", async () => {
+    const user = userEvent.setup();
+    open({ [`POST ${BINDINGS}`]: STEP_UP });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "one@example.com two@example.com ");
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Product admin/ }),
+    );
+    await user.click(within(drawer).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "DJDL" }));
+    await user.click(
+      within(drawer).getByRole("radio", { name: /Only these areas/ }),
+    );
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: "Ship builds" }),
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Invite 2 people" }),
+    );
+    expect(
+      await within(drawer).findByText("Sign in again to confirm it's you"),
+    ).toBeTruthy();
+    // The chips stay while the callout shows.
+    expect(within(drawer).getByText("one@example.com")).toBeTruthy();
+
+    await signInAgain(user, drawer, {
+      [`POST ${BINDINGS}`]: OK_INVITE([
+        { email: "one@example.com", status: "invited", bindingId: "b1" },
+        { email: "two@example.com", status: "invited", bindingId: "b2" },
+      ]),
+    });
+    const back = await screen.findByRole("dialog", { name: /Invite people/ });
+    expect(within(back).getByText("one@example.com")).toBeTruthy();
+    expect(within(back).getByText("two@example.com")).toBeTruthy();
+    expect(
+      within(back)
+        .getByRole("radio", { name: /^Product admin/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(back)
+        .getByRole("checkbox", { name: "Ship builds" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(back).getByRole("button", { name: "Invite 2 people" }),
+    ).toBeTruthy();
+    // The saved state is spent: it opens once.
+    expect(sessionStorage.getItem("pkey:step-up:members:drawer")).toBeNull();
+    await user.click(
+      within(back).getByRole("button", { name: "Invite 2 people" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /Invite people/ }),
+      ).toBeNull(),
+    );
+  });
+
+  it("Invite: a typed Superadmin word is back too", async () => {
+    const user = userEvent.setup();
+    open({ [`POST ${BINDINGS}`]: STEP_UP });
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "x@example.com ");
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Superadmin/ }),
+    );
+    await user.type(
+      within(drawer).getByLabelText(/Type the role to confirm/),
+      "Superadmin",
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Invite 1 person" }),
+    );
+    await signInAgain(user, drawer, { [`POST ${BINDINGS}`]: STEP_UP });
+    const back = await screen.findByRole("dialog", { name: /Invite people/ });
+    expect(
+      (
+        within(back).getByLabelText(
+          /Type the role to confirm/,
+        ) as HTMLInputElement
+      ).value,
+    ).toBe("Superadmin");
+    expect(
+      disabledOf(within(back).getByRole("button", { name: "Invite 1 person" })),
+    ).toBe(false);
+  });
+
+  it("Add a role: the member, the role and the typed word come back", async () => {
+    const user = userEvent.setup();
+    open({ [`POST ${BINDINGS}`]: STEP_UP });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Add a role" }),
+    );
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Platform admin/ }),
+    );
+    await user.type(
+      within(drawer).getByLabelText(/Type the role to confirm/),
+      "Platform admin",
+    );
+    await user.click(within(drawer).getByRole("button", { name: "Add role" }));
+    const log = await signInAgain(user, drawer, {
+      [`POST ${BINDINGS}`]: { ok: true, binding: {} },
+    });
+    const back = await screen.findByRole("dialog", {
+      name: /Add a role for Kenji Mori/,
+    });
+    expect(
+      within(back)
+        .getByRole("radio", { name: /^Platform admin/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      (
+        within(back).getByLabelText(
+          /Type the role to confirm/,
+        ) as HTMLInputElement
+      ).value,
+    ).toBe("Platform admin");
+    await user.click(within(back).getByRole("button", { name: "Add role" }));
+    await waitFor(() => expect(posts(log).length).toBe(1));
+    expect(posts(log)[0]!.json).toEqual({
+      member: "mbr_kenji",
+      role: "platform_admin",
+      scope: "platform",
+      areas: null,
+      confirm: "L2",
+    });
+  });
+
+  it("Edit areas: the member, the role and the ticked areas come back", async () => {
+    const user = userEvent.setup();
+    open({ "PATCH /manage/api/bindings/b_kenji_djdl": STEP_UP });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: /Edit areas of DJDL admin/ }),
+    );
+    await user.click(within(drawer).getByRole("checkbox", { name: "Core" }));
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save areas" }),
+    );
+    const log = await signInAgain(user, drawer, {
+      "PATCH /manage/api/bindings/b_kenji_djdl": { ok: true },
+    });
+    const back = await screen.findByRole("dialog", {
+      name: /Areas for Kenji Mori/,
+    });
+    expect(
+      within(back)
+        .getByRole("checkbox", { name: "Core" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(back)
+        .getByRole("checkbox", { name: "Commerce" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(back)
+        .getByRole("checkbox", { name: "Licensing" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    await user.click(within(back).getByRole("button", { name: "Save areas" }));
+    await waitFor(() =>
+      expect(log.calls.find((m) => m.method === "PATCH")?.json).toEqual({
+        areas: ["core", "ship", "commerce"],
+      }),
+    );
+  });
+});
+
+describe("Members: Edit roles", () => {
+  it("adds a role to a member, starting from one they can still be given", async () => {
+    const user = userEvent.setup();
+    const log = open({ [`POST ${BINDINGS}`]: { ok: true, binding: {} } });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Add a role" }),
+    );
+    // Kenji has a role, so Console access is implied: off, and not the default.
+    const ca = within(drawer).getByRole("radio", { name: /Console access/ });
+    expect(disabledOf(ca)).toBe(true);
+    expect(within(drawer).getByText("Kenji Mori already has it.")).toBeTruthy();
+    expect(
+      within(drawer)
+        .getByRole("radio", { name: /^Product admin/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await user.click(within(drawer).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Acme" }));
+    expect(
+      within(drawer).getByText("Kenji Mori will manage every area of Acme."),
+    ).toBeTruthy();
+    await user.click(within(drawer).getByRole("button", { name: "Add role" }));
+    await waitFor(() => expect(posts(log).length).toBe(1));
+    expect(posts(log)[0]!.json).toEqual({
+      member: "mbr_kenji",
+      role: "product_admin",
+      scope: "product:acme",
+      areas: null,
+    });
+    // Back on the list.
+    expect(
+      await screen.findByRole("dialog", { name: /Edit roles for Kenji Mori/ }),
+    ).toBeTruthy();
+  });
+
+  it("does not offer you a role for yourself, and says why", async () => {
+    const user = userEvent.setup();
+    open();
+    const drawer = await openEdit(user, "Ada Lovelace");
+    const add = within(drawer).getByRole("button", { name: "Add a role" });
+    expect(disabledOf(add)).toBe(true);
+  });
+
+  it("narrows a Product admin's areas", async () => {
+    const user = userEvent.setup();
+    const log = open({
+      "PATCH /manage/api/bindings/b_kenji_djdl": { ok: true },
+    });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: /Edit areas of DJDL admin/ }),
+    );
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: "Commerce" }),
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save areas" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PATCH")?.json).toEqual({
+        areas: ["ship"],
+      }),
+    );
+  });
+
+  it("removes one role after a confirmation", async () => {
+    const user = userEvent.setup();
+    const log = open({
+      "DELETE /manage/api/bindings/b_priya_pa": { ok: true },
+    });
+    const drawer = await openEdit(user, "Priya Raman");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Remove Platform admin" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await user.click(
+      within(confirm).getByRole("button", { name: "Remove role" }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.some(
+          (c) => c.method === "DELETE" && c.path.endsWith("b_priya_pa"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("locks the root rule's role, saying why", async () => {
+    const user = userEvent.setup();
+    answer = view({
+      members: [ada, { ...priya, you: false, roles: [ROOT_ROLE] }],
+    });
+    open();
+    const drawer = await openEdit(user, "Priya Raman");
+    expect(
+      disabledOf(
+        within(drawer).getByRole("button", { name: "Remove Superadmin" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns focus to the row's menu button when the drawer closes", async () => {
+    const user = userEvent.setup();
+    open();
+    const drawer = await openEdit(user, "Kenji Mori");
+    expect(drawer.contains(document.activeElement)).toBe(true);
+    await user.click(
+      within(drawer).getAllByRole("button", { name: "Close" }).at(-1)!,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: /Edit roles/ })).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(
+        (document.activeElement as HTMLElement | null)?.getAttribute(
+          "aria-label",
+        ),
+      ).toBe("Actions for Kenji Mori"),
+    );
   });
 });
 
@@ -540,111 +1070,6 @@ describe("Members: invites waiting", () => {
         "/manage/api/bindings/b_inv_1",
       ),
     );
-  });
-});
-
-describe("Members: change a role", () => {
-  it("adds a role to a member", async () => {
-    const user = userEvent.setup();
-    const log = open({
-      [`POST ${BINDINGS}`]: { ok: true, binding: {} },
-    });
-    const t = await table();
-    await user.click(
-      within(t).getByRole("button", { name: "Actions for Kenji Mori" }),
-    );
-    await user.click(
-      await screen.findByRole("menuitem", { name: /Edit roles/ }),
-    );
-    const edit = await screen.findByRole("dialog", {
-      name: /Edit roles for Kenji Mori/,
-    });
-    await user.click(within(edit).getByRole("button", { name: "Add a role" }));
-    const add = await screen.findByRole("alertdialog", {
-      name: /Add a role for Kenji Mori/,
-    });
-    await user.click(within(add).getByRole("button", { name: "Add role" }));
-    await waitFor(() => expect(posts(log).length).toBe(1));
-    expect(posts(log)[0]!.json).toEqual({
-      member: "mbr_kenji",
-      role: "console_access",
-      scope: "platform",
-      areas: null,
-    });
-  });
-
-  it("narrows a Product admin's areas", async () => {
-    const user = userEvent.setup();
-    const log = open({
-      "PATCH /manage/api/bindings/b_kenji_djdl": { ok: true },
-    });
-    const t = await table();
-    await user.click(
-      within(t).getByRole("button", { name: "Actions for Kenji Mori" }),
-    );
-    await user.click(
-      await screen.findByRole("menuitem", { name: /Edit roles/ }),
-    );
-    const edit = await screen.findByRole("dialog", {
-      name: /Edit roles for Kenji Mori/,
-    });
-    await user.click(
-      within(edit).getByRole("button", { name: /Edit areas of DJDL admin/ }),
-    );
-    const areas = await screen.findByRole("alertdialog", {
-      name: /Areas of DJDL admin/,
-    });
-    await user.click(within(areas).getByRole("checkbox", { name: "Commerce" }));
-    await user.click(within(areas).getByRole("button", { name: "Save areas" }));
-    await waitFor(() =>
-      expect(log.calls.find((c) => c.method === "PATCH")?.json).toEqual({
-        areas: ["ship"],
-      }),
-    );
-  });
-
-  it("removes one role", async () => {
-    const user = userEvent.setup();
-    const log = open({
-      "DELETE /manage/api/bindings/b_priya_pa": { ok: true },
-    });
-    const t = await table();
-    await user.click(
-      within(t).getByRole("button", { name: "Actions for Priya Raman" }),
-    );
-    await user.click(
-      await screen.findByRole("menuitem", { name: /Edit roles/ }),
-    );
-    const edit = await screen.findByRole("dialog", {
-      name: /Edit roles for Priya Raman/,
-    });
-    await user.click(
-      within(edit).getByRole("button", { name: "Remove Platform admin" }),
-    );
-    const confirm = await screen.findByRole("alertdialog");
-    await user.click(
-      within(confirm).getByRole("button", { name: "Remove role" }),
-    );
-    await waitFor(() =>
-      expect(
-        log.calls.some(
-          (c) => c.method === "DELETE" && c.path.endsWith("b_priya_pa"),
-        ),
-      ).toBe(true),
-    );
-  });
-
-  it("locks the root rule's role, saying why", async () => {
-    const user = userEvent.setup();
-    open();
-    const t = await table();
-    await user.click(
-      within(t).getByRole("button", { name: "Actions for Ada Lovelace" }),
-    );
-    const item = await screen.findByRole("menuitem", {
-      name: /Remove from console/,
-    });
-    expect(item.getAttribute("aria-disabled")).toBe("true");
   });
 });
 
@@ -776,45 +1201,5 @@ describe("Members: the second round (ST-31.11 fix)", () => {
       /Only a Superadmin or an admin of DJDL with Members can remove DJDL admin\./i,
     );
     expect(item.textContent).not.toMatch(/Platform admin or an All products/);
-  });
-
-  it("opens the links dialog when one email fails with email on", async () => {
-    const user = userEvent.setup();
-    open({
-      [`POST ${BINDINGS}`]: {
-        ok: true,
-        results: [
-          {
-            email: "a@example.com",
-            status: "invited",
-            bindingId: "b1",
-            emailed: true,
-          },
-          {
-            email: "b@example.com",
-            status: "invited",
-            bindingId: "b2",
-            emailed: false,
-            link: "https://key.example/manage/?login_hint=b%40example.com",
-          },
-        ],
-        counts: { invited: 2, updated: 0, exists: 0, merged: 0, invalid: 0 },
-        emailOff: false,
-        notified: { sent: 1, of: 2, nobodyNotified: false },
-        confirm: "L1",
-      },
-    });
-    const dialog = await openInvite(user);
-    await typeEmails(user, dialog, "a@example.com b@example.com");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Invite 2 people" }),
-    );
-    const links = await screen.findByRole("dialog", {
-      name: /1 email didn't go out/,
-    });
-    expect(
-      within(links).getByText(/No email reached b@example.com/),
-    ).toBeTruthy();
-    expect(within(links).queryByText(/a@example.com\b.*login_hint/)).toBeNull();
   });
 });
