@@ -70,6 +70,9 @@ function withDefaults(input: UiInput): UiInput {
       out[k] = { ...(v as Obj), ...((out[k] as Obj | undefined) ?? {}) };
     else if (!(k in out)) out[k] = v;
   }
+  // The runner plays a host that can renew: the corpus lists Renew on the expired row, and a kit
+  // draws it only for such a host (SwiftUI `renewURL`, Compose `onRenew`).
+  if (!("renew" in out)) out["renew"] = { url: "https://example.com/renew" };
   return out as UiInput;
 }
 

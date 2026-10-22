@@ -10,6 +10,7 @@ import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
 import { styleMap } from "lit/directives/style-map.js";
 import {
   countdown,
+  renewTarget,
   type Copy,
   type UiInput,
   type View,
@@ -444,7 +445,10 @@ export function button(
     c.copy.has("boot.consent.download")
       ? `${c.copy.format("boot.consent.download", {})} ${version}`
       : null;
-  const external = OPENS.has(key) || download !== null;
+  // Renew opens a page only when the host gave one; otherwise the host handles the press.
+  const external =
+    (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
+    download !== null;
   const label =
     device !== null
       ? text(c, "signin.replace.confirmNamed", { device })
