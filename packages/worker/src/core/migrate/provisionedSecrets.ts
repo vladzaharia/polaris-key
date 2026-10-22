@@ -4,13 +4,15 @@
  * U-27.2 makes an owned licence's sign-in write its provisioned secrets onto the owner's account
  * row. Licences provisioned before that hold the same secrets in `licenses.overrides_json`. This
  * module decides, purely, which of those copies may move up one layer (licence column -> owner's
- * account row) without changing a single byte of any device's merged document. It does no I/O, no
+ * account row) with every device's merged document value-equal: every key and value is the same;
+ * the order of keys inside the document's `secrets` may change once, because `mergeMap` orders keys
+ * by layer insertion and a moved key re-enters at the account layer's position. It does no I/O, no
  * sealing and no decrypting: the caller (the U-27.6 job) reads the rows, passes them in, and
  * applies the plan. Sealed values are compared as stored (one canonical JSON of the whole
  * `ManagedEntry`); every managed secret shares one AAD (`pkey:v2:<product>:managed-secret:<key>`,
  * U-27.2), so a moved entry is valid where it lands and nothing is re-sealed.
  *
- * WHY A MOVE CHANGES NOTHING. Licence overrides (layer 4) sit directly below the account layer
+ * WHY A MOVE CHANGES NO VALUE. Licence overrides (layer 4) sit directly below the account layer
  * (layer 5). A secret in the account layer reaches exactly the devices whose override subject is
  * the owner AND that are signed in as that subject: `accountOverrideLayer` strips the owner's
  * secrets for a device that only reached the owner through the owner line (a licence-key device).

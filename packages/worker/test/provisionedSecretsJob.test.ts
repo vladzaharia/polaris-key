@@ -1,6 +1,6 @@
 /**
  * U-27.6: the P0-49 job `core.provisioned-secrets-to-account`. Built on the migration runner and
- * the real document builders: after apply every delivered config document is byte-equal, a second
+ * the real document builders: after apply every delivered config document is value-equal, a second
  * dry run reports no changes, `down` restores the stored state, and a sign-in between the plan
  * and the apply skips that move. No value reaches a report or the ledger.
  */
@@ -38,6 +38,7 @@ import { apply, down, dryRun } from "../src/core/migrate/runner.js";
 import { migrationJobs } from "../src/core/contributions.js";
 import {
   applyProductPlan,
+  downProduct,
   planProduct,
   PROVISIONED_SECRETS_JOB_ID,
   provisionedSecretsToAccountJob as job,
@@ -195,7 +196,10 @@ async function device(
 async function docOf(
   w: World,
   token: string,
-): Promise<{ content: string; secrets: ConfigDoc["secrets"] }> {
+): Promise<{
+  content: Omit<ConfigDoc, "issuedAt" | "expiresAt" | "graceUntil">;
+  secrets: ConfigDoc["secrets"];
+}> {
   const res = await handleConfigDocument(
     mkReq("GET", {
       authorization: `Bearer ${token}`,
@@ -220,7 +224,7 @@ async function docOf(
   void _e;
   void _g;
   return {
-    content: JSON.stringify(content),
+    content,
     secrets: verified!.payload.secrets,
   };
 }
@@ -295,7 +299,7 @@ describe("core.provisioned-secrets-to-account", () => {
     });
   });
 
-  it("apply keeps every delivered document byte-equal; a second dry run shows 0; down restores", async () => {
+  it("apply keeps every delivered document value-equal; a second dry run shows 0; down restores", async () => {
     const w = await world();
     const { a, e, sealed, t1, t2 } = await ada(w);
     // Another licence of the same product whose owner has no devices: nothing to compare.
@@ -332,7 +336,7 @@ describe("core.provisioned-secrets-to-account", () => {
       "op.first",
     );
 
-    // Byte-identical documents, for the owned licence and its sibling.
+    // Value-equal documents (toEqual ignores key order), for the owned licence and its sibling.
     expect(await docOf(w, t1)).toEqual(d1);
     expect(await docOf(w, t2)).toEqual(d2);
 
@@ -544,6 +548,206 @@ describe("core.provisioned-secrets-to-account", () => {
     await down(w.ctx(NOW + 2), job, ACTOR, applied.ok ? applied.run.id : "");
     expect(await ledger(w.db)).toEqual([]);
     expect(await docOf(w, t)).toEqual(d);
+  });
+
+  /** A Db whose matching statements fail (`runChanges` answers 0) or throw, to force a CAS loss
+   *  or a killed run at an exact write. */
+  function faulty(db: Db, rule: (sql: string) => "lose" | "throw" | null): Db {
+    return new Proxy(db, {
+      get(target, prop) {
+        const v = Reflect.get(target, prop) as unknown;
+        if (prop !== "runChanges" || typeof v !== "function")
+          return typeof v === "function" ? v.bind(target) : v;
+        return async (sql: string, ...params: unknown[]) => {
+          const act = rule(sql);
+          if (act === "throw") throw new Error("killed");
+          if (act === "lose") return 0;
+          return (v as (...a: unknown[]) => Promise<number>).call(
+            target,
+            sql,
+            ...params,
+          );
+        };
+      },
+    });
+  }
+
+  const columnKeys = async (db: Db, id: string): Promise<string[]> =>
+    Object.keys(
+      JSON.parse(
+        (await db.first<{ overrides_json: string }>(
+          "SELECT overrides_json FROM licenses WHERE id = ?",
+          id,
+        ))!.overrides_json,
+      ).secrets,
+    );
+
+  it("B1: down after a second apply that removed a sibling's copy as shadowed restores both licences", async () => {
+    const w = await world();
+    const a = await account(w.db, "ada@example.com");
+    const e = entry(await sealManagedValue(w.env, SLUG, KEY, "tok-ada"));
+    const k1 = await licence(w, "L-1", { owner: a.id, secrets: { [KEY]: e } });
+    const k2 = await licence(w, "L-2", { owner: a.id, secrets: { [KEY]: e } });
+    const t1 = await device(w, k1, "dev-1", a.subject);
+    const t2 = await device(w, k2, "dev-2", a.subject);
+    await device(w, k2, "dev-3"); // a licence-key device: L-2 is skipped by the first apply
+    const before = await dump(w.db);
+    const d1 = await docOf(w, t1);
+    const d2 = await docOf(w, t2);
+
+    const rA = await dryRun(w.ctx(), job, ACTOR);
+    const aA = await apply(w.ctx(NOW + 1), job, ACTOR, rA.id);
+    expect(await columnKeys(w.db, "L-1")).not.toContain(KEY);
+    expect(await columnKeys(w.db, "L-2")).toContain(KEY);
+    // The licence-key device goes; the second apply removes L-2's copy as shadowed.
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = 'dev-3'",
+      SLUG,
+    );
+    const rB = await dryRun(w.ctx(NOW + 2), job, ACTOR);
+    await apply(w.ctx(NOW + 3), job, ACTOR, rB.id);
+    expect(await columnKeys(w.db, "L-2")).not.toContain(KEY);
+    expect((await ledger(w.db)).map((r) => [r.license_id, r.shadowed])).toEqual(
+      [
+        ["L-1", 0],
+        ["L-2", 1],
+      ],
+    );
+    expect(await planProduct(w.ctx(NOW + 3), SLUG)).toMatchObject({
+      moves: [],
+      shadowed: [],
+    }); // the next dry run moves nothing
+
+    const undone = await down(
+      w.ctx(NOW + 4),
+      job,
+      ACTOR,
+      aA.ok ? aA.run.id : "",
+    );
+    expect(undone.ok).toBe(true);
+    expect(await columnKeys(w.db, "L-1")).toContain(KEY);
+    expect(await columnKeys(w.db, "L-2")).toContain(KEY);
+    const row = await getAccountOverrides(w.db, SLUG, a.subject);
+    expect(row).toBeNull(); // the entry left once every licence had its copy back
+    expect(await ledger(w.db)).toEqual([]);
+    expect(await docOf(w, t1)).toEqual(d1);
+    expect(await docOf(w, t2)).toEqual(d2);
+    void before;
+  });
+
+  it("N3: down restores a licence only while its owner is still the ledger's subject; the entry stays", async () => {
+    const w = await world();
+    const { a } = await ada(w);
+    const bob = await account(w.db, "bob@example.com");
+    const report = await dryRun(w.ctx(), job, ACTOR);
+    await apply(w.ctx(NOW + 1), job, ACTOR, report.id);
+    // L-2 is handed over to Bob after the apply.
+    await w.db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = 'L-2'",
+      bob.id,
+      SLUG,
+    );
+    await downProduct(w.ctx(NOW + 2), SLUG);
+    expect(await columnKeys(w.db, "L-1")).toContain(KEY);
+    expect(await columnKeys(w.db, "L-2")).not.toContain(KEY);
+    const row = await getAccountOverrides(w.db, SLUG, a.subject);
+    expect(JSON.parse(row!.payload_json).secrets).toHaveProperty(KEY);
+    expect(await ledger(w.db)).toEqual([]);
+  });
+
+  it("N4: an account CAS that runs out is a counted retry; the added row stays and a later down removes the entry", async () => {
+    const w = await world();
+    const { a } = await ada(w);
+    const report = await dryRun(w.ctx(), job, ACTOR);
+    await apply(w.ctx(NOW + 1), job, ACTOR, report.id);
+    const broken = faulty(w.db, (sql) =>
+      /account_overrides/.test(sql) && /^(UPDATE|DELETE)/.test(sql.trim())
+        ? "lose"
+        : null,
+    );
+    await expect(
+      downProduct({ env: w.env, db: broken, now: NOW + 2 }, SLUG),
+    ).rejects.toThrow("provisioned_secret_moves_down_retry:1");
+    // Licences are back; the entry and its `added` row are not gone.
+    expect(await columnKeys(w.db, "L-1")).toContain(KEY);
+    expect(await columnKeys(w.db, "L-2")).toContain(KEY);
+    expect(
+      JSON.parse(
+        (await getAccountOverrides(w.db, SLUG, a.subject))!.payload_json,
+      ).secrets,
+    ).toHaveProperty(KEY);
+    expect(
+      (await ledger(w.db)).map((r) => [r.license_id, r.added_to_account]),
+    ).toEqual([["L-1", 1]]);
+    // The retry finishes.
+    await downProduct(w.ctx(NOW + 3), SLUG);
+    expect(await getAccountOverrides(w.db, SLUG, a.subject)).toBeNull();
+    expect(await ledger(w.db)).toEqual([]);
+  });
+
+  it("N5: an account CAS that loses leaves no added = 1 ledger row", async () => {
+    const w = await world();
+    await ada(w);
+    const plan = await planProduct(w.ctx(), SLUG);
+    const broken = faulty(w.db, (sql) =>
+      /INTO account_overrides/.test(sql) ? "lose" : null,
+    );
+    const r = await applyProductPlan(
+      { env: w.env, db: broken, now: NOW + 1 },
+      SLUG,
+      plan,
+    );
+    expect(r).toMatchObject({ added: 0, removed: 0 });
+    expect(await ledger(w.db)).toEqual([]);
+  });
+
+  it("N10: a killed apply resumes without doubling or losing anything, and down restores the start", async () => {
+    const w = await world();
+    const { a, t1, t2 } = await ada(w);
+    const before = await dump(w.db);
+    const d1 = await docOf(w, t1);
+    const d2 = await docOf(w, t2);
+    const plan = await planProduct(w.ctx(), SLUG);
+    // Dies at the first licence write, after the ledger row and the account write.
+    const killer = faulty(w.db, (sql) =>
+      /^UPDATE licenses SET overrides_json/.test(sql.trim()) ? "throw" : null,
+    );
+    await expect(
+      applyProductPlan({ env: w.env, db: killer, now: NOW + 1 }, SLUG, plan),
+    ).rejects.toThrow("killed");
+    expect(await ledger(w.db)).toHaveLength(1);
+    expect(await columnKeys(w.db, "L-1")).toContain(KEY);
+    // Re-run: nothing doubled, nothing lost, documents unchanged.
+    const report = await dryRun(w.ctx(NOW + 2), job, ACTOR);
+    await apply(w.ctx(NOW + 3), job, ACTOR, report.id);
+    expect(await columnKeys(w.db, "L-1")).not.toContain(KEY);
+    expect(await columnKeys(w.db, "L-2")).not.toContain(KEY);
+    expect(await docOf(w, t1)).toEqual(d1);
+    expect(await docOf(w, t2)).toEqual(d2);
+    expect((await ledger(w.db)).map((r) => r.license_id)).toEqual([
+      "L-1",
+      "L-2",
+    ]);
+    expect(await planProduct(w.ctx(NOW + 4), SLUG)).toMatchObject({
+      moves: [],
+      shadowed: [],
+    });
+    await downProduct(w.ctx(NOW + 5), SLUG);
+    expect(await dump(w.db)).toEqual(before);
+    expect(await docOf(w, t1)).toEqual(d1);
+    expect(a.subject).toBeTruthy();
+  });
+
+  it("N11: the ledger only accepts 0 or 1 in its flag columns", async () => {
+    const w = await world();
+    for (const col of ["added_to_account", "shadowed"])
+      await expect(
+        w.db.run(
+          `INSERT INTO provisioned_secret_moves
+             (product, license_id, key, subject, entry_sha256, added_to_account, shadowed, position, run_id, at)
+           VALUES ('djdl', 'L', 'k', 's', 'h', ${col === "added_to_account" ? 2 : 0}, ${col === "shadowed" ? 2 : 0}, 0, 'r', 1)`,
+        ),
+      ).rejects.toThrow();
   });
 
   describe("erasure: the ledger holds a subject", () => {

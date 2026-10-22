@@ -345,8 +345,8 @@ export async function applyProductPlan(
       runId,
       now,
     );
-    const undoLedger = async (): Promise<void> => {
-      if (!added)
+    const undoLedger = async (accountNotAdded = false): Promise<void> => {
+      if (accountNotAdded || !added)
         await db.run(
           `DELETE FROM provisioned_secret_moves
             WHERE product = ? AND license_id = ? AND key = ? AND run_id = ?`,
@@ -368,7 +368,8 @@ export async function applyProductPlan(
         now,
       );
       if (!ok) {
-        await undoLedger();
+        // The entry was not added: the row's `added = 1` would be false, so it goes.
+        await undoLedger(true);
         result.skipped++;
         continue;
       }
@@ -410,11 +411,17 @@ interface LedgerRow {
 /**
  * Undo one product from its ledger. For each ledger row whose account entry still hashes to
  * `entry_sha256`: put the entry back on the licence column at its old position (when the column
- * lacks the key), then remove it from the account row when this job added it. An account entry
- * that was edited since (a different hash) stays, and so does the column as it is. A shadowed
- * copy (its value was never stored, and it changed no document) is not restored. Finished
- * ledger rows are deleted, so a second `down` changes nothing; a row whose CAS kept failing
- * stays for the next call.
+ * lacks the key and the licence is still owned by `r.subject`), then remove it from the account
+ * row when this job added it. A shadowed row is restored from the account entry exactly like a
+ * move (its copy was removed because the entry above it held the key, and an apply that came
+ * later may have removed the entry's own source). An account entry that was edited since (a
+ * different hash) stays, and so does the column as it is; a row that cannot be restored for a
+ * lasting reason (a handed-over licence, a shadowed copy that differs from the entry) keeps the
+ * group's account entry in place too. The account entry is removed only when every row of its
+ * group is back; the `added` ledger row stays until then. Finished ledger rows are deleted, so a
+ * second `down` changes nothing; a row whose CAS kept failing stays for the next call, which a
+ * thrown error counts (`provisioned_secret_moves_down_incomplete`, or `..._retry` for an account
+ * row whose CAS ran out of attempts).
  */
 export async function downProduct(
   ctx: MigrationContext,
@@ -429,26 +436,60 @@ export async function downProduct(
   );
   let changes = 0;
   let incomplete = 0;
-  /** `subject|key` -> every restorable row of the group got its column back (or had it). */
-  const groupOk = new Map<string, boolean>();
+  let retries = 0;
+  /** Groups (`subject|key`) with a row still to restore (a CAS kept failing). */
+  const pending = new Set<string>();
+  /** Groups whose account entry must stay (a row cannot be restored, for a lasting reason). */
+  const keep = new Set<string>();
   const groupAdded = new Map<string, LedgerRow>();
   const done: LedgerRow[] = [];
   const groupId = (r: LedgerRow): string => canonicalJson([r.subject, r.key]);
+  /** licence id -> the owner's subject now (null = none, undefined = licence gone). */
+  const owners = new Map<string, string | null | undefined>();
+  const ownerOf = async (id: string): Promise<string | null | undefined> => {
+    if (owners.has(id)) return owners.get(id);
+    const lic = await db.first<{ account_id: string | null }>(
+      "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
+      product,
+      id,
+    );
+    let owner: string | null | undefined;
+    if (!lic) owner = undefined;
+    else if (!lic.account_id) owner = null;
+    else
+      owner =
+        (await existingSubjectsFor(db, [lic.account_id], product)).get(
+          lic.account_id,
+        ) ?? null;
+    owners.set(id, owner);
+    return owner;
+  };
 
   for (const r of rows) {
-    if (r.shadowed === 1) {
-      done.push(r);
-      continue;
-    }
+    const id = groupId(r);
     const accountRow = await getAccountOverrides(db, product, r.subject);
     const entry = parseAccountOverridePayload(accountRow?.payload_json ?? null)
       .secrets[r.key];
-    if (entry === undefined || (await sha(entry)) !== r.entry_sha256) {
+    const matches =
+      entry !== undefined && (await sha(entry)) === r.entry_sha256;
+    if (r.shadowed === 1 && !matches) {
+      // The copy differs from the entry above it (or the entry is gone): nothing to restore from,
+      // and the entry keeps the licence's value visible, so it stays.
+      keep.add(id);
+      done.push(r);
+      continue;
+    }
+    if (!matches) {
       done.push(r); // edited or gone since: it stays as it is
       continue;
     }
-    const id = groupId(r);
     if (r.added_to_account === 1) groupAdded.set(id, r);
+    const owner = await ownerOf(r.license_id);
+    if (owner !== undefined && owner !== r.subject) {
+      keep.add(id); // handed over or unowned: its owner's row is not this licence's source
+      done.push(r);
+      continue;
+    }
     let restored = false;
     for (let attempt = 0; attempt < CAS_ATTEMPTS && !restored; attempt++) {
       const row = await db.first<{ overrides_json: string | null }>(
@@ -488,21 +529,33 @@ export async function downProduct(
         changes++;
       }
     }
-    groupOk.set(id, (groupOk.get(id) ?? true) && restored);
     if (restored) done.push(r);
-    else incomplete++;
+    else {
+      pending.add(id);
+      incomplete++;
+    }
   }
 
-  // The account row loses an entry this job added only once every licence has its copy back.
+  // The account row loses an entry this job added only once every licence has its copy back. The
+  // `added` ledger row stays while that has not happened (a retry must still find it).
+  const settled = new Set<string>();
   for (const [id, r] of groupAdded) {
-    if (groupOk.get(id) !== true) continue;
-    for (let attempt = 0; attempt < CAS_ATTEMPTS; attempt++) {
+    if (pending.has(id)) continue;
+    if (keep.has(id)) {
+      settled.add(id); // the entry stays by design; nothing left to remove
+      continue;
+    }
+    let finished = false;
+    for (let attempt = 0; attempt < CAS_ATTEMPTS && !finished; attempt++) {
       const accountRow = await getAccountOverrides(db, product, r.subject);
       const payload = parseAccountOverridePayload(
         accountRow?.payload_json ?? null,
       );
       const entry = payload.secrets[r.key];
-      if (entry === undefined || (await sha(entry)) !== r.entry_sha256) break;
+      if (entry === undefined || (await sha(entry)) !== r.entry_sha256) {
+        finished = true; // gone or edited: it stays as it is
+        break;
+      }
       const { [r.key]: _gone, ...secrets } = payload.secrets;
       void _gone;
       if (
@@ -517,20 +570,28 @@ export async function downProduct(
         )
       ) {
         changes++;
-        break;
+        finished = true;
       }
     }
+    if (finished) settled.add(id);
+    else retries++;
   }
 
-  for (const r of done)
+  for (const r of done) {
+    const id = groupId(r);
+    if (r.added_to_account === 1 && groupAdded.has(id) && !settled.has(id))
+      continue;
     await db.run(
       "DELETE FROM provisioned_secret_moves WHERE product = ? AND license_id = ? AND key = ?",
       product,
       r.license_id,
       r.key,
     );
+  }
   if (incomplete > 0)
     throw new Error("provisioned_secret_moves_down_incomplete");
+  if (retries > 0)
+    throw new Error(`provisioned_secret_moves_down_retry:${retries}`);
   return changes;
 }
 

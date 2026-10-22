@@ -4,9 +4,9 @@
 -- to the owner's account overrides row (`account_overrides`). One row per (product, licence, key)
 -- it removed from a column, so the job's `down` is exact. NO VALUES ARE STORED: the moved entry
 -- lives on the account row, and `entry_sha256` (SHA-256 of its canonical JSON) lets `down` prove
--- the row still holds it before putting the entry back. A copy that was invisible under a
--- different account entry (`shadowed = 1`) cannot be restored, and need not be: it changed no
--- document.
+-- the row still holds it before putting the entry back. A copy removed
+-- because the account entry above it already held the key (`shadowed = 1`) is restored from that
+-- entry when its hash still matches.
 --
 --   subject            the owner's pairwise subject (erased with it: the `core.provisionedSecretMoves`
 --                      subject store, and `deleteProduct` and licence deletion).
@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS provisioned_secret_moves (
   key              TEXT NOT NULL,
   subject          TEXT NOT NULL,
   entry_sha256     TEXT NOT NULL,
-  added_to_account INTEGER NOT NULL,
-  shadowed         INTEGER NOT NULL DEFAULT 0,
+  added_to_account INTEGER NOT NULL CHECK (added_to_account IN (0, 1)),
+  shadowed         INTEGER NOT NULL DEFAULT 0 CHECK (shadowed IN (0, 1)),
   position         INTEGER NOT NULL DEFAULT 0,
   run_id           TEXT NOT NULL,
   at               INTEGER NOT NULL,

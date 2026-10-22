@@ -328,15 +328,17 @@ describe("planProvisionedSecretMoves: determinism and report", () => {
 
 // ── the property: every device's merged document is unchanged by an applied plan ─────────────
 
+/** One entry per declared key (absent = the layer lacks the key). */
+type Held = Record<string, ManagedEntry | undefined>;
+
 interface World {
-  licences: {
-    id: string;
-    owner: string | null;
-    col: ManagedEntry | undefined;
-  }[];
-  rows: Map<string, ManagedEntry | undefined>;
+  /** The declared secret keys, 1 to 3 of them: with several, `mergeMap` orders keys by layer
+   *  insertion, so a move can reorder them inside a document (value-equal, not byte-equal). */
+  keys: string[];
+  licences: { id: string; owner: string | null; col: Held }[];
+  rows: Map<string, Held>;
   devices: { licenseId: string; subject: string | null; signedIn: boolean }[];
-  base: ManagedEntry | undefined;
+  base: Held;
 }
 
 function seeded(seed: number): () => number {
@@ -356,17 +358,32 @@ const POOL: ManagedEntry[] = [
   entry("c", 50, "hidden"),
 ];
 
+const ALL_KEYS = [KEY, "proxy.token", "api.secret"];
+
+const heldJson = (h: Held, withEntitlements: boolean): string =>
+  JSON.stringify({
+    config: {},
+    secrets: Object.fromEntries(
+      Object.entries(h).filter(([, e]) => e !== undefined),
+    ),
+    ...(withEntitlements ? { entitlements: {} } : {}),
+  });
+
 function makeWorld(rand: () => number): World {
   const pick = <T>(xs: readonly T[]): T =>
     xs[Math.floor(rand() * xs.length)] as T;
+  const keys = ALL_KEYS.slice(0, 1 + Math.floor(rand() * 3));
+  /** Keys are filled in a random order, so insertion order differs between layers. */
+  const held = (absent: number): Held => {
+    const h: Held = {};
+    for (const k of [...keys].sort(() => rand() - 0.5))
+      h[k] = rand() < absent ? undefined : pick(POOL);
+    return h;
+  };
   const owners = [OWNER, OWNER, OWNER, "subj-b", null];
   const licences = ["L1", "L2", "L3", "L4"]
     .slice(0, 1 + Math.floor(rand() * 4))
-    .map((id) => ({
-      id,
-      owner: pick(owners),
-      col: rand() < 0.2 ? undefined : pick(POOL),
-    }));
+    .map((id) => ({ id, owner: pick(owners), col: held(0.2) }));
   const devices: World["devices"] = [];
   for (const l of licences) {
     const n = Math.floor(rand() * 3);
@@ -389,18 +406,16 @@ function makeWorld(rand: () => number): World {
     }
   }
   return {
+    keys,
     licences,
     rows: new Map([
-      [OWNER, rand() < 0.35 ? pick(POOL) : undefined],
-      ["subj-b", rand() < 0.2 ? pick(POOL) : undefined],
+      [OWNER, held(rand() < 0.35 ? 0.3 : 1)],
+      ["subj-b", held(rand() < 0.2 ? 0.3 : 1)],
     ]),
     devices,
-    base: rand() < 0.3 ? pick(POOL) : undefined,
+    base: held(0.7),
   };
 }
-
-const rowJson = (e: ManagedEntry | undefined): string | null =>
-  e ? row(e) : null;
 
 function toInput(w: World): PlanInput {
   const bySubject = new Map<string | null, PlanDevice[]>();
@@ -411,34 +426,45 @@ function toInput(w: World): PlanInput {
   }
   return {
     product: "djdl",
-    declared: new Set([KEY]),
+    declared: new Set(w.keys),
     licences: w.licences.map((l) => ({
       id: l.id,
       ownerSubject: l.owner,
-      overridesJson: column(l.col),
+      overridesJson: heldJson(l.col, true),
     })),
-    accountRows: new Map([...w.rows].map(([s, e]) => [s, rowJson(e)])),
+    accountRows: new Map(
+      [...w.rows].map(([s, h]) => [
+        s,
+        Object.values(h).some((e) => e !== undefined)
+          ? heldJson(h, false)
+          : null,
+      ]),
+    ),
     devicesBySubject: bySubject,
   };
 }
 
 /** What each device receives: the layers `buildPayload` merges, with `accountOverrideLayer`'s
- *  rule that the owner line carries no secrets. */
-function documents(w: World): string[] {
+ *  rule that the owner line carries no secrets. Returned as objects, compared by value: the order
+ *  of keys inside `secrets` may change once after a move. */
+function documents(w: World): unknown[] {
   return w.devices.map((d) => {
     const l = w.licences.find((x) => x.id === d.licenseId)!;
+    const rowHeld = d.subject === null ? undefined : w.rows.get(d.subject);
     const account =
       d.subject === null
         ? null
         : d.signedIn
-          ? (rowJson(w.rows.get(d.subject)) ?? null)
+          ? rowHeld && Object.values(rowHeld).some((e) => e !== undefined)
+            ? heldJson(rowHeld, false)
+            : null
           : JSON.stringify({ config: {}, secrets: {}, entitlements: {} });
-    return JSON.stringify(
-      mergePayloads(
-        w.base ? JSON.stringify({ secrets: { [KEY]: w.base } }) : null,
-        column(l.col),
-        account,
-      ),
+    return mergePayloads(
+      Object.values(w.base).some((e) => e !== undefined)
+        ? heldJson(w.base, false)
+        : null,
+      heldJson(l.col, true),
+      account,
     );
   });
 }
@@ -446,22 +472,22 @@ function documents(w: World): string[] {
 function apply(w: World, plan: ProvisionedSecretPlan): World {
   const next: World = {
     ...w,
-    licences: w.licences.map((l) => ({ ...l })),
-    rows: new Map(w.rows),
+    licences: w.licences.map((l) => ({ ...l, col: { ...l.col } })),
+    rows: new Map([...w.rows].map(([s, h]) => [s, { ...h }])),
   };
-  const drop = (id: string): void => {
-    next.licences.find((l) => l.id === id)!.col = undefined;
+  const drop = (id: string, key: string): void => {
+    next.licences.find((l) => l.id === id)!.col[key] = undefined;
   };
   for (const m of plan.moves) {
-    drop(m.licenseId);
-    if (m.addToAccount) next.rows.set(m.subject, m.entry);
+    drop(m.licenseId, m.key);
+    if (m.addToAccount) next.rows.get(m.subject)![m.key] = m.entry;
   }
-  for (const s of plan.shadowed) drop(s.licenseId);
+  for (const s of plan.shadowed) drop(s.licenseId, s.key);
   return next;
 }
 
-describe("planProvisionedSecretMoves: byte identity property", () => {
-  it("no applied plan changes any device's merged document; a second plan moves nothing", () => {
+describe("planProvisionedSecretMoves: value identity property", () => {
+  it("no applied plan changes the value of any device's merged document (key order inside secrets may change); a second plan moves nothing", () => {
     const rand = seeded(27);
     const seen = {
       moves: 0,
@@ -470,11 +496,13 @@ describe("planProvisionedSecretMoves: byte identity property", () => {
       other: 0,
       unowned: 0,
       add: 0,
+      multiKey: 0,
     };
     for (let n = 0; n < 4000; n++) {
       const w = makeWorld(rand);
       const plan = planProvisionedSecretMoves(toInput(w));
       const after = apply(w, plan);
+      // toEqual ignores key order inside the objects: value-equal, not byte-equal.
       expect(documents(after), JSON.stringify(w)).toEqual(documents(w));
       const again = planProvisionedSecretMoves(toInput(after));
       expect(again.moves).toEqual([]);
@@ -485,6 +513,7 @@ describe("planProvisionedSecretMoves: byte identity property", () => {
       seen.conflicts += plan.conflicts.length;
       seen.other += plan.otherSubject.length;
       seen.unowned += plan.unowned;
+      if (w.keys.length > 1 && plan.moves.length > 0) seen.multiKey++;
     }
     // the matrix reaches every output class
     for (const [k, v] of Object.entries(seen)) expect(v, k).toBeGreaterThan(0);

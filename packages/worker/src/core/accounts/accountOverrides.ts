@@ -379,7 +379,7 @@ export async function applyProvisionedAccountSecrets(
   if (sub !== undefined) {
     const link = await db.first<{ one: number }>(
       `SELECT 1 AS one FROM account_links
-        WHERE account_id = ? AND subject = ? AND kind = 'oidc'`,
+        WHERE account_id = ? AND subject = ? AND kind = 'oidc' AND tenant_scope = ''`,
       accountId,
       sub,
     );

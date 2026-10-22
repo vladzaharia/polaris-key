@@ -142,6 +142,7 @@ export async function issueAccountLicense(
       provisioned.secrets,
       declared.secrets,
       now,
+      identity.sub,
     );
   return { licenseId };
 }

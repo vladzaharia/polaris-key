@@ -224,7 +224,7 @@ export type ProvisionedSecretTarget = "license" | "account";
 /**
  * Decide the secret target of ONE licence, per licence (U-27.2, L-U1). It is the owner's account
  * row only when the licence has an owner AND the signing identity (`sub`) is linked to that
- * owner's account (`account_links`, kind `oidc`). Every other case keeps the column as today: a
+ * owner's account (`account_links`, kind `oidc`, platform scope: no tenant; the sign-in issuer is not on the identity here, so the issuer is not checked). Every other case keeps the column as today: a
  * floating licence, one waiting on its email, a legacy licence identified only by its `sub`, an
  * email-only identity (no `sub`), and a licence handed over to another account (the previous
  * owner's identity is no longer linked to the new owner, so it writes nothing to it). Writing the
@@ -239,7 +239,7 @@ export async function provisionedSecretTarget(
   if (!accountId || !sub) return "license";
   const link = await db.first<{ one: number }>(
     `SELECT 1 AS one FROM account_links
-      WHERE account_id = ? AND subject = ? AND kind = 'oidc'`,
+      WHERE account_id = ? AND subject = ? AND kind = 'oidc' AND tenant_scope = ''`,
     accountId,
     sub,
   );

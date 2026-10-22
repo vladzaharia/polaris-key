@@ -29,6 +29,7 @@ import {
 } from "../src/core/managedSecrets.js";
 import { provisionedSecretTarget } from "../src/core/licensing/provisioning.js";
 import { issueAccountLicense } from "../src/core/licensing/issueAccount.js";
+import { applyProvisionedAccountSecrets } from "../src/core/accounts/accountOverrides.js";
 import type { Env } from "../src/platform/env.js";
 
 const SECRET = "proxy.subscriptionUrl";
@@ -380,5 +381,68 @@ describe("provisioned secret target per licence (U-27.2, L-U1)", () => {
     const row = await s.accountRow();
     expect(row!.payload_json).toContain(SECRET);
     expect(row!.payload_json).not.toContain("vpn.example.com");
+  });
+
+  it("a link from another scope with the same sub writes nothing (platform links only)", async () => {
+    const s = await scenario("ownedUnlinked");
+    // Same sub, but a tenant-scoped link: not the platform sign-in the owner holds.
+    await s.db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, display_name, amr_json, created_at, last_used_at)
+       VALUES ('lnk-t', ?, 'iss', 'tenant-x', 'user-123', 'oidc', NULL, 0, NULL, '[]', ?, ?)`,
+      s.ada.id,
+      NOW,
+      NOW,
+    );
+    expect(await provisionedSecretTarget(s.db, s.ada.id, "user-123")).toBe(
+      "license",
+    );
+    await applyProvisionedAccountSecrets(
+      s.env,
+      s.db,
+      "djdl",
+      s.ada.id,
+      { [SECRET]: { state: "default", value: "https://x", updatedAt: NOW } },
+      new Set([SECRET]),
+      NOW,
+      "user-123",
+    );
+    expect(await s.accountRow()).toBeNull();
+    await s.sign();
+    expect(await s.accountRow()).toBeNull();
+  });
+
+  it("the claim arm on an enrolled licence owned by an account the claimer is not linked to writes nothing to the owner's row", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.EMAIL = { send: async () => {} } as unknown as Env["EMAIL"];
+    await seedProduct(db, "djdl", { catalog: DJDL_CATALOG });
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const bob = await accountOf(db, "bob@example.com");
+    await db.run(
+      `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version, origin, account_id, modified_by, modified_at)
+       VALUES ('djdl', 'lic-enrolled', 'active', NULL, NULL, NULL, NULL, NULL, ?, NULL, NULL, '{"config":{},"secrets":{},"entitlements":{}}', NULL, NULL, NULL, 'enroll', ?, NULL, ?)`,
+      NOW,
+      bob.id,
+      NOW,
+    );
+    await activateFromIdentity(
+      db,
+      product,
+      {
+        sub: "mallory-sub",
+        email: "mallory@example.com",
+        name: "M",
+        groups: ["members"],
+        claims: { sub: "mallory-sub", vpnSub: "mallory" },
+      },
+      NOW + 10,
+      { enrolledLicenseId: "lic-enrolled", env },
+    );
+    expect(
+      await db.all(
+        "SELECT subject FROM account_overrides WHERE product = 'djdl'",
+      ),
+    ).toEqual([]);
   });
 });

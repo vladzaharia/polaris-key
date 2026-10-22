@@ -665,6 +665,7 @@ export async function issueLicense(
         provisionedAll.secrets,
         declared.secrets,
         now,
+        identity.sub,
       );
     await appendAudit(db, {
       product: product.slug,

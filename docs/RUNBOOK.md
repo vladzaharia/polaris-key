@@ -2165,7 +2165,8 @@ seeded Default tier once no license uses it. A later edit stays.
 ### Provisioned secrets (`core.provisioned-secrets-to-account`)
 
 Moves an owned license's provisioned secrets (the keys a product's provisioning hooks declare) from
-the license to the owner's account overrides row, one layer up, with no document changing. Run it
+the license to the owner's account overrides row, one layer up, with every document's keys and values unchanged (the order of keys inside a document's
+secrets may change once; see the SDK note below). Run it
 after the Worker that carries it is live. A dry run writes nothing.
 
 1. `pkey migrate dry-run core.provisioned-secrets-to-account`, then `pkey migrate report <run>`. Per
@@ -2177,14 +2178,26 @@ after the Worker that carries it is live. A dry run writes nothing.
    the report and the apply skips that move; the next dry run shows it.
 4. Dry-run again. It must show changes 0. Record both run ids under Entries.
 
+Why keys can reorder: a document's secrets are ordered by the layer each key first appears in, so
+a moved key can change place among the others (a product with several secrets). The config ETag
+covers that order, so a device sees one full config response instead of a 304, and the Node, Swift
+and Kotlin `onChange` callbacks, which key on the ETag, fire once: devices may see one config
+change event with identical values. The per-key `onConfigChange` compares values and stays silent.
+
+The dry run shows the D1 query budget first: it reads the licenses, devices and owner rows per
+product, so run it on a product with many licenses before the apply.
+
 The ledger `provisioned_secret_moves` holds license ids, keys, the owner's subject and a SHA-256 of
 each moved entry, never a value. Erasing an account, merging accounts, deleting a license and
 deleting a product all remove or re-key its rows; the table is dropped with the job.
 
 **Roll back.** Run `down` on the apply before rolling the Worker back. It puts each entry back on
-its license, in place, only while the account row still holds the entry the job moved, and removes
-it from the row when the job added it. An account entry edited since stays. A copy that was hidden
-under a different account entry is not restored: it changed no document.
+its license, in place, only while the account row still holds the entry the job moved and the
+license is still owned by the same account, and removes it from the row when the job added it and
+every license of that entry has its copy back. A copy that an apply removed as hidden under the
+account entry is restored from that entry. An account entry edited since stays, and so does one
+whose hidden copy differed from it. If the account row could not be updated after three tries,
+`down` reports a counted retry; run it again.
 
 ### Entries
 
