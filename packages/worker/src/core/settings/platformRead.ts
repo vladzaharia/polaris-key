@@ -39,6 +39,7 @@ export interface PlatformValues {
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
   "email.dailyCapDefault": number;
+  "cloudSync.quota.defaultBytes": number;
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

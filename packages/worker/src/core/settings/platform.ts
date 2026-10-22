@@ -519,9 +519,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     critical: true,
     confirm: { up: "L2", down: "L2" },
+    readers: ["core/accounts/syncAccess.ts"],
     storage: { kind: "scalar" },
     since: "U-01b",
-    pending: { wp: "U-05" },
   }),
 
   // ── Email and alerts (ST-09; I-18) ──────────────────────────────────────────────────────

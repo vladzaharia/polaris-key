@@ -7029,10 +7029,29 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
   `core/accounts/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
 - **One module for the licence question.** `syncAccess` (`core/accounts/syncAccess.ts`) answers
-  `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
-  mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
-  pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
-  leaves the principal (reads stay allowed) with an empty entitlement set.
+  one thing: the requesting device's quota (`{bytes, files}`) and its `tierId`, plus the anchor
+  licence's entitlement map for U-09's `requires` checks. It reads the anchor licence alone, as
+  its final form: `requireLicense`, `requiresFlag` and `byTier` are gone, and `anchorUsable` and
+  `topTier` with them. LX-09 is no longer a seam in the quota; if it combines licences it swaps the
+  body and the callers stay. It never reads the owner pointer and its answer carries the
+  pairwise subject only; `tierId` is the product's own tier name (the object accepts 1 to 256
+  characters, and the function answers `null` otherwise), never an account or licence id. A device
+  with no usable licence keeps its principal, so reads stay allowed.
+- **T14, mass sign-up.** A person with no usable licence on a License-on product gets 1 MiB and no
+  files (`CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes`; the Anonymous devices tier, LX-36, is a seam
+  that answers `null` today), and the platform default does not lift them. Creating accounts
+  therefore buys at most 1 MiB each, under the product ceiling and `cloudSync.writesPaused`. With
+  License off every signed-in device gets the platform default; that product chose to host
+  unlicensed Cloud Sync, and its operator bounds it with the ceiling.
+- **T18, quota as an entitlement.** The bytes are the integer `pkey.cloudSync.bytes` from the
+  device's usable anchor licence (set by a tier, a licence override or an add-on), else the
+  platform default `cloudSync.quota.defaultBytes`. Nothing the request carries is read: a value
+  that is not a non-negative safe integer is ignored, an unusable (expired, disabled) licence's
+  entitlement is never read, and the result is clamped to the per-person ceiling
+  (`CLOUD_SYNC_CEILINGS.perPerson.bytes`). `0` is a real value: reads only. The quota is resolved
+  per device, so a device cannot borrow another device's quota, and a licensed device's data is
+  read-only (never deleted) from an unlicensed device of the same person. Lowering any of these
+  deletes nothing.
 - **No inherited binding.** Any re-bind without a sign-in (licence key re-entry, enrolment, open
   re-registration) mints a new credential and drops the binding; only an account sign-in through
   Identity writes one. Otherwise anyone who knows an authorized device id on an `open`
