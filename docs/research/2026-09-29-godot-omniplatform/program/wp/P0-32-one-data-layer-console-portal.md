@@ -95,6 +95,8 @@ The code is the fact; these replace the matching claims above (slice P0-32.1).
 - **B8. Boundary edges P0-32 owns.** `lib/errorCopy.ts -> api.ts` and `ui/form.tsx -> api.ts`. The other five `-> api.ts` edges are type-only and P0-33's. The rule-4 probe test asserts `portalReach().has("lib/errorCopy.ts -> api.ts")`; it is rewritten when the edge goes.
 - **B9. Older-Worker runtime branches.** Console: `core/pages/Settings.tsx:160`, `license/pages/LicenseDelete.tsx:115`, `license/components/shared.tsx:294`, `license/components/holders.tsx:48,287`, `license/pages/LicenseDeviceLimit.tsx:47,162`. Portal: `api.ts` `legacyPath` (:750), `pages/SignInPage.tsx:1364`, `pages/ProductPage.tsx:291`, `model/owned.ts:5`, `model/library.ts:327`, `product/RemoveLicenseDialog.tsx:50`, `account/SignInMethods.tsx:103`. About 30 more are optional-field comments in the two `api.ts` files (P0-33's DTOs replace those mirrors). Held U-05 adds one more (`cloudSyncWrite?`).
 
+- **B10. AbortError (P0-32.2).** A caller's `AbortError` now propagates raw from the portal. The old portal `send` reported every rejection as a network failure; no portal code aborts a request today.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

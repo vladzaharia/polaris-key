@@ -157,6 +157,15 @@ describe("send", () => {
     expect(sent(fn, 3).headers.get("X-Test-CSRF")).toBe("tok");
   });
 
+  it("PUT and PATCH carry the CSRF header too", async () => {
+    const fn = stub(json({}), json({}));
+    const c = client();
+    await c.send("/w", { method: "PUT", body: "{}" });
+    await c.send("/w", { method: "patch", body: "{}" });
+    expect(sent(fn, 0).headers.get("X-Test-CSRF")).toBe("tok");
+    expect(sent(fn, 1).headers.get("X-Test-CSRF")).toBe("tok");
+  });
+
   it("reads the token at each request", async () => {
     const fn = stub(json({}), json({}));
     const c = client();

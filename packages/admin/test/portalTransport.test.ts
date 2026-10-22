@@ -93,7 +93,11 @@ describe("PortalApiError on the core", () => {
           reason: "r",
           stale: ["started"],
           unknownCredential: true,
-          next: { kind: "sso", connection: "okta", label: "Okta" },
+          next: {
+            kind: "sso",
+            connection: { id: "okta-1", label: " Okta " },
+            enforced: true,
+          },
         }),
         { status: 403 },
       ),
@@ -110,6 +114,11 @@ describe("PortalApiError on the core", () => {
       reason: "r",
       stale: ["started"],
       unknownCredential: true,
+      next: {
+        kind: "sso",
+        connection: { id: "okta-1", label: "Okta" },
+        enforced: true,
+      },
     });
     expect(e.body).toMatchObject({ unknownCredential: true });
   });
@@ -124,5 +133,90 @@ describe("PortalApiError on the core", () => {
       code: "network",
       message: "portal api 0",
     });
+  });
+
+  it("drops a next that routes somewhere it should not", async () => {
+    const bad: unknown[] = [
+      { kind: "sso", connection: { id: "javascript:alert(1)", label: "X" } },
+      { kind: "sso", connection: { id: "has space", label: "X" } },
+      { kind: "sso", connection: { id: "a".repeat(65), label: "X" } },
+      { kind: "sso", connection: { id: "okta-1" } },
+      { kind: "sso", connection: { id: "okta-1", label: "  " } },
+      { kind: "sso", connection: "okta-1" },
+      { kind: "magic", connection: { id: "okta-1", label: "Okta" } },
+      "javascript:alert(1)",
+    ];
+    stub(
+      ...bad.map(
+        (next) =>
+          new Response(JSON.stringify({ error: "sso_required", next }), {
+            status: 403,
+          }),
+      ),
+    );
+    for (const next of bad) {
+      const e = await portalApi.cancelDeletion().catch((x) => x);
+      expect(e, JSON.stringify(next)).toBeInstanceOf(PortalApiError);
+      expect(e.next, JSON.stringify(next)).toBeUndefined();
+    }
+  });
+
+  it("reads a nested refusal body into the same fields as a flat one", async () => {
+    stub(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "invalid_name",
+            message: "Too long",
+            reason: "too_long",
+            fields: ["name"],
+            errors: ["e1"],
+          },
+          retryAfter: 4,
+        }),
+        { status: 400 },
+      ),
+      new Response(
+        JSON.stringify({
+          error: "invalid_name",
+          message: "Too long",
+          reason: "too_long",
+          fields: ["name"],
+          errors: ["e1"],
+          retryAfter: 4,
+        }),
+        { status: 400 },
+      ),
+    );
+    const nested = await portalApi.cancelDeletion().catch((x) => x);
+    const flat = await portalApi.cancelDeletion().catch((x) => x);
+    for (const e of [nested, flat])
+      expect(e).toMatchObject({
+        status: 400,
+        code: "invalid_name",
+        message: "Too long",
+        reason: "too_long",
+        fields: ["name"],
+        errors: ["e1"],
+        retryAfter: 4,
+      });
+  });
+});
+
+describe("the CSRF header on every change method", () => {
+  it("PATCH, POST and DELETE carry it (the portal has no PUT; lib/http.test pins that)", async () => {
+    const fn = stub(...[1, 2, 3, 4, 5].map(() => new Response("{}")));
+    // Five writing methods that use four different verbs; the verb is asserted, not assumed.
+    await portalApi.updateProfile({ name: "A" } as never);
+    await portalApi.cancelDeletion();
+    await portalApi.deleteMe();
+    await portalApi.removeProductData("djdl", false);
+    await portalApi.renamePasskey("p1", null);
+    const verbs = [0, 1, 2, 3, 4].map((i) => sent(fn, i).init.method);
+    expect(verbs).toEqual(expect.arrayContaining(["PATCH", "POST", "DELETE"]));
+    for (const i of [0, 1, 2, 3, 4])
+      expect(sent(fn, i).headers.get(CSRF), String(verbs[i])).toBe(
+        "portal-token",
+      );
   });
 });
