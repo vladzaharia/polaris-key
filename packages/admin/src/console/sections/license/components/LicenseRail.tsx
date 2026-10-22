@@ -47,7 +47,7 @@ function Fact({
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-3 text-sm">
       <dt className="shrink-0 text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-right text-fg-strong">
+      <dd className="min-w-0 break-words text-end text-fg-strong">
         {children}
         {sub ? (
           <span className="mt-0.5 block text-xs text-fg-muted">{sub}</span>
@@ -329,7 +329,7 @@ export function DevicesCard({
                   </span>
                 ) : null}
               </span>
-              <span className="shrink-0 text-right text-xs text-fg-muted">
+              <span className="shrink-0 text-end text-xs text-fg-muted">
                 {formatRelative(fromSeconds(d.lastSeen))}
                 <span
                   className="block"
