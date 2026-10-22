@@ -400,8 +400,8 @@ independent work while a job runs.
 
 ## Testing
 
-Keep a work package well under an hour. Tests are a means, not the work. Run only what your change
-touches:
+Keep a work package well under an hour. Tests are a means, not the work: run scoped tests while
+building and run the gate once at hand-off. Run only what your change touches:
 
 - the tests for the modules you changed (`vitest related <files>` or a file filter; pytest on the
   affected test files; Gradle on the affected module; `swift test --filter`; the affected Godot
@@ -424,7 +424,8 @@ get green.
 
 ## Review
 
-Reviewers review the changed files only and never run the gate; the builder did. A fix round reruns only the failing steps and affected tests.
+Reviewers never run the gate; the builder did. They review the changed files only. A fix round
+reruns only the failing steps and affected tests.
 
 Reviewers never block on conflicts with current `main`. Diff from the branch's merge base and note
 the conflict for the lead.
