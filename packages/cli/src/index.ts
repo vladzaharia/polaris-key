@@ -12,6 +12,7 @@ import {
   isUsageError,
   networkMessage,
 } from "./errors.js";
+import { CLI_VERSION } from "./version.js";
 import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
 import {
   COMPLETION_SHELLS,
@@ -599,6 +600,11 @@ async function runCommand(
   argv: string[],
   io: CliIo & { env: CiEnv; stdout: TermOut; stderr: TermOut },
 ): Promise<number> {
+  // `pkey --version` (also -V, -v) is the first word only: `release publish --version v` is a flag.
+  if (argv[0] === "--version" || argv[0] === "-V" || argv[0] === "-v") {
+    io.stdout.write(`pkey ${CLI_VERSION}\n`);
+    return 0;
+  }
   const global = globalFlags(argv);
   const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
@@ -978,8 +984,8 @@ async function validateText(
  * Python kit's, which the Node kit and pkey follow): `v`, `command`, `event`, `ok` and `exit`,
  * then the verdict's own fields beside them,
  * `{"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets",
- * "warnings","errors"}`, or `"error":"no-manifest"` and a `"message"` when no manifest could be
- * read (a file problem, exit 1). ASCII only.
+ * "warnings","errors"}`, or `"error":"no-manifest"` (none found) or `"unreadable-manifest"` (a
+ * file that is not valid JSON or YAML) and a `"message"` when no manifest could be read (exit 1). ASCII only.
  */
 async function validateJson(
   dir: string,
@@ -995,7 +1001,9 @@ async function validateJson(
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: "no-manifest",
+        error: /is not valid (?:JSON|YAML)/.test((e as Error).message)
+          ? "unreadable-manifest"
+          : "no-manifest",
         message: (e as Error).message,
       }),
     );
@@ -1331,7 +1339,7 @@ async function cmdBundle(
   // Which documents rode along is decided server-side by the product's enabled services, and
   // the mint response does not say — so claim nothing rather than guess.
   stdout.write(
-    "\nNext: transfer this file to the offline machine and import it there.\n",
+    "\nNext: transfer this file to the offline device and import it there.\n",
   );
   return 0;
 }

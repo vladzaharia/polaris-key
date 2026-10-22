@@ -41,11 +41,33 @@ export function isFetchFailure(err: unknown): boolean {
   return err instanceof TypeError && err.message === "fetch failed";
 }
 
+const FS_CODES: Readonly<Record<string, string>> = {
+  ENOENT: "No such file or directory",
+  EACCES: "Permission denied",
+  EPERM: "Permission denied",
+  EISDIR: "Is a directory, not a file",
+  ENOTDIR: "Not a directory",
+  EEXIST: "Already exists",
+};
+
+/** A file-system error as one sentence: `No such file or directory: <path>`. */
+export function fsMessage(err: unknown): string | undefined {
+  const e = err as { code?: unknown; path?: unknown } | null;
+  if (typeof e?.code !== "string" || typeof e.path !== "string") return;
+  const what = FS_CODES[e.code];
+  return what === undefined ? undefined : `${what}: ${e.path}`;
+}
+
 /**
  * The sentence for a failed request: what failed, why where known, and what to check. Any other
  * error's message is returned as it is.
  */
 export function networkMessage(err: unknown, url?: string): string {
+  const fs = fsMessage(err);
+  if (fs !== undefined) return fs;
+  const listen = err as { code?: unknown; address?: unknown; port?: unknown };
+  if (listen?.code === "EADDRINUSE")
+    return `${String(listen.address)}:${String(listen.port)} is already in use. Stop what holds it, or pass --port <n>.`;
   if (!isFetchFailure(err)) {
     return err instanceof Error ? err.message : String(err);
   }

@@ -12628,7 +12628,7 @@ ${BUNDLE_USAGE}`);
   const deviceId = opts.deviceId.trim();
   if (!DEVICE_ID.test(deviceId)) {
     throw new Error(
-      `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. Copy it from the offline machine's activation screen exactly, without spaces or line breaks.`
+      `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. Copy it from the offline device's activation screen exactly, without spaces or line breaks.`
     );
   }
   if (!Number.isInteger(opts.graceDays) || opts.graceDays < 1 || opts.graceDays > MAX_GRACE_DAYS) {
@@ -12686,15 +12686,15 @@ ${BUNDLE_USAGE}`);
     url
   };
 }
-function adminToken(raw) {
+function adminToken(raw, command = "bundle") {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
       `${ADMIN_TOKEN_ENV} is not set.
-\`pkey bundle\` mints through the admin API, which authenticates this command with an admin API token sent as \`Authorization: Bearer pkeya_…\`.
-Mint one in the console: /manage -> API tokens -> New token. Choose a label that says where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can reproduce it — so copy it then, and run:
+\`pkey ${command}\` calls the admin API, which authenticates it with an admin API token sent as \`Authorization: Bearer pkeya_…\`.
+` + (command === "migrate" ? "The token needs the `migrations:report` scope.\n" : "The token needs the `bundles:mint` scope.\n") + `Mint one in the console: /manage -> API tokens -> New token. Choose a label that says where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can reproduce it — so copy it then, and run:
   export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'
-It can mint an offline bundle for any product on the platform: do not commit it, and do not export it into a shell other people share. If it leaks, revoke that one token in the console.`
+` + (command === "migrate" ? "It reaches the migration job list, reports and dry runs, and nothing else: " : "It can mint an offline bundle for any product on the platform: ") + "do not commit it, and do not export it into a shell other people share. If it leaks, revoke that one token in the console."
     );
   }
   if (!ADMIN_TOKEN.test(value)) {
@@ -12845,6 +12845,82 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// src/errors.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function isUsageError(message) {
+  return /^Usage: /m.test(message) || /^--[\w-]+(?: and --[\w-]+)? (?:must|is required|are required|goes with|go with|go together|needs)\b/.test(
+    message
+  );
+}
+var NETWORK_CODES = {
+  ECONNREFUSED: "the connection was refused",
+  ENOTFOUND: "the host name did not resolve",
+  EAI_AGAIN: "the host name did not resolve",
+  ETIMEDOUT: "the connection timed out",
+  UND_ERR_CONNECT_TIMEOUT: "the connection timed out",
+  ECONNRESET: "the connection was reset",
+  EHOSTUNREACH: "the host is unreachable",
+  ENETUNREACH: "the network is unreachable"
+};
+function isFetchFailure(err) {
+  return err instanceof TypeError && err.message === "fetch failed";
+}
+var FS_CODES = {
+  ENOENT: "No such file or directory",
+  EACCES: "Permission denied",
+  EPERM: "Permission denied",
+  EISDIR: "Is a directory, not a file",
+  ENOTDIR: "Not a directory",
+  EEXIST: "Already exists"
+};
+function fsMessage(err) {
+  const e = err;
+  if (typeof e?.code !== "string" || typeof e.path !== "string") return;
+  const what = FS_CODES[e.code];
+  return what === void 0 ? void 0 : `${what}: ${e.path}`;
+}
+function networkMessage(err, url) {
+  const fs = fsMessage(err);
+  if (fs !== void 0) return fs;
+  const listen = err;
+  if (listen?.code === "EADDRINUSE")
+    return `${String(listen.address)}:${String(listen.port)} is already in use. Stop what holds it, or pass --port <n>.`;
+  if (!isFetchFailure(err)) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const cause = err.cause;
+  const code = cause?.code;
+  const why = (code !== void 0 ? NETWORK_CODES[code] : void 0) ?? (code?.startsWith("ERR_TLS") || code?.includes("CERT") ? "the TLS certificate was not accepted" : void 0) ?? cause?.message;
+  return `Could not reach ${url ?? "the server"}${why ? `: ${why}` : ""}. Check your network, and --base-url (or $PKEY_BASE_URL) if you set one.`;
+}
+function isInternalError(err) {
+  if (isFetchFailure(err)) return false;
+  return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
+}
+function internalMessage(err) {
+  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return `pkey hit an unexpected error: ${text}
+This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
+}
+
+// src/version.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { readFileSync } from "node:fs";
+function read() {
+  if (true) return "0.0.0";
+  try {
+    const raw = readFileSync(
+      new URL("../package.json", import.meta.url),
+      "utf8"
+    );
+    const v = JSON.parse(raw).version;
+    return typeof v === "string" ? v : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+var CLI_VERSION = read();
+
 // src/migrate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MIGRATE_USAGE = "Usage: pkey migrate list | dry-run <job> | report <run> [--base-url <url>] [--json]";
@@ -12865,7 +12941,7 @@ async function runMigrate(opts) {
       `${opts.verb === "dry-run" ? "A job id" : "A run id"} is required.
 ${MIGRATE_USAGE}`
     );
-  const token = adminToken(opts.token);
+  const token = adminToken(opts.token, "migrate");
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV
@@ -23601,24 +23677,6 @@ function logoLines(term) {
   });
 }
 
-// src/version.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFileSync } from "node:fs";
-function read() {
-  if (true) return "0.0.0";
-  try {
-    const raw = readFileSync(
-      new URL("../package.json", import.meta.url),
-      "utf8"
-    );
-    const v = JSON.parse(raw).version;
-    return typeof v === "string" ? v : "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
-}
-var CLI_VERSION = read();
-
 // src/help.ts
 var GROUPS = [
   ["manifest", "Manifest"],
@@ -23679,7 +23737,7 @@ var COMMANDS = [
         text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
       },
       {
-        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}.`
+        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.`
       },
       {
         text: `--fix repairs what it safely can before it validates: a field written in an old spelling moves to its canonical place when that place is empty (the deprecated_spelling warnings), keeping YAML comments. It never overwrites a value and leaves a conflict for you. It prints each move, or "Nothing to fix." With --json the moves are the result's "fixed" list.`
@@ -23813,7 +23871,7 @@ var COMMANDS = [
     ],
     about: [
       {
-        text: `pkey bundle mints one offline activation bundle and writes it to a file (default <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`
+        text: `pkey bundle mints one offline activation bundle and writes it to a file (default <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}). Copy that file to the air-gapped device and import it there.`
       },
       {
         text: "--base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the token is sent to whatever origin you name, so any other origin is refused before anything is sent. The file is written with mode 0600, is never created over an existing one without --force, and is never written through a symbolic link."
@@ -24058,7 +24116,7 @@ var COMMANDS = [
     tree: { fdroid: [], setup: [], prune: [] },
     usage: [
       "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
-      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
+      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
     ],
     about: [
@@ -24283,7 +24341,8 @@ var COMMON_OPTIONS = [
   ["--json", "One JSON object on stdout, where a command has it"],
   ["--no-color", "Plain text (also NO_COLOR=1, or a pipe)"],
   ["--ascii", "ASCII symbols only"],
-  ["-h, --help", "Help for pkey, or for one command"]
+  ["-h, --help", "Help for pkey, or for one command"],
+  ["-V, --version", "Print pkey's version (first word only)"]
 ];
 var VALUELESS = [
   "--dry-run",
@@ -24304,9 +24363,10 @@ var VALUELESS = [
 function findCommand(name) {
   return COMMANDS.find((c) => c.name === name);
 }
-var VALUELESS_FLAGS = new Set(
-  COMMANDS.flatMap((c) => c.valueless ?? [])
-);
+var VALUELESS_FLAGS = /* @__PURE__ */ new Set([
+  ...VALUELESS.map((f) => f.slice(2)),
+  ...COMMANDS.flatMap((c) => c.valueless ?? [])
+]);
 var STACK_COLUMNS = 50;
 function twoColumns(term, rows, column, indent = 2) {
   const { painter, caps } = term;
@@ -24567,25 +24627,6 @@ function renderCommandHelp(term, cmd, sub) {
           rows.map(([n]) => n)
         )
       )
-    );
-  }
-  const shown2 = usage.join(" ");
-  const valueless = VALUELESS.filter(
-    (f) => new RegExp(`${f}(?![\\w-])`).test(shown2)
-  );
-  if (valueless.length) {
-    const list2 = valueless.length === 1 ? valueless[0] : `${valueless.slice(0, -1).join(", ")} and ${valueless.at(-1)}`;
-    out.push(
-      "",
-      ...wrapSpans(
-        [
-          {
-            text: `Note: ${list2} ${valueless.length === 1 ? "takes" : "take"} no value. A valueless flag swallows the next bare word, so pass it last or as ${valueless[0]}=true.`,
-            style: ["muted"]
-          }
-        ],
-        term.caps.columns
-      ).map(line)
     );
   }
   out.push(
@@ -25020,8 +25061,15 @@ async function findAll(rootDir, names) {
   return out;
 }
 function parseFile(file, raw) {
-  if (file.endsWith(".json")) return JSON.parse(raw);
-  return (0, import_yaml2.parse)(raw);
+  const json = file.endsWith(".json");
+  try {
+    return json ? JSON.parse(raw) : (0, import_yaml2.parse)(raw);
+  } catch (err) {
+    const reason = err.message.split("\n")[0].replace(/:$/, "");
+    throw new Error(
+      `.pkey/${file} is not valid ${json ? "JSON" : "YAML"}: ${reason}. Fix the syntax, then run pkey validate again.`
+    );
+  }
 }
 function isRecord7(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -25053,7 +25101,7 @@ var DEV_KEY_COMMANDS = [
   "fill-seats"
 ];
 var DEV_USAGE = [
-  "pkey dev [--port n] [--auto-approve] [--builtin] [--out file | --no-write]",
+  "Usage: pkey dev [--port n] [--auto-approve] [--builtin] [--out file | --no-write]",
   "pkey dev keys|status",
   `pkey dev ${DEV_KEY_COMMANDS.join("|")} <key>`,
   "pkey dev config <name> <json> [--key <key>]",
@@ -25463,7 +25511,12 @@ function manifestFact(result, problem) {
 }
 async function checkRemote(opts) {
   const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
-  const res = await (opts.fetchImpl ?? fetch)(url);
+  let res;
+  try {
+    res = await (opts.fetchImpl ?? fetch)(url);
+  } catch (err) {
+    throw new Error(networkMessage(err, url));
+  }
   if (!res.ok)
     return {
       url,
@@ -38359,7 +38412,7 @@ ${DISTRIBUTION_CI_USAGE}`
     throw new Error("--deliverable goes with --version, not --release.");
   if (opts.type === "submission" && (opts.buildId || opts.platformRef))
     throw new Error(
-      "A submission report takes no --build or --platform-ref (a submission is per release)."
+      "--build and --platform-ref go with an availability report; a submission is per release."
     );
   const since = epochFlag(opts.since);
   const platformRef = jsonObjectFlag("platform-ref", opts.platformRef);
@@ -45337,6 +45390,11 @@ async function runPkey(argv2, io = {}) {
   }
 }
 async function runCommand(argv2, io) {
+  if (argv2[0] === "--version" || argv2[0] === "-V" || argv2[0] === "-v") {
+    io.stdout.write(`pkey ${CLI_VERSION}
+`);
+    return 0;
+  }
   const global = globalFlags(argv2);
   const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
@@ -45363,12 +45421,23 @@ async function runCommand(argv2, io) {
       stderr.write(unknownCommand(parsed.command, term(stderr)));
       return 2;
     }
+    const sub = parsed.positional[0];
+    if (cmd.tree && cmd.name !== "completion" && sub !== void 0 && !(sub in cmd.tree)) {
+      stderr.write(
+        unknownCommand(`${cmd.name} ${sub}`, term(stderr), cmd.name)
+      );
+      return 2;
+    }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
     return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
   } catch (err) {
-    stderr.write(`${untrustedLines(err.message, ci.env)}
+    const message = isInternalError(err) ? internalMessage(err) : networkMessage(err);
+    stderr.write(`${untrustedLines(message, ci.env)}
 `);
-    return 1;
+    if (ci.env.PKEY_DEBUG && err instanceof Error && err.stack)
+      stderr.write(`${untrustedLines(err.stack, ci.env)}
+`);
+    return isUsageError(message) ? 2 : 1;
   }
 }
 var HANDLERS = {
@@ -45395,9 +45464,9 @@ var HANDLERS = {
     { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci }
   )
 };
-function unknownCommand(name, term) {
+function unknownCommand(name, term, parent) {
   const { painter, symbols, caps } = term;
-  const text = `Unknown command "${name}". Run pkey help to see every command.`;
+  const text = parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`;
   const lines4 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
   return `${lines4.map(
     (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
@@ -45592,7 +45661,7 @@ async function validateJson(dir, cwd, stdout, fixed) {
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: "no-manifest",
+        error: /is not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
         message: e.message
       })
     );
@@ -45755,6 +45824,7 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci) {
     stdout.write(
       `
 Remote discovery: failed (${remote.status}) ${remote.url}
+Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?
 `
     );
     return 1;
@@ -45831,14 +45901,13 @@ async function cmdBundle(parsed, cwd, stdout, env) {
     product,
     deviceId: device,
     graceDays: Number(graceRaw),
-    // `--no-config` is a boolean flag, so it is read with flagBool; see the note in
-    // `pkey bundle --help` about passing valueless flags last or with `=`.
+    // `--no-config` is a boolean flag, so it is read with flagBool.
     includeConfig: !flagBool(parsed, "no-config"),
     licenseId: flagString(parsed, "license"),
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    token: process.env[ADMIN_TOKEN_ENV]
+    token: env[ADMIN_TOKEN_ENV]
   });
   const rel = path30.relative(cwd, result.file);
   stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
@@ -45852,7 +45921,7 @@ async function cmdBundle(parsed, cwd, stdout, env) {
 `
   );
   stdout.write(
-    "\nNext: transfer this file to the offline machine and import it there.\n"
+    "\nNext: transfer this file to the offline device and import it there.\n"
   );
   return 0;
 }
@@ -45864,7 +45933,7 @@ async function cmdMigrate(parsed, stdout, env, fetchImpl) {
     verb,
     target,
     baseUrl: flagString(parsed, "base-url"),
-    token: process.env[ADMIN_TOKEN_ENV],
+    token: env[ADMIN_TOKEN_ENV],
     fetchImpl
   });
   stdout.write(
@@ -45878,6 +45947,10 @@ function cmdTrust(parsed, stdout) {
   const publicKey = flagString(parsed, "public-key") ?? parsed.positional[1];
   if (!kid || !publicKey)
     throw new Error("Usage: pkey trust --kid <kid> --public-key <base64url>");
+  if (!/^[A-Za-z0-9_-]{43}$/.test(publicKey))
+    throw new Error(
+      `--public-key must be an Ed25519 public key: 43 base64url characters (A-Z a-z 0-9 - _); got ${publicKey.length}. Copy it from the console's Keys & secrets page.`
+    );
   for (const lang of SDK_LANGS) {
     const setup = renderSdkSetup(lang, {
       slug: "<slug>",
@@ -46451,7 +46524,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
         return 0;
       }
       if (parsed.positional[1] !== "generate" || !kid || !outFile)
-        throw new Error(KEYS_USAGE);
+        throw new Error(`${KEYS_USAGE}
+${CONTENT_KEYS_USAGE}`);
       const generated = await generateReleaseKey({
         kid,
         out: path30.resolve(cwd, outFile),
@@ -46483,9 +46557,16 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
     }
     default:
       throw new Error(
-        `${PUBLISH_USAGE}
-${CONTENT_STAMP_USAGE}
-${CHANNEL_USAGE}`
+        [
+          PUBLISH_USAGE,
+          CONTENT_STAMP_USAGE,
+          REVOKE_USAGE,
+          REVOKE_DELEGATION_USAGE,
+          KEYS_USAGE,
+          CONTENT_KEYS_USAGE,
+          DELEGATE_USAGE,
+          CHANNEL_USAGE
+        ].join("\n")
       );
   }
 }

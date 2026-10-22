@@ -187,7 +187,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
           '"requiredSecrets","warnings","errors"}, each warning and error as ' +
           '{"code","message","at","file"}. When no manifest can be read it is ' +
           '{"v":1,"command":"validate","event":"result","ok":false,"exit":1,' +
-          '"error":"no-manifest","message"}.',
+          '"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a ' +
+          "file is not valid JSON or YAML.",
       },
       {
         text:
@@ -368,7 +369,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
         text:
           "pkey bundle mints one offline activation bundle and writes it to a file (default " +
           "<product>-<first 8 of device id>.pkeybundle; --base-url defaults to " +
-          `${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`,
+          `${DEFAULT_BASE_URL}). Copy that file to the air-gapped device and import it there.`,
       },
       {
         text:
@@ -1055,6 +1056,7 @@ export const COMMON_OPTIONS: ReadonlyArray<readonly [string, string]> = [
   ["--no-color", "Plain text (also NO_COLOR=1, or a pipe)"],
   ["--ascii", "ASCII symbols only"],
   ["-h, --help", "Help for pkey, or for one command"],
+  ["-V, --version", "Print pkey's version (first word only)"],
 ];
 
 /** The exit codes every command shares (the reference page and the README render this). */

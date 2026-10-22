@@ -20,6 +20,7 @@ Every `pkey` command and flag. Run `pkey help` for the same table in your termin
 | `--no-color` | Plain text (also NO_COLOR=1, or a pipe) |
 | `--ascii` | ASCII symbols only |
 | `-h, --help` | Help for pkey, or for one command |
+| `-V, --version` | Print pkey's version (first word only) |
 
 ## Exit codes
 
@@ -55,7 +56,7 @@ pkey validate [path] [--fix] [--json]
 
 pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid.
 
---json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: \{"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"\}, each warning and error as \{"code","message","at","file"\}. When no manifest can be read it is \{"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"\}.
+--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: \{"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"\}, each warning and error as \{"code","message","at","file"\}. When no manifest can be read it is \{"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"\}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.
 
 --fix repairs what it safely can before it validates: a field written in an old spelling moves to its canonical place when that place is empty (the deprecated_spelling warnings), keeping YAML comments. It never overwrites a value and leaves a conflict for you. It prints each move, or "Nothing to fix." With --json the moves are the result's "fixed" list.
 
@@ -152,7 +153,7 @@ Mint an offline activation bundle for one device.
 pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force]
 ```
 
-pkey bundle mints one offline activation bundle and writes it to a file (default &lt;product&gt;-&lt;first 8 of device id&gt;.pkeybundle; --base-url defaults to https://key.plrs.im). Copy that file to the air-gapped machine and import it there.
+pkey bundle mints one offline activation bundle and writes it to a file (default &lt;product&gt;-&lt;first 8 of device id&gt;.pkeybundle; --base-url defaults to https://key.plrs.im). Copy that file to the air-gapped device and import it there.
 
 --base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the token is sent to whatever origin you name, so any other origin is refused before anything is sent. The file is written with mode 0600, is never created over an existing one without --force, and is never written through a symbolic link.
 

@@ -5,7 +5,7 @@
  * `POST /manage/api/products/<slug>/bundles`. It signs the licence and/or config documents an
  * air-gapped install would have fetched, wraps them with the trust manifest needed to verify
  * them, and returns one compact `pkey-bundle+jws`. This module performs that call and drops the
- * JWS on disk as a single file an operator can hand-carry to the offline machine.
+ * JWS on disk as a single file an operator can hand-carry to the offline device.
  *
  * ── AUTHENTICATION: AN ADMIN API TOKEN ──────────────────────────────────────────────────────
  *
@@ -61,7 +61,7 @@
  *
  * `--device` and `--grace-days` are checked against the same shapes `bundles.ts` enforces
  * (32 base64url characters; an integer 1…365) BEFORE anything is sent. The server would refuse
- * both with a 400, but a typo in a device id pasted off an offline machine's activation screen
+ * both with a 400, but a typo in a device id pasted off an offline device's activation screen
  * should cost a local error message, not a network round trip that reports `fields:
  * ["deviceId"]`.
  *
@@ -222,7 +222,7 @@ export async function mintBundle(
   if (!DEVICE_ID.test(deviceId)) {
     throw new Error(
       `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. ` +
-        "Copy it from the offline machine's activation screen exactly, without spaces or line breaks.",
+        "Copy it from the offline device's activation screen exactly, without spaces or line breaks.",
     );
   }
 

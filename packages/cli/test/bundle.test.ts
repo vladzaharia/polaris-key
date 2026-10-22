@@ -224,7 +224,7 @@ describe("pkey bundle — the request", () => {
     expect(io.out()).toContain(BUNDLE_ID);
     expect(io.out()).toContain(DEFAULT_FILE);
     expect(io.out()).toContain("30 days offline");
-    expect(io.out()).toContain("transfer this file to the offline machine");
+    expect(io.out()).toContain("transfer this file to the offline device");
     expect(io.err()).toBe("");
   });
 

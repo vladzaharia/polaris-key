@@ -337,7 +337,7 @@ PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
 # - Device: <deviceId>
 # - Grace window: 365 days offline
 #
-# Next: transfer this file to the offline machine and import it there.
+# Next: transfer this file to the offline device and import it there.
 ```
 
 `--grace-days` is capped at 365 (`MAX_GRACE_DAYS`), enforced both here and again by the

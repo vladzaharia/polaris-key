@@ -7,7 +7,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -316,6 +316,84 @@ describe("CI never waits on a prompt", () => {
       expect(text, f).not.toMatch(
         /node:readline|process\.stdin|createInterface/,
       );
+    }
+  });
+});
+
+describe("a manifest that does not parse names the file", () => {
+  async function badYaml(): Promise<string> {
+    const cwd = await tempDir();
+    await mkdir(path.join(cwd, ".pkey"));
+    await writeFile(
+      path.join(cwd, ".pkey/product.yaml"),
+      "product: [unclosed\n",
+    );
+    return cwd;
+  }
+
+  it("validate says which file and keeps the code frame out", async () => {
+    const cwd = await badYaml();
+    const r = await run(["validate"], { cwd });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain(".pkey/product.yaml is not valid YAML:");
+    expect(r.err).toContain("line 2, column 1");
+    expect(r.err).toContain("pkey validate again");
+    expect(r.err).not.toContain("^");
+  });
+
+  it("validate --json says unreadable-manifest, not no-manifest", async () => {
+    const cwd = await badYaml();
+    const r = await run(["validate", "--json"], { cwd });
+    expect(JSON.parse(r.out)).toMatchObject({
+      ok: false,
+      exit: 1,
+      error: "unreadable-manifest",
+    });
+  });
+
+  it("a missing file reads as a sentence, not a raw ENOENT", async () => {
+    const r = await run(["mirror", "--lang", "ts", "--catalog", "nofile.json"]);
+    expect(r.code).toBe(1);
+    expect(r.err).toMatch(/^No such file or directory: .*nofile\.json\n$/);
+  });
+});
+
+describe("pkey dev on a taken port", () => {
+  it("says which address and what to do", () => {
+    const err = Object.assign(
+      new Error("listen EADDRINUSE: address already in use 127.0.0.1:8787"),
+      {
+        code: "EADDRINUSE",
+        address: "127.0.0.1",
+        port: 8787,
+      },
+    );
+    expect(networkMessage(err)).toBe(
+      "127.0.0.1:8787 is already in use. Stop what holds it, or pass --port <n>.",
+    );
+  });
+});
+
+describe("pkey --version", () => {
+  it("prints the version as the first word, and stays a flag after a command", async () => {
+    for (const flag of ["--version", "-V", "-v"]) {
+      const r = await run([flag]);
+      expect(r.code).toBe(0);
+      expect(r.out).toMatch(/^pkey \d+\.\d+\.\d+\n$/);
+    }
+    // `release publish --version v` is the release's version, not a request for pkey's.
+    const publish = await run(["release", "publish", "--version", "1.0.0"]);
+    expect(publish.out).not.toMatch(/^pkey \d/);
+    expect(publish.code).toBe(2);
+  });
+});
+
+describe("terminology", () => {
+  it("no command's help says machine (a device, not a machine)", async () => {
+    const { COMMANDS } = await import("../src/help.js");
+    for (const c of COMMANDS) {
+      const r = await run(["help", c.name]);
+      expect(r.out, c.name).not.toMatch(/\bmachines?\b/i);
     }
   });
 });
