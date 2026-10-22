@@ -285,6 +285,21 @@ export async function listWideProductAdmins(
   );
 }
 
+/** `product_admin` bindings on exactly one scope, held by ACTIVE accounts, oldest first. */
+export async function listProductAdminBindings(
+  db: Db,
+  scope: string,
+  limit: number,
+): Promise<BindingRow[]> {
+  return db.all<BindingRow>(
+    `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
+      WHERE b.role = 'product_admin' AND b.scope = ? AND a.status = 'active'
+      ORDER BY b.granted_at, b.id LIMIT ?`,
+    scope,
+    limit,
+  );
+}
+
 /** Stored platform-scope Superadmin bindings of active accounts. */
 export async function listStoredSuperadmins(db: Db): Promise<BindingRow[]> {
   return db.all<BindingRow>(

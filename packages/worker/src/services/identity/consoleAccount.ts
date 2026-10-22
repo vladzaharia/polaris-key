@@ -481,9 +481,35 @@ export async function consoleDirectory(
   accountIds: readonly string[],
   now: number,
 ): Promise<Map<string, ConsoleDirectoryEntry>> {
+  return (await consoleDirectoryRead(env, db, accountIds, now)).entries;
+}
+
+/** A person as the product-scope roster and `/access/admins` name them: no last sign-in. */
+export type ConsoleDirectoryPerson = Omit<
+  ConsoleDirectoryEntry,
+  "lastSignInAt"
+>;
+
+/**
+ * The directory read behind {@link consoleDirectory}. `lastSignIn: false` skips the audit queries
+ * and leaves `lastSignInAt` `null` (the entry is typed without it by {@link consoleDirectoryPeople}).
+ * `incomplete` is true when the erasure ledger could not be read for at least one account (R2
+ * failure or no bucket): that account is left out, and the caller says the answer is incomplete.
+ */
+export async function consoleDirectoryRead(
+  env: Env,
+  db: Db,
+  accountIds: readonly string[],
+  now: number,
+  opts: { lastSignIn?: boolean } = {},
+): Promise<{
+  entries: Map<string, ConsoleDirectoryEntry>;
+  incomplete: boolean;
+}> {
   const out = new Map<string, ConsoleDirectoryEntry>();
+  let incomplete = false;
   const ids = [...new Set(accountIds)];
-  if (ids.length === 0) return out;
+  if (ids.length === 0) return { entries: out, incomplete };
   const rp = adminOidcConfig(env);
   const issuerKey = rp ? portalIdentityIssuerKey(rp.issuer) : null;
   const aliasOf = new Map<string, string>(); // alias -> accountId
@@ -518,7 +544,9 @@ export async function consoleDirectory(
       : [];
     for (const a of accounts) {
       // An account on the erasure ledger is gone, whatever a restored D1 row says.
-      if ((await erasureVerdict(env, now, a.id)) !== "clear") continue;
+      const verdict = await erasureVerdict(env, now, a.id);
+      if (verdict === "unavailable") incomplete = true;
+      if (verdict !== "clear") continue;
       const mine = links.filter((l) => l.account_id === a.id);
       const memberId = await memberIdFor(env, a.id);
       aliasOf.set(memberId, a.id);
@@ -538,7 +566,9 @@ export async function consoleDirectory(
     }
   }
   const last = new Map<string, number>();
-  for (const part of chunks([...aliasOf.keys()], IN_CHUNK)) {
+  for (const part of opts.lastSignIn === false
+    ? []
+    : chunks([...aliasOf.keys()], IN_CHUNK)) {
     const marks = part.map(() => "?").join(", ");
     const rows = await db.all<{ actor_sub: string; at: number }>(
       `SELECT actor_sub, MAX(at) AS at FROM platform_audit
@@ -553,7 +583,26 @@ export async function consoleDirectory(
   }
   for (const [id, b] of base)
     out.set(id, { ...b, lastSignInAt: last.get(id) ?? null });
-  return out;
+  return { entries: out, incomplete };
+}
+
+/** {@link consoleDirectoryRead} without the last-sign-in queries, for the routes that never show it. */
+export async function consoleDirectoryPeople(
+  env: Env,
+  db: Db,
+  accountIds: readonly string[],
+  now: number,
+): Promise<{
+  people: Map<string, ConsoleDirectoryPerson>;
+  incomplete: boolean;
+}> {
+  const r = await consoleDirectoryRead(env, db, accountIds, now, {
+    lastSignIn: false,
+  });
+  const people = new Map<string, ConsoleDirectoryPerson>();
+  for (const [id, { lastSignInAt: _omit, ...p }] of r.entries)
+    people.set(id, p);
+  return { people, incomplete: r.incomplete };
 }
 
 /**

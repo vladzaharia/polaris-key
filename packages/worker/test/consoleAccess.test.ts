@@ -248,6 +248,7 @@ describe("GET /access/admins", () => {
     expect(r.body).toEqual({
       scope: "product:alpha",
       area: "license",
+      incomplete: false,
       admins: [],
     });
   });

@@ -32,6 +32,8 @@ import {
 } from "../src/core/accounts/personalTokens.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
+import { asR2 } from "./r2Mock.js";
+import { LedgerBucket } from "./eraseRestore.js";
 import { recordPlatformSecurityEvent } from "../src/core/ops/securityEvents.js";
 
 const GROUP = "platform-admins";
@@ -182,6 +184,7 @@ interface MemberBody {
   }[];
 }
 interface ListBody {
+  incomplete?: boolean;
   rootRule: { group: string | null };
   members: MemberBody[];
   invites: {
@@ -505,7 +508,7 @@ describe("ST-31.4 review fixes", () => {
     expect(delRoot.token.email).toBe("other@example.com");
   });
 
-  it("a disabled account is flagged, and an erased one is not listed", async () => {
+  it("a disabled account is flagged", async () => {
     const root = await person(env, db, "rita", { keepRoot: true });
     const ann = await person(env, db, "ann");
     const bob = await person(env, db, "bob");
@@ -522,6 +525,99 @@ describe("ST-31.4 review fixes", () => {
     expect(flag("ann")).toBe(true);
     expect(flag("bob")).toBe(false);
     expect(flag("rita")).toBe(false);
+  });
+
+  it("an erased account (root holder or binding holder) is on no roster; an unreadable ledger says incomplete", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    const erasedRoot = await person(env, db, "ed", { keepRoot: true });
+    const erasedBound = await person(env, db, "bea");
+    const ann = await person(env, db, "ann");
+    await bind(db, erasedBound.accountId, "platform_admin", "platform", null);
+    await bind(db, erasedBound.accountId, "product_admin", "product:alpha", [
+      "members",
+    ]);
+    await bind(db, ann.accountId, "product_admin", "product:alpha", [
+      "members",
+    ]);
+    // The ledger holds two ids; D1 still says they are active.
+    const ledger = new LedgerBucket();
+    await ledger.put(`erasures/${erasedRoot.accountId}`, "x");
+    await ledger.put(`erasures/${erasedBound.accountId}`, "x");
+    env.BLOBS = asR2(ledger);
+    const emails = (b: { members: { email: string }[] }) =>
+      b.members.map((m) => m.email);
+    const platform = await list(root);
+    expect(emails(platform)).toContain("ann@example.com");
+    expect(emails(platform)).not.toContain("ed@example.com");
+    expect(emails(platform)).not.toContain("bea@example.com");
+    expect(platform.incomplete).toBe(false);
+    const prodRes = await call(
+      env,
+      db,
+      root,
+      "GET",
+      "/api/products/alpha/members",
+    );
+    expect(prodRes.status).toBe(200);
+    const prodText = await prodRes.text();
+    const prod = JSON.parse(prodText) as {
+      members: { email: string }[];
+      platformRoles: { email: string }[];
+      incomplete: boolean;
+    };
+    expect(emails(prod)).toEqual(["ann@example.com"]);
+    expect(prod.platformRoles.map((r) => r.email)).toEqual([
+      "rita@example.com",
+    ]);
+    // The product route never carries a co-admin's last sign-in or disabled flag.
+    expect(prodText).not.toContain("lastSignInAt");
+    expect(prodText).not.toContain("disabled");
+    const acc = await call(
+      env,
+      db,
+      ann,
+      "GET",
+      "/api/access/admins?scope=product:alpha&area=members",
+    );
+    const accBody = (await acc.json()) as { admins: { email: string }[] };
+    expect(accBody.admins.map((a) => a.email)).toEqual(["rita@example.com"]);
+    const accAsRoot = await call(
+      env,
+      db,
+      root,
+      "GET",
+      "/api/access/admins?scope=product:alpha&area=members",
+    );
+    expect(
+      ((await accAsRoot.json()) as { admins: { email: string }[] }).admins.map(
+        (a) => a.email,
+      ),
+    ).toEqual(["ann@example.com"]);
+
+    // Ledger unreadable for an account the fence has not yet cached: it is dropped, and the
+    // roster says so instead of looking complete.
+    const late = await getOrCreateAccountByEmail(db, "late@example.com", NOW);
+    await bind(db, late.id, "product_admin", "product:alpha", ["members"]);
+    ledger.down = true;
+    const down = await call(env, db, root, "GET", "/api/members");
+    expect(down.status).toBe(200);
+    const downBody = (await down.json()) as ListBody;
+    expect(downBody.incomplete).toBe(true);
+    expect(emails(downBody)).not.toContain("late@example.com");
+    const downProd = (await (
+      await call(env, db, root, "GET", "/api/products/alpha/members")
+    ).json()) as { incomplete: boolean };
+    expect(downProd.incomplete).toBe(true);
+    const downAcc = (await (
+      await call(
+        env,
+        db,
+        root,
+        "GET",
+        "/api/access/admins?scope=product:alpha&area=members",
+      )
+    ).json()) as { incomplete: boolean };
+    expect(downAcc.incomplete).toBe(true);
   });
 
   it("says truncated when a cap cuts the list, and still finds a real member past the cap by id", async () => {
