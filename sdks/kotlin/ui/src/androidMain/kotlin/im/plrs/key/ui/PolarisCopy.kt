@@ -217,6 +217,30 @@ public data class PolarisCopy(
     /** The download line: %1$s the bytes so far, %2$s the total (update.downloading). */
     val updateDownloading: String = "Downloading · %1\$s of %2\$s",
     val updateFailed: String = "The update couldn't be installed. Try again later.",
+    /** update.current: %1$s the running version, %2$s the size. */
+    val updateCurrent: String = "You have %1\$s · %2\$s download",
+    /** The same line when the decision carries no size (no catalog line yet). */
+    val updateCurrentNoSize: String = "You have %1\$s",
+    /** update.whatsNew */
+    val updateWhatsNew: String = "What's new",
+    /** update.allChanges: %1$s the version. */
+    val updateAllChanges: String = "All changes in %1\$s",
+    /** update.skipVersion */
+    val updateSkip: String = "Skip this version",
+    /** update.timeLeft: %1$s a duration. */
+    val updateTimeLeft: String = "About %1\$s left",
+    /** update.appStore */
+    val updateAppStore: String = "Update on the App Store",
+    /** update.googlePlay */
+    val updateGooglePlay: String = "Update on Google Play",
+    /** update.steam */
+    val updateSteam: String = "Get it on Steam",
+    /** update.testflight */
+    val updateTestflight: String = "Open TestFlight",
+    /** update.altstore */
+    val updateAltstore: String = "Open AltStore",
+    /** update.reload */
+    val updateReload: String = "Reload",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────
     val packsTitle: String = "Downloading content",
@@ -236,6 +260,10 @@ public data class PolarisCopy(
     val durationMinutes: String = "%1\$s minutes",
     val durationMinute: String = "1 minute",
     val durationLessThanMinute: String = "less than a minute",
+    /** Time left under a minute. */
+    val durationSeconds: String = "%1\$s seconds",
+    /** Time left under a minute. */
+    val durationSecond: String = "1 second",
     val timeAgo: String = "%1\$s ago",
     val timeJustNow: String = "just now",
     val bytesB: String = "%1\$s B",

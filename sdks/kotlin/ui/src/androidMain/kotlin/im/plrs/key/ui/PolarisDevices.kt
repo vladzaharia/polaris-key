@@ -20,9 +20,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -360,10 +357,10 @@ internal fun PolarisDeviceRow(
             if (!open) {
                 val tint = MaterialTheme.colorScheme.onSurfaceVariant
                 PolarisIconButton(onClick = onRename, enabled = !busy, modifier = Modifier.focusRequester(renameButton)) {
-                    Icon(Icons.Filled.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
+                    Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
                 }
                 PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
+                    Icon(PolarisSymbols.ExitToApp, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
                 }
             }
         }

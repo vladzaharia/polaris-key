@@ -2,42 +2,6 @@
   "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12, react UK-05). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
   "debt": [
     {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
-      "count": 4
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
-      "count": 2
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
-      "count": 2
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 7
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
-      "count": 4
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-stock-spinner",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 1
-    },
-    {
       "kit": "godot",
       "rule": "godot-rtl",
       "file": "sdks/godot/addons/polaris_key/ui/product/pkey_product_header.gd",

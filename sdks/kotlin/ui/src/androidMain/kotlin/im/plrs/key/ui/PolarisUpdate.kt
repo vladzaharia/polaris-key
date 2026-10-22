@@ -25,9 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -94,7 +91,7 @@ public fun PolarisUpdateBanner(
                 Row(verticalAlignment = Alignment.Top) {
                     // A section accent is a service cue, which product screens never draw (UI-KITS.md 1.2).
                     Icon(
-                        if (ui.critical) Icons.Filled.Warning else Icons.Filled.Refresh,
+                        if (ui.critical) PolarisSymbols.Warning else PolarisSymbols.Refresh,
                         contentDescription = null,
                         tint = if (ui.critical) PolarisTheme.status.warning else scheme.onSecondaryContainer,
                         modifier = Modifier.size(24.dp),
@@ -133,8 +130,27 @@ public fun PolarisUpdatePrompt(
     modifier: Modifier = Modifier,
     onUpdate: () -> Unit = {},
     onLater: (() -> Unit)? = null,
+    onSkip: (() -> Unit)? = null,
 ) {
-    PolarisUpdatePromptCard(ui, modifier, onUpdate, onLater, footer = false)
+    PolarisUpdatePromptCard(ui, modifier, onUpdate, onLater, footer = false, onSkip = onSkip)
+}
+
+/** The verb the outlet allows for an available update: "Update on Google Play", else "Update now". */
+internal fun PolarisCopy.updateVerb(ui: PolarisUpdateUi): String = when (ui.outlet) {
+    "play", "play-testing" -> updateGooglePlay
+    "app-store" -> updateAppStore
+    "steam" -> updateSteam
+    "testflight" -> updateTestflight
+    "altstore", "altstore-pal" -> updateAltstore
+    "web" -> updateReload
+    else -> updateNow
+}
+
+/** "You have 2.4.1 · 38 MB download", or without the size when the decision carries none; null when unknown. */
+internal fun PolarisCopy.updateCurrentLine(ui: PolarisUpdateUi): String? {
+    val current = ui.currentVersion ?: return null
+    val size = ui.size ?: return format(updateCurrentNoSize, current)
+    return format(updateCurrent, current, bytes(size))
 }
 
 /** The prompt's title and body for [ui]: the kit-copy "ready" pair once it can restart. */
@@ -163,6 +179,7 @@ private fun PolarisUpdatePromptCard(
     onLater: (() -> Unit)?,
     footer: Boolean,
     sheet: Boolean = false,
+    onSkip: (() -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
@@ -185,7 +202,7 @@ private fun PolarisUpdatePromptCard(
                     if (productName(copy) != null || PolarisTheme.current.logo != null) {
                         PolarisProductIcon(56.dp)
                     } else {
-                        PolarisIconBadge(if (ui.critical) Icons.Filled.Warning else Icons.Filled.Refresh, kind.tint().first, kind.glyph())
+                        PolarisIconBadge(if (ui.critical) PolarisSymbols.Warning else PolarisSymbols.Refresh, kind.tint().first, kind.glyph())
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -196,6 +213,11 @@ private fun PolarisUpdatePromptCard(
                     )
                     Spacer(Modifier.height(8.dp))
                     if (body != null) PolarisBody(body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    if (ui.kind == PolarisUpdateUi.Kind.Install) {
+                        copy.updateCurrentLine(ui)?.let { PolarisBody(it, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                        // A short window keeps the title, version and actions on screen: no room for the notes.
+                        if (!window.compactHeight) PolarisUpdateNotes(ui)
+                    }
                     if (ui.critical) {
                         Spacer(Modifier.height(8.dp))
                         PolarisBody(copy.updateCritical, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -217,6 +239,13 @@ private fun PolarisUpdatePromptCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
+                        ui.secondsLeft?.let {
+                            Text(
+                                copy.format(copy.updateTimeLeft, copy.timeLeft(it.toLong())),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -242,12 +271,53 @@ private fun PolarisUpdatePromptCard(
                     when {
                         ui.kind == PolarisUpdateUi.Kind.Restart -> copy.updateRestartNow
                         downloading -> copy.updateRestartWhenReady
-                        else -> copy.updateNow
+                        else -> copy.updateVerb(ui)
                     },
                     { if (armed) onUpdate() },
                     initialFocus = !laterFirst,
                 )
                 if (onLater != null && !ui.mandatory) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater() }, initialFocus = laterFirst)
+                if (onSkip != null && !ui.mandatory && !downloading && ui.kind == PolarisUpdateUi.Kind.Install && ui.version != null) {
+                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip() })
+                }
+            }
+        }
+    }
+}
+
+/**
+ * What's new: a small label over at most three plain lines, then "All changes in {version} ↗".
+ * No lines hides the label; no page hides the link (UI-KITS.md 4.3 UpdatePrompt).
+ */
+@Composable
+private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
+    val copy = PolarisTheme.copy
+    val scheme = MaterialTheme.colorScheme
+    val uri = androidx.compose.ui.platform.LocalUriHandler.current
+    val lines = ui.notes.take(PolarisUpdateUi.MAX_NOTES)
+    if (lines.isEmpty() && ui.notesUrl == null) return
+    Spacer(Modifier.height(16.dp))
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+        if (lines.isNotEmpty()) {
+            Text(copy.updateWhatsNew, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            for (line in lines) {
+                Text(line, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface)
+            }
+        }
+        val url = ui.notesUrl
+        val version = ui.version
+        if (url != null && version != null) {
+            val label = copy.format(copy.updateAllChanges, version)
+            Row(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { runCatching { uri.openUri(url) } },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.primary)
+                Spacer(Modifier.width(4.dp))
+                Icon(PolarisSymbols.OpenInNew, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -266,7 +336,7 @@ internal val PolarisSheetBelow = 560.dp
  * is its one dismissal.
  */
 @Composable
-public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, onLater: () -> Unit) {
+public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, onLater: () -> Unit, onSkip: (() -> Unit)? = null) {
     val dark = PolarisTheme.current.dark
     Dialog(
         onDismissRequest = { if (!ui.mandatory) onLater() },
@@ -296,6 +366,7 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
                             onLater,
                             footer = true,
                             sheet = true,
+                            onSkip = onSkip,
                         )
                     } else {
                         PolarisUpdatePromptCard(
@@ -304,6 +375,7 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
                             onUpdate,
                             onLater,
                             footer = true,
+                            onSkip = onSkip,
                         )
                     }
                 }
