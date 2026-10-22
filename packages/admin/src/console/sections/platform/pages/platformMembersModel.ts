@@ -204,6 +204,7 @@ export function cannotTake(
   me: Me | undefined,
   role: MemberRole,
   productName: (slug: string) => string = (s) => s,
+  verb: "remove" | "revoke" = "remove",
 ): string | undefined {
   if (role.bindingId === null)
     return "This comes from the root rule. It can't be removed here.";
@@ -216,17 +217,31 @@ export function cannotTake(
   const slug = productOfScope(role.scope) ?? "";
   if (cannotGive(me, choice, slug, role.areas) === undefined) return undefined;
   if (choice === "console_access")
-    return "Only a Platform admin or a Superadmin can remove Console access.";
+    return `Only a Platform admin or a Superadmin can ${verb} Console access.`;
   if (choice === "product_admin") {
     const product = productName(slug);
-    return `Only a Superadmin or an admin of ${product} with Members can remove ${product} admin.`;
+    return `Only a Superadmin or an admin of ${product} with Members can ${verb} ${product} admin.`;
   }
   const word = {
     all_products: "All products admin",
     platform_admin: "Platform admin",
     superadmin: "Superadmin",
   }[choice as "all_products" | "platform_admin" | "superadmin"];
-  return `Only a Superadmin can remove ${word}.`;
+  return `Only a Superadmin can ${verb} ${word}.`;
+}
+
+/** Why the signed-in member cannot change this Product admin's areas, else `undefined`. */
+export function cannotEditAreas(
+  me: Me | undefined,
+  role: MemberRole,
+  productName: (slug: string) => string,
+): string | undefined {
+  if (role.bindingId === null) return cannotTake(me, role, productName);
+  const slug = productOfScope(role.scope) ?? "";
+  if (cannotGive(me, "product_admin", slug, role.areas) === undefined)
+    return undefined;
+  const product = productName(slug);
+  return `Only a Superadmin or an admin of ${product} with Members can change the areas of ${product} admin.`;
 }
 
 /** The roles of a member the signed-in one can take back; `why` is the first refusal, if any. */

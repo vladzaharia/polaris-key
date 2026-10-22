@@ -155,7 +155,7 @@ export interface DataTableProps<T> {
   state?: TableState;
   onStateChange?: (next: TableState) => void;
   facets?: Facet<T>[];
-  search?: { placeholder: string; columns?: string[] };
+  search?: { placeholder: string; label?: string; columns?: string[] };
   selection?: { mode: "multi"; bulkActions: BulkAction<T>[] };
   /** The record a row opens. The primary cell renders as a real link to it. */
   rowHref?: (row: T) => string;

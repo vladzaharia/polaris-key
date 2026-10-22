@@ -100,6 +100,7 @@ export function PlatformMembers(): React.ReactElement {
     [products],
   );
   const folded = useMediaQuery("(max-width: 1365px)");
+  const narrow = useMediaQuery("(max-width: 639px)");
   const group = view.data?.rootRule.group ?? null;
   const rows = React.useMemo(() => rowsOf(view.data), [view.data]);
   const editingMember =
@@ -275,6 +276,7 @@ export function PlatformMembers(): React.ReactElement {
           grantedAt: r.invite.sentAt,
         },
         productName,
+        "revoke",
       );
       return [
         {
@@ -393,7 +395,8 @@ export function PlatformMembers(): React.ReactElement {
           rowActions={rowActions}
           facets={facets}
           search={{
-            placeholder: "Search by name or email",
+            placeholder: narrow ? "Search" : "Search by name or email",
+            label: "Search by name or email",
             columns: ["member"],
           }}
           state={state}

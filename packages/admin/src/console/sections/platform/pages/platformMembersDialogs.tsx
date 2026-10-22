@@ -30,6 +30,7 @@ import { AREA_NAMES, roleLabel } from "../../../access/can.js";
 import { RoleSet } from "../../../access/RoleTag.js";
 import { mutate } from "../../../data/mutations.js";
 import {
+  cannotEditAreas,
   cannotGive,
   cannotTake,
   describeMembersError,
@@ -112,6 +113,8 @@ export function RemoveMemberDialog({
   const member = memberId === null ? null : (live ?? last.current);
   // Bindings this dialog already deleted (a refetch may not have landed yet).
   const gone = React.useRef(new Set<string>());
+  // The partial-failure toast, dismissed once a retry succeeds.
+  const partial = React.useRef<string | number | null>(null);
   React.useEffect(() => {
     if (memberId === null) {
       gone.current.clear();
@@ -157,11 +160,14 @@ export function RemoveMemberDialog({
           }
         } catch (e) {
           if (done > 0)
-            toast.error(`Removed ${done} of ${todo.length} roles`, {
-              description: "Try again to remove the rest.",
-            });
+            partial.current = toast.error(
+              `Removed ${done} of ${todo.length} roles`,
+              { description: "Try again to remove the rest." },
+            );
           throw e;
         }
+        if (partial.current !== null) toast.dismiss(partial.current);
+        partial.current = null;
         toast.success(`Removed ${member!.name || member!.email}`);
       }}
     />
@@ -211,6 +217,7 @@ export function EditRolesDialog({
           <ul className="divide-y divide-border">
             {(member?.roles ?? []).map((r, i) => {
               const why = cannotTake(me, r, productName);
+              const whyAreas = cannotEditAreas(me, r, productName);
               const narrowable =
                 r.role === "product_admin" &&
                 r.scope.startsWith("product:") &&
@@ -229,8 +236,8 @@ export function EditRolesDialog({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={why !== undefined}
-                        disabledReason={why}
+                        disabled={whyAreas !== undefined}
+                        disabledReason={whyAreas}
                         onClick={() => setAreasOf(r)}
                         aria-label={`Edit areas of ${roleLabel({ ...r, source: "" }, productName).label}`}
                       >

@@ -14,6 +14,10 @@ import type {
   MemberInvite,
   MembersView,
 } from "../src/api.js";
+import {
+  cannotEditAreas,
+  cannotTake,
+} from "../src/console/sections/platform/pages/platformMembersModel.js";
 import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 
 /** Platform → Members (`#/platform/members`, ST-31.11): the roster, invites and role changes. */
@@ -816,5 +820,20 @@ describe("Members: the second round (ST-31.11 fix)", () => {
       within(links).getByText(/No email reached b@example.com/),
     ).toBeTruthy();
     expect(within(links).queryByText(/a@example.com\b.*login_hint/)).toBeNull();
+  });
+});
+
+describe("Members: copy by action", () => {
+  const pa = asRole("platform_admin") as unknown as Me;
+  const role = kenji.roles[0]!;
+  const name = (s: string) => s.toUpperCase();
+  it("names the action it refuses", () => {
+    expect(cannotTake(pa, role, name, "revoke")).toMatch(
+      /can revoke DJDL admin/,
+    );
+    expect(cannotTake(pa, role, name)).toMatch(/can remove DJDL admin/);
+    const areas = cannotEditAreas(pa, role, name)!;
+    expect(areas).toMatch(/change the areas of DJDL admin/);
+    expect(areas).not.toMatch(/remove/);
   });
 });
