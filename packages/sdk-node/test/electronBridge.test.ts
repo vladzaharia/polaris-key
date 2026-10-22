@@ -1560,6 +1560,18 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(seen).toEqual(["settings"]);
   });
 
+  it("a window that navigated off the app after subscribing gets no state push", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const states: unknown[] = [];
+    bridge.on("stateChanged", (s) => states.push(s));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.pushState();
+    expect(states).toHaveLength(1);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.pushState();
+    expect(states).toHaveLength(1);
+  });
+
   it("a window that navigated off the app after subscribing gets no open", async () => {
     const { handle, ipc, bridge } = await setup();
     const seen: string[] = [];

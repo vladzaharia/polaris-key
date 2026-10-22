@@ -555,6 +555,10 @@ export function exposePolarisBridge(
         continue;
       }
       try {
+        // Re-checked at push time, like `open` and the progress push: a window that navigated off
+        // the app since it subscribed gets no state (no frame, no push).
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
         wc.send(stateChannel(prefix), state);
       } catch {
         subscribers.delete(id);
