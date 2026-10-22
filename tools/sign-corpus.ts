@@ -37,7 +37,7 @@
 // feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5), `sync-scenarios.json` (the
 // Cloud Sync client scenario corpus, literal data from tools/sync-scenarios.ts, plans/U-01.md
 // §4.1, U-18), `device-label.json` (the device label every SDK sends as `deviceName`,
-// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4), `presentation-matrix.json` (discovery's unsigned
+// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4), `portal-matrix.json` (the product page link, `core.portal`, WIRE-CONTRACT-V4 §5.7, plans/DISC-01.md; rows and a reference in tools/portal-matrix.ts), `presentation-matrix.json` (discovery's unsigned
 // `core.presentation`: the parse rule, the icon size choice and the hash check, WIRE-CONTRACT-V4
 // §5.5, plans/HA-12.md §4; rows and a generator-local reference in tools/presentation-matrix.ts),
 // `ui-matrix.json` (the UI kits' layer-(c) state matrix, plans/UK-02b.md §4; rows, checks and a
@@ -72,6 +72,7 @@ import {
   rebuildContentBlobs,
 } from "./gen-content-corpus.js";
 import { buildSyncScenarios } from "./sync-scenarios.js";
+import { buildPortalMatrix } from "./portal-matrix.js";
 import { buildPresentationMatrix } from "./presentation-matrix.js";
 import { buildUiMatrix } from "./ui-matrix.js";
 import { buildBackendMatrixV1 } from "./corpus/backend.js";
@@ -114,6 +115,7 @@ const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
 const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
+const V2_PORTAL_MATRIX_OUT = join(V2_DIR, "portal-matrix.json");
 const V2_UI_MATRIX_OUT = join(V2_DIR, "ui-matrix.json");
 const V2_BACKEND_MATRIX_OUT = join(V2_DIR, "backend-matrix.json");
 
@@ -244,6 +246,11 @@ async function main(): Promise<void> {
     asciiJson(buildPresentationMatrix()),
     { parser: "json" },
   );
+  // plans/DISC-01.md §4: the product page link (discovery's unsigned `core.portal`), recomputed by
+  // the generator-local reference in tools/portal-matrix.ts. ASCII only.
+  const v2PortalMatrix = await format(asciiJson(buildPortalMatrix()), {
+    parser: "json",
+  });
   // plans/UK-02b.md §4: the UI kits' state matrix, authored rows checked by tools/ui-matrix.ts
   // (which imports nothing it checks; its i18n strings are computed from the kit copy). ASCII only.
   const v2UiMatrix = await format(asciiJson(buildUiMatrix()), {
@@ -275,6 +282,7 @@ async function main(): Promise<void> {
     [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
     [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
     [basename(V2_PRESENTATION_MATRIX_OUT), v2PresentationMatrix],
+    [basename(V2_PORTAL_MATRIX_OUT), v2PortalMatrix],
     [basename(V2_UI_MATRIX_OUT), v2UiMatrix],
     [basename(V2_BACKEND_MATRIX_OUT), v2BackendMatrix],
   ]);

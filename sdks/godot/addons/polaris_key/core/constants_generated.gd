@@ -920,8 +920,11 @@ const DEVICE_LABEL_VERSION := 1
 ## `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 const PRESENTATION_MATRIX_VERSION := 1
 
+## `portalMatrixVersion` of conformance/corpus/v2/portal-matrix.json (WIRE-CONTRACT-V4 §5.7).
+const PORTAL_MATRIX_VERSION := 1
+
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 5
+const UI_MATRIX_VERSION := 6
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1

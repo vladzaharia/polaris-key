@@ -86,6 +86,7 @@ __all__ = [
     "SYNC_SCENARIOS_VERSION",
     "DEVICE_LABEL_VERSION",
     "PRESENTATION_MATRIX_VERSION",
+    "PORTAL_MATRIX_VERSION",
     "UI_MATRIX_VERSION",
     "BACKEND_MATRIX_VERSION",
     "CONTENT_CORPUS_VERSION",
@@ -1614,8 +1615,12 @@ DEVICE_LABEL_VERSION: Final[int] = 1
 PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
+#: `portalMatrixVersion` of conformance/corpus/v2/portal-matrix.json (WIRE-CONTRACT-V4 §5.7).
+PORTAL_MATRIX_VERSION: Final[int] = 1
+
+
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 5
+UI_MATRIX_VERSION: Final[int] = 6
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).

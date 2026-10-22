@@ -1,0 +1,387 @@
+{
+  "portalMatrixVersion": 1,
+  "description": "The product page link, the client half (WIRE-CONTRACT-V4 section 5.7, plans/DISC-01.md). Discovery's unsigned `core.portal`, parsed as a whole, and the one link a terminal kit draws. parseCases: `parsePortal(core)` must equal `expect`. (1) `core` not an object, `portal` not an object, or `enabled` not a boolean: null (unknown). (2) `enabled: false`: {enabled:false}; other members are ignored. (3) `enabled: true`: {enabled:true, activate} where `activate` is the member if it passes WIRE-CONTRACT-V4 section 5.3 rule 4 (an absolute https URL, or http to localhost, 127.0.0.1 or [::1]; no userinfo, backslash, whitespace or control character in a link of at most 2048 characters), else null. Unknown members are ignored and the member never refuses discovery. linkCases: `portalLink({served, portal, baseUrl, product})` must equal `expect` (a link, or null: no link, the kit draws Contact {developer}); `portal` is a normalised parsePortal result. First match: (1) `served` (a response's own link) if it passes rule 4; (2) `portal` is {enabled:false} or {enabled:true, activate:null}: null, never the legacy guess; (3) `portal.activate`; (4) `portal` is null: the legacy link, `<origin>/activate?product=<slug>` with <origin> the customer origin https://polaris.locker when the base with trailing slashes removed is https://key.plrs.im, else that base, the slug percent-encoded (RFC 3986 unreserved characters stay), kept only if it passes rule 4; with no product, null. A client never appends #key= to these links. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps portalMatrixVersion; a changed row or rule bumps it.",
+  "parseCases": [
+    { "name": "core is null", "core": null, "expect": null },
+    { "name": "core is a string", "core": "portal", "expect": null },
+    {
+      "name": "core is an array",
+      "core": [
+        {
+          "portal": {
+            "enabled": true,
+            "activate": "https://polaris.locker/activate?product=djdl"
+          }
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "core has no portal member",
+      "core": { "services": {} },
+      "expect": null
+    },
+    {
+      "name": "portal is a string",
+      "core": { "portal": "on" },
+      "expect": null
+    },
+    {
+      "name": "portal is an array",
+      "core": {
+        "portal": [
+          {
+            "enabled": true,
+            "activate": "https://polaris.locker/activate?product=djdl"
+          }
+        ]
+      },
+      "expect": null
+    },
+    { "name": "portal is null", "core": { "portal": null }, "expect": null },
+    { "name": "portal is a number", "core": { "portal": 1 }, "expect": null },
+    {
+      "name": "enabled is missing",
+      "core": {
+        "portal": { "activate": "https://polaris.locker/activate?product=djdl" }
+      },
+      "expect": null
+    },
+    {
+      "name": "enabled is the string true",
+      "core": {
+        "portal": {
+          "enabled": "true",
+          "activate": "https://polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": null
+    },
+    {
+      "name": "enabled is the number 1",
+      "core": {
+        "portal": {
+          "enabled": 1,
+          "activate": "https://polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": null
+    },
+    {
+      "name": "enabled is null",
+      "core": { "portal": { "enabled": null } },
+      "expect": null
+    },
+    {
+      "name": "off",
+      "core": { "portal": { "enabled": false } },
+      "expect": { "enabled": false }
+    },
+    {
+      "name": "off with an activate (ignored)",
+      "core": {
+        "portal": {
+          "enabled": false,
+          "activate": "https://polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": { "enabled": false }
+    },
+    {
+      "name": "on with a valid link",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      }
+    },
+    {
+      "name": "on with no link",
+      "core": { "portal": { "enabled": true } },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on with an empty activate",
+      "core": { "portal": { "enabled": true, "activate": "" } },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate is http to a public host",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "http://polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate is http to loopback (kept)",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "http://localhost:8787/activate?product=djdl"
+        }
+      },
+      "expect": {
+        "enabled": true,
+        "activate": "http://localhost:8787/activate?product=djdl"
+      }
+    },
+    {
+      "name": "on, activate has userinfo",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://user@polaris.locker/activate?product=djdl"
+        }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate has a backslash in the authority",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker\\@evil.example/activate?product=djdl"
+        }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate has whitespace",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker/activate?product=dj dl"
+        }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate is 2048 characters (kept)",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker/activate?product=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expect": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "name": "on, activate is 2049 characters",
+      "core": {
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker/activate?product=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate is javascript:",
+      "core": {
+        "portal": { "enabled": true, "activate": "javascript:alert(1)" }
+      },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "on, activate is a number",
+      "core": { "portal": { "enabled": true, "activate": 5 } },
+      "expect": { "enabled": true, "activate": null }
+    },
+    {
+      "name": "unknown members are ignored",
+      "core": {
+        "presentation": { "name": "DJDL" },
+        "portal": {
+          "enabled": true,
+          "activate": "https://polaris.locker/activate?product=djdl",
+          "extra": 1
+        },
+        "other": true
+      },
+      "expect": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      }
+    }
+  ],
+  "linkCases": [
+    {
+      "name": "a valid served link beats an off member",
+      "served": "https://polaris.locker/#/p/djdl/free-device?license=lic_1",
+      "portal": { "enabled": false },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/#/p/djdl/free-device?license=lic_1"
+    },
+    {
+      "name": "a valid served link beats an on member",
+      "served": "https://polaris.locker/#/p/djdl/free-device?license=lic_1",
+      "portal": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/#/p/djdl/free-device?license=lic_1"
+    },
+    {
+      "name": "a valid served link beats the legacy guess",
+      "served": "https://polaris.locker/#/p/djdl/free-device?license=lic_1",
+      "portal": null,
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/#/p/djdl/free-device?license=lic_1"
+    },
+    {
+      "name": "an invalid served link falls through to the member",
+      "served": "http://example.com/x",
+      "portal": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "an invalid served link with the portal off is no link",
+      "served": "javascript:alert(1)",
+      "portal": { "enabled": false },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": null
+    },
+    {
+      "name": "an invalid served link falls through to the legacy guess",
+      "served": "https://u@example.com/x",
+      "portal": null,
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "off is no link",
+      "served": null,
+      "portal": { "enabled": false },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": null
+    },
+    {
+      "name": "on with no usable link is no link, never the guess",
+      "served": null,
+      "portal": { "enabled": true, "activate": null },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": null
+    },
+    {
+      "name": "on gives the member's link",
+      "served": null,
+      "portal": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      },
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "on gives the member's link on a custom base",
+      "served": null,
+      "portal": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      },
+      "baseUrl": "https://api.example.com",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "on gives the member's link with no product",
+      "served": null,
+      "portal": {
+        "enabled": true,
+        "activate": "https://polaris.locker/activate?product=djdl"
+      },
+      "baseUrl": "https://key.plrs.im",
+      "product": "",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "legacy: the default base maps to the customer origin",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://key.plrs.im",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "legacy: the default base with a trailing slash",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://key.plrs.im/",
+      "product": "djdl",
+      "expect": "https://polaris.locker/activate?product=djdl"
+    },
+    {
+      "name": "legacy: a custom https base keeps its host",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://licensing.example.com",
+      "product": "djdl",
+      "expect": "https://licensing.example.com/activate?product=djdl"
+    },
+    {
+      "name": "legacy: a base with a path keeps it",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://api.example.com/pkey/",
+      "product": "djdl",
+      "expect": "https://api.example.com/pkey/activate?product=djdl"
+    },
+    {
+      "name": "legacy: a loopback base keeps http",
+      "served": null,
+      "portal": null,
+      "baseUrl": "http://localhost:8787",
+      "product": "djdl",
+      "expect": "http://localhost:8787/activate?product=djdl"
+    },
+    {
+      "name": "legacy: a public http base is no link",
+      "served": null,
+      "portal": null,
+      "baseUrl": "http://api.example.com",
+      "product": "djdl",
+      "expect": null
+    },
+    {
+      "name": "legacy: no product is no link",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://key.plrs.im",
+      "product": "",
+      "expect": null
+    },
+    {
+      "name": "legacy: the slug is percent-encoded",
+      "served": null,
+      "portal": null,
+      "baseUrl": "https://key.plrs.im",
+      "product": "a b",
+      "expect": "https://polaris.locker/activate?product=a%20b"
+    }
+  ]
+}
