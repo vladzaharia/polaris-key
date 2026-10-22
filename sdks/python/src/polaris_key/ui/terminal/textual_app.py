@@ -48,7 +48,7 @@ SECTIONS: Tuple[Tuple[str, str], ...] = (
     ("devices", "account.devices"),
     ("updates", "account.updates"),
     ("settings", "settings.title"),
-    ("about", "about.title"),
+    ("about", "about.nav"),
 )
 
 
@@ -171,6 +171,7 @@ class PolarisKeyApp(App):
         data: Optional[Dict[str, Any]] = None,
         manage_url: Optional[str] = None,
         support_url: Optional[str] = None,
+        privacy_url: Optional[str] = None,
     ) -> None:
         self.client = client
         self.kit_theme = theme or Theme()
@@ -184,6 +185,8 @@ class PolarisKeyApp(App):
         self.manage_url = manage_url
         #: Where the developer's support lives; About offers it only when the host gives one.
         self.support_url = support_url
+        #: Where the developer's privacy policy lives; About offers it only when the host gives one.
+        self.privacy_url = privacy_url
         self.section = "account"
         #: The account pane's second step: "Sign out of {product}?" with its Cancel.
         self.confirming = False
@@ -381,13 +384,12 @@ class PolarisKeyApp(App):
         as markup. The name is on this line once (DL5); the pane under it does not repeat it."""
         # Narrow, the section row under it names the section; the header keeps the identity whole
         # rather than cut the title mid-word.
-        # About's label is the product name again ("About {product}"), so its header says it once.
-        section = [] if self.has_class("-narrow") or key == "about.title" else [" · " + clean(self.copy(key))]
+        section = [] if self.has_class("-narrow") else [" · " + clean(self.copy(key))]
         return Text.assemble(self._monogram(), " ", (clean(self.identity.name), "bold"), *section, no_wrap=True, overflow="ellipsis")
 
     def _label(self, key: str) -> str:
-        """A section's name in the side list; About's catalog title takes the product."""
-        return self.copy(key, product=self.identity.inline_name)
+        """A section's name in the side list."""
+        return self.copy(key)
 
     def _monogram(self) -> Text:
         """No icon in a terminal, so the product's initial on the neutral tile (UI-KITS §1.2)."""
@@ -534,7 +536,9 @@ class PolarisKeyApp(App):
         if self.page_url():
             links.append(Button(_out(t("common.manage")), classes="pk-secondary", id="pk-about-manage"))
         if self.support_url:
-            links.append(Button(_out(t("status.contact", developer=self.identity.developer or self.identity.name)), classes="pk-secondary", id="pk-about-support"))
+            links.append(Button(_out(t("about.support")), classes="pk-secondary", id="pk-about-support"))
+        if self.privacy_url:
+            links.append(Button(_out(t("about.privacy")), classes="pk-secondary", id="pk-about-privacy"))
         if links:
             out += [self._actions(*links), self._note()]
         return out
@@ -821,6 +825,8 @@ class PolarisKeyApp(App):
             self._open(self.page_url())
         elif bid == "pk-about-support":
             self._open(self.support_url)
+        elif bid == "pk-about-privacy":
+            self._open(self.privacy_url)
         elif bid in ("pk-manage", "pk-devices-manage"):
             self._open(self.page_url())
         elif bid == "pk-sign-out":
@@ -879,10 +885,10 @@ def _out(label: str) -> str:
     return f"{label} ↗"
 
 
-def run_app(client: Any, *, theme: Optional[Theme] = None, scheme: Optional[str] = None, manage_url: Optional[str] = None, support_url: Optional[str] = None) -> Any:
+def run_app(client: Any, *, theme: Optional[Theme] = None, scheme: Optional[str] = None, manage_url: Optional[str] = None, support_url: Optional[str] = None, privacy_url: Optional[str] = None) -> Any:
     """Open the account view for ``client`` until the person quits; returns the app's result
     (``"update"`` when the person chose to update)."""
     from .env import detect
 
     s = scheme or detect(color_scheme=(theme or Theme()).color_scheme).scheme
-    return PolarisKeyApp(client, theme=theme, scheme=s, manage_url=manage_url, support_url=support_url).run()
+    return PolarisKeyApp(client, theme=theme, scheme=s, manage_url=manage_url, support_url=support_url, privacy_url=privacy_url).run()

@@ -1697,6 +1697,26 @@ msgstr "로그인하여 동기화"
 msgid "about.title"
 msgstr "{product} 정보"
 
+#. About
+#. About: product and build information. The bare section label in a navigation list; the product name is not repeated.
+msgid "about.nav"
+msgstr "정보"
+
+#. Privacy
+#. About: product and build information. Opens the developer's privacy policy.
+msgid "about.privacy"
+msgstr "개인정보 보호"
+
+#. Get help
+#. About: product and build information. Opens the developer's support page.
+msgid "about.support"
+msgstr "도움 받기"
+
+#. macos: Get Help
+msgctxt "macos"
+msgid "about.support"
+msgstr "도움 받기"
+
 #. Version {version}
 #. About: product and build information. Arguments: {version} = a version string such as 2.4.1.
 msgid "about.version"

@@ -930,6 +930,9 @@
         "default": {
           "copy": [
             "about.title",
+            "about.nav",
+            "about.privacy",
+            "about.support",
             "about.version",
             "about.licenses",
             "about.copyDiagnostics",

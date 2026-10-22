@@ -332,15 +332,20 @@ def test_about_names_the_version_developer_sdk_license_and_links() -> None:
         labels = {b.id: str(b.label) for b in app.query(Button)}
         assert labels == {
             "pk-about-manage": C("common.manage") + " ↗",
-            "pk-about-support": C("status.contact", developer="Harbor Audio") + " ↗",
+            "pk-about-support": C("about.support") + " ↗",
+            "pk-about-privacy": C("about.privacy") + " ↗",
         }
+        # the side list names the section, not the product again
+        assert C("about.nav") == "About"
+        labels_nav = [str(w.render()) for w in app.query("#pk-nav Static")]
+        assert any(C("about.nav") in x for x in labels_nav) and not any("About Tidewater" in x for x in labels_nav)
         # the product is in the header once, and the pane does not repeat it
         pane = "\n".join(str(w.render()) for w in app.query("#pk-main Static"))
         assert "Tidewater" not in pane
         # reading a page is nothing to commit to: no primary
         assert not [b for b in app.query(Button) if "pk-primary" in b.classes]
 
-    _drive(then, section="about", support_url="https://support.example")
+    _drive(then, section="about", support_url="https://support.example", privacy_url="https://privacy.example")
 
 
 def test_about_offers_only_the_links_it_has() -> None:
@@ -365,7 +370,7 @@ def test_about_links_open_the_page(monkeypatch) -> None:
         await pilot.press("enter")
         await pilot.pause()
 
-    _drive(then, section="about", support_url="https://support.example")
+    _drive(then, section="about", support_url="https://support.example", privacy_url="https://privacy.example")
     assert opened == ["https://support.example", "https://polaris.locker"]
 
 
