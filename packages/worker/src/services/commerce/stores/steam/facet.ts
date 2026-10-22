@@ -30,7 +30,10 @@ export const STEAM_COMMERCE: CommerceFacet<
         };
       if (!isStoreProductId("steam", body.dlcAppId))
         return { ok: false, message: "dlcAppId must be a Steam app id" };
-      return { ok: true, input: { ticket: body.ticket, dlcAppId: body.dlcAppId } };
+      return {
+        ok: true,
+        input: { ticket: body.ticket, dlcAppId: body.dlcAppId },
+      };
     },
     verify: (ctx, input, binding) =>
       verifySteamClaim(ctx, input.ticket, input.dlcAppId, binding),

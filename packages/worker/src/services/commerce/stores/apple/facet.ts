@@ -23,7 +23,8 @@ export const APPLE_COMMERCE: CommerceFacet<
       typeof body.signedTransaction === "string"
         ? { ok: true, input: body.signedTransaction }
         : { ok: false, message: "signedTransaction is required" },
-    verify: (ctx, signedTransaction) => verifyAppleClaim(ctx, signedTransaction),
+    verify: (ctx, signedTransaction) =>
+      verifyAppleClaim(ctx, signedTransaction),
   },
   notification: { verify: verifyAppleNotification },
   recheck: { fetchTransaction },

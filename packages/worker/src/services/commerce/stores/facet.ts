@@ -22,7 +22,12 @@ export type ClaimParse<I> =
   | { ok: true; input: I }
   | { ok: false; message: string };
 
-export interface CommerceFacet<C = unknown, I = unknown, N = unknown, R = unknown> {
+export interface CommerceFacet<
+  C = unknown,
+  I = unknown,
+  N = unknown,
+  R = unknown,
+> {
   /** The wire store id of the device claim (`STORES`). Never changes. */
   readonly store: Store;
   /** The channel adapter id: the key of `COMMERCE_FACETS` (decision P10). */

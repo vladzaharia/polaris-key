@@ -19,9 +19,7 @@
 import type { ScheduledServiceContext } from "../../core/registry.js";
 import { pk as kvKey } from "../../platform/kv.js";
 import { effectiveCommerceSettings } from "./identity.js";
-import {
-  acknowledgeOnce,
-} from "./bridge.js";
+import { acknowledgeOnce } from "./bridge.js";
 import {
   applePurchase,
   checkTransaction,
@@ -29,7 +27,10 @@ import {
   AppleRejected,
 } from "./stores/apple/purchases.js";
 import { StoreUnavailable } from "../../core/stores/http.js";
-import { listVoidedPurchases, playPurchasesClient } from "./stores/play/purchases.js";
+import {
+  listVoidedPurchases,
+  playPurchasesClient,
+} from "./stores/play/purchases.js";
 import { appleContext } from "./stores/apple/context.js";
 import { playContext } from "./stores/play/context.js";
 import { steamContext } from "./stores/steam/context.js";

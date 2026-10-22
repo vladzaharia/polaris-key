@@ -27,7 +27,10 @@ export const PLAY_COMMERCE: CommerceFacet<
       isPlaySku(body.productId) && isPurchaseToken(body.purchaseToken)
         ? {
             ok: true,
-            input: { productId: body.productId, purchaseToken: body.purchaseToken },
+            input: {
+              productId: body.productId,
+              purchaseToken: body.purchaseToken,
+            },
           }
         : { ok: false, message: "productId and purchaseToken are required" },
     verify: async (ctx, input) =>

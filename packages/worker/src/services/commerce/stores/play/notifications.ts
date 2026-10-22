@@ -245,4 +245,3 @@ export function decodeRtdn(body: Record<string, unknown>): RtdnMessage | null {
     raw,
   };
 }
-
