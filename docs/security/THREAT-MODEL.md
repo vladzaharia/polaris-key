@@ -7283,6 +7283,49 @@ binding anyway.
 **Tests:** `test/consoleInvites.test.ts`; `test/consoleBindingWrites.test.ts` (the per-recipient
 budget on G5 notices, fail-closed guarded writes); `routeCoverage`, `accountIdBoundary`, `scheduled`.
 
+### Sign-in gate and invite conversion (ST-31.8)
+
+**What arrived.** Console membership is "holds a grant". The callback's **pre-gate** runs before
+anything is written and admits three people: the root rule (the platform admin group), a known
+console link whose account holds a stored account binding, and an identity the IdP vouched an
+address for at this sign-in (`email` and `email_verified`, from a provider that may vouch) that has
+an unexpired invite. The last is admitted to the sign-in only. After `consoleSignIn` (the SM rules
+unchanged) `convertInvites` runs, then the **post-gate** re-resolves the principal: no grant ends the
+new session row and refuses with the same card, before any cookie exists. A repeat sign-in has no
+invite left and converts nothing. Also in this slice: a `/products/:slug/*` route answers an unknown
+slug with the same 403 (scope, area) as a real product the caller cannot reach, unless the caller
+holds a product scope that reaches every product (Superadmin, `products:*`), so a member of one
+product no longer learns which other slugs exist.
+
+**Conversion rules** (REV-ST31-7, one test each in `test/consoleInviteConversion.test.ts`). An invite
+converts only when all hold; a failed check leaves the invite and says nothing:
+
+1. D-g again: `granted_by` is not the converting account's member id.
+2. The inviter is re-checked now: resolves to an active, ledger-clear account that still holds a
+   console grant and `mayGrant`s what the invite grants (an unresolved, erased, disabled, removed or
+   narrowed inviter converts nothing).
+3. `email_norm` equals the account's **verified primary email** (Identity's public API) and the IdP
+   asserted that address at this sign-in.
+4. The address is verified on exactly one active account.
+5. An SM-7-class invite (platform role, `products:*`) converts only through the operator connection;
+   `via: "passkey"` converts only `inviteBootstrapAllowed` invites (SM-6).
+6. `erasureVerdict` is `clear` (an unreadable ledger refuses) and the account is active.
+7. The row re-validates: `rowToGrant` reads it, a product scope names a real non-system product,
+   and `expires_at > now`.
+8. One batch: the binding (inserted, or unioned into the held `(role, scope)` row, NULL winning),
+   `rbac.grant` audit rows (source invite), and the invite's delete, every statement carrying the
+   invite's guard (same address, role, scope, areas, inviter, unexpired) and the binding-in-place
+   guard. A concurrent edit, expiry or racing sign-in makes it a no-op; mail goes out only when the
+   delete applied, to the inviter and every Superadmin, on the priority path for an L2 grant.
+9. A repeat sign-in converts nothing; the post-gate ends a session with no grant.
+10. D-e bindings are immediate (31.7), so the gate never sees them.
+
+**Residual.** Whoever controls the invited mailbox and can sign in to the console IdP with that
+verified address converts the invite (intended). At most 20 invites convert per sign-in. Conversion
+failures are silent to the caller, by design (no oracle on why).
+
+**Tests:** `test/consoleInviteConversion.test.ts`; `identityErasureFence`.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product
