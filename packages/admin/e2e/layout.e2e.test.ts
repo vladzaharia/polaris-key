@@ -113,6 +113,19 @@ interface Case {
   api?: Record<string, unknown>;
 }
 
+const LONG_NAME =
+  "Starfall Chronicles Remastered Definitive Collector's Edition of the Long Night, Part Two: The Reckoning of the Seven Moons and the Ninefold Tide, Anniversary Re-release";
+
+/** ST-31.15: the no-access cases; the 200 %-text and small-phone rows open every one. */
+const NO_ACCESS_CASES = [
+  "no-access:product",
+  "no-access:two-products",
+  "no-access:unknown-role",
+  "no-access:nobody",
+  "no-access:home",
+  "no-access:long-name",
+];
+
 /** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
 function noAccessCases(): Case[] {
   const me = (
@@ -158,7 +171,7 @@ function noAccessCases(): Case[] {
   const lucia = me("lucia@example.com", [narrowed], djdl, {
     djdl: ["ship", "commerce"],
   });
-  return [
+  const list: Case[] = [
     {
       name: "no-access:product",
       hash: "#/p/djdl/license/licenses",
@@ -236,7 +249,60 @@ function noAccessCases(): Case[] {
         },
       },
     },
+    {
+      name: "no-access:long-name",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+      // No title is cut: the h1 shows every line it wraps to (ST-31.15 B1).
+      act: async (page) => {
+        const h1 = page.getByRole("heading", { level: 1 });
+        await h1.waitFor();
+        const clipped = await h1.evaluate(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 1 ||
+            getComputedStyle(el).webkitLineClamp !== "none",
+        );
+        expect(clipped, "the h1 is clipped").toBe(false);
+      },
+    },
   ];
+  // Each case's `/products` is the member's own, so the switcher and sidebar are what they see.
+  return list.map((c) => {
+    const m = c.api!["/manage/api/me"] as { products: { slug: string }[] };
+    const all = (
+      resolve("/manage/api/products") as {
+        products: { slug: string; name: string }[];
+      }
+    ).products;
+    const own = new Set(m.products.map((p) => p.slug));
+    const names = new Map(
+      m.products.map((p) => [p.slug, (p as { name?: string }).name]),
+    );
+    return {
+      ...c,
+      api: {
+        ...c.api,
+        "/manage/api/products": {
+          products: all
+            .filter((p) => own.has(p.slug))
+            .map((p) => ({ ...p, name: names.get(p.slug) ?? p.name })),
+        },
+      },
+    };
+  });
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -433,6 +499,7 @@ const ZOOM_CASES = [
 const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  ...NO_ACCESS_CASES,
   "djdl:settings",
   "djdl:services",
   "djdl:portal",
@@ -512,7 +579,12 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
+        only: [
+          ...ZOOM_CASES,
+          "djdl:health",
+          "djdl:rollouts",
+          "no-access:long-name",
+        ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).

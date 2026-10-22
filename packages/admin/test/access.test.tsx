@@ -174,7 +174,7 @@ describe("NoAccessPage", () => {
       extra: { "/manage/api/access/admins": ADMINS },
     });
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1.textContent).toBe("You don't have access to DJDL, → Licensing");
+    expect(h1.textContent).toBe("You don't have access to DJDL, Licensing");
     expect(screen.getByText("lucia@example.com")).toBeTruthy();
     expect(screen.getByText("DJDL admin")).toBeTruthy();
     const lead = screen.getByText("DJDL admin").closest("[data-role-set]")!;
@@ -191,7 +191,9 @@ describe("NoAccessPage", () => {
     expect(call?.query).toBe("scope=product%3Adjdl&area=license");
     // Where to go: the member's real destinations, and the library.
     expect(
-      screen.getByRole("link", { name: "Ship builds" }).getAttribute("href"),
+      within(screen.getByRole("main"))
+        .getByRole("link", { name: "Releases" })
+        .getAttribute("href"),
     ).toBe("#/p/djdl/release/releases");
     expect(
       screen.getByRole("link", { name: /Open your library/ }),
@@ -283,7 +285,7 @@ describe("NoAccessPage", () => {
     ).toBeTruthy();
     // Nobody to ask: a Superadmin, not an empty card.
     expect(
-      await screen.findByText("Ask a Superadmin of this console for access."),
+      await screen.findByText("Ask a Superadmin of this console."),
     ).toBeTruthy();
   });
 
@@ -325,10 +327,164 @@ describe("NoAccessPage", () => {
         ),
       },
     });
-    expect(await screen.findByText("The list didn't load.")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        /The list didn't load\. Ask a Superadmin of this console\./,
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     // The page still offers somewhere to go.
-    expect(screen.getByRole("link", { name: "Ship builds" })).toBeTruthy();
+    expect(
+      within(screen.getByRole("main")).getByRole("link", { name: "Releases" }),
+    ).toBeTruthy();
+  });
+
+  it("never lists a product's admin for a platform page, whatever the worker sends", async () => {
+    boot("#/platform/settings", {
+      me: SHIP_ONLY,
+      extra: {
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "platform",
+          admins: [
+            {
+              name: "Kenji Mori",
+              email: "kenji@example.com",
+              role: "product_admin",
+            },
+            {
+              name: "Ada Lindqvist",
+              email: "ada@example.com",
+              role: "superadmin",
+            },
+          ],
+        },
+      },
+    });
+    expect(await screen.findByText("Ada Lindqvist")).toBeTruthy();
+    expect(screen.queryByText("Kenji Mori")).toBeNull();
+  });
+
+  it("shows a product-only member their role on a platform page, not a bare email", async () => {
+    boot("#/platform/settings", {
+      me: SHIP_ONLY,
+      extra: { "/manage/api/access/admins": { ...ADMINS, admins: [] } },
+    });
+    const h1 = await screen.findByRole("heading", { level: 1 });
+    expect(h1.textContent).toBe("You don't have access to Platform");
+    expect(await screen.findByText("DJDL admin")).toBeTruthy();
+  });
+
+  it("puts the first destination in ink, names pages not areas, and stops the orientation line at the chip", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    await screen.findByRole("heading", { level: 1 });
+    const main = within(screen.getByRole("main"));
+    expect(
+      main.getByRole("link", { name: "Releases" }).getAttribute("data-variant"),
+    ).toBe("primary");
+    expect(
+      main
+        .getByRole("link", { name: "Storefronts" })
+        .getAttribute("data-variant"),
+    ).toBe("outline");
+    // No crumb names the refused page, and no path line repeats it.
+    expect(
+      screen.getByRole("main").querySelector("[data-orientation] a"),
+    ).toBeNull();
+    expect(screen.queryByText(/manage\.html|#\/p\/djdl/)).toBeNull();
+  });
+
+  it("drops the open panel and moves the library link to the foot when nothing can be opened", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: {
+        ...SHIP_ONLY,
+        permissions: {
+          ...SHIP_ONLY.permissions!,
+          products: { djdl: { view: [], edit: [] } },
+        },
+      },
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    await screen.findByText("Kenji Mori");
+    expect(screen.queryByText("You can open")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /Open your library/ }),
+    ).toBeTruthy();
+  });
+
+  it("names a role's unknown area by its id, never an empty span", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: {
+        ...SHIP_ONLY,
+        permissions: {
+          ...SHIP_ONLY.permissions!,
+          roles: [
+            {
+              role: "product_admin",
+              scope: "product:djdl",
+              areas: ["ship", "telemetry" as never],
+              source: "grant",
+            },
+          ],
+        },
+      },
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    expect(await screen.findByText("telemetry")).toBeTruthy();
+  });
+
+  it("asks the IdP for its account chooser on Use another account", async () => {
+    const calls: string[] = [];
+    const loc = { href: "" };
+    vi.stubGlobal("location", loc);
+    boot("#/", {
+      me: CONSOLE_ONLY,
+      extra: {
+        "/manage/api/logout": { ok: true },
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: [],
+        },
+      },
+    });
+    void calls;
+    const btn = (
+      await screen.findAllByRole("button", { name: "Use another account" })
+    )[0]!;
+    btn.click();
+    await waitFor(() => expect(loc.href).toBe("/manage/login?go=1&other=1"));
+  });
+
+  it("moves focus to the panel heading after a successful retry", async () => {
+    let n = 0;
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: {
+        "/manage/api/access/admins": () =>
+          ++n === 1
+            ? new Response(JSON.stringify({ error: { code: "internal" } }), {
+                status: 500,
+                headers: { "content-type": "application/json" },
+              })
+            : ADMINS,
+      },
+    });
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    retry.click();
+    await screen.findByText("Kenji Mori");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        "Who can give you access",
+      ),
+    );
   });
 
   it("answers a Platform page for a member without the Platform area", async () => {
@@ -339,7 +495,7 @@ describe("NoAccessPage", () => {
     const h1 = await screen.findByRole("heading", { level: 1 });
     expect(h1.textContent).toBe("You don't have access to Platform");
     expect(
-      await screen.findByText("Ask a Superadmin of this console for access."),
+      await screen.findByText("Ask a Superadmin of this console."),
     ).toBeTruthy();
   });
 

@@ -1165,7 +1165,33 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       // while a browser zoom keeps the root at 16 px and so keeps the budget as it was.
       const textScale =
         px(cs(document.documentElement).fontSize || "16px") / 16;
-      const limit = (twoLines || W < 640 ? 176 : 140) * textScale;
+      // A no-access page is fixed copy (ST-31.15): its title wraps to every line it needs and its
+      // facts line (address, role, source) to up to four. Each line past the budget's own (two for
+      // the title, one for the facts) adds its height. Nothing else on any page gets this.
+      const fixedCopy =
+        h1 !== null && mainEl.querySelector("[data-no-access]") !== null;
+      const facts = fixedCopy ? mast.querySelector<HTMLElement>("p") : null;
+      const factsLine = facts ? px(cs(facts).lineHeight) : 0;
+      const extra =
+        fixedCopy && lineH > 0
+          ? Math.max(
+              0,
+              Math.round(h1!.getBoundingClientRect().height / lineH) - 2,
+            ) *
+              lineH +
+            (facts && factsLine > 0
+              ? Math.min(
+                  3,
+                  Math.max(
+                    0,
+                    Math.round(
+                      facts.getBoundingClientRect().height / factsLine,
+                    ) - 1,
+                  ),
+                ) * factsLine
+              : 0)
+          : 0;
+      const limit = (twoLines || W < 640 ? 176 : 140) * textScale + extra;
       const height = mast.getBoundingClientRect().height - tabsH;
       if (height > limit + 0.5)
         out.push({
@@ -1181,7 +1207,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       if (wide && next) {
         const first = next.getBoundingClientRect().top - canvas.top;
         // A two-line title is the one case the 176 px masthead cap allows: 19 above, 24 below.
-        const allowed = 160 + tabsH + (twoLines ? 59 : 0);
+        const allowed = 160 + tabsH + (twoLines ? 59 : 0) + extra;
         if (first > allowed + 0.5)
           out.push({
             rule: "masthead",

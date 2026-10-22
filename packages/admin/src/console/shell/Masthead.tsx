@@ -207,6 +207,7 @@ export function mastheadValue({
   accent,
   product,
   platform = true,
+  refused = false,
 }: {
   route: Route;
   page: PageId | null;
@@ -214,8 +215,12 @@ export function mastheadValue({
   product: ProductLike | null;
   /** The member holds the Platform area (default: yes). */
   platform?: boolean;
+  /** The page is NoAccessPage: the line stops at the context chip, with no page named. */
+  refused?: boolean;
 }): MastheadValue {
-  const { crumbs, chip } = baseCrumbs(page, route, product, platform);
+  const based = baseCrumbs(page, route, product, platform);
+  const chip = based.chip;
+  const crumbs = refused ? [] : based.crumbs;
   const tileKind = page ? pageOf(page).tile : undefined;
   const hasTile =
     tileKind !== undefined && (tileKind === "service" || product !== null);
@@ -233,7 +238,7 @@ export function mastheadValue({
       <Orientation
         chip={<Chip kind={chip} accent={accent} product={product} />}
         base={crumbs}
-        extra={extra}
+        extra={refused ? [] : extra}
         chipHiddenFromDesktop={hasTile}
       />
     ),

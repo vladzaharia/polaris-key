@@ -56,7 +56,9 @@ export function RoleTag({
       )}
     >
       <Glyph role={role} />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="min-w-0 truncate" title={label}>
+        {label}
+      </span>
     </span>
   );
 }
@@ -68,8 +70,14 @@ function AreaList({ areas }: { areas: readonly AreaId[] }): React.ReactElement {
         const accent = AREA_ACCENTS[a];
         return (
           <span key={a} className="inline-flex items-center gap-1">
-            {accent ? <ServiceGlyph id={accent as "core"} size={16} /> : null}
-            {AREA_NAMES[a]}
+            {accent ? (
+              <ServiceGlyph
+                id={accent as "core"}
+                size={16}
+                className="[&_svg]:size-[1.15em]"
+              />
+            ) : null}
+            {AREA_NAMES[a] ?? a}
           </span>
         );
       })}

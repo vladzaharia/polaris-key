@@ -54,6 +54,12 @@ export function useAccessAdmins(
   return useQuery({
     queryKey: qk.accessAdmins(scope, area),
     queryFn: () => api.accessAdmins(scope, area),
+    // Platform access is given by Superadmins (and Platform admins), never a product's admin:
+    // whatever a worker answers, a platform scope names none.
+    select: (d) =>
+      scope === "platform"
+        ? { ...d, admins: d.admins.filter((a) => a.role !== "product_admin") }
+        : d,
     enabled,
     staleTime: 60_000,
   });

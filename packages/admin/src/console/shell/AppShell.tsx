@@ -260,6 +260,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     root.setAttribute("data-shell", "console");
     return () => root.removeAttribute("data-shell");
   }, []);
+  // A page the member's role does not include renders NoAccessPage, so its title says so.
+  const refused =
+    (route.kind === "product" || route.kind === "global") &&
+    page !== null &&
+    knownProductPageRefused(me, route);
   const masthead = React.useMemo(
     () =>
       mastheadValue({
@@ -268,15 +273,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         accent,
         product,
         platform: canIn(me, "platform"),
+        refused,
       }),
-    [route, page, accent, product, me],
+    [route, page, accent, product, me, refused],
   );
 
-  // A page the member's role does not include renders NoAccessPage, so its title says so.
-  const refused =
-    (route.kind === "product" || route.kind === "global") &&
-    page !== null &&
-    knownProductPageRefused(me, route);
   const title = documentTitle(
     route,
     routeSlug && knownProduct ? productName : null,
