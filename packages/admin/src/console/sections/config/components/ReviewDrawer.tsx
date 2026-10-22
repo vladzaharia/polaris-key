@@ -343,7 +343,7 @@ export function ReviewDrawer({
                   className="space-y-1 rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
                 >
                   <p className="font-semibold text-danger">
-                    Publish didn’t finish
+                    Publish didn't finish
                   </p>
                   <p className="text-fg-strong">{copy.title}</p>
                   <p className="text-fg">{copy.description}</p>
