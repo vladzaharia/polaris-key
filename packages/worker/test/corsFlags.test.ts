@@ -16,6 +16,8 @@ import {
   CORS_SERVICE_PATHS,
 } from "../src/publicRoutes.js";
 import { SERVICES } from "../src/mount.js";
+import { serviceRoutes } from "../src/core/http/routes.js";
+import { matchRoute } from "../src/router.js";
 
 const OLD_CORS_SERVICE_PATHS = [
   "license/activate",
@@ -112,5 +114,44 @@ describe("the CORS row flags equal the list they replaced", () => {
           expect(r.path).not.toMatch(
             /\/(rollouts|publish|channels|yank|hooks|prune)\b|\/auth\/(start|callback|logout|choose)/,
           );
+  });
+});
+
+describe("serviceRoutes refuses a CORS flag on a credentialed route", () => {
+  const row = (kind: "ci" | "session" | "signature" | "device" | "none") => ({
+    path: "x",
+    methods: ["GET"] as const,
+    cors: true as const,
+    auth:
+      kind === "ci"
+        ? ({ kind, scope: "release:write" } as never)
+        : ({ kind } as never),
+    handler: async () => new Response(),
+  });
+  it.each(["ci", "session", "signature"] as const)("%s", (kind) => {
+    expect(() => serviceRoutes("license", [row(kind) as never])).toThrow(
+      /CORS-flagged/,
+    );
+  });
+  it.each(["device", "none"] as const)("%s is allowed", (kind) => {
+    expect(() => serviceRoutes("license", [row(kind) as never])).not.toThrow();
+  });
+});
+
+describe("CORE_ROUTES", () => {
+  it("has one row per kind and documents every one", () => {
+    const kinds = CORE_ROUTES.map((r) => r.kind);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    for (const r of CORE_ROUTES)
+      expect(r.surface.length, r.kind).toBeGreaterThan(0);
+  });
+  it("routes each surface path to its own kind", () => {
+    for (const r of CORE_ROUTES)
+      for (const s of r.surface) {
+        const path = s.path
+          .replace("{product}", "djdl")
+          .replace("{deviceId}", "dev1");
+        expect(matchRoute(path).kind, `${r.kind} ${s.path}`).toBe(r.kind);
+      }
   });
 });

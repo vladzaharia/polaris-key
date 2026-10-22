@@ -139,8 +139,11 @@ const nonEmpty = (s: string | undefined): s is string => !!s;
 const READ: readonly HttpMethod[] = ["GET", "HEAD"];
 
 /**
- * The root portal's routes. Order is irrelevant (the most specific row wins); the last row, the
- * SPA, is the catch-all: any path no other row takes is the shell or one of its assets.
+ * The root portal's routes. Order is irrelevant: the most specific row wins, comparing segment by
+ * segment (literal, then `:param`, then `**`, then an absent segment). Because `**` also matches
+ * zero segments and outranks an absent one, a `x/**` row beside a plain `x` row needs an `accept`
+ * guard (`s.length > 1`) or it would take `/x`. The last row, the SPA, is the catch-all: any path
+ * no other row takes is the shell or one of its assets.
  */
 export const PORTAL_ROUTES: readonly PortalRouteDecl[] = [
   {
@@ -169,6 +172,9 @@ export const PORTAL_ROUTES: readonly PortalRouteDecl[] = [
     path: "login/**",
     methods: ["GET", "HEAD", "POST"],
     auth: { kind: "handler" },
+    // `**` matches zero segments and outranks an absent one, so without this `/login` would
+    // reach the provider handler instead of its own row (the old `startsWith("/login/")`).
+    accept: (s) => s.length > 1,
     handler: (c) =>
       handleProviderSignInPath(c.req, c.env, c.db, c.clean, {
         now: c.now,

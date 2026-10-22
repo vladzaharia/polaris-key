@@ -35,6 +35,7 @@ import { serializeServices } from "../src/core/services.js";
 import { serializeWebOrigins } from "../src/core/cors.js";
 import { setServices } from "../src/core/products/store.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 
@@ -42,6 +43,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "fixtures", "public-route-oracle.json");
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
+const CUSTOMER = "https://polaris.locker";
+/** A stored avatar rendition (`/media/avatar/<64 hex>.png`): the PNG signature is all it sniffs. */
+const AVATAR = "ab".repeat(32);
+const PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0,
+]);
 const ORIGIN = "https://play.djdl.example";
 const OTHER_ORIGIN = "https://elsewhere.example";
 const METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
@@ -126,6 +133,10 @@ const PORTAL: string[] = [
   "/media/avatar",
   "/media/avatar/",
   "/media/avatar/a1",
+  `/media/avatar/${AVATAR}`,
+  `/media/avatar/${AVATAR}.png`,
+  `/media/avatar/${AVATAR}-96.png`,
+  `/media/avatar/${AVATAR}.webp`,
   "/media/avatar/a1/extra",
   "/media/avatar/%zz",
   "/media/%zz/icon",
@@ -224,11 +235,18 @@ const CARRIED = [
   "access-control-max-age",
   "access-control-expose-headers",
   "content-security-policy",
+  "x-content-type-options",
+  "x-frame-options",
+  "referrer-policy",
+  "permissions-policy",
+  "strict-transport-security",
+  "access-control-allow-credentials",
 ];
 
 /** Opaque tokens and times differ per run; their shape does not. */
 function normalise(text: string): string {
   return text
+    .replace(/\b(state|nonce)=[^&\s"]+/g, "$1=<tok>")
     .replace(/[A-Za-z0-9_-]{24,}/g, "<tok>")
     .replace(/\b1[67]\d{8}\b/g, "<ts>");
 }
@@ -250,7 +268,17 @@ async function observe(res: Response): Promise<Row> {
     (
       res.headers as unknown as { getSetCookie?(): string[] }
     ).getSetCookie?.() ?? [];
-  const cookies = setCookies.map((c) => c.split("=")[0]!).sort();
+  // Name, then the attributes (Path, Max-Age, HttpOnly, Secure, SameSite, Domain); the value is
+  // an opaque token and not compared.
+  const cookies = setCookies
+    .map((c) => {
+      const [pair = "", ...attrs] = c.split(";");
+      return [
+        pair.split("=")[0],
+        ...attrs.map((a) => normalise(a.trim())),
+      ].join("; ");
+    })
+    .sort();
   const text = normalise(await res.text());
   return {
     status: res.status,
@@ -310,10 +338,29 @@ async function seed(db: Db): Promise<void> {
   );
 }
 
-function envFor(): Env {
+/**
+ * A deployment with everything the portal rows answer from: a platform IdP (so `/login` is a 302
+ * to it, not the sign-in-off 404), the session secrets, a stored avatar rendition and, with
+ * `customer`, the customer host. Without these every `/login*` path and every `/media/*` path
+ * answered one identical 404, and a row that took the wrong handler went unseen.
+ */
+async function envFor(customer = false): Promise<Env> {
   const env = makeEnv(new KvMock(), [SLUG]);
   env.GITHUB_APP_ID = "12345";
   env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
+  env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+  env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
+  Object.assign(env, {
+    PLATFORM_OIDC_ISSUER: "https://id.platform.example",
+    PLATFORM_OIDC_CLIENT_ID: "platform-client",
+    PLATFORM_OIDC_CLIENT_SECRET: "platform-secret",
+  });
+  if (customer) {
+    env.CUSTOMER_ORIGIN = CUSTOMER;
+    env.CONSOLE_ORIGIN = BASE;
+  }
+  await env.BLOBS!.put(`avatars/${AVATAR}/256.png`, PNG);
+  await env.BLOBS!.put(`avatars/${AVATAR}/96.png`, PNG);
   return env;
 }
 
@@ -325,7 +372,15 @@ describe("the portal and core public routes replay the hand dispatch", () => {
     vi.useFakeTimers({ now: NOW * 1000, toFake: ["Date"] });
     vi.stubGlobal(
       "fetch",
-      async () => new Response("upstream", { status: 503 }),
+      async (input: RequestInfo | URL) =>
+        (await issuerMetadataResponse(
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url,
+          null,
+        )) ?? new Response("upstream", { status: 503 }),
     );
     vi.stubGlobal("caches", {
       default: {
@@ -348,6 +403,8 @@ describe("the portal and core public routes replay the hand dispatch", () => {
     body: boolean;
     origin?: string;
     preflight?: boolean;
+    /** The customer host rather than the console host. */
+    customer?: boolean;
   }
 
   async function replay(jobs: Job[]): Promise<Record<string, Row>> {
@@ -370,8 +427,11 @@ describe("the portal and core public routes replay the hand dispatch", () => {
       let row: Row;
       try {
         const res = await dispatchWith(
-          new Request(`${BASE}${job.path}`, init) as unknown as Request,
-          envFor(),
+          new Request(
+            `${job.customer ? CUSTOMER : BASE}${job.path}`,
+            init,
+          ) as unknown as Request,
+          await envFor(job.customer),
           db,
           NOW,
         );
@@ -385,20 +445,20 @@ describe("the portal and core public routes replay the hand dispatch", () => {
         };
       }
       observed[
-        `${job.group} ${job.method}${job.body ? "+body" : ""}${job.origin ? `+${job.origin === ORIGIN ? "origin" : "other"}` : ""}${job.preflight ? "+preflight" : ""} ${job.path}`
+        `${job.group}${job.customer ? "@customer" : ""} ${job.method}${job.body ? "+body" : ""}${job.origin ? `+${job.origin === ORIGIN ? "origin" : "other"}` : ""}${job.preflight ? "+preflight" : ""} ${job.path}`
       ] = row;
     }
     return observed;
   }
 
-  function plain(group: string, list: string[]): Job[] {
+  function plain(group: string, list: string[], customer = false): Job[] {
     const jobs: Job[] = [];
     for (const path of list)
       for (const method of METHODS)
         for (const body of method === "GET" || method === "HEAD"
           ? [false]
           : [false, true])
-          jobs.push({ group, path, method, body });
+          jobs.push({ group, path, method, body, customer });
     return jobs;
   }
 
@@ -440,6 +500,7 @@ describe("the portal and core public routes replay the hand dispatch", () => {
     const everyRoute = [...surfacePaths(), ...CORE, ...ALIASES, ...PORTAL];
     const observed = {
       ...(await replay(plain("portal", PORTAL))),
+      ...(await replay(plain("portal", PORTAL, true))),
       ...(await replay(plain("core", [...CORE, ...ALIASES]))),
       ...(await replay(corsJobs(everyRoute))),
     };

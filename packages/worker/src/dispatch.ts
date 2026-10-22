@@ -17,7 +17,11 @@ import {
 } from "./core/products.js";
 import type { ServiceHooks } from "./core/hooks.js";
 import { corsPreflight, withCors } from "./core/cors.js";
-import { coreRouteOf, isCorsCoveredRoute } from "./publicRoutes.js";
+import {
+  CORE_ROUTES,
+  coreRouteOf,
+  isCorsCoveredRoute,
+} from "./publicRoutes.js";
 import { dispatchService, serviceContext } from "./core/registry.js";
 import {
   identityNavigationRedirect,
@@ -79,16 +83,9 @@ import {
   watchRenderEnqueues,
 } from "./core/registry/registryQueue.js";
 
-const PRODUCT_ROUTES = new Set<Route["kind"]>([
-  "discovery",
-  "jwks",
-  "trustManifest",
-  "devices",
-  "report",
-  "register",
-  "attestChallenge",
-  "attest",
-  "assetsPush",
+/** Every route kind that is scoped to a product: the core table's kinds and the services'. */
+const PRODUCT_ROUTES: ReadonlySet<Route["kind"]> = new Set<Route["kind"]>([
+  ...CORE_ROUTES.map((r) => r.kind),
   "service",
 ]);
 

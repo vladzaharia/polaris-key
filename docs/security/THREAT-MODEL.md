@@ -827,7 +827,7 @@ Compression Dictionary Transport, RFC 9842). It adds no authorisation of its own
 - **The dictionary's scope is one (pack, variant).** `Use-As-Dictionary`'s match pattern is the
   (pack, variant)'s payload-URL prefix, so a browser never offers one pack's payload for
   another's request, and none is advertised above Chromium's 100 MiB limit.
-- **CORS as for the blob route** (`core/cors.ts`'s covered paths, the product's `web.origins`);
+- **CORS as for the blob route** (the route row's `cors` flag, the product's `web.origins`);
   full-body only (`Accept-Ranges: none`); the body is sent with `encodeBody: "manual"` at the edge
   (`index.ts` `preEncoded`), so the runtime never re-encodes it.
 
@@ -3439,7 +3439,7 @@ from the binding route's product list), not by the Worker: delivery requests car
 the Worker cannot tell an Apple build's download from another's. A modified client can ignore the
 rule; that is a store-policy matter, not an entitlement bypass (the player paid for the flag).
 
-**Browser pages (SP-16).** The binding and claim routes are in `core/cors.ts`'s covered paths, so
+**Browser pages (SP-16).** The binding and claim routes carry the route row's `cors` flag, so
 a bearer-mode page served from one of the product's own `web.origins` can call them with `fetch`;
 every other origin gets no `Access-Control-*` header and a bare 204 preflight (a workerd test
 checks both). This widens reach only to the product's own origins and only for a caller that

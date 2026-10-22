@@ -192,6 +192,17 @@ export function serviceRoutes(
       throw new Error(`${slug}: route ${r.path} answers no method`);
     if (r.path.includes("**") && r.doc === undefined)
       throw new Error(`${slug}: route ${r.path} needs a doc path (or false)`);
+    // A cookie- or signature-bearing route must never be browser-readable cross-origin: CORS
+    // is for the unauthenticated and device-bound reads a page makes under `web.origins`.
+    if (
+      r.cors === true &&
+      (r.auth.kind === "ci" ||
+        r.auth.kind === "session" ||
+        r.auth.kind === "signature")
+    )
+      throw new Error(
+        `${slug}: route ${r.path} is CORS-flagged but authenticates by ${r.auth.kind}`,
+      );
     // A CI route that is not a read must say how big a body it may be sent.
     if (
       r.auth.kind === "ci" &&

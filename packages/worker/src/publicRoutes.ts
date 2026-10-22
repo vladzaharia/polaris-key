@@ -184,6 +184,14 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
   },
 ];
 
+// A kind declared twice would make the second row dead; a row with no surface is undocumented.
+for (const [i, r] of CORE_ROUTES.entries()) {
+  if (CORE_ROUTES.findIndex((o) => o.kind === r.kind) !== i)
+    throw new Error(`core route ${r.kind} is declared twice`);
+  if (r.surface.length === 0)
+    throw new Error(`core route ${r.kind} has an empty surface`);
+}
+
 const CORE_BY_KIND: ReadonlyMap<string, CoreRouteDecl> = new Map(
   CORE_ROUTES.map((r) => [r.kind, r]),
 );
