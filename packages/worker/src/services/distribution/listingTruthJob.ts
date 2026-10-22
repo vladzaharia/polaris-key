@@ -25,9 +25,18 @@
  * dry run reports 0 of each, or the lead accepts each listed field. `changes` is the number of
  * model writes (`missing` plus `clears`); a fresh dry run after an apply shows 0.
  *
- * Apply and down are A-27.7; the job is `delegatedTo` that until it lands, so the runner reports
- * but refuses both. The ledger table `dist_listing_truth_moves` (migration 0129) is the apply's undo
- * record (D9).
+ * APPLY (A-27.7), one batch per product, so a unit is all or nothing: first the ledger rows
+ * (`dist_listing_truth_moves`, one per field the plan writes, with what it held and what the apply
+ * writes), then the ingest's own guarded statements (`manifestModelStatements`, A-27.4), which
+ * write a field only while it is empty or owned by `manifest`. Ledger rows are `INSERT OR IGNORE`,
+ * so a re-run never replaces the first, true prior state. A unit with no writes is a no-op (the
+ * contract's idempotence), so a call killed after its batch is simply re-planned to nothing.
+ *
+ * DOWN, one batch per product: for each ledgered field, put the prior value and provenance back
+ * ONLY where the field still holds exactly what the apply wrote (the check is in the UPDATE's
+ * WHERE, so an edit landing between the read and the write wins); then delete the product's ledger
+ * rows. A field an operator or an import has changed since is left as it is. Down does not delete
+ * the model or locale row the apply may have created; it leaves them with the fields empty.
  *
  * Report details name fields and limits only, never a stored value.
  */
@@ -43,10 +52,13 @@ import { getListing } from "./outlets.js";
 import { currentOf } from "./listing/import.js";
 import {
   MANIFEST_APP_PATHS,
+  INGEST_MAPPING_LOCALE,
   MANIFEST_LOCALE_FIELDS,
+  manifestModelStatements,
   planManifestSync,
 } from "./listing/manifestSync.js";
 import { readListing } from "./listing/store.js";
+import type { DbStatement } from "../../db/types.js";
 
 const FALLBACK_LOCALE = "en-US";
 
@@ -149,11 +161,202 @@ export async function planListingTruth(
   return { changes: sets.length + clears.length, detail };
 }
 
+/** Where each field lives, for the ledger's restore SQL (mirrors `manifestModelStatements`). */
+const APP_STORE: Readonly<Record<string, { column: string; urlKey?: string }>> =
+  {
+    name: { column: "name" },
+    developerName: { column: "developer_name" },
+    category: { column: "category" },
+    tint: { column: "tint" },
+    contactEmail: { column: "contact_email" },
+    "urls.website": { column: "urls_json", urlKey: "website" },
+    "urls.support": { column: "urls_json", urlKey: "support" },
+  };
+const LOCALE_STORE: Readonly<Record<string, string>> = {
+  subtitle: "subtitle",
+  description: "description",
+};
+const ACTOR = "listing-truth";
+const pk = (k: string) => `$."${k}"`;
+
+interface Moved {
+  /** `''` for an app-level field, else the locale. */
+  locale: string;
+  /** `name`, `urls.website`, `subtitle`. */
+  field: string;
+  prior: string | null;
+  priorProvenance: string | null;
+  applied: string | null;
+}
+
+/** What the apply would move, with each field's prior state (reads only). */
+async function movesOf(
+  ctx: MigrationContext,
+  product: string,
+): Promise<{ moves: Moved[]; statements: DbStatement[] } | null> {
+  const root = await getListing(ctx.db, product);
+  if (!root) return null;
+  const blob = root as unknown as Record<string, unknown>;
+  const stored = await readListing(ctx.db, product);
+  const locale = stored?.row.default_locale ?? FALLBACK_LOCALE;
+  const current = currentOf(stored);
+  const plan = planManifestSync(
+    current,
+    manifestListingSnapshot(blob, "root", locale),
+    locale,
+  );
+  const moves: Moved[] = plan.writes.map((w) => {
+    const field = w.locale === null ? w.field : w.field.split(".").pop()!;
+    const prior =
+      w.locale === null
+        ? field.startsWith("urls.")
+          ? current.app.urls?.[field.slice(5) as "website" | "support"]
+          : (current.app as Record<string, unknown>)[field]
+        : (current.locales[w.locale] as Record<string, unknown> | undefined)?.[
+            field
+          ];
+    const priorProvenance =
+      w.locale === null
+        ? current.appProvenance[field]
+        : current.localeProvenance[w.locale]?.[field];
+    return {
+      locale: w.locale ?? "",
+      field,
+      prior: typeof prior === "string" && prior !== "" ? prior : null,
+      priorProvenance: priorProvenance ?? null,
+      applied: w.action === "set" ? (w.value ?? null) : null,
+    };
+  });
+  const { statements } = manifestModelStatements(
+    manifestListingSnapshot(blob, "root", INGEST_MAPPING_LOCALE),
+    product,
+    ctx.now,
+  );
+  return { moves, statements };
+}
+
+const json = (v: string | null) => (v === null ? null : JSON.stringify(v));
+
+async function applyListingTruth(
+  ctx: MigrationContext,
+  product: string,
+): Promise<number> {
+  const m = await movesOf(ctx, product);
+  if (!m || m.moves.length === 0) return 0;
+  const ledger: DbStatement[] = m.moves.map((mv) => ({
+    sql: `INSERT OR IGNORE INTO dist_listing_truth_moves
+            (product, locale, field, had_row, prior_value_json, prior_provenance, applied_value_json, moved_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      product,
+      mv.locale,
+      mv.field,
+      mv.prior === null ? 0 : 1,
+      json(mv.prior),
+      mv.priorProvenance,
+      json(mv.applied),
+      ctx.now,
+    ],
+  }));
+  await ctx.db.batch([...ledger, ...m.statements]);
+  return m.moves.length;
+}
+
+interface LedgerRow {
+  locale: string;
+  field: string;
+  had_row: number;
+  prior_value_json: string | null;
+  prior_provenance: string | null;
+  applied_value_json: string | null;
+}
+
+/** The statement that restores one ledgered field where it still holds `applied`. */
+function restoreStatement(
+  product: string,
+  r: LedgerRow,
+  now: number,
+): DbStatement | null {
+  const prior =
+    r.had_row === 1 && r.prior_value_json !== null
+      ? (JSON.parse(r.prior_value_json) as string)
+      : null;
+  const applied =
+    r.applied_value_json === null
+      ? null
+      : (JSON.parse(r.applied_value_json) as string);
+  const prov = r.prior_provenance;
+  const provSet = (key: string) =>
+    prov === null
+      ? `json_remove(provenance_json, '${pk(key)}')`
+      : `json_set(COALESCE(provenance_json, '{}'), '${pk(key)}', ?)`;
+  const provParams = prov === null ? [] : [prov];
+  if (r.locale === "") {
+    const store = APP_STORE[r.field];
+    if (!store) return null;
+    const read = store.urlKey
+      ? `json_extract(urls_json, '$.${store.urlKey}')`
+      : store.column;
+    const value = store.urlKey
+      ? prior === null
+        ? `NULLIF(json_remove(urls_json, '$.${store.urlKey}'), '{}')`
+        : `json_set(COALESCE(urls_json, '{}'), '$.${store.urlKey}', ?)`
+      : "?";
+    return {
+      sql: `UPDATE dist_listings
+               SET ${store.column} = ${value}, provenance_json = ${provSet(r.field)},
+                   modified_at = ?, modified_by = ?
+             WHERE product = ? AND ${read} IS ?`,
+      params: [
+        ...(store.urlKey && prior === null ? [] : [prior]),
+        ...provParams,
+        now,
+        ACTOR,
+        product,
+        applied,
+      ],
+    };
+  }
+  const column = LOCALE_STORE[r.field];
+  if (!column) return null;
+  return {
+    sql: `UPDATE dist_listing_locales
+             SET ${column} = ?, provenance_json = ${provSet(r.field)},
+                 modified_at = ?, modified_by = ?
+           WHERE product = ? AND locale = ? AND ${column} IS ?`,
+    params: [prior, ...provParams, now, ACTOR, product, r.locale, applied],
+  };
+}
+
+async function downListingTruth(
+  ctx: MigrationContext,
+  product: string,
+): Promise<number> {
+  const rows = await ctx.db.all<LedgerRow>(
+    `SELECT locale, field, had_row, prior_value_json, prior_provenance, applied_value_json
+       FROM dist_listing_truth_moves WHERE product = ? ORDER BY locale, field`,
+    product,
+  );
+  let restored = 0;
+  for (const r of rows) {
+    const s = restoreStatement(product, r, ctx.now);
+    // The WHERE holds the guard: a field that no longer equals what the apply wrote is left alone.
+    if (s) restored += await ctx.db.runChanges(s.sql, ...s.params);
+    // The move is over either way (restored, or superseded by a later edit).
+    await ctx.db.run(
+      "DELETE FROM dist_listing_truth_moves WHERE product = ? AND locale = ? AND field = ?",
+      product,
+      r.locale,
+      r.field,
+    );
+  }
+  return restored;
+}
+
 export const listingTruthJob: MigrationJob = {
   id: "distribution.listing-truth",
   summary:
     "Copy each product's root listing text from the manifest blob into the listing model",
-  delegatedTo: "the listing-truth apply (A-27.7), not yet available",
   async units(ctx) {
     const rows = await ctx.db.all<{ product: string }>(
       "SELECT product FROM dist_listing ORDER BY product",
@@ -161,10 +364,6 @@ export const listingTruthJob: MigrationJob = {
     return rows.map((r) => r.product);
   },
   plan: planListingTruth,
-  async apply() {
-    throw new Error("distribution.listing-truth apply is A-27.7");
-  },
-  async down() {
-    throw new Error("distribution.listing-truth down is A-27.7");
-  },
+  apply: applyListingTruth,
+  down: downListingTruth,
 };

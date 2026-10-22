@@ -13,7 +13,7 @@
 --   moved_at          epoch seconds of the apply
 --
 -- Distribution owns the table (`TABLE_OWNERS`). Expand-only: a new table nothing older reads.
--- Rollback: scripts/rollback/0129_listing_truth_moves.down.sql.
+-- Rollback: scripts/rollback/0199_listing_truth_moves.down.sql.
 CREATE TABLE IF NOT EXISTS dist_listing_truth_moves (
   product            TEXT NOT NULL REFERENCES products(slug),
   locale             TEXT NOT NULL DEFAULT '',
