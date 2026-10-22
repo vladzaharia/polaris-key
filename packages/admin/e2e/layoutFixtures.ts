@@ -30,7 +30,7 @@ const GIB = 1024 ** 3;
 // byte (records, files and older versions are 0 until U-09/U-10), the null tier holds people with
 // no tier or no license, platforms are the devices' own ids (or null), and no tier limit is above
 // the per-person ceiling the read clamps to.
-const SYNC_USAGE = {
+export const SYNC_USAGE = {
   enabled: true,
   usage: {
     bytes: 18.4 * GIB,
@@ -184,6 +184,52 @@ const ME = {
   })),
 };
 
+/** A member who administers the djdl product only (Cloud Sync Setup's product-role reads). */
+export const PRODUCT_ROLE_ME = {
+  ...ME,
+  sub: "m-kenji",
+  name: "Kenji Mori",
+  email: "kenji@example.com",
+  platformAdmin: false,
+  permissions: {
+    roles: [
+      {
+        role: "product_admin",
+        scope: "product:djdl",
+        areas: null,
+        source: "grant",
+      },
+    ],
+    platform: { view: ["console"], edit: ["console"] },
+    products: {
+      djdl: {
+        view: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+        edit: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+      },
+    },
+  },
+};
+
 type Row = Record<string, unknown>;
 const core = (path: string) => CORE_ROUTES[`${P}${path}`] as Row;
 const dist = (path: string) => DISTRIBUTION_ROUTES[`${P}${path}`] as Row;
@@ -258,8 +304,8 @@ const ROUTES: Record<string, unknown> = {
     items: [
       // U-05.21: the Cloud Sync pause, one row per product with Cloud Sync on.
       {
-        id: "diceroll:sync.paused",
-        product: { slug: "diceroll", name: "Diceroll" },
+        id: `${LONG_SLUG}:sync.paused`,
+        product: { slug: LONG_SLUG, name: LONG_NAME },
         kind: "sync.paused",
         tone: "warning",
         service: "sync",

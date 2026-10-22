@@ -19,7 +19,9 @@ import {
   IMG_ORIGIN,
   LONG_SLUG,
   PACK_ID,
+  PRODUCT_ROLE_ME,
   resolve,
+  SYNC_USAGE,
 } from "./layoutFixtures.js";
 import {
   columnBreaches,
@@ -108,6 +110,8 @@ interface Case {
   hash: string;
   /** Opens a drawer or dialog after the page settles. */
   act?: (page: Page) => Promise<void>;
+  /** Answers for these API paths in place of the fixtures (a different member, a paused product). */
+  override?: Record<string, unknown>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
 }
@@ -203,6 +207,22 @@ function cases(): Case[] {
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
     // U-05.20: Cloud Sync's Usage tab is a route tab, not a nav row: its empty twin by hand.
     { name: "empty:sync-usage", hash: "#/p/empty/sync/usage" },
+    // U-05.21: Setup as a product admin while writes are paused (the access line, no Resume).
+    {
+      name: "djdl:sync-setup?role",
+      hash: "#/p/djdl/sync/setup",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/products/djdl/sync/usage": {
+          ...SYNC_USAGE,
+          paused: {
+            since: Math.floor(Date.now() / 1000) - 3600,
+            by: null,
+            reason: null,
+          },
+        },
+      },
+    },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
@@ -287,6 +307,7 @@ const ZOOM_CASES = [
   "djdl:activity?table",
   "djdl:sync-usage",
   "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
@@ -303,6 +324,7 @@ const TEXT200_CASES = [
   "djdl:settings",
   // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
   "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
@@ -607,7 +629,7 @@ async function open(
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = resolve(url.pathname);
+      const body = c.override?.[url.pathname] ?? resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });

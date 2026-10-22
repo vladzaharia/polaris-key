@@ -42,23 +42,47 @@ export function PlatformPill(): React.ReactElement {
 /** One line of "who can change this", with the lock, for a member without the access. */
 export function WhoLine({ text }: { text: string }): React.ReactElement {
   return (
-    <p className="flex items-start gap-2 text-sm text-fg-muted">
+    <p className="flex min-w-0 items-start gap-2 text-sm text-fg-muted [overflow-wrap:anywhere]">
       <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-      {text}
+      <span className="min-w-0">{text}</span>
     </p>
   );
 }
 
 /** A block of placeholder rows while a read loads: the page does not jump when it arrives. */
-export function RowsSkeleton({ rows }: { rows: number }): React.ReactElement {
+export function RowsSkeleton({
+  rows,
+  tall = false,
+}: {
+  rows: number;
+  /** As tall as a tier row (a name over its note), so the card does not grow when they land. */
+  tall?: boolean;
+}): React.ReactElement {
   return (
-    <div data-skeleton aria-hidden className="pk-skeleton-group space-y-3 py-1">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex items-center justify-between gap-4">
-          <Skeleton className="h-5 w-40 max-w-[50%]" />
-          <Skeleton className="h-5 w-20" />
-        </div>
-      ))}
+    <div
+      data-skeleton
+      aria-hidden
+      className={cn(
+        "pk-skeleton-group",
+        tall ? "divide-y divide-border" : "space-y-3 py-1",
+      )}
+    >
+      {Array.from({ length: rows }, (_, i) =>
+        tall ? (
+          <div key={i} className="flex items-center justify-between gap-4 py-3">
+            <div className="space-y-1">
+              <Skeleton className="h-6 w-40 max-w-full" />
+              <Skeleton className="h-5 w-28 max-w-full" />
+            </div>
+            <Skeleton className="h-6 w-20" />
+          </div>
+        ) : (
+          <div key={i} className="flex items-center justify-between gap-4">
+            <Skeleton className="h-5 w-40 max-w-[50%]" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ),
+      )}
     </div>
   );
 }

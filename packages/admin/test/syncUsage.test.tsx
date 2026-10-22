@@ -14,6 +14,7 @@ import { KitProviders } from "../src/kit/KitProviders.js";
 
 const product = vi.fn();
 const syncUsage = vi.fn<() => Promise<SyncUsageResponse>>();
+const productSettings = vi.fn();
 const schema = vi.fn();
 
 vi.mock("../src/api.js", async () => {
@@ -25,6 +26,7 @@ vi.mock("../src/api.js", async () => {
       product: (s: string) => product(s),
       schema: (s: string) => schema(s),
       syncUsage: () => syncUsage(),
+      productSettings: () => productSettings(),
     },
   };
 });
@@ -131,7 +133,8 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  for (const m of [product, syncUsage, schema]) m.mockReset();
+  for (const m of [product, syncUsage, schema, productSettings]) m.mockReset();
+  productSettings.mockRejectedValue(new Error("not served"));
   product.mockResolvedValue({ product: detail() });
   schema.mockResolvedValue(GAME);
   syncUsage.mockResolvedValue(FIXTURE);
@@ -139,6 +142,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("formatStorage", () => {
+  it("reads 'Of Y' from the product's ceiling setting, and from the catalog default until it loads", async () => {
+    productSettings.mockResolvedValue({
+      settings: [{ key: "cloudSync.ceiling.bytes", value: 80 * GiB }],
+    });
+    renderPage();
+    expect(await screen.findByText("Of 80 GiB")).toBeTruthy();
+  });
+
   it("is Setup's formatter with the unit kept to its number: MiB and GiB, never MB", () => {
     expect(formatStorage(0)).toBe("0 bytes");
     expect(formatStorage(900)).toBe("900 bytes");

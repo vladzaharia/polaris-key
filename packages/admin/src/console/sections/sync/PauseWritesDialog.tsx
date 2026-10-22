@@ -51,6 +51,7 @@ export function PauseNoticeLine({
         <>
           {" "}
           <bdi>“{notice.reason}”</bdi>
+          {/[.!?…]$/.test(notice.reason.trim()) ? null : "."}
         </>
       ) : null}
     </>
@@ -181,7 +182,9 @@ export function PauseWritesDialog({
           aria-required
         />
         <p className="text-xs text-fg-muted">
-          Platform admins see it in the banner. Recorded in Activity.
+          {pausing
+            ? "Platform admins see it in the banner. Recorded in Activity."
+            : "Recorded in Activity."}
         </p>
       </div>
     </ConfirmDialog>

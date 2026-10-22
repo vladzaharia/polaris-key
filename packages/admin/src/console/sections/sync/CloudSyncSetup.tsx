@@ -66,14 +66,13 @@ import {
 } from "./SetupParts.js";
 import { StorageDefaultDialog } from "./StorageDefaultDialog.js";
 import { CeilingDialog } from "./CeilingDialog.js";
-import { localSettings, useSyncUsage, userSettings } from "./data.js";
+import { useProductCeilingSetting, useSyncUsage } from "./data.js";
 import { SyncHeader } from "./SyncHeader.js";
 import { formatBinaryBytes } from "./pages/SyncData.js";
 
 const WRITES_PAUSED = "cloudSync.writesPaused";
 const DEFAULT_QUOTA = "cloudSync.quota.defaultBytes";
 const CEILING = "cloudSync.ceiling.bytes";
-const LIMITS_AREA = "cloudSync.limits";
 
 export function CloudSyncSetupPage({
   slug,
@@ -95,11 +94,7 @@ export function CloudSyncSetupPage({
   });
   const usageQuery = useSyncUsage(slug);
   const usage: Usage | null = usageQuery.data?.enabled ? usageQuery.data : null;
-  const ceilingQuery = useQuery({
-    queryKey: qk.productSettings(slug, LIMITS_AREA),
-    queryFn: () => api.productSettings(slug, LIMITS_AREA),
-    retry: false,
-  });
+  const ceilingQuery = useProductCeilingSetting(slug);
   const ceiling: ProductSetting | undefined = ceilingQuery.data?.settings.find(
     (x) => x.key === CEILING,
   );
@@ -213,28 +208,30 @@ export function CloudSyncSetupPage({
         />
       ) : null}
 
-      {isPaused ? (
-        <Callout
-          tone="warning"
-          title="Cloud Sync writes are paused for every product"
-          action={
-            gate.allowed && paused ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDialog("resume")}
-              >
-                Resume writes
-              </Button>
-            ) : undefined
-          }
-        >
-          {notice ? <PauseNoticeLine notice={notice} /> : null} Devices keep
-          their changes and send them on resume.
-        </Callout>
-      ) : null}
+      <div className="grid max-w-4xl gap-6 min-[1280px]:max-w-none min-[1280px]:grid-cols-[minmax(0,1fr)_22rem] min-[1280px]:items-start min-[1600px]:grid-cols-[minmax(0,56rem)_25rem]">
+        {isPaused ? (
+          <div className="order-[-2] col-span-full">
+            <Callout
+              tone="warning"
+              title="Cloud Sync writes are paused for every product"
+              action={
+                gate.allowed && paused ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialog("resume")}
+                  >
+                    Resume writes
+                  </Button>
+                ) : undefined
+              }
+            >
+              {notice ? <PauseNoticeLine notice={notice} /> : null} Devices keep
+              their changes and send them on resume.
+            </Callout>
+          </div>
+        ) : null}
 
-      <div className="grid max-w-4xl gap-6 min-[1600px]:max-w-none min-[1600px]:grid-cols-[minmax(0,56rem)_25rem] min-[1600px]:items-start">
         <div className="min-w-0 space-y-6">
           <SettingsSection
             id="sync-storage"
@@ -291,7 +288,7 @@ export function CloudSyncSetupPage({
                 </div>
               ) : null}
 
-              {usageQuery.isPending ? <RowsSkeleton rows={3} /> : null}
+              {usageQuery.isPending ? <RowsSkeleton rows={3} tall /> : null}
               {usageQuery.isError ? (
                 <ErrorState
                   compact
@@ -326,7 +323,7 @@ export function CloudSyncSetupPage({
           ) : null}
         </div>
 
-        <div className="min-w-0 max-sm:order-first">
+        <div className="order-[-1] min-w-0 min-[1280px]:order-none">
           <SettingsSection id="sync-limits" title="Product limits">
             <div className="space-y-5 px-5 py-4">
               <TotalStorage
@@ -342,16 +339,14 @@ export function CloudSyncSetupPage({
 
               {drawn.paused && !readFailed ? (
                 <div className="space-y-2 border-t border-border pt-4">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <div className="min-w-0 grow basis-full sm:basis-0">
-                      <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
-                        Pause all writes <PlatformPill />
-                      </p>
-                      <p className="text-sm text-fg-muted">
-                        Stops new settings and saves in every product. Devices
-                        send them on resume.
-                      </p>
-                    </div>
+                  <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
+                    Pause all writes <PlatformPill />
+                  </p>
+                  <p className="text-sm text-fg-muted">
+                    Stops new settings and saves in every product. Devices send
+                    them on resume.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
                     {pausedKnown ? (
                       <StatusPill
                         tone={isPaused ? "warning" : "neutral"}

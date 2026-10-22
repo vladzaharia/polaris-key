@@ -8,7 +8,8 @@
  *
  * A write carries the version the row was read at: a concurrent change is refused (409), the
  * setting reloads and what was typed stays for the next try. A ceiling the operator set can go
- * back to the platform default (the revert write).
+ * back to the platform default (the revert write). Should the server ask for a step-up sign-in,
+ * the number and the reason are kept across the round trip (`stepUpKey`, as the pause dialog).
  */
 
 import * as React from "react";
@@ -29,11 +30,13 @@ import { formatBinaryBytes } from "./pages/SyncData.js";
 const MiB = 1024 ** 2;
 const GiB = 1024 ** 3;
 
-/** Bytes as words that match what was typed: whole GiB as GiB, else whole MiB. */
+const gibNumber = new Intl.NumberFormat("en", { maximumFractionDigits: 3 });
+
+/** Bytes as the operator typed them: GiB to up to 3 decimals, MiB only below 1 GiB. */
 export function formatCeiling(bytes: number): string {
   if (bytes === 0) return "0 GiB";
-  if (bytes % GiB === 0) return `${formatCount(bytes / GiB)} GiB`;
-  return `${formatCount(Math.round(bytes / MiB))} MiB`;
+  if (bytes < GiB) return `${formatCount(Math.round(bytes / MiB))} MiB`;
+  return `${gibNumber.format(bytes / GiB)} GiB`;
 }
 
 /** The field's text for a value: GiB, up to three decimals, no trailing zeros. */
@@ -60,17 +63,23 @@ export function CeilingDialog({
   const fieldId = React.useId();
   const reasonId = React.useId();
   const fieldRef = React.useRef<HTMLInputElement>(null);
+  // A number and a reason put back after a step-up sign-in survive the fresh-open reset below
+  // (that effect runs after ConfirmDialog's, which restores them).
+  const restored = React.useRef(false);
   const client = useQueryClient();
   const current = Number(setting.value);
   const platformDefault = Number(setting.defaultValue);
   const spec = setting.spec.kind === "integer" ? setting.spec : null;
   const max = spec?.max ?? Number.MAX_SAFE_INTEGER;
   React.useEffect(() => {
-    if (open) {
-      setGib(gibText(current));
-      setReason("");
-      setUseDefault(false);
+    if (!open) return;
+    if (restored.current) {
+      restored.current = false;
+      return;
     }
+    setGib(gibText(current));
+    setReason("");
+    setUseDefault(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const n = Number(gib);
@@ -169,6 +178,14 @@ export function CeilingDialog({
       confirmDisabled={useDefault ? reason.trim() === "" : !changed || !valid}
       initialFocusRef={fieldRef}
       submitOnEnter
+      stepUpKey={`${slug}:${setting.key}`}
+      stepUpState={{ gib, reason, useDefault: useDefault ? "1" : "" }}
+      onRestore={(saved) => {
+        restored.current = true;
+        setGib(saved.gib ?? "");
+        setReason(saved.reason ?? "");
+        setUseDefault(saved.useDefault === "1");
+      }}
       describeError={(e) =>
         e instanceof ApiError && e.status === 409
           ? {

@@ -689,8 +689,59 @@ describe("Cloud Sync → Setup", () => {
     await user.type(field, "50.004");
     // What is typed is what is stored (whole MiB), and the button says it.
     expect(
-      within(dialog).getByRole("button", { name: "Raise to 51,204 MiB" }),
+      within(dialog).getByRole("button", { name: "Raise to 50.004 GiB" }),
     ).toBeTruthy();
+  });
+
+  it("words a ceiling in GiB to three decimals, and in MiB only below 1 GiB", async () => {
+    const user = userEvent.setup();
+    const { dialog, field } = await openCeiling(user);
+    await user.clear(field);
+    await user.type(field, "10.5");
+    expect(
+      within(dialog).getByRole("button", { name: "Lower to 10.5 GiB" }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(/less than 10.5 GiB/),
+    ).toBeTruthy();
+    await user.clear(field);
+    await user.type(field, "0.5");
+    expect(
+      within(dialog).getByRole("button", { name: "Lower to 512 MiB" }),
+    ).toBeTruthy();
+  });
+
+  it("keeps the number and the reason across a step-up sign-in", async () => {
+    const user = userEvent.setup();
+    updateSetting.mockRejectedValueOnce(
+      new ApiError(403, undefined, "step_up_required"),
+    );
+    const { dialog, field } = await openCeiling(user);
+    await user.clear(field);
+    await user.type(field, "20");
+    await user.type(within(dialog).getByLabelText(/Reason/), "Cost");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Lower to 20 GiB" }),
+    );
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Sign in again" }),
+    );
+    expect(stepUpRedirect).toHaveBeenCalled();
+    cleanup();
+    const again = await (async () => {
+      renderPage();
+      return screen.findByRole("alertdialog");
+    })();
+    expect(
+      (
+        within(again).getByLabelText(
+          /Total storage for this product/,
+        ) as HTMLInputElement
+      ).value,
+    ).toBe("20");
+    expect(
+      (within(again).getByLabelText(/Reason/) as HTMLTextAreaElement).value,
+    ).toBe("Cost");
   });
 
   it("goes back to the platform default with the revert write, with a reason", async () => {
@@ -805,6 +856,24 @@ describe("Cloud Sync → Setup", () => {
     window.location.hash = "";
   });
 
+  it("ends a quoted reason with a full stop, and the resume hint promises no banner", async () => {
+    window.location.hash = "#/p/diceroll/sync/setup?resume=1";
+    platformSettings.mockResolvedValue(view([PAUSED(true), QUOTA]));
+    usage.mockResolvedValue(
+      USAGE(undefined, {
+        since: 1_790_000_000,
+        by: "Ana Lima",
+        reason: "Storage errors",
+      }),
+    );
+    renderPage();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("“Storage errors”.");
+    expect(within(dialog).getByText("Recorded in Activity.")).toBeTruthy();
+    expect(within(dialog).queryByText(/banner/)).toBeNull();
+    window.location.hash = "";
+  });
+
   it("has one Resume writes button on the paused page: the banner's; the row shows the Paused pill", async () => {
     platformSettings.mockResolvedValue(view([PAUSED(true), QUOTA]));
     renderPage();
@@ -854,7 +923,23 @@ describe("Cloud Sync → Setup", () => {
     expect(screen.queryByRole("button", { name: /Pause writes/ })).toBeNull();
     expect(await screen.findByText("Standard")).toBeTruthy();
     expect(screen.getByText("Off")).toBeTruthy();
+    // The access line wraps anywhere: a long address cannot push the page sideways.
+    for (const line of screen.getAllByText(/Platform admins only/))
+      expect(line.closest("p")!.className).toContain(
+        "[overflow-wrap:anywhere]",
+      );
     expect(platformSettings).not.toHaveBeenCalled();
+  });
+
+  it("a platform write refreshes every product's usage read, so the banner names who and why at once", () => {
+    for (const method of ["patchPlatformSetting", "revertPlatformSetting"]) {
+      const targets = invalidationFor(method, ["cloudSync.writesPaused", {}])!;
+      const t = targets.find((x) => x.match);
+      expect(t).toBeTruthy();
+      expect(t!.match!(qk.syncUsage("djdl"))).toBe(true);
+      expect(t!.match!(qk.syncUsage("northwind"))).toBe(true);
+      expect(t!.match!(qk.catalog("djdl"))).toBe(false);
+    }
   });
 
   it("a platform write refreshes Home's Needs attention, so the paused rows clear after Resume", () => {
