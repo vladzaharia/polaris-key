@@ -11,6 +11,7 @@ interface PlaywrightPage {
   emulateMedia(options: {
     colorScheme?: "dark" | "light" | null;
     forcedColors?: "active" | "none" | null;
+    reducedMotion?: "reduce" | "no-preference" | null;
   }): Promise<void>;
 }
 
@@ -59,6 +60,11 @@ export default defineConfig({
         async emulateForced(ctx, forced: "active" | null) {
           const page = (ctx as unknown as { page: PlaywrightPage }).page;
           await page.emulateMedia({ forcedColors: forced });
+        },
+        // Reduced motion (`prefers-reduced-motion: reduce`); null resets.
+        async emulateMotion(ctx, motion: "reduce" | null) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          await page.emulateMedia({ reducedMotion: motion });
         },
         async emulateScheme(ctx, scheme: "dark" | "light" | null) {
           const page = (ctx as unknown as { page: PlaywrightPage }).page;

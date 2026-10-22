@@ -6,6 +6,7 @@
 // decides (DL9), and every control reported through `onAction`. The DOM is the elements' own
 // (`.pk-root` and its `data-*`), so the shared stylesheet draws both renderers alike.
 
+import { flushSync } from "react-dom";
 import {
   createContext,
   useContext,
@@ -38,12 +39,14 @@ import {
 import type { PresentationSource } from "@polaris-key/client-core/presentation";
 import {
   actionOf,
+  canMorph,
   copyFor,
   LAYOUTS,
   decodeIcon,
   groundPrefersDark,
   inputWithIdentity,
   mergeThemes,
+  morph,
   onCopyLoaded,
   preloadCopy,
   resolveFor,
@@ -844,6 +847,14 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   });
   const driven = props.input === undefined && sdk !== null;
   const step: GateStep = driven ? sdk.step : "home";
+  // The step morph: a step change keeps drawing the old card until the View Transition has
+  // captured it, then swaps inside the transition (an instant swap where there is none).
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+  const shown = useRef<string | null>(null);
+  const now = useRef<string | null>(null);
+  const card = useRef<ReactNode>(null);
+  const holding = useRef(false);
+  const lastFocus = useRef<View | null>(null);
   const kit = useKit(
     "PolarisKeyGate",
     {
@@ -862,11 +873,35 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     },
     (v, input) => {
       const screen = gateScreen(v, step);
-      if (!screen) return v;
+      const key = screen && v.state !== "grace" ? `${v.state}.${screen}` : null;
+      now.current = key;
+      holding.current =
+        key !== null &&
+        shown.current !== null &&
+        shown.current !== key &&
+        card.current !== null &&
+        canMorph();
+      if (holding.current && lastFocus.current) return lastFocus.current;
+      shown.current = key;
+      if (!screen) return (lastFocus.current = v);
       // Focus follows the view as drawn: a revoked screen focuses its Sign in.
-      return viewOf(screen, input);
+      return (lastFocus.current = viewOf(screen, input));
     },
   );
+  const stepKey = now.current;
+  useEffect(() => {
+    if (!holding.current || kit.rootRef.current === null) return;
+    // In a microtask: an instant swap (reduced motion) must not flush inside this effect.
+    queueMicrotask(() => {
+      if (kit.rootRef.current)
+        morph(kit.rootRef.current, () =>
+          flushSync(() => {
+            shown.current = now.current;
+            redraw();
+          }),
+        );
+    });
+  }, [stepKey]);
   const { view, input } = kit;
   // Back returns focus to the control that opened the step (DL9).
   const prevStep = useRef<GateStep>(step);
@@ -882,8 +917,11 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       )
       ?.focus({ preventScroll: true });
   });
-  if (view.state === "hidden" || view.state === "licensed")
+  if (view.state === "hidden" || view.state === "licensed") {
+    card.current = null;
     return <>{props.children}</>;
+  }
+  if (holding.current) return card.current;
   const c = kit.ctxFor(view);
   const sub = (component: ComponentName) => {
     const raw = viewOf(component, input);
@@ -942,7 +980,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     default:
       body = renderView(c);
   }
-  return (
+  return (card.current = (
     <KitRoot
       kit={kit}
       className={props.className}
@@ -953,5 +991,5 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     >
       {body}
     </KitRoot>
-  );
+  ));
 }

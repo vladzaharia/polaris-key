@@ -331,9 +331,12 @@ function DrivenUpdate(
   props: Props & { adapter: PolarisAdapter; version?: string },
 ): ReactNode {
   const { adapter, version, ...rest } = props;
-  const [found, setFound] = useState<{ version: string; url: string } | null>(
-    null,
-  );
+  const [found, setFound] = useState<{
+    version: string;
+    url: string;
+    notes?: NonNullable<UiInput["releaseNotes"]>;
+    more?: string;
+  } | null>(null);
   const [skipped, setSkipped] = useState(false);
   // Asked once the SDK knows the product publishes updates (not at first paint).
   const updatesOn = useAdapterState(adapter).capabilities.update.enabled;
@@ -342,7 +345,28 @@ function DrivenUpdate(
     let live = true;
     adapter
       .checkUpdate()
-      .then((v) => live && v.updateAvailable && setFound(v))
+      .then(async (v) => {
+        if (!live || !v.updateAvailable) return;
+        setFound(v);
+        // The changelog entry supplies "What's new" and the release page; without one, neither.
+        const e = (await adapter.changelog().catch(() => [])).find(
+          (c) => c.version === v.version,
+        );
+        const notes = (e?.summary ?? "")
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+          .join("\n");
+        if (live && e)
+          setFound({
+            ...v,
+            ...(notes
+              ? { notes: [{ version: v.version, date: e.date ?? "", notes }] }
+              : {}),
+            ...(safeLink(e.url) ? { more: e.url } : {}),
+          });
+      })
       .catch(() => undefined);
     return () => {
       live = false;
@@ -353,6 +377,7 @@ function DrivenUpdate(
   const input: UiInput = {
     update: { action: "binary", version: found.version },
     ...(version ? { bundle: { slug: "", version } } : {}),
+    ...(found.notes ? { releaseNotes: found.notes } : {}),
   };
   return (
     <UpdatePrompt_
@@ -363,6 +388,9 @@ function DrivenUpdate(
       onAction={both((a: KitAction) => {
         if (a.key === "update.install" || a.key === "update.restartWhenReady") {
           const url = safeLink(found.url);
+          if (url) openLink(url);
+        } else if (a.key === "update.allChanges") {
+          const url = safeLink(found.more ?? found.url);
           if (url) openLink(url);
         } else if (a.key === "update.later" || a.key === "update.skipVersion")
           setSkipped(true);

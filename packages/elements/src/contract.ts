@@ -11,7 +11,7 @@ import { isTitleKey, type Layout } from "./layout.js";
 import { stylesCss } from "./styles.js";
 
 export { LAYOUTS, TAGS, isTitleKey, type Kind, type Layout } from "./layout.js";
-export { stylesCss } from "./styles.js";
+export { stylesCss, morph, canMorph } from "./styles.js";
 export { tokenCss } from "./tokens.js";
 // DL14's QR, for the states that may draw one (a TV or console code, an offline request).
 export { encodeQr } from "@polaris-key/node/qr";

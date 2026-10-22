@@ -148,6 +148,25 @@ function contentFor(c: KitCtx): ReactNode {
       return rowsOf()?.settingsRows(c) ?? null;
     case "OfflineActivation":
       return rowsOf()?.offlineSteps(c) ?? null;
+    case "UpdatePrompt": {
+      // What's new on the update prompt: the first lines of this version's notes.
+      if (!c.view.copy.includes("update.whatsNew")) return null;
+      const notes = c.input.releaseNotes ?? [];
+      const note =
+        notes.find((n) => n.version === c.input.update?.version) ?? notes[0];
+      const lines = (note?.notes ?? "")
+        .split(/\n+/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      return lines.length === 0 ? null : (
+        <ul className="notes" data-part="notes">
+          {lines.map((l, i) => (
+            <li key={i}>{l}</li>
+          ))}
+        </ul>
+      );
+    }
     case "AccountAndLicense":
       return rowsOf()?.accountRows(c) ?? null;
     case "ChannelPicker":
