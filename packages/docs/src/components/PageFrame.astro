@@ -7,10 +7,27 @@
  */
 import Default from "@astrojs/starlight/components/PageFrame.astro";
 import { sectionFor } from "../lib/section";
+import { helpRoute } from "../lib/helpHost";
+import { portalHref } from "../lib/portalHref";
 
 const section = sectionFor(Astro.locals.starlightRoute.id);
 // The top-level folder (start, build, reference, help, ...): reference pages take a wider measure.
 const kind = Astro.locals.starlightRoute.id.split("/")[0];
+const help = helpRoute(Astro.locals.starlightRoute.id);
+// The page-not-found page is one file for every door; its footer shows when the address is Help's
+// (help.css, components/help/MissingPage.astro).
+const miss = Astro.locals.starlightRoute.id === "404";
+const home = Astro.locals.starlightRoute.id === "help";
+const reviewed = help ? (Astro.locals.starlightRoute.entry.data as { lastReviewed?: string }).lastReviewed : undefined;
+const reviewedText =
+  reviewed === undefined
+    ? undefined
+    : new Date(`${reviewed}T12:00:00Z`).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      });
 ---
 
 <!-- Help is Polaris Locker's: the brand's Locker scope makes selection, links and focus neutral ink
@@ -20,12 +37,27 @@ const kind = Astro.locals.starlightRoute.id.split("/")[0];
   data-service={section.slug}
   data-kind={kind}
   data-brand={kind === "help" ? "locker" : undefined}
+  data-help-home={home ? "" : undefined}
 >
   <Default>
     <slot name="header" slot="header" />
     <slot name="sidebar" slot="sidebar" />
     <slot />
   </Default>
+  {
+    (help || miss) && (
+      <footer class="pk-help-footer" data-miss={miss ? "" : undefined}>
+        <span>Polaris Locker</span>
+        <span aria-hidden="true">·</span>
+        <a href={portalHref("library")}>polaris.locker</a>
+        <span aria-hidden="true">·</span>
+        <a href="/docs/help/">Help</a>
+        <span aria-hidden="true">·</span>
+        <a href="/docs/help/your-data/">Privacy</a>
+        {reviewedText && <span class="pk-help-footer__end">Last reviewed {reviewedText}</span>}
+      </footer>
+    )
+  }
 </div>
 
 <script>

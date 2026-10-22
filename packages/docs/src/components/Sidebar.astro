@@ -1,0 +1,28 @@
+---
+/**
+ * The sidebar. On Help the phone's menu is a drawer with its own head: the door's name and a close
+ * button (docs.mobile-menu). The head is hidden from 50 rem up, where the sidebar is a column.
+ */
+import Default from "@astrojs/starlight/components/Sidebar.astro";
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
+
+const help = helpRoute(Astro.locals.starlightRoute.id);
+---
+
+{
+  help && (
+    <div class="pk-help-drawer-head">
+      <h2>Help</h2>
+      <button
+        type="button"
+        class="pk-help-iconbtn"
+        popovertarget="starlight__sidebar"
+        popovertargetaction="hide"
+        aria-label="Close menu"
+        set:html={HELP_ICONS.x}
+      />
+    </div>
+  )
+}
+<Default />

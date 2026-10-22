@@ -128,6 +128,7 @@ new PagefindUI(`;
         "@polaris-key/brand/tokens.css",
         "@polaris-key/brand/fonts.css",
         "./src/styles/global.css",
+        "./src/styles/help.css",
       ],
       // The launch kit's Pinned K web identity, copied into public/branding/key/ by
       // scripts/copy-artifacts.mjs (no terminal bit on favicons; BRAND.md §6 rule 0).
@@ -171,6 +172,13 @@ new PagefindUI(`;
         SiteTitle: "./src/components/SiteTitle.astro",
         PageFrame: "./src/components/PageFrame.astro",
         PageTitle: "./src/components/PageTitle.astro",
+        // Help's chrome (docs.help-*, docs.mobile-menu): each override draws Starlight's own on every
+        // other door.
+        Footer: "./src/components/Footer.astro",
+        MobileMenuFooter: "./src/components/MobileMenuFooter.astro",
+        Sidebar: "./src/components/Sidebar.astro",
+        SocialIcons: "./src/components/SocialIcons.astro",
+        ThemeSelect: "./src/components/ThemeSelect.astro",
       },
       // "On this page" for the Help messages pages, whose headings come from components rather
       // than from Markdown (src/routeData.ts).

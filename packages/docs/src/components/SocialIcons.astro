@@ -1,0 +1,24 @@
+---
+/**
+ * Starlight renders this slot in the header's right group (and the mobile menu's footer). On Help
+ * it holds the one link out of the docs: the customer's library (docs/design/mockups/screens/docs/
+ * docs.help-home.html). Elsewhere it stays empty, as Starlight's own is.
+ */
+import Default from "@astrojs/starlight/components/SocialIcons.astro";
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
+import { portalHref } from "../lib/portalHref";
+
+const help = helpRoute(Astro.locals.starlightRoute.id);
+---
+
+{
+  help ? (
+    <a class="pk-help-library" href={portalHref("library")}>
+      Your library
+      <Fragment set:html={HELP_ICONS.arrowUpRight} />
+    </a>
+  ) : (
+    <Default />
+  )
+}

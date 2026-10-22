@@ -135,15 +135,6 @@
   text-decoration-thickness: 2px;
 }
 
-/* The Help home's topic cards are .not-content, which the rule above skips; without this they
-   fall back to the browser's own link colours. Neutral ink with the same coral underline. */
-[data-brand="locker"] .pk-help-home__topics a {
-  color: var(--pk-text-strong);
-  text-decoration-line: underline;
-  text-decoration-color: var(--pk-locker-accent);
-  text-decoration-thickness: 2px;
-}
-
 /* Shown when the search engine cannot start (astro.config.mjs, pk-help-search-bundle). */
 .pk-search-failed {
   margin: 0;

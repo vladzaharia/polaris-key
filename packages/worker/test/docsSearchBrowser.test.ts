@@ -141,12 +141,12 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
     90_000,
   );
 
-  it("styles the Help home's topic links in Locker ink, not the browser's link colours", async () => {
+  it("styles the Help home's cards in Locker ink, not the browser's link colours", async () => {
     const { page, close } = await searchOn("https://polaris.locker", "x");
     try {
       await page.keyboard.press("Escape");
       const colour: string = await page
-        .locator(".pk-help-home__topics a")
+        .locator(".pk-help-cards a")
         .first()
         .evaluate((a: any) => (globalThis as any).getComputedStyle(a).color);
       expect(["rgb(0, 0, 238)", "rgb(158, 158, 255)"]).not.toContain(colour);
