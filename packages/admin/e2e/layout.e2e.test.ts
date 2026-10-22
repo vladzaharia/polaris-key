@@ -151,6 +151,16 @@ function cases(): Case[] {
       }
     }
   }
+  // CX-LREC's holder variants of the license record: Waiting (lic_3) and Floating (lic_10).
+  for (const [holder, id] of [
+    ["waiting", "lic_3"],
+    ["floating", "lic_10"],
+  ] as const)
+    for (const tab of ["overview", "keys", "devices", "activity", "config"])
+      list.push({
+        name: `djdl:licenses/record-${holder}/${tab}`,
+        hash: `#/p/djdl/license/licenses/${id}/${tab}`,
+      });
   list.push({ name: `long:overview`, hash: `#/p/${LONG_SLUG}` });
   list.push({ name: `long:settings`, hash: `#/p/${LONG_SLUG}/settings` });
   for (const p of GLOBAL_PAGES) {
@@ -339,6 +349,9 @@ const VIEWPORTS: {
         accept: (n) => !n.startsWith("empty:"),
       },
       { label: "phone", width: 390, height: 844 },
+      // D7: the console's two review sizes, a small laptop window and a landscape phone.
+      { label: "d7-laptop", width: 1180, height: 820 },
+      { label: "d7-landscape", width: 844, height: 390 },
       // Home and Overview at the laptop the owner works on (1512). Overview's own 200 % text (its
       // masthead sentence, the By platform rows) belongs to the Overview package.
       { label: "mac", width: 1512, height: 818, only: HOME_CASES },
