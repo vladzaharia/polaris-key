@@ -1,0 +1,302 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-push-pull",
+  "description": "Settings over /sync (WIRE-CONTRACT-V4 §13.3, §13.4) for a signed-in, key-activated device. A pull of a person with nothing stored answers an empty snapshot (empty: true, cursor 0); a push of two declared settings answers each ok with its version, the new cursor and the person's changes; a snapshot pull returns both with an ETag; the same pull sent with that ETag answers 304 and no body.",
+  "features": ["sync.settings"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_Ji45-uAoSgGSSjqnBMsbYfyBLsKwORcA8fbHdM23I3g",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPull",
+      "note": "Nothing stored: an empty snapshot.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"0.0\""
+              },
+              "body": {
+                "subject": "ps_uHkdpSJeBhQZmYCn9KqxPg",
+                "serverNow": 1700000000000,
+                "cursor": 0,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "empty": true,
+                "changes": [],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 0,
+        "more": false,
+        "empty": true,
+        "settings": []
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "Two declared settings, both accepted.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_uHkdpSJeBhQZmYCn9KqxPg",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 2,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 29,
+                  "settings": 2,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "ui.theme",
+                    "scope": "user",
+                    "value": "dark",
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  },
+                  {
+                    "setting": "audio.volume",
+                    "scope": "user",
+                    "value": 0.5,
+                    "version": 2,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  { "mutationId": 2, "status": "ok", "version": 2 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": ["audio.volume", "ui.theme"],
+        "lastMutationId": 2,
+        "results": ["ok", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "A snapshot pull: both settings.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"2.0\""
+              },
+              "body": {
+                "subject": "ps_uHkdpSJeBhQZmYCn9KqxPg",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 29,
+                  "settings": 2,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "ui.theme",
+                    "scope": "user",
+                    "value": "dark",
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  },
+                  {
+                    "setting": "audio.volume",
+                    "scope": "user",
+                    "value": 0.5,
+                    "version": 2,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": ["audio.volume", "ui.theme"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "Nothing new since the cursor: the ETag matches and the answer is 304.",
+      "args": { "cursor": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=2",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}",
+                "if-none-match": "\"2.0\""
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 304,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "etag": "\"2.0\""
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "not-modified" }
+    }
+  ]
+}

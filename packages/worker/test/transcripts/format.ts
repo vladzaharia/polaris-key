@@ -207,6 +207,16 @@
 // downloadModel (SP-00, `release.distribution`) — the public GET of
 // `/<p>/distribution/download.json` (`distribution.downloadModel()`).
 //
+// cloudSyncPull / cloudSyncPush (U-05.16, WIRE-CONTRACT-V4 §13.3, §13.4) — the Cloud Sync settings
+// calls of the `cloudsync-*` transcripts, replayed only by an SDK that marks `sync.settings`
+// implemented. `cloudSyncPull { cursor }` is `GET /<p>/sync?cursor=<n>` (the cursor is always
+// sent; `If-None-Match` carries the last ETag). `cloudSyncPush { cursor, atomic, mutations }`
+// (the mutation COUNT) is `POST /<p>/sync/ops`; its body is asserted by shape, since the
+// `clientId`, mutation ids and clocks are the client's own state. `expect`: `result` "ok" |
+// "not-modified" | "refused" (with `status` and `code`); on "ok" `cursor`, `more`, `empty` and
+// `settings` (the changed setting keys, sorted); a push adds `lastMutationId` and `results`, one
+// label per mutation: "ok" | "duplicate" | "conflict" | "aborted" | "rejected:<code>".
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -317,7 +327,11 @@ export type Action =
   | "choiceLicenses"
   | "choiceDevices"
   | "choiceComplete"
-  | "choiceCancel";
+  | "choiceCancel"
+  /** U-05.16 (WIRE-CONTRACT-V4 §13.4): the Cloud Sync pull, `GET /<p>/sync?cursor=<n>`. */
+  | "cloudSyncPull"
+  /** U-05.16 (§13.3): the Cloud Sync push, `POST /<p>/sync/ops`. */
+  | "cloudSyncPush";
 
 export interface Step {
   action: Action;

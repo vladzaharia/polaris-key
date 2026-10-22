@@ -67,6 +67,7 @@ import {
 } from "./redirect.js";
 
 import { CHOICE_SCENARIOS } from "./choice.js";
+import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
 
 export const SCENARIOS: Scenario[] = [
@@ -117,4 +118,5 @@ export const SCENARIOS: Scenario[] = [
   identityRequestHints,
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,
+  ...CLOUD_SYNC_SCENARIOS,
 ];
