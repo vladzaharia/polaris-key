@@ -70,13 +70,12 @@ You should see the client create with no network request.
 One call mounts the verbs.
 
 ```python title="cli.py"
-import argparse
-
 from polaris_key.cli import register_argparse
+from polaris_key.cli.argparse_cli import GroupedHelpParser
 
 import polaris_config
 
-parser = argparse.ArgumentParser(prog="tidewater")
+parser = GroupedHelpParser(prog="tidewater")
 register_argparse(
     parser.add_subparsers(dest="command", required=True),
     config=polaris_config.CONFIG,
@@ -86,7 +85,7 @@ args = parser.parse_args()
 raise SystemExit(args.func(args))
 ```
 
-The verbs take no `--product` or `--trust`: `config=` says them once. Verbs, theming and `--json` are on [Terminal (Python)](/docs/build/ui/frameworks/terminal-python/).
+The verbs take no `--product` or `--trust`: `config=` says them once. `GroupedHelpParser` lists the license verbs under their own heading. Verbs, theming and `--json` are on [Terminal (Python)](/docs/build/ui/frameworks/terminal-python/).
 
   </Fragment>
   <Fragment slot="library">
