@@ -15,6 +15,8 @@ export {
   inputWithIdentity,
   LAYOUTS,
   lightDomCss,
+  canMorph,
+  morph,
   mergeThemes,
   monogramOf,
   onCopyLoaded,

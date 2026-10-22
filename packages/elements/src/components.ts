@@ -168,6 +168,14 @@ export class PkGate extends PkElement {
     this.binding.driver?.act("common.back");
   };
 
+  /** The gate's step morphs the card between its screens (not into the app or the banner). */
+  protected override morphKey(): string | null {
+    const view = this.view;
+    if (view.state !== "needs-activation" && view.state !== "blocked")
+      return null;
+    return `${view.state}.${gateScreen(view, this.driven ? this.step : "home")}`;
+  }
+
   /** Booting, Welcome and the blocking screens own the window; the app and the banner do not. */
   protected override fillsWindow(state: string): boolean {
     return state !== "licensed" && state !== "grace";

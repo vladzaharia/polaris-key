@@ -20,7 +20,7 @@ import { resolveProductIdentity } from "@polaris-key/ui-core/theme";
 import { copyFor, onCopyLoaded, preloadCopy } from "./copy.js";
 import { installFonts } from "./fonts.js";
 import { actionOf, type RenderCtx } from "./render.js";
-import { sharedSheet, stylesCss } from "./styles.js";
+import { canMorph, morph, sharedSheet, stylesCss } from "./styles.js";
 import {
   decodeIcon,
   findProvider,
@@ -578,6 +578,36 @@ export abstract class PkElement extends LitElement {
    *  own content never inherits the kit's font, colour or line height. */
   protected renderProjected(_view: View): unknown {
     return nothing;
+  }
+
+  /** The step this element is on, when changing it morphs the card (a gate's screens); else null. */
+  protected morphKey(): string | null {
+    return null;
+  }
+
+  private lastMorph: string | null = null;
+
+  /** A step change redraws inside a View Transition on the card; focus moves in `updated`, which
+   *  runs in the same pass, exactly as without it. Without the API: the plain update. */
+  protected override scheduleUpdate(): void | Promise<unknown> {
+    // The model learns the new input in willUpdate, after this: read the step it is moving to.
+    if (this.hasUpdated) this.ensureModel().update(() => this.modelInput());
+    const key = this.morphKey();
+    const was = this.lastMorph;
+    this.lastMorph = key;
+    const root = this.renderRoot?.querySelector?.(".pk-root");
+    if (key === null || was === null || key === was || !root || !canMorph())
+      return super.scheduleUpdate();
+    return new Promise<void>((done) =>
+      morph(
+        root,
+        () => {
+          super.scheduleUpdate();
+          done();
+        },
+        this,
+      ),
+    );
   }
 
   protected override render(): unknown {
