@@ -323,6 +323,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:min(3rem,8vw)}`,
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
+  // On a phone the lockup drops to the BRAND phone size (36 px) in the media query at the end of this list; this rule (more specific than the phone one in the Locker tail) is the TV size.
   `.tv .ac-brand svg{height:72px;width:auto}`,
   `.tv .ac-head img,.tv .ac-head .ac-mono{width:64px;height:64px}`,
   `.tv .ac-head-title{font-size:1.5rem;line-height:2rem}`,
@@ -331,7 +332,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
-  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+  `@media (max-width: 30rem){[data-brand=locker] .tv .ac-brand svg{height:36px;max-width:calc(100% - 2rem)}.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ];
 
 const LOCKER_PAGE_CSS_TAIL = [
