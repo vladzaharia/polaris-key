@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
+import { ApiError } from "../../src/api.js";
 import {
   ConfirmDialog,
   type ConfirmDialogProps,
@@ -167,5 +168,70 @@ describe("ConfirmDialog", () => {
     await waitFor(() =>
       expect(screen.getByTestId("state").textContent).toBe("closed"),
     );
+  });
+
+  describe("step-up (D11)", () => {
+    const stepUpError = () => new ApiError(403, undefined, "step_up_required");
+
+    afterEach(() => sessionStorage.clear());
+
+    it("a step_up_required answer turns the dialog into its step-up state, consequences kept", async () => {
+      const user = userEvent.setup();
+      const onStepUp = vi.fn();
+      const onConfirm = vi.fn().mockRejectedValue(stepUpError());
+      render(
+        <Harness
+          intent="danger"
+          consequences={["Nothing is deleted."]}
+          onStepUp={onStepUp}
+          signedInAt={Math.floor(Date.now() / 1000) - 9 * 3600}
+          onConfirm={onConfirm}
+        />,
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Delete product" }),
+      );
+      expect(
+        await screen.findByText("Sign in again to confirm it's you"),
+      ).toBeTruthy();
+      expect(screen.getByText(/You signed in 9 hr\. ago/)).toBeTruthy();
+      expect(screen.getByText("Nothing is deleted.")).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Delete product" }),
+      ).toBeNull();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: "Sign in again" }));
+      expect(onStepUp).toHaveBeenCalledTimes(1);
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("state").textContent).toBe("open");
+    });
+
+    it("keeps the typed word across the sign-in and puts it back when reopened", async () => {
+      const user = userEvent.setup();
+      const props = {
+        typedConfirmation: { value: "djdl", label: "Type" },
+        stepUpKey: "delete-djdl",
+        onStepUp: vi.fn(),
+        onConfirm: vi.fn().mockRejectedValue(stepUpError()),
+      };
+      const first = render(<Harness {...props} />);
+      await user.type(await screen.findByRole("textbox"), "djdl");
+      await user.click(screen.getByRole("button", { name: "Delete product" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Sign in again" }),
+      );
+      first.unmount();
+      render(<Harness {...props} onConfirm={() => undefined} />);
+      expect(
+        ((await screen.findByRole("textbox")) as HTMLInputElement).value,
+      ).toBe("djdl");
+    });
+
+    it("shows the state for the caller's own step-up error too", async () => {
+      render(<Harness error={stepUpError()} onConfirm={() => undefined} />);
+      expect(
+        await screen.findByRole("button", { name: "Sign in again" }),
+      ).toBeTruthy();
+    });
   });
 });
