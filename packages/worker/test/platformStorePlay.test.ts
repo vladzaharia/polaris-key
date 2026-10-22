@@ -21,7 +21,7 @@ import { resolvePlaySetup } from "../src/services/distribution/connectors/play/s
 import {
   effectivePlaySettings,
   playCredential,
-} from "../src/services/commerce/play.js";
+} from "../src/services/commerce/stores/play/purchases.js";
 import { validateCommerceSettings } from "../src/services/commerce/settings.js";
 import { seedProduct } from "./seed.js";
 import {

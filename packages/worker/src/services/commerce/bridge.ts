@@ -59,13 +59,13 @@ import {
   parseTransaction,
   verifyAppleClaim,
   verifyAppleJws,
-  verifyAppleNotification,
   type AppleContext,
-} from "./apple.js";
+} from "./stores/apple/purchases.js";
+import { appleContext } from "./stores/apple/context.js";
+import { verifyAppleNotification } from "./stores/apple/notifications.js";
 import {
   PlayRejected,
   acknowledgePurchase,
-  decodeRtdn,
   getProductPurchase,
   isPlaySku,
   isPurchaseToken,
@@ -73,9 +73,10 @@ import {
   playCredential,
   playPurchase,
   playPurchasesClient,
-  verifyPushJwt,
   type PlayContext,
-} from "./play.js";
+} from "./stores/play/purchases.js";
+import { playContext } from "./stores/play/context.js";
+import { decodeRtdn, verifyPushJwt } from "./stores/play/notifications.js";
 import {
   SteamRejected,
   isSteamAppId,
@@ -83,7 +84,8 @@ import {
   steamCredential,
   verifySteamClaim,
   type SteamContext,
-} from "./steam.js";
+} from "./stores/steam/purchases.js";
+import { steamContext } from "./stores/steam/context.js";
 import { type CommerceSettings } from "./settings.js";
 import { effectiveCommerceSettings } from "./identity.js";
 import {
@@ -274,80 +276,6 @@ export async function handleBinding(ctx: ServiceContext): Promise<Response> {
 }
 
 // ── claim ────────────────────────────────────────────────────────────────────────────────────
-
-/** The store contexts a product is set up for (settings plus a pinned credential). */
-async function appleContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<AppleContext | null> {
-  if (!settings.appStore) return null;
-  const credentialId = await appStoreCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.appStore.bundleId,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    settings: settings.appStore,
-    credentialId,
-  };
-}
-
-export async function playContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<PlayContext | null> {
-  if (!settings.play) return null;
-  const credentialId = await playCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.play.packageName,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    // A-16: the platform's RTDN push identity where the product leaves it unset.
-    settings: await effectivePlaySettings(ctx.env, ctx.db, settings.play),
-    credentialId,
-  };
-}
-
-export async function steamContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<SteamContext | null> {
-  if (!settings.steam) return null;
-  const credentialId = await steamCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.steam.appId,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    settings: settings.steam,
-    credentialId,
-  };
-}
 
 /**
  * `POST …/commerce/claim` with one of
@@ -774,4 +702,3 @@ export async function handlePlayHook(
   }
 }
 
-export { appleContext };

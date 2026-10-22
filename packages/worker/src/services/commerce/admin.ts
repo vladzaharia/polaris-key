@@ -72,9 +72,9 @@ import {
   recentPurchases,
   upsertStoreProduct,
 } from "./state.js";
-import { appStoreCredential } from "./apple.js";
-import { playCredential } from "./play.js";
-import { steamCredential } from "./steam.js";
+import { appStoreCredential } from "./stores/apple/purchases.js";
+import { playCredential } from "./stores/play/purchases.js";
+import { steamCredential } from "./stores/steam/purchases.js";
 import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };

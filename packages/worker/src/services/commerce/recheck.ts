@@ -21,19 +21,19 @@ import { pk as kvKey } from "../../platform/kv.js";
 import { effectiveCommerceSettings } from "./identity.js";
 import {
   acknowledgeOnce,
-  appleContext,
-  playContext,
-  steamContext,
 } from "./bridge.js";
 import {
   applePurchase,
   checkTransaction,
   fetchTransaction,
   AppleRejected,
-} from "./apple.js";
+} from "./stores/apple/purchases.js";
 import { StoreUnavailable } from "../../core/stores/http.js";
-import { listVoidedPurchases, playPurchasesClient } from "./play.js";
-import { recheckSteamOwnership } from "./steam.js";
+import { listVoidedPurchases, playPurchasesClient } from "./stores/play/purchases.js";
+import { appleContext } from "./stores/apple/context.js";
+import { playContext } from "./stores/play/context.js";
+import { steamContext } from "./stores/steam/context.js";
+import { recheckSteamOwnership } from "./stores/steam/purchases.js";
 import {
   parseDetail,
   purchaseKeyHash,

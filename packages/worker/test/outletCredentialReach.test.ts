@@ -519,7 +519,7 @@ describe("outlet-credential reach", () => {
           text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
         },
         {
-          file: "src/services/commerce/apple.ts",
+          file: "src/services/commerce/stores/apple/purchases.ts",
           text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
         },
       ]),
@@ -528,7 +528,7 @@ describe("outlet-credential reach", () => {
       "src/services/release/sync.ts names a platform credential table",
       'src/core/ingest.ts spells the "platform-credential" seal kind',
       "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
-      "src/services/commerce/apple.ts names the platform-credential opener",
+      "src/services/commerce/stores/apple/purchases.ts names the platform-credential opener",
     ]);
   });
 

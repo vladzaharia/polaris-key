@@ -23,6 +23,7 @@ import {
 import type { StoreAdapter } from "../src/core/stores/adapter.js";
 import { STORE_ADAPTERS, storeAdapter } from "../src/core/stores/adapters.js";
 import { CONNECTORS } from "../src/services/distribution/connectors/index.js";
+import { COMMERCE_FACETS } from "../src/services/commerce/stores/index.js";
 import { DELIVERY_FACETS } from "../src/services/distribution/stores/index.js";
 import { FLOW_RUNTIMES } from "../src/services/distribution/storefronts/index.js";
 
@@ -287,5 +288,24 @@ describe("the delivery facets (P0-27.2)", () => {
     expect(steam.connector).toBeNull();
     expect(steam.flow).toBeNull();
     expect(typeof steam.storefrontAdmin).toBe("function");
+  });
+});
+
+describe("the Commerce facets (P0-27.4)", () => {
+  it("has exactly one facet per adapter that declares commerce, in both directions", () => {
+    const declared = STORE_ADAPTERS.filter((a) => a.commerce).map((a) => a.id);
+    expect(Object.keys(COMMERCE_FACETS).sort()).toEqual([...declared].sort());
+  });
+
+  it("keys each facet by its adapter id and carries the wire store id", () => {
+    for (const [id, f] of Object.entries(COMMERCE_FACETS)) {
+      expect(f!.adapter).toBe(id);
+      expect(f!.store).toBe(storeAdapter(id)!.commerce!.store);
+    }
+    expect(
+      Object.values(COMMERCE_FACETS)
+        .map((f) => f!.store)
+        .sort(),
+    ).toEqual([...STORES].sort());
   });
 });
