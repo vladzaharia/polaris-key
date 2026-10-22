@@ -21,7 +21,7 @@ describe("mutations that carry a secret", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(
+    const { result, unmount } = renderHook(
       () => ({
         claim: useClaimKey(),
         preview: usePreviewKey(),
@@ -34,6 +34,8 @@ describe("mutations that carry a secret", () => {
       await result.current.preview.mutateAsync("pkey_TYPEDSECRET");
       await result.current.mint.mutateAsync({ label: "ci" });
     });
+    // The mutation is collected once nothing observes it (the component that made it is gone).
+    unmount();
     await waitFor(() =>
       expect(client.getMutationCache().getAll()).toHaveLength(0),
     );
