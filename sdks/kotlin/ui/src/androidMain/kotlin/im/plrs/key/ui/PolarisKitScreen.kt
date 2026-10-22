@@ -10,7 +10,12 @@
 
 package im.plrs.key.ui
 
+import android.content.ClipData
 import androidx.compose.foundation.background
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
@@ -123,18 +128,21 @@ private fun KitScreenBody(
     val lines = remember(screen, catalog, locale) {
         screen.copy.filter { it.key !in kitLeftOut }.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale)) }
     }
-    val controls = lines.filter { it.role == KitLineRole.Control }
-    // OfflineActivation's request QR label belongs to the code, not to a live announcement.
+    // OfflineActivation's Copy code sits with step 1 (it copies the request code), not in the dock.
     val offline = screen.component == KitComponent.offlineActivation
+    val controls = lines.filter { it.role == KitLineRole.Control && !(offline && it.key == "offlineActivation.copyCode") }
+    // OfflineActivation's request QR label belongs to the code, not to a live announcement.
     val qrLabel = lines.firstOrNull { it.key == "a11y.qrRequest" }?.text
     val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") }
         .joinToString(". ") { it.text }
-    val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" }
+    val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" && !(offline && it.key == "offlineActivation.copyCode") }
     // The optional attribution (UI-KITS.md section 1.6): the line, the pane's last item, after the
     // controls. On when the inputs carry it or the theme's `showPoweredBy` is on, and only on the
     // account pane (the kit has no About); never on a gate.
     val attribution = lines.any { it.key == "part.poweredBy" } ||
         (PolarisTheme.current.showPoweredBy && screen.component == KitComponent.accountAndLicense)
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val semanticsModifier = modifier.semantics {
         if (announcement.isNotEmpty()) {
             contentDescription = announcement
@@ -171,6 +179,19 @@ private fun KitScreenBody(
             // kit never makes up a code (DL14).
             if (step == 1 && requestCode != null && qrLabel != null) {
                 PolarisQrCode(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
+                Spacer(Modifier.height(8.dp))
+            }
+            val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
+            if (step == 1 && copyLine != null) {
+                PolarisSecondaryButton(
+                    copyLine.text,
+                    onClick = {
+                        if (requestCode != null) {
+                            scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copyLine.text, requestCode))) }
+                        }
+                        onAction(KitAction.forCopyKey(copyLine.key))
+                    },
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }

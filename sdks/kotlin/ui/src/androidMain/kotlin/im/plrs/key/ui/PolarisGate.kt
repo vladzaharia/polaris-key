@@ -192,16 +192,15 @@ public fun PolarisGateScreen(
                 val message = copy.gateMessage(stop, license?.allowedRange) ?: return@Crossfade
                 PolarisMessageScreen(message) {
                     if (stop == LicenseStatus.expired) {
-                        // Expired leads with Renew and offers Use another license; never Try again or
-                        // Reconnect (the matrix pins both). Without a host renewal page, Renew
-                        // re-checks the license, which is how a renewal made elsewhere shows up.
-                        PolarisPrimaryButton(
-                            text = copy.renew,
-                            onClick = onRenew ?: onRetry,
-                            busy = gate.refreshing,
-                            initialFocus = true,
-                        )
-                        PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                        // Expired leads with Renew only when the host has a renewal to open (onRenew),
+                        // as the Swift kit does; Use another license is always offered. Never Try
+                        // again or Reconnect (the matrix pins both).
+                        if (onRenew != null) {
+                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true)
+                            PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                        } else {
+                            PolarisPrimaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true }, initialFocus = true)
+                        }
                     } else {
                         PolarisPrimaryButton(
                             text = copy.retry,
