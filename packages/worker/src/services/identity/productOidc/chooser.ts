@@ -113,7 +113,7 @@ export function choicePage(
  *  a different binder, an expired or finished flow. Generic, and nothing is minted. */
 export function startAgainPage(): Response {
   return choicePage(403, {
-    title: "Start again",
+    title: "This page has expired",
     heading: "This page has expired",
     body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
