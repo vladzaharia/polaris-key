@@ -381,6 +381,20 @@ async function writeRefusal(
   );
 }
 
+/** The 409 a relaxing write gets when it names a version other than the one in force (a missing one is `writeSetting()`'s 422). */
+function staleRelax(r: Request_, def: SettingDef, view: RowSettingView): Response {
+  const services = parseServices(r.product.services_json).services;
+  return err(
+    409,
+    ErrorCode.BadRequest,
+    "the setting changed since it was loaded; reload and review it",
+    {
+      reason: "version_conflict",
+      current: dto(view, services, undefined),
+    },
+  );
+}
+
 /** The 422 an adapter's refusal of a value is. */
 function valueRefusal(def: SettingDef, message: string, fields?: string[]) {
   return err(422, ErrorCode.BadRequest, message, {
@@ -547,6 +561,13 @@ export async function handleProductSettings(
     if (adapter?.relaxes) {
       const [now_] = await readViews(r, [def]);
       if (adapter.relaxes(now_?.value ?? null, body.value)) {
+        // The relax is judged against the value read here, so it is tied to the version it read:
+        // a racing request that tightened in between must not be undone without a step-up.
+        if (
+          body.expectedVersion !== undefined &&
+          body.expectedVersion !== now_?.version
+        )
+          return staleRelax(r, def, now_!);
         const gate = relaxGate(session, def, body, now);
         if (gate) return gate;
       }
@@ -644,6 +665,11 @@ export async function handleProductSettings(
     if (adapter?.relaxes) {
       const [now_] = await readViews(r, [def]);
       if (adapter.relaxes(now_?.value ?? null, undefined)) {
+        if (
+          body.expectedVersion !== undefined &&
+          body.expectedVersion !== now_?.version
+        )
+          return staleRelax(r, def, now_!);
         const gate = relaxGate(session, def, body, now);
         if (gate) return gate;
       }

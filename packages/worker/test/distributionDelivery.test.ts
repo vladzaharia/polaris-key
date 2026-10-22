@@ -906,6 +906,43 @@ describe("dist_access", () => {
     });
   });
 
+  it("admin: a manifest-authoritative product takes the write with no break-glass, as the bespoke route did; the claim holds until reverted", async () => {
+    const w = await setup();
+    await w.db.run(
+      `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+       VALUES (?, 'core.manifest.authoritative', 'true', 'console', 1, ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    const put = await putAccess(w, { mode: "licensed" });
+    expect(put.status).toBe(200);
+    const rows = await w.db.all<{ source: string }>(
+      "SELECT source FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+      SLUG,
+    );
+    expect(rows).toEqual([{ source: "admin" }]);
+    // No break-glass claim means no expiring product_settings row for the key.
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND expires_at IS NOT NULL",
+        SLUG,
+        ACCESS_KEY,
+      ),
+    ).toBeNull();
+    const reverted = await setting(w, "DELETE", ACCESS_KEY, {
+      expectedVersion: await accessVersion(w),
+    });
+    expect(reverted.status).toBe(200);
+    expect(
+      (
+        await w.db.first<{ source: string }>(
+          "SELECT source FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+          SLUG,
+        )
+      )?.source,
+    ).toBe("manifest");
+  });
+
   it("deliveryUrl mints canonical bytes-host URLs, and refuses what is not ours to serve", async () => {
     const w = await setup();
     const product = (await loadProduct(w.env, w.db, SLUG))!;
