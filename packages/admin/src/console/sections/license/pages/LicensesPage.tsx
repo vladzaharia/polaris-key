@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { Archive, KeySquare } from "lucide-react";
 import { type LicenseSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
 import { r } from "../../../routes.js";
@@ -21,9 +22,6 @@ import { CollectionTemplate } from "../../../templates/Collection.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { cn } from "../../../../lib/cn.js";
-import { Button } from "../../../../ui/Button.js";
-import { Meter } from "../../../../ui/charts/Meter.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import {
   DataTable,
@@ -39,8 +37,19 @@ import {
   isForbidden,
   NO_BATCH,
   NO_TIER,
+  BulkKeysButton,
+  DevicesCell,
+  LicenseCard,
+  DurationCell,
+  HOLDER_CHIP_ICONS,
+  HolderPill,
+  LicenseCell,
   LicensesFirstRun,
   NewLicenseButton,
+  OriginCell,
+  SKELETON,
+  TierPill,
+  originLabel,
   LicensesForbidden,
   serverFacetIds,
   useServerFilter,
@@ -56,11 +65,12 @@ import {
   HOLDER_STATES,
   HOLDER_STATE_LABELS,
   type HolderState,
-  HolderCell,
   holderOf,
   holderState,
+  useHolderCounts,
   useLicenseBatches,
 } from "../components/holders.js";
+import { EMPTY, loadDraft, saveDraft } from "../wizard/draft.js";
 import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
@@ -80,6 +90,7 @@ const FACETS = [
   "tier",
   "channel",
   "signin",
+  "origin",
 ] as const;
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
@@ -101,6 +112,12 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const gate = useWriteGate("license", slug);
   const openNew = (): void =>
     void navigate(r.newLicense(slug), { replace: false });
+  // "Create keys in bulk": the same wizard, on "Anyone with the key" (the draft resumes as it is).
+  const openBulk = (): void => {
+    saveDraft(slug, { ...loadDraft(slug), who: "anyone" });
+    void navigate(r.newLicense(slug, "holder"), { replace: false });
+  };
+  const holderCountsQ = useHolderCounts(slug);
   const [cleanupOpen, setCleanupOpen] = React.useState(false);
   const [bulkDelete, setBulkDelete] = React.useState<LicenseSummary[] | null>(
     null,
@@ -139,31 +156,38 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   }, [licenses, now, serverCounts]);
 
   const tierLabel = React.useCallback(
-    (id: string | null) =>
-      id ? tiers.find((t) => t.id === id)?.label || id : "—",
+    (id: string) => tiers.find((t) => t.id === id)?.label || id,
     [tiers],
+  );
+
+  const seatsOf = React.useCallback(
+    (l: LicenseSummary) => seatLimitOf(l, tiers, product?.defaultDeviceLimit),
+    [tiers, product?.defaultDeviceLimit],
   );
 
   const columns = React.useMemo<DataColumn<LicenseSummary>[]>(
     () => [
       {
         id: "holder",
-        header: "Holder",
+        header: "License",
         accessorFn: (l) => l.name || l.email || l.id,
         meta: {
+          label: "License",
           priority: 1,
           primary: true,
+          skeleton: SKELETON.license,
           csv: (l) =>
             l.name ||
             (holderOf(l).kind === "floating" ? "Floating" : l.email || ""),
         },
-        cell: ({ row }) => <HolderCell license={row.original} />,
+        cell: ({ row }) => <LicenseCell license={row.original} />,
       },
       {
         id: "holderState",
-        header: "Holder state",
+        header: "Holder",
         accessorFn: (l) => HOLDER_STATE_LABELS[holderState(l)],
-        meta: { defaultHidden: true },
+        meta: { priority: 1, skeleton: SKELETON.capsule },
+        cell: ({ row }) => <HolderPill license={row.original} />,
       },
       {
         id: "email",
@@ -178,106 +202,89 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { defaultHidden: true, mono: true },
       },
       {
-        id: "status",
-        header: "Status",
-        accessorFn: (l) => licenseState(l, now),
-        meta: {
-          priority: 1,
-          csv: (l) => LICENSE_STATE_LABELS[licenseState(l, now)],
-        },
-        cell: ({ row }) => <LicenseStatus license={row.original} now={now} />,
-      },
-      {
         id: "tier",
         header: "Tier",
-        accessorFn: (l) => tierLabel(l.tier),
-        meta: { priority: 2 },
-        cell: ({ getValue }) => (
-          <span
-            className="block max-w-[11rem] truncate"
-            title={getValue() as string}
-          >
-            {getValue() as string}
-          </span>
+        accessorFn: (l) => (l.tier ? tierLabel(l.tier) : ""),
+        meta: {
+          priority: 1,
+          skeleton: SKELETON.capsule,
+          csv: (l) => (l.tier ? tierLabel(l.tier) : ""),
+        },
+        cell: ({ row }) => (
+          <TierPill
+            label={row.original.tier ? tierLabel(row.original.tier) : null}
+          />
         ),
       },
       {
         id: "expires",
-        header: "Expires",
+        header: "Duration",
         // Never-expiring licenses sort after every dated one.
         accessorFn: (l) => l.expiresAt ?? Number.MAX_SAFE_INTEGER,
         meta: {
-          numeric: true,
           priority: 1,
+          skeleton: SKELETON.duration,
           csv: (l) =>
             l.expiresAt == null
               ? ""
               : new Date(fromSeconds(l.expiresAt)).toISOString(),
         },
-        cell: ({ row }) =>
-          row.original.expiresAt == null ? (
-            <span className="text-fg-muted">No expiry</span>
-          ) : (
-            <Timestamp at={fromSeconds(row.original.expiresAt)} format="date" />
-          ),
+        cell: ({ row }) => <DurationCell license={row.original} now={now} />,
       },
       {
         id: "seats",
-        header: "Seats",
+        header: "Devices",
         accessorKey: "deviceCount",
-        meta: { priority: 2, numeric: true },
+        meta: { priority: 1, skeleton: SKELETON.devices },
         cell: ({ row }) => {
           const l = row.original;
           // LX-14a: the limit the Worker enforces and where it comes from.
-          const seats = seatLimitOf(l, tiers, product?.defaultDeviceLimit);
-          const limit = seats.limit;
+          const seats = seatsOf(l);
           return (
-            <div className="ms-auto w-28" title={seatLimitText(seats)}>
-              {limit === null ? (
-                <span className="tabular-nums">{l.deviceCount}/—</span>
-              ) : (
-                <Meter
-                  label="Seats"
-                  hideLabel
-                  value={l.deviceCount}
-                  max={limit}
-                  tone={l.deviceCount > limit ? "warning" : "accent"}
-                />
-              )}
-              <span className="block truncate text-xs text-fg-muted">
-                {seats.from}
-              </span>
-            </div>
+            <DevicesCell
+              count={l.deviceCount}
+              limit={seats.limit}
+              from={seatLimitText(seats)}
+            />
           );
+        },
+      },
+      {
+        id: "origin",
+        header: "Origin",
+        accessorFn: (l) => originLabel(l),
+        // The first column to go: hidden below 1440 px, so a row never scrolls sideways.
+        meta: { priority: 3, skeleton: SKELETON.duration },
+        cell: ({ row }) => (
+          <OriginCell
+            license={row.original}
+            slug={slug}
+            batchLabel={batchLabel}
+          />
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorFn: (l) => licenseState(l, now),
+        meta: {
+          defaultHidden: true,
+          csv: (l) => LICENSE_STATE_LABELS[licenseState(l, now)],
         },
       },
       {
         id: "keys",
         header: "Keys",
         accessorKey: "activeKeyCount",
-        meta: { priority: 3, numeric: true },
+        meta: { defaultHidden: true, numeric: true },
       },
-      ...(hasBatches
-        ? [
-            {
-              id: "batch",
-              header: "Batch",
-              accessorFn: (l: LicenseSummary) =>
-                l.batchId ? batchLabel(l.batchId) : "",
-              meta: { priority: 3 },
-              cell: ({ row }: { row: { original: LicenseSummary } }) =>
-                row.original.batchId ? (
-                  <Link
-                    to={r.licenseBatch(slug, row.original.batchId)}
-                    className="inline-block max-w-[5rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
-                    title={batchLabel(row.original.batchId)}
-                  >
-                    {batchLabel(row.original.batchId)}
-                  </Link>
-                ) : null,
-            } satisfies DataColumn<LicenseSummary>,
-          ]
-        : []),
+      {
+        id: "batch",
+        header: "Batch",
+        accessorFn: (l: LicenseSummary) =>
+          l.batchId ? batchLabel(l.batchId) : "",
+        meta: { defaultHidden: true },
+      },
       {
         id: "channel",
         header: "Release tracks",
@@ -293,15 +300,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { defaultHidden: true },
       },
     ],
-    [
-      now,
-      tierLabel,
-      tiers,
-      product?.defaultDeviceLimit,
-      hasBatches,
-      batchLabel,
-      slug,
-    ],
+    [now, tierLabel, seatsOf, batchLabel, slug],
   );
 
   const facets = React.useMemo<Facet<LicenseSummary>[]>(() => {
@@ -324,6 +323,12 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           label: HOLDER_STATE_LABELS[h],
         })),
         accessor: (l) => holderState(l),
+        // Counted chips in the band: the Worker's totals, else the rows loaded so far.
+        counted: {
+          icons: HOLDER_CHIP_ICONS,
+          counts: holderCountsQ.data,
+          pending: holderCountsQ.isPending,
+        },
       },
       ...(hasBatches
         ? [
@@ -348,6 +353,15 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         accessor: (l) => l.tier ?? NO_TIER,
       },
       {
+        id: "origin",
+        label: "Origin",
+        options: ["Automatic grant", "By hand", "Key batch"].map((o) => ({
+          value: o,
+          label: o,
+        })),
+        accessor: (l) => originLabel(l) || null,
+      },
+      {
         id: "channel",
         label: "Channel",
         options: channels.map((c) => ({ value: c, label: c })),
@@ -363,7 +377,15 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         accessor: (l) => l.identityProvider,
       },
     ];
-  }, [licenses, tiers, now, hasBatches, batches]);
+  }, [
+    licenses,
+    tiers,
+    now,
+    hasBatches,
+    batches,
+    holderCountsQ.data,
+    holderCountsQ.isPending,
+  ]);
 
   const statusFilter = state.filters.status ?? [];
   // Filtered to one batch: its page is one click away (S-24 §8.8, "Batch page (from the filter)").
@@ -419,11 +441,34 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           // First run keeps one primary: the empty state's.
           primaryAction={
             firstRun ? undefined : (
-              <NewLicenseButton slug={slug} onClick={openNew} />
+              // On a phone Create keys in bulk takes a full row above New license; wider, it is
+              // the header's outline action beside Batches.
+              <div className="flex flex-col gap-2">
+                <span className="contents sm:hidden">
+                  <BulkKeysButton slug={slug} onClick={openBulk} />
+                </span>
+                <NewLicenseButton slug={slug} onClick={openNew} />
+              </div>
             )
           }
-          secondaryActions={
-            firstRun
+          secondaryActions={[
+            ...(hasBatches && !firstRun
+              ? [
+                  {
+                    label: "Batches",
+                    icon: <Archive />,
+                    onSelect: () => navigate(r.licenseBatches(slug)),
+                  },
+                ]
+              : []),
+            {
+              label: "Create keys in bulk",
+              icon: <KeySquare />,
+              disabledReason: gate.disabledReason,
+              hideOnPhone: !firstRun,
+              onSelect: openBulk,
+            },
+            ...(firstRun
               ? []
               : [
                   {
@@ -431,16 +476,8 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                     disabledReason: gate.disabledReason,
                     onSelect: () => setCleanupOpen(true),
                   },
-                  ...(hasBatches
-                    ? [
-                        {
-                          label: "Batches",
-                          onSelect: () => navigate(r.licenseBatches(slug)),
-                        },
-                      ]
-                    : []),
-                ]
-          }
+                ]),
+          ]}
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
       }
@@ -475,9 +512,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         </p>
       ) : null}
       <DataTable<LicenseSummary>
-        // The Batch column arrives with the first batch read: a remount then lets the table's
-        // first-mount column defaults (priority 3 starts hidden below 1440 px) apply to it.
-        key={hasBatches ? "with-batches" : "no-batches"}
         id="licenses"
         caption="Licenses"
         data={licenses}
@@ -491,7 +525,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         linkComponent={Link}
         facets={facets}
         search={{
-          placeholder: "Search name, email or id",
+          placeholder: "Search licenses",
           columns: ["holder", "email", "id"],
         }}
         state={state}
@@ -542,7 +576,34 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         }}
         onRetry={() => void licensesQ.refetch()}
         empty={<LicensesFirstRun slug={slug} onCreate={openNew} />}
+        // Once every row is loaded the filtered-empty state names what was asked for.
+        noResults={
+          licensesQ.hasNextPage
+            ? undefined
+            : {
+                title: "No licenses match",
+                description: noMatchText(state, {
+                  holder: (v) =>
+                    v === "inAccount"
+                      ? "in-account"
+                      : HOLDER_STATE_LABELS[v as HolderState],
+                  tier: (v) =>
+                    v === NO_TIER
+                      ? "no-tier"
+                      : (tiers.find((t) => t.id === v)?.label ?? v),
+                }),
+              }
+        }
         mobile="cards"
+        mobileCard={(l, primary) => (
+          <LicenseCard
+            license={l}
+            primary={primary}
+            now={now}
+            seats={seatsOf(l)}
+            tierLabel={l.tier ? tierLabel(l.tier) : null}
+          />
+        )}
       />
 
       <NewLicenseWizard slug={slug} />
@@ -593,4 +654,25 @@ function FacetTile({
       </span>
     </button>
   );
+}
+
+/** "No floating Studio license has a name, email or id containing “Q2KD-88”." */
+function noMatchText(
+  state: { q: string; filters: Record<string, string[]> },
+  words: Record<"holder" | "tier", (value: string) => string>,
+): string {
+  // Holder words are common nouns ("floating"); a tier keeps its name ("Studio").
+  const pick = (id: "holder" | "tier"): string =>
+    (state.filters[id] ?? [])
+      .map((v) => (id === "holder" ? words[id](v).toLowerCase() : words[id](v)))
+      .join(" or ");
+  const q = state.q.trim();
+  const who = [pick("holder"), pick("tier")].filter(Boolean).join(" ");
+  const what = `${who ? `${who} ` : ""}license`;
+  const others = Object.entries(state.filters).some(
+    ([id, v]) => v.length > 0 && id !== "holder" && id !== "tier",
+  );
+  if (q)
+    return `No ${what} has a name, email or id containing “${q}”${others ? " under the other filters" : ""}.`;
+  return `No ${what} matches${others ? " the other filters" : ""}.`;
 }

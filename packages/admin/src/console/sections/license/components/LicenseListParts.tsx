@@ -1,9 +1,19 @@
 /** The Licenses page's smaller parts: the server-side filter, the bulk confirm and the 403 state. */
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import {
+  Clock,
+  KeyRound,
+  KeySquare,
+  Layers,
+  Mail,
+  MonitorSmartphone,
+  Plus,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { r } from "../../../routes.js";
-import { navigate } from "../../../router.js";
+import { Link, navigate } from "../../../router.js";
 import { Button } from "../../../../ui/Button.js";
 import { ApiError, type LicenseSummary } from "../../../../api.js";
 import { mutateEach } from "../../../data/mutations.js";
@@ -13,7 +23,19 @@ import { toast } from "../../../../ui/toast.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { NoAccessPage } from "../../../access/NoAccessPage.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { HOLDER_STATES, type HolderState } from "./holders.js";
+import { cn } from "../../../../lib/cn.js";
+import { fromSeconds, formatDate } from "../../../../lib/format.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
+import {
+  HOLDER_STATES,
+  holderOf,
+  holderState,
+  licenseInitials,
+  type HolderState,
+} from "./holders.js";
+import { expiresInText } from "../../../../lib/vocab/license.js";
+import { daysUntil, licenseState, type LicenseState } from "./shared.js";
 
 /** The facet value for "no tier" and "not in a batch": only the client can filter on them. */
 export const NO_TIER = "__none__";
@@ -174,5 +196,386 @@ export function LicensesFirstRun({
         </Button>
       }
     />
+  );
+}
+
+// ── The list's cells (licenses.list) ────────────────────────────────────────────────────────
+
+/** A two-line cell: a title over its sub line, one fixed height so no row grows (`.cell-stack`). */
+export function CellStack({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 max-w-56 flex-col items-start gap-0.5 leading-5",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A cell's sub line: one line, truncated with the full text on hover. */
+export const SubLine = ({
+  children,
+}: {
+  children: string;
+}): React.ReactElement => (
+  <span
+    className="block max-w-full truncate text-xs leading-4 text-fg-muted"
+    title={children}
+  >
+    {children}
+  </span>
+);
+
+const dayMonth = (epochSeconds: number): string =>
+  new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(
+    fromSeconds(epochSeconds),
+  );
+
+/** First column: an avatar (tinted initials) over name and email, or a dashed floating key. */
+export function LicenseCell({
+  license: l,
+}: {
+  license: LicenseSummary;
+}): React.ReactElement {
+  const floatingKey = holderOf(l).kind === "floating" && !l.name;
+  return (
+    <span className="flex min-w-0 max-w-[16rem] items-center gap-3">
+      <span
+        aria-hidden
+        className={cn(
+          "inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          floatingKey
+            ? "border border-dashed border-border-strong text-fg-muted"
+            : "bg-accent-subtle text-accent-fg",
+        )}
+      >
+        {floatingKey ? <KeyRound className="size-3.5" /> : licenseInitials(l)}
+      </span>
+      <span className="flex min-w-0 flex-col leading-5">
+        {floatingKey ? (
+          <span
+            // The name flies into the record's title on a drill-down (S-23 §6.1 shared-element).
+            data-vt-shared="pk-key"
+            className="truncate font-mono text-sm"
+            title={l.id}
+          >
+            {l.id}
+          </span>
+        ) : (
+          <>
+            <span
+              data-vt-shared="pk-key"
+              className="w-fit max-w-full truncate"
+              title={l.name || undefined}
+            >
+              {l.name || l.email || "Unnamed license"}
+            </span>
+            {l.name && l.email ? <SubLine>{l.email}</SubLine> : null}
+          </>
+        )}
+      </span>
+    </span>
+  );
+}
+
+/** Holder: muted text for In an account, one pill for Waiting or Floating, with its sub line. */
+export function HolderPill({
+  license: l,
+}: {
+  license: LicenseSummary;
+}): React.ReactElement {
+  const state = holderState(l);
+  if (state === "inAccount")
+    return (
+      <span className="whitespace-nowrap text-fg-muted">In an account</span>
+    );
+  if (state === "waiting")
+    return (
+      <CellStack>
+        <StatusPill tone="info" icon={Mail} size="sm">
+          Waiting
+        </StatusPill>
+        {l.activatedAt ? (
+          <SubLine>{`Invited ${dayMonth(l.activatedAt)}`}</SubLine>
+        ) : null}
+      </CellStack>
+    );
+  return (
+    <CellStack>
+      <StatusPill tone="neutral" icon={KeyRound} size="sm">
+        Floating
+      </StatusPill>
+      {l.deviceCount === 0 ? <SubLine>Never used</SubLine> : null}
+    </CellStack>
+  );
+}
+
+/** Tier: a pill with the layers glyph; a license with no tier says so, muted (D12). */
+export function TierPill({
+  label,
+}: {
+  label: string | null;
+}): React.ReactElement {
+  if (!label) return <span className="text-fg-muted">No tier</span>;
+  return (
+    <span
+      className="inline-flex h-5 max-w-[9rem] items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 text-xs text-fg"
+      title={label}
+    >
+      <Layers aria-hidden className="size-3 shrink-0 text-accent-fg" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
+/**
+ * Duration, as far as the list's data goes: the term over what follows it. Only the expiry forms
+ * exist until LX-41, so a line with no data behind it is not drawn.
+ */
+export function DurationCell({
+  license: l,
+  now,
+}: {
+  license: LicenseSummary;
+  now: number;
+}): React.ReactElement {
+  const state: LicenseState = licenseState(l, now);
+  const date =
+    l.expiresAt == null ? null : formatDate(fromSeconds(l.expiresAt));
+  if (state === "disabled")
+    return (
+      <CellStack>
+        <StatusPill tone="neutral" icon={false} size="sm">
+          Disabled
+        </StatusPill>
+        {date ? <SubLine>{`Ends ${date}`}</SubLine> : null}
+      </CellStack>
+    );
+  if (date === null) return <span className="text-fg-muted">Lifetime</span>;
+  if (state === "expired")
+    return (
+      <CellStack>
+        <StatusPill tone="danger" size="sm">
+          Expired
+        </StatusPill>
+        <SubLine>{`Ended ${date}`}</SubLine>
+      </CellStack>
+    );
+  if (state === "expiring")
+    return (
+      <CellStack>
+        <StatusPill tone="warning" icon={Clock} size="sm">
+          {expiresInText(daysUntil(l.expiresAt!, now))}
+        </StatusPill>
+        <SubLine>{`Ends ${date}`}</SubLine>
+      </CellStack>
+    );
+  return <span>Ends {date}</span>;
+}
+
+/** Devices: "n of limit" over a 4 px bar; a full license turns both warning, nothing more. */
+export function DevicesCell({
+  count,
+  limit,
+  from,
+}: {
+  count: number;
+  limit: number | null;
+  /** Where the limit comes from, for the tooltip. */
+  from: string;
+}): React.ReactElement {
+  if (limit === null)
+    return (
+      <CellStack>
+        <span className="tabular-nums" title={from}>
+          {count}
+        </span>
+        <SubLine>No limit</SubLine>
+      </CellStack>
+    );
+  const full = count >= limit;
+  const ratio = Math.min(1, Math.max(0, count / limit));
+  return (
+    <span
+      role="meter"
+      aria-label="Devices"
+      aria-valuenow={count}
+      aria-valuemin={0}
+      aria-valuemax={limit}
+      aria-valuetext={`${count} of ${limit} devices`}
+      title={from}
+      className="flex w-24 flex-col gap-1.5"
+    >
+      <span className={cn("tabular-nums", full && "text-warning")}>
+        {count} of {limit}
+      </span>
+      <span aria-hidden className="block h-1 rounded-full bg-border">
+        <span
+          className={cn(
+            "block h-full rounded-full",
+            full ? "bg-warning" : "bg-accent",
+          )}
+          style={{ width: `${Math.round(ratio * 100)}%` }}
+        />
+      </span>
+    </span>
+  );
+}
+
+/** Origin: Automatic grant (sparkles), By hand, or Key batch over the batch's label. */
+export function OriginCell({
+  license: l,
+  slug,
+  batchLabel,
+}: {
+  license: LicenseSummary;
+  slug: string;
+  batchLabel: (id: string) => string;
+}): React.ReactElement | null {
+  if (l.batchId)
+    return (
+      <CellStack>
+        <span>Key batch</span>
+        <Link
+          to={r.licenseBatch(slug, l.batchId)}
+          title={batchLabel(l.batchId)}
+          className="block max-w-full truncate text-xs leading-4 text-fg-muted hover:text-fg hover:underline"
+        >
+          {batchLabel(l.batchId)}
+        </Link>
+      </CellStack>
+    );
+  if (l.origin === "oidc" || l.origin === "enroll")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-accent-fg">
+        <Sparkles aria-hidden className="size-3.5" />
+        Automatic grant
+      </span>
+    );
+  if (l.origin === "admin") return <span>By hand</span>;
+  return null;
+}
+
+/** The origin's words, for the facet and the CSV. */
+export function originLabel(l: LicenseSummary): string {
+  if (l.batchId) return "Key batch";
+  if (l.origin === "oidc" || l.origin === "enroll") return "Automatic grant";
+  if (l.origin === "admin") return "By hand";
+  return "";
+}
+
+/** The icons of the counted holder chips. */
+export const HOLDER_CHIP_ICONS: Record<HolderState, React.ReactNode> = {
+  inAccount: <UserRound aria-hidden />,
+  waiting: <Mail aria-hidden />,
+  floating: <KeyRound aria-hidden />,
+};
+
+/** "Create keys in bulk": the New license drawer on "Anyone with the key" (licenses.bulk-keys). */
+export function BulkKeysButton({
+  slug,
+  onClick,
+}: {
+  slug: string;
+  onClick: () => void;
+}): React.ReactElement {
+  const gate = useWriteGate("license", slug);
+  return (
+    <Button
+      variant="outline"
+      iconStart={<KeySquare />}
+      disabledReason={gate.disabledReason}
+      onClick={onClick}
+    >
+      Create keys in bulk
+    </Button>
+  );
+}
+
+/** Loading rows at the real row height: the cells' shapes under the real column heads. */
+export const SKELETON = {
+  license: (
+    <span className="flex items-center gap-3">
+      <Skeleton className="size-7 shrink-0 rounded-full" />
+      <span className="flex w-40 max-w-full flex-col gap-1.5">
+        <Skeleton className="h-3.5 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+      </span>
+    </span>
+  ),
+  capsule: <Skeleton className="h-5 w-20 rounded-full" />,
+  short: <Skeleton className="h-4 w-12" />,
+  duration: <Skeleton className="h-4 w-28" />,
+  devices: (
+    <span className="flex w-24 flex-col gap-1.5">
+      <Skeleton className="h-3.5 w-12" />
+      <Skeleton className="h-1 w-full rounded-full" />
+    </span>
+  ),
+};
+
+/**
+ * A phone's card, three lines: the name with the device count at the end, the email (both the
+ * license cell), then the tier and at most one state. "In an account" and "Lifetime" are not
+ * drawn; the record has the rest.
+ */
+export function LicenseCard({
+  license: l,
+  primary,
+  now,
+  seats,
+  tierLabel,
+}: {
+  license: LicenseSummary;
+  primary: React.ReactNode;
+  now: number;
+  seats: { limit: number | null };
+  tierLabel: string | null;
+}): React.ReactElement {
+  const holder = holderState(l);
+  const state: React.ReactNode =
+    holder !== "inAccount" ? (
+      <StatusPill
+        tone={holder === "waiting" ? "info" : "neutral"}
+        icon={holder === "waiting" ? Mail : KeyRound}
+        size="sm"
+      >
+        {holder === "waiting" ? "Waiting" : "Floating"}
+      </StatusPill>
+    ) : l.expiresAt != null || licenseState(l, now) === "disabled" ? (
+      <DurationCell license={l} now={now} />
+    ) : null;
+  const full = seats.limit !== null && l.deviceCount >= seats.limit;
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+        <div className="min-w-44 flex-1">{primary}</div>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 tabular-nums",
+            full ? "text-warning" : "text-fg",
+          )}
+        >
+          <MonitorSmartphone aria-hidden className="size-4" />
+          {seats.limit === null
+            ? l.deviceCount
+            : `${l.deviceCount} of ${seats.limit}`}
+          <span className="sr-only"> devices</span>
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 @xs:ps-10">
+        <TierPill label={tierLabel} />
+        {state}
+      </div>
+    </div>
   );
 }

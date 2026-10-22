@@ -89,10 +89,11 @@ const ROUTES = {
   [`${API}/users/licenses/lic_float/relinks`]: { relinks: [] },
 };
 
-/** The Licenses table once the batch read has landed (the table remounts with its Batch column). */
+/** The Licenses table. The batch label is in the Origin column, so it arrives with the batch read. */
 async function table(withBatches = true): Promise<HTMLElement> {
-  if (withBatches) await screen.findByRole("columnheader", { name: /Batch/ });
-  return screen.findByRole("table", { name: "Licenses" });
+  const t = await screen.findByRole("table", { name: "Licenses" });
+  if (withBatches) await within(t).findByText("Steam keys, October");
+  return t;
 }
 const rowOf = (t: HTMLElement, text: string) =>
   within(t).getByText(text).closest("tr")!;
@@ -117,11 +118,16 @@ describe("Licenses: the Holder column and filters", () => {
     expect(
       within(rowOf(t, "Lena Ortiz")).getByText("lena@ortiz.audio"),
     ).toBeTruthy();
+    const sam = rowOf(t, "Sam Reyes");
+    expect(within(sam).getByText("sam@reyes.fm")).toBeTruthy();
+    expect(within(sam).getByText("Waiting")).toBeTruthy();
     expect(
-      within(rowOf(t, "Sam Reyes")).getByText("Waiting for sam@reyes.fm"),
+      within(rowOf(t, "Lena Ortiz")).getByText("In an account"),
     ).toBeTruthy();
-    const floating = rowOf(t, "anyone with the key");
+    // A floating license with no name shows its id and the Floating pill.
+    const floating = rowOf(t, "lic_float");
     expect(within(floating).getByText("Floating")).toBeTruthy();
+    expect(within(floating).getByText("Key batch")).toBeTruthy();
     // The batch label links to the batch page.
     const batch = within(floating).getByRole("link", {
       name: "Steam keys, October",
@@ -136,13 +142,13 @@ describe("Licenses: the Holder column and filters", () => {
       routes: ROUTES,
     });
     const t = await table();
-    await waitFor(() => expect(rowNames(t)).toEqual(["Floating"]));
+    await waitFor(() => expect(rowNames(t)).toEqual(["lic_float"]));
     cleanup();
     resetConsole();
     bootLicense("#/p/djdl/license/licenses?holder=inAccount,waiting", {
       routes: ROUTES,
     });
-    const t2 = await table();
+    const t2 = await table(false);
     await waitFor(() =>
       expect(rowNames(t2)).toEqual(["Lena Ortiz", "Sam Reyes"]),
     );
@@ -153,7 +159,7 @@ describe("Licenses: the Holder column and filters", () => {
       routes: ROUTES,
     });
     const t = await table();
-    await waitFor(() => expect(rowNames(t)).toEqual(["Floating"]));
+    await waitFor(() => expect(rowNames(t)).toEqual(["lic_float"]));
     const link = within(
       await screen.findByTestId("batch-filter-link"),
     ).getByRole("link", { name: "Steam keys, October" });
@@ -172,7 +178,8 @@ describe("Licenses: the Holder column and filters", () => {
     });
     const t = await table(false);
     await within(t).findByText("Lena Ortiz");
-    expect(within(t).queryByRole("columnheader", { name: /Batch/ })).toBeNull();
+    expect(within(t).queryByText("Key batch")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Batch/ })).toBeNull();
   });
 });
 

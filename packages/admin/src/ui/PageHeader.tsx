@@ -14,6 +14,8 @@ export interface PageAction {
   onSelect: () => void;
   icon?: React.ReactNode;
   disabledReason?: string;
+  /** Left out of the phone's "More actions" menu: the page draws it another way there. */
+  hideOnPhone?: boolean;
 }
 
 export interface PageHeaderProps {
@@ -117,7 +119,9 @@ export function PageHeader({
         ]
       : items;
   const desktopMenu = withDanger(toItems(overflow));
-  const mobileMenu = withDanger(toItems(secondaryActions));
+  const mobileMenu = withDanger(
+    toItems(secondaryActions.filter((a) => !a.hideOnPhone)),
+  );
 
   const nested = React.useContext(PageHeaderNested);
   const masthead = useMasthead();
