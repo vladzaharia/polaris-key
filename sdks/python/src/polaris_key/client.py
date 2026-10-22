@@ -81,6 +81,7 @@ from .discovery import (
 from .license.client import LicenseClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
+from .core.portal import PortalStore
 from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
@@ -334,6 +335,15 @@ class PolarisKeyClient:
             ),
             http=self.core.http,
         )
+        #: Discovery's ``core.portal`` (DISC-01): the terminal kits' product page link. The last
+        #: member persists as ``portal.json`` beside the presentation folder, on the same rule.
+        self.portal_store = PortalStore(
+            product_slug,
+            self.core.base_url,
+            self.core.dirs.cache
+            if cache_dir is not None or getattr(self.core.store, "persistent", False) is True
+            else None,
+        )
         # The detectors behind the table's conditional N/As (P1b-10). Checked against the
         # generated table here, so a manifest that gains or loses one fails loudly.
         self._detectors: Dict[DetectorKey, Detector] = {
@@ -381,6 +391,7 @@ class PolarisKeyClient:
         self._cache.load()
         # The last presentation member, so an offline start still shows the product.
         self.presentation_source.load_cached()
+        self.portal_store.load_cached()
         # Wire v4's update slices go through the same reload path: every committed feed and
         # record is re-verified against what this load trusts, and each channel's `seq` floor
         # comes from the feed that survives.
@@ -460,7 +471,25 @@ class PolarisKeyClient:
                 self.presentation_source.accept(result.manifest)
             except Exception:  # display data never fails discovery
                 pass
+            try:
+                self.portal_store.accept(result.manifest)
+            except Exception:
+                pass
         return result
+
+    # ── The product page link (core.portal, DISC-01) ────────────────────────────────
+    def portal(self) -> Optional[Dict[str, Any]]:
+        """Discovery's ``core.portal`` (WIRE-CONTRACT-V4 §5.7), normalised by
+        :func:`polaris_key.core.portal.parse_portal`: ``{"enabled": False}`` while the product's
+        portal is off, ``{"enabled": True, "activate": link-or-None}``, or ``None`` when the Worker
+        said nothing (an older Worker, or never discovered). Before this session's first discovery
+        it is the last member persisted (``portal.json``). Unsigned display data: nothing gates on
+        it."""
+        return self.portal_store.current()
+
+    def discovery(self) -> Optional[Dict[str, Any]]:
+        """The discovery document this session loaded, or ``None``."""
+        return self._discovery_doc
 
     # ── Presentation (core.presentation, HA-13) ─────────────────────────────────────
     def presentation(self) -> Optional[Dict[str, Any]]:
