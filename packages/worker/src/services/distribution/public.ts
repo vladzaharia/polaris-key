@@ -34,6 +34,7 @@ export {
 } from "./connectors/play/platform.js";
 export { listingSlotMirror } from "./listing/hostedMirror.js";
 export { readListing } from "./listing/store.js";
+export { inheritStored } from "./listing/inherit.js";
 export {
   feedCapabilityView,
   type FeedCapabilityView,

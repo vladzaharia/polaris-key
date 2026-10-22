@@ -103,3 +103,7 @@ A-27.1 built the dual read: `listing/resolved.ts` `resolvedListing(db, product)`
 A-27.3 mapped the manifest listing once (`manifestListingSnapshot`) and made `manifestSource` read the root listing from Core's manifest snapshot. With no snapshot row for the product it still falls back to the first live outlet's merged copy, as before; phase 2 (A-27.14) removes that fallback.
 
 A-27.4 made the ingest write the model (D4, D14): guarded UPDATEs in `outlets.ts` through `manifestModelStatements`, while Distribution is on; the blob write stays. The over-limit warning on the ingest plan belongs to the validator rule of A-27.5; A-27.4 only skips the value.
+
+A-27.8: the download page's `listing` reads the model's own fields (`modelListing`, no blob) first and then the direct outlet's merged copy, per field. It does not use `resolvedListing`: the blob is the root listing, and putting it ahead of the outlet copy would change `download.json` for a product with no model whose direct outlet overrides a root field.
+
+A-27.9: `listing/inherit.ts` applies HA-12's order where a projection or fit report is built (never in `readListing`): the listing's name over `products.name`, the presentation accent and accentDark over the listing's tint, the presentation icon for an `icon-master` the listing lacks. `developerName` has no Presentation source (`presentationText` takes it from the listing alone), so it passes through unmarked.

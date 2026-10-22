@@ -97,6 +97,7 @@ import {
   upsertReleaseNotes,
   type StoredListing,
 } from "./store.js";
+import { inheritStored, inheritedFields } from "./inherit.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
@@ -152,6 +153,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 async function view(ctx: AdminCtx, stored: StoredListing | null) {
   const { db, product } = ctx;
   const precedence = precedenceOf(stored?.row ?? null);
+  const assets = await listAssets(db, product.slug);
   return {
     listing: stored
       ? {
@@ -180,7 +182,9 @@ async function view(ctx: AdminCtx, stored: StoredListing | null) {
       modifiedAt: r.modified_at,
       modifiedBy: r.modified_by,
     })),
-    assets: (await listAssets(db, product.slug)).map((a) => ({
+    // A-27.9: which fields a projection fills from the product (name, accents, icon).
+    inherited: await inheritedFields(ctx.env, db, product.slug, stored, assets),
+    assets: assets.map((a) => ({
       slot: a.slot,
       locale: a.locale === "" ? null : a.locale,
       blob: a.blob,
@@ -566,7 +570,11 @@ async function getFit(ctx: AdminCtx): Promise<Response> {
         message: `store must be one of ${LISTING_STORES.join(", ")}`,
       },
     ]);
-  const stored = await readListing(ctx.db, ctx.product.slug);
+  const stored = await inheritStored(
+    ctx.db,
+    ctx.product.slug,
+    await readListing(ctx.db, ctx.product.slug),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

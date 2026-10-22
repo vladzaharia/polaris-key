@@ -270,6 +270,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "core/presentation.ts",
       "core/discovery.ts",
       "services/identity/portal/library.ts",
+      "services/distribution/listing/inherit.ts",
     ],
     since: "ST-06",
   }),
