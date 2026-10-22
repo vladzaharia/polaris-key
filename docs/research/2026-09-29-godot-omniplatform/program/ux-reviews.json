@@ -484,6 +484,11 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/UK-09-compose.md (BUILT review PASS, 0 blocking; majors F-1..F-4 → KX-CMP-FIX, V-1 two-pane → UK-09b)"
+    },
+    "P0-45": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/P0-45-cli.md (BUILT terminal review FIX: 4 blocking; all fixed in the one fix round fix/p0-45-review 743cf2f70)"
     }
   }
 }
