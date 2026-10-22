@@ -33,7 +33,8 @@ export function PolicySummary({
         })}
       />
       <DescriptionList
-        columns={3}
+        columns={4}
+        className="border-t border-border pt-4 sm:grid-cols-3"
         items={[
           {
             term: "A miss",

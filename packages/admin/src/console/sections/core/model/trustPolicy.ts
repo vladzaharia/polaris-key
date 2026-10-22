@@ -140,19 +140,23 @@ export function changeLines(
           ? `${op.label} now need an attested device (was any device).`
           : `${op.label} now accept any device (was attested only).`,
       );
-  if (
-    after.enforce &&
-    level(after, "cloudSyncWrite") === "attested" &&
-    !(before.enforce && level(before, "cloudSyncWrite") === "attested")
-  )
-    out.push(
-      "Web, desktop and sideloaded builds can't upload Cloud Sync changes.",
-    );
   if (before.enforce !== after.enforce)
     out.push(
       after.enforce
         ? "Devices that fall short are refused."
         : "Devices that fall short are logged and let through.",
+    );
+  const refused = (p: TrustPolicyDto) =>
+    p.enforce
+      ? TRUST_OPERATIONS.filter((op) => level(p, op.id) === "attested")
+      : [];
+  const now = refused(after);
+  if (
+    now.length > 0 &&
+    now.some((op) => !refused(before).some((b) => b.id === op.id))
+  )
+    out.push(
+      `Web, desktop and sideloaded builds can't attest, so they're refused: ${now.map((op) => op.label).join(", ")}.`,
     );
   if (JSON.stringify(before.appAttest) !== JSON.stringify(after.appAttest))
     out.push(

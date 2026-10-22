@@ -389,12 +389,45 @@ describe("Cloud Sync writes row (U-05.11)", () => {
     ).toBeTruthy();
     expect(
       within(dialog).getByText(
-        "Web, desktop and sideloaded builds can't upload Cloud Sync changes.",
+        "Web, desktop and sideloaded builds can't attest, so they're refused: Device license and config, Cloud Sync writes.",
       ),
     ).toBeTruthy();
+    expect(within(dialog).queryByText(/can't upload Cloud Sync/)).toBeNull();
     expect(
       within(dialog).getByText("Tighten the device trust policy?"),
     ).toBeTruthy();
+  });
+
+  it("changeLines names every attested operation once, only when enforced", () => {
+    const all = {
+      ...STRICT,
+      gatedDelivery: "attested" as const,
+      commerceClaim: "attested" as const,
+      cloudSyncWrite: "attested" as const,
+    };
+    const on = changeLines({ ...STRICT, enforce: false }, all);
+    expect(on.at(-1)).toBe(
+      "Web, desktop and sideloaded builds can't attest, so they're refused: Device license and config, Gated downloads, Store purchase claims, Cloud Sync writes.",
+    );
+    expect(on.indexOf("Devices that fall short are refused.")).toBeLessThan(
+      on.length - 1,
+    );
+    expect(
+      on.filter((l) => /Cloud Sync/.test(l) && /refused:/.test(l)),
+    ).toHaveLength(1);
+    expect(on.some((l) => /can't upload/.test(l))).toBe(false);
+    expect(
+      changeLines(
+        { ...STRICT, enforce: false },
+        { ...all, enforce: false },
+      ).some((l) => /refused:/.test(l)),
+    ).toBe(false);
+    expect(
+      changeLines(
+        { ...STRICT, enforce: true, mint: "basic" },
+        { ...STRICT, enforce: true, mint: "basic" },
+      ),
+    ).toEqual([]);
   });
 
   it("changeLines uses one template for every operation and the relax confirm drops the enrol sentence", async () => {
