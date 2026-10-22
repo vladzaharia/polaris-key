@@ -1173,6 +1173,7 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
     const destroyed: (() => void)[] = [];
     return {
       sent,
+      listeners: () => destroyed.length,
       destroy: () => destroyed.forEach((f) => f()),
       event: {
         sender: {
@@ -1180,6 +1181,10 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
           send: (channel: string, payload: unknown) =>
             void sent.push({ channel, payload }),
           once: (_e: "destroyed", f: () => void) => void destroyed.push(f),
+          removeListener: (_e: "destroyed", f: () => void) => {
+            const i = destroyed.indexOf(f);
+            if (i >= 0) destroyed.splice(i, 1);
+          },
         },
         senderFrame: { url },
       },
@@ -1317,8 +1322,49 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
       return { kind: "handedOff", version: "2.0.0" };
     };
     await call(win);
-    expect(win.sent.length).toBeGreaterThanOrEqual(9);
-    expect(win.sent.length).toBeLessThanOrEqual(10);
+    // Ten leading pushes in the second, then the held final one when the install completes.
+    expect(win.sent.length).toBeGreaterThanOrEqual(10);
+    expect(win.sent.length).toBeLessThanOrEqual(11);
+    expect(win.sent.at(-1)!.payload).toMatchObject({ done: 100, total: 100 });
+  });
+
+  it("a throttled final event is flushed on success, never after a failure or a cancel", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const ok = windowAt("app://main", 20);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100); // inside the 100 ms window: held back
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(ok);
+    expect(ok.sent.map((m) => (m.payload as { done: number }).done)).toEqual([
+      10, 100,
+    ]);
+    expect(ok.listeners()).toBe(0); // the destroyed listener is gone
+
+    const failed = windowAt("app://main", 21);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      throw new Error("verify failed");
+    };
+    expect(await call(failed)).toMatchObject({ ok: false });
+    expect(failed.sent).toHaveLength(1);
+    expect(failed.listeners()).toBe(0);
+
+    const cancelled = windowAt("app://main", 22);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      cancelled.destroy();
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(cancelled);
+    expect(cancelled.sent).toHaveLength(1);
   });
 
   it("pushes nothing after an error, a late callback, or the window closing", async () => {

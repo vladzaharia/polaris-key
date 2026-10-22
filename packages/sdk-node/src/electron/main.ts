@@ -42,6 +42,7 @@ export interface WebContentsLike {
   send(channel: string, ...args: unknown[]): void;
   isDestroyed?(): boolean;
   once?(event: "destroyed", listener: () => void): unknown;
+  removeListener?(event: "destroyed", listener: () => void): unknown;
 }
 
 /** The part of Electron's `IpcMainInvokeEvent` the bridge uses. */
@@ -515,39 +516,64 @@ export function exposePolarisBridge(
   /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
    *  (never `subscribers`), at most 10 per second, and never after the install settled or its
    *  window went away. The sender is re-checked against `allowSender` on every push: a frame
-   *  that navigated off the app's origin mid-install stops receiving. */
+   *  that navigated off the app's origin mid-install stops receiving. A custom `allowSender`
+   *  that admits subframes still receives the push on the window's MAIN frame (`wc.send`): the
+   *  push is addressed to the window, not to the frame that asked.
+   *
+   *  `finish()` (the install succeeded) sends the newest event the throttle held back, so a UI
+   *  can reach `done === total`; `end()` (any outcome) stops everything and removes the
+   *  `destroyed` listener. After a failure or a cancel nothing is sent, not even the held event. */
   const installProgress = (
     event: IpcMainInvokeEventLike,
     decision: UpdateDecision,
   ): {
     onProgress: (done: number, total: number) => void;
     signal: AbortSignal;
+    finish: () => void;
     end: () => void;
   } => {
     const wc = event.sender;
     const ctl = new AbortController();
     let ended = false;
     let last = -Infinity;
-    // The window closing cancels the install: nobody is left to restart into.
-    wc.once?.("destroyed", () => {
+    let held: Record<string, unknown> | null = null;
+    const onDestroyed = (): void => {
       ended = true;
+      held = null;
       ctl.abort();
-    });
+    };
+    // The window closing cancels the install: nobody is left to restart into.
+    wc.once?.("destroyed", onDestroyed);
     const version =
       decision.action === "binary" || decision.action === "store"
         ? decision.release.version
         : undefined;
+    const push = (payload: Record<string, unknown>): boolean => {
+      try {
+        if (!senderAllowed(event)) return false;
+        wc.send(updateProgressChannel(prefix), payload);
+        return true;
+      } catch {
+        // A window that cannot receive is not the install's problem.
+        return false;
+      }
+    };
     return {
       signal: ctl.signal,
+      finish: () => {
+        const h = held;
+        held = null;
+        if (h && !ended && !wc.isDestroyed?.()) push(h);
+      },
       end: () => {
         ended = true;
+        held = null;
+        wc.removeListener?.("destroyed", onDestroyed);
       },
       onProgress: (done, total) => {
         if (ended || wc.isDestroyed?.()) return;
         if (typeof done !== "number" || !Number.isFinite(done) || done < 0)
           return;
-        const now = Date.now();
-        if (now - last < PROGRESS_INTERVAL_MS) return;
         // A total is a count only when it is a positive number no smaller than what arrived;
         // anything else is "unknown", never a guessed percentage.
         const known =
@@ -555,18 +581,19 @@ export function exposePolarisBridge(
           Number.isFinite(total) &&
           total > 0 &&
           total >= done;
-        try {
-          if (!senderAllowed(event)) return;
-          last = now;
-          wc.send(updateProgressChannel(prefix), {
-            ...(version ? { version } : {}),
-            done,
-            total: known ? total : null,
-            phase: "download",
-          });
-        } catch {
-          // A window that cannot receive is not the install's problem.
+        const payload = {
+          ...(version ? { version } : {}),
+          done,
+          total: known ? total : null,
+          phase: "download",
+        };
+        const now = Date.now();
+        if (now - last < PROGRESS_INTERVAL_MS) {
+          held = payload;
+          return;
         }
+        held = null;
+        if (push(payload)) last = now;
       },
     };
   };
@@ -632,6 +659,8 @@ export function exposePolarisBridge(
           onProgress: progress.onProgress,
           signal: progress.signal,
         });
+        // Installed: the newest held-back event goes out before the answer.
+        progress.finish();
       } finally {
         // Success, failure or cancel: nothing is pushed after the install has settled.
         progress.end();
