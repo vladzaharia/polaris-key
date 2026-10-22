@@ -41,7 +41,10 @@ __all__ = [
     "judge",
     "check_requirements",
     "entitlement",
+    "tier",
     "signin",
+    "sign_in",
+    "as_requirements",
 ]
 
 HEADER_LICENSE = "X-PKey-License"
@@ -71,17 +74,44 @@ HeadersLike = Union[Mapping[str, str], Iterable[Tuple[str, str]]]
 class Requirement:
     """One requirement of a route (step 6). ``test`` receives a valued entitlement's value."""
 
-    kind: str  # "entitlement" | "signIn"
+    kind: str  # "entitlement" | "tier" | "signIn"
     name: str = ""
     test: Optional[Callable[[Any], bool]] = field(default=None, compare=False)
+    tiers: Tuple[str, ...] = ()
 
 
 def entitlement(name: str, test: Optional[Callable[[Any], bool]] = None) -> Requirement:
+    """Boolean entitlement ``name`` is granted, or ``test(value)`` accepts a valued entitlement."""
+    if not isinstance(name, str) or not name:
+        raise TypeError('entitlement(): name the entitlement, for example entitlement("export.pdf")')
     return Requirement("entitlement", name, test)
 
 
+def tier(*tiers: str) -> Requirement:
+    """The ``license.tier`` entitlement is one of ``tiers``, for example ``tier("pro", "team")``."""
+    if not tiers or not all(isinstance(t, str) and t for t in tiers):
+        raise TypeError('tier(): name at least one tier, for example tier("pro", "team")')
+    return Requirement("tier", tiers=tuple(tiers))
+
+
 def signin() -> Requirement:
+    """A person is signed in on the device (``profile.user.subject``)."""
     return Requirement("signIn")
+
+
+def sign_in() -> Requirement:
+    """:func:`signin` with the underscore, matching ``require_sign_in``."""
+    return signin()
+
+
+def as_requirements(requirements: Sequence[Any], who: str) -> Tuple[Requirement, ...]:
+    """The requirements a route lists, each checked to be one of the builders' results."""
+    for r in requirements:
+        if not isinstance(r, Requirement):
+            raise TypeError(
+                f"{who}: {r!r} is not a requirement; build one with entitlement(name), tier(*tiers) or signin()"
+            )
+    return tuple(requirements)
 
 
 class Holder:
@@ -310,6 +340,9 @@ def check_requirements(
                 except Exception:
                     ok = False
             if not ok:
+                return "not_entitled"
+        elif r.kind == "tier":
+            if license.tier is None or license.tier not in r.tiers:
                 return "not_entitled"
         elif user is None:
             return "sign_in_required"

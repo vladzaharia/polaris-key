@@ -7,13 +7,39 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass, field, replace
+from typing import Any, Callable, Dict, Optional
+from typing import Literal, TypedDict
 
 from ._copy import COPY
 from ._verdict import AUTH_SCHEME, REFUSAL_STATUS
 
-__all__ = ["Problem", "backend_locale", "backend_problem", "PROBLEM_TYPE_BASE", "LOCALES"]
+__all__ = [
+    "Problem",
+    "ProblemBody",
+    "RefusalCode",
+    "RefusalHandler",
+    "backend_locale",
+    "backend_problem",
+    "PROBLEM_TYPE_BASE",
+    "LOCALES",
+]
+
+#: The five refusal codes of WIRE-CONTRACT-V4 §14.2.
+RefusalCode = Literal["license_required", "license_invalid", "license_stale", "not_entitled", "sign_in_required"]
+
+#: ``on_refusal`` is ``f(problem)`` or ``f(problem, request)``; it returns the framework's response.
+RefusalHandler = Callable[..., Any]
+
+
+class ProblemBody(TypedDict):
+    """The JSON body of a refusal (RFC 9457), with the catalog's localised title and detail."""
+
+    type: str
+    title: str
+    status: int
+    detail: str
+    code: str
 
 LOCALES = ("en", "de", "fr", "es", "it", "ja", "ko", "pt-BR", "zh-Hans")
 PROBLEM_TYPE_BASE = "https://key.plrs.im/docs/reference/error-codes/#"
@@ -90,7 +116,7 @@ class Problem:
     headers: Dict[str, str] = field(default_factory=dict)
 
     @property
-    def body(self) -> Dict[str, object]:
+    def body(self) -> ProblemBody:
         """The JSON body. It never names the step that refused, the header or a claim."""
         return {
             "type": self.type,
@@ -99,6 +125,14 @@ class Problem:
             "detail": self.detail,
             "code": self.code,
         }
+
+    def with_status(self, status: int) -> "Problem":
+        """The same refusal under another HTTP status (a 402 for ``not_entitled``, say). The
+        ``WWW-Authenticate`` challenge stays only on a 401; the title and detail are unchanged."""
+        headers = dict(self.headers)
+        if status != 401:
+            headers.pop("WWW-Authenticate", None)
+        return replace(self, status=status, challenge=self.challenge if status == 401 else None, headers=headers)
 
     def body_bytes(self) -> bytes:
         return json.dumps(self.body, separators=(",", ":"), ensure_ascii=False).encode("utf-8")

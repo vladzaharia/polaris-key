@@ -2,10 +2,17 @@
 decorators that gate an endpoint. Install the framework with ``pip install polaris-key[fastapi]``.
 
     polaris = PolarisKey(config=polaris_config)
-    app.add_middleware(PolarisKeyMiddleware, polaris=polaris)
+    polaris.install(app)  # or app.add_middleware(PolarisKeyMiddleware, polaris=polaris)
 
     @polaris.require_entitlement("export.pdf")
-    async def export(request): ...
+    async def export(request):
+        return JSONResponse({"tier": get_polaris_license(request).tier})
+
+Gates: ``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
+``require_sign_in()`` and ``require_all(*requirements)``. ``get_polaris_license(request)`` returns
+the licence of a gated request and raises when the route has no gate. A gated response gets
+``Cache-Control: private`` unless the handler set one. A CORS preflight passes every gate
+(``PolarisKey(preflight="gate")`` refuses it).
 """
 
 from __future__ import annotations
@@ -21,10 +28,21 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ._core import PolarisAuth, PolarisKeyError
 from ._core import PolarisKey as _Core
+from ._core import get_polaris_license as _license_of
 from ._problem import Problem
-from ._verdict import Requirement, entitlement, signin
+from ._verdict import PolarisLicense, Requirement, as_requirements, entitlement, signin, tier
 
-__all__ = ["PolarisKey", "PolarisKeyMiddleware", "PolarisHTTPError", "request_headers"]
+__all__ = [
+    "PolarisKey",
+    "PolarisKeyMiddleware",
+    "PolarisCacheControlMiddleware",
+    "PolarisHTTPError",
+    "get_polaris_license",
+    "problem_response",
+    "request_headers",
+]
+
+_GATED = "polaris_gated"
 
 
 class PolarisHTTPError(PolarisKeyError, HTTPException):  # type: ignore[misc]
@@ -46,8 +64,49 @@ def request_headers(request: Any) -> List[Tuple[str, str]]:
     return [(k.decode("latin-1"), v.decode("latin-1")) for k, v in request.scope.get("headers", [])]
 
 
-def _problem_response(problem: Problem) -> Response:
+def problem_response(problem: Problem) -> Response:
+    """The refusal as a response: ``application/problem+json``, ``Cache-Control: no-store`` and, on a 401, the challenge."""
     return Response(problem.body_bytes(), status_code=problem.status, headers=dict(problem.headers))
+
+
+_problem_response = problem_response
+
+
+def get_polaris_license(request: Any) -> PolarisLicense:
+    """The licence of a gated request (or of the :class:`PolarisAuth` a FastAPI dependency
+    returned), never ``None``. Raises :class:`PolarisKeySetupError` on a route with no gate."""
+    if isinstance(request, PolarisAuth):
+        return _license_of(request)
+    state = request.scope.get("state") or {}
+    auth = state.get("polaris")
+    return _license_of(auth if isinstance(auth, PolarisAuth) and state.get(_GATED) else None)
+
+
+def _private(headers: List[Tuple[bytes, bytes]]) -> List[Tuple[bytes, bytes]]:
+    if any(k.lower() == b"cache-control" for k, _ in headers):
+        return headers
+    return [*headers, (b"cache-control", b"private")]
+
+
+class PolarisCacheControlMiddleware:
+    """Pure ASGI: add ``Cache-Control: private`` to the response of a gated request that set none,
+    whatever the handler returned (a dict, a streamed or a raw response). ``PolarisKey.install``
+    adds it; :class:`PolarisKeyMiddleware` does the same."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def private(message: Any) -> None:
+            if message["type"] == "http.response.start" and (scope.get("state") or {}).get(_GATED):
+                message = {**message, "headers": _private(list(message.get("headers", [])))}
+            await send(message)
+
+        await self.app(scope, receive, private)
 
 
 class PolarisKey(_Core):
@@ -65,10 +124,15 @@ class PolarisKey(_Core):
 
     async def gate(self, request: Request, require: Sequence[Requirement]) -> PolarisAuth:
         """The licence, with the route's requirements checked. Raises :class:`PolarisHTTPError`."""
+        if self.lets_through(request.method, request_headers(request)):
+            return PolarisAuth(None, None, None, preflight=True)
         auth = self.check(await self.auth_of(request), require, request.headers.get("accept-language"))
         if auth.problem is not None:
             response = self.on_refusal(auth.problem, request) if self.on_refusal else None
             raise PolarisHTTPError(auth.problem, response)
+        state = request.scope.setdefault("state", {})
+        state["polaris"] = auth
+        state[_GATED] = True
         return auth
 
     def exception_handler(self, request: Request, exc: Exception) -> Response:
@@ -78,8 +142,10 @@ class PolarisKey(_Core):
         return response if response is not None else _problem_response(exc.problem)
 
     def install(self, app: Any) -> None:
-        """Register :meth:`exception_handler` on the app (needed for ``on_refusal``)."""
+        """Register :meth:`exception_handler` (needed for ``on_refusal``) and the
+        ``Cache-Control: private`` middleware on the app."""
         app.add_exception_handler(PolarisKeyError, self.exception_handler)
+        app.add_middleware(PolarisCacheControlMiddleware)
 
     def _decorator(self, require: Tuple[Requirement, ...]) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrap(endpoint: Callable[..., Any]) -> Callable[..., Any]:
@@ -87,7 +153,10 @@ class PolarisKey(_Core):
             async def inner(request: Request, *args: Any, **kwargs: Any) -> Any:
                 await self.gate(request, require)
                 result = endpoint(request, *args, **kwargs)
-                return await result if inspect.isawaitable(result) else result
+                result = await result if inspect.isawaitable(result) else result
+                if isinstance(result, Response) and "cache-control" not in result.headers:
+                    result.headers["Cache-Control"] = "private"
+                return result
 
             return inner
 
@@ -101,8 +170,19 @@ class PolarisKey(_Core):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._decorator((entitlement(name, test),))
 
+    def require_tier(self, *tiers: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """The licence's tier is one of ``tiers``."""
+        return self._decorator((tier(*tiers),))
+
     def require_sign_in(self) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._decorator((signin(),))
+
+    def require_all(self, *requirements: Requirement) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Several requirements in order, for example ``require_all(signin(), tier("pro"))``;
+        the first that fails refuses."""
+        return self._decorator(as_requirements(requirements, "require_all"))
+
+    require = require_all
 
 
 class PolarisKeyMiddleware:
@@ -125,7 +205,10 @@ class PolarisKeyMiddleware:
 
         async def watch(message: Any) -> None:
             nonlocal started
-            started = started or message["type"] == "http.response.start"
+            if message["type"] == "http.response.start":
+                started = True
+                if scope["state"].get(_GATED):
+                    message = {**message, "headers": _private(list(message.get("headers", [])))}
             await send(message)
 
         try:

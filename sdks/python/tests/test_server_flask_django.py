@@ -14,6 +14,10 @@ _M: Dict[str, Any] = json.loads(
 )
 
 
+# The core refuses an empty pin set (nothing could verify); a row with no keys gets one pin that signed
+# nothing, which is the same verdict.
+_NO_SIGNER = {"unused-pin": "A" * 43}
+
 def _usable(r: Dict[str, Any]) -> bool:
     o = r["input"]["options"]
     return (
@@ -30,7 +34,7 @@ IDS = [r["id"] for r in ROWS]
 
 def _cfg(row: Dict[str, Any]) -> Dict[str, Any]:
     slug = row["input"]["options"]["products"][0]
-    return {"product_slug": slug, "base_url": "https://key.plrs.im", "trust": row["input"]["trust"][slug]}
+    return {"product_slug": slug, "base_url": "https://key.plrs.im", "trust": row["input"]["trust"][slug] or _NO_SIGNER}
 
 
 def _req(row: Dict[str, Any]) -> Any:
