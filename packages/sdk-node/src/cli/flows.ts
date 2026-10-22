@@ -117,7 +117,13 @@ function codeError(ctx: KitContext, code: string | null): CliJsonError {
 /** A thrown error's registry code, when it carries one. */
 function errorCode(e: unknown): string | null {
   const code = (e as { code?: unknown })?.code;
-  return typeof code === "string" ? code : null;
+  return typeof code === "string" ? offline(code) : null;
+}
+
+/** One code for "the server did not answer", as the Python kit's: the client's `network-error`
+ *  reads as `network` on every verb, in the screen's words and in `--json`. */
+function offline(code: string): string {
+  return code === ErrorCode.networkError ? ErrorCode.network : code;
 }
 
 /** Ctrl-C: exit 130 with `"error": "interrupted"` (the Python kit's). */
@@ -142,7 +148,7 @@ function failed(
   const raw = errorCode(e);
   const code =
     raw === "service-unavailable" && client && undiscovered(client)
-      ? "network"
+      ? ErrorCode.network
       : raw;
   const error = codeError(ctx, code);
   show(ctx, [
@@ -619,6 +625,318 @@ export async function checkFlow(
     exitCode: EXIT.ok,
     state: "licensed",
     result: { status: st.status, usable: true },
+  };
+}
+
+// ── boot ───────────────────────────────────────────────────────────────────────────────────
+
+/** Stage → the catalog key of its progress line (the Python kit's `BOOT_STAGE_COPY`). */
+const BOOT_STAGE_COPY: Readonly<Record<string, string>> = {
+  idle: "boot.starting",
+  shell: "boot.starting",
+  guard: "boot.starting",
+  sync: "boot.syncing",
+  gate: "gate.checking",
+  decide: "boot.deciding",
+  fetch: "boot.fetching",
+  mount: "common.loading",
+  background: "boot.ready",
+  ready: "boot.ready",
+};
+
+/** Key hints from key names the keyboard prints (`y`, `Esc`) and the catalog's words for them. */
+function pairHints(
+  ctx: KitContext,
+  pairs: ReadonlyArray<readonly [string, string]>,
+): RailRow {
+  return hintsRow(
+    ctx,
+    pairs.map(([key, action]) => `${key} ${ctx.copy.t(action)}`).join(" · "),
+  );
+}
+
+/**
+ * Ask a question drawn as rows, answered by one key: y (or Enter, when `enter`) is yes, n or Esc
+ * is no. Without a keyboard to read the answer is no, never a guess. The rows stay on screen
+ * without their hints, so the next step reads under the question.
+ */
+async function askRows(
+  ctx: KitContext,
+  rows: (hints: boolean) => RailRow[],
+  question: string,
+  enter: boolean,
+): Promise<boolean | typeof INTERRUPT> {
+  if (ctx.plainKeys) {
+    const r = await plainConfirm(ctx.plainKeys, ctx.stdout, question);
+    return r === true;
+  }
+  if (!ctx.keys) return false;
+  const live = ctx.live();
+  try {
+    live.draw(() => rows(true));
+    for (;;) {
+      const k = await ctx.keys.next();
+      if (k === null || isCancel(k)) {
+        live.commit(() => rows(false));
+        return k !== null && isInterrupt(k) ? INTERRUPT : false;
+      }
+      const answer =
+        k.name === "y"
+          ? true
+          : k.name === "n"
+            ? false
+            : enter && (k.name === "return" || k.name === "enter")
+              ? true
+              : null;
+      if (answer !== null) {
+        live.commit(() => rows(false));
+        return answer;
+      }
+    }
+  } finally {
+    live.close();
+  }
+}
+
+export interface BootArgs {
+  /** `--yes`: download required content without asking. */
+  yes?: boolean;
+}
+
+/**
+ * `boot`: one live line per stage of the boot machine, the consent question before a download
+ * (always asked on the keyboard, a metered network said so), then Ready, or the stop with its fix:
+ * offline, blocked, declined, rolled back, error (UI-KITS.md §4.1 Boot; the Python kit's `boot`).
+ */
+export async function bootFlow(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+  args: BootArgs = {},
+): Promise<FlowResult> {
+  const t = ctx.copy.t.bind(ctx.copy);
+  const product = ctx.product.name;
+  const frames = spinnerFrames(ctx.caps.unicode);
+  const live = quiet(ctx) || !ctx.caps.animate ? null : ctx.live();
+  let label = t("boot.starting");
+  let stopSpin: () => void = () => undefined;
+  const spin = () => {
+    if (!live) return;
+    stopSpin();
+    stopSpin = animate(
+      ctx.caps,
+      (f) =>
+        live.draw(() => [
+          {
+            mark: { glyph: frames[f % frames.length]! },
+            spans: [{ text: label }],
+          },
+        ]),
+      ctx.ticker,
+    );
+  };
+  const quit = () => {
+    stopSpin();
+    stopSpin = () => undefined;
+    live?.close();
+  };
+  // Without a live line (a log, CI) each new stage is one plain line.
+  const note = () => {
+    if (!live && !quiet(ctx))
+      show(ctx, [textRow([{ text: label, style: ["muted"] }])]);
+  };
+  const flag = { interrupted: false, headed: false };
+  const onStage = (step: {
+    emits: readonly {
+      type: string;
+      stage?: string;
+      done?: number;
+      total?: number;
+    }[];
+  }) => {
+    for (const e of step.emits) {
+      if (e.type === "stage_changed" && e.stage) {
+        label = t(BOOT_STAGE_COPY[e.stage] ?? "common.loading");
+        if (quiet(ctx))
+          ctx.stdout.write(
+            `${eventLine("boot", "stage", { stage: e.stage })}\n`,
+          );
+        note();
+      } else if (
+        e.type === "fetch_progress" &&
+        typeof e.done === "number" &&
+        typeof e.total === "number"
+      ) {
+        label = t("boot.fetchingProgress", {
+          size: formatBytes(ctx, e.done),
+          total: formatBytes(ctx, e.total),
+        });
+        emitProgress(ctx, "boot", e.done, e.total);
+      }
+    }
+    if (live) spin();
+  };
+  const answer = async (bytes: number, metered: boolean): Promise<boolean> => {
+    if (args.yes) return true;
+    if (quiet(ctx)) return false;
+    quit();
+    const title = t("boot.consent.title");
+    const rows = (hints: boolean): RailRow[] => [
+      ...productHeader(ctx, "boot"),
+      stepRow("active", title),
+      textRow(
+        t(metered ? "boot.consent.bodyMetered" : "boot.consent.body", {
+          product,
+          size: formatBytes(ctx, bytes),
+        }),
+      ),
+      ...(hints
+        ? [
+            pairHints(ctx, [
+              ["y", "boot.consent.download"],
+              ["n", "common.notNow"],
+            ]),
+          ]
+        : []),
+    ];
+    flag.headed = true;
+    const r = await askRows(ctx, rows, title, true);
+    if (r === INTERRUPT) {
+      flag.interrupted = true;
+      return false;
+    }
+    spin();
+    return r;
+  };
+  note();
+  spin();
+  let out;
+  try {
+    out = await client.boot({
+      onStage,
+      answer,
+      consent: args.yes ? "never" : "always",
+    });
+  } catch (e) {
+    quit();
+    return failed(ctx, e, productHeader(ctx, "boot"), client);
+  }
+  quit();
+  if (flag.interrupted) return interrupted({ outcome: "interrupted" });
+  const emits = out.emits as readonly {
+    type: string;
+    reason?: string;
+    code?: string;
+  }[];
+  const rolledBack = emits.some((e) => e.type === "boot_rolled_back");
+  const updateAvailable = emits.some((e) => e.type === "update_available");
+  const errorCode_ = emits.find((e) => e.type === "error")?.code ?? null;
+  const status = out.license.status;
+  const result = {
+    outcome: out.outcome,
+    stage: out.state.stage,
+    status,
+    updateAvailable,
+    error: errorCode_,
+  };
+  const fix = (verb: string, key: string) => fixRows(ctx, [{ verb, key }]);
+  // The consent question already drew the header.
+  const head = flag.headed ? [] : productHeader(ctx, "boot");
+  if (out.outcome === "ready") {
+    show(ctx, [
+      ...(rolledBack ? [stepRow("warn", t("boot.rolledBack"))] : []),
+      stepRow("ok", product, `${ctx.symbols.separator} ${t("boot.ready")}`),
+      ...(updateAvailable ? fix("update apply", "update.availableTitle") : []),
+    ]);
+    return {
+      exitCode: EXIT.ok,
+      state: rolledBack ? "rolled-back" : "progress",
+      result,
+    };
+  }
+  if (
+    out.outcome === "waiting" &&
+    (status === "needs-activation" || status === "revoked")
+  ) {
+    // The gate needs the person: the status screen says how.
+    const r = await statusFlow(ctx, client);
+    return {
+      ...r,
+      exitCode: EXIT.failed,
+      result: { ...r.result, ...result },
+    };
+  }
+  let state: string;
+  let rows: RailRow[];
+  let error: CliJsonError | undefined;
+  if (out.outcome === "offline") {
+    state = "offline";
+    const playable = out.state.canPlayOffline === true;
+    rows = [
+      ...problemRows(
+        "warn",
+        t("boot.offline.title"),
+        t(playable ? "boot.offline.playable" : "boot.offline.body"),
+      ),
+      ...gap(ctx),
+      ...fix("boot", "common.tryAgain"),
+    ];
+  } else if (out.outcome === "blocked" || out.outcome === "waiting") {
+    const declined =
+      out.outcome === "waiting" ||
+      emits.some((e) => e.reason === "content-declined");
+    if (declined) {
+      state = "declined";
+      rows = [
+        ...problemRows(
+          "warn",
+          t("boot.declined.title"),
+          t("boot.declined.body", { product }),
+        ),
+        ...gap(ctx),
+        ...fix("boot", "common.tryAgain"),
+      ];
+    } else {
+      // A refusal is a triangle, never a cross (DL6).
+      state = "blocked";
+      const refused = [
+        "version-too-old",
+        "version-too-new",
+        "channel-not-entitled",
+        "expired",
+        "revoked",
+      ].includes(status)
+        ? status
+        : "version-too-old";
+      rows = [
+        ...problemRows(
+          "warn",
+          t(`core.gate.${refused}.title`),
+          t(`core.gate.${refused}.message`),
+        ),
+        ...(refused === "version-too-old"
+          ? [...gap(ctx), ...fix("update apply", "status.update")]
+          : []),
+      ];
+    }
+  } else {
+    state = "error";
+    rows = [
+      ...problemRows(
+        "fail",
+        t("gate.error.title", { product }),
+        t("boot.error.body", { product }),
+      ),
+      ...gap(ctx),
+      ...fix("boot", "common.tryAgain"),
+    ];
+    error = codeError(ctx, errorCode_);
+  }
+  show(ctx, [...head, ...rows, endRow()]);
+  return {
+    exitCode: EXIT.failed,
+    state,
+    result,
+    ...(error ? { error } : {}),
   };
 }
 
@@ -1264,7 +1582,7 @@ export async function loginFlow(
   await ensureDiscovery(client);
   if (!client.capabilities().identity?.enabled && undiscovered(client))
     return {
-      ...failed(ctx, { code: "network" }, productHeader(ctx, "login")),
+      ...failed(ctx, { code: ErrorCode.network }, productHeader(ctx, "login")),
       result: { state: "error" },
     };
   if (!client.capabilities().identity?.enabled) {
@@ -1883,9 +2201,39 @@ export async function devicesRemoveFlow(
   deviceId: string,
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
-  show(ctx, productHeader(ctx, "devices deauthorize"));
   await ensureDiscovery(client);
   const self = deviceId === client.core.deviceId;
+  // On a keyboard, ask first: removing a device signs it out of the product (Devices: confirming).
+  if ((ctx.keys || ctx.plainKeys) && !quiet(ctx)) {
+    const known = await client.listDevices().catch(() => []);
+    const label = known.find((d) => d.id === deviceId)?.label;
+    const question = t("devices.removeConfirm", {
+      device: label || deviceId,
+      product: ctx.product.name,
+    });
+    const rows = (hints: boolean): RailRow[] => [
+      ...productHeader(ctx, "devices deauthorize"),
+      stepRow("warn", question),
+      ...(hints
+        ? [
+            pairHints(ctx, [
+              ["y", "devices.remove"],
+              ["Esc", "common.cancel"],
+            ]),
+          ]
+        : []),
+    ];
+    const yes = await askRows(ctx, rows, question, false);
+    if (yes !== true) {
+      show(ctx, [endRow(t("cli.nothingChanged"))]);
+      if (yes === INTERRUPT) return interrupted({ deauthorized: null });
+      return {
+        exitCode: EXIT.failed,
+        state: "cancelled",
+        result: { deauthorized: null, state: "cancelled" },
+      };
+    }
+  } else show(ctx, productHeader(ctx, "devices deauthorize"));
   try {
     await busy(ctx, t("common.working"), () =>
       client.deauthorizeDevice(deviceId),
@@ -1938,10 +2286,10 @@ export async function registerFlow(
         ? "rate_limited"
         : r.kind === "not-configured"
           ? "not_found"
-          : // The Python kit's: the registry code the client answered with (`network-error` when
+          : // The Python kit's: the registry code the client answered with (`network` when
             // the server did not answer), never a blanket "unknown".
             r.kind === "error" && r.code
-            ? r.code
+            ? offline(r.code)
             : "unknown";
   const error = codeError(ctx, code);
   show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
@@ -3453,11 +3801,11 @@ export async function doctorFlow(
           ? null
           : d.kind === "not-found"
             ? "not_found"
-            : "network",
+            : ErrorCode.network,
     };
     if (d.kind !== "ok") ok = false;
   } catch (e) {
-    discovery = { kind: "error", code: errorCode(e) ?? "network" };
+    discovery = { kind: "error", code: errorCode(e) ?? ErrorCode.network };
     ok = false;
   }
   const services = Object.entries(client.capabilities())

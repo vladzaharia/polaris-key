@@ -1257,6 +1257,8 @@
     <string name="cli_verb_packsEnsure">Inhalte mit Fortschritt herunterladen und installieren</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">Anzeigen, was dieses Gerät kann (für den Support)</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">Start ausführen, eine Zeile pro Schritt</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">Shell-Vervollständigung für bash, zsh oder fish ausgeben</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1269,6 +1271,8 @@
     <string name="cli_option_help">Hilfe zu einem Befehl</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">Vor dem Abmelden nicht nachfragen</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">Erforderliche Inhalte ohne Nachfrage laden</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">Mit Code statt im Browser dieses Computers anmelden</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->

@@ -23,6 +23,7 @@ import time
 from dataclasses import dataclass, field, replace
 from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from ...constants_generated import ErrorCode
 from ...core.errors import PolarisError
 from ...core.models import license_user
 from ..core.identity import ProductIdentity, presentation_source
@@ -178,29 +179,35 @@ def _now() -> int:
     return int(time.time())
 
 
+def _offline(code: str) -> str:
+    """One code for "the server did not answer", as the Node kit's: the client's ``network-error``
+    reads as ``network`` on every verb, in the screen's words and in ``--json``."""
+    return ErrorCode.NETWORK if code == ErrorCode.NETWORK_ERROR else code
+
+
 def _code_of(client: Any, e: PolarisError) -> str:
     """``e``'s code, except that a service the product seems not to run, because discovery could not be
     reached, is a network failure (offline), not "Not available"."""
     if e.code != "service-unavailable":
-        return e.code
+        return _offline(e.code)
     try:
         if getattr(getattr(client, "core", None), "local_only", False):
             return e.code
         d = client.try_discover()
     except Exception:
-        return "network"
-    return "network" if d is None or getattr(d, "kind", None) == "error" else e.code
+        return ErrorCode.NETWORK
+    return ErrorCode.NETWORK if d is None or getattr(d, "kind", None) == "error" else e.code
 
 
 def _error_outcome(t: Terminal, code: str, verb: str) -> Outcome:
     k = t.kit
     title, message = screens._code_title_message(k, code)
     lines = [k.header(verb)] + ([k.rail()] if k.decor else []) + k.step("fail", [title]) + k.body([message])
-    if code == "network":
+    if code == ErrorCode.NETWORK:
         # Offline: say how to try again.
         lines += screens._gap(k) + screens._fixes(k, [(verb, "common.tryAgain")])
     lines += k.end()
-    return Outcome(EXIT.failed, screens._close(k, lines) if code == "network" else lines, {"error": code})
+    return Outcome(EXIT.failed, screens._close(k, lines) if code == ErrorCode.NETWORK else lines, {"error": code})
 
 
 def _cancelled(t: Terminal, lines: List[Line], data: Dict[str, Any]) -> Outcome:
@@ -1085,7 +1092,7 @@ def register(client: Any, t: Terminal) -> Outcome:
         lines += k.body([k.d(r.deviceId, "id", "muted", nobreak=True)])
         lines += k.end()
         return Outcome(EXIT.ok, lines, {"deviceId": r.deviceId, "status": st.status})
-    code = {"registration-closed": "registration_closed", "rate-limited": "rate_limited", "not-configured": "not-configured"}.get(kind, getattr(r, "code", None) or "server-error")
+    code = {"registration-closed": "registration_closed", "rate-limited": "rate_limited", "not-configured": "not-configured"}.get(kind) or _offline(getattr(r, "code", None) or "server-error")
     out = _error_outcome(t, code, verb)
     out.data["kind"] = kind
     return out

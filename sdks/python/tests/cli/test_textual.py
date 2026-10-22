@@ -429,3 +429,30 @@ def test_a_short_terminal_still_shows_the_header_and_the_primary() -> None:
             for b in app.query(Button):
                 assert b.region.bottom <= size[1] - 1, (size, section, b.id)
             assert _primaries(buttons)
+
+
+# ── ASCII symbols (theme.symbols = "ascii"): the header and the grace line spell "-" ──────────
+
+
+def test_ascii_symbols_reach_the_header_and_the_grace_line() -> None:
+    from textual.widgets import Static
+
+    ascii_c = Copy("en", ascii=True)
+    grace = {"gate": gate_view("grace", now=0, grace_until=3 * 86400)}
+
+    async def run() -> None:
+        app = PolarisKeyApp(_Client(), theme=Theme(symbols="ascii"), scheme="dark", data=grace)
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+            header = str(app.query_one("#pk-header", Static).render())
+            assert " - " in header and "·" not in header
+            text = _texts(app)
+            assert ascii_c("grace.daysLeft", days=3) in text and "Offline - 3 days left" in text
+            assert "·" not in text
+        # and Unicode stays Unicode
+        uni = PolarisKeyApp(_Client(), theme=Theme(symbols="unicode"), scheme="dark", data=grace)
+        async with uni.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+            assert " · " in str(uni.query_one("#pk-header", Static).render())
+
+    asyncio.run(run())

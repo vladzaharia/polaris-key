@@ -306,3 +306,12 @@ def test_a_live_region_counts_wrapped_rows_on_a_narrow_terminal() -> None:
         live.update([Line([Span("y")])])
     # 55 cells in 40 columns take two rows: the redraw erases three, from the third back up two.
     assert "short\r\x1b[2A\x1b[Jy" in out.getvalue()
+
+
+def test_a_server_that_did_not_answer_is_one_code_on_every_verb() -> None:
+    # The client's ``network-error`` reads as ``network`` in the screen and in ``--json``, as the
+    # Node kit's (conformance/parity/errors.json: ``network``).
+    from polaris_key.constants_generated import ErrorCode
+
+    assert flows._offline(ErrorCode.NETWORK_ERROR) == ErrorCode.NETWORK == "network"
+    assert flows._offline("device_limit") == "device_limit"

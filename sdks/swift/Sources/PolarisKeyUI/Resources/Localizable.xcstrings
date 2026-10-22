@@ -8335,6 +8335,66 @@
         }
       }
     },
+    "cli.option.yesDownload": {
+      "comment": "Terminal help: what the --yes flag does on boot.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download required content without asking"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erforderliche Inhalte ohne Nachfrage laden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger le contenu requis sans demander"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar el contenido necesario sin preguntar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar o conteúdo necessário sem perguntar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica i contenuti richiesti senza chiedere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必要なコンテンツを確認せずにダウンロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필요한 콘텐츠를 묻지 않고 다운로드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需询问即下载所需内容"
+          }
+        }
+      }
+    },
     "cli.output.workflowCommand": {
       "comment": "Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands). Arguments: 1=command.",
       "extractionState": "manual",
@@ -11031,6 +11091,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加许可证密钥（提示输入，或通过 stdin）"
+          }
+        }
+      }
+    },
+    "cli.verb.boot": {
+      "comment": "Terminal help: what the boot command does.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run startup, one line per stage"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start ausführen, eine Zeile pro Schritt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer le démarrage, une ligne par étape"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutar el inicio, una línea por etapa"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executar a inicialização, uma linha por etapa"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esegui l'avvio, una riga per fase"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起動処理を実行（段階ごとに1行）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작 과정을 실행해요(단계마다 한 줄)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行启动流程，每个阶段一行"
           }
         }
       }

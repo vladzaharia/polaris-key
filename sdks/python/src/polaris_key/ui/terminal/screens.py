@@ -12,7 +12,7 @@ from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
-from ...constants_generated import DEVICE_CODE_PAGE
+from ...constants_generated import DEVICE_CODE_PAGE, ErrorCode
 from ...core.context import DEFAULT_BASE
 from ...core.portal import portal_link
 from ..core.models import (
@@ -502,7 +502,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         else:
             title, message = _code_title_message(k, code, group="codes")
             body += k.step("fail", [title])
-            if code == "network":
+            if code == ErrorCode.NETWORK:
                 body += k.body([message])
             body += _again(k, verb)  # every ending keeps the action that starts again (DL7)
     return _frame(k, verb, body, end, hints)

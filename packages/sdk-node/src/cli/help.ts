@@ -35,6 +35,7 @@ export const VERB_OPTIONS: Readonly<
     { flags: "--key-stdin", key: "cli.option.keyStdin" },
   ],
   login: [{ flags: "--device-code", key: "cli.option.deviceCode" }],
+  boot: [{ flags: "-y, --yes", key: "cli.option.yesDownload" }],
   logout: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   deactivate: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   secret: [

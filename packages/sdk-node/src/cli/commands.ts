@@ -288,3 +288,24 @@ export async function importBundle(
     };
   }
 }
+
+/** Run the one-call boot with no screen: ready, or the stop it ended on. `yes` downloads required
+ *  content without asking; otherwise a download that needs consent is declined (nobody can answer). */
+export async function boot(
+  client: PolarisKeyClient,
+  yes = false,
+): Promise<CommandResult> {
+  const out = await client.boot({
+    consent: yes ? "never" : "always",
+    answer: async () => yes,
+  });
+  const status = out.license.status;
+  const ready = out.outcome === "ready";
+  return {
+    ok: ready,
+    message: ready
+      ? `Ready. Status: ${status}`
+      : `Boot stopped: ${out.outcome} at ${out.state.stage}. Status: ${status}`,
+    data: { outcome: out.outcome, stage: out.state.stage, status },
+  };
+}

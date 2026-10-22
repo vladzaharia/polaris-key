@@ -1,0 +1,79 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · boot
+│
+✗  [1mTidewater Studio couldn't start[22m
+│  If this keeps happening, restart the app.
+│
+└  [1mtidewater boot[22m   Try again
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - boot[22m
+[2m|[22m
+[31mx[39m  [1mTidewater Studio couldn't start[22m
+[2m|[22m  If this keeps happening, restart the app.
+[2m|[22m
+[2m`[22m  [1mtidewater boot[22m   Try again
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · boot[22m
+[2m│[22m
+[31m✗[39m  [1mTidewater Studio couldn't start[22m
+[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m
+[2m└[22m  [1mtidewater boot[22m   Try again
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · boot
+│
+✗  [1mTidewater Studio couldn't start[22m
+│  If this keeps happening, restart the app.
+│
+└  [1mtidewater boot[22m   Try again
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - boot[22m
+[2m|[22m
+[31mx[39m  [1mTidewater Studio couldn't start[22m
+[2m|[22m  If this keeps happening, restart the app.
+[2m|[22m
+[2m`[22m  [1mtidewater boot[22m   Try again

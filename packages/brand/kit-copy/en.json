@@ -2761,6 +2761,11 @@
       "role": "body",
       "note": "Terminal help: what the doctor command does."
     },
+    "cli.verb.boot": {
+      "value": "Run startup, one line per stage",
+      "role": "body",
+      "note": "Terminal help: what the boot command does."
+    },
     "cli.verb.completion": {
       "value": "Print shell completion for bash, zsh or fish",
       "role": "body",
@@ -2790,6 +2795,11 @@
       "value": "Don't ask before signing out",
       "role": "body",
       "note": "Terminal help: what the --yes flag does."
+    },
+    "cli.option.yesDownload": {
+      "value": "Download required content without asking",
+      "role": "body",
+      "note": "Terminal help: what the --yes flag does on boot."
     },
     "cli.option.deviceCode": {
       "value": "Sign in with a code instead of this computer's browser",
