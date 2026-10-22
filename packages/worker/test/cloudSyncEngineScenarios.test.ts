@@ -101,6 +101,9 @@ function overlay(store: MemoryStore, body: Record<string, unknown>): void {
     editedHlc: string;
   };
   for (const c of (body.changes as Change[] | undefined) ?? []) {
+    // A record change (a collection) is U-09's: it names no setting, and a store never holds a
+    // keyless row (the SQL store refuses one, where the map store kept it as "undefined").
+    if (typeof c.setting !== "string" || typeof c.scope !== "string") continue;
     store.putSetting({
       key: c.setting,
       scope: c.scope,

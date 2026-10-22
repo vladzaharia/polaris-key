@@ -1,0 +1,411 @@
+/**
+ * `SyncStore` over a Durable Object's SQLite database (U-05.6; plans/U-05-slices.md §3). The
+ * engine's rules are `engine/`'s and run unchanged; this file only persists them, so the same
+ * suites that drive the in-memory store drive this one (`test/cloudSyncSqlParity*.test.ts`).
+ *
+ * Tables (one database per product × subject object, so no statement names a subject):
+ *   meta             key/value: schema_version, product, subject (the pin), seq, watermark, usage_*
+ *   settings         live rows, PK (scope, family, key); family is '' for `user` rows
+ *   tombstones       deleted rows (the clear's stamp), same key, so a later edit still wins
+ *   setting_members  the merge cells of a row, live or removed, in the engine's order
+ *   clients          clientId -> first device, last processed mutation id
+ *
+ * A row moves between `settings` and `tombstones` as `deleted` flips; its members stay put.
+ *
+ * Lazy: an object that was never written has no tables. Reads answer from "no schema" as an empty
+ * store without creating anything (a pull never writes: T14); `prepare(true)` creates the schema
+ * (the first write) and `prepare(false)` only migrates one that already exists. Every statement
+ * is parameterised: nothing here concatenates a value into SQL.
+ */
+
+import type { SyncJson, SyncScope } from "@polaris-key/protocol/sync";
+import type {
+  ClientRecord,
+  MemberCell,
+  StoredSetting,
+  StoreUsage,
+  SyncStore,
+} from "../engine/types.js";
+
+/** The schema version this build writes. A newer one in storage is refused, never rewritten. */
+export const SCHEMA_VERSION = 1;
+
+/** What a storage handle must offer: the SQL API and a synchronous transaction. */
+export interface SqlHandle {
+  sql: SqlStorage;
+  transactionSync<T>(fn: () => T): T;
+}
+
+/** Steps to reach each version; `MIGRATIONS[n - 1]` takes a store from version n - 1 to n. */
+const MIGRATIONS: readonly (readonly string[])[] = [
+  [
+    `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID`,
+    `CREATE TABLE IF NOT EXISTS settings (
+       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL,
+       version INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
+       value_json TEXT NOT NULL, is_merge INTEGER NOT NULL,
+       floor_hlc TEXT, floor_client TEXT,
+       PRIMARY KEY (scope, family, key)) WITHOUT ROWID`,
+    `CREATE INDEX IF NOT EXISTS settings_version ON settings (version)`,
+    `CREATE TABLE IF NOT EXISTS tombstones (
+       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL,
+       version INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
+       value_json TEXT NOT NULL, is_merge INTEGER NOT NULL,
+       floor_hlc TEXT, floor_client TEXT,
+       PRIMARY KEY (scope, family, key)) WITHOUT ROWID`,
+    `CREATE INDEX IF NOT EXISTS tombstones_version ON tombstones (version)`,
+    `CREATE TABLE IF NOT EXISTS setting_members (
+       ord INTEGER PRIMARY KEY AUTOINCREMENT,
+       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL, member TEXT NOT NULL,
+       value_json TEXT NOT NULL, removed INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
+       UNIQUE (scope, family, key, member))`,
+    `CREATE TABLE IF NOT EXISTS clients (
+       client_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, last_mutation_id INTEGER NOT NULL) WITHOUT ROWID`,
+  ],
+];
+
+if (MIGRATIONS.length !== SCHEMA_VERSION)
+  throw new Error("sqlStore: SCHEMA_VERSION and MIGRATIONS disagree");
+
+type Row = Record<string, SqlStorageValue>;
+
+interface SettingRow extends Row {
+  scope: string;
+  family: string;
+  key: string;
+  version: number;
+  hlc: string;
+  client_id: string;
+  value_json: string;
+  is_merge: number;
+  floor_hlc: string | null;
+  floor_client: string | null;
+}
+
+interface MemberRow extends Row {
+  member: string;
+  value_json: string;
+  removed: number;
+  hlc: string;
+  client_id: string;
+}
+
+export class SqlStore implements SyncStore {
+  private schema: "unknown" | "absent" | "ready" = "unknown";
+
+  constructor(private readonly h: SqlHandle) {}
+
+  // ---- schema ------------------------------------------------------------------------------
+
+  private all<T extends Row>(q: string, ...b: SqlStorageValue[]): T[] {
+    return this.h.sql.exec<T>(q, ...b).toArray();
+  }
+
+  private run(q: string, ...b: SqlStorageValue[]): void {
+    this.h.sql.exec(q, ...b);
+  }
+
+  private hasSchema(): boolean {
+    if (this.schema === "unknown")
+      this.schema =
+        this.all(
+          `SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'meta'`,
+        ).length > 0
+          ? "ready"
+          : "absent";
+    return this.schema === "ready";
+  }
+
+  /** The stored schema version (0: the object was never written). */
+  schemaVersion(): number {
+    if (!this.hasSchema()) return 0;
+    const r = this.all<{ value: string }>(
+      `SELECT value FROM meta WHERE key = 'schema_version'`,
+    )[0];
+    return r ? Number(r.value) : 0;
+  }
+
+  /**
+   * Brings the schema to `SCHEMA_VERSION`. `create` is true for a write (the first one makes the
+   * tables); a read passes false and leaves a never-written object without tables. A schema from
+   * a newer build is refused.
+   */
+  prepare(create: boolean): void {
+    const have = this.schemaVersion();
+    if (have > SCHEMA_VERSION)
+      throw new Error(
+        `sync store: schema ${have} is newer than ${SCHEMA_VERSION}`,
+      );
+    if (have === SCHEMA_VERSION) return;
+    if (have === 0 && !create && !this.hasSchema()) return;
+    this.h.transactionSync(() => {
+      for (let v = have; v < SCHEMA_VERSION; v++) {
+        for (const stmt of MIGRATIONS[v] ?? []) this.run(stmt);
+        this.run(
+          `INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?)`,
+          String(v + 1),
+        );
+      }
+    });
+    this.schema = "ready";
+  }
+
+  /** Forgets the cached schema probe (after `deleteAll`). */
+  reset(): void {
+    this.schema = "unknown";
+  }
+
+  private requireWritable(): void {
+    if (this.schemaVersion() !== SCHEMA_VERSION)
+      throw new Error("sync store: written before prepare(true)");
+  }
+
+  // ---- meta --------------------------------------------------------------------------------
+
+  getMeta(key: string): string | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.all<{ value: string }>(
+      `SELECT value FROM meta WHERE key = ?`,
+      key,
+    )[0]?.value;
+  }
+
+  setMeta(key: string, value: string): void {
+    this.requireWritable();
+    this.run(
+      `INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)`,
+      key,
+      value,
+    );
+  }
+
+  private num(key: string): number {
+    const v = this.getMeta(key);
+    return v === undefined ? 0 : Number(v);
+  }
+
+  // ---- SyncStore ---------------------------------------------------------------------------
+
+  transaction<T>(fn: () => T): T {
+    return this.h.transactionSync(fn);
+  }
+
+  currentSeq(): number {
+    return this.num("seq");
+  }
+
+  nextSeq(): number {
+    this.requireWritable();
+    const n = this.num("seq") + 1;
+    this.setMeta("seq", String(n));
+    return n;
+  }
+
+  getWatermark(): number {
+    return this.num("watermark");
+  }
+
+  setWatermark(seq: number): void {
+    this.setMeta("watermark", String(seq));
+  }
+
+  getUsage(): StoreUsage {
+    return {
+      settings: this.num("usage_settings"),
+      settingsBytes: this.num("usage_settings_bytes"),
+      bytes: this.num("usage_bytes"),
+    };
+  }
+
+  setUsage(u: StoreUsage): void {
+    this.setMeta("usage_settings", String(u.settings));
+    this.setMeta("usage_settings_bytes", String(u.settingsBytes));
+    this.setMeta("usage_bytes", String(u.bytes));
+  }
+
+  getClient(clientId: string): ClientRecord | undefined {
+    if (!this.hasSchema()) return undefined;
+    const r = this.all<{
+      device_id: string;
+      last_mutation_id: number;
+    }>(
+      `SELECT device_id, last_mutation_id FROM clients WHERE client_id = ?`,
+      clientId,
+    )[0];
+    return r
+      ? { clientId, deviceId: r.device_id, lastMutationId: r.last_mutation_id }
+      : undefined;
+  }
+
+  putClient(c: ClientRecord): void {
+    this.requireWritable();
+    this.run(
+      `INSERT OR REPLACE INTO clients (client_id, device_id, last_mutation_id) VALUES (?, ?, ?)`,
+      c.clientId,
+      c.deviceId,
+      c.lastMutationId,
+    );
+  }
+
+  /** Every client record, for the export. */
+  clients(): ClientRecord[] {
+    if (!this.hasSchema()) return [];
+    return this.all<{
+      client_id: string;
+      device_id: string;
+      last_mutation_id: number;
+    }>(
+      `SELECT client_id, device_id, last_mutation_id FROM clients ORDER BY client_id`,
+    ).map((r) => ({
+      clientId: r.client_id,
+      deviceId: r.device_id,
+      lastMutationId: r.last_mutation_id,
+    }));
+  }
+
+  getSetting(
+    key: string,
+    scope: SyncScope,
+    family?: string,
+  ): StoredSetting | undefined {
+    if (!this.hasSchema()) return undefined;
+    const fam = scope === "platform" ? (family ?? "") : "";
+    for (const table of ["settings", "tombstones"] as const) {
+      const r = this.all<SettingRow>(
+        `SELECT * FROM ${table} WHERE scope = ? AND family = ? AND key = ?`,
+        scope,
+        fam,
+        key,
+      )[0];
+      if (r) return this.hydrate(r, table === "tombstones");
+    }
+    return undefined;
+  }
+
+  putSetting(row: StoredSetting): void {
+    this.requireWritable();
+    const fam = row.scope === "platform" ? (row.family ?? "") : "";
+    this.run(
+      `DELETE FROM settings WHERE scope = ? AND family = ? AND key = ?`,
+      row.scope,
+      fam,
+      row.key,
+    );
+    this.run(
+      `DELETE FROM tombstones WHERE scope = ? AND family = ? AND key = ?`,
+      row.scope,
+      fam,
+      row.key,
+    );
+    this.run(
+      `DELETE FROM setting_members WHERE scope = ? AND family = ? AND key = ?`,
+      row.scope,
+      fam,
+      row.key,
+    );
+    const table = row.deleted ? "tombstones" : "settings";
+    this.run(
+      `INSERT INTO ${table}
+         (scope, family, key, version, hlc, client_id, value_json, is_merge, floor_hlc, floor_client)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      row.scope,
+      fam,
+      row.key,
+      row.version,
+      row.stamp.hlc,
+      row.stamp.clientId,
+      JSON.stringify(row.value),
+      row.members ? 1 : 0,
+      row.floor?.hlc ?? null,
+      row.floor?.clientId ?? null,
+    );
+    for (const [name, cell] of row.members ?? [])
+      this.run(
+        `INSERT INTO setting_members
+           (scope, family, key, member, value_json, removed, hlc, client_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        row.scope,
+        fam,
+        row.key,
+        name,
+        JSON.stringify(cell.value),
+        cell.removed ? 1 : 0,
+        cell.stamp.hlc,
+        cell.stamp.clientId,
+      );
+  }
+
+  deleteSetting(key: string, scope: SyncScope, family?: string): void {
+    this.requireWritable();
+    const fam = scope === "platform" ? (family ?? "") : "";
+    for (const table of ["settings", "tombstones", "setting_members"])
+      this.run(
+        `DELETE FROM ${table} WHERE scope = ? AND family = ? AND key = ?`,
+        scope,
+        fam,
+        key,
+      );
+  }
+
+  settingsAfter(seq: number): StoredSetting[] {
+    if (!this.hasSchema()) return [];
+    const rows: [SettingRow, boolean][] = [
+      ...this.all<SettingRow>(
+        `SELECT * FROM settings WHERE version > ?`,
+        seq,
+      ).map((r): [SettingRow, boolean] => [r, false]),
+      ...this.all<SettingRow>(
+        `SELECT * FROM tombstones WHERE version > ?`,
+        seq,
+      ).map((r): [SettingRow, boolean] => [r, true]),
+    ];
+    rows.sort(
+      ([a], [b]) =>
+        a.version - b.version ||
+        (a.scope < b.scope ? -1 : a.scope > b.scope ? 1 : 0) ||
+        (a.family < b.family ? -1 : a.family > b.family ? 1 : 0) ||
+        (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
+    );
+    return rows.map(([r, dead]) => this.hydrate(r, dead));
+  }
+
+  isEmpty(): boolean {
+    if (!this.hasSchema()) return true;
+    return (
+      this.all(
+        `SELECT 1 AS x FROM settings UNION ALL SELECT 1 FROM tombstones LIMIT 1`,
+      ).length === 0
+    );
+  }
+
+  private hydrate(r: SettingRow, deleted: boolean): StoredSetting {
+    const out: StoredSetting = {
+      key: r.key,
+      scope: r.scope as SyncScope,
+      ...(r.scope === "platform" ? { family: r.family } : {}),
+      version: r.version,
+      stamp: { hlc: r.hlc, clientId: r.client_id },
+      deleted,
+      value: JSON.parse(r.value_json) as SyncJson,
+    };
+    if (r.floor_hlc !== null && r.floor_client !== null)
+      out.floor = { hlc: r.floor_hlc, clientId: r.floor_client };
+    if (r.is_merge) {
+      const members = new Map<string, MemberCell>();
+      for (const m of this.all<MemberRow>(
+        `SELECT member, value_json, removed, hlc, client_id FROM setting_members
+           WHERE scope = ? AND family = ? AND key = ? ORDER BY ord`,
+        r.scope,
+        r.family,
+        r.key,
+      ))
+        members.set(m.member, {
+          value: JSON.parse(m.value_json) as SyncJson,
+          removed: m.removed === 1,
+          stamp: { hlc: m.hlc, clientId: m.client_id },
+        });
+      out.members = members;
+    }
+    return out;
+  }
+}
