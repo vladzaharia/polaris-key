@@ -105,6 +105,8 @@ interface NoticeSpec {
   footer?: string;
   /** The portal origin the links point at; also where the icon loads from. */
   origin: string;
+  /** The identity of the mail: Polaris Locker by default; `key` for an operator notice. */
+  brand?: "key" | "locker";
 }
 
 function buildNotice(spec: NoticeSpec): NoticeMessage {
@@ -130,7 +132,7 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
       : {}),
     footer,
     origin: emailAssetOrigin(spec.origin),
-    brand: "locker",
+    brand: spec.brand ?? "locker",
   };
   return {
     subject: spec.subject,
@@ -399,6 +401,36 @@ export function newDeviceSignInNotice(input: {
     },
     secureUrl: appLink(input.origin, "account/methods"),
     origin: input.origin,
+  });
+}
+
+/**
+ * ST-34.6 (D-17): a command line (`pkey login`) was approved as the person in the Polaris Key
+ * console. A Polaris Key operator notice, not a Locker one: the remedy is the console's Personal
+ * tokens (or a Superadmin), never Locker's sessions page. `origin` is the console's.
+ */
+export function cliSignInNotice(input: {
+  /** "pkey on <host>": the CLI's own words, unverified. */
+  deviceLabel: string | null | undefined;
+  location?: string | null;
+  at?: number;
+  origin: string;
+}): NoticeMessage {
+  const device = displayValue(input.deviceLabel, "A command line");
+  const location = input.location ? displayValue(input.location, "") : "";
+  const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
+  const where = location ? ` from about ${location}` : "";
+  return buildNotice({
+    subject: "A command line signed in to the Polaris Key console as you",
+    paragraphs: [
+      `${device} was approved as you in the Polaris Key console${when}${where}. Its token lasts 7 days and can do what your roles allow.`,
+      "If this wasn't you, end it under Personal tokens in the console, or ask a Superadmin to.",
+    ],
+    action: { label: "Open the console", url: `${input.origin}/manage/` },
+    footer:
+      "You are receiving this because a command-line sign-in was approved with your Polaris Key console access. We sent it to every verified email on the account.",
+    origin: input.origin,
+    brand: "key",
   });
 }
 

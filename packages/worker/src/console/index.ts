@@ -20,6 +20,7 @@ import {
   type IdTokenVerifier,
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
+import { handleDevicePage } from "./devicePage.js";
 import { appSecurityHeaders } from "../core/securityHeaders.js";
 import { imgOrigin } from "../core/hosts.js";
 import { isPublicSpaAssetPath } from "../platform/http.js";
@@ -85,6 +86,8 @@ export async function handleAdmin(
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handleAdminLogin(req, env, db);
+  if (clean === "/device" || clean.startsWith("/device/"))
+    return handleDevicePage(req, env, db, clean, now);
   if (clean === "/callback")
     return handleAdminCallback(req, env, db, now, verifier);
   if (clean === "/api" || clean.startsWith("/api/")) {

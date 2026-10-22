@@ -78,6 +78,7 @@ export {
 export { turnstileEnabled } from "./card/turnstile.js";
 // ST-34.5: the console's half of `pkey login` (the CLI purpose of PX-W14 device login).
 export {
+  DEVICE_LOGIN_APPROVE_LIMIT,
   cliDeviceLoginDecide,
   cliDeviceLoginLookup,
   type CliDeviceLoginView,

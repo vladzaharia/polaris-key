@@ -7581,6 +7581,49 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   applies, and an admin token is worth more. The console card (ST-34.6) must require a stepped-up
   console session, so approving needs a fresh sign-in, not just a cookie.
 
+### The console's approval card for `pkey login` (ST-34.6)
+
+`GET|POST /manage/device` is where a person approves a CLI request (a `purpose: "cli"` device
+login, ST-34.5). Approving hands a 7-day `admin` personal token to whoever holds the terminal that
+showed the code, so the threat is phishing: someone starts `pkey login` on their own machine and
+talks an operator into approving it. The card is server-rendered, script-free and on the console
+sign-in card's CSP (`form-action 'self'`, no inline script). Every gate on a decision, in order
+(`console/devicePage.ts`):
+
+1. **A console cookie session, from the one reader** (`resolveConsoleCaller`) and a v2 one: it
+   must carry an account id and a session id and its actor must be an `mbr_`. A portal cookie, a v1
+   cookie (no `aid`) and any `Authorization` token (the reader ignores the header) are sent to
+   sign in, whatever the form says; the account id is the session's own, never a field.
+2. **A member:** a principal with at least one grant, else the no-access card.
+3. **A per-member budget** (`DEVICE_LOGIN_APPROVE_LIMIT` a minute, bucket `adminDeviceApprove`, fail
+   closed), spent before any code is looked up, so it bounds guessing someone else's code.
+4. **Same origin:** a present `Origin` header must be the console's.
+5. **CSRF:** the hidden `csrf` field, compared in constant time with the session's token, on both
+   forms; a missing or wrong one is a 403 that decides nothing.
+6. **An explicit decision:** only `approve` or `deny`; anything else is a 400.
+7. **Step-up, for approve only:** `isSteppedUp` (the console's own five-minute rule). Without it the
+   card shows no Approve button, a forged POST is a 403 before Identity is called (the code stays
+   live), and the refusal leaves `cli.login.step_up_required`, the trace of someone being talked
+   into it. Cancelling needs the session but no step-up: it ends a request and mints nothing.
+8. **The account's token limit:** at 25 live personal tokens the card says so and nothing is
+   consumed, so nobody is told "approved" when the poll could not mint.
+9. **`cliDeviceLoginDecide`:** the code is consumed atomically and the record moves out of
+   `pending` by compare-and-set; an unknown, expired, reused, portal-purpose or already decided
+   code is the same expired card (410).
+
+Only after `{ok: true}` does the page write `cli.login.approve` or `.deny` (platform audit, actor
+the member id) and, on approval, send a console-branded security notice (`cliSignInNotice`: "A
+command line signed in to the Polaris Key console as you", the remedy being Personal tokens or a
+Superadmin, to every verified address) rather than Locker's new-device mail. The request's program
+name, version, host and device label are attacker-chosen text: escaped, each tagged "unverified" next
+to "Check this matches your terminal", and the place is "About <place>" because edge geolocation
+is approximate and a VPN can choose it. A `returnTo` of exactly `/manage/device?code=<code>` is
+the one query the sign-in's sanitizer allows, so a step-up lands back on the request; an absolute
+URL, `//host`, an encoded or extended variant is still refused. **Residual:** a phisher whose code
+the operator reads out and who passes the step-up gets a token; the shown host and place, the
+warning line and the notice are the defence. If the audit write fails after a decision lands, the
+approval stands (the mint writes its own row) and the page answers 500.
+
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
 `core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
