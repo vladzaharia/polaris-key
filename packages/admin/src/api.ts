@@ -2548,6 +2548,9 @@ export interface UpdateSettings {
   /** The caller may not see the access mode (its area is Settings), so `metadataAccess` is a
    *  placeholder and no page should show it. */
   hidden?: true;
+  /** The row version of each key as this view read it: a write names it as `expectedVersion`, so
+   *  a page that went stale gets the 409 and the conflict UI rather than overwriting. */
+  versions: { access: number; compat: number; policy: number };
 }
 
 export type UpdateSettingsBody = Partial<
@@ -2571,6 +2574,8 @@ export type UpdateSettingsBlock = "access" | "compat";
  * saves it; a pack with no row inherits the app's.
  */
 export interface DeliveryAccess {
+  /** The row version this view read: a write names it as `expectedVersion`. */
+  version: number;
   modes: ReleaseAccess[];
   app: { deliverableId: string; mode: ReleaseAccess; source: SettingsSource };
   deliverables: Array<{
@@ -4245,6 +4250,8 @@ export interface FingerprintPolicyDto {
 }
 
 export interface FingerprintPolicyResponse {
+  /** The row version this view read: a write names it as `expectedVersion`. */
+  version: number;
   policy: FingerprintPolicyDto;
   /** `manifest` means a resync still owns it; `admin` means an operator has taken it over. */
   source: "manifest" | "admin";
@@ -5747,12 +5754,18 @@ const rawApi = {
   //    `release.compatWindow`, `update.operatorPolicy`) ────────────────────────
   updateSettings: async (slug: string): Promise<UpdateSettings> =>
     updateSettingsOf(await getSettings(slug, UPDATE_KEYS)),
-  /** Each key the body names is one write, with the version just read. */
+  /**
+   * Each key the body names is one write, carrying the version the page loaded (`versions`, from
+   * the `UpdateSettings` it shows). The three blocks are three registry keys and the generic API
+   * writes one key per request, so a save that spans blocks is several requests; the pages each
+   * save one block, so in practice it is one. The merge base for a partial compat window or
+   * operator policy is the view the page loaded too.
+   */
   saveUpdateSettings: async (
     slug: string,
     body: UpdateSettingsBody,
+    cur: UpdateSettings,
   ): Promise<UpdateSettings> => {
-    const cur = updateSettingsOf(await getSettings(slug, UPDATE_KEYS));
     if (body.metadataAccess !== undefined)
       await writeSetting(slug, UPDATE_ACCESS_KEY, "PATCH", {
         value: body.metadataAccess,
@@ -5790,8 +5803,8 @@ const rawApi = {
   revertUpdateSettings: async (
     slug: string,
     fields: UpdateSettingsBlock[],
+    cur: UpdateSettings,
   ): Promise<UpdateSettings> => {
-    const cur = updateSettingsOf(await getSettings(slug, UPDATE_KEYS));
     for (const block of fields)
       await writeSetting(
         slug,
@@ -5816,8 +5829,9 @@ const rawApi = {
       /** A pack's delivery gate, for `entitled`: the catalog flag a license must grant (`null` clears it). */
       entitlement?: string | null;
     },
+    /** The `DeliveryAccess.version` the page loaded. */
+    expectedVersion: number,
   ): Promise<DeliveryAccess> => {
-    const cur = await getSetting(slug, DELIVERY_ACCESS_KEY);
     return deliveryAccessOf(
       (
         await writeSetting(slug, DELIVERY_ACCESS_KEY, "PATCH", {
@@ -5829,18 +5843,20 @@ const rawApi = {
                 : {}),
             },
           },
-          expectedVersion: cur.version,
+          expectedVersion,
         })
       ).setting,
     );
   },
   /** Hand the app's delivery access back to the manifest; it re-applies on the next resync. */
-  revertDeliveryAccess: async (slug: string): Promise<DeliveryAccess> => {
-    const cur = await getSetting(slug, DELIVERY_ACCESS_KEY);
+  revertDeliveryAccess: async (
+    slug: string,
+    expectedVersion: number,
+  ): Promise<DeliveryAccess> => {
     return deliveryAccessOf(
       (
         await writeSetting(slug, DELIVERY_ACCESS_KEY, "DELETE", {
-          expectedVersion: cur.version,
+          expectedVersion,
         })
       ).setting,
     );
@@ -6582,16 +6598,17 @@ const rawApi = {
   // ── enrollment & fingerprint policy (the settings `license.fingerprint`, `license.autoIssue`) ──
   fingerprintPolicy: async (slug: string): Promise<FingerprintPolicyResponse> =>
     fingerprintOf(await getSetting(slug, FINGERPRINT_KEY)),
-  /** A partial patch: what the body omits keeps the policy's current value. */
+  /** A partial patch: what the body omits keeps the policy the page loaded (`cur`), whose
+   *  version the write carries. */
   updateFingerprintPolicy: async (
     slug: string,
     patch: Partial<FingerprintPolicyDto>,
+    cur: Pick<FingerprintPolicyResponse, "policy" | "version">,
   ): Promise<FingerprintPolicyResponse> => {
-    const cur = await getSetting(slug, FINGERPRINT_KEY);
     return fingerprintOf(
       (
         await writeSetting(slug, FINGERPRINT_KEY, "PATCH", {
-          value: { ...(cur.value as FingerprintPolicyDto), ...patch },
+          value: { ...cur.policy, ...patch },
           expectedVersion: cur.version,
         })
       ).setting,
@@ -6600,11 +6617,13 @@ const rawApi = {
   /** Both policies go back to the manifest (the auto-issue one only when it is claimed). */
   revertFingerprintPolicy: async (
     slug: string,
+    expectedVersion: number,
   ): Promise<FingerprintPolicyResponse> => {
-    const fp = await getSetting(slug, FINGERPRINT_KEY);
     const reverted = await writeSetting(slug, FINGERPRINT_KEY, "DELETE", {
-      expectedVersion: fp.version,
+      expectedVersion,
     });
+    // The auto-issue policy is the secondary key of this revert; the page does not load it, so
+    // it is read here, and only to learn whether the console holds it.
     const auto = await getSetting(slug, AUTO_ISSUE_KEY);
     if (auto.source === "console")
       await writeSetting(slug, AUTO_ISSUE_KEY, "DELETE", {
@@ -6864,15 +6883,14 @@ function trustPolicyOf(s: ProductSetting): TrustPolicyResponse {
 }
 
 function fingerprintOf(s: ProductSetting): FingerprintPolicyResponse {
-  return { policy: s.value as FingerprintPolicyDto, source: ownerOf(s) };
+  return {
+    version: s.version,
+    policy: s.value as FingerprintPolicyDto,
+    source: ownerOf(s),
+  };
 }
 
-/** The update settings view, with the versions a write of each key carries. */
-type UpdateSettingsView = UpdateSettings & {
-  versions: { access: number; compat: number; policy: number };
-};
-
-function updateSettingsOf(by: Map<string, ProductSetting>): UpdateSettingsView {
+function updateSettingsOf(by: Map<string, ProductSetting>): UpdateSettings {
   // The API lists only the keys whose area the caller holds (ST-29): a member of Ship builds
   // without Settings does not get the access mode, which the view then says it could not read.
   const access = by.get(UPDATE_ACCESS_KEY);
@@ -6925,6 +6943,7 @@ function deliveryAccessOf(s: ProductSetting): DeliveryAccess {
   );
   const app = rows.find(([id]) => id === "app")?.[1];
   return {
+    version: s.version,
     modes: ACCESS_MODES,
     // Fail closed, as the worker does: no `app` row reads `entitled`.
     app: {

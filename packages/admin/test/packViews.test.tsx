@@ -268,6 +268,7 @@ const FILES: PackFilesResponse = {
 };
 
 const ACCESS: DeliveryAccess = {
+  version: 4,
   modes: ["public", "authenticated", "licensed", "entitled"],
   app: { deliverableId: "app", mode: "licensed", source: "manifest" },
   deliverables: [
@@ -601,11 +602,16 @@ describe("a pack's record (T3, PKD-1 to PKD-8)", () => {
     await userEvent.type(ent, "hd-textures");
     await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
     await waitFor(() =>
-      expect(saveDeliveryAccess).toHaveBeenCalledWith(SLUG, {
-        deliverable: CORE,
-        mode: "entitled",
-        entitlement: "hd-textures",
-      }),
+      expect(saveDeliveryAccess).toHaveBeenCalledWith(
+        SLUG,
+        {
+          deliverable: CORE,
+          mode: "entitled",
+          entitlement: "hd-textures",
+        },
+        // The version the page loaded, so a stale page gets the 409.
+        ACCESS.version,
+      ),
     );
     await waitFor(() =>
       expect(deliverables.mock.calls.length).toBeGreaterThan(1),

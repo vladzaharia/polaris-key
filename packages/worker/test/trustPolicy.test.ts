@@ -457,6 +457,30 @@ describe("guarded writes", () => {
     );
   });
 
+  it("a relax is tied to the version it read: a tighten that raced it is not undone", async () => {
+    const w = await world();
+    await seed(w);
+    // A racing request tightens (version 1 -> 2) before the relax, which read version 1.
+    const tighten = await call(w, "PUT", {
+      body: { policy: { ...POLICY, mint: "basic" }, ...GUARD(1) },
+      stepUp: true,
+    });
+    expect(tighten.status).toBe(200);
+    const relax = await call(w, "PUT", {
+      body: { policy: POLICY, ...GUARD(1) },
+      stepUp: true,
+    });
+    expect(relax.status).toBe(409);
+    expect(relax.body.reason).toBe("version_conflict");
+    expect(JSON.parse((await stored(w.db))!.trust_policy_json!).mint).toBe(
+      "basic",
+    );
+    // And the DELETE (a reset relaxes too) is judged the same way.
+    const reset = await call(w, "DELETE", { stepUp: true, body: GUARD(1) });
+    expect(reset.status).toBe(409);
+    expect(reset.body.reason).toBe("version_conflict");
+  });
+
   it("the first App Attest setup is L2: a bare PUT from the default is refused", async () => {
     const w = await world();
     const r = await call(w, "PUT", { body: POLICY });

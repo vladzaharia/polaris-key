@@ -63,11 +63,16 @@ export function PackGateForm({
           }
         : {},
     onSubmit: async (v) => {
-      await mutate("saveDeliveryAccess", slug, {
-        deliverable: deliverable.id,
-        mode: v.mode as ReleaseAccess,
-        entitlement: v.entitlement.trim() || null,
-      });
+      await mutate(
+        "saveDeliveryAccess",
+        slug,
+        {
+          deliverable: deliverable.id,
+          mode: v.mode as ReleaseAccess,
+          entitlement: v.entitlement.trim() || null,
+        },
+        access.data?.version ?? 0,
+      );
       toast.success(`Saved ${deliverable.id}'s delivery gate`);
     },
   });
