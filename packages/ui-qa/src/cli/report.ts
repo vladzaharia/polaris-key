@@ -22,10 +22,13 @@ for (const [src, n] of bySource) console.log(`  ${src.padEnd(18)} ${n}`);
 console.log(
   `  component states with no kit render yet: ${r.unrendered.length}`,
 );
-const bad = (r.crossRenderer ?? []).filter((p) => p.status !== "match");
+const allowed = (r.crossRenderer ?? []).filter((p) => p.status === "allowed");
+const bad = (r.crossRenderer ?? []).filter(
+  (p) => p.status !== "match" && p.status !== "allowed",
+);
 console.log(
   r.crossRenderer
-    ? `  cross-renderer diff: ${r.crossRenderer.length - bad.length}/${r.crossRenderer.length} match`
+    ? `  cross-renderer diff: ${r.crossRenderer.length - bad.length - allowed.length}/${r.crossRenderer.length} match, ${allowed.length} recorded findings (cross-renderer-allow.json)`
     : "  cross-renderer diff: inactive (needs both React and elements baselines)",
 );
 for (const p of bad) console.log(`    ✗ ${p.detail}`);

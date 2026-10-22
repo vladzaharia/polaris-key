@@ -116,7 +116,10 @@ export function canonicalOf(
   return best;
 }
 
-export function collect(root = REPO_ROOT): Report {
+export function collect(
+  root = REPO_ROOT,
+  opts: { crossRenderer?: boolean } = {},
+): Report {
   const canon = canonicalStates(root);
   const shots: Shot[] = [];
   const boardNames = BOARDS.map((b) => b.name).sort(
@@ -169,14 +172,63 @@ export function collect(root = REPO_ROOT): Report {
         unrendered.push({ component, state });
     }
 
-  const crossRenderer = compareDirs(
-    resolve(root, CROSS_RENDERER.a),
-    resolve(root, CROSS_RENDERER.b),
-    {
-      outDir: resolve(root, "packages/ui-qa/.out/cross-renderer"),
-    },
-  );
+  const crossRenderer =
+    opts.crossRenderer === false
+      ? null
+      : applyAllow(
+          compareDirs(
+            resolve(root, CROSS_RENDERER.a),
+            resolve(root, CROSS_RENDERER.b),
+            {
+              outDir: resolve(root, "packages/ui-qa/.out/cross-renderer"),
+            },
+          ),
+          root,
+        );
   return { shots, states, sources, unrendered, crossRenderer };
+}
+
+/** The states whose React/elements difference is a recorded finding (cross-renderer-allow.json).
+ *  An allowed state's mismatches become `allowed`; an entry whose state now matches in full is
+ *  `stale-allow` and fails, so the list only shrinks. An entry's own `maxRatio` loosens its
+ *  threshold (a looping animation) and is never stale. */
+export function applyAllow(
+  results: PairResult[] | null,
+  root = REPO_ROOT,
+): PairResult[] | null {
+  if (!results) return null;
+  const file = resolve(root, "packages/ui-qa/cross-renderer-allow.json");
+  if (!existsSync(file)) return results;
+  const allow = (
+    JSON.parse(readFileSync(file, "utf8")) as {
+      states: Record<string, { reason: string; maxRatio?: number }>;
+    }
+  ).states;
+  const stateOfName = (n: string) => n.split("/")[0]!;
+  const out = results.map((p): PairResult => {
+    const entry = allow[stateOfName(p.name)];
+    if (!entry || p.status === "match") return p;
+    if (entry.maxRatio !== undefined && p.ratio !== undefined)
+      return p.ratio <= entry.maxRatio
+        ? { ...p, status: "allowed", detail: `${p.detail} (tolerated)` }
+        : p;
+    return {
+      ...p,
+      status: "allowed",
+      detail: `${p.detail} (allowed: ${entry.reason})`,
+    };
+  });
+  for (const [state, entry] of Object.entries(allow)) {
+    if (entry.maxRatio !== undefined) continue;
+    const mine = out.filter((p) => stateOfName(p.name) === state);
+    if (mine.length === 0 || mine.some((p) => p.status === "allowed")) continue;
+    out.push({
+      name: `${state}/`,
+      status: "stale-allow",
+      detail: `${state}: now matches in React and elements; remove it from cross-renderer-allow.json`,
+    });
+  }
+  return out;
 }
 
 function kebab(s: string): string {
