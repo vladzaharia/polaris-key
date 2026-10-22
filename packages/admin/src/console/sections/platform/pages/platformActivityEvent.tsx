@@ -25,7 +25,6 @@ import { Skeleton } from "../../../../ui/Skeleton.js";
 import { qk } from "../../../data/queries.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
-import { verbFor } from "../../core/model/activityVerbs.js";
 import { actorName, whatOf } from "./platformActivityParts.js";
 
 /** A before or after value as the Worker stored it: plain values as text, anything else compact JSON. */
@@ -64,7 +63,6 @@ export function EventDrawer({
     <Drawer
       {...routedDrawer(id, onClose)}
       title={item ? whatOf(item) : "Event"}
-      eyebrow={item ? verbFor(item.action) : undefined}
     >
       <DrawerBody className="space-y-4">
         {fetched.isError && !item ? (

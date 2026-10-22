@@ -129,8 +129,7 @@ export function ActivityTable({
                 aria-current={on ? "true" : undefined}
                 className={cn(
                   "border-b border-border last:border-b-0 max-sm:block max-sm:px-0 max-sm:py-2",
-                  on &&
-                    "bg-accent-subtle shadow-[inset_3px_0_0_var(--color-accent-fg,currentColor)]",
+                  on && "bg-accent-subtle",
                 )}
               >
                 <td
@@ -138,6 +137,9 @@ export function ActivityTable({
                   className={cn(
                     td,
                     "whitespace-nowrap tabular-nums text-end max-sm:justify-between",
+                    // The selected row's bar, in the accent of the service its event references
+                    // (B17); on the cell, because a row's shadow does not paint in a table.
+                    on && "shadow-[inset_3px_0_0_var(--pk-accent-fg)]",
                   )}
                 >
                   <time dateTime={formatIso(fromSeconds(i.at))}>
