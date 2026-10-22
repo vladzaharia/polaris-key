@@ -26,7 +26,7 @@ import im.plrs.key.ui.PolarisTheme
 @Composable
 fun Root(boot: PolarisBootState, gate: PolarisGateState, showSignIn: () -> Unit) {
     MaterialTheme {                    // your MaterialTheme
-        PolarisTheme {                 // neutral: the kit looks like your app
+        PolarisTheme {                 // the Polaris look (the default)
             PolarisBoot(boot, gate = gate, onSignIn = showSignIn) {
                 Text("Licensed")       // your app
             }
@@ -35,9 +35,11 @@ fun Root(boot: PolarisBootState, gate: PolarisGateState, showSignIn: () -> Unit)
 }
 ```
 
-One parameter switches to the Polaris Key design system. You get the generated brand palette (dark
-first, light supported), the core violet as primary, the service accents on the small section
-indicators, Rubik at 400, 500 and 600, full-round buttons and radius-16 fields:
+The kit renders the Polaris Key design system by default (UI-KITS.md §1.1): the generated brand
+palette (dark first, light supported), ink as the primary unless the product brings an accent,
+Rubik at 400, 500 and 600, full-round buttons and radius-16 fields. One parameter opts into the
+native preset, which sets no theme of its own and inherits your `MaterialTheme` (dynamic colour
+included). To keep the look an earlier version had, pass it:
 
 ```kotlin android
 import androidx.compose.material3.Text
@@ -46,8 +48,8 @@ import im.plrs.key.ui.PolarisBranding
 import im.plrs.key.ui.PolarisTheme
 
 @Composable
-fun Branded() {
-    PolarisTheme(branding = PolarisBranding.PolarisKey) { Text("Licensed") }
+fun Native() {
+    PolarisTheme(branding = PolarisBranding.None) { Text("Licensed") }   // the host's own look
 }
 ```
 
@@ -64,8 +66,8 @@ import im.plrs.key.ui.PolarisTheme
 
 @Composable
 fun PoweredBy() {
-    PolarisTheme(showPoweredBy = true) { Text("Settings") }                                        // neutral + attribution (settings, account pane)
-    PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { Text("Account") }  // branded + attribution
+    PolarisTheme(showPoweredBy = true) { Text("Settings") }                                    // Polaris look + attribution (settings, account pane)
+    PolarisTheme(branding = PolarisBranding.None, showPoweredBy = true) { Text("Account") }    // native preset + attribution
 }
 ```
 
