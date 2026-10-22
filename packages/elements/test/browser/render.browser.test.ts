@@ -125,10 +125,13 @@ async function mount(
   row: Row,
   scheme: "dark" | "light",
   height: number,
+  fill = false,
 ): Promise<PkElement> {
   const tag = TAGS[row.expect.component as ComponentName];
   const el = document.createElement(tag) as PkElement;
   el.colorScheme = scheme;
+  // A screen that owns the window (the React kit's `fill`) takes focus on a cold start (DL9).
+  el.fill = fill;
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input), ...extras(row) };
   el.style.minBlockSize = `${height}px`;
   el.style.display = "grid";
@@ -298,7 +301,7 @@ describe("keyboard (DL9)", () => {
   it("Welcome focuses its primary on appear; a key press shows the ring, Tab moves on", async () => {
     await page.viewport(1440, 900);
     const welcome = SCENES.find((r) => r.expect.component === "Welcome")!;
-    const el = await mount(welcome, "dark", 900);
+    const el = await mount(welcome, "dark", 900, true);
     const primary = el.shadowRoot!.querySelector<HTMLElement>(
       '[data-part="primary"]',
     )!;
@@ -318,7 +321,7 @@ describe("keyboard (DL9)", () => {
   it("no ring at rest on a cold start (pointer first)", async () => {
     await page.viewport(1440, 900);
     const welcome = SCENES.find((r) => r.expect.component === "Welcome")!;
-    const el = await mount(welcome, "dark", 900);
+    const el = await mount(welcome, "dark", 900, true);
     const primary = el.shadowRoot!.querySelector<HTMLElement>(
       '[data-part="primary"]',
     )!;

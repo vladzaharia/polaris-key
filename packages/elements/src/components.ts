@@ -2,7 +2,7 @@
 // and `<pk-provider>`, the theme for a subtree (§3.2).
 
 import { html, LitElement, nothing, type PropertyValues } from "lit";
-import { viewOf, type ComponentName } from "@polaris-key/ui-core";
+import { viewOf, type ComponentName, type View } from "@polaris-key/ui-core";
 
 import { PkElement } from "./element.js";
 import { TAGS } from "./layout.js";
@@ -38,6 +38,13 @@ export class PkGate extends PkElement {
     return state !== "licensed" && state !== "grace";
   }
 
+  /** The app, in the default slot, beside the root: it is the host's content, not the kit's. */
+  protected override renderProjected(view: View): unknown {
+    return view.state === "licensed" || view.state === "grace"
+      ? html`<slot></slot>`
+      : nothing;
+  }
+
   protected override renderBody(c: RenderCtx): unknown {
     const { view } = c;
     const sub = (component: ComponentName) =>
@@ -51,9 +58,9 @@ export class PkGate extends PkElement {
     </p>`;
     switch (view.state) {
       case "licensed":
-        return html`<slot></slot>`;
+        return nothing;
       case "grace":
-        return html`${announce}${sub("GraceBanner")}<slot></slot>`;
+        return html`${announce}${sub("GraceBanner")}`;
       case "needs-activation":
         return html`${announce}${sub("Welcome")}`;
       case "blocked":

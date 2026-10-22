@@ -93,6 +93,7 @@ export abstract class PkElement extends LitElement {
     colorScheme: { attribute: "color-scheme" },
     preset: {},
     bare: { type: Boolean, reflect: true },
+    fill: { type: Boolean, reflect: true },
   };
 
   /** The headless input (ui-core `UiInput`): what the SDK adapter or the host knows now. */
@@ -104,6 +105,8 @@ export abstract class PkElement extends LitElement {
   preset?: "polaris-key" | "native";
   /** Drop the pane's own frame (DL2). */
   bare = false;
+  /** Own the window (DL2): the React kit's `fill`, for a screen the host mounts as the page. */
+  fill = false;
 
   /** The component this element draws. */
   abstract readonly component: ComponentName;
@@ -363,7 +366,7 @@ export abstract class PkElement extends LitElement {
       view,
       copy,
       resolved,
-      fill: this.fillsWindow(view.state),
+      fill: this.fill || this.fillsWindow(view.state),
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
@@ -556,31 +559,38 @@ export abstract class PkElement extends LitElement {
     return false;
   }
 
+  /** Light-DOM content the element projects after its root: outside `.pk-root`, so the host's
+   *  own content never inherits the kit's font, colour or line height. */
+  protected renderProjected(_view: View): unknown {
+    return nothing;
+  }
+
   protected override render(): unknown {
     const view = this.view;
     if (view.state === "hidden") return nothing;
     const r = this.resolved;
     const c = this.ctx(view, r);
     return html`<div
-      class="pk-root"
-      part="root"
-      data-pk-kit
-      data-component=${view.component}
-      data-state=${view.state}
-      data-theme=${r.theme.scheme}
-      data-preset=${r.theme.preset}
-      data-density=${r.theme.density}
-      data-motion=${r.theme.motion}
-      data-shape=${this.shape}
-      ?data-tight=${this.tight}
-      ?data-fill=${this.fillsWindow(view.state)}
-      data-pk-platform=${r.theme.platform ?? "web"}
-      ?data-keyboard=${keyboard}
-      lang=${c.copy.locale}
-      style=${styleMap(themeVars(r))}
-    >
-      ${this.renderBody(c)}
-    </div>`;
+        class="pk-root"
+        part="root"
+        data-pk-kit
+        data-component=${view.component}
+        data-state=${view.state}
+        data-theme=${r.theme.scheme}
+        data-preset=${r.theme.preset}
+        data-density=${r.theme.density}
+        data-motion=${r.theme.motion}
+        data-shape=${this.shape}
+        ?data-tight=${this.tight}
+        ?data-fill=${this.fill || this.fillsWindow(view.state)}
+        data-pk-platform=${r.theme.platform ?? "web"}
+        ?data-keyboard=${keyboard}
+        lang=${c.copy.locale}
+        style=${styleMap(themeVars(r))}
+      >
+        ${this.renderBody(c)}
+      </div>
+      ${this.renderProjected(view)}`;
   }
 
   protected override updated(changed: PropertyValues): void {
@@ -624,7 +634,7 @@ export abstract class PkElement extends LitElement {
       asked: this.autofocus,
       within: this.matches(":focus-within"),
       coldStart:
-        this.fillsWindow(view.state) &&
+        (this.fill || this.fillsWindow(view.state)) &&
         document.activeElement === document.body,
       coarse:
         typeof matchMedia === "function" &&

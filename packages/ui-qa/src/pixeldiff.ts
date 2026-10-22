@@ -23,7 +23,14 @@ export interface DiffOptions {
 
 export interface PairResult {
   name: string;
-  status: "match" | "mismatch" | "size" | "only-a" | "only-b";
+  status:
+    | "match"
+    | "mismatch"
+    | "size"
+    | "only-a"
+    | "only-b"
+    | "allowed"
+    | "stale-allow";
   ratio?: number;
   detail: string;
 }

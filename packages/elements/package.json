@@ -40,7 +40,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "vitest run -c vitest.browser.config.ts",
-    "test:visual": "vitest run -c vitest.browser.config.ts test/browser/visual.browser.test.ts",
+    "test:visual": "PKEY_KIT_BASELINES=test/visual/__screenshots__ vitest run -c vitest.browser.config.ts test/browser/visual",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\"",
     "clean": "rm -rf dist",
     "bundle:cdn": "node scripts/bundle-cdn.mjs"

@@ -24,7 +24,7 @@ describe("the rule set and the board config", () => {
   });
 
   it("the report finds every board's shots and groups them by state", () => {
-    const r = collect(REPO_ROOT);
+    const r = collect(REPO_ROOT, { crossRenderer: false });
     for (const b of BOARDS) expect(r.sources).toContain(`mockup:${b.name}`);
     expect(r.states).toContain("device-limit");
     const dl = r.shots

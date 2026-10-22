@@ -22,10 +22,15 @@ interface PlaywrightPage {
 // Chromium (`pnpm --filter @polaris-key/elements exec playwright install chromium`). The jsdom
 // suite (vitest.config.ts) leaves test/browser/ out.
 //
+// PKEY_KIT_BASELINES=<dir> writes the 390/1440 dark/light fixture matrix to <dir>/<Component>.<state>/
+// (test/browser/visual.browser.test.ts; `pnpm test:visual` points it at test/visual/__screenshots__).
 // PKEY_KIT_SHOTS=<dir> writes every render to <dir>/elements.<component>.<state>/<size>-<scheme>.png.
 export default defineConfig({
   define: {
     __PKEY_KIT_SHOTS__: JSON.stringify(process.env.PKEY_KIT_SHOTS ?? ""),
+    __PKEY_KIT_BASELINES__: JSON.stringify(
+      process.env.PKEY_KIT_BASELINES ?? "",
+    ),
     __PKEY_FONTS__: JSON.stringify(
       `/@fs${fileURLToPath(new URL("../brand/fonts/", import.meta.url))}`,
     ),
