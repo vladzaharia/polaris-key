@@ -720,14 +720,6 @@ function withBase(c: RenderCtx): View {
       return ["dirty", "locked", "saving"].includes(view.state)
         ? add("settings.title")
         : view;
-    case "Paywall": {
-      if (view.state === "not-available" && input.offers?.url)
-        return {
-          ...add("paywall.title", "paywall.portal"),
-          decisions: { ...view.decisions, primary: "paywall.portal" },
-        };
-      return view.state === "not-available" ? add("paywall.title") : view;
-    }
     case "UpdatePrompt": {
       const notes = input.releaseNotes ?? [];
       if (view.state === "downloading")
@@ -758,37 +750,6 @@ function withBase(c: RenderCtx): View {
         };
       }
       return { ...view, copy: kept };
-    }
-    case "OfflineActivation": {
-      if (view.state === "default")
-        return {
-          ...view,
-          copy: [
-            ...view.copy.filter((k) => k !== "offlineActivation.product"),
-            ...(input.offline?.requestCode && c.copy.has("a11y.qr")
-              ? ["a11y.qr"]
-              : []),
-          ],
-          decisions: { ...view.decisions, primary: "offlineActivation.submit" },
-        };
-      const base = add(
-        "offlineActivation.title",
-        ...(view.state === "done"
-          ? ["common.done"]
-          : [
-              "offlineActivation.request",
-              "offlineActivation.copyCode",
-              "offlineActivation.loadHint",
-              "offlineActivation.loadFile",
-              "offlineActivation.paste",
-              "offlineActivation.dropHint",
-              "offlineActivation.submit",
-              ...(input.offline?.requestCode ? ["a11y.qr"] : []),
-            ]),
-      );
-      return view.state === "done"
-        ? { ...base, decisions: { ...base.decisions, primary: "common.done" } }
-        : base;
     }
     default:
       return view;
@@ -966,7 +927,7 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
     c.input.activation?.limit ?? c.input.replaceView?.seats.limit ?? undefined;
   const devices = c.input.devices ?? [];
   const link = c.view.decisions.link;
-  const qr = qrCode(c, link?.qr ? link.url : null);
+  const qr = qrCode(c, link?.qr ? link.url : null, "a11y.qrManage");
   if (!keys.has("signin.replace.meta") && !keys.has("part.seatMeter.caption"))
     return qr;
   // Least recent preselected (SIGN-IN.md §3.7).
@@ -1945,7 +1906,7 @@ function offlineSteps(c: RenderCtx): TemplateResult {
               ${button(c, "offlineActivation.copyCode", "secondary", {
                 detail: { value: code },
               })}</span
-            >${qrCode(c, code)}`
+            >${qrCode(c, code, "a11y.qrRequest")}`
         : button(c, "offlineActivation.copyCode", "secondary")}
       ${c.view.copy.includes("offlineActivation.codeCopied")
         ? html`<span

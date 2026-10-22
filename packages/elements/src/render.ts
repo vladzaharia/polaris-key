@@ -689,8 +689,9 @@ export function codeDisplay(c: RenderCtx): TemplateResult | typeof nothing {
 export function qrCode(
   c: RenderCtx,
   data: string | null,
+  key: "a11y.qr" | "a11y.qrManage" | "a11y.qrRequest" = "a11y.qr",
 ): TemplateResult | typeof nothing {
-  if (!data || !c.view.copy.includes("a11y.qr")) return nothing;
+  if (!data || !c.view.copy.includes(key)) return nothing;
   const q = encodeQr(data);
   if (!q) return nothing;
   const quiet = 4;
@@ -700,11 +701,11 @@ export function qrCode(
     for (let x = 0; x < q.size; x++)
       if (q.modules[y * q.size + x] === 1)
         d += `M${x + quiet} ${y + quiet}h1v1h-1z`;
-  return html`<figure class="qr" part="qr" data-part="qr" data-key="a11y.qr">
+  return html`<figure class="qr" part="qr" data-part="qr" data-key=${key}>
     <svg
       viewBox="0 0 ${n} ${n}"
       role="img"
-      aria-label=${plain(c, "a11y.qr")}
+      aria-label=${plain(c, key)}
       shape-rendering="crispEdges"
     >
       <rect width=${n} height=${n} fill="#ffffff"></rect>

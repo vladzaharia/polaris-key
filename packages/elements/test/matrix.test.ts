@@ -46,7 +46,6 @@ const LEFT_OUT = new Set([
   "signin.provider.group",
   "signin.menu.signIn",
   "devices.lede",
-  "offlineActivation.product",
   "update.whatsNew",
 ]);
 
@@ -130,6 +129,11 @@ for (const family of COMPONENT_FAMILIES) {
         const message = en.raw(key) ?? "";
         const lit = literal(message);
         if (LEFT_OUT.has(key) || leftOutFor(view, key)) continue;
+        // The request QR encodes the request code: with none to encode, nothing is drawn.
+        if (key === "a11y.qrRequest" && !el.input.offline?.requestCode) {
+          expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
+          continue;
+        }
         if (dropped.has(key)) {
           expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
           continue;
