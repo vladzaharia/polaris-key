@@ -4628,6 +4628,10 @@ export interface ServiceTokenDto {
   expiresAt: number;
   lastUsedAt: number | null;
   revokedAt: number | null;
+  /** From the audit trail: `admin:<who>`, or `null` when it is not there. */
+  revokedBy: string | null;
+  /** `manual` (this token) or `revoke_all` (the product-wide revoke); `null` with `revokedBy`. */
+  revokeReason: string | null;
   status: "active" | "expired" | "revoked";
 }
 

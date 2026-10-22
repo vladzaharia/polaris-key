@@ -40,7 +40,12 @@ import {
   notFound,
   readBody,
 } from "../../core/console/respond.js";
-import { audit, platformAudit } from "../../core/audit.js";
+import {
+  audit,
+  listAudit,
+  listPlatformAudit,
+  platformAudit,
+} from "../../core/audit.js";
 import {
   STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   issueStaticCiToken,
@@ -140,8 +145,74 @@ function filterOf(req: Request): RegistryTokenFilter {
   return license ? { licenseId: license } : {};
 }
 
+/** Who revoked a service token and how: the `ci_tokens` row keeps only `revoked_at`. */
+export interface ServiceRevocation {
+  readonly revokedBy: string | null;
+  readonly revokeReason: string | null;
+}
+
+const NO_REVOCATION: ServiceRevocation = {
+  revokedBy: null,
+  revokeReason: null,
+};
+
+/**
+ * `revokedBy` and `revokeReason` of the revoked service tokens in `tokens`, read from the audit
+ * trail (`ci_tokens` has no such columns and F-33b.5 adds no migration):
+ *  - `manual`: the `service_token.revoke` row naming the token;
+ *  - `revoke_all`: the product-wide row written at the same second as the token's `revoked_at`.
+ * A revocation older than the newest 200 audit rows, or made by the platform itself, reads as
+ * `null`, which the console shows as no "Revoked by" line.
+ */
+async function serviceRevocations(
+  db: Db,
+  scope: FeedScope,
+  owner: string,
+  tokens: readonly CiTokenListing[],
+): Promise<Map<string, ServiceRevocation>> {
+  const out = new Map<string, ServiceRevocation>();
+  const revoked = tokens.filter((t) => t.revokedAt !== null);
+  if (revoked.length === 0) return out;
+  const filter = { action: "service_token.revoke", limit: 200 };
+  const rows =
+    scope.kind === "platform"
+      ? await listPlatformAudit(db, filter)
+      : await listAudit(db, owner, filter);
+  for (const t of revoked) {
+    // The row that revoked it, not a later idempotent re-revoke (which writes a row too).
+    const own = rows.find(
+      (r) =>
+        r.target_kind === "ci_token" &&
+        r.target_id === t.tokenId &&
+        r.at === t.revokedAt,
+    );
+    const all = rows.find(
+      (r) =>
+        r.target_kind === "product" &&
+        r.target_id === owner &&
+        r.at === t.revokedAt,
+    );
+    const hit = own ?? all;
+    const by = hit ? hit.actor_email || hit.actor_sub : null;
+    out.set(
+      t.tokenId,
+      hit && by
+        ? {
+            revokedBy: `admin:${by}`,
+            revokeReason: own ? "manual" : "revoke_all",
+          }
+        : NO_REVOCATION,
+    );
+  }
+  return out;
+}
+
 /** A read service token as the console lists it. Never a hash, never the token. */
-function serviceView(t: CiTokenListing, now: number) {
+function serviceView(
+  t: CiTokenListing,
+  now: number,
+  by: ServiceRevocation = NO_REVOCATION,
+) {
   return {
     tokenId: t.tokenId,
     label: t.label ?? "",
@@ -151,6 +222,8 @@ function serviceView(t: CiTokenListing, now: number) {
     expiresAt: t.expiresAt,
     lastUsedAt: t.lastUsedAt,
     revokedAt: t.revokedAt,
+    revokedBy: t.revokedAt !== null ? by.revokedBy : null,
+    revokeReason: t.revokedAt !== null ? by.revokeReason : null,
     status:
       t.revokedAt !== null
         ? ("revoked" as const)
@@ -160,6 +233,17 @@ function serviceView(t: CiTokenListing, now: number) {
   };
 }
 
+async function serviceViews(
+  db: Db,
+  scope: FeedScope,
+  owner: string,
+  now: number,
+) {
+  const tokens = await listServiceTokens(db, owner, now);
+  const by = await serviceRevocations(db, scope, owner, tokens);
+  return tokens.map((t) => serviceView(t, now, by.get(t.tokenId)));
+}
+
 const SERVICE_TOKEN_DEFAULT_DAYS = 90;
 const SERVICE_TOKEN_MAX_DAYS = STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS / 86_400;
 
@@ -167,6 +251,7 @@ async function list(
   req: Request,
   env: Env,
   db: Db,
+  scope: FeedScope,
   owner: string,
   now: number,
 ): Promise<Response> {
@@ -183,9 +268,7 @@ async function list(
     ),
     serviceTokens: new URL(req.url).searchParams.get("license")
       ? []
-      : (await listServiceTokens(db, owner, now)).map((t) =>
-          serviceView(t, now),
-        ),
+      : await serviceViews(db, scope, owner, now),
     feeds: await feedsOf(env, db, owner),
     limits: {
       minDays: REGISTRY_TOKEN_MIN_DAYS,
@@ -424,7 +507,11 @@ async function revokeService(
     { kind: "ci_token", id: tokenId },
     `Revoked service token “${view.label ?? ""}”`,
   );
-  return adminJson({ ok: true, view: serviceView(view, now) });
+  const by = await serviceRevocations(db, scope, owner, [view]);
+  return adminJson({
+    ok: true,
+    view: serviceView(view, now, by.get(view.tokenId)),
+  });
 }
 
 async function revoke(
@@ -551,7 +638,7 @@ export async function handleRegistryTokensAdmin(
         )
       : notFound();
   if (rest.length === 0) {
-    if (req.method === "GET") return list(req, env, db, owner, now);
+    if (req.method === "GET") return list(req, env, db, scope, owner, now);
     if (req.method === "POST")
       return create(req, env, db, session, scope, owner, now);
     return notAllowed();
