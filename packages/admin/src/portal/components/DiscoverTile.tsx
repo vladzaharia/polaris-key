@@ -195,6 +195,7 @@ export function DiscoverTile({
                 // Below the art, in the caption: B6 keeps text off customer art (ux-name-over-art).
                 <p className="mt-1.5">
                   <span
+                    data-plate
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-success",
                       pop && "pk-pop-in",

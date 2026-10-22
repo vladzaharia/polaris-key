@@ -92,8 +92,7 @@ function probe(dataMotion: boolean): void {
     if (el.matches("[data-ring]")) return "ring";
     if (el.matches("[data-cue='text']")) return "added";
     if (el.matches("img.pk-img-in")) return "img";
-    if (el.closest("[data-art]") && el.textContent?.includes("In your library"))
-      return "plate";
+    if (el.matches("[data-plate]")) return "plate";
     const parent = el.parentElement;
     if (parent?.matches("ul, tbody"))
       return `${el.tagName.toLowerCase()}:${[...parent.children].indexOf(el)}`;
