@@ -245,6 +245,15 @@ function cases(): Case[] {
           .waitFor();
       },
     },
+    // LX-27c.5: the record of a waiting licence that was invited.
+    {
+      name: "djdl:license-waiting",
+      hash: "#/p/djdl/license/licenses/lic_wait",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Resend invitation" }).waitFor();
+        await page.getByRole("region", { name: "Invitation" }).waitFor();
+      },
+    },
     {
       name: "dialog:set-secret",
       hash: "#/p/djdl/settings/keys",

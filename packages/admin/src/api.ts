@@ -3808,6 +3808,8 @@ export interface LicenseSummary {
   email: string;
   status: LicenseStatus;
   activatedAt: number;
+  /** LX-27c: when the last invitation email went out; `null` when none did. */
+  invitedAt?: number | null;
   expiresAt: number | null;
   keyCount: number;
   activeKeyCount: number;

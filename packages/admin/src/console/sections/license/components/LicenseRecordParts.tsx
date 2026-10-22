@@ -4,6 +4,8 @@
  */
 
 import * as React from "react";
+import { confirmFor } from "../../../../lib/actions.js";
+import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import {
   type LicenseBatch,
   type LicenseDetail,
@@ -19,7 +21,7 @@ import {
   InvitationCard,
   OriginCard,
 } from "./LicenseRail.js";
-import { type seatLimitOf } from "./shared.js";
+import { useInvitations, type seatLimitOf } from "./shared.js";
 
 /**
  * ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
@@ -67,6 +69,7 @@ export type RecordDialog =
   | "expiry"
   | "profiles"
   | "send"
+  | "invite"
   | "disable"
   | "enable"
   | "delete"
@@ -99,13 +102,17 @@ export function StatusTab({
   const holder = holderOf(license);
   const floating = holder.kind === "floating";
   const waiting = holder.kind === "assigned" && !holder.inAccount;
+  const canInvite = useInvitations(slug)?.invitations === true;
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
         {waiting ? (
           <InvitationCard
             email={license.email?.trim() ?? ""}
+            invitedAt={license.invitedAt ?? null}
+            canInvite={canInvite}
             onChangeEmail={() => onDialog("reassign")}
+            onSend={() => onDialog("invite")}
           />
         ) : null}
         {floating ? <AnyoneWithKeyCard devices={license.devices} /> : null}
@@ -130,5 +137,45 @@ export function StatusTab({
         <OriginCard slug={slug} license={license} batch={batch} me={me} />
       </div>
     </div>
+  );
+}
+
+/** Disable and Enable: the two confirms of the record's status toggle. */
+export function ToggleLicenseDialogs({
+  license,
+  dialog,
+  onClose,
+  onToggle,
+}: {
+  license: LicenseDetail;
+  dialog: RecordDialog;
+  onClose: () => void;
+  onToggle: (enable: boolean) => Promise<void>;
+}): React.ReactElement {
+  const name = license.name || "this license";
+  return (
+    <>
+      <ConfirmDialog
+        open={dialog === "disable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.disable").intent as "caution"}
+        title={`Disable ${name}?`}
+        consequences={[
+          "Its devices stop authenticating right away: their cached tokens are purged.",
+          "Keys, devices and terms are kept. Enabling the license restores access.",
+        ]}
+        confirmLabel="Disable license"
+        onConfirm={() => onToggle(false)}
+      />
+      <ConfirmDialog
+        open={dialog === "enable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.enable").intent as "caution"}
+        title={`Enable ${name}?`}
+        consequences={["Its devices regain access at their next check-in."]}
+        confirmLabel="Enable license"
+        onConfirm={() => onToggle(true)}
+      />
+    </>
   );
 }

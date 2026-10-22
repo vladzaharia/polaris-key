@@ -1939,6 +1939,21 @@ export const DATA_ROUTES: Record<string, unknown> = {
     holders: { invitations: true, invitationsOff: null },
   },
   [`${PROD}/license/licenses/lic_1`]: LICENSE_DETAIL,
+  // LX-27c.5: a waiting licence the console invited: Resend invitation, the Invitation card.
+  [`${PROD}/license/licenses/lic_wait`]: {
+    ...LICENSE_DETAIL,
+    id: "lic_wait",
+    name: "Sam Reyes",
+    email: "sam.reyes@example.com",
+    holder: {
+      kind: "assigned",
+      inAccount: false,
+      email: "sam.reyes@example.com",
+    },
+    ownerSubject: null,
+    invitedAt: NOW_S - 2 * DAY,
+  },
+  [`${PROD}/users/licenses/lic_wait/relinks`]: { relinks: [] },
   [`${PROD}/license/tiers`]: { tiers: TIERS },
   [`${PROD}/license/batches`]: { batches: BATCHES, nextCursor: null },
   [`${PROD}/license/batches/batch_oct`]: BATCHES[0],

@@ -303,8 +303,10 @@ export function HolderPill({
         <StatusPill tone="info" icon={Mail} size="sm">
           Waiting
         </StatusPill>
-        {l.activatedAt ? (
-          <SubLine>{`Invited ${dayMonth(l.activatedAt)}`}</SubLine>
+        {l.invitedAt ? (
+          <SubLine>{`Invited ${dayMonth(l.invitedAt)}`}</SubLine>
+        ) : l.activatedAt ? (
+          <SubLine>{`Added ${dayMonth(l.activatedAt)}`}</SubLine>
         ) : null}
       </CellStack>
     );

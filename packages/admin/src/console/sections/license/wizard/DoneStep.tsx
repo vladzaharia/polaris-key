@@ -25,7 +25,13 @@ import {
   keyEmailFailureCopy,
 } from "../components/SendKeyDialog.js";
 import { inviteFailureCopy } from "../components/inviteCopy.js";
-import { csvOf, type CsvRow } from "./draft.js";
+import {
+  csvOf,
+  deliveryOf,
+  invitesPerson,
+  type CsvRow,
+  type Draft,
+} from "./draft.js";
 
 export type Result =
   | {
@@ -56,6 +62,49 @@ export type Result =
       first: boolean;
       summary: string;
     };
+
+/** The result of `POST …/licenses` for one assigned or floating license, in the draft's terms. */
+export function singleResult(
+  res: {
+    licenseId: string;
+    key?: string;
+    delivered?: {
+      email?: KeyEmailOutcome;
+      invite?: InviteOutcome;
+      reason?: KeyEmailFailure;
+    };
+  },
+  draft: Draft,
+  first: boolean,
+  summary: string,
+): Result {
+  const invited = invitesPerson(draft);
+  const failed = res.delivered?.email === "failed";
+  const delivery = deliveryOf(draft);
+  const key = res.key ?? null;
+  const reason = res.delivered?.reason ? { reason: res.delivered.reason } : {};
+  return {
+    kind: "single",
+    id: res.licenseId,
+    key,
+    invite: invited
+      ? { outcome: res.delivered?.invite ?? "failed", ...reason }
+      : null,
+    email: draft.who === "person" ? draft.email.trim() : null,
+    // "Email the key" alone never shows it, unless the email did not go out. An invitation shows
+    // a key only when one was asked for, and never emailed it.
+    showKey: key !== null && (invited || delivery !== "email" || failed),
+    // Only then is this screen the one copy: Show it once, an email that failed, or a key no
+    // email carries.
+    onlyCopy: key !== null && (invited || delivery === "show" || failed),
+    delivered:
+      !invited && res.delivered?.email
+        ? { email: res.delivered.email, ...reason }
+        : null,
+    first,
+    summary,
+  };
+}
 
 /** The step heading: what happened, in the words of the outcome. */
 export function doneTitle(result: Result): string {

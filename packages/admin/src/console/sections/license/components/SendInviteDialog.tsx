@@ -1,0 +1,145 @@
+/**
+ * LX-27c.5: **Resend invitation** (S-24 §8.8, plans/LX-27-slices.md L7): emails the sign-in link
+ * again to a waiting license's address. Mints nothing, so there is no key to show and nothing to
+ * keep; a failed send says why. One mail per license per 10 minutes, shared with Send a new key
+ * (the wait shows, and Send waits with it). The refusal wording is in `inviteCopy.ts`.
+ */
+
+import * as React from "react";
+import { ApiError } from "../../../../api.js";
+import { mutate } from "../../../data/mutations.js";
+import { Button } from "../../../../ui/Button.js";
+import { Callout } from "../../../../ui/Callout.js";
+import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
+import { toast } from "../../../../ui/toast.js";
+import {
+  canRetryInvite,
+  inviteFailureCopy,
+  inviteRefusal,
+} from "./inviteCopy.js";
+
+const minutesText = (seconds: number): string =>
+  `${Math.max(1, Math.ceil(seconds / 60))} min`;
+
+export function SendInviteDialog({
+  slug,
+  licenseId,
+  email,
+  open,
+  onOpenChange,
+  context,
+}: {
+  slug: string;
+  licenseId: string;
+  email: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  context?: "assigned";
+}): React.ReactElement {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<unknown>(null);
+  const [failed, setFailed] = React.useState<{
+    reason?: Parameters<typeof inviteFailureCopy>[0];
+  } | null>(null);
+  const [until, setUntil] = React.useState(0);
+  const [clock, setClock] = React.useState(Date.now());
+
+  React.useEffect(() => {
+    if (open) {
+      setBusy(false);
+      setError(null);
+      setFailed(null);
+      setUntil(0);
+    }
+  }, [open]);
+  React.useEffect(() => {
+    if (!open || until <= Date.now()) return;
+    const t = setInterval(() => setClock(Date.now()), 5_000);
+    return () => clearInterval(t);
+  }, [open, until]);
+
+  const waitSeconds = Math.max(0, Math.ceil((until - clock) / 1000));
+
+  const send = async (): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    setFailed(null);
+    try {
+      const res = await mutate("sendLicenseInvite", slug, licenseId, context);
+      if (res.delivered.invite === "sent") {
+        toast.success(`Invitation sent to ${email}.`);
+        onOpenChange(false);
+      } else {
+        // A failed send frees the window on the Worker, so Try again is open at once.
+        setFailed({ reason: res.delivered.reason });
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setUntil(Date.now() + (err.retryAfter ?? 600) * 1000);
+        setClock(Date.now());
+      }
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refusal = error
+    ? inviteRefusal(error, email, waitSeconds || 600)
+    : null;
+  return (
+    <Dialog
+      open={open}
+      title="Resend invitation"
+      description={`Emails ${email} a link to sign in. No key is sent.`}
+      dismissible={!busy}
+      onOpenChange={onOpenChange}
+    >
+      <form
+        noValidate
+        className="contents"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+      >
+        <DialogBody className="space-y-4">
+          {failed ? (
+            <Callout tone="warning" title="The invitation wasn't sent" live>
+              {inviteFailureCopy(failed.reason, email)}
+            </Callout>
+          ) : null}
+          {refusal ? (
+            <Callout tone={refusal.tone} title={refusal.title} live>
+              {refusal.description}
+            </Callout>
+          ) : null}
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            loading={busy}
+            disabledReason={
+              refusal?.permanent
+                ? refusal.description
+                : waitSeconds > 0
+                  ? `Try again in ${minutesText(waitSeconds)}`
+                  : failed && !canRetryInvite(failed.reason)
+                    ? inviteFailureCopy(failed.reason, email)
+                    : undefined
+            }
+          >
+            {failed ? "Try again" : "Send invitation"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Dialog>
+  );
+}

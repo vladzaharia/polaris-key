@@ -32,11 +32,9 @@ import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../feeds/pages/RegistryTokens.js";
-import { confirmFor } from "../../../../lib/actions.js";
 import { fromSeconds, formatRelative } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { IdChip } from "../../../../ui/IdChip.js";
@@ -67,11 +65,13 @@ import {
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
 import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
+import { SendInviteDialog } from "../components/SendInviteDialog.js";
 import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
 import { LicenseActivity } from "./LicenseActivity.js";
 import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
 import {
   StatusTab,
+  ToggleLicenseDialogs,
   useFocusTitleAfterUndo,
   type RecordDialog,
 } from "../components/LicenseRecordParts.js";
@@ -82,6 +82,7 @@ import {
   LicenseStatus,
   seatLimitOf,
   seatLimitText,
+  useInvitations,
   useTiers,
 } from "../components/shared.js";
 
@@ -229,6 +230,9 @@ function LicenseRecordBody({
   const waiting = holder.kind === "assigned" && !holder.inAccount;
   const resendable =
     waiting && active && !expired && Boolean(license.email?.trim());
+  // LX-27c.5: where invitations work, the primary resends the invitation (no key); elsewhere it
+  // is LX-30's, which sends a new key.
+  const canInvite = useInvitations(slug)?.invitations === true;
   const tier = license.tier ? tiers.find((t) => t.id === license.tier) : null;
   // A license with no tier is on the Default tier (LX-33.7).
   const tierLabel = license.tier
@@ -266,7 +270,10 @@ function LicenseRecordBody({
       Assign to a person
     </Button>
   ) : resendable ? (
-    <Button iconStart={<Send />} onClick={() => setDialog("send")}>
+    <Button
+      iconStart={<Send />}
+      onClick={() => setDialog(canInvite ? "invite" : "send")}
+    >
       Resend invitation
     </Button>
   ) : (
@@ -550,6 +557,13 @@ function LicenseRecordBody({
         open={dialog === "mint"}
         onOpenChange={(o) => setDialog(o ? "mint" : null)}
       />
+      <SendInviteDialog
+        slug={slug}
+        licenseId={id}
+        email={license.email?.trim() ?? ""}
+        open={dialog === "invite"}
+        onOpenChange={(o) => setDialog(o ? "invite" : null)}
+      />
       <SendKeyDialog
         slug={slug}
         licenseId={id}
@@ -563,32 +577,17 @@ function LicenseRecordBody({
           if (!o) setHandoff(null);
         }}
       />
-      <ConfirmDialog
-        open={dialog === "disable"}
-        onOpenChange={(o) => !o && setDialog(null)}
-        intent={confirmFor("license.disable").intent as "caution"}
-        title={`Disable ${license.name || "this license"}?`}
-        consequences={[
-          "Its devices stop authenticating right away: their cached tokens are purged.",
-          "Keys, devices and terms are kept. Enabling the license restores access.",
-        ]}
-        confirmLabel="Disable license"
-        onConfirm={() => toggle(false)}
+      <ToggleLicenseDialogs
+        license={license}
+        dialog={dialog}
+        onClose={() => setDialog(null)}
+        onToggle={toggle}
       />
       <DeleteLicenseDialog
         slug={slug}
         license={license}
         open={dialog === "delete"}
         onOpenChange={(o) => setDialog(o ? "delete" : null)}
-      />
-      <ConfirmDialog
-        open={dialog === "enable"}
-        onOpenChange={(o) => !o && setDialog(null)}
-        intent={confirmFor("license.enable").intent as "caution"}
-        title={`Enable ${license.name || "this license"}?`}
-        consequences={["Its devices regain access at their next check-in."]}
-        confirmLabel="Enable license"
-        onConfirm={() => toggle(true)}
       />
     </div>
   );
