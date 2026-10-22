@@ -3,7 +3,7 @@ import { ExternalLink, Mail } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
-import type { LibraryProduct } from "../../model/library.js";
+import type { LibraryProduct, ProductStatus } from "../../model/library.js";
 import {
   formatDay,
   licenseOrigin,
@@ -69,7 +69,7 @@ export function LicenseCard({
   const now = Math.floor(Date.now() / 1000);
   const switcherId = React.useId();
   const multiple = product.licenses.length > 1;
-  const status = detail ? licenseStatus(detail, now) : null;
+  const status = detail ? statusOf(product, detail, now) : null;
   const ownIssue =
     status &&
     isIssueStatus(status) &&
@@ -164,6 +164,24 @@ export function LicenseCard({
   );
 }
 
+/**
+ * A license's status for its card. The library's status for the product's best license says
+ * "Updates ended" when it still downloads an older build (§5.4); the card says the same for that
+ * license, not "Expired" (which is for a license that stopped everything).
+ */
+function statusOf(
+  product: LibraryProduct,
+  detail: PortalLicenseDetail,
+  now: number,
+): ProductStatus {
+  const own = licenseStatus(detail, now);
+  return own.kind === "expired" &&
+    product.status.kind === "updatesEnded" &&
+    product.best?.id === detail.id
+    ? product.status
+    : own;
+}
+
 function LicenseFacts({
   product,
   detail,
@@ -175,7 +193,7 @@ function LicenseFacts({
   now: number;
   store: string | null;
 }): React.ReactElement {
-  const status = licenseStatus(detail, now);
+  const status = statusOf(product, detail, now);
   const origin = licenseOrigin(detail, {
     keys: detail.keys,
     store,
@@ -187,7 +205,10 @@ function LicenseFacts({
   const developer = product.presentation.developer;
   const who = developer ?? t("license.developerFallback");
   const { supportUrl, supportEmail, website } = product.presentation;
-  const renewing = status.kind === "expired" || status.kind === "expiresSoon";
+  const renewing =
+    status.kind === "expired" ||
+    status.kind === "updatesEnded" ||
+    status.kind === "expiresSoon";
   const renewHref = renewing
     ? (supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : website))
     : null;
@@ -206,6 +227,9 @@ function LicenseFacts({
           activatedAt={detail.activatedAt}
           expiresAt={detail.expiresAt}
           now={now}
+          updatesEndedAt={
+            status.kind === "updatesEnded" ? (status.version ?? null) : null
+          }
         >
           {renewHref ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
