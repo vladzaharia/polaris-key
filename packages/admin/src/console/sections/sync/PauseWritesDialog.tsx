@@ -7,8 +7,9 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type PlatformSwitchSetting } from "../../../api.js";
+import { ApiError, type PlatformSwitchSetting } from "../../../api.js";
 import { qk } from "../../data/queries.js";
+import { reads } from "../../data/reads.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Textarea } from "../../../ui/Textarea.js";
@@ -195,7 +196,9 @@ export function PauseWritesDialog({
           if (!(e instanceof ApiError) || e.status !== 409) throw e;
           // The switch moved under us: ask again. If it already is where this write was going,
           // the other admin did the work; say so and close.
-          const fresh = await api.platformSettings().catch(() => null);
+          const fresh = await qc
+            .fetchQuery({ ...reads.platformSettings(), staleTime: 0 })
+            .catch(() => null);
           void qc.invalidateQueries({ queryKey: qk.platformSettings() });
           void qc.invalidateQueries({ queryKey: qk.attention() });
           const now = fresh?.settings?.find((x) => x.key === setting.key);

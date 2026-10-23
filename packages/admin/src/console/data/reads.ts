@@ -135,6 +135,12 @@ export const reads = {
       queryKey: qk.productSettings(slug, area),
       queryFn: () => api.productSettings(slug, area),
     }),
+  /** The platform settings (the pause switch, the Cloud Sync ceiling default). */
+  platformSettings: () =>
+    queryOptions({
+      queryKey: qk.platformSettings(),
+      queryFn: () => api.platformSettings(),
+    }),
   settingsDrift: (slug: string) =>
     queryOptions({
       queryKey: qk.settingsDrift(slug),

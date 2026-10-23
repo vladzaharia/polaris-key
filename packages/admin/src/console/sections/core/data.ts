@@ -61,11 +61,6 @@ export const coreBReads = {
       queryKey: qk.services(slug),
       queryFn: () => api.services(slug),
     }),
-  packageFeedsSwitch: (slug: string) =>
-    queryOptions({
-      queryKey: qk.packageFeedsSwitch(slug),
-      queryFn: () => api.packageFeeds(slug),
-    }),
   productSettingsEvery: (slug: string) =>
     queryOptions({
       queryKey: qk.productSettingsEvery(slug),
