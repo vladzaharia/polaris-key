@@ -19,10 +19,30 @@
 // read with the compiler API (class or interface members, or a file's exported functions and
 // consts); Python with `def` at class depth (or module level), `_names` skipped.
 // Swift, Kotlin (regex over brace depth; `private`/`fileprivate`/`internal`, `_names` skipped) and
-// GDScript (top-level `func` and `signal`) are read as text. Removed names and reserved spellings with .7.
+// GDScript (top-level `func` and `signal`) are read as text. A concept also counts for a surface
+// whose namespace its per-SDK `spelling` or `path` names (`entitlements.has` spelled
+// `license.isEntitled` on the `license` surface).
+//
+// Rule 2 (SP-35.7): a `removed` row's name appears in an SDK's own source or a consumer (examples,
+// the CLI and integration emitters and goldens, the `pkey sdk` samples, docs and README fences,
+// skills). The row's `sdk` picks the languages (node and react: ts/js; python: py/rpy; ...); a
+// Markdown file is read inside fences of those languages only, so wire JSON in a protocol page is
+// not a hit. The default match is `<ns>.<name>` (+ `(` when the row's `to` is a method) for a
+// dotted `from`, and `<name>:` / `<name>=` for a bare one or an option. `scan.pattern` replaces
+// it; `scan.files` (globs on the repo-relative path, or `fence:<lang>`) replaces the default
+// file set. Never scanned: the corpus, tools/corpus, client-core and @polaris-key/server.
+// A line carrying `api-allow: <reason>` (or following one that does) is skipped; an empty reason
+// is itself a violation.
+//
+// Rule 3 (SP-35.7): a reserved concept (no SDK lists it yet) is spelled another way on a recorded
+// surface: the same name modulo case, `_` and a `get` prefix, in another namespace or with other
+// spelling. Rule 1 still reports the verb when nothing accounts for it.
+//
+// `--notes <WP>` prints that package's `removed` rows as Markdown for the release notes.
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import Ajv2020Module from "ajv/dist/2020.js";
 
@@ -51,15 +71,19 @@ interface SdkEntry {
 }
 interface Concept {
   id: string;
+  kind?: string;
   feature?: string;
   enum?: string;
   reserved?: string;
   sdks?: Record<string, SdkEntry>;
 }
 interface Removed {
+  sdk: string;
   from: string;
+  to?: string;
+  note?: string;
   package: string;
-  scan?: unknown;
+  scan?: { pattern?: string; files?: string[] };
 }
 interface Api {
   casing?: Record<string, "camel" | "snake">;
@@ -245,7 +269,14 @@ export function scanGodot(source: string): string[] {
   return [...names];
 }
 
-/** Rule 1: public verbs on the recorded Node, React and Python surfaces that nothing accounts for. */
+/** A verb with case, `_` and a leading `get` removed, so `getQuantity` and `get_quantity` meet `quantity`. */
+const normVerb = (n: string): string =>
+  n
+    .replace(/_/g, "")
+    .toLowerCase()
+    .replace(/^get(?=.)/, "");
+
+/** Rules 1 and 3: public verbs on the recorded Node, React and Python surfaces that nothing accounts for. */
 function checkSurfaces(root: string, doc: Api): string[] {
   const out: string[] = [];
   for (const sdk of ["node", "react", "python", "swift", "kotlin", "godot"]) {
@@ -268,15 +299,37 @@ function checkSurfaces(root: string, doc: Api): string[] {
                 ? scanGodot(src)
                 : scanTs(src, surf.type);
       const accepted = new Set<string>();
+      const nsDot = `${surf.ns}.`;
       for (const c of doc.concepts) {
         const e = c.sdks?.[sdk];
-        if (!e || !(e.sdkOnly || c.id.startsWith(`${surf.ns}.`))) continue;
-        const last = c.id.split(".").pop()!;
-        accepted.add(casing === "snake" ? snake(last) : last);
-        for (const sp of [e.spelling, e.path])
-          if (sp) accepted.add(sp.split(".").pop()!.replace(/\(\)$/, ""));
+        if (!e) continue;
+        const spellings = [e.spelling, e.path].filter(
+          (x): x is string => x !== undefined,
+        );
+        const idHere = e.sdkOnly || c.id.startsWith(nsDot);
+        if (!idHere && !spellings.some((sp) => sp.startsWith(nsDot))) continue;
+        if (idHere) {
+          const last = c.id.split(".").pop()!;
+          accepted.add(casing === "snake" ? snake(last) : last);
+        }
+        for (const sp of spellings)
+          if (idHere || sp.startsWith(nsDot))
+            accepted.add(sp.split(".").pop()!.replace(/\(\)$/, ""));
       }
+      const reserved = doc.concepts.filter(
+        (c) => c.reserved !== undefined && !c.sdks?.[sdk],
+      );
       for (const v of verbs) {
+        if (!accepted.has(v))
+          for (const c of reserved) {
+            const last = c.id.split(".").pop()!;
+            const canon = casing === "snake" ? snake(last) : last;
+            if (normVerb(v) !== normVerb(last)) continue;
+            if (c.id.startsWith(nsDot) && v === canon) continue;
+            out.push(
+              `[rule 8] ${surf.file}: ${surf.ns}.${v} spells the reserved name ${c.id} (${c.reserved}); the only spelling is ${c.id.split(".")[0]}.${canon}`,
+            );
+          }
         if (accepted.has(v)) continue;
         const covered = (doc.ignore ?? []).some(
           (i) =>
@@ -293,9 +346,205 @@ function checkSurfaces(root: string, doc: Api): string[] {
   return out;
 }
 
+type Family = "js" | "python" | "swift" | "kotlin" | "godot";
+const FAMILY: Record<string, Family> = {
+  node: "js",
+  react: "js",
+  python: "python",
+  swift: "swift",
+  kotlin: "kotlin",
+  godot: "godot",
+};
+const EXTS: Record<Family, string[]> = {
+  js: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+  python: [".py", ".pyi", ".rpy"],
+  swift: [".swift"],
+  kotlin: [".kt", ".kts"],
+  godot: [".gd", ".tres", ".tscn"],
+};
+const FENCES: Record<Family, string[]> = {
+  js: ["ts", "typescript", "tsx", "js", "javascript", "jsx", "mjs"],
+  python: ["python", "py"],
+  swift: ["swift"],
+  kotlin: ["kotlin", "kt"],
+  godot: ["gdscript", "gd"],
+};
+const TEXT_EXTS = [
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".rpy", ".swift", ".kt",
+  ".kts", ".gd", ".tres", ".tscn", ".json", ".md", ".mdx", ".yaml", ".yml", ".txt",
+]; // prettier-ignore
+const SKIP_DIRS = new Set([
+  "node_modules", "dist", ".build", ".venv", ".git", "__pycache__", ".gradle",
+  ".godot", ".pytest_cache", ".mypy_cache", ".turbo", ".astro",
+]); // prettier-ignore
+
+/** Where a removed name is looked for. `own` scopes are an SDK family's sources; `any` ones are emitters and goldens of every language. */
+const SCOPES: { path: string; own?: Family; any?: boolean; main?: boolean }[] =
+  [
+    ...["packages/sdk-node/src", "packages/sdk-react/src", "packages/ui-core/src/browser/sdk", "packages/elements/src"].map((path) => ({ path, own: "js" as Family })), // prettier-ignore
+    { path: "sdks/python/src", own: "python" },
+    { path: "sdks/swift/Sources", own: "swift" },
+    { path: "sdks/kotlin", own: "kotlin", main: true },
+    { path: "sdks/godot/addons", own: "godot" },
+    { path: "examples" },
+    { path: "sdks/python/examples" },
+    { path: "sdks/swift/examples" },
+    { path: "sdks/swift/Examples" },
+    { path: "sdks/godot/examples" },
+    { path: "sdks/kotlin/samples" },
+    { path: ".claude/skills" },
+    { path: "packages/docs/src/content/docs" },
+    { path: "packages/cli/src", any: true },
+    { path: "packages/shared-manifest/src/integration", any: true },
+    { path: "packages/shared-manifest/test/fixtures/integration", any: true },
+    ...["conformance/runners/node/sdkConfigSample.ts", "packages/sdk-react/test/sdkConfigSample.ts", "sdks/python/tests/sdk_config_sample.py", "sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift", "sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt", "sdks/godot/tests/sdk_config/polaris_key.tres"].map((path) => ({ path, any: true })), // prettier-ignore
+    ...["packages/sdk-node", "packages/sdk-react", "sdks/python", "sdks/swift", "sdks/kotlin", "sdks/godot"].map((path) => ({ path: `${path}/README.md` })), // prettier-ignore
+  ];
+
+function walk(abs: string, out: string[]): void {
+  if (!existsSync(abs)) return;
+  const st = statSync(abs);
+  if (st.isFile()) {
+    out.push(abs);
+    return;
+  }
+  for (const name of readdirSync(abs))
+    if (
+      !SKIP_DIRS.has(name) &&
+      (name !== "build" || abs.includes("/content/docs")) // a docs section, else a build output
+    )
+      walk(join(abs, name), out);
+}
+
+const globRe = (g: string): RegExp =>
+  new RegExp(
+    "^" +
+      (g.includes("/") ? "" : "(?:.*/)?") +
+      g
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*\*\/?/g, "\u0000")
+        .replace(/\*/g, "[^/]*")
+        .replace(/\?/g, "[^/]")
+        .replace(/\u0000/g, "(?:.*/)?") +
+      "$",
+  );
+
+/** The regex for a removed row: its own `scan.pattern`, else the receiver-qualified default. */
+export function removedPattern(r: Removed, doc: Api): RegExp {
+  if (r.scan?.pattern) return new RegExp(r.scan.pattern);
+  const esc = (x: string): string => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = r.from.split(".");
+  const name = esc(parts.pop()!);
+  const to = doc.concepts.find((c) => c.id === r.to);
+  if (parts.length === 0 || to?.kind === "option")
+    return new RegExp(`(?<![\\w.])${name}\\s*(?::(?!:)|=(?!=))`);
+  const ns = esc(parts.join("."));
+  return new RegExp(
+    `\\b${ns}\\.${name}${to?.kind === "method" ? "\\s*\\(" : "\\b"}`,
+  );
+}
+
+/** Rule 2: removed names in SDK sources and consumers. */
+function checkRemoved(root: string, doc: Api): string[] {
+  const out: string[] = [];
+  if (doc.removed.length === 0) return out;
+  const files: { rel: string; scope: (typeof SCOPES)[number] }[] = [];
+  const seen = new Set<string>();
+  for (const scope of SCOPES) {
+    const abs: string[] = [];
+    walk(join(root, scope.path), abs);
+    for (const a of abs) {
+      const rel = relative(root, a).split("\\").join("/");
+      if (seen.has(rel)) continue;
+      if (scope.main && !rel.includes("/src/main/")) continue;
+      seen.add(rel);
+      files.push({ rel, scope });
+    }
+  }
+  const extOf = (rel: string): string => {
+    const i = rel.lastIndexOf(".");
+    return i < 0 ? "" : rel.slice(i);
+  };
+  for (const r of doc.removed) {
+    const fam = FAMILY[r.sdk]!;
+    const re = removedPattern(r, doc);
+    const globs = (r.scan?.files ?? []).filter((f) => !f.startsWith("fence:"));
+    const fenceLangs = r.scan?.files
+      ? r.scan.files
+          .filter((f) => f.startsWith("fence:"))
+          .map((f) => f.slice(6))
+      : FENCES[fam];
+    const globRes = globs.map(globRe);
+    const to = r.to ?? r.note ?? "";
+    for (const { rel, scope } of files) {
+      const ext = extOf(rel);
+      const md = ext === ".md" || ext === ".mdx";
+      if (scope.own !== undefined && scope.own !== fam) continue;
+      if (!md) {
+        if (r.scan?.files) {
+          if (!globRes.some((g) => g.test(rel))) continue;
+        } else if (
+          scope.any ? !TEXT_EXTS.includes(ext) : !EXTS[fam].includes(ext)
+        )
+          continue;
+      }
+      const lines = readFileSync(join(root, rel), "utf8").split("\n");
+      let fence: string | null = null; // lang of the open fence
+      let prevAllowed = false;
+      lines.forEach((line, i) => {
+        let inScope = true;
+        if (md) {
+          const f = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/.exec(line);
+          if (f) {
+            fence = fence === null ? f[2]!.toLowerCase() : null;
+            prevAllowed = false;
+            return;
+          }
+          inScope = fence !== null && fenceLangs.includes(fence);
+        }
+        const allow = /api-allow:(.*)$/.exec(line);
+        const allowed = allow !== null && allow[1]!.trim() !== "";
+        if (allow !== null && !allowed)
+          out.push(`[rule 8] ${rel}:${i + 1}: api-allow needs a reason`);
+        if (inScope && !allowed && !prevAllowed && re.test(line))
+          out.push(
+            `[rule 8] ${rel}:${i + 1}: removed ${r.sdk} name "${r.from}" (${r.package})${to ? `; use ${to}` : ""}`,
+          );
+        prevAllowed = allowed;
+      });
+    }
+  }
+  return [...new Set(out)];
+}
+
+/** `api-check --notes <package>`: that package's `removed` rows as a Markdown table. */
+export function renderNotes(api: unknown, pkg: string): string {
+  const doc = api as Api;
+  const rows = doc.removed.filter((r) => r.package === pkg);
+  const cell = (x: string): string => `\`${x}\``;
+  const lines = [
+    `### Removed in ${pkg}`,
+    "",
+    "| SDK | Old name | Replacement |",
+    "| --- | --- | --- |",
+  ];
+  for (const r of rows) {
+    const c = doc.concepts.find((k) => k.id === r.to);
+    const sp = c?.sdks?.[r.sdk];
+    const to = c
+      ? cell(sp && !sp.planned ? (sp.spelling ?? sp.path ?? c.id) : c.id)
+      : (r.note ?? "").replace(/\|/g, "\\|");
+    lines.push(`| ${r.sdk} | ${cell(r.from)} | ${to} |`);
+  }
+  if (rows.length === 0) lines.push("| none | | |");
+  return lines.join("\n") + "\n";
+}
+
 export interface CheckApiOptions {
   /** The parsed registry to check instead of reading api.json (tests mutate a copy). */
   api?: unknown;
+  /** The tree rule 2 scans instead of `root` (tests point it at a fixture tree). */
+  scanRoot?: string;
 }
 
 function readJson(root: string, file: string): unknown {
@@ -387,5 +636,20 @@ export function checkApi(
       );
   }
   out.push(...checkSurfaces(root, doc));
+  out.push(...checkRemoved(options.scanRoot ?? root, doc));
   return out;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const root = join(fileURLToPath(import.meta.url), "..", "..");
+  const i = process.argv.indexOf("--notes");
+  if (i >= 0 && process.argv[i + 1]) {
+    process.stdout.write(
+      renderNotes(readJson(root, API_PATH), process.argv[i + 1]!),
+    );
+  } else {
+    const v = checkApi(root);
+    for (const l of v) console.error(l);
+    process.exitCode = v.length ? 1 : 0;
+  }
 }
