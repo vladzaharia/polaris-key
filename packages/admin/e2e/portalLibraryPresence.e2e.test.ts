@@ -140,8 +140,8 @@ async function wordmarkWidth(page: Page): Promise<number> {
 }
 
 describe.concurrent("discover grid presence", () => {
-  // The shared grid (PX-35): four columns from 1180 px, five from 1700 px. The three scenario
-  // offers four tiles: a full row at four columns, one empty cell at five.
+  // The shared grid (PX-35): four columns from 1180 px, never five. The three scenario
+  // offers four tiles: a full row at every width.
   for (const width of [1280, 1440, 1920]) {
     it(`no row has an empty cell at ${width}`, async ({ expect }) => {
       const o = await portal.open("three", "/#/discover", {
@@ -164,7 +164,7 @@ describe.concurrent("discover grid presence", () => {
             cells.count % cells.cols,
             `${cells.count} tiles in ${cells.cols} columns`,
           )
-          .toBe(cells.cols === 5 ? 4 : 0);
+          .toBe(0);
       } finally {
         await o.close();
       }

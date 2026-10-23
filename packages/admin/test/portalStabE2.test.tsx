@@ -28,7 +28,7 @@ describe("Discover's grid (B-080)", () => {
 });
 
 describe("the key tile (B-077)", () => {
-  it("is one cell, its button is capped, and the icon stacks above the title when tiny", () => {
+  it("is one cell, its button fills it, and the icon stacks above the title when tiny", () => {
     render(
       <ul>
         <LibraryKeyTile />
@@ -41,13 +41,11 @@ describe("the key tile (B-077)", () => {
     const button = within(li).getByRole("button", {
       name: "Activate a license",
     });
-    expect(button.className).toContain("max-w-64");
-    expect(
-      (
-        within(li).getByRole("heading", { level: 3 })
-          .parentElement as HTMLElement
-      ).className,
-    ).toContain("@max-[13rem]:flex-col");
+    expect(button.className).toContain("w-full");
+    // Under 13 rem the key band is as short as its glyph, and the button drops its icon.
+    expect(box.firstElementChild!.className).toContain(
+      "@max-[13rem]:aspect-auto",
+    );
   });
 });
 

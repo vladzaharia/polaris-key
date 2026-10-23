@@ -99,10 +99,15 @@ export function ProductHeader({
             // the tile's icon flies into it with the art and the name (MO-05).
             "pk-vt-hero-icon relative z-10",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
-            hasCover && "-mt-6 desk:self-start short:mt-0 short:self-auto",
+            hasCover && "-mt-3 desk:self-start short:mt-0 short:self-auto",
           )}
         />
-        <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
+        <div
+          className={cn(
+            "min-w-0 flex-1 space-y-2 desk:pb-1",
+            hasCover && "desk:pt-2",
+          )}
+        >
           {/* pk-vt-hero-title: the tile's name flies into it and back (MO-05). As wide as its
               text, like the tile's name, or the shared snapshot stretches (S-23 §3.4 item 4). */}
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -110,7 +115,7 @@ export function ProductHeader({
               ref={headingRef}
               tabIndex={-1}
               dir="auto"
-              className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-4xl"
+              className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-3xl"
             >
               {product.name}
             </h1>

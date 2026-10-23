@@ -11,7 +11,7 @@ import { LibraryEmpty } from "../components/LibraryEmpty.js";
 import { LibraryKeyTile } from "../components/LibraryKeyTile.js";
 import { LibraryHero } from "../components/LibraryHero.js";
 import { LibraryTile } from "../components/LibraryTile.js";
-import { TILE_GRID } from "../components/tileGrid.js";
+import { libraryGrid, TILE_GRID } from "../components/tileGrid.js";
 import { ErrorPanel } from "../components/States.js";
 import { useLibrary } from "../library.js";
 import {
@@ -180,7 +180,10 @@ function LibraryBody({
         <h2 id="all-h" className="sr-only">
           {t("locker.library.allProducts")}
         </h2>
-        <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
+        <ul
+          ref={stagger.ref}
+          className={cn(libraryGrid(products.length + 1), stagger.className)}
+        >
           {justAddedFirst(products).map((p) => (
             <li key={p.slug} className="grid">
               {/* No "Windows and Linux only" here: the tile's platform glyphs already say it
