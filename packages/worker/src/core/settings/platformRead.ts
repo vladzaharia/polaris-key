@@ -111,6 +111,21 @@ export function productDefaultEntries(): SettingDef[] {
   );
 }
 
+/**
+ * The live operator-owned lists the page edits as rows (PX-W13c): `identity.reservedDisplayTerms`.
+ * Stored under the registry key itself, so no `[vars]` alias.
+ */
+export function listEntries(): SettingDef[] {
+  return PLATFORM_SLICE.filter(
+    (d) =>
+      !d.pending &&
+      d.ownership === "operator" &&
+      d.storage.kind === "scalar" &&
+      d.storage.storedAs === undefined &&
+      d.value.kind === "list",
+  );
+}
+
 /** Ceiling kill switches whose `[vars]` value is an unrecognised string (a hard off). */
 export function unrecognisedCeilingVars(env: SettingsEnv): string[] {
   return aliasedPlatformEntries()
