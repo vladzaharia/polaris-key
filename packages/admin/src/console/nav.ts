@@ -153,7 +153,7 @@ export type ProductPageId =
   | "rollouts"
   | "outlets"
   | "storefronts"
-  | "listing"
+  | "presentation-listing"
   | "app-store"
   | "commerce"
   | "access"
@@ -304,10 +304,16 @@ export interface NavSection {
  * The product settings hub's areas, in tab order (ST-08, `#/p/<slug>/settings/<area>`). Each is a
  * product page of Core; only `settings` (General) is a sidebar item, and the rest are its tabs.
  */
+/** The hub tab a hub page sits under, when it is not a tab itself (the trail "Settings → Presentation → Listing"). */
+export const SETTINGS_TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
+  "presentation-listing": "presentation",
+};
+
 export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings",
   "services",
   "presentation",
+  "presentation-listing",
   "portal",
   "keys",
   "settings-members",
@@ -394,6 +400,20 @@ export const SECTIONS: NavSection[] = [
         path: "settings/presentation",
         icon: Image,
         docs: "/docs/operate/console/presentation/",
+        inNav: false,
+      },
+      {
+        // A-27.11: the store listing's home (A-18j's Listing page moved here): the shared listing
+        // model's text, fit report, images, release notes and Push, for every channel or one.
+        page: "presentation-listing",
+        accent: "distribution",
+        tile: "product",
+        label: "Listing",
+        path: "settings/presentation/listing",
+        keywords:
+          "store listing push listing fit report screenshots",
+        icon: SquarePen,
+        docs: "/docs/features/ship-builds/channels/polaris-key/",
         inNav: false,
       },
       {
@@ -678,17 +698,6 @@ export const SECTIONS: NavSection[] = [
         // PS-06 (SETUP.md §2.1: one page per storefront): a built-in store's own page,
         // `distribution/storefronts/polaris-key`.
         record: { noun: "Storefront" },
-      },
-      {
-        // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
-        // and "Push listing" per store.
-        page: "listing",
-        accent: "distribution",
-        label: "Listing",
-        path: "distribution/listing",
-        icon: SquarePen,
-        docs: "/docs/features/ship-builds/channels/polaris-key/",
-        inNav: true,
       },
       {
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.

@@ -44,6 +44,7 @@ export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
 /** The tab a hub page sits under: the product's own settings are on Features. */
 const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
   settings: "services",
+  "presentation-listing": "presentation",
 };
 
 /**
@@ -61,10 +62,12 @@ export function SettingsHub({
 }): React.ReactElement {
   useSettingTarget(true, undefined, anchorOfKey);
   // The access is named by the tab's words, never the area's internal name ("Core").
+  // The listing is Distribution's data, so it answers to the `ship` area.
+  const listing = page === "presentation-listing";
   const gate = useWriteGate(
-    page === "keys" ? "keys" : "core",
+    page === "keys" ? "keys" : listing ? "ship" : "core",
     slug,
-    page === "keys" ? "Keys and secrets" : "Settings",
+    page === "keys" ? "Keys and secrets" : listing ? "Listing" : "Settings",
   );
   // One notice per page, on every tab that has something to edit. Features gates its own
   // switches; the other tabs lock whole.

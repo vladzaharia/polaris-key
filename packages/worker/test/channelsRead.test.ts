@@ -17,6 +17,14 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
+  commerceWorld,
+  SETTINGS,
+  type CommerceWorld,
+} from "./commerceWorld.js";
+import { BUNDLE_ID } from "./commerceFake.js";
+import { SLUG as WORLD_SLUG } from "./releaseRoutesFixture.js";
+import { afterEach } from "vitest";
+import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
@@ -196,6 +204,7 @@ describe("the channels read (A-20.4)", () => {
     expect(row(body, "app-store").commerce).toEqual({
       state: "not_set_up",
       reason: "commerce_off",
+      attention: [],
     });
   });
 
@@ -206,6 +215,7 @@ describe("the channels read (A-20.4)", () => {
     expect(row(body, "app-store").commerce).toEqual({
       state: "not_set_up",
       reason: "no_settings",
+      attention: [],
     });
   });
 
@@ -277,6 +287,10 @@ describe("the channels read (A-20.4)", () => {
         "reason",
         "reasons",
         "code",
+        "identity",
+        "field",
+        "fields",
+        "source",
       ]).toContain(k);
   });
 
@@ -352,5 +366,106 @@ describe("the summary's cost and robustness (A-20.4)", () => {
     expect(product.slug).toBe(SLUG);
     expect(product.channels).toBeUndefined();
     expect(product.platforms).toBeUndefined();
+  });
+});
+
+describe("identity in the channels read (A-28.7)", () => {
+  let w: CommerceWorld | null = null;
+  afterEach(() => {
+    w?.close();
+    w = null;
+  });
+  const OTHER = "gg.other.app";
+  const MISMATCHED = {
+    appStore: { bundleId: OTHER, appAppleId: 1234567890, acceptSandbox: true },
+    play: SETTINGS.play,
+    steam: SETTINGS.steam,
+  };
+
+  function grant(sub: string, areas: string[]) {
+    SYNTHETIC.set(sub, {
+      memberId: sub,
+      grants: [
+        {
+          role: "product_admin",
+          scope: `product:${WORLD_SLUG}`,
+          areas,
+          source: "grant",
+        },
+      ],
+    } as Principal);
+  }
+
+  async function channels(cw: CommerceWorld, sub = "u1") {
+    const res = await admin(
+      "GET",
+      `/products/${WORLD_SLUG}/distribution/channels`,
+      ["platform-admins"],
+      sub,
+      cw.db,
+    );
+    return { status: res.status, body: await res.json() };
+  }
+
+  async function world() {
+    w = await commerceWorld({ settings: MISMATCHED });
+    env = w.env;
+    await w.db.run(
+      `INSERT INTO dist_outlets (product, outlet_id, kind, identity_json, created_at, modified_at)
+       VALUES (?, 'o-apple', 'app-store', ?, ?, ?)`,
+      WORLD_SLUG,
+      JSON.stringify({ bundleId: "gg.declared.app" }),
+      NOW,
+      NOW,
+    );
+    return w;
+  }
+
+  it("shows the mismatch on both facets, with the identity in force", async () => {
+    const cw = await world();
+    const { status, body } = await channels(cw);
+    expect(status).toBe(200);
+    const apple = row(body, "app-store");
+    expect(apple.identity).toEqual({
+      fields: { bundleId: OTHER },
+      source: "typed",
+    });
+    expect(apple.commerce).toMatchObject({
+      state: "attention",
+      attention: [{ code: "identity_mismatch" }],
+    });
+    expect(apple.delivery.state).toBe("attention");
+    expect(apple.delivery.attention).toContainEqual({
+      code: "identity_mismatch",
+      field: "bundleId",
+    });
+    // The assigned app and the declared value never ride the attention.
+    expect(JSON.stringify(apple.delivery.attention)).not.toContain(BUNDLE_ID);
+    expect(JSON.stringify(apple.delivery.attention)).not.toContain(
+      "gg.declared.app",
+    );
+    // A channel that is not a store has no identity.
+    expect(row(body, "winget")?.identity ?? null).toBeNull();
+  });
+
+  it("holds the pins back from a session without the commerce area", async () => {
+    const cw = await world();
+    grant("m-ship", ["ship"]);
+    const { status, body } = await channels(cw, "m-ship");
+    expect(status).toBe(200);
+    for (const c of body.channels) expect(c.identity).toBeNull();
+    const apple = row(body, "app-store");
+    expect(apple.commerce.attention).toEqual([]);
+    const text = JSON.stringify(body);
+    expect(text).not.toContain(OTHER);
+    expect(text).not.toContain(BUNDLE_ID);
+    // The delivery attention (ship) still shows, as a code and a field name.
+    expect(apple.delivery.attention).toContainEqual({
+      code: "identity_mismatch",
+      field: "bundleId",
+    });
+    // A member with commerce but not ship cannot read the route at all.
+    grant("m-commerce", ["commerce"]);
+    expect((await channels(cw, "m-commerce")).status).toBe(403);
   });
 });

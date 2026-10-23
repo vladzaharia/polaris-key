@@ -47,6 +47,7 @@ import type {
 import { PR_STORE_IDS, type PrStoreId } from "../../core/storefront/prPlane.js";
 import { hostedScreenshotUrls } from "./feeds/art.js";
 import type { RenderListing } from "./feeds/render.js";
+import { inheritStored } from "./listing/inherit.js";
 
 const FALLBACK_LOCALE = "en-US";
 
@@ -229,7 +230,11 @@ export async function prInputs(
       }
     : null;
 
-  const stored = await readListing(fctx.db, slug);
+  const stored = await inheritStored(
+    fctx.db,
+    slug,
+    await readListing(fctx.db, slug),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

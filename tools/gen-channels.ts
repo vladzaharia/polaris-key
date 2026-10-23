@@ -376,6 +376,23 @@ export function channelForOutlet(
 `;
 }
 
+/**
+ * What the channel does with the shared listing (A-27.13), from its verbs: the listing is Pushed
+ * where the catalogue writes it, Imported where it can only be read, taken From the listing by a
+ * feed, and Read directly by Polaris Locker itself.
+ */
+export function listingColumn(c: ChannelRow): string {
+  if (c.family === "first-party") return "Read directly";
+  if (
+    c.verbs.includes("writeListingText") ||
+    c.verbs.includes("writeListingAssets")
+  )
+    return "Pushed";
+  if (c.verbs.includes("readListing")) return "Imported";
+  if (c.plane === "feed") return "From the listing";
+  return "none";
+}
+
 /** The reference page: one row per channel, straight from the catalogue. */
 export function renderDoc(table: ChannelTable): string {
   const cell = (xs: readonly string[]): string =>
@@ -388,7 +405,7 @@ export function renderDoc(table: ChannelTable): string {
       : "any";
   const rows = table.channels.map(
     (c) =>
-      `| ${c.label} | \`${c.id}\` | ${cell(c.aliases)} | ${c.family} | ${c.plane} | ${cell(c.platforms)} | ${cell(c.formats)} | ${takes(c)} | ${cell(c.deliverableKinds)} | ${c.customerAction} |`,
+      `| ${c.label} | \`${c.id}\` | ${cell(c.aliases)} | ${c.family} | ${c.plane} | ${cell(c.platforms)} | ${cell(c.formats)} | ${takes(c)} | ${cell(c.deliverableKinds)} | ${c.customerAction} | ${listingColumn(c)} |`,
   );
   return `---
 title: "Channels"
@@ -400,11 +417,11 @@ description: "Every distribution channel Polaris Key knows: its id, plane, platf
 
 A channel is a place builds reach customers. The catalogue holds ids, aliases, platforms, formats and deliverable kinds once; the Worker, the CLI and the console read it. An alias is another spelling that names the same channel, such as a wire outlet kind.
 
-| Channel | Id | Aliases | Family | Plane | Platforms | Formats | Builds it takes | Deliverables | Customer |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Channel | Id | Aliases | Family | Plane | Platforms | Formats | Builds it takes | Deliverables | Customer | Listing |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join("\n")}
 
-The plane is where the work runs: \`worker\` calls the store's API, \`ci\` runs the store's tool, \`pr\` opens a pull request, \`feed\` serves a signed feed.
+The plane is where the work runs: \`worker\` calls the store's API, \`ci\` runs the store's tool, \`pr\` opens a pull request, \`feed\` serves a signed feed. Listing is what the channel does with the shared listing: Pushed (Polaris Key writes it), Imported (Polaris Key can read it into the listing), From the listing (a feed renders it) or Read directly (Polaris Locker).
 `;
 }
 

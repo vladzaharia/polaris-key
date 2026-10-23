@@ -1054,6 +1054,76 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
   reaches a store until an operator accepts it. The images are listing art, so the token holds
   nothing secret.
 
+### The ingest writes the listing model (A-27.4)
+
+**What arrived.** A repo push (link or resync, Distribution on) now also writes the root
+`.pkey/distribution` listing into the shared listing model (`dist_listings`,
+`dist_listing_locales`), not only the `dist_listing` blob. The writer is
+`manifestModelStatements` (`listing/manifestSync.ts`); tests: `test/listingIngest.test.ts`.
+
+- **Which fields.** Only the mapped ones: `name`, `developerName`, `category`, `tint`,
+  `contactEmail`, `urls.website`, `urls.support`, and the default locale's `subtitle` and
+  `description`. No other model column, no override, no asset and no release note is touched.
+- **A push changes a model field only where the manifest owns it.** Each write is one UPDATE
+  whose WHERE clause holds the ownership test, so D1 evaluates it at write time: the field is
+  empty, or its per-field provenance is `manifest`. A value an operator typed (no provenance
+  key) or an import brought in (`app-store`, `play`, `ms-store`, `godot`, `product`) never
+  matches. An operator's edit or an import landing between the ingest's plan and its batch is
+  seen by the UPDATE, not overwritten, because nothing is read first.
+- **Rows with no provenance map** (written before migration 0069) are the operator's: only an
+  empty field of an `admin` row is filled; an `import` row is left alone.
+- **Dropped fields clear only what the manifest wrote.** A field the manifest no longer declares
+  is cleared where its provenance is `manifest`, and its provenance key is removed with it.
+- **Bounded text.** A value the model refuses (over its limit, not https) is skipped and the
+  stored value stays; it is never cut. The text is operator-typed-equivalent data that now
+  reaches customers and discovery; `parsePresentation` still bounds discovery's copy.
+- **Distribution off writes nothing.** The model is written only in the contribution that runs
+  while Distribution is on.
+- **Residual.** A repo writer can set these fields while they are empty or manifest-owned, and
+  an operator who wants a field theirs types it once (that removes the manifest's ownership).
+
+### The listing-truth backfill job (A-27.6, A-27.7)
+
+**What arrived.** The migration job `distribution.listing-truth` (`services/distribution/
+listingTruthJob.ts`; tests: `test/listingTruthJob.test.ts`) copies each product's root listing
+from the manifest blob (`dist_listing`) into the listing model, so the model is the one source
+(phase 1 of A-27; the blob stays as the fallback). An operator runs it through the migration
+runner: dry run, apply pinned to the report read, down. Nothing else starts it.
+
+- **What apply can change.** The same fields, through the same statements, as the ingest
+  ([above](#the-ingest-writes-the-listing-model-a-274)): `name`, `developerName`, `category`,
+  `tint`, `contactEmail`, `urls.website`, `urls.support` and the default locale's `subtitle` and
+  `description`, only where the field is empty or its provenance is `manifest`. A typed or
+  store-imported value is never changed. Values the model refuses are skipped, never cut. Apply
+  may create the product's model rows with empty provenance. It never touches the blob, art,
+  overrides or another product. One batch per product, so a unit is all or nothing.
+- **The ledger.** `dist_listing_truth_moves` (Distribution's) is written first, in the same batch:
+  per field, what it held (`prior_value_json`, `prior_provenance`) and what apply wrote
+  (`applied_value_json`). `INSERT OR IGNORE` keeps the first, true prior state through a re-run.
+  **The ledger copies listing text, contact emails included, until `down` runs or the ledger is
+  pruned.** Those values are the operator's or the manifest's public listing data, and the table
+  is not reachable from any route; it is, however, a second copy of customer-facing text and
+  addresses, so it is dropped when it has served its purpose (RUNBOOK, Migration ledger).
+- **What down can and cannot restore.** Down puts back the prior value and provenance only
+  where the field **still equals what apply wrote and is still owned by `manifest`**; both tests
+  sit in the restore UPDATE's WHERE clause, so an operator's later edit, a store import that
+  rewrote the identical text (its provenance is then not `manifest`) and a later resync's new
+  value are all left alone. The restore and the ledger delete for a field are one batch. A field
+  whose move was superseded loses its ledger row without being restored. Down does not delete the
+  model rows apply created; they stay empty, and the portal reads the blob again.
+- **Failure modes.** A killed call leaves either the whole unit or none of it. Resume skips
+  finished units; a call killed after its batch re-plans to nothing. Two known gaps lose no data:
+  a race can make the SQL guard skip a field the plan expected, leaving a ledger row for a move
+  that never happened (down finds the value different and leaves it), and a legacy `import` row
+  with no provenance map is skipped by the guard though the plan counts it, so its dry run keeps
+  reporting changes.
+- **Hostile manifest.** The only attacker-influenced input is the root listing, already validated
+  at ingest and checked again against the model's limits and URL rules. The field set is fixed in
+  code, values are bound parameters, and the manifest cannot name the product, a field or a table.
+  It can make its own product's listing say what its manifest says, as before, never overwrite
+  what an operator typed.
+- **Report.** The dry run's detail names fields, limits and art slots, never stored values.
+
 ### The public download page (P2b-06)
 
 **What arrived.** A public, cookie-free download page per product (`services/distribution/
@@ -2141,13 +2211,24 @@ falling back to the team credential when the product has no credential of the ki
 - **Own credentials first, never a fall-through.** A product holding any active credential of the
   kind uses its own; an own credential that is unpinned or mis-pinned is inert on its own terms
   and never silently switches to the team key.
+- **Readiness reads metadata only (P0-27.3, P0-27.6).** `core/stores/requirements.ts` answers "is
+  this store ready for this product" from a store adapter's declared requirements. It is a
+  file on the `resolvePlatformCredential` and `listOutletCredentials` reader allowlists
+  (`test/outletCredentialReach.test.ts`, the lines added with P0-27.3) and on no other: it counts a credential through `listOutletCredentials`
+  (never selects the ciphertext) and `resolvePlatformCredential` (opens nothing), and a second test
+  refuses it every function that opens, versions, pin-lists or records (`openOutletCredential`,
+  `openPlatformCredential`, `outletCredentialVersion`, `listOutletCredentialPins`,
+  `recordPlatformCredentialResult`). It writes no audit row and calls no store. Its answer is
+  `{met, missing}` with descriptors (`{kind, slot}` or `{kind, field}`) and no key id, issuer, pin
+  or app name. **`met` is readiness, never authorisation**: the pin checks above still run at every
+  use, and no device or public route may serve the answer.
 - **Platform-admin writes, metadata out.** `/manage/api/platform/store-connections/…` is
   platform-admin only (403 otherwise, checked in the handler). Responses carry presence, source
   (`console` / `secret`) and display metadata (key id, issuer id, client email, tenant, client and
   seller ids) — never a key; a 422 names the field, never the value. Only the owner and that
   handler name the writers (`putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin`,
   `clearPlatformPin`); only the owner, the KEK sweep and `deleteProduct` name the tables; only the
-  owner, `core/outletTokens.ts` and two reviewed Distribution files (the Microsoft Store token, the
+  owner, `core/outletTokens.ts` and two reviewed store-client files (the Microsoft Store token, the
   Steam commerce key, both re-checked by the open) name `openPlatformCredential`.
 - **Every use and write audited.** A product open is a `platform_credential.use` row in that
   product's trail; a team-wide open (the apps listing), every credential and setting write and
@@ -2284,6 +2365,27 @@ line.
   with a credential fails the suite. The handlers' real reads and writes (PS-02, PS-03, PS-06)
   plug in as ports and inherit these checks.
 
+**Store adapters and facets (P0-27).** A store is one thing with two faces, delivery (getting a
+build to the store) and commerce (verifying what a buyer paid). Rule 6 forbids Distribution and
+Commerce from importing each other, so no module holds both. `StoreAdapter`
+(`core/stores/adapter.ts`, one entry per store in `core/stores/adapters.ts`) is pure data in Core:
+the store's id, its `StorefrontAdapter`, which facets it has, the identity fields its pin names and
+what each facet requires. Each service registers its own half by store id: Distribution a
+`DeliveryFacet` (`services/distribution/stores/`: connector, flow runtime, storefront admin),
+Commerce a `CommerceFacet` (`services/commerce/stores/<store>/`: claim, hooks, recheck). A two-way
+test binds the declarations to the registrations, so a store cannot gain a face in one place only.
+Store-specific code lives where its layer allows: gated clients, custody and token helpers in
+`core/stores/<store>/`, runtimes in the service folders.
+
+**`requirements()` reads metadata only.** The declared requirements are evaluated by one function
+(`storeRequirements`, `core/stores/requirements.ts`) that answers a descriptor list of what is
+missing and nothing else. It fails closed (an unknown facet, or `commerce` on a store with none,
+answers `null`, never ready). Which files may reach credentials is a test, not a convention: the
+opener, writer and table allowlists of `test/outletCredentialReach.test.ts` name every file that
+opens or writes a credential, and `requirements.ts` is on only the two read-metadata lists (see
+A-16, "Readiness reads metadata only"). A facet declaring a requirement grants no access to the
+credential: opening stays with the token helpers, behind the pin.
+
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
 declaration modules import only the adapter layer, so the CLI's copy is generated
 (`packages/cli/src/storefronts/ciPlane.generated.ts`, A-18h) and no store knowledge lives in the
@@ -2382,7 +2484,7 @@ edit, commit or Console change invalidates every other open one.
   auto-halt) assert `PLAY_EDIT_SCOPE.rolloutControl`, the one scope the gate does not type: they
   keep their own confirmations (`confirmRollback`) and their tests unchanged. A typed production
   `complete`, as A-17a made Apple's, is a proposed follow-up.
-- **P6-01's purchase client** (`commerce/play.ts`) is not gated: it reads purchases and acknowledges
+- **P6-01's purchase client** (`services/commerce/stores/play/purchases.ts`) is not gated: it reads purchases and acknowledges
   them, outside the storefront surface (the `commerceRuntime` deny group says so).
 
 **Residual risk.** As for every adapter, the gate is code in the Worker that holds the key. The
@@ -2450,7 +2552,7 @@ Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices 
 **What it is.** The Steam storefront adapter (`core/storefront/stores/steam.ts`, rule table
 `core/storefront/rules/steam.ts` with the deny groups in `rules/steamDenied.ts`), calling through
 its own gated client (`core/stores/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
-group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`commerce/steam.ts`, the
+group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`core/stores/steam/publisher.ts`, the
 same pin checks as A-16's lister) under the audited use `steam:storefront`. Distribution's console
 routes (`services/distribution/storefronts/steam/`) serve the plan, the reads, a named-branch
 release, the generated asset pack (A-18d's `pack:steam`), the store-page copy card and the per-app
@@ -2695,7 +2797,7 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   relationship they create is the pinned app, and every build, beta group, App Store version or
   review submission a request names is re-read with `include=app` and must be the pinned app's,
   all of them before the first write (a request listing one foreign group sends nothing).
-  A-17e's in-app purchase handlers (`commerce/appleCatalog.ts`) never take an IAP id: a product
+  A-17e's in-app purchase handlers (`services/distribution/connectors/asc/iapCatalog.ts`) never take an IAP id: a product
   id must be an `app-store` row of the product's commerce map (operator rows, rule 5) and the IAP
   is found under the pinned app by `filter[productId]`; an IAP version or Background Asset version
   offered to a submission is walked back to the pinned app (version → IAP → mapped product id →
@@ -2766,7 +2868,7 @@ same gate, ledger and audit, with these choices of their own (`test/ascProvision
   request hash carry an HMAC of the email keyed with `KEY_HASH_PEPPER` and the never-stored
   Idempotency-Key; the answer and the audit summary name no address.
 - **The test notification** calls the App Store Server API (`api.storekit(-sandbox).apple.com`)
-  through `commerce/apple.ts` with the In-App Purchase key pinned to the bundle id Apple reports
+  through `core/stores/apple/server.ts` with the In-App Purchase key pinned to the bundle id Apple reports
   for the pinned app; it is audited (`distribution.asc.notifications.test`). It can only make Apple
   send a `TEST` to the URL already configured.
 - **Defaults are only set, never changed.** Availability (every territory) and the free price are
@@ -3347,6 +3449,18 @@ check. The hooks stay at the stores' URLs (`core/stores/hooks.ts`, one spelling 
 builder and the ASC write gate share), and the ASC write gate admits only that path. Discovery
 discloses only whether Commerce runs.
 
+**Facet dispatch (P0-27.5).** The claim, the binding listing, both hooks and the recheck tick
+reach a store only through its `CommerceFacet` (`commerceFacetFor(store)`, in
+`services/commerce/stores/`); the bridge holds no per-store branch. A store id without a facet is
+refused as a body that names no store. The guard order of a claim is unchanged and is the
+security-relevant part: the body-size cap, the device principal, the rate limit and the device-trust policy; then
+the store's facet; then its context (an unconfigured or credential-less store answers not-found before the body is
+parsed); then the claim parse (`bad_body`); then the facet's optional guard (Steam's refusal before any
+store call); then the store verification; then `recordPurchase`; then the facet's `settle` (Play
+acknowledges only after the record, Steam refuses a non-owner). A facet's rejection mapping turns
+only its own known failures into refusals; an unexpected error is rethrown, never reported as a
+refusal.
+
 **Commerce off.** The hooks answer the not-found, so the stores retry and then drop the
 notification: Apple retries five times at 1, 12, 24, 48 and 72 hours (about 6.5 days) in
 production only, Pub/Sub keeps an unacknowledged message for 7 days by default and deletes a
@@ -3368,8 +3482,8 @@ the flag and the store, never a token.
 **Forged purchases and notifications.**
 
 - **App Store.** A StoreKit JWS, a Notifications V2 `signedPayload` and its
-  `signedTransactionInfo` are verified by `core/trust/x509.ts` + `commerce/apple.ts`: exactly three
-  certificates, the last byte-identical to Apple Root CA - G3 pinned in code (`appleRoot.ts`,
+  `signedTransactionInfo` are verified by `core/trust/x509.ts` + `services/commerce/stores/apple/purchases.ts`: exactly three
+  certificates, the last byte-identical to Apple Root CA - G3 pinned in code (`services/commerce/stores/apple/root.ts`,
   fingerprint pinned by a test), each link's issuer name, CA bit, keyUsage and signature checked,
   Apple's intermediate (`1.2.840.113635.100.6.2.1`) and leaf (`1.2.840.113635.100.6.11.1`)
   marker OIDs required, unknown critical extensions refused, validity checked at the payload's
@@ -3392,6 +3506,28 @@ the flag and the store, never a token.
   captured from another player's session does not authenticate for this licence; ownership must be
   the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
   timed trial.
+
+**Derived store identity (A-28.2, CM-20 D12).** The identity fields of `commerce.stores`
+(`bundleId`, `packageName`, `appId`) are optional. The app whose purchases unlock a flag is the
+typed value when present, otherwise the app the product is assigned on that store
+(`storeAppBinding`: the pin of its own active credential, else its platform pin; operator-set,
+metadata only). A typed value that differs from the assignment still wins and is reported as a
+mismatch (surfaced in A-28.3). The assignment is the operator's, not proof a key exists:
+`deletePlatformCredential` keeps pins, so a derived identity stays in force while the credential is
+gone, and every verification call keeps its own credential check and fails as before. The
+assignment is set by two different roles, neither needing the `commerce` area: a product admin
+holding `keys` sets an own-credential pin (`PUT …/outlet-credentials/:id`, audited
+`outlet_credential.set` / `outlet_credential.pin`), and a platform admin sets the platform pin
+(`store_connection.assign`). Because an own pin beats a platform pin (D12), a `commerce` holder who
+leaves the identity field out of `commerce.stores` opts into this: while the field is out, a `keys`
+holder who adds a lower-id own credential or re-pins one moves which app's purchases unlock the
+flag. Typing the field pins it; a typed value always wins. A manifest or repo push still cannot
+choose the app. A store with no `commerce.stores` block stays off, and so does a block with
+neither a typed value nor an assignment (`no_app_assigned`; `own_credential_unpinned` when an own
+credential with no pin hides a platform pin). The Apple ID check on Production notifications
+applies only to a typed `appAppleId`: the Apple ID and the bundle id sit in different key slots
+and can name different apps, so it is never derived. Residual: the moves above change which app's
+purchases unlock the flag with no commerce write; each has its own audit row.
 
 **Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
 the identity's licence, the retired licence's grants and purchases move to the survivor and its
@@ -3427,7 +3563,7 @@ from Apple's sandbox host, never the production one.
 **Credentials and pins.** Two outlet-credential kinds join P5-01's custody: `app-store-server-key`
 (the In-App Purchase key, pinned to the bundle id) and `steam-publisher-key` (pinned to the game's
 app id); Play reuses the `google-service-account` pinned to the package. A store runs only when
-its commerce settings name the app AND an active credential is pinned to that same app, so a repo
+its commerce settings resolve an identity (typed or assigned) AND an active credential is pinned to that same app, so a repo
 writer cannot aim the operator's key at another app (the settings are operator-owned too). The
 Steam key rides in a query string to `partner.steam-api.com`, so no error carries a URL; every
 store call is redirect-free and capped (`commerce/http.ts`).

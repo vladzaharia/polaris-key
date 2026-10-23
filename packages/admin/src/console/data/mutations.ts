@@ -167,6 +167,7 @@ export type WriteMethod =
   | "rebuildFeed"
   | "bootstrapPlatformFeeds"
   | "savePackageFeeds"
+  | "commerceUseAssigned"
   | "mintRegistryToken"
   | "revokeRegistryToken"
   | "revokeAllRegistryTokens"
@@ -1122,6 +1123,15 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.activity(slug)),
     ],
   },
+  commerceUseAssigned: {
+    label: "store app",
+    // The typed identity is gone: the view, Home's items and the trail change.
+    invalidates: (slug) => [
+      prefix(qk.commerceView(slug)),
+      prefix(qk.activity(slug)),
+      attention(),
+    ],
+  },
   savePackageFeeds: {
     label: "package feeds switch",
     // The product row carries the switch the sidebar gates Package feeds on.
@@ -1203,6 +1213,13 @@ export async function mutate<K extends WriteMethod>(
     result = await fn(...args);
   } catch (e) {
     refreshMeOnNoAccess(e);
+    // The page showed a state the server no longer has: refetch it.
+    if (
+      method === "commerceUseAssigned" &&
+      e instanceof ApiError &&
+      e.reason === "no_assigned_app"
+    )
+      invalidateAfter(method, args);
     throw e;
   }
   invalidateAfter(method, args);

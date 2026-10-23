@@ -35,6 +35,11 @@ import {
 import { parseJsonColumn } from "../../platform/json.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { kindsNarrowableTo } from "./capabilities.js";
+import { manifestListingSnapshot } from "../../core/storefront/listingImport.js";
+import {
+  INGEST_MAPPING_LOCALE,
+  manifestModelStatements,
+} from "./listing/manifestSync.js";
 
 /** A `dist_outlets` row. */
 export interface DistOutletRow {
@@ -146,6 +151,20 @@ export function manifestIngestStatements(
       params: [product],
     });
   }
+
+  // A-27.4: the same root listing into the shared model, field by field, guarded in SQL: only a
+  // field that is empty or owned by `manifest` is written (see `manifestModelStatements`).
+  stmts.push(
+    ...manifestModelStatements(
+      manifestListingSnapshot(
+        (dist.listing ?? {}) as Record<string, unknown>,
+        "root",
+        INGEST_MAPPING_LOCALE,
+      ),
+      product,
+      now,
+    ).statements,
+  );
 
   // The resolved transport for every (deliverable, live outlet) pair, replaced wholesale. Packs
   // are routed too (P4-05), so a manifest at the bounds — 64 packs and the app across 32 outlets

@@ -66,6 +66,13 @@ Both families have the same pieces:
 | A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)                            | `store_operations`                                                                            |
 | A conformance suite      | `test/feedAdapters.test.ts` (and items 3 and 7 of `test/storefront/conformance.test.ts`) | `test/storefront/conformance.test.ts`, over every storefront adapter                          |
 
+A store that also sells (the App Store, Google Play, Steam) has a second declaration beside its
+`StorefrontAdapter`: a `StoreAdapter` (`core/stores/adapter.ts`), pure data that says which faces
+the store has (delivery, commerce), the identity its pin names and what each face needs before it
+can run. The services register their half by store id, Distribution a `DeliveryFacet` and Commerce a
+`CommerceFacet`; a package feed has no such split. The layout page lists
+[where a store's code lives](/docs/contribute/layout/#where-a-stores-code-lives).
+
 A feed's operations are `render`, `serve`, `auth`, `yank`, `unyank`, `deprecate` and `setup`. A
 feed writes a `FeedAdapterSpec`, and `defineFeedAdapter` derives the base's parts from it: `serve`
 is an `api` operation whose rules are the feed's read route names, `auth` (registry tokens,

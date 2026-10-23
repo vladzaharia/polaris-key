@@ -205,6 +205,23 @@ export function declaredByRegistry(
  */
 export const NOT_A_SETTING: readonly NotASetting[] = [
   {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+    covers: {
+      ids: [
+        "table:dist_listings",
+        "column:dist_listings.source",
+        "column:dist_listing_assets.source",
+        "column:dist_listing_locales.source",
+        "column:dist_listing_overrides.source",
+        "column:dist_listing_release_notes.source",
+        "manifest:distribution:listing",
+      ],
+    },
+  },
+  {
     thing: "Refund, void and chargeback handling",
     reason:
       "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
@@ -469,18 +486,10 @@ export const PENDING: readonly PendingEntry[] = [
     owner: "ST-12",
     note: "stores.appStore.teamId",
   },
-  // Storefront listing (S-18 D11).
-  { target: "table:dist_listings", owner: "ST-13" },
-  { target: "column:dist_listings.source", owner: "ST-13" },
-  { target: "column:dist_listing_assets.source", owner: "ST-13" },
-  { target: "column:dist_listing_locales.source", owner: "ST-13" },
-  { target: "column:dist_listing_overrides.source", owner: "ST-13" },
-  { target: "column:dist_listing_release_notes.source", owner: "ST-13" },
-  { target: "manifest:distribution:listing", owner: "ST-13" },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 13;
+export const PENDING_CEILING = 6;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

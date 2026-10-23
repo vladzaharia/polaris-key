@@ -684,7 +684,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "core",
     area: "storefront",
     rbacArea: "commerce",
-    label: "Listing",
+    label: "Listed in Polaris Locker",
     description:
       "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
@@ -1909,7 +1909,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Commerce",
     description:
-      "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
+      "Which stores sell, and whether sandbox and test purchases count. Each store sells for the app typed here or, when left out, the app the product is assigned on that store. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
     keywords: ["purchases", "iap", "steam", "sandbox"],
     docs: "/docs/features/commerce/",
     ownership: "operator",
@@ -1921,6 +1921,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 ];
 
 export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
+  {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+  },
   {
     thing: "Refund, void and chargeback handling",
     reason:

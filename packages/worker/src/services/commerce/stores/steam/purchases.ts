@@ -28,22 +28,22 @@
  * query (`ISteamApps/GetPartnerAppListForWebAPIKey/v2`) plus the operator-entered `steam.appIds`.
  */
 
-import type { Db } from "../../db/types.js";
-import type { Env } from "../../platform/env.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
-} from "../../core/outletCredentials.js";
-import type { SteamSettings } from "./settings.js";
-import type { VerifiedPurchase } from "./state.js";
-import { StoreUnavailable, storeJson } from "../../core/stores/http.js";
-import { platformFallback } from "../../core/stores/platformFallback.js";
+} from "../../../../core/outletCredentials.js";
+import type { SteamSettings } from "../../settings.js";
+import type { VerifiedPurchase } from "../../state.js";
+import { StoreUnavailable, storeJson } from "../../../../core/stores/http.js";
+import { platformFallback } from "../../../../core/stores/platformFallback.js";
 import {
   STEAM_PLATFORM_CREDENTIAL,
   isSteamAppId,
   openSteamPublisherKey,
   steamUrl,
-} from "../../core/stores/steam/publisher.js";
+} from "../../../../core/stores/steam/publisher.js";
 
 const STEAM_ID = /^[0-9]{17}$/;
 /** A web-API ticket is hex; Steam's are a few hundred bytes. */

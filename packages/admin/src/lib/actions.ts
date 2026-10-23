@@ -58,6 +58,8 @@ export const ACTION_LEVELS = {
   // PS-06: how Polaris Key lists the product, and which ways to add count (S-18 registry: L1).
   "storefront.listing": 1,
   "storefront.waysToAdd": 1,
+  // A-28: drops a store's typed app so the assigned one applies; typing it again undoes it.
+  "commerce.useAssigned": 1,
   "signing.prepare": 1,
   "signing.activate": 1,
   "license.disable": 1,

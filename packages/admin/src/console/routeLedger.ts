@@ -49,6 +49,12 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     from: "settings/presentation",
     fate: "live",
   },
+  {
+    id: "presentation-listing",
+    scope: "product",
+    from: "settings/presentation/listing",
+    fate: "live",
+  },
   { id: "keys", scope: "product", from: "settings/keys", fate: "live" },
   { id: "activity", scope: "product", from: "activity", fate: "live" },
   { id: "settings", scope: "product", from: "settings", fate: "live" },
@@ -136,7 +142,9 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     id: "listing",
     scope: "product",
     from: "distribution/listing",
-    fate: "live",
+    fate: "moved",
+    to: "presentation-listing",
+    by: "A-27",
   },
   {
     id: "app-store",

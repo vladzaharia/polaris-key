@@ -1277,7 +1277,7 @@ describe("commerce: the seams", () => {
     ).toEqual({ ok: false, reason: "no_license" });
   });
 
-  it("only tests replace the pinned Apple root: no src file but apple.ts names the override", async () => {
+  it("only tests replace the pinned Apple root: no src file but stores/apple/purchases.ts names the override", async () => {
     const { readdirSync, readFileSync, statSync } = await import("node:fs");
     const { join } = await import("node:path");
     const root = join(import.meta.dirname, "..", "src");
@@ -1288,7 +1288,7 @@ describe("commerce: the seams", () => {
         if (statSync(full).isDirectory()) walk(full);
         else if (
           name.endsWith(".ts") &&
-          !full.endsWith(join("commerce", "apple.ts")) &&
+          !full.endsWith(join("commerce", "stores", "apple", "purchases.ts")) &&
           readFileSync(full, "utf8").includes("setAppleRootsForTesting")
         )
           offenders.push(full);

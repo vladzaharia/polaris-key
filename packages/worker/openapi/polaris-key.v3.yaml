@@ -15707,7 +15707,11 @@ paths:
       description: >
         Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
         secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
-        credential expiring within 14 days or expired. Only broken things appear; what a product
+        credential expiring within 14 days or expired, a store's typed app identity that differs
+        from the app assigned to the product (`storefront.identity_mismatch`, area `commerce`), a store whose own
+        keys name different apps (`storefront.identity_ambiguous`, area `commerce`), a store channel's declared app identity that differs
+        from the assigned app (`channel.identity_mismatch`, area `ship`).
+        Only broken things appear; what a product
         has not set up yet does not. Each item states one fact per line, names its product, and
         carries the page its fix lives in. Visibility is the registry list's, then each item's own
         area: a member who cannot open the fix never sees the item. The worst first. Admin session
@@ -21550,7 +21554,17 @@ components:
     AdminChannel:
       type: object
       required:
-        [id, label, inScope, declared, oneClick, notUsing, delivery, commerce]
+        [
+          id,
+          label,
+          inScope,
+          declared,
+          oneClick,
+          notUsing,
+          delivery,
+          commerce,
+          identity,
+        ]
       properties:
         id: { type: string, description: The catalogue channel id. }
         label: { type: string }
@@ -21578,12 +21592,18 @@ components:
                         no_fitting_build,
                         credential_expiring,
                         credential_missing,
+                        identity_mismatch,
                       ]
                   reasons:
                     type: array
                     description: With `no_fitting_build`.
                     items:
                       { type: string, enum: [format, arch, unknown-format] }
+                  field:
+                    type: string
+                    description: >
+                      With `identity_mismatch`: the identity field whose declared value differs
+                      from the assigned app. Names the field only, never a value.
             platforms:
               type: array
               items:
@@ -21594,12 +21614,37 @@ components:
                   arches: { type: array, items: { type: string } }
         commerce:
           type: [object, "null"]
-          required: [state, reason]
+          required: [state, reason, attention]
           properties:
-            state: { type: string, enum: [not_set_up, ready] }
+            state: { type: string, enum: [not_set_up, ready, attention] }
             reason:
               type: [string, "null"]
               enum: [no_settings, no_credential, commerce_off, null]
+            attention:
+              type: array
+              description: >
+                `identity_mismatch`: the store's typed app differs from the app assigned to the
+                product. Empty for a session without the `commerce` area.
+              items:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [identity_mismatch] }
+        identity:
+          type: [object, "null"]
+          description: >
+            The app the store channel's purchases belong to (A-28.7). `null` for a channel with no
+            store identity and for a session without the `commerce` area: the values are the
+            assigned app's pins.
+          required: [fields, source]
+          properties:
+            fields:
+              type: object
+              description: The field in force (`bundleId`, `packageName` or `appId`) and its value.
+              additionalProperties: { type: string }
+            source:
+              type: [string, "null"]
+              enum: [typed, assigned, null]
     AdminIntegration:
       type: object
       required: [product, now, snippet, features, server, sightings, verified]
@@ -21731,6 +21776,9 @@ components:
                     signing.missing,
                     mint.pending,
                     credential.expiring,
+                    storefront.identity_mismatch,
+                    storefront.identity_ambiguous,
+                    channel.identity_mismatch,
                   ]
               tone: { type: string, enum: [danger, warning] }
               service: { type: [string, "null"] }

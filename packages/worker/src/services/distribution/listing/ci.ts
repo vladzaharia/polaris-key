@@ -23,6 +23,7 @@ import {
 import type { ListingModel } from "../../../core/storefront/listingModel.js";
 import type { Db } from "../../../db/types.js";
 import { readListing } from "./store.js";
+import { inheritStored } from "./inherit.js";
 
 const FALLBACK_LOCALE = "en-US";
 
@@ -51,7 +52,11 @@ export async function ciListingProjection(
   product: string,
   store: ListingStore,
 ): Promise<CiListingProjection> {
-  const stored = await readListing(db, product);
+  const stored = await inheritStored(
+    db,
+    product,
+    await readListing(db, product),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

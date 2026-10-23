@@ -169,6 +169,7 @@ import { distributionIntegration } from "./integration.js";
 import { distributionMaintenance } from "./maintenance.js";
 
 import { distributionProductDeletion } from "./productDeletion.js";
+import { listingTruthJob } from "./listingTruthJob.js";
 
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
@@ -177,6 +178,8 @@ export const distributionService: ServiceDescriptor = {
     productDeletion: distributionProductDeletion,
     integration: distributionIntegration,
     maintenance: distributionMaintenance,
+    // P0-49: run by an operator through the migration runner, never by a tick.
+    migrations: [listingTruthJob],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: DISTRIBUTION_SETTINGS_SLICE,

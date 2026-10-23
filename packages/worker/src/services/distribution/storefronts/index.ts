@@ -7,17 +7,11 @@ import {
   STOREFRONT_ADAPTERS,
   type StorefrontAdapter,
 } from "../../../core/storefront/adapter.js";
-import { APP_STORE_FLOW } from "./appStore.js";
-import { GOOGLE_PLAY_FLOW } from "./googlePlay.js";
-import { MICROSOFT_STORE_FLOW } from "./microsoftStore.js";
+import { FACET_FLOW_RUNTIMES } from "../stores/index.js";
 import type { FlowRuntime, FlowStore } from "./runtime.js";
 
-/** THE REGISTRY: one line per flow runtime. */
-export const FLOW_RUNTIMES: readonly FlowRuntime[] = [
-  APP_STORE_FLOW,
-  GOOGLE_PLAY_FLOW,
-  MICROSOFT_STORE_FLOW,
-];
+/** THE REGISTRY: the delivery facets' flow runtimes (`../stores/`), in order. */
+export const FLOW_RUNTIMES: readonly FlowRuntime[] = FACET_FLOW_RUNTIMES;
 
 /** Every registered storefront, with its runtime when it has one. */
 export function flowStores(

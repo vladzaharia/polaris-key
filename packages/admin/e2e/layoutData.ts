@@ -1732,6 +1732,11 @@ const PLAY_STORE = {
     lastError: null,
   },
   app: { id: "gg.djdl.app", name: "DJDL" },
+  // A-28.4: one identifier from the manifest, one filled from the assignment.
+  identifiers: {
+    packageName: { value: "gg.djdl.app", source: "assigned" },
+    developerId: { value: "4976543210987654321", source: "manifest" },
+  },
   outlets: ["android"],
   readOnly: null,
   capabilities: [
@@ -1766,6 +1771,40 @@ const PLAY_STORE = {
 };
 
 const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  // A-27.11: the listing editor's model (Settings -> Presentation -> Listing); an override on Play.
+  [`${PROD}/distribution/listing`]: {
+    listing: {
+      app: { defaultLocale: "en-US", name: "DJDL", developerName: "DJDL Ltd" },
+      source: "admin",
+      provenance: {},
+      modifiedAt: 1,
+      modifiedBy: "u1",
+    },
+    locales: [
+      {
+        locale: "en-US",
+        name: "DJDL",
+        subtitle: "Mix anywhere, live or on air",
+        description: "Two-deck DJ mixer.",
+        source: "admin",
+        provenance: {},
+        modifiedAt: 1,
+        modifiedBy: "u1",
+      },
+    ],
+    overrides: [
+      {
+        store: "play",
+        locale: "en-US",
+        field: "subtitle",
+        value: "Two-deck DJ mixer",
+      },
+    ],
+    limits: { name: 30, subtitle: 30 },
+    stores: [{ store: "play", label: "Google Play Console" }],
+    overrideStores: ["play"],
+    modelFields: ["name", "subtitle", "description"],
+  },
   // The Listing step of the Add to storefronts flow: the fit report, one store with a warning.
   [`${PROD}/distribution/listing/fit`]: {
     exists: true,
@@ -1939,19 +1978,34 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // CM-29: Commerce's overview read.
   [`${PROD}/commerce`]: {
     licenseEnabled: true,
-    setup: {
-      "app-store": { configured: true, credential: "cred_asc", reason: null },
+    // A-28: derived (App Store), typed and differing (Google Play), no app (Steam).
+    identity: {
+      "app-store": {
+        value: "com.djdl.app",
+        source: "assigned",
+        assigned: "com.djdl.app",
+        mismatch: false,
+        ambiguous: false,
+      },
       play: {
-        configured: false,
-        credential: null,
-        reason: "no settings for this store",
+        value: "gg.djdl.typo.with.a.long.package.name",
+        source: "typed",
+        assigned: "gg.djdl.app",
+        mismatch: true,
+        ambiguous: false,
       },
       steam: {
-        configured: false,
-        credential: null,
-        reason:
-          "no active steam-publisher-key credential pinned to the configured app",
+        value: null,
+        source: null,
+        assigned: null,
+        mismatch: false,
+        ambiguous: false,
       },
+    },
+    setup: {
+      "app-store": { configured: true, credential: "cred_asc", reason: null },
+      play: { configured: true, credential: "cred_play", reason: null },
+      steam: { configured: false, credential: null, reason: "no_app_assigned" },
     },
     products: [
       {

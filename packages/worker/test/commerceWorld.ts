@@ -16,7 +16,7 @@ import { dispatchWith } from "../src/dispatch.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { loadProduct } from "../src/core/products.js";
 import { registerDeviceBinding } from "../src/core/devices.js";
-import { setAppleRootsForTesting } from "../src/services/commerce/apple.js";
+import { setAppleRootsForTesting } from "../src/services/commerce/stores/apple/purchases.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,

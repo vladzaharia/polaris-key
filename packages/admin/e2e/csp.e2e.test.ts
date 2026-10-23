@@ -749,10 +749,10 @@ describe("overlays under the Worker's CSP", () => {
         "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit",
         "Add to storefronts",
       ],
-      ["#/p/djdl/distribution/listing", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=fit", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=images", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=push", "Listing"],
+      ["#/p/djdl/settings/presentation/listing", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=fit", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=images", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=push", "Settings"],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -789,7 +789,10 @@ describe("overlays under the Worker's CSP", () => {
     await violations(page);
     for (const [hash, title] of [
       ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Locker"],
-      ["#/p/djdl/distribution/listing?tab=fit&store=polaris-key", "Listing"],
+      [
+        "#/p/djdl/settings/presentation/listing?tab=fit&store=polaris-key",
+        "Settings",
+      ],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;

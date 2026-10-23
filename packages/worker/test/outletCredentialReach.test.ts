@@ -91,6 +91,9 @@ const IMPORT_ALLOW_FILES = [
   // CM-29: moved from Commerce's apple.ts and steam.ts (already allowed there by the prefix).
   "src/core/stores/apple/server.ts",
   "src/core/stores/steam/publisher.ts",
+  // P0-27.3 (reviewed): the requirements evaluator calls `listOutletCredentials` only, which
+  // never selects `enc_value_json`; it imports no opener and no token helper.
+  "src/core/stores/requirements.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -150,6 +153,9 @@ const PLATFORM_IMPORT_ALLOW_FILES = [
   // CM-29: moved from Commerce's apple.ts and steam.ts (already allowed there by the prefix).
   "src/core/stores/apple/server.ts",
   "src/core/stores/steam/publisher.ts",
+  // P0-27.3 (reviewed): the requirements evaluator calls `resolvePlatformCredential` and
+  // `isPlatformCredentialId` only: slot presence, nothing decrypted, nothing audited.
+  "src/core/stores/requirements.ts",
 ];
 const PLATFORM_TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -355,6 +361,19 @@ describe("outlet-credential reach", () => {
     expect(reachViolations(loadSources())).toEqual([]);
   });
 
+  it("REV-P027: the requirements evaluator names none of the four credential functions that open, version, pin-list or record", () => {
+    const text = code(
+      readFileSync(join(SRC, "core/stores/requirements.ts"), "utf8"),
+    );
+    for (const fn of [
+      "openOutletCredential",
+      "outletCredentialVersion",
+      "listOutletCredentialPins",
+      "recordPlatformCredentialResult",
+    ])
+      expect(text, fn).not.toContain(fn);
+  });
+
   it("every allowlisted file exists (a stale allowlist would widen silently on a re-add)", () => {
     for (const f of [
       ...IMPORT_ALLOW_FILES,
@@ -513,7 +532,7 @@ describe("outlet-credential reach", () => {
           text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
         },
         {
-          file: "src/services/commerce/apple.ts",
+          file: "src/services/commerce/stores/apple/purchases.ts",
           text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
         },
       ]),
@@ -522,7 +541,7 @@ describe("outlet-credential reach", () => {
       "src/services/release/sync.ts names a platform credential table",
       'src/core/ingest.ts spells the "platform-credential" seal kind',
       "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
-      "src/services/commerce/apple.ts names the platform-credential opener",
+      "src/services/commerce/stores/apple/purchases.ts names the platform-credential opener",
     ]);
   });
 

@@ -140,10 +140,13 @@ const PIN_FIELD_LABELS: Record<string, string> = {
   appId: "app ID",
 };
 
-const IDENTIFIER_LABELS: Record<string, string> = {
+export const IDENTIFIER_LABELS: Record<string, string> = {
+  appleId: "Apple ID",
+  appId: "App ID",
   bundleId: "Bundle ID",
+  developerId: "Developer ID",
   sku: "SKU",
-  packageName: "Package",
+  packageName: "Package name",
   packageFamilyName: "Package family",
   packageIdentityName: "Identity",
   appType: "Type",

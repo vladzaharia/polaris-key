@@ -98,6 +98,7 @@ the table.
 | `devices`                     | `#/p/<slug>/devices`                         | Core → Devices (`#/p/<slug>/devices`)                                      | live             |
 | `users`                       | `#/p/<slug>/users`                           | Core → Users (`#/p/<slug>/users`)                                          | live             |
 | `presentation`                | `#/p/<slug>/settings/presentation`           | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | live             |
+| `presentation-listing`        | `#/p/<slug>/settings/presentation/listing`   | Core → Listing (`#/p/<slug>/settings/presentation/listing`)                | live             |
 | `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | live             |
 | `activity`                    | `#/p/<slug>/activity`                        | Core → Activity (`#/p/<slug>/activity`)                                    | live             |
 | `settings`                    | `#/p/<slug>/settings`                        | Core → Settings (`#/p/<slug>/settings`)                                    | live             |
@@ -121,7 +122,7 @@ the table.
 | `rollouts`                    | `#/p/<slug>/distribution/rollouts`           | Distribution → Rollouts (`#/p/<slug>/distribution/rollouts`)               | live             |
 | `outlets`                     | `#/p/<slug>/distribution/outlets`            | Distribution → Channel setup (`#/p/<slug>/distribution/outlets`)           | live             |
 | `storefronts`                 | `#/p/<slug>/distribution/storefronts`        | Distribution → Storefronts (`#/p/<slug>/distribution/storefronts`)         | live             |
-| `listing`                     | `#/p/<slug>/distribution/listing`            | Distribution → Listing (`#/p/<slug>/distribution/listing`)                 | live             |
+| `listing`                     | `#/p/<slug>/distribution/listing`            | Core → Listing (`#/p/<slug>/settings/presentation/listing`)                | moved (A-27)     |
 | `app-store`                   | `#/p/<slug>/distribution/app-store`          | Distribution → App Store (`#/p/<slug>/distribution/app-store`)             | live             |
 | `access`                      | `#/p/<slug>/distribution/access`             | Distribution → Access (`#/p/<slug>/distribution/access`)                   | live             |
 | `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Package feeds (`#/p/<slug>/distribution/feeds`)             | live             |

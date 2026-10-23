@@ -1436,7 +1436,10 @@ export interface AttentionItemDto {
     | "secret.usage"
     | "signing.missing"
     | "mint.pending"
-    | "credential.expiring";
+    | "credential.expiring"
+    | "storefront.identity_mismatch"
+    | "storefront.identity_ambiguous"
+    | "channel.identity_mismatch";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */
   service: ServiceSlug | null;
@@ -1477,7 +1480,9 @@ export type ChannelAttention =
       reasons: ("format" | "arch" | "unknown-format")[];
     }
   | { code: "credential_expiring" }
-  | { code: "credential_missing" };
+  | { code: "credential_missing" }
+  /** An outlet's declared app differs from the assigned one (A-28.7); names the field, no value. */
+  | { code: "identity_mismatch"; field: string };
 
 export interface ProductPlatformFact {
   platform: string;
@@ -1487,8 +1492,16 @@ export interface ProductPlatformFact {
 }
 
 export interface ChannelCommerceFacet {
-  state: "not_set_up" | "ready";
+  state: "not_set_up" | "ready" | "attention";
   reason: "no_settings" | "no_credential" | "commerce_off" | null;
+  /** The store's typed app differs from the assigned one (A-28.7). */
+  attention: { code: "identity_mismatch" }[];
+}
+
+/** The app a store channel's purchases belong to; `null` without the commerce area (A-28.7). */
+export interface ChannelIdentity {
+  fields: Record<string, string>;
+  source: "typed" | "assigned" | null;
 }
 
 /** One channel of `GET …/distribution/channels`. Credential facts are booleans and codes only. */
@@ -1505,6 +1518,8 @@ export interface ChannelRow {
     platforms: { platform: string; arches: string[] }[];
   };
   commerce: ChannelCommerceFacet | null;
+  /** Store channels only, and only for a session that sees the commerce area. */
+  identity: ChannelIdentity | null;
 }
 
 export interface ChannelsView {
@@ -2523,8 +2538,24 @@ export interface ServiceState {
 
 /** `GET …/commerce` (worker `services/commerce/admin.ts` `view`): the overview's read. */
 export type CommerceStore = "app-store" | "play" | "steam";
+/** Which app a store's purchases belong to (A-28.3). */
+export interface CommerceStoreIdentity {
+  /** The bundle id, package name or Steam app id in force; `null`: the store is off. */
+  value: string | null;
+  source: "typed" | "assigned" | null;
+  /** The app assigned on that store, whether or not it is used. */
+  assigned: string | null;
+  /** A typed value that differs from the assigned one (the typed value is in force). */
+  mismatch: boolean;
+  /** The store's own keys name different apps (D15; the lowest id is in force). */
+  ambiguous?: boolean;
+}
+
 export interface CommerceView {
   licenseEnabled: boolean;
+  /** The stored `commerce.stores` blocks (identity fields as typed; null: derived or unset). */
+  settings?: { appStore?: { appAppleId?: string | null } | null };
+  identity: Record<CommerceStore, CommerceStoreIdentity>;
   setup: Record<
     CommerceStore,
     { configured: boolean; credential: string | null; reason: string | null }
@@ -2987,6 +3018,11 @@ export interface StorefrontDto {
   steps: StorefrontStepDto[];
   pushListing: { stageOnly: boolean } | null;
   confirmationLabel: string;
+  /** Identifiers the flow shows; a value the manifest leaves empty is filled from the assignment. */
+  identifiers?: Record<
+    string,
+    { value: string; source: "manifest" | "assigned" }
+  >;
 }
 
 /** `GET …/distribution/storefronts`. */
@@ -3083,6 +3119,10 @@ export interface ListingResponse {
     modifiedBy: string;
   } | null;
   locales: ListingLocaleDto[];
+  /** Fields a projection fills from the product (A-27.9): the name, accents and icon. */
+  inherited?: Partial<
+    Record<"name" | "tint" | "tintDark" | "icon-master", "presentation">
+  >;
   overrides: {
     store: string;
     locale: string | null;
@@ -5800,6 +5840,11 @@ const rawApi = {
 
   // ── commerce (CM-29) ────────────────────────────────────────────────────────
   commerceView: (slug: string) => call<CommerceView>(`${p(slug)}/commerce`),
+  /** Drop the store's typed identity so the assigned app applies (A-28.3). */
+  commerceUseAssigned: (slug: string, store: CommerceStore) =>
+    call<CommerceView>(`${p(slug)}/commerce/settings/${store}/use-assigned`, {
+      method: "POST",
+    }),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),

@@ -16,7 +16,7 @@ import {
   openPlatformCredential,
   setPlatformPin,
 } from "../src/core/platformCredentials.js";
-import { steamCredential } from "../src/services/commerce/steam.js";
+import { steamCredential } from "../src/services/commerce/stores/steam/purchases.js";
 import { seedProduct } from "./seed.js";
 import { SLUG } from "./releaseRoutesFixture.js";
 import { fakeFetch, STEAM_APP, STEAM_DLC, STEAM_KEY } from "./commerceFake.js";

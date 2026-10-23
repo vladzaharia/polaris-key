@@ -14,6 +14,7 @@ import {
   ARCHES,
   VERBS,
   loadTable,
+  listingColumn,
   renderAll,
   renderManifestTs,
   run,
@@ -268,6 +269,23 @@ describe("reference page", () => {
     ) as string;
     expect(doc).toContain("GENERATED PAGE — do not edit");
     for (const c of TABLE.channels) expect(doc).toContain("`" + c.id + "`");
+  });
+});
+
+describe("listing column (A-27.13)", () => {
+  it("is Pushed, Imported, From the listing or Read directly, from the verbs", () => {
+    const by = (id: string) => TABLE.channels.find((c) => c.id === id)!;
+    expect(listingColumn(by("polaris-key"))).toBe("Read directly");
+    expect(listingColumn(by("app-store"))).toBe("Pushed");
+    expect(listingColumn(by("altstore"))).toBe("From the listing");
+    for (const c of TABLE.channels)
+      expect([
+        "Pushed",
+        "Imported",
+        "From the listing",
+        "Read directly",
+        "none",
+      ]).toContain(listingColumn(c));
   });
 });
 

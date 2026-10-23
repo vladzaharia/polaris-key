@@ -235,6 +235,11 @@ function cases(): Case[] {
       name: `djdl:storefronts?flow=${step}`,
       hash: `#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=${step}`,
     })),
+    // A-27.11: the listing editor scoped to a store (the page's switcher), on the fit tab.
+    {
+      name: "djdl:presentation-listing?store",
+      hash: "#/p/djdl/settings/presentation/listing?tab=fit&store=google-play",
+    },
     // B-216: the New license wizard's segments at 200 % text (they read "Lim…" and "Deli…").
     {
       name: "dialog:new-license",
@@ -287,6 +292,7 @@ const ZOOM_CASES = [
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
+  "djdl:presentation-listing?store",
   "dialog:new-license",
   "long:overview",
   "dialog:set-secret",

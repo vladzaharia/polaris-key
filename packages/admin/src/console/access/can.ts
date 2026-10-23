@@ -71,7 +71,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   rollouts: "ship",
   outlets: "ship",
   storefronts: "ship",
-  listing: "ship",
+  "presentation-listing": "ship",
   "app-store": "ship",
   access: "ship",
   "package-feeds": "ship",

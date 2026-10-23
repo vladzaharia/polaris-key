@@ -233,6 +233,72 @@ describe("Home", () => {
     );
   });
 
+  it("Needs attention lists the store identity items, each with its target (A-28.5)", async () => {
+    const extra = registry();
+    extra["/manage/api/attention"] = {
+      items: [
+        item({
+          id: "djdl:storefront.identity_mismatch:app-store",
+          kind: "storefront.identity_mismatch",
+          service: "commerce",
+          short: "App mismatch",
+          lines: [
+            "App Store purchases are checked against `com.typo.app`, not the assigned app `com.djdl.app`.",
+          ],
+          action: { label: "Review", page: "commerce-overview" },
+          area: "commerce",
+        }),
+        item({
+          id: "djdl:storefront.identity_ambiguous:steam",
+          kind: "storefront.identity_ambiguous",
+          service: "commerce",
+          short: "Keys disagree",
+          lines: [
+            "Steam keys name different apps.",
+            "Purchases are checked against `480`.",
+          ],
+          action: { label: "Review", page: "commerce-overview" },
+          area: "commerce",
+        }),
+        item({
+          id: "djdl:channel.identity_mismatch:ios:bundleId",
+          kind: "channel.identity_mismatch",
+          service: "distribution",
+          short: "App mismatch",
+          lines: [
+            "The `ios` channel declares bundle ID `com.typo.app`; the assigned app is `com.djdl.app`.",
+          ],
+          action: {
+            label: "Review",
+            page: "outlets",
+            query: { outlet: "ios" },
+          },
+          area: "ship",
+        }),
+      ],
+    };
+    boot("#/", { extra });
+    await home();
+    const region = await within(main()).findByRole("region", {
+      name: /^Needs attention/,
+    });
+    const rows = within(region).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    const hrefs = rows.map((row) =>
+      within(row)
+        .getByRole("link", { name: /Review/ })
+        .getAttribute("href"),
+    );
+    expect(hrefs.filter((h) => h === "#/p/djdl/commerce")).toHaveLength(2);
+    expect(hrefs).toContain("#/p/djdl/distribution/outlets?outlet=ios");
+    expect(
+      within(region).getAllByText("com.typo.app", { selector: "code" }),
+    ).toHaveLength(2);
+    expect(
+      within(region).getByText("Steam keys name different apps."),
+    ).toBeTruthy();
+  });
+
   it("Needs attention comes from GET /attention: one fact per line, product, one action; no summary read", async () => {
     const log = boot("#/", { extra: registry() });
     await home();

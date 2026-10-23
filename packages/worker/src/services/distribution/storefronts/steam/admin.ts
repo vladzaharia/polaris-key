@@ -79,6 +79,7 @@ import {
 } from "./checklist.js";
 import { steamCopyCard } from "./copyCard.js";
 import { resolveSteamSetup, type SteamSetup } from "./setup.js";
+import { inheritStored } from "../../listing/inherit.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
@@ -208,7 +209,11 @@ async function getPlan(ctx: AdminCtx): Promise<Response> {
   const adapter = storefrontAdapter("steam")!;
   const resolved = await resolveSteamSetup(env, db, product.slug);
   const appId = resolved.setup?.appId ?? resolved.inert?.appId ?? null;
-  const stored = await readListing(db, product.slug);
+  const stored = await inheritStored(
+    db,
+    product.slug,
+    await readListing(db, product.slug),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

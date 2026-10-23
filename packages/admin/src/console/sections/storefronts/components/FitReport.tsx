@@ -20,6 +20,7 @@ import { toast } from "../../../../ui/toast.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { mutate } from "../../../data/mutations.js";
 import { useListingFit } from "../data.js";
+import { fieldLabel } from "../model/listingFields.js";
 
 const ISSUE_WORDS: Record<string, string> = {
   too_long: "too long",
@@ -36,7 +37,7 @@ export function issueLine(i: ListingFitIssue): string {
     i.limit !== null && i.actual !== null
       ? `: ${i.actual} of ${i.limit}${i.unit === "bytes" ? " bytes" : i.unit === "items" ? "" : ""}`
       : "";
-  return `${i.field}${where} ${ISSUE_WORDS[i.issue] ?? i.issue}${amount}`;
+  return `${fieldLabel(i.field)}${where} ${ISSUE_WORDS[i.issue] ?? i.issue}${amount}`;
 }
 
 function OverrideDialog({
@@ -58,7 +59,7 @@ function OverrideDialog({
     <ConfirmDialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`Override ${issue.from} for ${storeLabel}?`}
+      title={`Override ${fieldLabel(issue.from).toLowerCase()} for ${storeLabel}?`}
       consequences={[
         `${storeLabel} gets this value instead of the shared listing's${issue.locale ? ` in ${issue.locale}` : " in every locale"}.`,
         "The other stores keep the shared value.",

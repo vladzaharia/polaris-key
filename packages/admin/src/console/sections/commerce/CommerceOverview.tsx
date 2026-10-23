@@ -7,7 +7,12 @@
 import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type CommerceStore, type CommerceView } from "../../../api.js";
+import {
+  api,
+  type CommerceStore,
+  type CommerceStoreIdentity,
+  type CommerceView,
+} from "../../../api.js";
 import { fromSeconds, formatTableTime } from "../../../lib/format.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
@@ -26,6 +31,11 @@ import {
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
+import {
+  IdentityAttention,
+  StoreIdentityCell,
+  type StoreIdentityRow,
+} from "./StoreIdentity.js";
 import {
   STOREFRONT_DOCS,
   SET_UP_STOREFRONT,
@@ -55,9 +65,18 @@ const LINK = "py-1 text-accent-fg underline underline-offset-2";
 /** The house vocabulary for what the server says about a store: no raw reasons. */
 function storefrontState(
   s: CommerceView["setup"][CommerceStore],
-): "ready" | "unset" | "credential" {
+  identity?: CommerceStoreIdentity,
+): "ready" | "unset" | "credential" | "mismatch" {
+  // A typed app that differs from the assigned one is what the callout says; the status agrees.
+  if (identity?.mismatch) return "mismatch";
   if (s.configured) return "ready";
-  return s.reason?.startsWith("no settings") ? "unset" : "credential";
+  // No settings, or settings with no app to sell for: not set up. Anything else is the key.
+  const r = s.reason ?? "";
+  return r.startsWith("no settings") ||
+    r === "no_app_assigned" ||
+    r === "own_credential_unpinned"
+    ? "unset"
+    : "credential";
 }
 
 const storeLabel = (id: string): string =>
@@ -114,12 +133,19 @@ export function CommerceOverviewPage({
     const { setup, products, purchases } = view.data;
     // Only the stores the product's builds can reach; every store when the scope is unknown.
     const inScope = STORES.filter((s) => channelInScope(features, s.channel));
-    const ready = inScope.filter((s) => setup[s.id].configured).length;
     const rows = inScope.map((s) => ({
       ...s,
-      state: storefrontState(setup[s.id]),
+      state: storefrontState(setup[s.id], view.data.identity?.[s.id]),
       mapped: products.filter((p) => p.store === s.id).length,
+      identityRow: {
+        id: s.id,
+        label: s.label,
+        identity: view.data.identity?.[s.id],
+        reason: setup[s.id].reason,
+      } satisfies StoreIdentityRow,
     }));
+    // A mismatched store is not ready, whatever the server says about its key.
+    const ready = rows.filter((s) => s.state === "ready").length;
     const latest = purchases.slice(0, 10);
     body = (
       <div className="space-y-6">
@@ -159,7 +185,14 @@ export function CommerceOverviewPage({
           }
         >
           {rows.length > 0 || channelInScope(features, "app-store") ? (
-            <div className="px-5 py-4">
+            <div className="space-y-4 px-5 py-4">
+              {off || rows.length === 0 ? null : (
+                <IdentityAttention
+                  slug={slug}
+                  rows={rows.map((s) => s.identityRow)}
+                  hasAppleId={Boolean(view.data.settings?.appStore?.appAppleId)}
+                />
+              )}
               {rows.length > 0 ? (
                 <>
                   <ul
@@ -168,14 +201,21 @@ export function CommerceOverviewPage({
                   >
                     {rows.map((s) => (
                       <li key={s.id} className="space-y-1 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="font-medium">{s.label}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <span
+                            tabIndex={-1}
+                            data-store-row={s.id}
+                            className="font-medium"
+                          >
+                            {s.label}
+                          </span>
                           <StatusPill
                             domain="storefront"
                             state={s.state}
                             size="sm"
                           />
                         </div>
+                        <StoreIdentityCell slug={slug} row={s.identityRow} />
                         <p className="text-sm text-fg-muted">
                           {s.mapped} mapped{" "}
                           {s.mapped === 1 ? "product" : "products"}
@@ -193,13 +233,19 @@ export function CommerceOverviewPage({
                         <tr className="border-b border-border">
                           <th
                             scope="col"
-                            className="py-2 pe-4 text-start font-medium"
+                            className="py-2 text-start pe-4 font-medium"
                           >
                             Store
                           </th>
                           <th
                             scope="col"
-                            className="py-2 pe-4 text-start font-medium"
+                            className="py-2 text-start pe-4 font-medium"
+                          >
+                            App
+                          </th>
+                          <th
+                            scope="col"
+                            className="py-2 text-start pe-4 font-medium"
                           >
                             Status
                           </th>
@@ -213,10 +259,18 @@ export function CommerceOverviewPage({
                           <tr key={s.id}>
                             <th
                               scope="row"
-                              className="py-2 pe-4 text-start font-medium"
+                              tabIndex={-1}
+                              data-store-row={s.id}
+                              className="py-2 text-start pe-4 font-medium"
                             >
                               {s.label}
                             </th>
+                            <td className="py-2 pe-4">
+                              <StoreIdentityCell
+                                slug={slug}
+                                row={s.identityRow}
+                              />
+                            </td>
                             <td className="py-2 pe-4">
                               <StatusPill
                                 domain="storefront"
@@ -235,7 +289,7 @@ export function CommerceOverviewPage({
                 </>
               ) : null}
               {channelInScope(features, "app-store") ? (
-                <p className="mt-3 text-sm text-fg-muted">
+                <p className="text-sm text-fg-muted">
                   <Link to={r.commerce(slug)} className={LINK}>
                     Map App Store products
                   </Link>
@@ -264,7 +318,7 @@ export function CommerceOverviewPage({
                       key={`${p.store}:${p.purchase}`}
                       className="space-y-1 py-3"
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                         <span className="font-medium">
                           {storeLabel(p.store)}
                         </span>
