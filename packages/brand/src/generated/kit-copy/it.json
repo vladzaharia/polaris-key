@@ -403,7 +403,7 @@
   "signin.replace.consequence": "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo.",
   "signin.replace.inUse": "{device} è in uso in questo momento.",
   "signin.replace.confirm": "Sostituisci e continua",
-  "signin.replace.confirmNamed": "Sostituisci {device} e continua",
+  "signin.replace.confirmNamed": "Sostituisci {device}",
   "signin.replace.back": "Indietro",
   "signin.replace.gone": "Quel dispositivo è già stato rimosso. Scegli di nuovo.",
   "signin.replace.rateLimited": "Troppi cambi di dispositivo. Riprova tra {seconds, plural, one {# secondo} many {# di secondi} other {# secondi}}.",

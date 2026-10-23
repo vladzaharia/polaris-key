@@ -403,7 +403,7 @@
   "signin.replace.consequence": "{device}は{product}からサインアウトされ、代わりに{thisDevice}が使われます。この件についてはメールでお知らせします。",
   "signin.replace.inUse": "{device}は現在使用中です。",
   "signin.replace.confirm": "置き換えて続ける",
-  "signin.replace.confirmNamed": "{device}を置き換えて続ける",
+  "signin.replace.confirmNamed": "{device}を置き換える",
   "signin.replace.back": "戻る",
   "signin.replace.gone": "そのデバイスはすでに削除されています。もう一度選択してください。",
   "signin.replace.rateLimited": "デバイスの変更が多すぎます。{seconds, plural, other {#秒}}後にもう一度お試しください。",

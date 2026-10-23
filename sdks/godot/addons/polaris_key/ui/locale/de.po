@@ -2536,7 +2536,7 @@ msgstr "Ersetzen und fortfahren"
 #. Replace {device}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.confirmNamed"
-msgstr "{device} ersetzen und fortfahren"
+msgstr "{device} ersetzen"
 
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).

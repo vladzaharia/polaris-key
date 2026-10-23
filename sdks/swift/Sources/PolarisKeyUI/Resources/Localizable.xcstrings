@@ -71906,49 +71906,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ ersetzen und fortfahren"
+            "value": "%1$@ ersetzen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remplacer %1$@ et continuer"
+            "value": "Remplacer %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reemplazar %1$@ y continuar"
+            "value": "Reemplazar %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Substituir %1$@ e continuar"
+            "value": "Substituir %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sostituisci %1$@ e continua"
+            "value": "Sostituisci %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@を置き換えて続ける"
+            "value": "%1$@を置き換える"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 교체하고 계속"
+            "value": "%1$@ 교체"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "替换%1$@并继续"
+            "value": "替换%1$@"
           }
         }
       }
