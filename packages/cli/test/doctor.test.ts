@@ -241,9 +241,9 @@ const plain = (out: string): string => out.replace(/\u001b\[[0-9;]*m/g, "");
 /** The frame: colour off, and the run time (which varies) taken off the summary line. */
 const frame = (out: string): string =>
   plain(out)
+    .trimEnd()
     .replace(/ · \d+\.\d s$/m, "")
-    .replace(/\n\d+\.\d s$/, "")
-    .trimEnd();
+    .replace(/\n\d+\.\d s$/, "");
 const deny403 = (url: string): Response | undefined => {
   if (url.endsWith("/manage/api/me"))
     return json(200, {
@@ -528,8 +528,7 @@ describe("pkey doctor: one report, one count", () => {
             distribution/
             outlets
 
-      2 to do · 0 warnings
-      0.0 s"
+      2 to do · 0 warnings"
     `);
     for (const line of text.split("\n")) {
       expect([...line].length).toBeLessThanOrEqual(24);
