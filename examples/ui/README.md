@@ -17,7 +17,7 @@ Every sample:
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
 | Web components    | One static HTML page using the CDN module; an htmx page                                                              | `elements/`                            | Static page: fixtures; htmx and CDN: not yet  |
 | React             | A Vite app with the whole flow; a Next.js App Router app with a `"use client"` boundary and settings page            | `react-vite/`, `react-next/`           | Vite: ships; Next.js: ships (own npm install) |
-| Electron          | An Electron Forge app using `exposePolarisBridge`, the `@polaris-key/node/electron/preload` import and the React kit | `electron/`                            | Not yet                                       |
+| Electron          | An Electron Forge app using `exposePolarisBridge`, the `@polaris-key/node/electron/preload` import and the React kit | [`electron/`](electron/)               | Ready                                         |
 | Vue               | A Nuxt app                                                                                                           | `vue/`                                 | Not yet                                       |
 | Svelte            | A SvelteKit app                                                                                                      | `svelte/`                              | Not yet                                       |
 | Angular           | An Angular standalone app                                                                                            | `angular/`                             | Not yet                                       |
@@ -32,8 +32,8 @@ Every sample:
 | Terminal (Node)   | The `tidewater` demo CLI: a commander program with the kit's verbs, on fixtures or `--live`                          | [`terminal-node/`](terminal-node/)     | Ready                                         |
 | Terminal (Python) | The `tidewater` demo CLI in Python: the kit's verbs under the product's name, on fixtures                            | [`terminal-python/`](terminal-python/) | Ready                                         |
 
-Until the kits are rebuilt, [`../node-electron`](../node-electron) shows today's React kit in
-Electron over the `PolarisBridge`.
+[`../node-electron`](../node-electron) is the "your own UI" lane: the bridge without the kit's
+screens.
 
 ## Adding a sample
 

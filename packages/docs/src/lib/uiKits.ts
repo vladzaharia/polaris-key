@@ -65,7 +65,8 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "must",
     package: "@polaris-key/node/electron",
-    status: { planned: "UK-06" },
+    status: { ships: true },
+    samples: ["examples/ui/electron/"],
   },
   {
     id: "vue",

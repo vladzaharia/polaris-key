@@ -18,3 +18,6 @@ npm install && npm start
 
 Add an `index.html` that loads `dist/renderer.js` into `<div id="root">`. Replace
 `src/polaris.config.ts` with the file `pkey sdk --lang node --write` generates.
+
+This sample brings its own UI. For the kit's screens in Electron Forge, see
+[`../ui/electron`](../ui/electron).
