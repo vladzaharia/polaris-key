@@ -57,8 +57,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] One listing store
-- [ ] Presentation edits show on every channel's listing
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [x] Presentation edits show on every channel's listing (A-27.9, phase 1)
+- [x] Docs, in this PR (A-27.13) ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -109,3 +109,15 @@ A-27.8: the download page's `listing` reads the model's own fields (`modelListin
 A-27.9: `listing/inherit.ts` applies HA-12's order where a projection or fit report is built (never in `readListing`): the listing's name over `products.name`, the presentation accent and accentDark over the listing's tint, the presentation icon for an `icon-master` the listing lacks. `developerName` has no Presentation source (`presentationText` takes it from the listing alone), so it passes through unmarked.
 
 Criterion 2 as built: "unless the listing sets that field" holds for `name` (the listing's name beats `products.name`). The tint follows HA-12's precedence (D3): a presentation accent or accentDark outranks the listing's tint and is marked inherited. `developerName` is not inherited (Presentation has no source for it). `tint` and `tintDark` reach only the AltStore and Obtainium feeds: no store projection column maps them, so in the projections the visible inheritance is `name`. `icon-master` inheritance is reported in the admin view only (the projections take no asset input).
+
+## Phase 1 close notes (A-27.13)
+
+Phase 1 (A-27.1 to .13) is built; "One listing store" and the green gate stay open until phase 2 (A-27.14) and the lead's gate. Leftovers, none blocking:
+
+- The Fit report row and override dialog still show the raw issue code (`over_limit`) next to the field label.
+- A failed Push shows the generic error: `ApiError` carries no server message, so showing the store's text needs a server-side change.
+- `dir="auto"` is on the Overrides editor but not on the Text tab's inputs (an RTL locale shows left to right).
+- The phone tab strip cuts "Push" with no fade or scroll hint.
+- `tools/channel-literals.test.ts` baseline fails on `core/components/listing/FieldSource.tsx` (3 store-name literals, from A-27.12): use `channelLabel(id)` or add a baseline row.
+- The `gen constants` drift (A-20.9's channel reasons) resolves at the chain merge.
+- Migration `0199_listing_truth_moves.sql` is a placeholder number; the lead numbers it at merge.

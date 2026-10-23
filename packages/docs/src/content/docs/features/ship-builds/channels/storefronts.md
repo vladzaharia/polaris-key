@@ -114,7 +114,7 @@ Every image slot of the listing, grouped by store, from what
 
 ## Listing push
 
-**Ship builds → Listing → Push** sends a store its listing text and accepted images, outside the
+**Settings → Presentation → Listing → Push** sends a store its listing text and accepted images, outside the
 flow, with a plain confirmation. It never submits for review: Google Play always stages the change
 (it waits until you send it with the flow's typed **Submit**), and the Microsoft Store keeps its
 pending submission uncommitted. A store appears there once its adapter can push a listing.

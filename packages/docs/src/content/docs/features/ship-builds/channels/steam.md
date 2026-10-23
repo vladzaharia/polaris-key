@@ -74,6 +74,10 @@ Key does not set it live: it has not yet been verified that a group-scoped key m
 verified, this release needs the app's name typed to confirm, like a release on every other
 store.
 
+## Listing
+
+Steam's fields are copy cards from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)): you paste them in Steamworks, so they are imported and shown, never pushed. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront).
+
 ## The store page
 
 **The copy card** shows Steam's text fields for each locale of the shared listing: the name, the

@@ -1082,6 +1082,48 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
 - **Residual.** A repo writer can set these fields while they are empty or manifest-owned, and
   an operator who wants a field theirs types it once (that removes the manifest's ownership).
 
+### The listing-truth backfill job (A-27.6, A-27.7)
+
+**What arrived.** The migration job `distribution.listing-truth` (`services/distribution/
+listingTruthJob.ts`; tests: `test/listingTruthJob.test.ts`) copies each product's root listing
+from the manifest blob (`dist_listing`) into the listing model, so the model is the one source
+(phase 1 of A-27; the blob stays as the fallback). An operator runs it through the migration
+runner: dry run, apply pinned to the report read, down. Nothing else starts it.
+
+- **What apply can change.** The same fields, through the same statements, as the ingest
+  ([above](#the-ingest-writes-the-listing-model-a-274)): `name`, `developerName`, `category`,
+  `tint`, `contactEmail`, `urls.website`, `urls.support` and the default locale's `subtitle` and
+  `description`, only where the field is empty or its provenance is `manifest`. A typed or
+  store-imported value is never changed. Values the model refuses are skipped, never cut. Apply
+  may create the product's model rows with empty provenance. It never touches the blob, art,
+  overrides or another product. One batch per product, so a unit is all or nothing.
+- **The ledger.** `dist_listing_truth_moves` (Distribution's) is written first, in the same batch:
+  per field, what it held (`prior_value_json`, `prior_provenance`) and what apply wrote
+  (`applied_value_json`). `INSERT OR IGNORE` keeps the first, true prior state through a re-run.
+  **The ledger copies listing text, contact emails included, until `down` runs or the ledger is
+  pruned.** Those values are the operator's or the manifest's public listing data, and the table
+  is not reachable from any route; it is, however, a second copy of customer-facing text and
+  addresses, so it is dropped when it has served its purpose (RUNBOOK, Migration ledger).
+- **What down can and cannot restore.** Down puts back the prior value and provenance only
+  where the field **still equals what apply wrote and is still owned by `manifest`**; both tests
+  sit in the restore UPDATE's WHERE clause, so an operator's later edit, a store import that
+  rewrote the identical text (its provenance is then not `manifest`) and a later resync's new
+  value are all left alone. The restore and the ledger delete for a field are one batch. A field
+  whose move was superseded loses its ledger row without being restored. Down does not delete the
+  model rows apply created; they stay empty, and the portal reads the blob again.
+- **Failure modes.** A killed call leaves either the whole unit or none of it. Resume skips
+  finished units; a call killed after its batch re-plans to nothing. Two known gaps lose no data:
+  a race can make the SQL guard skip a field the plan expected, leaving a ledger row for a move
+  that never happened (down finds the value different and leaves it), and a legacy `import` row
+  with no provenance map is skipped by the guard though the plan counts it, so its dry run keeps
+  reporting changes.
+- **Hostile manifest.** The only attacker-influenced input is the root listing, already validated
+  at ingest and checked again against the model's limits and URL rules. The field set is fixed in
+  code, values are bound parameters, and the manifest cannot name the product, a field or a table.
+  It can make its own product's listing say what its manifest says, as before, never overwrite
+  what an operator typed.
+- **Report.** The dry run's detail names fields, limits and art slots, never stored values.
+
 ### The public download page (P2b-06)
 
 **What arrived.** A public, cookie-free download page per product (`services/distribution/

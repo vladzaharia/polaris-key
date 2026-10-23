@@ -128,6 +128,10 @@ it: it comes from the app the product is assigned on App Store.
 A channel in `.pkey/distribution` that names a different app than the assignment raises the same
 kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#store-identity).
 
+## Listing
+
+The App Store's listing is projected from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)) and can be imported from App Store Connect into it. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront). **Push listing** sends the text and accepted screenshots to the pinned app, without submitting for review ([Pushing the listing](/docs/features/ship-builds/channels/app-store-distribute/#pushing-the-listing)).
+
 ## What it reads
 
 **Webhooks.** App Store Connect sends a signed notification to

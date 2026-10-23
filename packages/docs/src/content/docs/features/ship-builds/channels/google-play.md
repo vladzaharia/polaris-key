@@ -150,6 +150,10 @@ it: it comes from the app the product is assigned on Google Play.
 A channel in `.pkey/distribution` that names a different app than the assignment raises the same
 kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#store-identity).
 
+## Listing
+
+Google Play's listing is projected from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)) and can be imported from Play into it. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront). **Push listing** stages the change; it is sent for review only with the flow's typed **Submit**. A short form of the release notes (500 characters) comes from the listing's release notes.
+
 ## What it reads
 
 Every tick opens a **throwaway edit**, lists its tracks, and deletes it:

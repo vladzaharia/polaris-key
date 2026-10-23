@@ -198,6 +198,10 @@ manifest. Polaris Key never opens, comments on or automates a Flathub pull reque
 forbids AI-generated or AI-assisted manifest content and any AI tool opening or automating a
 submission pull request. Writing and submitting the manifest is the developer's job.
 
+## Listing
+
+AltStore, SideStore, Obtainium and the F-Droid repository take their name, developer, description, tint and icon from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)); nothing is pushed. A channel's own listing text overrides it for that channel only.
+
 ## Routes
 
 | Method   | Path (under `/<product>/distribution/`) | Auth                             |
