@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "../../src/lib/http.js";
 import {
   ApiError,
   RELEASE_POLICY_ERROR_MESSAGES,
@@ -159,10 +160,8 @@ const TABLE: [
     { title: "Something went wrong", action: "copy-details" },
   ],
   [
-    "a fetch failure the api client tagged",
-    Object.assign(new TypeError("NetworkError when attempting to fetch"), {
-      isFetchFailure: true,
-    }),
+    "a network failure (status 0)",
+    new HttpError(0, { code: "network" }),
     {},
     { title: "Can't reach Polaris Key", action: "retry" },
   ],

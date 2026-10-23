@@ -15,7 +15,7 @@
  *   field (fixes TIR-1, LDT-2, PRD-6 at the client).
  *
  * After a failed submit focus moves to the first invalid field (ADMIN.md §5.6), and the server's
- * `ApiError.fields` land on the matching fields.
+ * `HttpError.fields` land on the matching fields.
  */
 
 import * as React from "react";
@@ -28,7 +28,7 @@ import {
   type UseFormReturn,
 } from "react-hook-form";
 import { AlertCircle } from "lucide-react";
-import { ApiError } from "../api.js";
+import { HttpError } from "../lib/http.js";
 import { cn } from "../lib/cn.js";
 
 // ── diff ───────────────────────────────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export interface AdminFormOptions<T extends FieldValues> {
   resetOn?: readonly unknown[];
   onSubmit: (values: T, ctx: { server: T }) => unknown | Promise<unknown>;
   /**
-   * Map a submit error onto fields. The default maps an `ApiError`'s `fields` to "Check this
+   * Map a submit error onto fields. The default maps an `HttpError`'s `fields` to "Check this
    * value." on each named field. Return `null` to show the error only in the summary.
    */
   mapServerErrors?: (error: unknown) => FieldErrorMap | null;
@@ -148,7 +148,7 @@ function leafPaths(obj: unknown, prefix = ""): string[] {
 }
 
 function defaultServerErrors(error: unknown): FieldErrorMap | null {
-  if (error instanceof ApiError && error.fields?.length) {
+  if (error instanceof HttpError && error.fields?.length) {
     return Object.fromEntries(
       error.fields.map((f) => [f, "Check this value."]),
     );
