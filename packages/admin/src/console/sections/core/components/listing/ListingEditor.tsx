@@ -39,6 +39,7 @@ import { useListing, useStorefronts } from "../../../storefronts/data.js";
 import { FitReport } from "../../../storefronts/components/FitReport.js";
 import { ImportPanel } from "../../../storefronts/components/ImportPanel.js";
 import { SlotBoard } from "../../../storefronts/components/SlotBoard.js";
+import { FieldSource } from "./FieldSource.js";
 import { NotesTab } from "./ListingNotes.js";
 import { PushTab } from "./ListingPush.js";
 
@@ -213,6 +214,61 @@ function draftOf(data: ListingResponse, locale: string): Draft {
   };
 }
 
+/** The provenance key of an app field, and the import path the manifest can supply it at. */
+const APP_SOURCES: Partial<
+  Record<keyof Draft, { key: string; revert?: string }>
+> = {
+  appName: { key: "name", revert: "name" },
+  developerName: { key: "developerName", revert: "developerName" },
+  category: { key: "category", revert: "category" },
+  contactEmail: { key: "contactEmail", revert: "contactEmail" },
+  copyright: { key: "copyright" },
+  website: { key: "urls.website", revert: "urls.website" },
+  support: { key: "urls.support", revert: "urls.support" },
+  privacy: { key: "urls.privacy" },
+  marketing: { key: "urls.marketing" },
+};
+/** The locale fields the manifest supplies (its default locale's subtitle and description). */
+const MANIFEST_LOCALE_KEYS: readonly string[] = ["subtitle", "description"];
+
+/**
+ * Where one field's value comes from: its source when it holds a value (`admin` is typed text),
+ * the path the manifest can revert it at, and whether the product supplies it when empty.
+ */
+export function fieldSourceOf(
+  data: ListingResponse,
+  locale: string,
+  name: keyof Draft,
+): { source: string | null; revert?: string; inherited: boolean } {
+  const app = APP_SOURCES[name];
+  if (app) {
+    const value =
+      name === "appName"
+        ? data.listing?.app.name
+        : ((data.listing?.app as Record<string, unknown> | undefined)?.[name] ??
+          data.listing?.app.urls?.[name]);
+    const has = typeof value === "string" && value !== "";
+    return {
+      source: has ? (data.listing?.provenance[app.key] ?? "admin") : null,
+      ...(app.revert ? { revert: app.revert } : {}),
+      inherited: !has && name === "appName" && !!data.inherited?.name,
+    };
+  }
+  const l = data.locales.find((x) => x.locale === locale);
+  const v = (l as unknown as Record<string, unknown> | undefined)?.[name];
+  const has = Array.isArray(v)
+    ? v.length > 0
+    : typeof v === "string" && v !== "";
+  const isDefault = locale === (data.listing?.app.defaultLocale ?? locale);
+  return {
+    source: has ? (l?.provenance[name] ?? "admin") : null,
+    ...(MANIFEST_LOCALE_KEYS.includes(name) && isDefault
+      ? { revert: `locales.${locale}.${name}` }
+      : {}),
+    inherited: false,
+  };
+}
+
 const orNull = (v: string): string | null =>
   v.trim() === "" ? null : v.trim();
 
@@ -266,6 +322,34 @@ export function listingPatch(
   };
 }
 
+function SourceLine({
+  slug,
+  data,
+  locale,
+  name,
+  label,
+}: {
+  slug: string;
+  data: ListingResponse;
+  locale: string;
+  name: keyof Draft;
+  label: string;
+}): React.ReactElement | null {
+  const f = fieldSourceOf(data, locale, name);
+  return (
+    <FieldSource
+      slug={slug}
+      label={label}
+      source={f.source}
+      inherited={f.inherited}
+      {...(f.revert ? { revertPath: f.revert } : {})}
+      {...(name === "appName"
+        ? { presentationBody: { app: { name: null } } }
+        : {})}
+    />
+  );
+}
+
 function TextTab({
   slug,
   data,
@@ -307,25 +391,31 @@ function TextTab({
     opts: { long?: boolean; max?: number; mono?: boolean } = {},
   ) => (
     <SettingsRow label={label} help={help}>
-      <FormField
-        className={opts.long ? "w-full sm:w-[32rem]" : "w-full sm:w-80"}
-        hideLabel
-        name={name}
-        label={label}
-      >
-        {(f) =>
-          opts.long ? (
-            <Textarea {...f} maxLength={opts.max} />
-          ) : (
-            <Input
-              {...f}
-              maxLength={opts.max}
-              mono={opts.mono}
-              autoComplete="off"
-            />
-          )
-        }
-      </FormField>
+      <div className={opts.long ? "w-full sm:w-[32rem]" : "w-full sm:w-80"}>
+        <FormField hideLabel name={name} label={label}>
+          {(f) =>
+            opts.long ? (
+              <Textarea {...f} maxLength={opts.max} />
+            ) : (
+              <Input
+                {...f}
+                maxLength={opts.max}
+                mono={opts.mono}
+                autoComplete="off"
+              />
+            )
+          }
+        </FormField>
+        {name !== "defaultLocale" ? (
+          <SourceLine
+            slug={slug}
+            data={data}
+            locale={locale}
+            name={name}
+            label={label}
+          />
+        ) : null}
+      </div>
     </SettingsRow>
   );
 

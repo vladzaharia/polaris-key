@@ -11,8 +11,8 @@
  *   - Revert to manifest: a claimed slot whose source the manifest names goes back to it.
  *   - Delete copy: drops Polaris Key's copy at once (the image host stops serving it).
  *
- * The wordmark, the accent and the description are in the mockup but no hosted slot or served
- * field holds them yet, so they have no row here.
+ * Name, Accent and Description sit under the art (A-27.12): the base every channel's listing starts
+ * from, each with its source (`PresentationBaseRows`). The wordmark has no hosted slot yet.
  */
 
 import * as React from "react";
@@ -26,6 +26,7 @@ import { qk } from "../../../data/queries.js";
 import { useProduct } from "../../../data/hooks.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { HostingRows } from "../components/PresentationHosting.js";
+import { PresentationBaseRows } from "../components/PresentationBaseRows.js";
 import { PresentationPreview } from "../components/PresentationPreview.js";
 import { PresentationSlotRow } from "../components/PresentationSlotRow.js";
 import { fetchHostedAssets, layout } from "../model/presentationSlots.js";
@@ -114,6 +115,7 @@ export function PresentationPage({
             {presentation.map(slotRow)}
             {slotRow(heroSlot!)}
           </SettingsSection>
+          <PresentationBaseRows slug={slug} />
           <SettingsSection id="presentation-listing" title="Listing">
             {listingRest.map(slotRow)}
           </SettingsSection>

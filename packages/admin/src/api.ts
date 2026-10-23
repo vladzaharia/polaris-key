@@ -3119,6 +3119,10 @@ export interface ListingResponse {
     modifiedBy: string;
   } | null;
   locales: ListingLocaleDto[];
+  /** Fields a projection fills from the product (A-27.9): the name, accents and icon. */
+  inherited?: Partial<
+    Record<"name" | "tint" | "tintDark" | "icon-master", "presentation">
+  >;
   overrides: {
     store: string;
     locale: string | null;
