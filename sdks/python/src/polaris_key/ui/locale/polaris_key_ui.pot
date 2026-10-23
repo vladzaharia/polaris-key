@@ -5435,6 +5435,86 @@ msgstr ""
 msgid "core.codes.account_required.message"
 msgstr ""
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr ""
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr ""
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr ""
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr ""
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr ""
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr ""
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr ""
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr ""
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr ""
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr ""
+
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr ""
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr ""
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr ""
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr ""
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr ""
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr ""
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"

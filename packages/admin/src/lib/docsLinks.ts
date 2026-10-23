@@ -71,6 +71,8 @@ export const DOCS_LINKS = {
   // screens" opens the kit's page, "Integrate directly with the library" the SDK's own-UI page.
   // A path may end in a #fragment; the docs build's slug manifest checks it names a heading.
   notSeenYet: "/docs/build/troubleshooting/#not-seen-yet",
+  // U-05.20: Cloud Sync → Usage (the nav table carries page paths only, never a fragment).
+  syncUsage: "/docs/features/cloud-sync/#in-the-console",
   // The server card (SP-64): the contract, then the framework-free core.
   serverVerify: "/docs/build/servers/",
   serverCore: "/docs/build/servers/#use-the-core-directly",

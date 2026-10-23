@@ -45,6 +45,13 @@ export interface Env {
    */
   SINGLE_USE: DurableObjectNamespace;
   /**
+   * Cloud Sync's per-person store (U-05.7, `services/sync/do/cloudSyncDo.ts`): one SQLite-backed
+   * object per (product, subject). Named only by `services/sync/do/client.ts`, which takes the
+   * subject from the authenticated principal; unbound, Cloud Sync answers nothing (no route yet).
+   * @inventory binding stores
+   */
+  CLOUD_SYNC: DurableObjectNamespace;
+  /**
    * Update-health counters (P6-03, `src/core/updateHealthDo.ts`): one object per (product,
    * deliverable, release), reached only through `core/updateHealth.ts`. OPTIONAL: unbound, the
    * report still stores its `updates` but counts nothing, and the funnel and auto-halt read no

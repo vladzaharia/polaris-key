@@ -2050,6 +2050,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_message">请在此设备上登录你的Polaris Locker账户，然后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_title">同步已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_message">此设备太久没有同步。它将从你已保存的数据重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_title">同步不匹配</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_message">此同步属于另一台设备。请重新启动应用后再试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_title">设置未保存</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_message">该值对此设置无效。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_title">不允许此更改</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_message">此设置不允许该更改。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_title">未同步</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_message">此设置不会同步到你的账户。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_title">未知的集合</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_message">此集合不可用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_title">存储空间已满</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_message">你的同步存储空间已满。请释放一些空间后再试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_title">同步已暂停</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_message">同步暂时暂停。你的更改会保留，稍后同步。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">电子邮件未验证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。</string>

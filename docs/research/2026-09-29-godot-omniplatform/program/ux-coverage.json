@@ -15637,9 +15637,9 @@
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["U-05", "ST-16", "U-32"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin); worker has services/sync/settings.ts only [paths re-pointed 2026-10-22; status not re-verified]"
+      "evidence": "CloudSyncSetup.tsx: the paused callout with Resume writes (U-05.10), and Home's attention item 'Cloud Sync writes are paused for every product' (worker console/lib/attention.ts, kind sync.paused) that opens the resume dialog with ?resume=1 (U-05.21); test/syncSetup.test.tsx, adminAttention.test.ts"
     },
     {
       "id": "config.cloud-sync-product-role",
@@ -15650,9 +15650,9 @@
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["U-32", "ST-16", "ST-28"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
+      "evidence": "CloudSyncSetup.tsx: the pause (banner and Paused pill, who and when) comes from the usage read, so a member without Platform access sees it; they see the platform controls without buttons, who can change them said once, and the default and tier rows read-only from the usage read (test/syncSetup.test.tsx)"
     },
     {
       "id": "config.cloud-sync-usage",
@@ -15663,9 +15663,9 @@
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["U-32", "U-05"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncUsage.tsx (U-05.20): tiles, storage by tier with over-80 warning text, what's stored bar (max 640 px) with text alternative, where people sync from, player/person from the catalog, MiB/GiB, phone and wide layouts, empty/error/off states; not built: the week delta, the product total on Storage used, 'waiting for room' and the platform status line"
     },
     {
       "id": "config.cloud-sync",
@@ -15687,7 +15687,7 @@
       ],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/sections/sync/pages/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin) [paths re-pointed 2026-10-22; status not re-verified]"
+      "evidence": "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx (U-05.21: Default and per-tier rows from api.syncUsage, a null tier 'Uses the default', 'N people over 80%' only above zero, 'Without a license: 1 MiB, no files', See Usage, the product ceiling meter with Change… in CeilingDialog.tsx at L2 up and L1 down, Pause all writes) with the tier names linking to Tiers, per-read errors and skeletons, a Limits aside from 1600 px and Pause first on a phone; test/syncSetup.test.tsx; the Saves template pane and In your game code are not built here"
     },
     {
       "id": "config.effective",
@@ -15796,9 +15796,9 @@
       "surface": "dialog",
       "overlays": ["ST-48"],
       "owners": ["U-05", "ST-16", "U-32"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "searched admin console for writesPaused/Pause Cloud Sync: nothing"
+      "evidence": "packages/admin/src/console/sections/sync/PauseWritesDialog.tsx (U-05.10: L2 pause and L1 resume with a reason, the step-up state) over test/syncSetup.test.tsx"
     },
     {
       "id": "config.profile",
@@ -15822,9 +15822,9 @@
       "surface": "dialog",
       "overlays": ["ST-48"],
       "owners": ["ST-16", "U-05", "U-01b"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "searched admin console for cloudSync.bytes/default storage: nothing; Platform stores pages are unrelated"
+      "evidence": "packages/admin/src/console/sections/sync/StorageDefaultDialog.tsx (U-05.10: the ST-16 reach plan, L2) over test/syncSetup.test.tsx"
     },
     {
       "id": "distribution.channel-app-store",

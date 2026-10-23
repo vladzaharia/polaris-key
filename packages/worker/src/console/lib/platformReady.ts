@@ -11,6 +11,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { getProduct, listProducts } from "../../core/products/store.js";
+import { canSeeProduct, type Principal } from "../authz.js";
 import { SYSTEM_PRODUCT_SLUG, channelLabel } from "@polaris-key/manifest";
 import { storesMissingAccount } from "../../services/distribution/public.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
@@ -54,17 +55,33 @@ export function listOf(items: readonly string[]): string {
     : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-/** "Diceroll's Steam uploads need a Steamworks publisher key." */
+/**
+ * "Diceroll's Steam uploads need a Steamworks publisher key." Products the caller cannot see
+ * (`canSeeProduct`) are never named: they are counted, "2 other products' Steam uploads need…",
+ * so a Platform admin with no product grant learns the number and nothing that identifies one.
+ */
 function storeSentence(
   m: { store: string; products: string[] },
   names: ReadonlyMap<string, string>,
 ): string {
   const label = STORE_LABEL[m.store] ?? m.store;
-  const who = m.products.map((p) => names.get(p) ?? p);
+  const who = m.products.flatMap((p) => {
+    const n = names.get(p);
+    return n === undefined ? [] : [n];
+  });
+  const hidden = m.products.length - who.length;
   const needs = STORE_NEEDS[m.store] ?? "a platform account";
-  return who.length === 1
-    ? `${who[0]}'s ${label} uploads need ${needs}.`
-    : `${label} uploads for ${listOf(who)} need ${needs}.`;
+  if (hidden > 0 && who.length === 0)
+    return hidden === 1
+      ? `Another product's ${label} uploads need ${needs}.`
+      : `${hidden} other products' ${label} uploads need ${needs}.`;
+  const named =
+    hidden > 0
+      ? [...who, `${hidden} other ${hidden === 1 ? "product" : "products"}`]
+      : who;
+  return named.length === 1
+    ? `${named[0]}'s ${label} uploads need ${needs}.`
+    : `${label} uploads for ${listOf(named)} need ${needs}.`;
 }
 
 /** The cron runs every 15 minutes (`wrangler.toml`); one missed run is not an outage. */
@@ -74,6 +91,7 @@ export async function platformReady(
   env: Env,
   db: Db,
   now: number,
+  principal: Principal | null | undefined,
 ): Promise<PlatformReady> {
   const warnings = new Set((await settingsWarnings(env)).map((w) => w.code));
   const beat = await db
@@ -85,7 +103,9 @@ export async function platformReady(
   const names = new Map(
     missingStores.length === 0
       ? []
-      : (await listProducts(db)).map((p) => [p.slug, p.name || p.slug]),
+      : (await listProducts(db))
+          .filter((p) => canSeeProduct(principal, p))
+          .map((p) => [p.slug, p.name || p.slug]),
   );
   const system = await getProduct(db, SYSTEM_PRODUCT_SLUG);
 

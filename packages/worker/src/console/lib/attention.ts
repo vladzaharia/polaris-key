@@ -10,14 +10,23 @@
  * carries the area its fix lives in, so a member who cannot open the fix never sees the item
  * (`can()` per item, ST-29). Kinds that need a table not yet in the schema (a subscription token
  * that is about to expire, LX-41) join here when it lands.
+ *
+ * A fact about the platform itself (the Cloud Sync pause, ST-44b) is composed once by
+ * `platformAttention`, with `product: null`, not once per product. It ignores product visibility
+ * and is shown only to a member who can edit the Platform area, so a Platform admin with no
+ * product grant sees it and a product role never does. `since`, `by` and `reason` ride on it for
+ * that audience alone.
  */
 
 import { channelLabel } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
+import { serviceStateOf } from "../../core/services.js";
+import { syncPauseNotice } from "../../core/accounts/syncPause.js";
+import type { Env } from "../../platform/env.js";
 import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
-import { can, productScope } from "../authz.js";
+import { can, PLATFORM, productScope } from "../authz.js";
 import {
   expiringCredentials,
   outletIdentityMismatches,
@@ -40,9 +49,13 @@ export type AttentionKind =
   | "credential.expiring"
   | "storefront.identity_mismatch"
   | "storefront.identity_ambiguous"
-  | "channel.identity_mismatch";
+  | "channel.identity_mismatch"
+  | "sync.paused";
 
-/** Where the fix lives: a product page, by the console's page id. */
+/**
+ * Where the fix lives: a product page by the console's page id, or a global page id when the
+ * item's `product` is null.
+ */
 export interface AttentionAction {
   label: string;
   page: string;
@@ -50,9 +63,13 @@ export interface AttentionAction {
 }
 
 export interface AttentionItem {
-  /** Unique across products: `<slug>:<kind>:<subject>`. */
+  /**
+   * Unique across products: `<slug>:<kind>:<subject>`. A platform item is `@platform:<kind>`;
+   * `@` is outside the slug alphabet, so the two never collide.
+   */
   id: string;
-  product: { slug: string; name: string };
+  /** `null` for a platform item (`platformAttention`). */
+  product: { slug: string; name: string } | null;
   kind: AttentionKind;
   tone: AttentionTone;
   /** The service the fix belongs to (the row's accent), `null` for the product itself. */
@@ -64,6 +81,12 @@ export interface AttentionItem {
   action: AttentionAction;
   /** The area the fix needs; the item is dropped for a member who lacks it. */
   area: AreaId;
+  /** Platform items only: epoch seconds the pause began. */
+  since?: number | null;
+  /** Platform items only: the display name of who turned it on; never an id. */
+  by?: string | null;
+  /** Platform items only: the operator's own reason. */
+  reason?: string | null;
 }
 
 /** A credential expiring within this many seconds is listed (14 days). */
@@ -300,13 +323,64 @@ export async function productAttention(
 
 const RANK: Record<AttentionTone, number> = { danger: 0, warning: 1 };
 
-/** Every visible product's items the principal may act on, the worst first. */
+/**
+ * The platform's own items, composed once. Today that is the Cloud Sync pause: shown to a member
+ * who can edit the Platform area (whatever their product grants), only while writes are paused
+ * and at least one product has Cloud Sync on. `products` is every non-system product, not just
+ * the ones the caller can see, so the existence check never depends on the caller's grants and
+ * the answer names no product.
+ */
+export async function platformAttention(
+  env: Env,
+  db: Db,
+  principal: Principal | null | undefined,
+  products: readonly ProductRow[],
+): Promise<AttentionItem[]> {
+  if (!can(principal, PLATFORM, "platform", "edit")) return [];
+  if (!products.some((p) => serviceStateOf(p).services.sync.enabled)) return [];
+  const notice = await syncPauseNotice(env, db, true);
+  if (!notice) return [];
+  return [
+    {
+      id: "@platform:sync.paused",
+      product: null,
+      kind: "sync.paused",
+      tone: "warning",
+      service: "sync",
+      short: "Writes paused",
+      lines: [
+        "Cloud Sync writes are paused for every product.",
+        "Devices keep their changes and send them on resume.",
+      ],
+      action: {
+        label: "Resume writes",
+        page: "platform-settings",
+        query: { setting: "cloudSync.writesPaused" },
+      },
+      area: "platform",
+      since: notice.since,
+      by: notice.by,
+      reason: notice.reason,
+    },
+  ];
+}
+
+/**
+ * The platform's items, then every visible product's items the principal may act on, the worst
+ * first; within a tone the platform's come first, then products by name. `allProducts` is every
+ * non-system product (default: `products`), for the platform items' existence check.
+ */
 export async function attentionAcross(
   db: Db,
   products: ProductRow[],
   principal: Principal | null | undefined,
   now: number,
+  env?: Env,
+  allProducts: readonly ProductRow[] = products,
 ): Promise<AttentionItem[]> {
+  const platform = env
+    ? await platformAttention(env, db, principal, allProducts)
+    : [];
   const per = await Promise.all(
     products.map(async (p) => {
       const scope = productScope(p);
@@ -315,12 +389,11 @@ export async function attentionAcross(
       return items.filter((i) => sees(i.area));
     }),
   );
-  return per
-    .flat()
-    .sort(
-      (a, b) =>
-        RANK[a.tone] - RANK[b.tone] ||
-        a.product.name.localeCompare(b.product.name) ||
-        a.id.localeCompare(b.id),
-    );
+  return [...platform, ...per.flat()].sort(
+    (a, b) =>
+      RANK[a.tone] - RANK[b.tone] ||
+      (a.product === null ? 0 : 1) - (b.product === null ? 0 : 1) ||
+      (a.product?.name ?? "").localeCompare(b.product?.name ?? "") ||
+      a.id.localeCompare(b.id),
+  );
 }

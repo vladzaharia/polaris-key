@@ -20,6 +20,10 @@ import { asR2, R2Mock } from "./r2Mock.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 import { makeSingleUseNamespace } from "./singleUseMock.js";
+import {
+  CloudSyncNamespaceMock,
+  asCloudSyncNamespace,
+} from "./cloudSyncDoMock.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -60,6 +64,8 @@ export function makeEnv(kv: KvMock, _slugs: string[]): Env {
     DB: undefined,
     RL: makeRlNamespace(),
     SINGLE_USE: makeSingleUseNamespace(),
+    // The store hooks (merge, delete, export, size) reach the person's object (U-05.7).
+    CLOUD_SYNC: asCloudSyncNamespace(new CloudSyncNamespaceMock()),
     PLATFORM_KEK: TEST_KEK,
     BLOBS: asR2(new R2Mock()),
   };

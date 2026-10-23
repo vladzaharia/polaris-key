@@ -23,6 +23,8 @@ export interface MeterProps {
    */
   format?: MeterFormat;
   tone?: MeterTone;
+  /** The reading in the caller's own units ("18.4 GiB of 50 GiB"); replaces the `format` text. */
+  text?: string;
   className?: string;
 }
 
@@ -63,10 +65,11 @@ export function Meter({
   hideLabel = false,
   format = "count",
   tone = "accent",
+  text: textOverride,
   className,
 }: MeterProps): React.ReactElement {
   const ratio = max > 0 ? Math.min(Math.max(value / max, 0), 1) : 0;
-  const text = meterText(value, max, format);
+  const text = textOverride ?? meterText(value, max, format);
   const labelId = React.useId();
   return (
     <div

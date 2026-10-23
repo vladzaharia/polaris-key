@@ -9,9 +9,30 @@ sidebar:
 
 Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data.
 
-:::note[Nothing syncs]
-Declarations validate in `pkey validate`, in manifest ingest and in the console's catalog publish. You can turn the service on, and the **Data** page shows what a product declares. The sync routes aren't served: the service has no routes, and discovery names an endpoint only from a release that serves it, so `pull`, `push` and `files` are all `null`. The rest of this page describes the declarations the Worker accepts and the limits they carry.
-:::
+Settings sync today. Collections, saves and files are declared and validated but not served: discovery reports `collections` and `saves` as false and `files` as `null`.
+
+## The routes
+
+Both routes are unsigned, take the device's bearer token and `X-PKey-Device`, and live under `/<product>/sync`.
+
+| Route                      | Purpose                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GET /<product>/sync`      | Pull. With no cursor it answers a snapshot, then the changes since `cursor`, at most 500 at a time. A revalidation is a `304` |
+| `POST /<product>/sync/ops` | Push a batch of at most 100 mutations and 256 KiB. The answer carries each result and a pull since the request's cursor       |
+
+No route takes a subject or an account id: the person is the account signed in on the device. A device with none gets `403 account_required`. A Cloud Sync answer never changes license state or a cached document. With Cloud Sync, Config or Identity off, the routes answer `404`. A push is refused with `attestation_required` when the product's trust policy enforces `cloudSyncWrite` and the device doesn't meet it. The wire contract is section 13 of `WIRE-CONTRACT-V4.md`.
+
+## Pause and limits
+
+A platform admin can pause every write (`cloudSync.writesPaused`). A push then answers `503 writes_paused` with `Retry-After`, the client keeps its journal, and pulls are still served.
+
+| Limit                        | Value                                              |
+| ---------------------------- | -------------------------------------------------- |
+| Pushes per device            | 60 a minute, then `429`                            |
+| Pushes per product           | 2,000 a second                                     |
+| People with data per product | 100,000                                            |
+| Mutations per push           | 100, in at most 256 KiB                            |
+| Settings per person          | 256 keys and 64 KiB; an open setting at most 8 KiB |
 
 ## It needs sign-in
 
@@ -83,7 +104,7 @@ You declare a conflict policy per setting and per collection. Both stores use on
 
 A person's quota is the entitlement `pkey.cloudSync.bytes`, set by a tier, a license override or an add-on and read from the license of the device that writes. When nothing sets it, the platform default applies: 256 MiB. No quota passes the per-person ceiling of about 1.06 GiB.
 
-A platform admin controls three settings: the platform default (`cloudSync.quota.defaultBytes`), a product ceiling (`cloudSync.ceiling.bytes`, 50 GiB) and a switch that pauses every write (`cloudSync.writesPaused`). The settings can be edited, and nothing enforces them because nothing syncs.
+A platform admin controls three settings: the platform default (`cloudSync.quota.defaultBytes`), a product ceiling (`cloudSync.ceiling.bytes`, 50 GiB) and a switch that pauses every write (`cloudSync.writesPaused`). The default and the ceiling are enforced on every push: a write that grows usage past either is `quota_exceeded` (scope `user` or `product`), while a clear or a delete always passes. Lowering a quota removes nothing. A device with no usable license gets the product's Anonymous devices tier, else 1 MiB.
 
 ## Validation
 
@@ -108,11 +129,15 @@ A platform admin controls three settings: the platform default (`cloudSync.quota
 
 Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collection with `template: "saves"`), `cloudSync.open`, a collection `access` other than `owner`, and `.pkey/product`'s `cloudSync` block.
 
-## Discovery and the console
+## Discovery
 
-`services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. An SDK uses an endpoint only when discovery names it.
+`services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. Today `settings` is true and `pull` and `push` are URLs; `collections` and `saves` are false and `files` is `null`. An SDK uses an endpoint only when discovery names it.
+
+## In the console
 
 The **Cloud Sync** section's **Data** page lists the product's synced settings, collections and migrations and the platform limits. The catalog editor tunes a key's `user` block; a key whose syncing is off stays on the device (`sync: "local"`).
+
+The **Usage** page shows how many people have data, the storage they use against the product's limit, syncs and conflicts today, storage by tier with who is over 80 % of the limit, what is stored, and where people sync from. A game says players and an app says people. The figures refresh about every 15 minutes, count only, and never name a person. A row named **No tier** holds people with no tier or no license; with Licensing off it is everyone, on the default. A platform row named **Not reported** is people whose device sent no platform.
 
 ## Next steps
 

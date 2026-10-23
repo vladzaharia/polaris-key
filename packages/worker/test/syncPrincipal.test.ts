@@ -12,6 +12,7 @@
  * re-entry, open re-registration) drops it. `syncAccess` never falls back to the licence owner,
  * and no answer carries an account id.
  */
+import type { ManagedEntry } from "@polaris-key/protocol";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -27,6 +28,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { type DeviceRow } from "../src/core/repo.js";
 import { getDevice } from "../src/core/devices/store.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { getLicense } from "../src/core/licensing/store.js";
 import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
@@ -41,6 +43,7 @@ import { clearDeviceSubjects } from "../src/core/accounts/subjectHooks.js";
 import { syncAccess } from "../src/core/accounts/syncAccess.js";
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
+import { CLOUD_SYNC_CEILINGS } from "@polaris-key/catalog";
 import { handleActivate } from "../src/services/license/activation.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
@@ -172,7 +175,7 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     expect(device.subject ?? null).toBeNull();
     expect(device.bound_by).toBe("key");
     expect(await resolveSyncPrincipal(w.db, device)).toBeNull();
-    expect(await syncAccess(w.db, w.product, device, NOW)).toBeNull();
+    expect(await syncAccess(w.env, w.db, w.product, device, NOW)).toBeNull();
 
     // The account signs in on the device (Identity's sign-in calls Core's setter).
     expect(
@@ -195,7 +198,7 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     );
     const device = await activateByKey(w, key, "dev-1");
     expect(await resolveSyncPrincipal(w.db, device)).toBeNull();
-    expect(await syncAccess(w.db, w.product, device, NOW)).toBeNull();
+    expect(await syncAccess(w.env, w.db, w.product, device, NOW)).toBeNull();
     const bo = await account(w.db, "bo@example.com");
     await setDeviceSubject(w.env, w.db, SLUG, "dev-1", bo.subject);
     // The binding is written, but a floating licence has no account features (S-24).
@@ -203,6 +206,7 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     expect(await principalOf(w, "dev-1")).toBeNull();
     expect(
       await syncAccess(
+        w.env,
         w.db,
         w.product,
         (await getDevice(w.db, SLUG, "dev-1"))!,
@@ -602,6 +606,7 @@ describe("syncAccess", () => {
     // Owned licence, key-activated device: no owner fallback, so no access answer at all.
     expect(
       await syncAccess(
+        w.env,
         w.db,
         w.product,
         (await getDevice(w.db, SLUG, "dev-1"))!,
@@ -613,13 +618,13 @@ describe("syncAccess", () => {
     const bo = await account(w.db, "bo@example.com");
     await setDeviceSubject(w.env, w.db, SLUG, "dev-1", bo.subject);
     const device = (await getDevice(w.db, SLUG, "dev-1"))!;
-    const access = await syncAccess(w.db, w.product, device, NOW);
+    const access = await syncAccess(w.env, w.db, w.product, device, NOW);
     expect(access).toEqual({
       subject: bo.subject,
-      anchorUsable: true,
       licensed: true,
       entitlements: expect.objectContaining({ saves: true }),
-      topTier: null,
+      quota: { bytes: 268_435_456, files: true },
+      tierId: null,
     });
     expect(access!.subject).not.toBe(ada.subject);
     const serialized = JSON.stringify(access);
@@ -627,7 +632,13 @@ describe("syncAccess", () => {
     expect(serialized).not.toContain(bo.id);
     // The subject belongs to this product: a different product's view of the row is refused.
     expect(
-      await syncAccess(w.db, { ...w.product, slug: "other" }, device, NOW),
+      await syncAccess(
+        w.env,
+        w.db,
+        { ...w.product, slug: "other" },
+        device,
+        NOW,
+      ),
     ).toBeNull();
   });
 
@@ -643,12 +654,12 @@ describe("syncAccess", () => {
       licenseId,
     );
     const device = (await getDevice(w.db, SLUG, "dev-1"))!;
-    expect(await syncAccess(w.db, w.product, device, NOW)).toEqual({
+    expect(await syncAccess(w.env, w.db, w.product, device, NOW)).toEqual({
       subject: ada.subject,
-      anchorUsable: false,
       licensed: false,
       entitlements: {},
-      topTier: null,
+      quota: { bytes: 1_048_576, files: false },
+      tierId: null,
     });
 
     await setServices(
@@ -670,10 +681,13 @@ describe("syncAccess", () => {
       NOW,
     );
     const configOnly = (await loadProduct(w.env, w.db, SLUG))!;
-    expect(await syncAccess(w.db, configOnly, device, NOW)).toMatchObject({
+    expect(
+      await syncAccess(w.env, w.db, configOnly, device, NOW),
+    ).toMatchObject({
       subject: ada.subject,
-      anchorUsable: true,
       licensed: false,
+      quota: { bytes: 268_435_456, files: true },
+      tierId: null,
     });
   });
 
@@ -694,5 +708,215 @@ describe("syncAccess", () => {
     ).toBeNull();
     const s = await subjectFor(w.db, ada.account.id, SLUG, NOW);
     expect(await subjectFor(w.db, ada.account.id, SLUG, NOW)).toBe(s);
+  });
+});
+
+describe("syncAccess: the quota per device (plans/U-01b.md D5)", () => {
+  const MIB = 1024 * 1024;
+  const bytesEntitlement = (value: ManagedEntry["value"]) => ({
+    "pkey.cloudSync.bytes": {
+      state: "enforced" as const,
+      value,
+      updatedAt: NOW,
+    },
+  });
+
+  /** A signed-in device on a licence seeded with `opts`. */
+  async function quotaOf(
+    opts: Parameters<typeof seedLicenseWithKey>[2] & {
+      licenseOff?: boolean;
+      platformDefault?: number;
+      disable?: boolean;
+    } = {},
+  ) {
+    const w = await world();
+    const { licenseId } = await seedLicenseWithKey(w.db, SLUG, opts);
+    const ada = await account(w.db, "ada@example.com");
+    await insertSignedInDevice(w.db, "dev-1", licenseId, ada.subject);
+    if (opts.disable)
+      await w.db.run(
+        "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+        SLUG,
+        licenseId,
+      );
+    if (opts.platformDefault !== undefined) {
+      await w.db.run(
+        `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+         VALUES ('cloudSync.quota.defaultBytes', ?, 1, ?, 'test')`,
+        JSON.stringify(opts.platformDefault),
+        NOW,
+      );
+      invalidatePlatformSettings(w.env, w.db);
+    }
+    let product = w.product;
+    if (opts.licenseOff) {
+      await setServices(
+        w.db,
+        SLUG,
+        serializeServices({
+          services: {
+            license: { enabled: false },
+            config: { enabled: true },
+            release: { enabled: false },
+            distribution: { enabled: false },
+            update: { enabled: false },
+            identity: { enabled: true },
+            sync: { enabled: false },
+            commerce: { enabled: false },
+          },
+        }),
+        "manifest",
+        NOW,
+      );
+      product = (await loadProduct(w.env, w.db, SLUG))!;
+    }
+    const device = (await getDevice(w.db, SLUG, "dev-1"))!;
+    return (await syncAccess(w.env, w.db, product, device, NOW))!;
+  }
+
+  it("License off: the platform default, files allowed", async () => {
+    expect((await quotaOf({ licenseOff: true })).quota).toEqual({
+      bytes: 256 * MIB,
+      files: true,
+    });
+    expect(
+      (await quotaOf({ licenseOff: true, platformDefault: 10 * MIB })).quota,
+    ).toEqual({ bytes: 10 * MIB, files: true });
+  });
+
+  it("a usable anchor licence: its integer entitlement, else the platform default", async () => {
+    const a = await quotaOf({ entitlements: bytesEntitlement(5 * MIB) });
+    expect(a.quota).toEqual({ bytes: 5 * MIB, files: true });
+    expect(a.licensed).toBe(true);
+    expect((await quotaOf({ platformDefault: 8 * MIB })).quota).toEqual({
+      bytes: 8 * MIB,
+      files: true,
+    });
+    // The entitlement beats the platform default.
+    expect(
+      (
+        await quotaOf({
+          entitlements: bytesEntitlement(5 * MIB),
+          platformDefault: 8 * MIB,
+        })
+      ).quota.bytes,
+    ).toBe(5 * MIB);
+  });
+
+  it("a non-integer or negative entitlement is no value: the platform default applies", async () => {
+    for (const bad of [
+      1.5,
+      "100",
+      -1,
+      null,
+      true,
+      Number.NaN,
+      2 ** 60,
+      Number.MAX_SAFE_INTEGER,
+    ]) {
+      expect(
+        (await quotaOf({ entitlements: bytesEntitlement(bad) })).quota,
+        String(bad),
+      ).toEqual(
+        bad === Number.MAX_SAFE_INTEGER
+          ? { bytes: CLOUD_SYNC_CEILINGS.perPerson.bytes, files: true }
+          : { bytes: 256 * MIB, files: true },
+      );
+    }
+  });
+
+  it("clamps to the per-person ceiling", async () => {
+    const q = await quotaOf({
+      entitlements: bytesEntitlement(CLOUD_SYNC_CEILINGS.perPerson.bytes + 1),
+    });
+    expect(q.quota.bytes).toBe(CLOUD_SYNC_CEILINGS.perPerson.bytes);
+    expect(q.quota.files).toBe(true);
+  });
+
+  it("0 means reads only: a zero quota, not a fallback", async () => {
+    expect(
+      (await quotaOf({ entitlements: bytesEntitlement(0) })).quota,
+    ).toEqual({ bytes: 0, files: true });
+  });
+
+  it("no usable licence: 1 MiB, files refused; an unusable licence's entitlement is not read", async () => {
+    const disabled = await quotaOf({
+      entitlements: bytesEntitlement(5 * MIB),
+      tierId: "pro",
+      disable: true,
+    });
+    expect(disabled.quota).toEqual({ bytes: MIB, files: false });
+    expect(disabled.tierId).toBeNull();
+    expect(disabled.entitlements).toEqual({});
+    // Expired (past graceUntil-less expiry) is unusable too.
+    const expired = await quotaOf({
+      entitlements: bytesEntitlement(5 * MIB),
+      expiresAt: NOW - 1,
+    });
+    expect(expired.licensed).toBe(false);
+    expect(expired.quota).toEqual({ bytes: MIB, files: false });
+    // The platform default does not lift an unlicensed device.
+    expect(
+      (await quotaOf({ disable: true, platformDefault: 8 * MIB })).quota,
+    ).toEqual({ bytes: MIB, files: false });
+  });
+
+  it("tierId is the anchor's tier when usable, and always a string the object accepts (1 to 256 characters)", async () => {
+    expect((await quotaOf({ tierId: "pro" })).tierId).toBe("pro");
+    expect((await quotaOf({})).tierId).toBeNull();
+    expect((await quotaOf({ tierId: "" })).tierId).toBeNull();
+    expect((await quotaOf({ tierId: "t".repeat(256) })).tierId).toBe(
+      "t".repeat(256),
+    );
+    expect((await quotaOf({ tierId: "t".repeat(257) })).tierId).toBeNull();
+    expect(
+      (await quotaOf({ licenseOff: true, tierId: "pro" })).tierId,
+    ).toBeNull();
+  });
+
+  it("two devices of one person can differ: the quota follows the requesting device's anchor", async () => {
+    const w = await world();
+    const big = await seedLicenseWithKey(w.db, SLUG, {
+      id: "lic_big",
+      entitlements: bytesEntitlement(50 * MIB),
+    });
+    const small = await seedLicenseWithKey(w.db, SLUG, { id: "lic_small" });
+    const ada = await account(w.db, "ada@example.com");
+    await insertSignedInDevice(w.db, "dev-big", big.licenseId, ada.subject);
+    await insertSignedInDevice(w.db, "dev-small", small.licenseId, ada.subject);
+    await w.db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      SLUG,
+      small.licenseId,
+    );
+    const at = async (id: string) =>
+      (await syncAccess(
+        w.env,
+        w.db,
+        w.product,
+        (await getDevice(w.db, SLUG, id))!,
+        NOW,
+      ))!;
+    const a = await at("dev-big");
+    const b = await at("dev-small");
+    expect(a.subject).toBe(b.subject);
+    expect(a.quota.bytes).toBe(50 * MIB);
+    expect(b.quota).toEqual({ bytes: MIB, files: false });
+  });
+
+  it("still no owner fallback: an owned licence on a key-activated device has no quota answer", async () => {
+    const w = await world();
+    const { key, licenseId } = await seedLicenseWithKey(w.db, SLUG, {
+      entitlements: bytesEntitlement(5 * MIB),
+    });
+    const ada = await account(w.db, "ada@example.com");
+    await attachLicense(w.ctx, {
+      accountId: ada.id,
+      product: SLUG,
+      licenseId,
+      via: "key",
+    });
+    const device = await activateByKey(w, key, "dev-1");
+    expect(await syncAccess(w.env, w.db, w.product, device, NOW)).toBeNull();
   });
 });

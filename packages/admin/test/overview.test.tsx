@@ -444,6 +444,34 @@ describe("Core → Overview", () => {
     ).toBeNull();
   });
 
+  it("the platform's pause (product null) is not the hero's, nor in its +N more (ST-44b.2)", async () => {
+    fns.attention.mockResolvedValue({
+      items: [
+        {
+          id: "@platform:sync.paused",
+          product: null,
+          kind: "sync.paused",
+          tone: "warning",
+          service: "sync",
+          short: "Writes paused",
+          lines: ["Cloud Sync writes are paused for every product."],
+          action: {
+            label: "Resume writes",
+            page: "platform-settings",
+            query: { setting: "cloudSync.writesPaused" },
+          },
+          area: "platform",
+        },
+        SECRET_ITEM,
+      ],
+    });
+    mount();
+    const hero = (await screen.findByTestId("overview-hero")) as HTMLElement;
+    await within(hero).findByText(/has no value in the Default profile/);
+    expect(within(hero).queryByText(/paused/i)).toBeNull();
+    expect(within(hero).queryByRole("link", { name: /more/ })).toBeNull();
+  });
+
   it("with nothing to fix, the computed next step is the hero's one action", async () => {
     fns.attention.mockResolvedValue({ items: [] });
     mount();

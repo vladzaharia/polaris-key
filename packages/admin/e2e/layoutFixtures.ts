@@ -24,6 +24,63 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 const P = "/manage/api/products/djdl";
 
+const MIB = 1024 ** 2;
+const GIB = 1024 ** 3;
+// U-05.20: Cloud Sync → Usage, in the shape U-05's read really returns: every byte is a settings
+// byte (records, files and older versions are 0 until U-09/U-10), the null tier holds people with
+// no tier or no license, platforms are the devices' own ids (or null), and no tier limit is above
+// the per-person ceiling the read clamps to.
+export const SYNC_USAGE = {
+  enabled: true,
+  usage: {
+    bytes: 18.4 * GIB,
+    people: 4812,
+    settingsBytes: 18.4 * GIB,
+    recordBytes: 0,
+    fileBytes: 0,
+    revisionBytes: 0,
+    computedAt: NOW - 240,
+    breakdown: {
+      byTier: [
+        {
+          tierId: null,
+          people: 3120,
+          bytes: 9.5 * GIB,
+          medianBytes: 2.6 * MIB,
+          over80: 41,
+        },
+        {
+          tierId: "free",
+          people: 1402,
+          bytes: 5.5 * GIB,
+          medianBytes: 3.4 * MIB,
+          over80: 3,
+        },
+        {
+          tierId: "standard",
+          people: 290,
+          bytes: 3.4 * GIB,
+          medianBytes: 9.8 * MIB,
+          over80: 0,
+        },
+      ],
+      byKind: { settings: 18.4 * GIB, records: 0, files: 0, revisions: 0 },
+      byPlatform: [
+        { platform: null, peopleThisWeek: 12, lastSyncAt: NOW - 3 * 3600 },
+        { platform: "android", peopleThisWeek: 1689, lastSyncAt: NOW - 60 },
+        { platform: "ios", peopleThisWeek: 2214, lastSyncAt: NOW - 60 },
+        { platform: "windows", peopleThisWeek: 931, lastSyncAt: NOW - 240 },
+      ],
+    },
+  },
+  today: { day: "2026-10-22", syncs: 61240, conflicts: 37 },
+  tiers: [
+    { id: "free", label: "Free", bytes: null },
+    { id: "standard", label: "Standard", bytes: 512 * MIB },
+  ],
+  defaultBytes: 256 * MIB,
+};
+
 export const LONG_NAME =
   "Northwind Broadcast Audio Workstation — Enterprise Edition for Studios";
 export const LONG_SLUG = "northwind-broadcast-audio-workstation";
@@ -120,6 +177,29 @@ const PRODUCTS = [
   product("waiting", "Waiting product", { presentation: { icon: null } }),
 ];
 
+/** The platform's own attention item, as `GET /attention` composes it (ST-44b.1). */
+export const PLATFORM_PAUSE_ITEM = {
+  id: "@platform:sync.paused",
+  product: null,
+  kind: "sync.paused",
+  tone: "warning",
+  service: "sync",
+  short: "Writes paused",
+  lines: [
+    "Cloud Sync writes are paused for every product.",
+    "Devices keep their changes and send them on resume.",
+  ],
+  action: {
+    label: "Resume writes",
+    page: "platform-settings",
+    query: { setting: "cloudSync.writesPaused" },
+  },
+  area: "platform",
+  since: NOW - 2 * 3600,
+  by: "Ana Lima",
+  reason: "Storage errors in eu-west",
+};
+
 const ME = {
   ...(CORE_ROUTES["/manage/api/me"] as Record<string, unknown>),
   products: [
@@ -131,6 +211,90 @@ const ME = {
     // F-34.8: reachable by address and in the member's scope, left out of the products list.
     { slug: "feedsoff", name: "Feeds off", schemaVersion: 9 },
   ],
+};
+
+/**
+ * A Platform admin with no product grant: the console lists no product to them (the Worker's
+ * `canSeeProduct`), yet the pause reaches products they cannot see and the platform item is theirs.
+ */
+export const PLATFORM_ONLY_ME = {
+  ...ME,
+  sub: "m-ana",
+  name: "Ana Lima",
+  email: "ana@example.com",
+  platformAdmin: true,
+  products: [],
+};
+
+/**
+ * Platform ready as the Worker answers a Platform admin with no product grant (ST-44b.3): the
+ * Stores row counts the products it cannot name.
+ */
+export const PLATFORM_ONLY_READY = {
+  done: 6,
+  total: 7,
+  rows: [
+    { id: "keyring", title: "Keyring configured", done: true },
+    { id: "portal-sessions", title: "Portal sessions isolated", done: true },
+    { id: "console-sign-in", title: "Console sign-in separate", done: true },
+    { id: "background-jobs", title: "Background jobs ticking", done: true },
+    { id: "email-sender", title: "Email sender configured", done: true },
+    { id: "platform-packages", title: "Platform packages set up", done: true },
+    {
+      id: "store-accounts",
+      title: "Stores connected",
+      done: false,
+      detail:
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      action: { label: "Connect Steam", to: "connections", store: "steam" },
+    },
+  ],
+};
+
+/** A member who administers the djdl product only (Cloud Sync Setup's product-role reads). */
+export const PRODUCT_ROLE_ME = {
+  ...ME,
+  sub: "m-kenji",
+  name: "Kenji Mori",
+  email: "kenji@example.com",
+  platformAdmin: false,
+  permissions: {
+    roles: [
+      {
+        role: "product_admin",
+        scope: "product:djdl",
+        areas: null,
+        source: "grant",
+      },
+    ],
+    platform: { view: ["console"], edit: ["console"] },
+    products: {
+      djdl: {
+        view: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+        edit: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+      },
+    },
+  },
 };
 
 type Row = Record<string, unknown>;
@@ -198,6 +362,8 @@ const ROUTES: Record<string, unknown> = {
     })),
   },
   [`${P}/config/catalog/usage`]: { keys: {} },
+  // U-05.20: Cloud Sync → Usage, U-05's real shape (see SYNC_USAGE).
+  [`${P}/sync/usage`]: SYNC_USAGE,
   [`${P}/config/mint`]: {
     registration: "requires-license",
     anonymousEnroll: false,
@@ -212,6 +378,9 @@ const ROUTES: Record<string, unknown> = {
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
   "/manage/api/attention": {
     items: [
+      // ST-44b: the Cloud Sync pause is one platform row (product null), whatever the number of
+      // products with Cloud Sync on; the server sends it to Platform editors only.
+      PLATFORM_PAUSE_ITEM,
       {
         id: "acme:sync.failed",
         product: { slug: "acme", name: "Acme" },
@@ -303,6 +472,19 @@ const ROUTES: Record<string, unknown> = {
     ],
   },
   [P]: { product: PRODUCTS[0] },
+};
+
+// A product whose data fills every kind (what U-09/U-10 will produce): the bar, four kinds, an
+// older-versions note, so the paired Stored/Platforms row is linted too (case `long:sync-usage`).
+const SYNC_USAGE_RICH = {
+  ...SYNC_USAGE,
+  usage: {
+    ...SYNC_USAGE.usage,
+    settingsBytes: 0.2 * GIB,
+    recordBytes: 3.1 * GIB,
+    fileBytes: 8.5 * GIB,
+    revisionBytes: 6.6 * GIB,
+  },
 };
 
 /** djdl → empty: every array emptied, every count zeroed, so a page draws its empty state. */
@@ -406,11 +588,20 @@ export function resolve(pathname: string): unknown {
   if (pathname.startsWith(`${empty}/`)) {
     const src = ROUTES[`${P}${pathname.slice(empty.length)}`];
     if (pathname === `${empty}/services`) return src;
+    // Nobody has synced: the aggregate is all zero (`emptied` leaves a number alone).
+    if (pathname === `${empty}/sync/usage`)
+      return {
+        ...SYNC_USAGE,
+        usage: { ...SYNC_USAGE.usage, bytes: 0, people: 0, computedAt: 0 },
+        today: { day: SYNC_USAGE.today.day, syncs: 0, conflicts: 0 },
+      };
     return src === undefined ? undefined : emptied(src);
   }
   for (const p of PRODUCTS) {
     if (p.slug === "djdl" || p.slug === "empty") continue;
     const base = `/manage/api/products/${p.slug}`;
+    if (p.slug === LONG_SLUG && pathname === `${base}/sync/usage`)
+      return SYNC_USAGE_RICH;
     if (pathname === base) return { product: p };
     if (pathname.startsWith(`${base}/`))
       return ROUTES[`${P}${pathname.slice(base.length)}`];

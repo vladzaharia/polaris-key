@@ -1,59 +1,78 @@
 /**
- * Cloud Sync → Setup (config.cloud-sync, -paused, -product-role). What the operator controls
- * today, over reads the API serves (D1):
+ * Cloud Sync → Setup (config.cloud-sync, -paused, -product-role). What the operator controls,
+ * over reads the API serves (D1):
  *
- *  - the default storage per person, `cloudSync.quota.defaultBytes` (a platform setting; its
- *    change confirms with who it reaches, `StorageDefaultDialog`);
+ *  - storage per person: the platform default `cloudSync.quota.defaultBytes` (a platform setting;
+ *    its change confirms with who it reaches, `StorageDefaultDialog`) and each tier's value, read
+ *    from the usage read and edited on Tiers; where people are near a limit, in words;
+ *  - the product's storage ceiling `cloudSync.ceiling.bytes` (a meter and `CeilingDialog`);
  *  - the platform's writes-paused switch, `cloudSync.writesPaused` (`PauseWritesDialog`), with a
- *    banner while it is on.
+ *    banner while it is on. The banner reads the pause from the usage read, so a member with a
+ *    product role sees it too (who, when; the reason only for Platform). Home's attention item
+ *    lands here with `?resume=1`, which opens the resume dialog and leaves the URL.
  *
- * Both are platform controls: a member with a product role only sees them drawn disabled, with
- * who can change them. A setting the platform list does not serve (U-05 is not live) draws nothing.
- * The per-tier values are set on Tiers, which the card links to; people near a limit and the
- * Usage tab wait for U-05's reads.
+ * The platform controls are drawn without buttons for a member with a product role, with who can
+ * change them. A setting the platform list does not serve draws nothing. Each read has its own
+ * placeholder and its own error with Retry inside its card: a failed read never drops content
+ * silently.
+ *
+ * Layout: one column, Product limits first on a phone (Pause is the urgent control); from 1600 px
+ * Storage and What syncs take the main column and Product limits is a 400 px aside.
  */
 
 import * as React from "react";
-import { Lock } from "lucide-react";
+import { ArrowRight, CircleAlert, Lock, TriangleAlert } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
   type PlatformIntegerSetting,
   type PlatformSwitchSetting,
   type ProductCatalog,
+  type ProductSetting,
+  type SyncUsageResponse,
 } from "../../../api.js";
-import { CLOUD_SYNC_CEILINGS, CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
-import { formatCount, formatDateTime } from "../../../lib/format.js";
+import { cn } from "../../../lib/cn.js";
+import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
+import { formatCount } from "../../../lib/format.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Button } from "../../../ui/Button.js";
+import { FillRect } from "../../../ui/charts/FillRect.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Callout } from "../../../ui/Callout.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
-import { PageSkeleton } from "../../../ui/Skeleton.js";
+import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { useWriteGate } from "../../access/useCan.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
-import { Link } from "../../router.js";
+import { Link, navigate, useLocation } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import { hasSavedStepUp } from "../../../ui/ConfirmDialog.js";
-import { PauseWritesDialog, stepUpKeyFor } from "./PauseWritesDialog.js";
+import {
+  PauseNoticeLine,
+  PauseWritesDialog,
+  stepUpKeyFor,
+  type PauseNotice,
+} from "./PauseWritesDialog.js";
+import {
+  PlatformPill,
+  RowsSkeleton,
+  TierRows,
+  TotalStorage,
+  WhatSyncs,
+  WhoLine,
+  type Usage,
+} from "./SetupParts.js";
 import { StorageDefaultDialog } from "./StorageDefaultDialog.js";
-import { localSettings, userSettings } from "./data.js";
+import { CeilingDialog } from "./CeilingDialog.js";
+import { useProductCeilingSetting, useSyncUsage } from "./data.js";
 import { SyncHeader } from "./SyncHeader.js";
 import { formatBinaryBytes } from "./pages/SyncData.js";
 
 const WRITES_PAUSED = "cloudSync.writesPaused";
 const DEFAULT_QUOTA = "cloudSync.quota.defaultBytes";
-
-function PlatformPill(): React.ReactElement {
-  return (
-    <StatusPill tone="neutral" icon={false} size="sm">
-      Platform
-    </StatusPill>
-  );
-}
+const CEILING = "cloudSync.ceiling.bytes";
 
 export function CloudSyncSetupPage({
   slug,
@@ -73,9 +92,17 @@ export function CloudSyncSetupPage({
     queryFn: () => api.schema(slug),
     retry: false,
   });
+  const usageQuery = useSyncUsage(slug);
+  const usage: Usage | null = usageQuery.data?.enabled ? usageQuery.data : null;
+  const ceilingQuery = useProductCeilingSetting(slug);
+  const ceiling: ProductSetting | undefined = ceilingQuery.data?.settings.find(
+    (x) => x.key === CEILING,
+  );
+  const ceilingGate = useWriteGate("sync", slug, "Cloud Sync");
   const [dialog, setDialog] = React.useState<
-    null | "storage" | "pause" | "resume"
+    null | "storage" | "pause" | "resume" | "ceiling"
   >(null);
+  const resumeAsked = useLocation().route.query.get("resume") === "1";
 
   const lastTo = React.useRef<"on" | "off">("on");
   if (dialog === "pause") lastTo.current = "on";
@@ -93,18 +120,36 @@ export function CloudSyncSetupPage({
   const drawn = gate.allowed
     ? { paused, quota }
     : { paused: true, quota: true };
-  const isPaused = paused?.value === "on";
+  // The platform list is the live read for a platform admin; the usage read answers for everyone.
+  const pausedKnown = paused !== undefined || usage !== null;
+  const isPaused = paused ? paused.value === "on" : usage?.paused != null;
+  const notice: PauseNotice | null = isPaused
+    ? (usage?.paused ?? {
+        since: paused?.stored?.updatedAt || null,
+        by: null,
+        reason: null,
+      })
+    : null;
   const propagation = platform.data?.propagationSeconds ?? 30;
 
-  // Back from the step-up sign-in: reopen the pause dialog that was left, reason and all.
+  // Back from the step-up sign-in: reopen the pause dialog that was left, reason and all. Home's
+  // "Resume writes" arrives with `?resume=1`: the dialog opens while writes are paused and the
+  // member can edit the platform, and the URL loses the query so a reload does not reopen it.
   const reopened = React.useRef(false);
   React.useEffect(() => {
-    if (reopened.current || !paused) return;
+    if (reopened.current) return;
+    if (gate.allowed && !paused) return;
     reopened.current = true;
-    if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "on"))) setDialog("pause");
-    else if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "off")))
-      setDialog("resume");
-  }, [paused]);
+    if (paused) {
+      if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "on"))) setDialog("pause");
+      else if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "off")))
+        setDialog("resume");
+      else if (resumeAsked && gate.allowed && paused.value === "on")
+        setDialog("resume");
+    }
+    if (resumeAsked)
+      navigate(r.syncSetup(slug), { replace: true, force: true });
+  }, [paused, gate.allowed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const header = (
     <SyncHeader
@@ -144,22 +189,17 @@ export function CloudSyncSetupPage({
       </div>
     );
 
-  // A member without Platform access sees who can change these once, at the top, not per row.
+  // Who can change the platform controls, said at the controls (not once at the top of a page
+  // whose product ceiling the same member can edit).
   const who = gate.disabledReason
     ? `Platform admins only. ${gate.disabledReason}`
-    : undefined;
+    : "Platform admins only.";
   const readFailed = gate.allowed && platform.isError;
+  const defaultBytes = quota ? quota.value : (usage?.defaultBytes ?? null);
 
   return (
     <div className="space-y-6" data-template="record">
       {header}
-
-      {!gate.allowed && who ? (
-        <p className="flex items-start gap-2 text-sm text-fg-muted">
-          <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {who}
-        </p>
-      ) : null}
 
       {readFailed ? (
         <ErrorState
@@ -168,123 +208,174 @@ export function CloudSyncSetupPage({
         />
       ) : null}
 
-      {isPaused && paused ? (
-        <Callout
-          tone="warning"
-          title="Cloud Sync writes are paused for every product"
-          action={
-            gate.allowed ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDialog("resume")}
-              >
-                Resume writes
-              </Button>
-            ) : undefined
-          }
-        >
-          {paused.stored
-            ? `Paused ${formatDateTime(paused.stored.updatedAt * 1000)}${paused.stored.updatedBy ? ` by ${paused.stored.updatedBy}` : ""}. `
-            : ""}
-          Devices keep their changes and send them on resume.
-        </Callout>
-      ) : null}
+      <div className="grid max-w-4xl gap-6 min-[1280px]:max-w-none min-[1280px]:grid-cols-[minmax(0,1fr)_22rem] min-[1280px]:items-start min-[1600px]:grid-cols-[minmax(0,56rem)_25rem]">
+        {isPaused ? (
+          <div className="order-[-2] col-span-full">
+            <Callout
+              tone="warning"
+              title="Cloud Sync writes are paused for every product"
+              action={
+                gate.allowed && paused ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialog("resume")}
+                  >
+                    Resume writes
+                  </Button>
+                ) : undefined
+              }
+            >
+              {notice ? <PauseNoticeLine notice={notice} /> : null} Devices keep
+              their changes and send them on resume.
+            </Callout>
+          </div>
+        ) : null}
 
-      {drawn.quota && !readFailed ? (
-        <SettingsSection
-          id="sync-storage"
-          title="Storage per person"
-          description={
-            <>
-              The{" "}
-              <code className="font-mono text-xs">pkey.cloudSync.bytes</code>{" "}
-              entitlement. Tiers set their own on{" "}
+        <div className="min-w-0 space-y-6">
+          <SettingsSection
+            id="sync-storage"
+            title="Storage per person"
+            description={
+              <>
+                The{" "}
+                <code className="font-mono text-xs">pkey.cloudSync.bytes</code>{" "}
+                entitlement.
+              </>
+            }
+            actions={
               <Link
                 to={r.tiers(slug)}
-                className="py-1 text-accent-fg underline underline-offset-2"
+                className="inline-flex items-center gap-1 py-1 text-sm text-accent-fg underline underline-offset-2"
               >
-                Tiers
+                Edit on Tiers
+                <ArrowRight aria-hidden className="size-3.5" />
               </Link>
-              .
-            </>
-          }
-        >
-          <div className="space-y-3 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="min-w-0 grow basis-full sm:basis-0">
-                <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
-                  Default <PlatformPill />
-                </p>
-                <p className="text-sm text-fg-muted">
-                  For tiers that don&apos;t set their own
-                </p>
-              </div>
-              {quota ? (
-                <p className="tabular-nums text-fg-strong">
-                  {formatBinaryBytes(quota.value)}
-                </p>
+            }
+          >
+            <div className="space-y-3 px-5 py-4">
+              {drawn.quota && !readFailed ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div className="min-w-0 grow basis-full sm:basis-0">
+                      <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
+                        Default <PlatformPill />
+                      </p>
+                      <p className="text-sm text-fg-muted">
+                        For tiers that don&apos;t set their own
+                      </p>
+                    </div>
+                    {defaultBytes !== null ? (
+                      <p className="tabular-nums text-fg-strong">
+                        {formatBinaryBytes(defaultBytes)}
+                      </p>
+                    ) : null}
+                    {gate.allowed ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Change the default storage"
+                        disabledReason={
+                          quota ? undefined : "Not available yet."
+                        }
+                        onClick={() => setDialog("storage")}
+                      >
+                        Change…
+                      </Button>
+                    ) : null}
+                  </div>
+                  {!gate.allowed ? <WhoLine text={who} /> : null}
+                </div>
               ) : null}
-              {gate.allowed ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabledReason={quota ? undefined : "Not available yet."}
-                  onClick={() => setDialog("storage")}
+
+              {usageQuery.isPending ? <RowsSkeleton rows={3} tall /> : null}
+              {usageQuery.isError ? (
+                <ErrorState
+                  compact
+                  thing="Usage"
+                  error={usageQuery.error}
+                  onRetry={() => void usageQuery.refetch()}
+                />
+              ) : null}
+              <TierRows
+                slug={slug}
+                usage={usage}
+                defaultBytes={defaultBytes ?? 0}
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border pt-3">
+                <p className="text-sm text-fg-muted">
+                  Lowering a limit deletes nothing. New saves wait for room.
+                </p>
+                <Link
+                  to={r.syncUsage(slug)}
+                  className="inline-flex items-center gap-1 py-1 text-sm text-accent-fg underline underline-offset-2"
                 >
-                  Change…
-                </Button>
+                  See Usage
+                  <ArrowRight aria-hidden className="size-3.5" />
+                </Link>
+              </div>
+            </div>
+          </SettingsSection>
+
+          {catalog.data ? (
+            <WhatSyncs slug={slug} catalog={catalog.data} />
+          ) : null}
+        </div>
+
+        <div className="order-[-1] min-w-0 min-[1280px]:order-none">
+          <SettingsSection id="sync-limits" title="Product limits">
+            <div className="space-y-5 px-5 py-4">
+              <TotalStorage
+                ceilingQuery={ceilingQuery}
+                ceiling={ceiling}
+                usage={usage}
+                usageError={usageQuery.isError ? usageQuery.error : null}
+                onRetryUsage={() => void usageQuery.refetch()}
+                canEdit={ceilingGate.allowed}
+                whoText={ceilingGate.disabledReason}
+                onChange={() => setDialog("ceiling")}
+              />
+
+              {drawn.paused && !readFailed ? (
+                <div className="space-y-2 border-t border-border pt-4">
+                  <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
+                    Pause all writes <PlatformPill />
+                  </p>
+                  <p className="text-sm text-fg-muted">
+                    Stops new settings and saves in every product. Devices send
+                    them on resume.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {pausedKnown ? (
+                      <StatusPill
+                        tone={isPaused ? "warning" : "neutral"}
+                        icon={isPaused ? undefined : false}
+                        size="sm"
+                      >
+                        {isPaused ? "Paused" : "Off"}
+                      </StatusPill>
+                    ) : null}
+                    {gate.allowed && !isPaused ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabledReason={
+                          paused ? undefined : "Not available yet."
+                        }
+                        onClick={() => setDialog("pause")}
+                      >
+                        Pause writes…
+                      </Button>
+                    ) : null}
+                  </div>
+                  {!gate.allowed ? <WhoLine text={who} /> : null}
+                </div>
               ) : null}
             </div>
-            <p className="text-sm text-fg-muted">
-              Lowering a limit deletes nothing. New saves wait for room.
-            </p>
-          </div>
-        </SettingsSection>
-      ) : null}
-
-      {drawn.paused && !readFailed ? (
-        <SettingsSection
-          id="sync-limits"
-          title="Product limits"
-          description={`Each product holds up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perProduct.bytes)} of Cloud Sync data.`}
-        >
-          <div className="space-y-3 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="min-w-0 grow basis-full sm:basis-0">
-                <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
-                  Pause all writes <PlatformPill />
-                </p>
-                <p className="text-sm text-fg-muted">
-                  Stops new settings and saves in every product. Devices send
-                  them on resume.
-                </p>
-              </div>
-              {paused ? (
-                <StatusPill
-                  tone={isPaused ? "warning" : "neutral"}
-                  icon={isPaused ? undefined : false}
-                  size="sm"
-                >
-                  {isPaused ? "Paused" : "Off"}
-                </StatusPill>
-              ) : null}
-              {gate.allowed ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabledReason={paused ? undefined : "Not available yet."}
-                  onClick={() => setDialog(isPaused ? "resume" : "pause")}
-                >
-                  {isPaused ? "Resume writes" : "Pause writes…"}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </SettingsSection>
-      ) : null}
-
-      {catalog.data ? <WhatSyncs slug={slug} catalog={catalog.data} /> : null}
+          </SettingsSection>
+        </div>
+      </div>
 
       {quota ? (
         <StorageDefaultDialog
@@ -292,6 +383,15 @@ export function CloudSyncSetupPage({
           onOpenChange={(o) => setDialog(o ? "storage" : null)}
           setting={quota}
           propagationSeconds={propagation}
+        />
+      ) : null}
+      {ceiling ? (
+        <CeilingDialog
+          open={dialog === "ceiling"}
+          onOpenChange={(o) => setDialog(o ? "ceiling" : null)}
+          slug={slug}
+          setting={ceiling}
+          usedBytes={usage ? usage.usage.bytes : null}
         />
       ) : null}
       {paused ? (
@@ -303,88 +403,9 @@ export function CloudSyncSetupPage({
           setting={paused}
           to={lastTo.current}
           propagationSeconds={propagation}
+          notice={notice}
         />
       ) : null}
     </div>
-  );
-}
-
-const FIRST_KEYS = 8;
-
-/** What syncs, read from the catalog: the keys, the two that stay on each device, the limits. */
-function WhatSyncs({
-  slug,
-  catalog,
-}: {
-  slug: string;
-  catalog: ProductCatalog;
-}): React.ReactElement {
-  const synced = userSettings(catalog);
-  const local = localSettings(catalog);
-  const shown = synced.slice(0, FIRST_KEYS);
-  return (
-    <SettingsSection
-      id="sync-what"
-      title="What syncs"
-      description={
-        <>
-          From the catalog, v{catalog.schemaVersion}.{" "}
-          <Link
-            to={r.catalog(slug)}
-            className="py-1 text-accent-fg underline underline-offset-2"
-          >
-            Open the catalog
-          </Link>
-        </>
-      }
-    >
-      <div className="space-y-4 px-5 py-4 text-sm">
-        <div className="space-y-1">
-          <p className="font-medium text-fg-strong">
-            Settings: {formatCount(synced.length)} sync
-          </p>
-          {synced.length > 0 ? (
-            <p className="text-fg">
-              {shown.map((e, i) => (
-                <React.Fragment key={e.key}>
-                  {i > 0 ? ", " : null}
-                  <code className="font-mono text-xs text-fg-strong">
-                    {e.key}
-                  </code>
-                </React.Fragment>
-              ))}
-              {synced.length > shown.length
-                ? ` and ${formatCount(synced.length - shown.length)} more`
-                : null}
-            </p>
-          ) : null}
-          {local.length > 0 ? (
-            <p className="text-fg-muted">
-              {formatCount(local.length)} stay on each device:{" "}
-              {local.map((k, i) => (
-                <React.Fragment key={k}>
-                  {i > 0 ? ", " : null}
-                  <code className="font-mono text-xs">{k}</code>
-                </React.Fragment>
-              ))}
-            </p>
-          ) : null}
-          <p className="text-fg-muted">Keys the app adds itself also sync.</p>
-        </div>
-        <DescriptionList
-          columns={2}
-          items={[
-            {
-              term: "Keys per person",
-              detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,
-            },
-            {
-              term: "Size per person",
-              detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.settings.maxBytes)}`,
-            },
-          ]}
-        />
-      </div>
-    </SettingsSection>
   );
 }

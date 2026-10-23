@@ -1285,7 +1285,8 @@ export type HostedAssetOutcome =
 /** One thing that needs the operator (`GET /manage/api/attention`; worker `console/lib/attention.ts`). */
 export interface AttentionItemDto {
   id: string;
-  product: { slug: string; name: string };
+  /** `null` for a platform item (the Cloud Sync pause): it belongs to no product. */
+  product: { slug: string; name: string } | null;
   kind:
     | "sync.failed"
     | "secret.missing"
@@ -1295,7 +1296,8 @@ export interface AttentionItemDto {
     | "credential.expiring"
     | "storefront.identity_mismatch"
     | "storefront.identity_ambiguous"
-    | "channel.identity_mismatch";
+    | "channel.identity_mismatch"
+    | "sync.paused";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */
   service: ServiceSlug | null;
@@ -1305,6 +1307,12 @@ export interface AttentionItemDto {
   lines: string[];
   action: { label: string; page: string; query?: Record<string, string> };
   area: string;
+  /** Platform items only: epoch seconds the pause began. */
+  since?: number | null;
+  /** Platform items only: the display name of who turned it on. */
+  by?: string | null;
+  /** Platform items only: the operator's reason. */
+  reason?: string | null;
 }
 
 /** One row of Platform ready (`GET /manage/api/platform/ready`). */
@@ -2241,6 +2249,8 @@ export interface TrustPolicyDto {
   mint: TrustLevelDto;
   gatedDelivery: TrustLevelDto;
   commerceClaim: TrustLevelDto;
+  /** Cloud Sync pushes (U-05.11); absent from a Worker that predates it, which reads `basic`. */
+  cloudSyncWrite?: TrustLevelDto;
   enforce: boolean;
   appAttest: {
     teamId: string | null;
@@ -6174,6 +6184,10 @@ const rawApi = {
         .join("&")}`,
     ),
 
+  // ── sync: Cloud Sync usage (U-05.19) ───────────────────────────────────────
+  /** The Usage page's facts: the aggregate, today's UTC counters, tier labels and limits. */
+  syncUsage: (slug: string) => call<SyncUsageResponse>(`${p(slug)}/sync/usage`),
+
   // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
   edgeMintRecipes: (slug: string) =>
     call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
@@ -6547,7 +6561,13 @@ const rawApi = {
   updateProductSetting: (
     slug: string,
     key: string,
-    body: { value: unknown; expectedVersion: number; reason?: string },
+    body: {
+      value: unknown;
+      expectedVersion: number;
+      reason?: string;
+      /** The setting's key, typed back for a change the registry confirms at L2. */
+      confirm?: string;
+    },
   ) =>
     call<{ ok: true; claimed: boolean; setting: ProductSetting }>(
       `${p(slug)}/settings/${encodeURIComponent(key)}`,
@@ -6557,7 +6577,7 @@ const rawApi = {
   revertProductSetting: (
     slug: string,
     key: string,
-    body: { expectedVersion: number },
+    body: { expectedVersion: number; reason?: string; confirm?: string },
   ) =>
     call<{
       ok: true;
@@ -6949,6 +6969,51 @@ function deliveryAccessOf(s: ProductSetting): DeliveryAccess {
     })),
   };
 }
+
+/** `GET …/sync/usage` (U-05.19): counts and bytes only, no person, subject or device. */
+export type SyncUsageResponse =
+  | { enabled: false }
+  | {
+      enabled: true;
+      usage: {
+        bytes: number;
+        people: number;
+        settingsBytes: number;
+        recordBytes: number;
+        fileBytes: number;
+        revisionBytes: number;
+        computedAt: number;
+        breakdown: {
+          byTier: {
+            tierId: string | null;
+            people: number;
+            bytes: number;
+            medianBytes: number;
+            over80: number;
+          }[];
+          byKind: {
+            settings: number;
+            records: number;
+            files: number;
+            revisions: number;
+          };
+          byPlatform: {
+            platform: string | null;
+            peopleThisWeek: number;
+            lastSyncAt: number;
+          }[];
+        };
+      };
+      today: { day: string; syncs: number; conflicts: number };
+      tiers: { id: string; label: string; bytes: number | null }[];
+      defaultBytes: number;
+      /** The platform pause (U-05.21): `null` while writes run; `reason` only for Platform. */
+      paused?: {
+        since: number | null;
+        by: string | null;
+        reason: string | null;
+      } | null;
+    };
 
 export const api: AdminApi = rawApi;
 

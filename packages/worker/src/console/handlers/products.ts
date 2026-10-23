@@ -60,6 +60,7 @@ import { mintKid } from "../../core/keys.js";
 import { parseCreateChoices } from "../../core/products/createDefaults.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { deleteProduct } from "../../core/products/store.js";
+import { purgeProductData } from "../../core/contributions.js";
 import { listDevicesByProduct } from "../../core/devices/store.js";
 import {
   claimsApply,
@@ -581,6 +582,14 @@ export async function handleProducts(
         fields: ["confirmSlug"],
       });
     }
+    // Data a service keeps outside D1 (Cloud Sync's per-person objects) goes first, before the
+    // per-device token deletes: the batch below removes the rows that say what exists, and a big
+    // product is asked again, so the bounded purge must not spend each retry's subrequests on tokens
+    // already deleted (SR-1 N6). Bounded.
+    if (!(await purgeProductData(db, env, slug, now)))
+      return err(409, ErrorCode.BadRequest, "erasure is not finished; retry", {
+        reason: "purge_incomplete",
+      });
     const devices = await listDevicesByProduct(db, slug);
     for (const device of devices) {
       if (device.token_hash)

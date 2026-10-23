@@ -35,6 +35,9 @@
  * everything product's identity fragment: `account` and `keyEntryLimit` after `configured`, and
  * the `attach`, `subject`, `signout` and `accountPortal` endpoints last. Additive keys a client
  * ignores; every Identity-off fragment is unchanged.
+ * U-05.15 (plans/U-05-slices.md, WIRE-CONTRACT-V4 §13.5) turned Cloud Sync's `settings` on and named
+ * its `pull` (`<base>/sync`) and `push` (`<base>/sync/ops`) endpoints in the everything product's
+ * fragment; `collections`, `saves` and `files` stay off. Additive.
  * CM-29 added the eighth service, Commerce (plans/CM-29.md §2): each golden gained
  * `services.commerce` after `sync`, `{"enabled":false}` when off; the everything product runs it
  * and pins the fragment (the two device endpoints, nothing about any store). Additive.

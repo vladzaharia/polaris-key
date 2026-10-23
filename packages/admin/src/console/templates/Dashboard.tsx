@@ -151,7 +151,13 @@ export interface AttentionItem {
   /** The service the fix belongs to: the row's links and focus take its accent. */
   service?: string;
   /** One action: a link (`href`) or a handler. */
-  action?: { label: string; href?: string; onSelect?: () => void };
+  action?: {
+    label: string;
+    href?: string;
+    onSelect?: () => void;
+    /** A handler action that is working: the button shows a spinner and ignores clicks. */
+    busy?: boolean;
+  };
   /** For ordering within a tone: newest first. */
   at?: number;
 }
@@ -326,6 +332,7 @@ export function AttentionList({
     // 200 % text size or a narrow column stacks the rows instead of crushing them.
     <section
       aria-labelledby={id}
+      data-attention-list=""
       className="@container rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
     >
       <div
@@ -409,8 +416,11 @@ export function AttentionList({
               ) : (
                 <Button
                   variant={primaryFirst && row === 0 ? "primary" : "outline"}
-                  size="sm"
-                  className="shrink-0 @xl:justify-self-end"
+                  size="xs"
+                  // Its own width, left-aligned like the links beside it on a phone; the type
+                  // matches the links' 14 px.
+                  className="shrink-0 justify-self-start text-sm @xl:justify-self-end"
+                  loading={item.action.busy}
                   onClick={item.action.onSelect}
                 >
                   {item.action.label}

@@ -658,7 +658,8 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.signin.hints are I-08's redirect-web-* and identity-request-hints transcripts
     // (the browser's `authorize` and Continue are `browser` steps no SDK asserts); React's port
     // is I-10a. identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the choice.*
-    // primitives); React's port is I-10a.
+    // primitives); React's port is I-10a. sync.settings is U-05's cloudsync-* transcripts (the
+    // cloudSyncPull and cloudSyncPush steps); React's port is U-20.
     const plannedHere = [
       "identity.toggle",
       "identity.keyentry",
@@ -667,6 +668,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "identity.redirect.web",
       "identity.signin.hints",
       "identity.choice",
+      "sync.settings",
     ];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.

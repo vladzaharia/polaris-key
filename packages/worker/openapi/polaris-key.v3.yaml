@@ -100,6 +100,11 @@ tags:
     description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
   - name: identity
     description: Product OIDC (browser + device flow) and browser sessions.
+  - name: sync
+    description: >
+      Cloud Sync (U-05; WIRE-CONTRACT-V4 §13): a signed-in person's synced settings for one
+      product. Unsigned device routes under `/{product}/sync`, bearer only, no cookie. Off, or
+      Config or Identity off, answers `404`.
   - name: registry
     description: >
       The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
@@ -291,10 +296,15 @@ paths:
                           accountPortal: https://key.plrs.im/#/p/djdl
                       sync:
                         enabled: true
-                        settings: false
+                        settings: true
                         collections: false
                         saves: false
-                        endpoints: { pull: null, push: null, files: null }
+                        endpoints:
+                          {
+                            pull: https://key.plrs.im/djdl/sync,
+                            push: https://key.plrs.im/djdl/sync/ops,
+                            files: null,
+                          }
                 configOnly:
                   summary: A config-only product — the other six are bare `enabled:false`
                   value:
@@ -8782,6 +8792,295 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/sync:
+    get:
+      operationId: syncPull
+      tags: [sync]
+      summary: Pull the person's synced settings since a cursor
+      description: >
+        U-05.12 (WIRE-CONTRACT-V4 §13.4). The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`; a session cookie is not read. The principal is the device's
+        pairwise subject (the account signed in on it); no parameter names a subject. A device with
+        no principal gets `403 account_required` with a `signInUrl`. A pull never changes licence
+        state and is always allowed: no trust operation, no pause, no quota check.
+
+        `cursor` absent or `0` is a snapshot; otherwise changes since it, oldest first, in pages of
+        at most 500 (changes and tombstones together) with `more: true` while more remain. A
+        `platform`-scope row is returned only to devices of its platform family. `empty: true`
+        appears only on a cursor-0 answer for a person with nothing stored. `quota` is this
+        device's resolved quota and `usage` the person's totals across devices. `aliases` maps
+        a key the catalog renamed to its current name; `catalogVersion` is the active catalog's
+        `schemaVersion`.
+
+        The ETag is the strong `"<seq>.<lastMutationId>"`; `If-None-Match` with it answers `304`.
+        A page with `more: true` carries no ETag and is never `304`, so a client cannot stop
+        paging by replaying a tag. The tag covers the data and the client's last processed
+        mutation, not `quota` or `aliases`, which a client rereads from any `200`. A cursor
+        below the 90-day tombstone horizon, or past the store's sequence, is `410 cursor_expired`:
+        the client takes a snapshot. `cache-control: private, no-cache` on `200` and `304`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - name: cursor
+          in: query
+          required: false
+          description: "The last cursor the client holds: digits, `0` for a snapshot."
+          schema: { type: string, pattern: "^(0|[1-9][0-9]{0,15})$" }
+        - name: clientId
+          in: query
+          required: false
+          description: >
+            The client's partition id (§8). `lastMutationId` is its last processed mutation when
+            it belongs to this device, else `0`.
+          schema: { type: string, pattern: "^c_[A-Za-z0-9_-]{22}$" }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: "The pull. `etag` unless `more`."
+          headers:
+            ETag:
+              schema: { type: string }
+              description: 'Strong, `"<seq>.<lastMutationId>"`. Absent while `more` is true.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncPullResponse" }
+              examples:
+                snapshot:
+                  summary: test/cloudSyncPull.test.ts
+                  value:
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    serverNow: 1700000000000
+                    cursor: 2
+                    more: false
+                    lastMutationId: 0
+                    catalogVersion: 1
+                    aliases: {}
+                    quota: { bytes: 268435456, files: true }
+                    usage: { bytes: 41, settings: 2, records: 0, files: 0 }
+                    changes:
+                      - setting: audio.music.volume
+                        scope: user
+                        value: 0.6
+                        version: 1
+                        editedHlc: "0190f3a2c1b4:0003"
+                        updatedBy: c_AAAAAAAAAAAAAAAAAAAAAA
+                    tombstones: []
+        "304":
+          description: The client's copy is current. `etag` and `cache-control` only.
+        "400":
+          description: A malformed `cursor`, `clientId` or `X-PKey-Device` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device. Not an auth failure: the client keeps its
+            state and offers sign-in behind a user action.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+              examples:
+                accountRequired:
+                  summary: test/cloudSyncPull.test.ts
+                  value:
+                    error:
+                      code: account_required
+                      message: Sign in to use Cloud Sync.
+                      signInUrl: https://key.plrs.im/signin?product=djdl
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: >
+            `cursor_expired` — the cursor is older than the tombstone horizon (or past the
+            store). NESTED. The client takes a snapshot.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: cursor_expired } } }
+        "503":
+          description: >
+            `unavailable` — the person's store could not answer now (or the subject was merged
+            twice while the request ran). NESTED, with `Retry-After`. Retry.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unavailable: { value: { error: { code: unavailable } } }
+    options:
+      operationId: preflightSyncPull
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/ops:
+    post:
+      operationId: syncPush
+      tags: [sync]
+      summary: Push a batch of synced-setting mutations
+      description: >
+        U-05.13 (WIRE-CONTRACT-V4 §13.3). The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`; no cookie. The principal is the device's pairwise subject;
+        the body names no subject, quota or platform family. The `200` is the per-mutation
+        `results` beside the pull members of §13.4 since the request's `cursor`.
+
+        The order is: token and principal (`401`, `400`, `403 account_required`); the platform
+        pause (`503 writes_paused`, `Retry-After: 300`; pulls are still served); device trust, the
+        `cloudSyncWrite` operation (`403 attestation_required` when enforced, an audit row only when
+        log-only); the body (`413 body_too_large` over 256 KiB, `400 bad_request` for a malformed
+        body or more than 100 mutations); then the object. A product that is deleted, or whose
+        Cloud Sync data is being erased, is `404`. A refusal that is not a `200` leaves the
+        client's journal as it was (push rule 1).
+
+        A declared key that is not an Editable `config` key, or is `local`, is `rejected` with
+        `setting_not_synced`, as is a synced key pushed under another scope and an open setting
+        pushed with `platform`. A declared key is validated against its entry (`value_invalid`); an
+        undeclared key is an open setting, `lastWrite`, at most 8 KiB. `quota_exceeded` carries its
+        `scope`: `user` for the person's quota and budget, `product` past the operator's ceiling.
+        A clear always passes. A `clientId` that belongs to another device is `409 client_mismatch`;
+        a `cursor` the store cannot serve is `410 cursor_expired` (the mutations were applied and
+        the retry finds them `duplicate`).
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushRequest" }
+            examples:
+              volume:
+                summary: test/cloudSyncPush.test.ts
+                value:
+                  clientId: c_AAAAAAAAAAAAAAAAAAAAAA
+                  cursor: 0
+                  atomic: false
+                  mutations:
+                    - mutationId: 41
+                      target: { setting: audio.music.volume, scope: user }
+                      op: set
+                      value: 0.6
+                      editedHlc: "0190f3a2c1b4:0003"
+      responses:
+        "200":
+          description: "The results, and the pull since the request's `cursor`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushResponse" }
+              examples:
+                accepted:
+                  summary: test/cloudSyncPush.test.ts
+                  value:
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    serverNow: 1700000000000
+                    cursor: 1
+                    more: false
+                    lastMutationId: 41
+                    catalogVersion: 1
+                    aliases: {}
+                    quota: { bytes: 268435456, files: true }
+                    usage: { bytes: 21, settings: 1, records: 0, files: 0 }
+                    results: [{ mutationId: 41, status: ok, version: 1 }]
+                    changes:
+                      - setting: audio.music.volume
+                        scope: user
+                        value: 0.6
+                        version: 1
+                        editedHlc: "0190f3a2c1b4:0003"
+                        updatedBy: c_AAAAAAAAAAAAAAAAAAAAAA
+                    tombstones: []
+        "400":
+          description: >
+            A malformed body, a missing or malformed `X-PKey-Device`, or more than 100 mutations —
+            NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (no account is signed in on the device; the body carries the
+            `signInUrl`) or `attestation_required` (the product enforces `cloudSyncWrite` and the
+            device is not attested; NESTED, whole request). Not auth failures: the client keeps its
+            journal.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                attestation:
+                  { value: { error: { code: attestation_required } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: "`client_mismatch` — the `clientId` belongs to another device. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch: { value: { error: { code: client_mismatch } } }
+        "410":
+          description: >
+            `cursor_expired` — the request's `cursor` is older than the tombstone horizon (or past
+            the store). The mutations were applied; the retry finds them `duplicate`. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: cursor_expired } } }
+        "413":
+          description: "`body_too_large` — the body is over 256 KiB. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                tooLarge: { value: { error: { code: body_too_large } } }
+        "503":
+          description: >
+            `writes_paused` (the operator paused Cloud Sync writes; `Retry-After: 300`) or
+            `unavailable` (the person's store could not answer now; `Retry-After: 5`). NESTED.
+            The journal is kept; retry after the delay.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                paused: { value: { error: { code: writes_paused } } }
+                unavailable: { value: { error: { code: unavailable } } }
+    options:
+      operationId: preflightSyncPush
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── permanent aliases ─────────────────────────────────────────────────────────
   /{product}/appcast.xml:
@@ -15707,14 +16006,14 @@ paths:
       description: >
         Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
         secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
-        credential expiring within 14 days or expired, a store's typed app identity that differs
-        from the app assigned to the product (`storefront.identity_mismatch`, area `commerce`), a store whose own
-        keys name different apps (`storefront.identity_ambiguous`, area `commerce`), a store channel's declared app identity that differs
-        from the assigned app (`channel.identity_mismatch`, area `ship`).
-        Only broken things appear; what a product
-        has not set up yet does not. Each item states one fact per line, names its product, and
-        carries the page its fix lives in. Visibility is the registry list's, then each item's own
-        area: a member who cannot open the fix never sees the item. The worst first. Admin session
+        credential expiring within 14 days or expired, and, for a member who can edit the Platform,
+        Cloud Sync writes paused (once for the platform, with `product: null`, while at least one
+        product has Cloud Sync on). Only broken things appear; what a product has not set up yet
+        does not. Each item states one fact per line, names its product, and carries the page its
+        fix lives in. Visibility is the registry list's, then each item's own area: a member who
+        cannot open the fix never sees the item. A platform item ignores product visibility and is
+        shown only to a member who can edit the Platform, whatever their product grants. The worst
+        first, and within a tone the platform's items before the products'. Admin session
         cookie or an admin API token.
       responses:
         "200":
@@ -21566,9 +21865,14 @@ components:
             required:
               [id, product, kind, tone, service, short, lines, action, area]
             properties:
-              id: { type: string, description: "`<slug>:<kind>[:<subject>]`." }
+              id:
+                {
+                  type: string,
+                  description: "`<slug>:<kind>[:<subject>]`, or `@platform:<kind>` for a platform item.",
+                }
               product:
-                type: object
+                type: [object, "null"]
+                description: "`null` for a platform item."
                 required: [slug, name]
                 properties: { slug: { type: string }, name: { type: string } }
               kind:
@@ -21584,6 +21888,7 @@ components:
                     storefront.identity_mismatch,
                     storefront.identity_ambiguous,
                     channel.identity_mismatch,
+                    sync.paused,
                   ]
               tone: { type: string, enum: [danger, warning] }
               service: { type: [string, "null"] }
@@ -21597,11 +21902,20 @@ components:
                   page:
                     {
                       type: string,
-                      description: "A product page id of the console.",
+                      description: "A product page id of the console, or a global page id when `product` is null.",
                     }
                   query:
                     { type: object, additionalProperties: { type: string } }
               area: { type: string }
+              since:
+                type: integer
+                description: "Platform items only: epoch seconds the pause began."
+              by:
+                type: [string, "null"]
+                description: "Platform items only: the display name of who paused writes, never an id."
+              reason:
+                type: [string, "null"]
+                description: "Platform items only: the operator's reason for the pause."
     AdminPlatformReady:
       type: object
       required: [rows, done, total]
@@ -25447,6 +25761,264 @@ components:
       additionalProperties: false
       properties:
         released: { type: boolean }
+    SyncQuota:
+      type: object
+      description: "The requesting device's resolved Cloud Sync quota (§13.1, §13.4)."
+      required: [bytes, files]
+      additionalProperties: false
+      properties:
+        bytes:
+          { type: integer, minimum: 0, description: "`0` means reads only." }
+        files: { type: boolean, description: "`false` refuses a file." }
+    SyncUsage:
+      type: object
+      description: "The person's totals across their devices (§13.4)."
+      required: [bytes, settings, records, files]
+      additionalProperties: false
+      properties:
+        bytes: { type: integer, minimum: 0 }
+        settings: { type: integer, minimum: 0 }
+        records: { type: integer, minimum: 0 }
+        files: { type: integer, minimum: 0 }
+    SyncChange:
+      description: "A setting change or a record change (§13.4)."
+      oneOf:
+        - type: object
+          required: [setting, scope, value, version, editedHlc, updatedBy]
+          additionalProperties: false
+          properties:
+            setting: { type: string }
+            scope: { type: string, enum: [user, platform] }
+            value: {}
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            updatedBy:
+              { type: string, description: "The `clientId` that wrote it." }
+            members:
+              type: object
+              additionalProperties: {}
+              description: "A `merge` setting's live members."
+        - type: object
+          required: [record, value, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, id]."
+            value: {}
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+    SyncTombstone:
+      description: "A deleted setting or record with its `editedHlc` (§13.4)."
+      oneOf:
+        - type: object
+          required: [setting, editedHlc]
+          additionalProperties: false
+          properties:
+            setting: { type: string }
+            editedHlc: { type: string }
+        - type: object
+          required: [record, editedHlc]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+            editedHlc: { type: string }
+    SyncPullResponse:
+      type: object
+      description: >
+        `GET /{product}/sync` (U-05.12, §13.4), and the pull members of a push `200` (`PushResponse`
+        adds `results`, so this schema is open). `cursor` is the page's last row while `more`, else
+        the store's sequence.
+      required:
+        [
+          subject,
+          serverNow,
+          cursor,
+          more,
+          lastMutationId,
+          catalogVersion,
+          aliases,
+          quota,
+          usage,
+          changes,
+          tombstones,
+        ]
+      properties:
+        subject:
+          {
+            type: string,
+            description: "The person's pairwise subject for this product.",
+          }
+        serverNow: { type: integer, description: "Server clock, milliseconds." }
+        cursor: { type: integer, minimum: 0 }
+        more: { type: boolean }
+        lastMutationId: { type: integer, minimum: 0 }
+        catalogVersion: { type: integer, minimum: 0 }
+        aliases:
+          type: object
+          additionalProperties: { type: string }
+          description: "A renamed key's old name to its current one (catalog migrations)."
+        quota: { $ref: "#/components/schemas/SyncQuota" }
+        usage: { $ref: "#/components/schemas/SyncUsage" }
+        empty:
+          type: boolean
+          const: true
+          description: "Only on a cursor-0 answer for a person with nothing stored."
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/SyncChange" }
+        tombstones:
+          type: array
+          items: { $ref: "#/components/schemas/SyncTombstone" }
+    AccountRequiredBody:
+      type: object
+      description: >
+        `403 account_required` on a Cloud Sync route (§13.1). Unlike `WireError`, `message` and
+        `signInUrl` ride INSIDE `error`, as the contract states them.
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, signInUrl]
+          additionalProperties: false
+          properties:
+            code: { type: string, const: account_required }
+            message: { type: string, const: Sign in to use Cloud Sync. }
+            signInUrl:
+              { type: string, description: "`<origin>/signin?product=<slug>`." }
+    SyncMutation:
+      type: object
+      description: "One mutation of a push body (§13.3). Settings only until U-09."
+      required: [mutationId, target, op]
+      properties:
+        mutationId:
+          {
+            type: integer,
+            minimum: 1,
+            description: "Strictly increasing per `clientId`.",
+          }
+        target:
+          oneOf:
+            - type: object
+              required: [setting, scope]
+              properties:
+                setting: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+                scope: { type: string, enum: [user, platform] }
+            - type: object
+              required: [record]
+              properties:
+                record:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items: { type: string }
+        op:
+          type: string
+          enum:
+            [
+              set,
+              clear,
+              setMember,
+              removeMember,
+              setField,
+              removeField,
+              delete,
+              add,
+              remove,
+            ]
+        value: {}
+        member: { type: string }
+        editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
+    PushRequest:
+      type: object
+      description: >
+        `POST /{product}/sync/ops` (U-05.13, §13.3): at most 100 mutations and 256 KiB. A
+        `mutationId` at or below the client's last processed is `duplicate`.
+      required: [clientId, cursor, mutations]
+      properties:
+        clientId: { type: string, pattern: "^c_[A-Za-z0-9_-]{22}$" }
+        cursor:
+          {
+            type: integer,
+            minimum: 0,
+            description: "The pull cursor the client holds.",
+          }
+        atomic:
+          type: boolean
+          description: "All or nothing: the first mutation that is not `ok` aborts the rest."
+        mutations:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/SyncMutation" }
+    MutationResult:
+      description: "One mutation's result (§13.3, §13.9), by `mutationId`."
+      oneOf:
+        - type: object
+          required: [mutationId, status, version]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: ok }
+            version: { type: integer, minimum: 1 }
+            renamedTo:
+              {
+                type: string,
+                description: "A catalog migration renamed the key.",
+              }
+            dropped: { type: boolean, const: true }
+        - type: object
+          required: [mutationId, status, server]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: conflict }
+            server:
+              type: object
+              required: [value, version]
+              properties:
+                value: {}
+                version: { type: integer }
+                editedHlc: { type: string }
+                members: { type: object, additionalProperties: {} }
+        - type: object
+          required: [mutationId, status, code]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: rejected }
+            code:
+              type: string
+              enum:
+                - value_invalid
+                - setting_not_synced
+                - op_invalid_for_policy
+                - collection_unknown
+                - entitlement_required
+                - quota_exceeded
+            scope:
+              type: string
+              enum: [user, collection, product]
+              description: "Only with `quota_exceeded`."
+        - type: object
+          required: [mutationId, status]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, enum: [duplicate, aborted] }
+    PushResponse:
+      description: "The push `200` (§13.3): the results beside the pull members of §13.4."
+      allOf:
+        - { $ref: "#/components/schemas/SyncPullResponse" }
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items: { $ref: "#/components/schemas/MutationResult" }
     SessionFromLicenseResult:
       type: object
       description: >

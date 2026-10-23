@@ -44,10 +44,12 @@ import { qk } from "../../../data/queries.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import {
   DEFAULT_POLICY,
+  SYNC_OPERATION,
   TRUST_OPERATIONS,
   TRUST_POLICY_KEY,
   changeLines,
   isDefaultPolicy,
+  level,
   policyProblems,
   relaxesTrustPolicy,
   samePolicy,
@@ -94,8 +96,11 @@ function describeError(error: unknown): {
 
 export function TrustPolicySection({
   slug,
+  syncOn = false,
 }: {
   slug: string;
+  /** Cloud Sync is on: only then is "Cloud Sync writes" shown (U-05 L11). */
+  syncOn?: boolean;
 }): React.ReactElement {
   const query = useQuery({
     queryKey: qk.trustPolicy(slug),
@@ -135,10 +140,11 @@ export function TrustPolicySection({
           />
         ) : (
           <>
-            <PolicySummary policy={query.data.policy} />
+            <PolicySummary policy={query.data.policy} syncOn={syncOn} />
             <PolicyDrawer
               slug={slug}
               open={editing}
+              syncOn={syncOn}
               current={query.data}
               onClose={() => setEditing(false)}
               reload={async () => {
@@ -154,18 +160,18 @@ export function TrustPolicySection({
 
 function PolicySummary({
   policy,
+  syncOn,
 }: {
   policy: TrustPolicyDto;
+  syncOn: boolean;
 }): React.ReactElement {
-  const level = (l: string) =>
-    l === "attested" ? "Attested device" : "Any device";
   return (
     <DescriptionList
       columns={3}
       items={[
-        ...TRUST_OPERATIONS.map((op) => ({
+        ...TRUST_OPERATIONS.filter((op) => shown(op.id, syncOn)).map((op) => ({
           term: op.label,
-          detail: level(policy[op.id]),
+          detail: levelLabel(level(policy, op.id)),
         })),
         {
           term: "A miss",
@@ -188,6 +194,14 @@ function PolicySummary({
   );
 }
 
+function levelLabel(l: string): string {
+  return l === "attested" ? "Attested device" : "Any device";
+}
+
+function shown(id: string, syncOn: boolean): boolean {
+  return id !== SYNC_OPERATION || syncOn;
+}
+
 type Pending =
   | { kind: "save"; next: TrustPolicyDto }
   | { kind: "reset"; next: TrustPolicyDto };
@@ -195,12 +209,14 @@ type Pending =
 function PolicyDrawer({
   slug,
   open,
+  syncOn,
   current,
   onClose,
   reload,
 }: {
   slug: string;
   open: boolean;
+  syncOn: boolean;
   current: TrustPolicyResponse;
   onClose: () => void;
   reload: () => Promise<void>;
@@ -337,28 +353,32 @@ function PolicyDrawer({
               <legend className="text-sm font-semibold text-fg-strong">
                 Needs
               </legend>
-              {TRUST_OPERATIONS.map((op) => (
-                <FormField
-                  key={op.id}
-                  name={op.id}
-                  label={op.label}
-                  value={draft[op.id]}
-                  onChange={(v: string) =>
-                    set({ [op.id]: v as "basic" | "attested" })
-                  }
-                >
-                  {(f) => (
-                    <Select
-                      {...f}
-                      options={LEVELS}
-                      value={draft[op.id]}
-                      onChange={(v) =>
-                        set({ [op.id]: (v ?? "basic") as "basic" | "attested" })
-                      }
-                    />
-                  )}
-                </FormField>
-              ))}
+              {TRUST_OPERATIONS.filter((op) => shown(op.id, syncOn)).map(
+                (op) => (
+                  <FormField
+                    key={op.id}
+                    name={op.id}
+                    label={op.label}
+                    value={level(draft, op.id)}
+                    onChange={(v: string) =>
+                      set({ [op.id]: v as "basic" | "attested" })
+                    }
+                  >
+                    {(f) => (
+                      <Select
+                        {...f}
+                        options={LEVELS}
+                        value={level(draft, op.id)}
+                        onChange={(v) =>
+                          set({
+                            [op.id]: (v ?? "basic") as "basic" | "attested",
+                          })
+                        }
+                      />
+                    )}
+                  </FormField>
+                ),
+              )}
               <Switch
                 label="Refuse a device that falls short"
                 description="Off: a miss is logged in activity and the request goes through."

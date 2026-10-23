@@ -19,7 +19,12 @@ import {
   IMG_ORIGIN,
   LONG_SLUG,
   PACK_ID,
+  PLATFORM_ONLY_ME,
+  PLATFORM_ONLY_READY,
+  PRODUCT_ROLE_ME,
+  PLATFORM_PAUSE_ITEM,
   resolve,
+  SYNC_USAGE,
 } from "./layoutFixtures.js";
 import {
   columnBreaches,
@@ -32,6 +37,7 @@ import {
   unlabelledScrollers,
 } from "./pageChecks.js";
 import { reduceTransparency } from "../../ui-qa/src/index.ts";
+import { pausedPlatformSettings } from "./layoutData.js";
 import { staleUxDebt, uxBarChecked } from "./uxBar.js";
 import {
   probeLayout,
@@ -108,6 +114,8 @@ interface Case {
   hash: string;
   /** Opens a drawer or dialog after the page settles. */
   act?: (page: Page) => Promise<void>;
+  /** Answers for these API paths in place of the fixtures (a different member, a paused product). */
+  override?: Record<string, unknown>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
 }
@@ -167,6 +175,7 @@ function cases(): Case[] {
         hash: `#/p/djdl/license/licenses/${id}/${tab}`,
       });
   list.push({ name: `long:overview`, hash: `#/p/${LONG_SLUG}` });
+  list.push({ name: `long:sync-usage`, hash: `#/p/${LONG_SLUG}/sync/usage` });
   list.push({ name: `long:settings`, hash: `#/p/${LONG_SLUG}/settings` });
   for (const p of GLOBAL_PAGES) {
     list.push({ name: `global:${p.page}`, hash: `#/${p.path}` });
@@ -200,6 +209,42 @@ function cases(): Case[] {
           .waitFor();
       },
     },
+    // ST-44b: Home while Cloud Sync writes are paused. Superadmin is `global:home` (the platform
+    // row among the product rows); a Platform admin with no product grant sees the row and the
+    // first-run state; a product admin never gets the item from the server.
+    {
+      name: "home:paused-platform-only",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PLATFORM_ONLY_ME,
+        "/manage/api/products": { products: [] },
+        "/manage/api/platform/ready": PLATFORM_ONLY_READY,
+        "/manage/api/attention": { items: [PLATFORM_PAUSE_ITEM] },
+        "/manage/api/platform/settings": pausedPlatformSettings(),
+      },
+    },
+    {
+      name: "home:paused-product-role",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/attention": {
+          items: (
+            (resolve("/manage/api/attention") as { items: { id: string }[] })
+              .items ?? []
+          ).filter((i) => i.id !== PLATFORM_PAUSE_ITEM.id),
+        },
+      },
+    },
+    {
+      name: "dialog:resume-from-home",
+      hash: "#/",
+      override: { "/manage/api/platform/settings": pausedPlatformSettings() },
+      act: async (page) => {
+        await page.getByRole("button", { name: "Resume writes" }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
@@ -223,6 +268,24 @@ function cases(): Case[] {
       act: async (page) => {
         await page.getByRole("button", { name: "New token…" }).click();
         await page.getByRole("dialog", { name: "New service token" }).waitFor();
+      },
+    },
+    // U-05.20: Cloud Sync's Usage tab is a route tab, not a nav row: its empty twin by hand.
+    { name: "empty:sync-usage", hash: "#/p/empty/sync/usage" },
+    // U-05.21: Setup as a product admin while writes are paused (the access line, no Resume).
+    {
+      name: "djdl:sync-setup?role",
+      hash: "#/p/djdl/sync/setup",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/products/djdl/sync/usage": {
+          ...SYNC_USAGE,
+          paused: {
+            since: Math.floor(Date.now() / 1000) - 3600,
+            by: null,
+            reason: null,
+          },
+        },
       },
     },
     {
@@ -359,10 +422,17 @@ function cases(): Case[] {
 }
 
 const CASES = cases();
+const PAUSED_HOME_CASES = [
+  "home:paused-platform-only",
+  "home:paused-product-role",
+  "dialog:resume-from-home",
+];
 /** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
 const ZOOM_CASES = [
   "global:home",
   "home:table",
+  // ST-44b.2: Home while Cloud Sync writes are paused, and the Resume dialog opened from it.
+  ...PAUSED_HOME_CASES,
   "djdl:overview",
   "djdl:licenses",
   "djdl:licenses/record/overview",
@@ -374,6 +444,9 @@ const ZOOM_CASES = [
   "djdl:releases",
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
+  "djdl:sync-usage",
+  "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
@@ -384,10 +457,19 @@ const ZOOM_CASES = [
   "dialog:set-secret",
 ];
 /** Home (Cards and Table) and a product's Overview. */
-const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
+const HOME_CASES = [
+  "global:home",
+  "home:table",
+  "djdl:overview",
+  ...PAUSED_HOME_CASES,
+];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  "djdl:sync-usage",
   "djdl:settings",
+  // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
+  "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
@@ -519,7 +601,13 @@ const VIEWPORTS: {
         width: 390,
         height: 844,
         rootFontPercent: 200,
-        only: ["global:home", "home:table", "djdl:overview", ...TEXT200_CASES],
+        only: [
+          "global:home",
+          "home:table",
+          "djdl:overview",
+          ...PAUSED_HOME_CASES,
+          ...TEXT200_CASES,
+        ],
       },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
@@ -725,7 +813,7 @@ async function open(
         });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = resolve(url.pathname);
+      const body = c.override?.[url.pathname] ?? resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });
@@ -1030,6 +1118,57 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
     );
   }, selector);
 }
+
+// ── Needs attention rows keep their shape (ST-44b.3) ───────────────────────────────────────────
+// A grid template the browser drops (it did once: `fit-content()` inside `minmax()`) stacks every
+// row and still passes the overflow checks, so the shape itself is pinned: at a laptop width the
+// pill, the subject and the action share one line.
+describe("Needs attention rows are one line at 1440 and stack on a phone (ST-44b.3)", () => {
+  const HOME: Case = { name: "global:home", hash: "#/" };
+  for (const theme of THEMES) {
+    it(`${theme}`, async () => {
+      const desk = await open(HOME, theme, { width: 1440, height: 900 });
+      try {
+        const rows = desk.page.locator("[data-attention-list] ul > li");
+        const n = await rows.count();
+        expect(n).toBeGreaterThan(1);
+        for (let i = 0; i < n; i++) {
+          const row = rows.nth(i);
+          const tops = await row.evaluate((li) => {
+            const top = (el: Element | null) =>
+              el ? el.getBoundingClientRect().top : NaN;
+            return [
+              top(li.querySelector("[class*=pill], [data-tone], span")),
+              top(li.querySelector("[title]")),
+              top([...li.querySelectorAll("a[href], button")].pop() ?? null),
+              li.getBoundingClientRect().height,
+            ];
+          });
+          const [pill, subject, action] = tops as number[];
+          expect(Math.abs(subject! - pill!), `row ${i} subject`).toBeLessThan(
+            8,
+          );
+          expect(Math.abs(action! - pill!), `row ${i} action`).toBeLessThan(10);
+        }
+      } finally {
+        await closeContext(desk.page.context());
+      }
+      const phone = await open(HOME, theme, { width: 390, height: 844 });
+      try {
+        const li = phone.page.locator("[data-attention-list] ul > li").first();
+        const [pill, action] = await li.evaluate((el) => [
+          el.querySelector("span")!.getBoundingClientRect().top,
+          [...el.querySelectorAll("a[href], button")]
+            .pop()!
+            .getBoundingClientRect().top,
+        ]);
+        expect(action! - pill!).toBeGreaterThan(20);
+      } finally {
+        await closeContext(phone.page.context());
+      }
+    });
+  }
+});
 
 describe("Home's product card (owner polish 2026-10-07)", () => {
   const HOME: Case = { name: "global:home", hash: "#/" };

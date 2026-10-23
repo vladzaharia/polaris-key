@@ -37,6 +37,26 @@ function Harness({
 }
 
 describe("Dialog", () => {
+  it("brings the focused field into view (nearest) where the body scrolls", async () => {
+    const calls: unknown[] = [];
+    const proto = Element.prototype as unknown as {
+      scrollIntoView?: (o?: unknown) => void;
+    };
+    const had = proto.scrollIntoView;
+    proto.scrollIntoView = function (o) {
+      calls.push([(this as HTMLElement).getAttribute("aria-label"), o]);
+    };
+    try {
+      render(<Harness dismissible />);
+      await screen.findByRole("dialog", { name: "Edit holder" });
+      await waitFor(() =>
+        expect(calls).toContainEqual(["Name", { block: "nearest" }]),
+      );
+    } finally {
+      proto.scrollIntoView = had;
+    }
+  });
+
   it("closes on Escape when dismissible", async () => {
     const user = userEvent.setup();
     render(<Harness dismissible />);

@@ -367,7 +367,7 @@ describe("responses on covered routes", () => {
     expect(await full.text()).toBe("BINARY");
     expect(full.headers.get("Access-Control-Allow-Origin")).toBe(LISTED);
     expect(full.headers.get("Access-Control-Expose-Headers")).toBe(
-      "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest",
+      "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After",
     );
     expect(full.headers.get("Vary")).toContain("Origin");
 

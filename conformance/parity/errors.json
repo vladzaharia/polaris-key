@@ -31,7 +31,7 @@
       "code": "attestation_required",
       "kind": "wire",
       "service": "core",
-      "description": "403: the product's device-trust policy requires an attested device for this operation (edge-mint, gated delivery, a commerce claim) and enforces it; this device is at the basic trust level. Only answered with `enforce: true` — in log-only mode the request proceeds and the would-be refusal is audited."
+      "description": "403: the product's device-trust policy requires an attested device for this operation (edge-mint, gated delivery, a commerce claim, and a Cloud Sync write (`cloudSyncWrite`, U-05)) and enforces it; this device is at the basic trust level. Only answered with `enforce: true` — in log-only mode the request proceeds and the would-be refusal is audited."
     },
     {
       "code": "attestation_rejected",
@@ -326,6 +326,54 @@
       "kind": "wire",
       "service": "core",
       "description": "403: the request needs a Polaris Key account signed in on the device and none is (WIRE-CONTRACT-V4 §12.3; I-09). POST /<p>/identity/attach answers it until the device signs in; Cloud Sync reuses it for a device with no sign-in binding. Nested; not an auth failure, so a client keeps its token."
+    },
+    {
+      "code": "cursor_expired",
+      "kind": "wire",
+      "service": "sync",
+      "description": "410: the pull cursor is older than the 90-day tombstone horizon (`SYNC_TOMBSTONE_DAYS`); the client discards it and pulls from the start (WIRE-CONTRACT-V4 §13.4, §13.6, §13.9; U-05)."
+    },
+    {
+      "code": "client_mismatch",
+      "kind": "wire",
+      "service": "sync",
+      "description": "409: the push's `clientId` belongs to another device (WIRE-CONTRACT-V4 §13.3 rule 4, §13.9; U-05)."
+    },
+    {
+      "code": "value_invalid",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, not an HTTP status: the value fails the catalog's validation for its setting or the record size limits (WIRE-CONTRACT-V4 §13.1, §13.3, §13.9; U-05)."
+    },
+    {
+      "code": "op_invalid_for_policy",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, not an HTTP status: the operation is not valid for the setting's merge policy (for example `patch` on a `lww` setting; WIRE-CONTRACT-V4 §13.3, §13.7, §13.9; U-05)."
+    },
+    {
+      "code": "setting_not_synced",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, not an HTTP status: the key is a declared non-`config` or `local` setting, or the wrong scope for it (WIRE-CONTRACT-V4 §13.1, §13.3, §13.9; U-05). Replaces the retired `setting_unknown`."
+    },
+    {
+      "code": "collection_unknown",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, not an HTTP status: the record target names a collection the catalog does not declare (WIRE-CONTRACT-V4 §13.2, §13.3, §13.9; U-09). Emitted by the push engine for any record target until U-09 adds collections."
+    },
+    {
+      "code": "quota_exceeded",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, or 403 for files: the write would take the person over their quota (`pkey.cloudSync.bytes`). Carries `scope`: `user`, `collection` or `product` (WIRE-CONTRACT-V4 §13.1, §13.3, §13.9; U-05)."
+    },
+    {
+      "code": "writes_paused",
+      "kind": "wire",
+      "service": "sync",
+      "description": "503: `cloudSync.writesPaused` is on. `Retry-After` gives the seconds to wait (`SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` = 300 when absent). Pulls still answer (WIRE-CONTRACT-V4 §13.9; U-05)."
     },
     {
       "code": "email_mismatch",

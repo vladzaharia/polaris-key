@@ -40,6 +40,7 @@ function asset(slot: string, over: Record<string, unknown> = {}) {
   };
 }
 
+const GiB = 1024 * MiB;
 const NOW_S = NOW;
 const DAY = 86_400;
 const ALL_ALERTS = [
@@ -241,6 +242,36 @@ const EXTRA_ROUTES: Record<string, unknown> = {
 
 export const SETTINGS_ROUTES: Record<string, unknown> = {
   ...EXTRA_ROUTES,
+  // Cloud Sync → Setup (U-05.21): the product ceiling and the usage read (tiers, 80 % words).
+  [`${P}/settings/effective`]: {
+    settings: [
+      ...(EXTRA_ROUTES[`${P}/settings/effective`] as { settings: unknown[] })
+        .settings,
+      {
+        key: "cloudSync.ceiling.bytes",
+        area: "cloudSync.limits",
+        service: "sync",
+        label: "Product storage ceiling",
+        description: "The most Cloud Sync data all people may keep together.",
+        docs: "/docs/features/cloud-sync/",
+        spec: { kind: "integer", unit: "bytes", min: 0, max: 1024 ** 5 },
+        confirm: { up: "L2", down: "L1" },
+        critical: true,
+        manifestPath: null,
+        visibleWhen: { service: "sync", offBehaviour: "hide" },
+        serviceEnabled: true,
+        rbacArea: "sync",
+        ownership: "operator",
+        value: 50 * GiB,
+        source: "default",
+        defaultValue: 50 * GiB,
+        version: 0,
+        updatedAt: null,
+        updatedBy: null,
+        reason: null,
+      },
+    ],
+  },
   // Settings → Differs from the manifest (ST-17): one claim that differs, one kept as the manifest has it.
   [`${P}/settings/drift`]: {
     snapshot: {

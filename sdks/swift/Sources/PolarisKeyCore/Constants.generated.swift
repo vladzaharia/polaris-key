@@ -65,6 +65,14 @@ public enum ErrorCode {
     public static let licenseOwned = "license_owned"
     public static let licenseEmailBound = "license_email_bound"
     public static let accountRequired = "account_required"
+    public static let cursorExpired = "cursor_expired"
+    public static let clientMismatch = "client_mismatch"
+    public static let valueInvalid = "value_invalid"
+    public static let opInvalidForPolicy = "op_invalid_for_policy"
+    public static let settingNotSynced = "setting_not_synced"
+    public static let collectionUnknown = "collection_unknown"
+    public static let quotaExceeded = "quota_exceeded"
+    public static let writesPaused = "writes_paused"
     public static let emailMismatch = "email_mismatch"
     public static let linkConflict = "link_conflict"
     public static let lastLink = "last_link"
@@ -244,6 +252,14 @@ public let ERROR_CODE_VALUES: [String] = [
     "license_owned",
     "license_email_bound",
     "account_required",
+    "cursor_expired",
+    "client_mismatch",
+    "value_invalid",
+    "op_invalid_for_policy",
+    "setting_not_synced",
+    "collection_unknown",
+    "quota_exceeded",
+    "writes_paused",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -423,6 +439,14 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "license_owned": "wire",
     "license_email_bound": "wire",
     "account_required": "wire",
+    "cursor_expired": "wire",
+    "client_mismatch": "wire",
+    "value_invalid": "wire",
+    "op_invalid_for_policy": "wire",
+    "setting_not_synced": "wire",
+    "collection_unknown": "wire",
+    "quota_exceeded": "wire",
+    "writes_paused": "wire",
     "email_mismatch": "wire",
     "link_conflict": "wire",
     "last_link": "wire",
@@ -1438,6 +1462,72 @@ public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
 
 /// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 public let REQUEST_HANDLE_TTL_SECONDS = 600
+
+/// Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`).
+public let SYNC_CLIENT_ID_PATTERN = "^c_[A-Za-z0-9_-]{22}$"
+
+/// Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+public let SYNC_DEBOUNCE_MS = 2000
+
+/// Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`).
+public let SYNC_HLC_PATTERN = "^[0-9a-f]{12}:[0-9a-f]{4}$"
+
+/// Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`).
+public let SYNC_IMPORT_HLC = "000000000000:0000"
+
+/// Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`).
+public let SYNC_KEY_PATTERN = "^[A-Za-z0-9._:-]{1,128}$"
+
+/// Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_CLOCK_SKEW_MS = 300000
+
+/// Cloud Sync: `SYNC_MAX_MERGE_MEMBERS` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_MERGE_MEMBERS = 256
+
+/// Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_MUTATIONS = 100
+
+/// Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_PUSH_BYTES = 262144
+
+/// Cloud Sync: `SYNC_MAX_RECORD_BYTES` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_RECORD_BYTES = 65536
+
+/// Cloud Sync: `SYNC_MAX_SETTINGS` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_SETTINGS = 256
+
+/// Cloud Sync: `SYNC_MAX_SETTINGS_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_SETTINGS_BYTES = 65536
+
+/// Cloud Sync: `SYNC_MAX_UNION_ELEMENT_BYTES` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_UNION_ELEMENT_BYTES = 1024
+
+/// Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_VALUE_BYTES = 8192
+
+/// Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+public let SYNC_PENDING_DAYS = 30
+
+/// Cloud Sync: `SYNC_PULL_PAGE_CHANGES` (WIRE-CONTRACT-V4 §13.4, `@polaris-key/protocol/sync`).
+public let SYNC_PULL_PAGE_CHANGES = 500
+
+/// Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+public let SYNC_QUOTA_BYTES = 268435456
+
+/// Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+public let SYNC_SAVE_SLOTS = 16
+
+/// Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+public let SYNC_SIGNOUT_FLUSH_MS = 5000
+
+/// Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`).
+public let SYNC_TOMBSTONE_DAYS = 90
+
+/// Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+public let SYNC_UNLICENSED_QUOTA_BYTES = 1048576
+
+/// Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`).
+public let SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS = 300
 
 /// Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
 public let PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$"

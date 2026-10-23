@@ -158,6 +158,9 @@ export function useOverlayFocus(
         firstField(contentRef.current) ??
         titleRef.current;
       target?.focus({ preventScroll: true });
+      // Where the dialog body scrolls (a short window, large text), a field below its edge is
+      // brought into view; only the dialog's own scroller moves.
+      target?.scrollIntoView?.({ block: "nearest" });
     },
     onCloseAutoFocus: (e) => {
       const target = returnTarget(opener.current);

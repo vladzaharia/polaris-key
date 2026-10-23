@@ -560,6 +560,7 @@ export const r = {
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
+  syncUsage: (slug: string) => productPage(slug, "sync-usage"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

@@ -6,6 +6,20 @@
 // (AGENTS rule 5): a product declares its collections in `.pkey/schema`, and its quota is the
 // `pkey.cloudSync.bytes` entitlement a tier, a licence or an add-on sets.
 
+import {
+  SYNC_KEY_PATTERN,
+  SYNC_MAX_MERGE_MEMBERS,
+  SYNC_MAX_MUTATIONS,
+  SYNC_MAX_PUSH_BYTES,
+  SYNC_MAX_RECORD_BYTES,
+  SYNC_MAX_SETTINGS,
+  SYNC_MAX_SETTINGS_BYTES,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
+  SYNC_MAX_VALUE_BYTES,
+  SYNC_QUOTA_BYTES,
+  SYNC_SAVE_SLOTS,
+  SYNC_UNLICENSED_QUOTA_BYTES,
+} from "@polaris-key/protocol/sync";
 import type {
   CloudSyncAccess,
   CloudSyncCollection,
@@ -53,20 +67,20 @@ export const CLOUD_SYNC_TEMPLATE_NAMES: readonly CloudSyncTemplate[] = [
 ];
 
 /** A Cloud Sync key, record id, slot or collection name (S-17 §5.7). */
-export const CLOUD_SYNC_KEY_PATTERN = "^[A-Za-z0-9._:-]{1,128}$";
+export const CLOUD_SYNC_KEY_PATTERN = SYNC_KEY_PATTERN;
 
 /** A collection name, or a `prefix.*` pattern of them. */
 export const CLOUD_SYNC_COLLECTION_PATTERN =
   "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 
 /** The most top-level members a `merge` setting or collection may declare (rule 5). */
-export const CLOUD_SYNC_MAX_MERGE_MEMBERS = 256;
+export const CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
 
 /** The longest canonical JSON of one `union` element, in bytes (rule 6). */
-export const CLOUD_SYNC_MAX_UNION_ELEMENT_BYTES = 1024;
+export const CLOUD_SYNC_MAX_UNION_ELEMENT_BYTES = SYNC_MAX_UNION_ELEMENT_BYTES;
 
 /** Save slots per person, a platform constant: no declaration or entitlement raises it (D7). */
-export const CLOUD_SYNC_SAVE_SLOTS = 16;
+export const CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
 
 const KiB = 1024;
 const MiB = 1024 * KiB;
@@ -97,15 +111,27 @@ export const CLOUD_SYNC_CEILINGS = {
 export const CLOUD_SYNC_DEFAULTS = {
   /** A person's quota when nothing sets `pkey.cloudSync.bytes` (the `cloudSync.quota.defaultBytes`
    *  setting's default). */
-  quotaBytes: 256 * MiB,
+  quotaBytes: SYNC_QUOTA_BYTES,
   /** A signed-in person with no usable licence, on a product with no Anonymous devices tier:
    *  1 MiB, and files are refused. */
-  unlicensedQuotaBytes: 1 * MiB,
+  unlicensedQuotaBytes: SYNC_UNLICENSED_QUOTA_BYTES,
   /** Declared and open settings share one budget (D3). `maxValueBytes` bounds an open setting. */
-  settings: { maxKeys: 256, maxValueBytes: 8 * KiB, maxBytes: 64 * KiB },
-  records: { maxRecordBytes: 64 * KiB, maxRecords: 10_000, maxCollections: 32 },
+  settings: {
+    maxKeys: SYNC_MAX_SETTINGS,
+    maxValueBytes: SYNC_MAX_VALUE_BYTES,
+    maxBytes: SYNC_MAX_SETTINGS_BYTES,
+  },
+  records: {
+    maxRecordBytes: SYNC_MAX_RECORD_BYTES,
+    maxRecords: 10_000,
+    maxCollections: 32,
+  },
   files: { maxBytes: 32 * MiB, keepRevisions: 5 },
-  push: { maxMutations: 100, maxBytes: 256 * KiB, perMinutePerDevice: 60 },
+  push: {
+    maxMutations: SYNC_MAX_MUTATIONS,
+    maxBytes: SYNC_MAX_PUSH_BYTES,
+    perMinutePerDevice: 60,
+  },
   fileTransfersPerHour: 30,
 } as const;
 

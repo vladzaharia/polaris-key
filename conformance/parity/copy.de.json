@@ -225,6 +225,38 @@
       "title": "Anmeldung erforderlich",
       "message": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
     },
+    "cursor_expired": {
+      "title": "Synchronisierung veraltet",
+      "message": "Dieses Gerät wurde zu lange nicht synchronisiert. Es beginnt neu mit Ihren gespeicherten Daten."
+    },
+    "client_mismatch": {
+      "title": "Synchronisierung passt nicht",
+      "message": "Diese Synchronisierung gehört zu einem anderen Gerät. Starten Sie die App neu und versuchen Sie es erneut."
+    },
+    "value_invalid": {
+      "title": "Einstellung nicht gespeichert",
+      "message": "Dieser Wert ist für diese Einstellung nicht gültig."
+    },
+    "op_invalid_for_policy": {
+      "title": "Änderung nicht erlaubt",
+      "message": "Diese Änderung ist für diese Einstellung nicht erlaubt."
+    },
+    "setting_not_synced": {
+      "title": "Nicht synchronisiert",
+      "message": "Diese Einstellung wird nicht mit Ihrem Konto synchronisiert."
+    },
+    "collection_unknown": {
+      "title": "Unbekannte Sammlung",
+      "message": "Diese Sammlung ist nicht verfügbar."
+    },
+    "quota_exceeded": {
+      "title": "Speicher voll",
+      "message": "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut."
+    },
+    "writes_paused": {
+      "title": "Synchronisierung pausiert",
+      "message": "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert."
+    },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
       "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut."

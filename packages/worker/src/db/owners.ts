@@ -159,6 +159,9 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_holder_bindings",
     "dist_binding_aliases",
   ],
+  // U-05.3: the Cloud Sync directory (one row per product x subject), its 15-minute per-product
+  // aggregate and the daily activity counters. The per-person data lives in the Durable Object.
+  sync: ["sync_directory", "sync_product_usage", "sync_product_daily"],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [
     "oidc_config",

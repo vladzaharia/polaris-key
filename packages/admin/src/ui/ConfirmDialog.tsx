@@ -63,6 +63,10 @@ export interface ConfirmDialogProps {
    * confirmed until it is typed, so Cancel's "least destructive" focus saves nothing (a Tab).
    */
   focusTyped?: boolean;
+  /** Open with focus on this field (the dialog's one input) instead of Cancel. */
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /** Enter in a single-line field of the dialog confirms, when confirm is enabled. */
+  submitOnEnter?: boolean;
   onConfirm: () => void | Promise<void>;
   /**
    * An error the caller met outside `onConfirm` (a retry after a step-up prompt), shown inline like
@@ -151,6 +155,8 @@ export function ConfirmDialog({
   signedInAt,
   confirmVariant,
   focusTyped = false,
+  initialFocusRef,
+  submitOnEnter = false,
   loading = false,
   confirmDisabled = false,
   confirmDisabledReason,
@@ -238,7 +244,10 @@ export function ConfirmDialog({
       className="max-sm:overflow-y-auto"
       dismissible={!busy}
       closeButton={closeButton}
-      initialFocusRef={typedConfirmation && focusTyped ? typedRef : cancelRef}
+      initialFocusRef={
+        initialFocusRef ??
+        (typedConfirmation && focusTyped ? typedRef : cancelRef)
+      }
     >
       {lead ||
       consequences?.length ||
@@ -246,7 +255,22 @@ export function ConfirmDialog({
       err ||
       stepUp ||
       typedConfirmation ? (
-        <DialogBody className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible">
+        <DialogBody
+          className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible"
+          onKeyDown={
+            submitOnEnter
+              ? (e) => {
+                  if (
+                    e.key === "Enter" &&
+                    (e.target as HTMLElement).tagName === "INPUT"
+                  ) {
+                    e.preventDefault();
+                    void confirm();
+                  }
+                }
+              : undefined
+          }
+        >
           {lead}
           {consequences?.length && lead ? (
             // After a lead, the lines are plain text, not a list of one.

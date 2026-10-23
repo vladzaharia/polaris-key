@@ -32,6 +32,8 @@ import { qk } from "./queries.js";
 export interface Target {
   key: QueryKey;
   exact?: boolean;
+  /** Narrows `key`'s matches (a read of the same shape under every product). */
+  match?: (key: QueryKey) => boolean;
 }
 
 const prefix = (key: QueryKey): Target => ({ key });
@@ -200,6 +202,11 @@ export type MutationTable = {
  * (a secret, a recipe's approval, a resync, a credential) refreshes it.
  */
 const attention = (): Target => exact(qk.attention());
+/** Every product's Cloud Sync usage read: it carries the platform pause (who, when, why). */
+const syncUsageEvery = (): Target => ({
+  key: ["product"],
+  match: (k) => k[2] === "sync" && k[3] === "usage",
+});
 
 const releasePolicy = (slug: string): Target[] => [
   attention(),
@@ -320,6 +327,9 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
+      syncUsageEvery(),
     ],
   },
   mintApiToken: {
@@ -434,6 +444,9 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
+      syncUsageEvery(),
     ],
   },
   createManualProduct: {
@@ -1165,7 +1178,13 @@ export function invalidateAfter(method: WriteMethod, args: unknown[]): void {
   const targets = invalidationFor(method, args) ?? [];
   for (const client of boundClients) {
     for (const t of targets) {
-      void client.invalidateQueries({ queryKey: t.key, exact: t.exact });
+      void client.invalidateQueries({
+        queryKey: t.key,
+        exact: t.exact,
+        ...(t.match
+          ? { predicate: (q: { queryKey: QueryKey }) => t.match!(q.queryKey) }
+          : {}),
+      });
     }
   }
 }

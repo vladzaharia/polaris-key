@@ -3,6 +3,7 @@ import { Check, ChevronRight, X } from "lucide-react";
 import type { PlatformReadyDto, PlatformReadyRow } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
+import { SteamGlyph } from "../../../../ui/Glyphs.js";
 import { IconButton } from "../../../../ui/IconButton.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -225,7 +226,13 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
           asChild
           className="col-start-2 h-auto min-h-8 max-w-full justify-self-start whitespace-normal text-start @[36rem]:col-start-3 @[36rem]:row-start-1 @[36rem]:justify-self-end"
         >
-          <Link to={to}>{row.action.label}</Link>
+          <Link to={to}>
+            {/* The store's mark; the link's own words name it ("Connect Steam"). */}
+            {row.action.store === "steam" ? (
+              <SteamGlyph aria-hidden className="size-4 shrink-0" />
+            ) : null}
+            {row.action.label}
+          </Link>
         </Button>
       ) : null}
     </li>

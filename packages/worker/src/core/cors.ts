@@ -74,7 +74,7 @@ export const CORS_ALLOW_HEADERS = [
  * also have to touch CORS.
  */
 export const CORS_EXPOSE_HEADERS =
-  "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest";
+  "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After";
 
 /** Preflight cache lifetime, seconds. Short enough that removing an origin takes effect soon. */
 export const CORS_MAX_AGE = "600";
@@ -163,6 +163,10 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "identity/attach",
   "identity/subject",
   "identity/signout",
+  // U-05.12, U-05.13: the Cloud Sync pull and push. Both take the device bearer (never ambient),
+  // so a listed origin reaches only what that page's own device token already can.
+  "sync",
+  "sync/ops",
 ];
 
 /** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no

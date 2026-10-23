@@ -634,6 +634,40 @@ describe("the product switcher keeps the page (SH-11)", () => {
     );
   });
 
+  it("the platform's attention item (product null) is no product's badge (ST-44b.2)", async () => {
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/attention": {
+          items: [
+            {
+              id: "@platform:sync.paused",
+              product: null,
+              kind: "sync.paused",
+              tone: "warning",
+              service: "sync",
+              short: "Writes paused",
+              lines: ["Cloud Sync writes are paused for every product."],
+              action: {
+                label: "Resume writes",
+                page: "platform-settings",
+                query: { setting: "cloudSync.writesPaused" },
+              },
+              area: "platform",
+            },
+          ],
+        },
+      },
+    });
+    await ready();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Product: DJDL \(djdl\)/ }),
+    );
+    const options = await screen.findAllByRole("option");
+    expect(options.length).toBeGreaterThan(1);
+    for (const o of options) expect(o.textContent).not.toMatch(/attention/);
+  });
+
   it("names itself for assistive tech, and filters as you type", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();

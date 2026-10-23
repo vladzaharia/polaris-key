@@ -65,7 +65,7 @@ export interface World {
 }
 
 export interface ExchangeSpec {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "OPTIONS";
   /** Path (and query) under the origin, e.g. `/djdl/license/document`. */
   path: string;
   /** The host the request is made to; default the API host. A `browser` step on the customer
@@ -95,6 +95,9 @@ export interface ExchangeSpec {
   form?: Record<string, string>;
   /** What a replaying SDK's body is held to. Required when `body` is set. */
   expectBody?: RequestBody;
+  /** Response headers recorded in addition to `RECORDED_RESPONSE_HEADERS` (a CORS answer's
+   *  `access-control-*`, U-05.17). Lowercase names; absent ones are not recorded. */
+  recordHeaders?: string[];
   /** Bind values from the JSON response for later requests. */
   capture?: Record<string, string>;
   /**
@@ -207,6 +210,10 @@ export class StepRecorder {
     const text = await res.text();
     const headers: Record<string, string> = {};
     for (const name of RECORDED_RESPONSE_HEADERS) {
+      const v = res.headers.get(name);
+      if (v !== null) headers[name] = v;
+    }
+    for (const name of spec.recordHeaders ?? []) {
       const v = res.headers.get(name);
       if (v !== null) headers[name] = v;
     }

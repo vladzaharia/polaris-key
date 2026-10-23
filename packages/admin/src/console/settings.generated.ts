@@ -326,7 +326,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {
@@ -345,7 +345,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {
@@ -1915,7 +1915,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {

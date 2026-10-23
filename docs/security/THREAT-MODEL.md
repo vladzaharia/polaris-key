@@ -7396,10 +7396,29 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
   `core/accounts/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
 - **One module for the licence question.** `syncAccess` (`core/accounts/syncAccess.ts`) answers
-  `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
-  mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
-  pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
-  leaves the principal (reads stay allowed) with an empty entitlement set.
+  one thing: the requesting device's quota (`{bytes, files}`) and its `tierId`, plus the anchor
+  licence's entitlement map for U-09's `requires` checks. It reads the anchor licence alone, as
+  its final form: `requireLicense`, `requiresFlag` and `byTier` are gone, and `anchorUsable` and
+  `topTier` with them. LX-09 is no longer a seam in the quota; if it combines licences it swaps the
+  body and the callers stay. It never reads the owner pointer and its answer carries the
+  pairwise subject only; `tierId` is the product's own tier name (the object accepts 1 to 256
+  characters, and the function answers `null` otherwise), never an account or licence id. A device
+  with no usable licence keeps its principal, so reads stay allowed.
+- **T14, mass sign-up.** A person with no usable licence on a License-on product gets 1 MiB and no
+  files (`CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes`; the Anonymous devices tier, LX-36, is a seam
+  that answers `null` today), and the platform default does not lift them. Creating accounts
+  therefore buys at most 1 MiB each, under the product ceiling and `cloudSync.writesPaused`. With
+  License off every signed-in device gets the platform default; that product chose to host
+  unlicensed Cloud Sync, and its operator bounds it with the ceiling.
+- **T18, quota as an entitlement.** The bytes are the integer `pkey.cloudSync.bytes` from the
+  device's usable anchor licence (set by a tier, a licence override or an add-on), else the
+  platform default `cloudSync.quota.defaultBytes`. Nothing the request carries is read: a value
+  that is not a non-negative safe integer is ignored, an unusable (expired, disabled) licence's
+  entitlement is never read, and the result is clamped to the per-person ceiling
+  (`CLOUD_SYNC_CEILINGS.perPerson.bytes`). `0` is a real value: reads only. The quota is resolved
+  per device, so a device cannot borrow another device's quota, and a licensed device's data is
+  read-only (never deleted) from an unlicensed device of the same person. Lowering any of these
+  deletes nothing.
 - **No inherited binding.** Any re-bind without a sign-in (licence key re-entry, enrolment, open
   re-registration) mints a new credential and drops the binding; only an account sign-in through
   Identity writes one. Otherwise anyone who knows an authorized device id on an `open`
@@ -7434,6 +7453,253 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
+
+### Cloud Sync push rules: the client's clock and the device binding (U-05.4)
+
+The engine (`services/sync/engine/`) is pure and takes pre-classified mutations, so these are the
+attacks it answers itself. The route (U-05.13) and the object (U-05.6) add no rule of their own
+here. Not tied to a numbered actor row: the actor is a signed-in person's own device (T3), whose
+clock the server must not trust.
+
+- **A fast clock cannot pin a key.** An `editedHlc` later than `serverNow` plus
+  `SYNC_MAX_CLOCK_SKEW_MS` (300 000 ms) is stored at `serverNow` with a zero counter, so a device
+  that stamps its write years ahead cannot make every later honest write a `conflict`. Earlier stamps
+  are kept as sent, the import floor included, so a slow clock only loses. **Residual:** inside the
+  five-minute window a device can still win a `lastWrite` race it should have lost.
+- **A clientId belongs to one device.** It binds to the first device that pushes with it, and
+  another device is a request-level `client_mismatch` that writes nothing, so a copied journal cannot
+  replay another install's mutation ids or burn its `lastMutationId`. The id is not a secret; the
+  device token is the credential.
+- **Nothing half-applied.** An `atomic` batch writes all or nothing (a rolled-back transaction), and
+  a replayed batch is `duplicate` by mutation id, so a retry after a lost response changes nothing.
+- **A `max` or `min` field is not anti-cheat** (§13.6): a device can claim a larger value, and the
+  better value wins whatever its clock.
+
+### Cloud Sync's Durable Object: binding, naming and reach (U-05.7)
+
+`CloudSyncDO` holds one person's synced settings for one product. U-05.7 binds it (`CLOUD_SYNC`,
+migration tag `v4`, in every environment) and makes it a claimed subject store; no route reaches it
+yet. SR-1 (isolation) follows U-05.8.
+
+- **The id is the pair.** Only `services/sync/do/client.ts` calls `idFromName`, with
+  `"<product>:<subject>"`. A device request's subject comes from the authenticated principal
+  (`syncAccess`), never from a request body; the subject-store hooks (merge, delete, export, size)
+  pass the subjects Identity's D1 rows hold, which are the same pairwise ids. The same pair goes in
+  the body and the object pins it on its first write: any other pair on that object is
+  `403 pin_mismatch` and touches nothing. Product slugs (`[a-z0-9-]`) and pairwise subjects
+  (`[A-Za-z0-9_-]`) hold no `:`, and `cloudSyncObjectName` asserts both grammars, so two pairs cannot
+  share a name. Dropping the `sync_directory` table (migration 0130's down script) blinds the
+  product purge, which enumerates objects through it: roll the objects back first.
+- **What an unauthenticated caller reaches: nothing.** There is no Sync route (discovery stays
+  `settings: false`), the namespace is a binding and not a URL, and a Durable Object answers only
+  through the Worker's stub.
+- **Deletion and export reach the object** through the subject-store registry: `delete` clears the
+  alarm and then the storage (`deleteAll` leaves an alarm set), then the directory row; `export` adds
+  the object's full dump (live rows, tombstones, member cells, dormant platform rows, client
+  bindings). Erasure leaves no table, no row and no alarm in the object.
+- **The tag is append-only.** `v4` is created by the first deploy; a deployed tag is never edited.
+
+### Cloud Sync account merge, product deletion (U-05.8)
+
+- **A merge never silently overwrites (S-16 §5.1) and never drops.** The survivor's object absorbs
+  the absorbed subject's by joining each row on its stamp (the later HLC, then clientId; a later
+  deletion beats an older value; member cells union under the later clear), and nothing is refused
+  for budget or quota: a survivor left over its limits keeps everything and only later growth is
+  refused (L8). Only Identity's account merge reaches it: `absorbCloudSync` is called by the store's
+  `merge` alone (`test/cloudSyncMerge.test.ts` pins the call sites), and the merge itself needs a
+  fresh proof of both accounts.
+- **Crash-safe by construction.** Export the absorbed object, absorb (one transaction; the join
+  is idempotent, so a repeat or a fresher export converges and writes nothing), delete the absorbed
+  object only if it is still at the exported sequence, then merge the directory rows in one batch.
+  The data leaves the absorbed object only after the survivor holds it, and a retry is safe at
+  every step. A write that lands on the absorbed object meanwhile keeps it alive and is absorbed
+  on the next round. "Still the exported object" compares the sequence and a write count: a client
+  binding or a conflict-only push moves the count without moving the sequence, and must not be lost
+  (SR-1 N2).
+- **A merged object is marked, not just emptied (SR-1 N3).** The delete leaves the pin and a
+  marker (`absorbed_into`, `absorbed_at`): no setting, no value, only the survivor's subject (a pair
+  of pairwise ids of one person on one product, which the pin already ties together). The marker
+  refuses every later push and absorb with a fixed `410 absorbed`, so a request that resolved the
+  absorbed subject before the merge committed fails instead of building an orphan the survivor never
+  sees. It reads as empty, exports as nothing, and a plain `deleteAll` (an erasure) removes it.
+  Residuals: the push route (U-05.13) resolves the subject through the aliases on every request,
+  which closes the window for any request that starts after the merge; a marker is not listed in
+  the directory (the row moves to the survivor), so a product deletion does not reach it, and it
+  holds only the two ids. The merge's delete sets an alarm a day out (U-05.9); it erases the whole
+  object, marker included, so the only record linking the two pseudonymous ids does not outlive
+  the day, and it also clears an absorbed subject left live when Identity's batch failed (N5). The
+  marker is written before the wipe and again after it, so a reset between the two steps leaves a
+  marked object, never an unmarked empty one a late push could rebuild. The cleanup alarm is set the
+  same way, before the wipe and again after it, from the first `absorbed_at`, so a retried merge
+  never pushes it out; a `setAlarm` that fails is a retryable `503 unavailable` and wipes nothing.
+- **Residual: the hook runs before Identity's D1 batch (SR-1 N5).** The store's `merge` runs before
+  Identity commits the account merge. If that batch then fails, the data already sits under the
+  survivor and the absorbed object is marked, while the accounts are still two: the retry of the
+  merge converges (each step is idempotent), but until it succeeds the absorbed subject's devices
+  get `410 absorbed` on push and read an empty store. Nothing is lost; availability is.
+- **Residual: no catalog policies yet (SR-1 N4).** The merge passes no `policies`, so a `max` or
+  `min` key joins by `lastWrite` (the later stamp) rather than the better value, until U-05.13
+  passes the catalog's policies. The join is still deterministic and loses no row; the next
+  `max`/`min` push re-asserts the better value.
+- **A member name is bounded (SR-1 B1).** `setMember` and `removeMember` refuse a name over 1 KiB
+  of UTF-8 (`value_invalid`). Removals are never refused for quota, so without the bound a device
+  with quota 0 could store unlimited uncounted bytes in member tombstones.
+- **A push is incremental (SR-1 B2).** A mutation on a merge setting upserts the cells it changed
+  and deletes the names it pruned, not every cell of the row, so one push writes O(mutations) rows
+  and cannot amplify into the row's whole width.
+- **Product deletion** erases every object the directory lists for the product, then the rows, before
+  the product's status flips (`contributes.productPurge`, bounded per run). The object cannot be
+  listed, so an object whose directory row was never written would survive: U-05.9's first-write
+  alarm keeps that window to seconds.
+  Closed by U-05.13 (T17 under "The Cloud Sync push"); the residual, found in SR-1 re-review, was: the purge runs before the product's
+  per-device token deletes, so during a multi-run purge a device still authenticates and a push
+  can recreate an erased object. The object cannot tell (it reads no D1), so the push route
+  must refuse a product that is soft-deleted or being purged (`status = 'deleted'` or a purge
+  flag), before it calls the object. What U-05.9 adds meanwhile: the directory and daily writes
+  are guarded on the product being live, so a recreated object writes no directory or counter row
+  for a deleted product, and the object erases itself at its next alarm once it finds the product not live (SR-2 B2, T17).
+
+### The Cloud Sync pull: `GET /<p>/sync` (U-05.12)
+
+The first device route of Cloud Sync, and a read: it never writes the object, licence state, a
+cached document or the audit log. Rows are S-17 §5.14's; the route is `services/sync/handlers/pull.ts`.
+
+- **T2, a leaked licence key does not reach the data.** The route takes a `pkeyt_` device token and
+  nothing else (`validateDeviceToken`, which refuses a licence key on shape). The principal is
+  `syncAccess().subject`, from the device's sign-in binding; a key-activated device on an
+  account-owned licence has none and gets `403 account_required`, with no object call and no
+  change to the licence, device or key rows (`test/cloudSyncPull.test.ts`).
+- **T3, a stolen token after sign-out.** The subject is read from the device row on every request,
+  and again after the object answers (from a fresh row, never the one the request started with). A
+  sign-out, a "sign out everywhere" or a merge that lands in between changes the answer: no
+  binding is `account_required`, a moved binding repeats the pull against the survivor. The
+  object's `410 absorbed` is retried once the same way and otherwise is a `503 unavailable` with
+  `Retry-After`. The object's own code (`absorbed`, `pin_mismatch`) is mapped in one place
+  (`handlers/common.ts`) and never copied into a response.
+- **T5, client data does not reach a gate.** The route answers the person's synced settings and
+  nothing else, and nothing on the licence, config or gate paths imports `services/sync`
+  (`boundaries.test.ts` for the layers; `cloudSyncPull.test.ts` walks the import graph from
+  `core/licensing/payload.ts`, `core/licensing/gate.ts` and `core/documents.ts`). A pull never
+  changes `lastSyncUnauthorized` or a cached document.
+- **T13, a stolen browser token.** Bearer only: a session cookie is never read, so a cookie-only
+  request is `401`. CORS covers `sync` for a page on the product's `web.origins` only, never sends
+  `Access-Control-Allow-Credentials`, and is applied after the handler (`core/cors.ts`). The token
+  is scoped to one device of one product: product A's token on product B is `401`.
+- **Quota and tier are not the object's to say.** `quota` is `syncAccess`'s answer for the
+  requesting device; the object supplies only `usage`. A request parameter names no subject, quota
+  or family: the platform family comes from the device row (`core/devices/platformFamily.ts`).
+- **A deleted product is refused before the object** (`404`), by a second read of the product row
+  right before the call. Residual: the purge runs before the product's status flips, so during a
+  multi-run purge a pull is still served and returns the person's own data. A pull creates
+  nothing (the object's read path never creates a schema), so it cannot recreate an erased object;
+  the push route must still refuse (U-05.13).
+- **ETag.** The tag is the spec's `"<seq>.<lastMutationId>"`. A page with `more: true` carries no
+  tag and is never `304`, so a replayed tag cannot stop a client mid-snapshot. The tag does not
+  cover `quota` or `aliases`: a client that only revalidates does not learn a changed quota until
+  its next `200` (a push `200` carries both).
+
+### The Cloud Sync push: `POST /<p>/sync/ops` (U-05.13)
+
+The one Cloud Sync route that writes settings. Handler `services/sync/handlers/push.ts`, classifier
+`handlers/classify.ts`, tests `test/cloudSyncPush.test.ts`. Rows are S-17 §5.14's; S-17's table ends
+at T16, so T17 here is the plan's: a push that outlives the data it must not recreate.
+
+- **The order is the defence.** Token and principal (`401`, `400`, `403 account_required`), then
+  `cloudSync.writesPaused` (`503 writes_paused`, `Retry-After: 300`), then device trust
+  (`cloudSyncWrite`), then the body (`413`, `400`), classification, the product ceiling, the
+  product-still-live check, and only then the object. Every refusal before the last two costs
+  no object call. A device with no principal never reaches the pause or the trust audit.
+- **T6, storage and cost abuse.** The device's quota and tier come from `syncAccess` (a body
+  member named `quota` or `limits` is dropped; the Worker forwards only `clientId`, `cursor`,
+  `atomic` and `mutations`). A licence-less device is 1 MiB with files refused, quota `0` is reads
+  only, and a clear always passes (it frees space). The product ceiling compares the 15-minute
+  aggregate `sync_product_usage.bytes` with `cloudSync.ceiling.bytes`: a product can overshoot by
+  what its people write inside one aggregate window (up to 15 minutes), which is acceptable for a
+  cost control and is the reason the object, not the aggregate, enforces the per-person quota.
+  `cloudSync.writesPaused` is the operator's kill switch (platform scope, `policyBound: lock`);
+  a push is refused and a pull still answers. The console's attention read (`GET /manage/api/attention`, ST-44b) surfaces the pause as one platform item (`product: null`, id `@platform:sync.paused`) that ignores product visibility and is gated on `can(PLATFORM, "platform", "edit")`, so a Platform admin with no product grant sees it and a product role never does; its `since`, `by` (a display name, never an id) and `reason` go only to that audience, and the "a product has Cloud Sync on" check counts every non-system product without naming one. Platform ready (`GET /manage/api/platform/ready`) obeys the same rule (ST-44b.3): the one row that can name products, Stores connected, names only products the caller can see (`canSeeProduct`) and counts the rest ("2 other products' Steam uploads need…"), so a Platform admin with no product grant sees no product name or slug in it; a Superadmin's answer is unchanged. **Push limits (U-05.14, `services/sync/limits.ts`):**
+  right after the pause and before the trust audit, the body, classification, the aggregate read
+  and the object, so a limited push costs none of them: 60 pushes a minute per device
+  (`syncPushDevice`, charged first, so an over-limit device never spends the product's budget) and
+  2,000 a second per product (`syncPushProduct`), counted over eight `RateLimitDO` objects named
+  `sync:product:<p>:<0-7>` by a hash of the caller's subject. The answer is `429 rate_limited` with
+  `Retry-After` (seconds left in the window). Both buckets are fail open (L10, `FAIL_MODE`): the
+  caller holds a live device token and a principal, the client's journal survives a 429 either
+  way, and the person's object bounds the work per principal; the cost of an unlimited window
+  during a limiter outage is bounded by the per-person quota and the product ceiling. **Users
+  ceiling:** `sync_product_usage.users` (the same 15-minute aggregate over `sync_directory`) at
+  100,000 or more makes the object refuse growth with `quota_exceeded`, `scope: product`, but
+  only when it never held data (`store.isEmpty()`: no settings and no tombstones), decided once
+  before the batch. People already syncing, and a person who cleared their data, keep writing; the latter holds only until the 90-day tombstone GC removes their tombstones.
+  The aggregate lags up to 15 minutes, so the count can overshoot by the new people admitted in
+  one window.
+- **Device trust.** `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only writes at most one
+  `device.trust.would_refuse` audit row per device and hour and goes on; enforced is `403
+attestation_required` for the whole request, in the nested `wireError` shape every other sync
+  answer uses, so the client keeps its journal (push rule 1).
+- **T9, hostile JSON.** The body is read under 256 KiB with a streaming cap (declared or chunked)
+  before any parse; more than 100 mutations is `400`; keys match `SYNC_KEY_PATTERN`; an open
+  setting's value is at most 8 KiB of canonical JSON and must be representable in a signed
+  document; a declared value is validated by the catalog's interpreter (no code generation, so it
+  runs in workerd); a merge member is checked against the entry's `properties` for that member, or
+  its `additionalProperties`. Keys are looked up in `Map`s, so `__proto__` is an ordinary undeclared
+  key (`test/cloudSyncPush.test.ts`). A catalog that cannot be read refuses the push with a
+  retryable `503`: a declared key is never stored as an open one.
+- **Classification is the Worker's, scope is the engine's.** `local`, `locked`, `refused` and
+  non-`config` keys are `setting_not_synced`, as are a synced key under another scope and an open
+  setting pushed with `platform`. The platform family a `platform` row lands in is the device
+  row's (`core/devices/platformFamily.ts`); no request member names one. A renamed key is judged
+  as its new name and a dropped key never reaches the classification. Record targets are
+  `collection_unknown` until U-09.
+- **The object's refusals are never copied.** `410 absorbed` re-resolves the principal and retries
+  once, and a second is a retryable `503 unavailable`; a `pin_mismatch` or other 4xx is a `500`
+  and a 5xx (the object's own `unavailable` when it could not set an alarm included) or an unbound
+  namespace a retryable `503` (`handlers/common.ts`). Only the codes of
+  `conformance/parity/errors.json` leave the Worker. If the subject moved after the push landed,
+  the exchange is repeated only when the old subject resolves to the new one along a merge alias
+  (mutation ids make that idempotent); a device re-bound to another person gets `account_required`
+  and nothing reaches that person's object (SR-2 N1).
+- **A pull is cached per person (SR-2 B1).** Every pull answer, the `304` and each page included,
+  carries `Vary: Authorization, X-PKey-Device` (CORS appends `Origin`), so a shared browser or
+  proxy cache never serves one person's answer to another's request with the same ETag.
+- **T17, a push cannot recreate erased data (SR-2).** Closes the residual recorded under
+  "Product deletion" above. The first run of `contributes.productPurge` sets a KV flag
+  (`services/sync/purgeFlag.ts`, `pk()`-scoped, one-hour TTL renewed by every run) BEFORE it erases
+  an object; the push reads the flag and re-reads the product row immediately before the object
+  call, and answers `404` for a soft-deleted or purging product. A KV read that fails refuses the
+  push (retryable) instead of assuming no purge. The flag is deleted when the purge finishes, so a
+  slug created again within the hour is not refused. Residual: KV is eventually consistent, so a
+  push served in another location can land for up to about a minute after the first purge run, and
+  the directory row it writes is guarded on the product being live (U-05.9). The object closes that
+  itself: its alarm flush ends with a directory upsert guarded on the product being live, and when
+  that statement changes no row, the object clears its alarm and erases all its storage. So the object a stale push
+  recreated is gone within one alarm, whether or not the purge ever listed it. A delete that is started and abandoned blocks Cloud Sync
+  writes for the product for at most an hour. Pulls are not refused (a read creates nothing).
+- **An expired cursor after a landed push** is `410 cursor_expired`: the mutations were applied, the
+  journal is kept, and the retry finds every mutation `duplicate` (push rule 1).
+- **Residual, still open (SR-1 N4).** The account merge still passes no catalog `policies` to the
+  survivor, so a `max` or `min` key joins by `lastWrite` until the merge hook loads the catalog.
+  The push passes the policy per request; the hook is outside this route.
+
+### Cloud Sync discovery, T8 and T16 (U-05.15)
+
+Discovery turns on: `services.sync` answers `settings: true` with `endpoints.pull` and
+`endpoints.push` (`<base>/sync`, `<base>/sync/ops`); `collections` and `saves` stay false and
+`files` null. The fragment names only routes that exist and that refuse an unauthorised caller, and
+it carries no quota or subject. Rows are S-17 §5.14's.
+
+- **T8, an account switch on a shared PC (server side).** The server never trusts a client's idea of
+  who is signed in. The principal is read from the device row on every request, so after a sign-out
+  or a switch the old token's next push is `account_required` and the new account's request reaches
+  its own object only. A subject that changes mid-request is followed only along a merge alias;
+  any other change is `account_required`. The client half (a journal and cache partitioned by user, `onSignOut: clear`)
+  is the SDKs' and is checked by their replay of the transcripts. Residual: a journal a client keeps
+  across a switch against its own rules is client code; the server cannot see it.
+- **T16, no owner fallback for Cloud Sync.** `subjectFor` keeps Config's owner fallback (U-03);
+  Cloud Sync uses `resolveSyncPrincipal` only, so a licence-key device with no signed-in account has
+  no principal and reads and writes nothing. Operator overrides reach such a device as before and
+  carry no Cloud Sync data; a pull never returns an operator layer. `syncAccess` never widens access
+  in `legacy` mode.
 
 ### The account override layer (U-03, U-27)
 

@@ -46,6 +46,12 @@ class_name = "UpdateHealthDO"
 name = "SINGLE_USE"
 class_name = "SingleUseDO"
 
+# U-05.7: Cloud Sync's per-person store (`src/services/sync/do/cloudSyncDo.ts`), one object per
+# (product, subject), named only by `src/services/sync/do/client.ts`. SQLite-backed.
+[[durable_objects.bindings]]
+name = "CLOUD_SYNC"
+class_name = "CloudSyncDO"
+
 [[migrations]]
 tag = "v1"
 # SQLite-backed, not KV-backed. Cloudflare no longer permits accounts to create the legacy
@@ -68,6 +74,11 @@ new_sqlite_classes = ["UpdateHealthDO"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["SingleUseDO"]
+
+# U-05.7: Cloud Sync's per-person store. Its own append-only tag: never edit a deployed one.
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["CloudSyncDO"]
 
 # ---------------------------------------------------------------------------
 # Scheduled maintenance (R11-09 / R12-10). Without this block the worker has no `scheduled()`
@@ -182,6 +193,9 @@ class_name = "UpdateHealthDO"
 [[env.prod.durable_objects.bindings]]
 name = "SINGLE_USE"
 class_name = "SingleUseDO"
+[[env.prod.durable_objects.bindings]]
+name = "CLOUD_SYNC"
+class_name = "CloudSyncDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
 id = "51b31c97ac2140e5af2402bed1a31e71"
@@ -306,6 +320,9 @@ class_name = "UpdateHealthDO"
 [[env.staging.durable_objects.bindings]]
 name = "SINGLE_USE"
 class_name = "SingleUseDO"
+[[env.staging.durable_objects.bindings]]
+name = "CLOUD_SYNC"
+class_name = "CloudSyncDO"
 [[env.staging.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_STAGING_KV_ID"
@@ -412,6 +429,9 @@ class_name = "UpdateHealthDO"
 [[env.dev.durable_objects.bindings]]
 name = "SINGLE_USE"
 class_name = "SingleUseDO"
+[[env.dev.durable_objects.bindings]]
+name = "CLOUD_SYNC"
+class_name = "CloudSyncDO"
 [[env.dev.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_DEV_KV_ID"
@@ -501,6 +521,9 @@ class_name = "UpdateHealthDO"
 [[env.test.durable_objects.bindings]]
 name = "SINGLE_USE"
 class_name = "SingleUseDO"
+[[env.test.durable_objects.bindings]]
+name = "CLOUD_SYNC"
+class_name = "CloudSyncDO"
 [[env.test.kv_namespaces]]
 binding = "HOT"
 id = "local-registry-clients-kv"

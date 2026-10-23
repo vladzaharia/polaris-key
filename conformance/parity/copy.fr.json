@@ -225,6 +225,38 @@
       "title": "Connexion nécessaire",
       "message": "Connectez-vous à votre compte Polaris Locker sur cet appareil, puis réessayez."
     },
+    "cursor_expired": {
+      "title": "Synchronisation obsolète",
+      "message": "Cet appareil ne s'est pas synchronisé depuis trop longtemps. Il repartira de vos données enregistrées."
+    },
+    "client_mismatch": {
+      "title": "Synchronisation incompatible",
+      "message": "Cette synchronisation appartient à un autre appareil. Redémarrez l'app et réessayez."
+    },
+    "value_invalid": {
+      "title": "Réglage non enregistré",
+      "message": "Cette valeur n'est pas valide pour ce réglage."
+    },
+    "op_invalid_for_policy": {
+      "title": "Modification non autorisée",
+      "message": "Cette modification n'est pas autorisée pour ce réglage."
+    },
+    "setting_not_synced": {
+      "title": "Non synchronisé",
+      "message": "Ce réglage n'est pas synchronisé avec votre compte."
+    },
+    "collection_unknown": {
+      "title": "Collection inconnue",
+      "message": "Cette collection n'est pas disponible."
+    },
+    "quota_exceeded": {
+      "title": "Stockage plein",
+      "message": "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez."
+    },
+    "writes_paused": {
+      "title": "Synchronisation en pause",
+      "message": "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard."
+    },
     "email_mismatch": {
       "title": "E-mail non vérifié",
       "message": "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez."

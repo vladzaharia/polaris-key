@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(175 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(183 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -59,6 +59,13 @@ from it. A new code needs an entry there first.
 | `license_owned` | `ErrorCode.LicenseOwned` |
 | `license_email_bound` | `ErrorCode.LicenseEmailBound` |
 | `account_required` | `ErrorCode.AccountRequired` |
+| `cursor_expired` | `ErrorCode.CursorExpired` |
+| `client_mismatch` | `ErrorCode.ClientMismatch` |
+| `value_invalid` | `ErrorCode.ValueInvalid` |
+| `op_invalid_for_policy` | `ErrorCode.OpInvalidForPolicy` |
+| `setting_not_synced` | `ErrorCode.SettingNotSynced` |
+| `quota_exceeded` | `ErrorCode.QuotaExceeded` |
+| `writes_paused` | `ErrorCode.WritesPaused` |
 | `invalid_request` | `ErrorCode.InvalidRequest` |
 | `invalid_client` | `ErrorCode.InvalidClient` |
 | `invalid_grant` | `ErrorCode.InvalidGrant` |

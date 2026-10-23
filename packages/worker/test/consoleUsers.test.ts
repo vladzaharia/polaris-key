@@ -634,6 +634,8 @@ describe("actions", () => {
       "config.accountOverrides": { overrides: null },
       "core.entitlementEvents": [],
       "core.provisionedSecretMoves": [],
+      // U-05.8: Cloud Sync's store answers for a person who never synced.
+      "sync.cloudSync": { settings: null, directory: null },
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });
     const del = await w.json("POST", `/alpha/users/${f.adaAlpha}/data/delete`);
@@ -643,6 +645,7 @@ describe("actions", () => {
         "config.accountOverrides",
         "core.entitlementEvents",
         "core.provisionedSecretMoves",
+        "sync.cloudSync",
         "test-store",
       ],
     });

@@ -672,6 +672,75 @@ function gcMode(over: Setting = {}): Setting {
   };
 }
 
+/** Cloud Sync's two platform controls (U-05.21: Setup draws the default and the pause beside them). */
+function cloudSyncDefault(over: Setting = {}): Setting {
+  return {
+    key: "cloudSync.quota.defaultBytes",
+    area: "cloudSync",
+    label: "Default Cloud Sync quota",
+    description: "What a person may store when their tier sets nothing.",
+    kind: "integer",
+    unit: "bytes",
+    min: 1_048_576,
+    max: 1_073_741_824,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 268_435_456,
+    deployValue: null,
+    value: 268_435_456,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { raise: "L2", lower: "L2" },
+    link: "default",
+    ...over,
+  };
+}
+
+function cloudSyncPause(over: Setting = {}): Setting {
+  return {
+    key: "cloudSync.writesPaused",
+    area: "cloudSync",
+    label: "Pause Cloud Sync writes",
+    description: "Stops new settings and saves in every product.",
+    kind: "switch",
+    scripts: ["main"],
+    precedence: "runtime",
+    default: "off",
+    deployValue: null,
+    value: "off",
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { on: "L2", off: "L1" },
+    ...over,
+  };
+}
+
+/** The platform settings with Cloud Sync's writes paused: the Resume dialog opened from Home. */
+export function pausedPlatformSettings(): Record<string, unknown> {
+  const v = view();
+  return {
+    ...v,
+    settings: v.settings.map((x) =>
+      x.key === "cloudSync.writesPaused"
+        ? cloudSyncPause({
+            value: "on",
+            version: 4,
+            stored: {
+              value: "on",
+              valid: true,
+              updatedAt: Math.floor(Date.now() / 1000) - 2 * 3600,
+              updatedBy: "m-ana",
+            },
+          })
+        : x,
+    ),
+  };
+}
+
 function grace(over: Setting = {}): Setting {
   return {
     key: "BLOB_GC_GRACE_DAYS",
@@ -710,6 +779,8 @@ function view(over: Record<string, unknown> = {}) {
       maxBytes(),
       gcMode(),
       grace(),
+      cloudSyncDefault(),
+      cloudSyncPause(),
     ],
     storeAvailable: true,
     propagationSeconds: 30,

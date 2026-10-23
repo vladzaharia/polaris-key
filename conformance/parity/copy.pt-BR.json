@@ -225,6 +225,38 @@
       "title": "É preciso entrar",
       "message": "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
     },
+    "cursor_expired": {
+      "title": "Sincronização desatualizada",
+      "message": "Este dispositivo ficou tempo demais sem sincronizar. Ele vai recomeçar com seus dados salvos."
+    },
+    "client_mismatch": {
+      "title": "Sincronização incompatível",
+      "message": "Esta sincronização pertence a outro dispositivo. Reinicie o app e tente de novo."
+    },
+    "value_invalid": {
+      "title": "Configuração não salva",
+      "message": "Esse valor não é válido para esta configuração."
+    },
+    "op_invalid_for_policy": {
+      "title": "Alteração não permitida",
+      "message": "Essa alteração não é permitida para esta configuração."
+    },
+    "setting_not_synced": {
+      "title": "Não sincronizada",
+      "message": "Esta configuração não é sincronizada com sua conta."
+    },
+    "collection_unknown": {
+      "title": "Coleção desconhecida",
+      "message": "Esta coleção não está disponível."
+    },
+    "quota_exceeded": {
+      "title": "Armazenamento cheio",
+      "message": "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."
+    },
+    "writes_paused": {
+      "title": "Sincronização pausada",
+      "message": "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois."
+    },
     "email_mismatch": {
       "title": "E-mail não verificado",
       "message": "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente."

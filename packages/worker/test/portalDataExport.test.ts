@@ -975,6 +975,7 @@ describe("GET /api/me/export", () => {
       "config.accountOverrides",
       "core.entitlementEvents",
       "core.provisionedSecretMoves",
+      "sync.cloudSync",
       "test.notes",
     ]);
     // U-27.6: the backfill ledger holds ids and a hash; this account had no move.
