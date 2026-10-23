@@ -18,6 +18,7 @@
  */
 
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import { createWrites, type Target } from "../../lib/writes.js";
 import {
   api,
   ApiError,
@@ -37,13 +38,7 @@ const productMemberTargets = (slug: string): Target[] => [
   prefix(["access-admins"]),
 ];
 
-/** One invalidation target: a key prefix, or one exact key. */
-export interface Target {
-  key: QueryKey;
-  exact?: boolean;
-  /** Narrows `key`'s matches (a read of the same shape under every product). */
-  match?: (key: QueryKey) => boolean;
-}
+export type { Target };
 
 const prefix = (key: QueryKey): Target => ({ key });
 /** The trail a write in `scope` appends to (ST-27 alert destinations). */
@@ -1189,14 +1184,22 @@ const listingWrite = (slug: string): Target[] => [
   prefix(qk.storefronts(slug)),
 ];
 
-/** The targets a write invalidates, or `null` when `method` is not a write (a read). */
-export function invalidationFor(
-  method: string,
-  args: unknown[],
-): Target[] | null {
-  const spec = (MUTATIONS as Record<string, MutationSpec<unknown[]>>)[method];
-  return spec ? spec.invalidates(...args) : null;
-}
+const writes = createWrites<AdminApi, WriteMethod>({
+  table: MUTATIONS,
+  api,
+  onError(error, _clients, method, args) {
+    refreshMeOnNoAccess(error);
+    // The page showed a state the server no longer has: refetch it.
+    if (
+      method === "commerceUseAssigned" &&
+      error instanceof ApiError &&
+      error.reason === "no_assigned_app"
+    )
+      void writes.invalidateAfter(method, args);
+  },
+});
+
+export const { invalidationFor, mutate, mutateEach } = writes;
 
 /**
  * The query clients a confirmed write invalidates in: each mounted console tree's own
@@ -1207,8 +1210,10 @@ const boundClients = new Set<QueryClient>();
 /** Bind `client` to the write path; returns the unbind. */
 export function bindWriteInvalidation(client: QueryClient): () => void {
   boundClients.add(client);
+  const unbind = writes.bindWriteInvalidation(client);
   return () => {
     boundClients.delete(client);
+    unbind();
   };
 }
 
@@ -1230,68 +1235,5 @@ export function refreshMeOnNoAccess(error: unknown): void {
 
 /** Invalidate a write's declared queries. Active queries refetch; inactive ones go stale. */
 export function invalidateAfter(method: WriteMethod, args: unknown[]): void {
-  const targets = invalidationFor(method, args) ?? [];
-  for (const client of boundClients) {
-    for (const t of targets) {
-      void client.invalidateQueries({
-        queryKey: t.key,
-        exact: t.exact,
-        ...(t.match
-          ? { predicate: (q: { queryKey: QueryKey }) => t.match!(q.queryKey) }
-          : {}),
-      });
-    }
-  }
-}
-
-/**
- * Make a write and, once the server confirms it, invalidate what it declared (§5.3: confirmed,
- * never optimistic). A failed write invalidates nothing; the caller gets the error as before.
- */
-export async function mutate<K extends WriteMethod>(
-  method: K,
-  ...args: Parameters<AdminApi[K]>
-): Promise<Awaited<ReturnType<AdminApi[K]>>> {
-  const fn = api[method] as (...a: unknown[]) => ReturnType<AdminApi[K]>;
-  let result: Awaited<ReturnType<AdminApi[K]>>;
-  try {
-    result = await fn(...args);
-  } catch (e) {
-    refreshMeOnNoAccess(e);
-    // The page showed a state the server no longer has: refetch it.
-    if (
-      method === "commerceUseAssigned" &&
-      e instanceof ApiError &&
-      e.reason === "no_assigned_app"
-    )
-      invalidateAfter(method, args);
-    throw e;
-  }
-  invalidateAfter(method, args);
-  return result;
-}
-
-/**
- * One write per argument list, in order, then a single invalidation (a bulk change refetches the
- * lists once, not once per row). A failed write does not stop the rest; its error is returned in
- * its place, and nothing is invalidated unless one succeeded.
- */
-export async function mutateEach<K extends WriteMethod>(
-  method: K,
-  argLists: Parameters<AdminApi[K]>[],
-): Promise<(Error | null)[]> {
-  const fn = api[method] as (...a: unknown[]) => Promise<unknown>;
-  const outcomes: (Error | null)[] = [];
-  let changed: Parameters<AdminApi[K]> | null = null;
-  for (const args of argLists) {
-    try {
-      await fn(...args);
-      changed = args;
-      outcomes.push(null);
-    } catch (e) {
-      outcomes.push(e instanceof Error ? e : new Error(String(e)));
-    }
-  }
-  if (changed) invalidateAfter(method, changed);
-  return outcomes;
+  void writes.invalidateAfter(method, args);
 }

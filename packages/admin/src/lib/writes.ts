@@ -21,7 +21,17 @@ import {
 export interface Target {
   key: QueryKey;
   exact?: boolean;
+  /** Narrows `key`'s matches (a read of the same shape under every product). */
+  match?: (key: QueryKey) => boolean;
 }
+
+const filterOf = (t: Target) => ({
+  queryKey: t.key,
+  exact: t.exact,
+  ...(t.match
+    ? { predicate: (q: { queryKey: QueryKey }) => t.match!(q.queryKey) }
+    : {}),
+});
 
 /** What one write does to the cache. */
 export interface WriteSpec<A extends unknown[]> {
@@ -58,7 +68,12 @@ export interface WritesConfig<
   /** The API object whose methods the table names. */
   api: Api;
   /** Runs when a write is refused, before the error is thrown to the caller. */
-  onError?: (error: unknown, clients: ReadonlySet<QueryClient>) => void;
+  onError?: (
+    error: unknown,
+    clients: ReadonlySet<QueryClient>,
+    method: string,
+    args: unknown[],
+  ) => void;
 }
 
 export interface WriteOptions<
@@ -140,14 +155,10 @@ export function createWrites<
     const settle = spec.settle?.(...args) ?? [];
     const waiting: Promise<unknown>[] = [];
     for (const client of clients) {
-      for (const t of removes)
-        client.removeQueries({ queryKey: t.key, exact: t.exact });
-      for (const t of invalidates)
-        void client.invalidateQueries({ queryKey: t.key, exact: t.exact });
+      for (const t of removes) client.removeQueries(filterOf(t));
+      for (const t of invalidates) void client.invalidateQueries(filterOf(t));
       for (const t of settle)
-        waiting.push(
-          client.invalidateQueries({ queryKey: t.key, exact: t.exact }),
-        );
+        waiting.push(client.invalidateQueries(filterOf(t)));
     }
     await Promise.all(waiting);
   }
@@ -165,7 +176,7 @@ export function createWrites<
     try {
       result = await (call ?? fnOf(method))(...args);
     } catch (e) {
-      config.onError?.(e, clients);
+      config.onError?.(e, clients, method, args);
       throw e;
     }
     await apply(method, args, clients);
