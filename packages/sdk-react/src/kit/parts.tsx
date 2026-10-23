@@ -18,6 +18,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
 import { encodeQr } from "./lazy.js";
 
@@ -817,8 +818,14 @@ export function actions(
 ): ReactNode {
   if (controls.length === 0) return null;
   const primary = c.view.decisions.primary;
-  const sorted = [...controls].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+  // GNOME puts the suggested action last, visually and in Tab order (no CSS reordering); a group
+  // of choices keeps its order.
+  const last =
+    group !== "choices" && platformVariant(c.resolved.theme) === "gnome";
+  const sorted = [...controls].sort((a, b) =>
+    last
+      ? Number(a === primary) - Number(b === primary)
+      : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
   const busy =
