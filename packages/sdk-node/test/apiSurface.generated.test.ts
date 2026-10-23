@@ -54,3 +54,89 @@ it("entitlements.all", () =>
   expect("getEntitlements" in LicenseClient.prototype).toBe(true));
 it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
+it("client.discover", () =>
+  expect("discover" in PolarisKeyClient.prototype).toBe(true));
+it("client.init", () =>
+  expect("init" in PolarisKeyClient.prototype).toBe(true));
+it("client.portal", () =>
+  expect("portal" in PolarisKeyClient.prototype).toBe(true));
+it("client.presentation", () =>
+  expect("presentation" in PolarisKeyClient.prototype).toBe(true));
+it("client.presentationIcon", () =>
+  expect("presentationIcon" in PolarisKeyClient.prototype).toBe(true));
+it("client.presentationSource", () =>
+  expect("presentationSource" in PolarisKeyClient.prototype).toBe(true));
+it("client.discovery", () =>
+  expect("discovery" in PolarisKeyClient.prototype).toBe(true));
+it("client.servicesPinned", () =>
+  expect("servicesPinned" in PolarisKeyClient.prototype).toBe(true));
+it("client.hasToken", () =>
+  expect("hasToken" in PolarisKeyClient.prototype).toBe(true));
+it("client.ensureActivated", () =>
+  expect("ensureActivated" in PolarisKeyClient.prototype).toBe(true));
+it("client.capabilities", () =>
+  expect("capabilities" in PolarisKeyClient.prototype).toBe(true));
+it("client.supports", () =>
+  expect("supports" in PolarisKeyClient.prototype).toBe(true));
+it("client.caps", () =>
+  expect("caps" in PolarisKeyClient.prototype).toBe(true));
+it("client.sync", () =>
+  expect("sync" in PolarisKeyClient.prototype).toBe(true));
+it("client.getSyncState", () =>
+  expect("getSyncState" in PolarisKeyClient.prototype).toBe(true));
+it("client.importBundle", () =>
+  expect("importBundle" in PolarisKeyClient.prototype).toBe(true));
+it("client.crashTags", () =>
+  expect("crashTags" in PolarisKeyClient.prototype).toBe(true));
+it("client.status", () =>
+  expect("status" in PolarisKeyClient.prototype).toBe(true));
+it("client.storeStatus", () =>
+  expect("storeStatus" in PolarisKeyClient.prototype).toBe(true));
+it("client.isLicensed", () =>
+  expect("isLicensed" in PolarisKeyClient.prototype).toBe(true));
+it("client.getCurrentDevice", () =>
+  expect("getCurrentDevice" in PolarisKeyClient.prototype).toBe(true));
+it("client.listDevices", () =>
+  expect("listDevices" in PolarisKeyClient.prototype).toBe(true));
+it("client.deauthorizeDevice", () =>
+  expect("deauthorizeDevice" in PolarisKeyClient.prototype).toBe(true));
+it("client.renameDevice", () =>
+  expect("renameDevice" in PolarisKeyClient.prototype).toBe(true));
+it("client.startRefresh", () =>
+  expect("startRefresh" in PolarisKeyClient.prototype).toBe(true));
+it("client.close", () =>
+  expect("close" in PolarisKeyClient.prototype).toBe(true));
+it("config.listUserConfig", () =>
+  expect("listUserConfig" in ConfigClient.prototype).toBe(true));
+it("config.schemaVersion", () =>
+  expect("schemaVersion" in ConfigClient.prototype).toBe(true));
+it("config.fetchSchema", () =>
+  expect("fetchSchema" in ConfigClient.prototype).toBe(true));
+it("config.isLocked", () =>
+  expect("isLocked" in ConfigClient.prototype).toBe(true));
+it("license.activation", () =>
+  expect("activation" in LicenseClient.prototype).toBe(true));
+it("license.licenseInfo", () =>
+  expect("licenseInfo" in LicenseClient.prototype).toBe(true));
+it("license.entitledChannels", () =>
+  expect("entitledChannels" in LicenseClient.prototype).toBe(true));
+it("license.getProfile", () =>
+  expect("getProfile" in LicenseClient.prototype).toBe(true));
+it("license.getLicenseId", () =>
+  expect("getLicenseId" in LicenseClient.prototype).toBe(true));
+it("license.enroll", () =>
+  expect("enroll" in LicenseClient.prototype).toBe(true));
+it("license.deactivate", () =>
+  expect("deactivate" in LicenseClient.prototype).toBe(true));
+it("identity.current", () =>
+  expect("current" in IdentityClient.prototype).toBe(true));
+it("identity.forget", () =>
+  expect("forget" in IdentityClient.prototype).toBe(true));
+it("identity.signInWithBrowser", () =>
+  expect("signInWithBrowser" in IdentityClient.prototype).toBe(true));
+it("identity.beginSignIn", () =>
+  expect("beginSignIn" in IdentityClient.prototype).toBe(true));
+it("identity.pollSignIn", () =>
+  expect("pollSignIn" in IdentityClient.prototype).toBe(true));
+it("identity.waitForSignIn", () =>
+  expect("waitForSignIn" in IdentityClient.prototype).toBe(true));

@@ -107,13 +107,15 @@ describe("api-check rule 1 (surface scanners)", () => {
     run((a) => {
       a.surfaces = { [sdk]: [{ ns: "config", type, file }] };
       a.concepts = a.concepts.filter(
-        (c: any) => !c.id.startsWith("config.") || c.id === "config.get",
+        (c: any) =>
+          (!c.id.startsWith("config.") || c.id === "config.get") &&
+          !c.sdks?.[sdk]?.sdkOnly,
       );
       mutate(a);
     });
 
-  it("scans nothing while surfaces is empty", () => {
-    expect(real().surfaces).toEqual({});
+  it("the real registry records the Node surface and the rest are still empty (SP-35.8)", () => {
+    expect(Object.keys(real().surfaces)).toEqual(["node"]);
   });
 
   it("fails an unknown TypeScript verb; skips private, protected and _names", () => {

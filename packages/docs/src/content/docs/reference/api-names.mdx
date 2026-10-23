@@ -26,6 +26,32 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.fromConfig` | reserved for SP-32a | | | | | | — |
 | `client.doctor` | reserved for SP-32b | | | | | | — |
 | `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `client.boot` | `client.boot` | `ui.boot` |
+| `client.discover` | `client.discover` | — | — | — | — | — | — |
+| `client.init` | `client.init` | — | — | — | — | — | — |
+| `client.portal` | `client.portal` | — | — | — | — | — | — |
+| `client.presentation` | `client.presentation` | — | — | — | — | — | — |
+| `client.presentationIcon` | `client.presentationIcon` | — | — | — | — | — | — |
+| `client.presentationSource` | `client.presentationSource` | — | — | — | — | — | — |
+| `client.discovery` | `client.discovery` | — | — | — | — | — | — |
+| `client.servicesPinned` | `client.servicesPinned` | — | — | — | — | — | — |
+| `client.hasToken` | `client.hasToken` | — | — | — | — | — | — |
+| `client.ensureActivated` | `client.ensureActivated` | — | — | — | — | — | — |
+| `client.capabilities` | `client.capabilities` | — | — | — | — | — | — |
+| `client.supports` | `client.supports` | — | — | — | — | — | — |
+| `client.caps` | `client.caps` | — | — | — | — | — | — |
+| `client.sync` | `client.sync` | — | — | — | — | — | — |
+| `client.getSyncState` | `client.getSyncState` | — | — | — | — | — | — |
+| `client.importBundle` | `client.importBundle` | — | — | — | — | — | — |
+| `client.crashTags` | `client.crashTags` | — | — | — | — | — | — |
+| `client.status` | `client.status` | — | — | — | — | — | — |
+| `client.storeStatus` | `client.storeStatus` | — | — | — | — | — | — |
+| `client.isLicensed` | `client.isLicensed` | — | — | — | — | — | — |
+| `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
+| `client.listDevices` | `client.listDevices` | — | — | — | — | — | — |
+| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — | — | — | — | — |
+| `client.renameDevice` | `client.renameDevice` | — | — | — | — | — | — |
+| `client.startRefresh` | `client.startRefresh` | — | — | — | — | — | — |
+| `client.close` | `client.close` | — | — | — | — | — | — |
 
 ## options
 
@@ -58,6 +84,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
+| `config.listUserConfig` | `config.listUserConfig` | — | — | — | — | — | — |
+| `config.schemaVersion` | `config.schemaVersion` | — | — | — | — | — | — |
+| `config.fetchSchema` | `config.fetchSchema` | — | — | — | — | — | — |
+| `config.isLocked` | `config.isLocked` | — | — | — | — | — | — |
 
 ## license
 
@@ -65,6 +95,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `license.activation` | `license.activation` | — | — | — | — | — | — |
+| `license.licenseInfo` | `license.licenseInfo` | — | — | — | — | — | — |
+| `license.entitledChannels` | `license.entitledChannels` | — | — | — | — | — | — |
+| `license.getProfile` | `license.getProfile` | — | — | — | — | — | — |
+| `license.getLicenseId` | `license.getLicenseId` | — | — | — | — | — | — |
+| `license.enroll` | `license.enroll` | — | — | — | — | — | — |
+| `license.deactivate` | `license.deactivate` | — | — | — | — | — | — |
 
 ## entitlements
 
@@ -85,6 +122,12 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.signIn` | reserved for I-10a | | | | | | `identity.oidc` |
 | `identity.subject` | reserved for I-10a | | | | | | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | planned (I-10b) | `identity.sign_out` | `identity.account` |
+| `identity.current` | `identity.current` | — | — | — | — | — | — |
+| `identity.forget` | `identity.forget` | — | — | — | — | — | — |
+| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | — | — | — | — | — |
+| `identity.beginSignIn` | `identity.beginSignIn` | — | — | — | — | — | — |
+| `identity.pollSignIn` | `identity.pollSignIn` | — | — | — | — | — | — |
+| `identity.waitForSignIn` | `identity.waitForSignIn` | — | — | — | — | — | — |
 
 ## events
 
@@ -112,6 +155,90 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `server.isEntitled` | — | — | — | — | — | — | `server.license` |
 | `server.entitlementValue` | — | — | — | — | — | — | `server.license` |
 | `server.requireLicense` | — | — | — | — | — | — | `server.license` |
+
+## devices
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `devices.register` | `devices.register` | — | — | — | — | — | — |
+| `devices.list` | `devices.list` | — | — | — | — | — | — |
+| `devices.rename` | `devices.rename` | — | — | — | — | — | — |
+| `devices.deauthorize` | `devices.deauthorize` | — | — | — | — | — | — |
+
+## release
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `release.fetch` | `release.fetch` | — | — | — | — | — | — |
+| `release.changelog` | `release.changelog` | — | — | — | — | — | — |
+| `release.installUrl` | `release.installUrl` | — | — | — | — | — | — |
+| `release.downloadUrl` | `release.downloadUrl` | — | — | — | — | — | — |
+
+## update
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | — | — | — |
+| `update.decidable` | `update.decidable` | — | — | — | — | — | — |
+| `update.install` | `update.install` | — | — | — | — | — | — |
+| `update.check` | `update.check` | — | — | — | — | — | — |
+| `update.appcastUrl` | `update.appcastUrl` | — | — | — | — | — | — |
+| `update.feedUrl` | `update.feedUrl` | — | — | — | — | — | — |
+| `update.decide` | `update.decide` | — | — | — | — | — | — |
+| `update.feed` | `update.feed` | — | — | — | — | — | — |
+| `update.releaseRecord` | `update.releaseRecord` | — | — | — | — | — | — |
+| `update.buildUrl` | `update.buildUrl` | — | — | — | — | — | — |
+| `update.ensureDiscovery` | `update.ensureDiscovery` | — | — | — | — | — | — |
+| `update.reload` | `update.reload` | — | — | — | — | — | — |
+| `update.useDriver` | `update.useDriver` | — | — | — | — | — | — |
+| `update.confirmBoot` | `update.confirmBoot` | — | — | — | — | — | — |
+| `update.markBootAttempt` | `update.markBootAttempt` | — | — | — | — | — | — |
+
+## distribution
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `distribution.downloadModel` | `distribution.downloadModel` | — | — | — | — | — | — |
+| `distribution.thisPlatform` | `distribution.thisPlatform` | — | — | — | — | — | — |
+
+## commerce
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `commerce.binding` | `commerce.binding` | — | — | — | — | — | — |
+| `commerce.claim` | `commerce.claim` | — | — | — | — | — | — |
+| `commerce.claimSteam` | `commerce.claimSteam` | — | — | — | — | — | — |
+| `commerce.claimAppStore` | `commerce.claimAppStore` | — | — | — | — | — | — |
+| `commerce.claimPlay` | `commerce.claimPlay` | — | — | — | — | — | — |
+
+## packs
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `packs.ensure` | `packs.ensure` | — | — | — | — | — | — |
+| `packs.state` | `packs.state` | — | — | — | — | — | — |
+| `packs.path` | `packs.path` | — | — | — | — | — | — |
+| `packs.registerHandler` | `packs.registerHandler` | — | — | — | — | — | — |
+| `packs.on` | `packs.on` | — | — | — | — | — | — |
+| `packs.isAvailable` | `packs.isAvailable` | — | — | — | — | — | — |
+| `packs.packFor` | `packs.packFor` | — | — | — | — | — | — |
+| `packs.rollback` | `packs.rollback` | — | — | — | — | — | — |
+| `packs.confirm` | `packs.confirm` | — | — | — | — | — | — |
+
+## presentation
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `presentation.subscribe` | `presentation.subscribe` | — | — | — | — | — | — |
+| `presentation.load` | `presentation.load` | — | — | — | — | — | — |
+| `presentation.icon` | `presentation.icon` | — | — | — | — | — | — |
+| `presentation.iconFor` | `presentation.iconFor` | — | — | — | — | — | — |
+
+## boot
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `boot.runBoot` | `boot.runBoot` | — | — | — | — | — | — |
 
 ## Removed in 0.9
 
