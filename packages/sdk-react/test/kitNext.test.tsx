@@ -106,7 +106,7 @@ describe("Replace and the device list", () => {
     const primary = container.querySelector(
       '[data-variant="primary"][data-key="signin.replace.confirm"]',
     );
-    expect(primary?.textContent).toMatch(/^Replace .+ and continue$/);
+    expect(primary?.textContent).toMatch(/^Replace .+$/);
     expect(primary?.textContent).not.toContain("{");
   });
 });

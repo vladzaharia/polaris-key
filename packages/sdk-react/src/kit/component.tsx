@@ -414,6 +414,8 @@ export function useKit(
   // would read a short landscape window as portrait.
   const [shape, setShape] = useState<Shape>("portrait");
   const [tight, setTight] = useState(false);
+  // The window is wider than a docked sheet (35 rem): a dialog is then a floating box.
+  const [wide, setWide] = useState(false);
   const fill = props.fill === true;
   useIsoLayoutEffect(() => {
     const el = rootRef.current;
@@ -434,9 +436,11 @@ export function useKit(
         wh > 0 && wh / rem < 34 && (next !== "short" || wh / rem < 18);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
+      const isWide = w / rem > 35;
       frame = requestAnimationFrame(() => {
         setShape(next);
         setTight(snug);
+        setWide(isWide);
       });
     };
     const ro = new ResizeObserver(([entry]) => {
@@ -495,6 +499,7 @@ export function useKit(
     resolved,
     input,
     shape,
+    wide,
     headingLevel:
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),

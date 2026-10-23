@@ -355,8 +355,17 @@ function chrome(
           );
         } else {
           expect(new Set(rects.map((r) => Math.round(r.left))).size).toBe(1);
-          expect(rects[p]!.top, "suggested first, on top").toBe(
-            Math.min(...rects.map((r) => r.top)),
+          // Stacked by the layout (portrait, three or more): first, on top. A pair that wrapped
+          // because a label did not fit beside the other keeps its row order: last, below (the
+          // DOM order either way).
+          const wrapped = footer.getAttribute("data-primary") === "last";
+          expect(
+            rects[p]!.top,
+            wrapped ? "suggested last, below" : "suggested first, on top",
+          ).toBe(
+            wrapped
+              ? Math.max(...rects.map((r) => r.top))
+              : Math.min(...rects.map((r) => r.top)),
           );
         }
       }

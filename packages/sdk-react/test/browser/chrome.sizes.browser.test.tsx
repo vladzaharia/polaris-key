@@ -11,12 +11,12 @@
 //   * text scales with the root font;
 //   * a landscape window draws the landscape (or short) layout.
 //
-// PKEY_KIT_BASELINES=<dir> also records the 200 % render at 1440 x 900 in dark for each chrome as
-// <dir>/Welcome.default/<chrome>-zoom200-dark.png.
+// No baselines: ui:report pairs every baseline across both renderers, and this lane is React's
+// (the 200 % render is covered by assertions).
 
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { commands, page } from "vitest/browser";
+import { page } from "vitest/browser";
 import { createRoot, type Root } from "react-dom/client";
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
@@ -27,13 +27,6 @@ import {
   sceneInput,
   type Scene,
 } from "../chromeScenes.js";
-
-declare module "vitest/browser" {
-  interface BrowserCommands {
-    kitShot: (file: string) => Promise<void>;
-  }
-}
-declare const __PKEY_KIT_BASELINES__: string;
 
 /** The chromes: the theme's platform id, the variant on the kit root and the machine it draws. */
 const CHROMES = [
@@ -59,6 +52,7 @@ const SIZES: readonly {
   { label: "390x844", width: 390, height: 844 },
   { label: "844x390", width: 844, height: 390 },
   { label: "640x360", width: 640, height: 360 },
+  { label: "480x520", width: 480, height: 520 },
   { label: "820x1180", width: 820, height: 1180 },
   { label: "1180x820", width: 1180, height: 820 },
   { label: "900x600", width: 900, height: 600 },
@@ -205,7 +199,10 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                 ),
               ].find(visible);
               // (200 % text reflows and scrolls to its primary: the kit's tight layout.)
-              if (primary && !size.rootPx) {
+              // (The device list is taller than the 480 x 520 floor in every chrome: it scrolls.)
+              const floorList =
+                size.label === "480x520" && scene.id === "DeviceLimit.default";
+              if (primary && !size.rootPx && !floorList) {
                 const r = primary.getBoundingClientRect();
                 expect(r.top, `${label(primary)} top`).toBeGreaterThanOrEqual(
                   -0.5,
@@ -233,16 +230,6 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
               )
                 expect(["landscape", "short"]).toContain(
                   kit.getAttribute("data-shape"),
-                );
-              // The 200 % zoom of the desktop row is the chrome's one baseline.
-              if (
-                __PKEY_KIT_BASELINES__ &&
-                scene.id === "Welcome.default" &&
-                size.label === "1440x900@200" &&
-                scheme === "dark"
-              )
-                await commands.kitShot(
-                  `${__PKEY_KIT_BASELINES__}/${scene.id}/${chrome.name}-zoom200-dark.png`,
                 );
             });
     });

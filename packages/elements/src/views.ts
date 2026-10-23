@@ -2042,11 +2042,17 @@ function controlsAndLinks(
   row: boolean,
 ): TemplateResult {
   const variant = platformVariant(c.resolved.theme);
-  if (!(c.dialog && (variant === "windows" || variant === "gnome")))
+  if (
+    !(
+      c.dialog &&
+      (variant === "windows" || variant === "gnome" || variant === "macos")
+    )
+  )
     return html`${actions(c, p.controls, row)}${links(c, p.links)}`;
   const { choices, footer } = dialogControls(p.controls, c.view);
+  // The Mac footer reads Cancel then the default: the default is last in the DOM too.
   return html`${actions(c, choices, false, false, "choices")}${links(
     c,
     p.links,
-  )}${actions(c, footer, row)}`;
+  )}${actions(c, footer, row, variant === "macos")}`;
 }

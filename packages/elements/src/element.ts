@@ -124,6 +124,7 @@ export abstract class PkElement extends LitElement {
   private lastSource: unknown = undefined;
   private lastFocusState: string | null = null;
   private shape: "landscape" | "portrait" | "short" = "portrait";
+  private wide = false;
   private tight = false;
   private resize: ResizeObserver | null = null;
 
@@ -228,6 +229,11 @@ export abstract class PkElement extends LitElement {
     // A short window (landscape phone) docks its one-row bar, unless large text leaves under 18 rem
     // of height: the bar would then take a third of it.
     const tight = h > 0 && h / rem < 34 && (next !== "short" || h / rem < 18);
+    const wide = w / rem > 35;
+    if (wide !== this.wide) {
+      this.wide = wide;
+      this.requestUpdate();
+    }
     if (next !== this.shape || tight !== this.tight)
       // After this frame's layout: a shape change never re-enters the observer's loop.
       requestAnimationFrame(() => {
@@ -383,6 +389,7 @@ export abstract class PkElement extends LitElement {
       fill: this.fill || this.fillsWindow(view.state),
       dialog: this.isDialog(),
       shape: this.shape,
+      wide: this.wide,
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
