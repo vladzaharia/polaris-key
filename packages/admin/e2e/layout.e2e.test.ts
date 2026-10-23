@@ -118,6 +118,220 @@ interface Case {
   override?: Record<string, unknown>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
+  /** Replaces what `resolve` answers for a path (ST-31.15: who the member is, who can help). */
+  api?: Record<string, unknown>;
+}
+
+const LONG_NAME =
+  "Starfall Chronicles Remastered Definitive Collector's Edition of the Long Night, Part Two: The Reckoning of the Seven Moons and the Ninefold Tide, Anniversary Re-release";
+
+/** ST-31.15: the no-access cases; the 200 %-text and small-phone rows open every one. */
+const NO_ACCESS_CASES = [
+  "no-access:product",
+  "no-access:two-products",
+  "no-access:unknown-role",
+  "no-access:nobody",
+  "no-access:home",
+  "no-access:long-name",
+  "no-access:long-address",
+];
+
+/** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
+function noAccessCases(): Case[] {
+  const me = (
+    email: string,
+    roles: unknown[],
+    products: { slug: string; name: string; schemaVersion: number }[],
+    productAreas: Record<string, string[]> = {},
+  ) => ({
+    sub: "m-x",
+    name: "Lucía Ortega",
+    email,
+    csrf: "c",
+    platformAdmin: false,
+    sessionExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    products,
+    permissions: {
+      roles,
+      platform: { view: ["console"], edit: ["console"] },
+      products: Object.fromEntries(
+        Object.entries(productAreas).map(([k, v]) => [k, { view: v, edit: v }]),
+      ),
+    },
+  });
+  const djdl = [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }];
+  const narrowed = {
+    role: "product_admin",
+    scope: "product:djdl",
+    areas: ["ship", "commerce"],
+    source: "grant",
+  };
+  const admins = (list: unknown[]) => ({
+    "/manage/api/access/admins": {
+      scope: "product:djdl",
+      area: "license",
+      admins: list,
+    },
+  });
+  const people = [
+    { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
+    { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
+    { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },
+  ];
+  const lucia = me("lucia@example.com", [narrowed], djdl, {
+    djdl: ["ship", "commerce"],
+  });
+  const list: Case[] = [
+    {
+      name: "no-access:product",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins(people) },
+    },
+    {
+      name: "no-access:two-products",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            narrowed,
+            {
+              role: "product_admin",
+              scope: "product:acme",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          [...djdl, { slug: "acme", name: "Acme", schemaVersion: 2 }],
+          {
+            djdl: ["ship", "commerce"],
+            acme: ["core", "license", "ship", "commerce"],
+          },
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:unknown-role",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            {
+              role: "workspace_auditor",
+              scope: "platform",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          djdl,
+          {},
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:nobody",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins([]) },
+    },
+    {
+      name: "no-access:home",
+      hash: "#/",
+      api: {
+        "/manage/api/me": me(
+          "noor@studio.example.com",
+          [
+            {
+              role: "console_access",
+              scope: "platform",
+              areas: null,
+              source: "rule",
+            },
+          ],
+          [],
+        ),
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: people.slice(1),
+        },
+      },
+    },
+    {
+      name: "no-access:long-address",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          email: "lucia.ortega@studio-operations.example.com",
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:long-name",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+      // No title is cut: the h1 shows every line it wraps to (ST-31.15 B1).
+      act: async (page) => {
+        const h1 = page.getByRole("heading", { level: 1 });
+        await h1.waitFor();
+        const clipped = await h1.evaluate(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 1 ||
+            getComputedStyle(el).webkitLineClamp !== "none",
+        );
+        expect(clipped, "the h1 is clipped").toBe(false);
+      },
+    },
+  ];
+  // Each case's `/products` is the member's own, so the switcher and sidebar are what they see.
+  return list.map((c) => {
+    const m = c.api!["/manage/api/me"] as { products: { slug: string }[] };
+    const all = (
+      resolve("/manage/api/products") as {
+        products: { slug: string; name: string }[];
+      }
+    ).products;
+    const own = new Set(m.products.map((p) => p.slug));
+    const names = new Map(
+      m.products.map((p) => [p.slug, (p as { name?: string }).name]),
+    );
+    return {
+      ...c,
+      api: {
+        ...c.api,
+        "/manage/api/products": {
+          products: all
+            .filter((p) => own.has(p.slug))
+            .map((p) => ({ ...p, name: names.get(p.slug) ?? p.name })),
+        },
+      },
+    };
+  });
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -292,6 +506,137 @@ function cases(): Case[] {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
     },
+    // ST-31.11/12: Platform → Members' overlays: the Invite drawer (empty, and filled to its
+    // tallest), a member's roles, and the drawer's Add a role and Edit areas views. Each checks
+    // that the primary action is in view whatever the window.
+    {
+      name: "global:platform-members?invite",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?invite-filled",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /^Product admin/ }).click();
+        await drawer.getByRole("combobox").click();
+        await page.getByRole("option").first().click();
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
+      },
+    },
+    // ST-31.14: no name or short address breaks inside a word in the Member cell.
+    {
+      name: "djdl:settings-members?words",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const broken = await page.evaluate(() => {
+          const out: string[] = [];
+          for (const el of document.querySelectorAll<HTMLElement>(
+            'table[aria-label="Admins"] td:first-child p',
+          )) {
+            const node =
+              el.firstChild?.nodeType === 3
+                ? el.firstChild
+                : el.querySelector("span")?.firstChild;
+            if (!node || node.nodeType !== 3) continue;
+            const text = node.textContent ?? "";
+            if (text.length > 24) continue;
+            let at = 0;
+            for (const word of text.split(/\s+/)) {
+              const i = text.indexOf(word, at);
+              at = i + word.length;
+              const r = document.createRange();
+              r.setStart(node, i);
+              r.setEnd(node, i + word.length);
+              const tops = new Set(
+                [...r.getClientRects()].map((x) => Math.round(x.top)),
+              );
+              if (tops.size > 1) out.push(`${text}: ${word}`);
+            }
+          }
+          return out;
+        });
+        if (broken.length > 0)
+          throw new Error(`broken words: ${broken.join("; ")}`);
+      },
+    },
+    // ST-31.14: the Invite drawer from the product's Members tab (role fixed, product fixed).
+    {
+      name: "djdl:settings-members?invite",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "djdl:settings-members?invite-filled",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
+      },
+    },
+    // ST-31.13: the Roles tab, and on a phone the tile that picks the matrix column.
+    {
+      name: "global:platform-members?tab=roles",
+      hash: "#/platform/members?tab=roles",
+      act: async (page) => {
+        const tile = page.getByRole("button", { name: /^Console access/ });
+        if (await tile.isVisible()) await tile.click();
+      },
+    },
+    {
+      name: "global:platform-members?edit-roles",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await openEditDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?add-role",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        await drawer.getByRole("button", { name: "Add a role" }).click();
+        // The drawer's title changes with the view.
+        await page
+          .getByRole("dialog", { name: /Add a role for Sam Okoye/ })
+          .getByRole("radio", { name: /^Product admin/ })
+          .waitFor();
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?edit-areas",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        const edit = drawer
+          .getByRole("button", { name: /Edit areas of/ })
+          .first();
+        if ((await edit.count()) > 0 && (await edit.isEnabled())) {
+          await edit.click();
+          await page
+            .getByRole("dialog", { name: /Areas for Sam Okoye/ })
+            .getByRole("button", { name: "Save areas" })
+            .waitFor();
+          await primaryInView(page);
+        }
+      },
+    },
+
     {
       name: "djdl:rollouts?view=matrix&cell",
       hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
@@ -418,7 +763,7 @@ function cases(): Case[] {
       },
     },
   );
-  return list;
+  return [...list, ...noAccessCases()];
 }
 
 const CASES = cases();
@@ -466,6 +811,9 @@ const HOME_CASES = [
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
   "djdl:sync-usage",
+  // ST-31.13: the Roles tab's tiles and one-column matrix.
+  "global:platform-members?tab=roles",
+  ...NO_ACCESS_CASES,
   "djdl:settings",
   // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
   "djdl:sync-setup",
@@ -503,6 +851,24 @@ const TEXT200_CASES = [
   "feedsoff:package-feeds",
   "djdl:package-feeds?undeclared",
   "waiting:package-feeds",
+  "djdl:settings-members?invite-filled",
+  // ST-31.12: the Members drawer, at its tallest views.
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
+];
+/** The product Members tab, with the check that no name breaks inside a word (ST-31.14). */
+const MEMBERS_TAB = ["djdl:settings-members", "djdl:settings-members?words"];
+/** The Members drawer's views (ST-31.12). */
+const DRAWER_CASES = [
+  "djdl:settings-members?invite",
+  "djdl:settings-members?invite-filled",
+  "global:platform-members?invite",
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -571,6 +937,7 @@ const VIEWPORTS: {
           "empty:package-feeds",
           "djdl:package-feeds?undeclared",
           "waiting:package-feeds",
+          "no-access:long-name",
         ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
@@ -596,6 +963,20 @@ const VIEWPORTS: {
       // 200 % text on a phone (WCAG 1.4.4; a text-only zoom keeps the window): Home, and the
       // Settings tabs and a licence record, where a word broke into letters, a control ran off
       // the screen and a date input spilled.
+      // ST-31.12: the Members drawer at 150 % text on the two small phones (the areas grid once
+      // overlapped its labels there).
+      ...[
+        { label: "phone-text150-390", width: 390, height: 844 },
+        { label: "phone-text150-360", width: 360, height: 780 },
+      ].map((v) => ({
+        ...v,
+        rootFontPercent: 150,
+        only: DRAWER_CASES,
+      })),
+      // ST-31.14 B1: the product Members tab at a small tablet's width (large text on a desktop is
+      // e2e/productMembers.e2e.test.ts).
+      { label: "tablet-700", width: 700, height: 900, only: MEMBERS_TAB },
+
       {
         label: "phone-text200",
         width: 390,
@@ -813,7 +1194,12 @@ async function open(
         });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = c.override?.[url.pathname] ?? resolve(url.pathname);
+      const body =
+        c.override && url.pathname in c.override
+          ? c.override[url.pathname]
+          : c.api && url.pathname in c.api
+            ? c.api[url.pathname]
+            : resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });
@@ -899,6 +1285,48 @@ async function shoot(page: Page, file: string): Promise<void> {
 
 /** `PK_LAYOUT_ONLY=desktop/dark` narrows a local run to one combination. */
 const ONLY = process.env.PK_LAYOUT_ONLY;
+/** The Members drawer, opened from the header's Invite people. */
+async function openInviteDrawer(page: Page) {
+  await page.getByRole("button", { name: "Invite people" }).click();
+  const drawer = page.getByRole("dialog", { name: "Invite people" });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The Members drawer, opened from Sam Okoye's row menu. */
+async function openEditDrawer(page: Page) {
+  await page
+    .getByRole("button", { name: "Actions for Sam Okoye" })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: /Edit roles/ }).click();
+  const drawer = page.getByRole("dialog", { name: /Edit roles for Sam Okoye/ });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The drawer's last footer button is fully inside the window (the primary action is in view). */
+async function primaryInView(page: Page): Promise<void> {
+  const ok = await page.evaluate(() => {
+    const d = document.querySelector("[role=dialog]");
+    const footer = d?.querySelector("[data-drawer-footer]");
+    const buttons = footer ? [...footer.querySelectorAll("button")] : [];
+    if (buttons.length === 0) return "no footer button";
+    // Both buttons of the footer row (Cancel and the primary) are fully inside the window.
+    for (const b of buttons.slice(-2)) {
+      const r = b.getBoundingClientRect();
+      if (!(r.top >= 0 && r.bottom <= window.innerHeight + 0.5 && r.width > 0))
+        return `"${b.textContent}" out of view (${Math.round(r.top)}..${Math.round(r.bottom)} of ${window.innerHeight})`;
+    }
+    // Nothing scrolls sideways inside the drawer body.
+    const body = d?.querySelector<HTMLElement>(".pk-scroll");
+    if (body && body.scrollWidth > body.clientWidth + 1)
+      return `the drawer body scrolls sideways by ${body.scrollWidth - body.clientWidth}px`;
+    return "ok";
+  });
+  if (ok !== "ok") throw new Error(ok);
+}
+
 /** `PK_LAYOUT_CASES=overview,settings` narrows a local run to cases whose name contains one. */
 const ONLY_CASES = process.env.PK_LAYOUT_CASES?.split(",");
 

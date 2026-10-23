@@ -446,6 +446,7 @@ export const r = {
   /** Settings, landing on one setting's row (`?setting=<key>`). */
   platformSettingRow: (key: string) =>
     globalPage("platform-settings", { setting: key }),
+  platformMembers: (query?: QueryInit) => globalPage("platform-members", query),
   platformStatus: () => globalPage("platform-status"),
   platformStores: () => globalPage("platform-stores"),
   platformConnections: (query?: QueryInit) =>

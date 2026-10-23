@@ -158,7 +158,7 @@ export interface DataTableProps<T> {
   state?: TableState;
   onStateChange?: (next: TableState) => void;
   facets?: Facet<T>[];
-  search?: { placeholder: string; columns?: string[] };
+  search?: { placeholder: string; label?: string; columns?: string[] };
   selection?: { mode: "multi"; bulkActions: BulkAction<T>[] };
   /** The record a row opens. The primary cell renders as a real link to it. */
   rowHref?: (row: T) => string;
@@ -197,6 +197,15 @@ export interface DataTableProps<T> {
    * whose rows hold unbreakable text passes an em query so a larger text size gets cards sooner.
    */
   cardBreakpoint?: string;
+  /**
+   * With `mobile="cards"`: the width, in root-font rems, below which the rows stack (default:
+   * the 1023 px media query). In rems the stacked rows also take over at 200 % text.
+   */
+  cardsBelowRem?: number;
+  /** With `mobile="cards"`: the rows are not cards: no border or fill, a rule between them (Members). */
+  flatCards?: boolean;
+  /** Below `sm` the filter bar stays on one row that scrolls sideways. */
+  filtersOneRow?: boolean;
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
   /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */

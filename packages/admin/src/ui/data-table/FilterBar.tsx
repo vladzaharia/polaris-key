@@ -51,6 +51,8 @@ export interface FilterBarProps {
   className?: string;
   /** Below `sm` the search field takes a row of its own, full width (Home). */
   stackSearch?: boolean;
+  /** Below `sm` the search and the facet menus stay on one row that scrolls sideways (Members). */
+  oneRow?: boolean;
   /**
    * The page's own filters, drawn first on the bar's row, so a page that filters above its table
    * keeps one band (Home's Table view) instead of stacking a second toolbar.
@@ -345,12 +347,31 @@ export function FilterBar({
   actions,
   className,
   stackSearch,
+  oneRow,
   lead,
 }: FilterBarProps): React.ReactElement {
   const [q, setQ] = useDebouncedField(
     search?.value ?? "",
     search?.onChange ?? (() => undefined),
   );
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const [fade, setFade] = React.useState(false);
+  // A one-row bar that overflows fades at its end until the last control is in view.
+  React.useEffect(() => {
+    const el = rowRef.current;
+    if (!oneRow || !el) return;
+    const measure = (): void =>
+      setFade(el.scrollWidth - el.clientWidth - el.scrollLeft > 2);
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, [oneRow]);
   const chips: Chip[] = facets.flatMap((f) =>
     f.counted
       ? []
@@ -366,13 +387,34 @@ export function FilterBar({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        ref={rowRef}
+        // Padded so a focus ring is not clipped by the scroller; a focused control scrolls into view.
+        onFocusCapture={
+          oneRow
+            ? (e) =>
+                (e.target as HTMLElement).scrollIntoView?.({
+                  block: "nearest",
+                  inline: "nearest",
+                })
+            : undefined
+        }
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          oneRow &&
+            "max-sm:-m-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:p-1 max-sm:[&>*]:shrink-0",
+          oneRow &&
+            fade &&
+            "max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]",
+        )}
+      >
         {lead}
         {search ? (
           <label
             className={cn(
               "relative flex min-w-[min(12rem,100%)] flex-1 basis-[min(12rem,100%)] items-center sm:max-w-sm",
               stackSearch && "max-sm:basis-full",
+              oneRow && "max-sm:min-w-40 max-sm:basis-40",
             )}
           >
             <span className="sr-only">

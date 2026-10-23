@@ -11,15 +11,19 @@
  */
 
 import * as React from "react";
-import { ArrowRight, LayoutGrid, LogIn } from "lucide-react";
+import { ArrowRight, LayoutGrid } from "lucide-react";
 import type { AccessAdmin, Me, MeRole } from "../../api.js";
+import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { CopyButton } from "../../ui/CopyButton.js";
 import { PageHeader } from "../../ui/PageHeader.js";
 import { Panel } from "../../ui/Section.js";
+import { ServiceGlyph } from "../../ui/ServiceBadge.js";
 import { Skeleton } from "../../ui/Skeleton.js";
+import { RoleSet } from "./RoleTag.js";
 import { mutate } from "../data/mutations.js";
 import {
+  ALL_PAGES,
   isPageEnabled,
   type ProductPageId,
   type ServiceState,
@@ -60,8 +64,11 @@ interface Destination {
  * product's; another product's are not loaded, and its landing page says if a service is off).
  */
 /** What a destination is called: Core is not a page name, its landing page is Overview. */
-const placeName = (area: AreaId): string =>
-  area === "core" ? "Overview" : AREA_NAMES[area];
+/** The page a destination opens, by its own name ("Releases", "Storefronts"), never the area's. */
+const pageLabel = (page: ProductPageId): string =>
+  page === "commerce-overview"
+    ? "Storefronts"
+    : (ALL_PAGES.find((p) => p.page === page)?.label ?? page);
 
 function destinations(
   me: Me,
@@ -83,8 +90,8 @@ function destinations(
       if (s === slug && !isPageEnabled(page, services)) continue;
       out.push({
         key: `${s}:${page}`,
-        // The area's name; in another product "Acme → Cloud Sync", as the title reads.
-        label: s === slug ? placeName(area) : `${name(s)} → ${placeName(area)}`,
+        // The page's name; in another product "Acme · Cloud Sync".
+        label: s === slug ? pageLabel(page) : `${name(s)} · ${pageLabel(page)}`,
         to: productPage(s, page),
         area,
       });
@@ -108,32 +115,32 @@ function initials(name: string): string {
   );
 }
 
-/** A role as Members draws it: the tag, then the areas of a narrowed one. */
-function RoleTag({ role, me }: { role: MeRole; me: Me }): React.ReactElement {
-  const { label, areas } = roleLabel(
-    role,
-    (s) => me.products.find((p) => p.slug === s)?.name ?? s,
-  );
-  return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="inline-flex items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-xs font-medium text-fg-strong">
-        {role.role === "console_access" ? (
-          <LogIn aria-hidden className="size-3.5" />
-        ) : null}
-        {label}
-      </span>
-      {areas ? (
-        <span className="text-xs text-fg-muted">
-          {areas.map((a) => AREA_NAMES[a]).join(", ")}
-        </span>
-      ) : null}
-    </span>
-  );
+/** Where a role came from, in the member's words (the facts line of the no-product Home). */
+function sourceLine(role: MeRole, email: string): string {
+  switch (role.source) {
+    case "rule":
+      return `From the ${email.split("@")[1] ?? "email"} email rule`;
+    case "invite":
+      return "From an invitation";
+    case "grant":
+      return "Added by an admin";
+    case "root":
+      return "From the Superadmin group";
+    case "creator":
+      return "You created the product";
+    case "breakglass":
+      return "From emergency access";
+    default:
+      return "";
+  }
 }
 
-/** "Signed in as … with <role>", and the way to switch accounts. */
-function SignedInLine({ me }: { me: Me }): React.ReactElement {
-  const roles = me.permissions?.roles ?? [];
+/** Who the member is: the address and the roles that bear on this page. */
+function UseAnotherAccount({
+  className,
+}: {
+  className?: string;
+}): React.ReactElement {
   const useAnother = (): void => {
     // `go=1&other=1` asks the IdP for its account chooser (`prompt=select_account`): a bare
     // /manage/login would let a live IdP session sign the same account straight back in.
@@ -142,17 +149,54 @@ function SignedInLine({ me }: { me: Me }): React.ReactElement {
     });
   };
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span>
-        Signed in as <strong className="text-fg-strong">{me.email}</strong>
-        {roles.length ? " with" : ""}
+    <Button
+      variant="link"
+      className={cn("min-h-6", className)}
+      onClick={useAnother}
+    >
+      Use another account
+    </Button>
+  );
+}
+
+function SignedInLine({
+  me,
+  home,
+  slug,
+}: {
+  me: Me;
+  home: boolean;
+  slug: string | null;
+}): React.ReactElement {
+  const all = me.permissions?.roles ?? [];
+  // Roles that bear on this page: the product's own and the platform-wide ones, not the
+  // member's roles in other products. A member whose roles are all elsewhere (a product-only
+  // member on a platform page) still sees them, so the line can say what they hold.
+  const bearing = all.filter(
+    (r) =>
+      home || !r.scope.startsWith("product:") || r.scope === `product:${slug}`,
+  );
+  const roles = bearing.length > 0 ? bearing : all;
+  const productName = (s: string): string =>
+    me.products.find((p) => p.slug === s)?.name ?? s;
+  return (
+    <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="min-w-0 max-w-full">
+        <strong className="break-all text-fg-strong">{me.email}</strong>
       </span>
+      {/* From 640 px the way out follows the address, as the mockup draws it; below, at the foot. */}
+      <UseAnotherAccount className="max-sm:hidden" />
       {roles.map((role) => (
-        <RoleTag key={`${role.role}:${role.scope}`} role={role} me={me} />
+        <span
+          key={`${role.role}:${role.scope}`}
+          className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1"
+        >
+          <RoleSet role={role} productName={productName} />
+          {home && sourceLine(role, me.email) ? (
+            <span>{sourceLine(role, me.email)}</span>
+          ) : null}
+        </span>
       ))}
-      <Button variant="link" className="min-h-6" onClick={useAnother}>
-        Use another account
-      </Button>
     </span>
   );
 }
@@ -183,7 +227,7 @@ function PersonRow({
       </span>
       {/* On a phone the address goes on its own line under the name, so the name never wraps
           around it; from 640 px it ends the row. */}
-      <span className="flex min-w-0 max-w-full basis-full ps-12 sm:basis-auto sm:ps-0">
+      <span className="flex min-w-0 max-w-full basis-full sm:basis-auto">
         <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm bg-surface-sunken ps-2 font-mono text-xs text-fg">
           <span className="min-w-0 break-all">{person.email}</span>
           <CopyButton
@@ -198,17 +242,30 @@ function PersonRow({
 }
 
 function WhoCanHelp({
-  area,
-  slug,
+  q,
   productName,
 }: {
-  area: AreaId;
-  slug: string | null;
+  q: ReturnType<typeof useAccessAdmins>;
   productName?: string;
 }): React.ReactElement {
-  const q = useAccessAdmins(area, slug);
+  const wrap = React.useRef<HTMLDivElement>(null);
+  const [retrying, setRetrying] = React.useState(false);
+  const failedAt = React.useRef(0);
+  // A retry keeps the error body (and the focused button, with its spinner) until the answer
+  // arrives: a refetch with no data would otherwise swap in the skeleton and drop focus to
+  // <body>. On success focus moves to the panel's heading; on a failure the button keeps it.
+  React.useEffect(() => {
+    if (!retrying) return;
+    if (q.isSuccess) {
+      setRetrying(false);
+      const h = wrap.current?.querySelector<HTMLElement>("h2,h3");
+      h?.setAttribute("tabindex", "-1");
+      h?.focus();
+    } else if (q.isError && q.errorUpdatedAt > failedAt.current)
+      setRetrying(false);
+  }, [retrying, q.isSuccess, q.isError, q.errorUpdatedAt]);
   let body: React.ReactNode;
-  if (q.isPending)
+  if (q.isPending && !retrying)
     body = (
       <ul aria-busy="true" className="divide-y divide-border">
         {[0, 1, 2].map((i) => (
@@ -226,73 +283,95 @@ function WhoCanHelp({
         ))}
       </ul>
     );
-  else if (q.isError)
+  else if (q.isError || retrying)
     body = (
-      <p className="flex flex-wrap items-center gap-3 text-sm text-fg-muted">
-        The list didn't load.
-        <Button variant="outline" size="sm" onClick={() => void q.refetch()}>
+      <div className="space-y-3 text-sm text-fg-muted">
+        <p>The list didn't load. Ask a Superadmin of this console.</p>
+        <Button
+          variant="outline"
+          size="sm"
+          loading={q.isFetching}
+          onClick={() => {
+            failedAt.current = q.errorUpdatedAt;
+            setRetrying(true);
+            void q.refetch();
+          }}
+        >
           Try again
         </Button>
-      </p>
+      </div>
     );
-  else if (q.data.admins.length === 0)
+  else if (q.data!.admins.length === 0)
     body = (
-      <p className="text-sm text-fg-muted">
-        Ask a Superadmin of this console for access.
-      </p>
+      <p className="text-sm text-fg-muted">Ask a Superadmin of this console.</p>
     );
   else
     body = (
       <ul className="divide-y divide-border">
-        {q.data.admins.map((person) => (
-          <PersonRow
-            key={person.email}
-            person={person}
-            productName={productName}
-          />
-        ))}
+        {/* The product's admins first, whatever order they arrive in (the sort is stable). */}
+        {[...q.data!.admins]
+          .sort(
+            (a, b) =>
+              Number(b.role === "product_admin") -
+              Number(a.role === "product_admin"),
+          )
+          .map((person) => (
+            <PersonRow
+              key={person.email}
+              person={person}
+              productName={productName}
+            />
+          ))}
       </ul>
     );
   return (
-    <Panel title="Who can give you access" className="h-full">
-      {body}
-    </Panel>
+    <div ref={wrap}>
+      <Panel title="Who can give you access">{body}</Panel>
+    </div>
   );
 }
 
-function YouCanOpen({
-  me,
-  slug,
-  services,
+/** The buttons: the first is the one filled action (ink), the rest outline; a row from 640 px. */
+function Destinations({
+  places,
 }: {
-  me: Me;
-  slug: string | null;
-  services: ServiceState;
+  places: Destination[];
 }): React.ReactElement {
-  const places = destinations(me, slug, services);
   return (
-    <Panel title="You can open" className="h-full">
-      <div className="flex flex-col gap-3">
-        {places.map((d) => (
-          <Button
-            key={d.key}
-            asChild
-            variant="outline"
-            className="h-auto w-full justify-start whitespace-normal py-2 text-start"
-            data-service={AREA_ACCENTS[d.area]}
-          >
-            <Link to={d.to}>{d.label}</Link>
-          </Button>
-        ))}
-        <a
-          href="/"
-          className="inline-flex min-h-6 items-center gap-1 self-start rounded-xs text-sm text-accent-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+    <div className="flex flex-wrap gap-3 max-sm:flex-col">
+      {places.map((d, i) => (
+        <Button
+          key={d.key}
+          asChild
+          variant={i === 0 ? "primary" : "outline"}
+          className={cn(
+            "h-auto grow justify-center whitespace-normal py-2 text-center sm:grow sm:justify-start sm:text-start max-sm:w-full",
+            i > 0 && "hover:border-accent",
+          )}
+          data-service={AREA_ACCENTS[d.area]}
         >
-          Open your library
-          <ArrowRight aria-hidden className="size-4" />
-        </a>
-      </div>
-    </Panel>
+          <Link to={d.to}>
+            <ServiceGlyph
+              id={(AREA_ACCENTS[d.area] ?? "core") as "core"}
+              className={cn("[&_svg]:size-[1.1em]", i === 0 && "text-current")}
+            />
+            {d.label}
+          </Link>
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function LibraryLink(): React.ReactElement {
+  return (
+    <a
+      href="/"
+      className="inline-flex min-h-6 items-center gap-1 self-start rounded-xs text-sm text-accent-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+    >
+      Open your library
+      <ArrowRight aria-hidden className="size-4" />
+    </a>
   );
 }
 
@@ -301,7 +380,7 @@ function LibraryTile(): React.ReactElement {
   return (
     <a
       href="/"
-      className="group flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
+      className="group flex w-full flex-col gap-3 self-start rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
     >
       <span className="flex size-9 items-center justify-center rounded-md bg-surface-sunken">
         <LayoutGrid aria-hidden className="size-4" />
@@ -337,6 +416,8 @@ export function NoAccessPage({
 }: NoAccessPageProps): React.ReactElement {
   // The product (or Platform) wraps anywhere, so a 200-character name stays on screen; only
   // "→ Area" holds together. The arrow is decoration: a screen reader hears ", Licensing".
+  const q = useAccessAdmins(home ? "console" : area, home ? null : slug);
+  const places = home ? [] : destinations(me, slug, services);
   const subject = slug === null ? "Platform" : (productName ?? slug);
   const areaName =
     slug === null && area === "platform" ? null : AREA_NAMES[area];
@@ -347,6 +428,7 @@ export function NoAccessPage({
       className="mx-auto w-full max-w-[71rem] space-y-6 animate-pk-enter"
     >
       <PageHeader
+        unclampedTitle
         title={
           home ? (
             "You don't have access to any product yet"
@@ -357,7 +439,10 @@ export function NoAccessPage({
                 <>
                   <span className="sr-only">,</span>{" "}
                   <span className="whitespace-nowrap">
-                    <span aria-hidden>→ </span>
+                    <ArrowRight
+                      aria-hidden
+                      className="me-[0.3em] inline size-[0.8em] align-baseline"
+                    />
                     {areaName}
                   </span>
                 </>
@@ -365,23 +450,38 @@ export function NoAccessPage({
             </span>
           )
         }
-        description={<SignedInLine me={me} />}
+        description={<SignedInLine me={me} home={home} slug={slug} />}
       />
-      <div className="grid items-stretch gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <WhoCanHelp
-            area={home ? "console" : area}
-            slug={home ? null : slug}
-            productName={productName}
-          />
+      {/* Top-aligned on purpose (`data-top-aligned`): each panel is as tall as its own content,
+          so a short list never sits in a stretched box. Nothing stacks; with nothing to open the
+          list keeps its eight columns and the library link goes to the foot. */}
+      <div data-top-aligned className="grid items-start gap-6 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-8">
+          <WhoCanHelp q={q} productName={productName} />
         </div>
-        <div className="lg:col-span-4">
-          {home ? (
+        {home ? (
+          <div className="lg:col-span-4">
             <LibraryTile />
-          ) : (
-            <YouCanOpen me={me} slug={slug} services={services} />
-          )}
-        </div>
+          </div>
+        ) : places.length > 0 ? (
+          <div className="min-w-0 lg:col-span-4">
+            <Panel title="You can open">
+              <div className="flex flex-col gap-3">
+                <Destinations places={places} />
+                <LibraryLink />
+              </div>
+            </Panel>
+          </div>
+        ) : null}
+      </div>
+      <div
+        className={cn(
+          "flex flex-col items-start gap-2",
+          (home || places.length > 0) && "sm:hidden",
+        )}
+      >
+        {!home && places.length === 0 ? <LibraryLink /> : null}
+        <UseAnotherAccount className="sm:hidden" />
       </div>
     </section>
   );

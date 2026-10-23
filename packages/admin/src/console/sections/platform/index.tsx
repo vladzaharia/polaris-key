@@ -7,6 +7,7 @@
 import * as React from "react";
 import { api, type PlatformDeployment } from "../../../api.js";
 import { PlatformActivityRoute } from "./pages/platformActivity.js";
+import { PlatformMembers } from "./pages/platformMembers.js";
 import { PlatformStatus } from "./pages/platformStatus.js";
 import { PlatformSettingsPage } from "./pages/platformSettings.js";
 import { StoreConnections } from "./pages/platformStores.js";
@@ -44,6 +45,7 @@ export default function PlatformPages({
   if (page === "platform-status") return <Deployment />;
   if (page === "platform-activity")
     return <PlatformActivityRoute id={route?.id} />;
+  if (page === "platform-members") return <PlatformMembers />;
   if (page === "platform-settings") return <PlatformSettingsPage />;
   if (page === "platform-stores") return <StoreConnections />;
   if (page === "platform-connections")

@@ -86,6 +86,10 @@ export const qk = {
   /** The admin API tokens (`GET /manage/api/tokens`): the deployment's, so under `platform`. */
   apiTokens: (): QueryKey => ["platform", "api-tokens"],
   personalTokens: (): QueryKey => ["platform", "personal-tokens"],
+  /** Platform → Members: the roster, the root rule and the invites (ST-31.11). */
+  members: (): QueryKey => ["platform", "members"],
+  /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */
+  productMembers: (slug: string) => product(slug, "members"),
   /** Platform → Connections (I-31): the page and every connection on it. */
   platformConnections: (): QueryKey => ["platform", "connections"],
   platformConnection: (id: string): QueryKey => ["platform", "connections", id],

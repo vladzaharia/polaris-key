@@ -156,6 +156,111 @@ export interface AccessAdmins {
   admins: AccessAdmin[];
 }
 
+// ── members (ST-31.4 to 31.7: Platform → Members) ─────────────────────────────────
+
+/** One role a member holds, with where it came from (`GET /members`). */
+export interface MemberRole {
+  role: MeRole["role"];
+  scope: string;
+  /** `null`: every area. */
+  areas: AreaId[] | null;
+  /** `root` (computed; no binding), `grant`, `invite` or `creator`. */
+  source: "root" | "grant" | "invite" | "creator";
+  /** The binding to revoke; `null` for the root rule. */
+  bindingId: string | null;
+  /** `null`: the system or the root rule; `{ name: null }`: someone who is no longer a member. */
+  grantedBy: { name: string | null } | null;
+  grantedAt: number | null;
+}
+
+export interface Member {
+  memberId: string;
+  name: string;
+  email: string;
+  lastSignInAt: number | null;
+  disabled: boolean;
+  you: boolean;
+  roles: MemberRole[];
+}
+
+export interface MemberInvite {
+  bindingId: string;
+  email: string;
+  role: MeRole["role"];
+  scope: string;
+  areas: AreaId[] | null;
+  invitedBy: { name: string | null } | null;
+  sentAt: number;
+  expiresAt: number | null;
+}
+
+export interface MembersView {
+  rootRule: { group: string | null };
+  /** A cap cut the roster: say so. */
+  truncated: boolean;
+  /** Some account was left out because the erasure ledger was unreadable. */
+  incomplete: boolean;
+  members: Member[];
+  invites: MemberInvite[];
+}
+
+/** The grant a write names. `areas: null` is every area. */
+export interface GrantBody {
+  role: MeRole["role"];
+  scope: string;
+  areas: AreaId[] | null;
+  /** `L2` for a Superadmin, Platform admin or All products grant. */
+  confirm?: "L2";
+}
+
+export type InviteStatus =
+  | "invited"
+  | "updated"
+  | "merged"
+  | "invalid"
+  | "exists";
+
+export interface MemberInviteOutcome {
+  email: string;
+  status: InviteStatus;
+  bindingId?: string;
+  expiresAt?: number;
+  needsOperatorSignIn?: boolean;
+  emailed?: boolean;
+  /** The sign-in link, only when the mail did not go out. */
+  link?: string;
+}
+
+export interface InviteResult {
+  ok: true;
+  results: MemberInviteOutcome[];
+  counts: Record<InviteStatus, number>;
+  emailOff: boolean;
+  notified: { sent: number; of: number; nobodyNotified: boolean };
+}
+
+/** A person or address that reaches a product from above (`GET /products/:slug/members`). */
+export interface ProductPlatformRole {
+  memberId: string;
+  name: string;
+  email: string;
+  role: MeRole["role"];
+  /** `platform` (a Superadmin) or `products:*`. */
+  scope: string;
+  areas: AreaId[] | null;
+  source: "root" | "grant" | "invite" | "creator" | "rule";
+}
+
+/** `GET /products/:slug/members`, shaped like the platform roster: this product's roles only. */
+export interface ProductMembersView {
+  product: string;
+  truncated: boolean;
+  incomplete: boolean;
+  members: Member[];
+  invites: MemberInvite[];
+  platformRoles: ProductPlatformRole[];
+}
+
 // ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
 
 /** Cloudflare's own record of the running version (the version metadata binding). */
@@ -5184,6 +5289,86 @@ const rawApi = {
       `${alertsBase(scope)}/${enc(id)}/test`,
       { method: "POST" },
     ),
+  /** Platform → Members: everyone with a role, the root rule and the pending invites. */
+  members: () => call<MembersView>("/manage/api/members"),
+  /** Invite addresses (`emails`) to a role. */
+  inviteMembers: (body: GrantBody & { emails: string[] }) =>
+    call<InviteResult>("/manage/api/bindings", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Give an existing member another role. */
+  grantRole: (body: GrantBody & { member: string }) =>
+    call<{ ok: true; binding: MemberRole }>("/manage/api/bindings", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Change a product admin's areas. Widening needs a recent sign-in (403 `step_up_required`). */
+  editBindingAreas: (
+    id: string,
+    body: { areas: AreaId[] | null; confirm?: "L2" },
+  ) =>
+    call<{ ok: true }>(`/manage/api/bindings/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Take a role (or cancel an invite) back. */
+  revokeBinding: (id: string) =>
+    call<{ ok: true }>(`/manage/api/bindings/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /**
+   * Product → Settings → Members (ST-31.14): who holds access to one product. The Worker leaves
+   * the scope off each role and invite and sends no sign-in time; this fills them in so the
+   * platform roster's drawer and tags read it unchanged.
+   */
+  productMembers: async (slug: string): Promise<ProductMembersView> => {
+    const raw = await call<{
+      product: string;
+      truncated: boolean;
+      incomplete: boolean;
+      members: (Omit<Member, "roles" | "lastSignInAt" | "disabled"> & {
+        roles: Omit<MemberRole, "scope">[];
+      })[];
+      invites: Omit<MemberInvite, "scope">[];
+      platformRoles: ProductPlatformRole[];
+    }>(`/manage/api/products/${enc(slug)}/members`);
+    const scope = `product:${slug}`;
+    return {
+      ...raw,
+      members: raw.members.map((m) => ({
+        ...m,
+        lastSignInAt: null,
+        disabled: false,
+        roles: m.roles.map((r) => ({ ...r, scope })),
+      })),
+      invites: raw.invites.map((i) => ({ ...i, scope })),
+    };
+  },
+  /** Invite addresses as Product admin of one product (the role and scope are the route's). */
+  inviteProductMembers: (
+    slug: string,
+    body: { emails: string[]; areas: AreaId[] | null },
+  ) =>
+    call<InviteResult>(`/manage/api/products/${enc(slug)}/members`, {
+      method: "POST",
+      body: JSON.stringify({ ...body, role: "product_admin" }),
+    }),
+  /** Change a product admin's areas. Widening needs a recent sign-in (403 `step_up_required`). */
+  editProductMemberAreas: (
+    slug: string,
+    id: string,
+    body: { areas: AreaId[] | null },
+  ) =>
+    call<{ ok: true }>(`/manage/api/products/${enc(slug)}/members/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Take a product role (or cancel an invite) back. */
+  revokeProductMember: (slug: string, id: string) =>
+    call<{ ok: true }>(`/manage/api/products/${enc(slug)}/members/${enc(id)}`, {
+      method: "DELETE",
+    }),
   /** People's `pkeyp_` tokens (F-33): the Superadmin's roster. Never a token or a hash. */
   personalTokens: () =>
     call<{ tokens: AdminPersonalToken[] }>("/manage/api/account-tokens"),

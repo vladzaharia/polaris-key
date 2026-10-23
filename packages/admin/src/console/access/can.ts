@@ -50,7 +50,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   portal: "core",
   activity: "core",
   settings: "core",
-  "settings-members": "core",
+  "settings-members": "members",
   "settings-all": "core",
   keys: "keys",
   licenses: "license",
@@ -93,6 +93,8 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "personal-tokens": "platform",
   "product-new": "platform",
   "platform-settings": "platform",
+  // The Worker gates `/members` on the `members` area (Superadmin and Platform admin hold it).
+  "platform-members": "members",
   "platform-status": "platform",
   "platform-stores": "platform",
   "platform-connections": "platform",
@@ -109,7 +111,10 @@ export function areaOfPage(page: PageId): AreaId {
   return PAGE_AREAS[page];
 }
 
-/** True for the areas granted at platform scope (the rest are a product's). */
+/**
+ * True for the areas granted at platform scope (the rest are a product's). `members` is both: the
+ * platform's own, and each product's (Product → Settings → Members, ST-31.14); see `scopeSlug`.
+ */
 export function isPlatformArea(area: AreaId): boolean {
   return (
     area === "console" ||
@@ -117,6 +122,12 @@ export function isPlatformArea(area: AreaId): boolean {
     area === "docs" ||
     area === "members"
   );
+}
+
+/** The product slug an area is asked in: `null` for the platform scope. */
+export function scopeSlug(area: AreaId, slug: string | null): string | null {
+  if (area === "members") return slug;
+  return isPlatformArea(area) ? null : slug;
 }
 
 /**
@@ -144,7 +155,7 @@ export function canOpenPage(
   slug: string | null,
 ): boolean {
   const area = areaOfPage(page);
-  return canIn(me, area, isPlatformArea(area) ? null : slug);
+  return canIn(me, area, scopeSlug(area, slug));
 }
 
 /**
@@ -207,6 +218,12 @@ export function roleLabel(
         areas: role.areas,
       };
     }
+    default:
+      // A role this console does not know (a newer Worker): its id, never nothing.
+      return {
+        label: String((role as { role?: unknown }).role ?? ""),
+        areas: null,
+      };
   }
 }
 

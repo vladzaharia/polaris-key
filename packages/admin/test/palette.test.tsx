@@ -85,6 +85,7 @@ describe("the sources", () => {
       "Personal tokens",
       // The Platform section's built pages (notes/S-13 §9.1).
       "Settings",
+      "Members",
       "Status",
       "Connections",
       "Store connections",

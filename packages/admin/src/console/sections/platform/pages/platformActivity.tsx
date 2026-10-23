@@ -65,7 +65,16 @@ const RANGES: { value: string; label: string; hours: number | null }[] = [
 ];
 const DEFAULT_RANGE = "7d";
 
-const KEYS = ["actor", "action", "kind", "product", "range", "view"] as const;
+// `who` is the actor's display name, for a link that names the person (Members → Show activity).
+const KEYS = [
+  "actor",
+  "who",
+  "action",
+  "kind",
+  "product",
+  "range",
+  "view",
+] as const;
 type Params = Record<(typeof KEYS)[number], string>;
 
 /** What the filters send. `since` is fixed per range choice and refresh. */
@@ -151,12 +160,12 @@ export function PlatformActivityPage({
     const seen = seenActors.current;
     for (const i of items) if (i.actor.sub) seen.set(i.actor.sub, actorName(i));
     if (params.actor && params.actor !== "system" && !seen.has(params.actor))
-      seen.set(params.actor, params.actor);
+      seen.set(params.actor, params.who || params.actor);
     return [
       { value: "system", label: "Polaris Key" },
       ...[...seen.entries()].map(([value, label]) => ({ value, label })),
     ];
-  }, [items, params.actor]);
+  }, [items, params.actor, params.who]);
 
   const range = params.range || DEFAULT_RANGE;
   const filtered =
@@ -175,6 +184,7 @@ export function PlatformActivityPage({
     setAnchor(Date.now());
     setParams({
       actor: null,
+      who: null,
       action: null,
       kind: null,
       product: null,
@@ -263,7 +273,7 @@ export function PlatformActivityPage({
             value={params.actor || null}
             set={Boolean(params.actor)}
             emptyLabel="Anyone"
-            onChange={(v) => setParams({ actor: v })}
+            onChange={(v) => setParams({ actor: v, who: null })}
           />
           <FacetSelect
             label="Action"

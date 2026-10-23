@@ -35,6 +35,208 @@ const IDENTITY = {
   environment: "prod",
 };
 
+/** `GET /members`: the roster Platform → Members draws. */
+function productMembersView() {
+  const role = (bindingId: string, over: Record<string, unknown> = {}) => ({
+    role: "product_admin",
+    areas: null,
+    source: "grant",
+    bindingId,
+    grantedBy: { name: "Ada Lindqvist" },
+    grantedAt: 1_789_000_000,
+    ...over,
+  });
+  return {
+    product: "djdl",
+    truncated: false,
+    incomplete: false,
+    members: [
+      {
+        memberId: "mbr_kenji",
+        name: "Kenji Mori",
+        email: "kenji@example.com",
+        you: true,
+        roles: [role("b_kenji")],
+      },
+      {
+        memberId: "mbr_lucia",
+        name: "Lucía Ortega",
+        email: "lucia@example.com",
+        you: false,
+        roles: [role("b_lucia", { areas: ["ship", "commerce"] })],
+      },
+      {
+        memberId: "mbr_bart",
+        name: "Bartholomew Featherstonehaugh-Cholmondeley",
+        email:
+          "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
+        you: false,
+        roles: [
+          role("b_bart", {
+            areas: ["license", "config", "ship", "signin"],
+            source: "invite",
+          }),
+        ],
+      },
+    ],
+    invites: [
+      {
+        bindingId: "b_marco",
+        email: "marco@example.com",
+        role: "product_admin",
+        areas: ["commerce"],
+        invitedBy: { name: "Kenji Mori" },
+        sentAt: 1_789_980_000,
+        expiresAt: 1_790_500_000,
+      },
+    ],
+    platformRoles: [
+      {
+        memberId: "mbr_ada",
+        name: "Ada Lindqvist",
+        email: "ada@example.com",
+        role: "superadmin",
+        scope: "platform",
+        areas: null,
+        source: "root",
+      },
+      {
+        memberId: "mbr_sam",
+        name: "Sam Okoye",
+        email: "sam@example.com",
+        role: "product_admin",
+        scope: "products:*",
+        areas: ["ship"],
+        source: "grant",
+      },
+    ],
+  };
+}
+
+function membersView() {
+  const role = (
+    role: string,
+    scope: string,
+    over: Record<string, unknown> = {},
+  ) => ({
+    role,
+    scope,
+    areas: null,
+    source: "grant",
+    bindingId: `b_${role}_${scope.replace(/\W/g, "")}`,
+    grantedBy: { name: "Ada Lovelace" },
+    grantedAt: 1_789_000_000,
+    ...over,
+  });
+  const root = {
+    role: "superadmin",
+    scope: "platform",
+    areas: null,
+    source: "root",
+    bindingId: null,
+    grantedBy: null,
+    grantedAt: null,
+  };
+  const member = (
+    i: number,
+    name: string,
+    email: string,
+    roles: Record<string, unknown>[],
+    over: Record<string, unknown> = {},
+  ) => ({
+    memberId: `mbr_${i}`,
+    name,
+    email,
+    lastSignInAt: 1_789_990_000 - i * 40_000,
+    disabled: false,
+    you: i === 0,
+    roles,
+    ...over,
+  });
+  return {
+    rootRule: { group: "polaris-admins" },
+    truncated: false,
+    incomplete: false,
+    members: [
+      member(0, "Ada Lindqvist", "ada@example.com", [root]),
+      member(1, "Jonas Weber", "jonas@example.com", [root]),
+      member(2, "Priya Raman", "priya@example.com", [
+        role("platform_admin", "platform"),
+        role("product_admin", "product:djdl", { source: "creator" }),
+      ]),
+      member(3, "Kenji Mori", "kenji@example.com", [
+        role("product_admin", "product:acme"),
+      ]),
+      member(4, "Sam Okoye", "sam@example.com", [
+        role("product_admin", "products:*", { areas: ["ship"] }),
+        role("product_admin", "product:djdl"),
+      ]),
+      member(5, "Lucía Ortega", "lucia@example.com", [
+        role("product_admin", "product:acme", { areas: ["ship", "commerce"] }),
+      ]),
+      member(6, "Noor Haddad", "noor@example.com", [
+        role("console_access", "platform"),
+      ]),
+      member(
+        7,
+        "Bartholomew Featherstonehaugh-Cholmondeley",
+        "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
+        [
+          // A 38-character product (a slug the console cannot name) with three areas.
+          role(
+            "product_admin",
+            "product:northwind-broadcast-audio-workstations",
+            {
+              areas: ["license", "config", "ship"],
+            },
+          ),
+        ],
+      ),
+      member(
+        8,
+        "",
+        "no-name@example.com",
+        [role("console_access", "platform")],
+        {
+          lastSignInAt: null,
+        },
+      ),
+    ],
+    invites: [
+      {
+        bindingId: "b_inv_1",
+        email: "mira@example.com",
+        role: "product_admin",
+        scope: "product:djdl",
+        areas: null,
+        invitedBy: { name: "Priya Raman" },
+        sentAt: 1_789_900_000,
+        expiresAt: 1_790_500_000,
+      },
+      {
+        bindingId: "b_inv_2",
+        email: "tom@example.com",
+        role: "console_access",
+        scope: "platform",
+        areas: null,
+        invitedBy: { name: "Ada Lindqvist" },
+        sentAt: 1_789_800_000,
+        expiresAt: 1_790_400_000,
+      },
+      {
+        bindingId: "b_inv_3",
+        email: "olu@example.com",
+        role: "platform_admin",
+        scope: "platform",
+        areas: null,
+        invitedBy: { name: "Ada Lindqvist" },
+        sentAt: 1_789_700_000,
+        expiresAt: 1_790_300_000,
+      },
+    ],
+  };
+}
+
 function deploy(i: number, smoke = "success") {
   return {
     id: `run-${i}`,
@@ -2035,6 +2237,12 @@ export const DATA_ROUTES: Record<string, unknown> = {
     ],
     nextCursor: null,
   },
+  // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
+  // Product admin, a long name and address) and three invites, one of them for a platform role.
+  "/manage/api/members": membersView(),
+  // ST-31.14: Product → Settings → Members (DJDL): Kenji (you), Lucía (two areas), a long name
+  // with a long address and four areas, an invite, and two roles that reach DJDL from above.
+  [`${PROD}/members`]: productMembersView(),
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
   "/manage/api/platform/settings/identity.keyEntry.limit/reach": {

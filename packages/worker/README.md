@@ -71,6 +71,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family               | Here it          | Run                                    |
 | -------------------- | ---------------- | -------------------------------------- |
+| `roles-matrix`       | reads            | `pnpm gen roles-matrix`                |
 | `transcripts`        | reads            | `pnpm gen transcripts`                 |
 | `constants`          | reads            | `pnpm gen constants`                   |
 | `platform-inventory` | reads and writes | `pnpm gen platform-inventory`          |
