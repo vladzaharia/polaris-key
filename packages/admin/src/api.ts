@@ -388,6 +388,22 @@ export interface AdminPersonalToken {
   status: "active" | "expired" | "revoked";
 }
 
+/** One of the signed-in member's own `pkeyp_` tokens (ST-34.4): either scope; no owner, no revoker. */
+export interface OwnPersonalToken {
+  id: string;
+  /** The label; a token `pkey login` made reads "pkey on <host>". */
+  label: string;
+  /** The token's last four characters. */
+  hint: string;
+  scope: "admin" | "packages:read";
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  revokeReason: string | null;
+  status: "active" | "expired" | "revoked";
+}
+
 export type AdminApiTokenStatus = "active" | "expired" | "revoked";
 
 /**
@@ -5376,6 +5392,15 @@ const rawApi = {
   revokePersonalToken: (id: string) =>
     call<{ ok: true; token: AdminPersonalToken }>(
       `/manage/api/account-tokens/${enc(id)}`,
+      { method: "DELETE" },
+    ),
+  /** The signed-in member's own personal tokens, both scopes (ST-34.4). A v1 cookie answers 409 `reauth`. */
+  myPersonalTokens: () =>
+    call<{ tokens: OwnPersonalToken[] }>("/manage/api/me/personal-tokens"),
+  /** Revoke one of your own at once. */
+  revokeMyPersonalToken: (id: string) =>
+    call<{ ok: true; token: OwnPersonalToken }>(
+      `/manage/api/me/personal-tokens/${enc(id)}`,
       { method: "DELETE" },
     ),
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */

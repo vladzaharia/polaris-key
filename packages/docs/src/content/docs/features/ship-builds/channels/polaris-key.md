@@ -256,8 +256,8 @@ mismatch is visible.
 ### From a Godot project
 
 ```sh title="Terminal"
-# the console session: pkey bundle's admin API token cannot reach the import
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+# sign in once; the import uses that sign-in (an API token cannot reach it)
+pkey login
 # prints the diff
 pkey listing import --godot path/to/project --product <slug>
 # writes it

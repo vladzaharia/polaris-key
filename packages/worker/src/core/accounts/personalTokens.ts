@@ -38,7 +38,7 @@
  *
  * AUDIT. The mint and the revoke are audited by the caller through the account audit
  * (`portal_audit`, the portal) or the platform audit (`core/audit.ts`, the console); this module
- * writes no audit row. A token USE is not audited per request (a package install is dozens of
+ * writes no audit row (the audit row also records who created the token: the row itself keeps no creator). A token USE is not audited per request (a package install is dozens of
  * requests); `last_used_at` is the signal, written at most once an hour.
  */
 
@@ -169,7 +169,8 @@ export interface MintPersonalTokenInput {
   /** Exactly one scope. */
   readonly scope: string;
   readonly expiresInDays?: number;
-  /** `portal:<accountId>` or `admin:<sub>`. */
+  /** `portal:<accountId>`, `admin:<sub>` or `console:<memberId>`. Informational: the token row keeps
+   *  no `created_by` column, so the caller's audit row is the provenance record. */
   readonly createdBy: string;
 }
 
@@ -269,7 +270,7 @@ export async function mintAccountToken(
 
 // ── List and revoke ──────────────────────────────────────────────────────────────────────────
 
-/** The account's tokens, newest first, revoked and expired ones included until purged. */
+/** The account's tokens, live first and then newest, revoked and expired ones included until purged. */
 export async function listAccountTokens(
   db: Db,
   accountId: string,
@@ -277,8 +278,10 @@ export async function listAccountTokens(
 ): Promise<PersonalTokenView[]> {
   const rows = await db.all<PersonalTokenRow>(
     `SELECT * FROM account_tokens WHERE account_id = ?
-      ORDER BY created_at DESC, id DESC LIMIT 1000`,
+      ORDER BY (revoked_at IS NULL AND expires_at > ?) DESC, created_at DESC, id DESC
+      LIMIT 1000`,
     accountId,
+    now,
   );
   return rows.map((r) => viewOf(r, now));
 }
@@ -310,7 +313,23 @@ export async function revokeAccountToken(
   reason: PersonalTokenRevokeReason,
   now: number,
 ): Promise<PersonalTokenView | null> {
-  await db.run(
+  return (await revokeAccountTokenCounted(db, accountId, id, by, reason, now))
+    .view;
+}
+
+/**
+ * {@link revokeAccountToken}, also saying whether THIS call ended the token: of two concurrent
+ * revokes of one token exactly one has `changed` true, so only that one audits.
+ */
+export async function revokeAccountTokenCounted(
+  db: Db,
+  accountId: string,
+  id: string,
+  by: string,
+  reason: PersonalTokenRevokeReason,
+  now: number,
+): Promise<{ view: PersonalTokenView | null; changed: boolean }> {
+  const changes = await db.runChanges(
     `UPDATE account_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
       WHERE account_id = ? AND id = ? AND revoked_at IS NULL`,
     now,
@@ -319,7 +338,10 @@ export async function revokeAccountToken(
     accountId,
     id,
   );
-  return getAccountToken(db, accountId, id, now);
+  return {
+    view: await getAccountToken(db, accountId, id, now),
+    changed: changes === 1,
+  };
 }
 
 /** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
@@ -505,6 +527,47 @@ export async function purgeAccountTokens(db: Db, now: number): Promise<number> {
 
 // ── Resolution ───────────────────────────────────────────────────────────────────────────────
 
+/** Options of the resolvers. */
+export interface PersonalResolveOpts {
+  waitUntil?: (p: Promise<unknown>) => void;
+  /**
+   * `false`: do not write `last_used_at`. The admin API passes it and calls
+   * {@link touchPersonalToken} once the request has cleared every gate, so a refused request
+   * (wrong route, no reach) leaves no mark.
+   */
+  touch?: boolean;
+}
+
+function stmtTouch(db: Db, id: string, now: number): Promise<unknown> {
+  return db
+    .run(
+      `UPDATE account_tokens SET last_used_at = ?
+        WHERE id = ? AND (last_used_at IS NULL OR last_used_at < ?)`,
+      now,
+      id,
+      now - LAST_USED_GRANULARITY,
+    )
+    .catch(() => undefined);
+}
+
+/**
+ * Record a use (at most hourly per token). For a caller that resolved with `touch: false`.
+ * `lastUsedAt` is the token view's: when it is already fresh there is no write at all.
+ */
+export async function touchPersonalToken(
+  db: Db,
+  id: string,
+  now: number,
+  lastUsedAt?: number | null,
+): Promise<void> {
+  if (
+    typeof lastUsedAt === "number" &&
+    lastUsedAt >= now - LAST_USED_GRANULARITY
+  )
+    return;
+  await stmtTouch(db, id, now);
+}
+
 /** Who a presented personal token is. */
 export interface ResolvedPersonalToken {
   readonly accountId: string;
@@ -528,7 +591,7 @@ export async function resolvePersonalToken(
   presented: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   if (!isPersonalToken(presented)) return null;
   const hash = await hashPersonalToken(env, presented);
@@ -545,7 +608,7 @@ export function resolvePersonalTokenById(
   id: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   return resolveRow(env, db, "id = ?", id, accepts, now, opts);
 }
@@ -557,7 +620,7 @@ async function resolveRow(
   key: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void },
+  opts: PersonalResolveOpts,
 ): Promise<ResolvedPersonalToken | null> {
   let row: PersonalTokenRow | null;
   try {
@@ -575,16 +638,11 @@ async function resolveRow(
   if (!isPersonalTokenScope(row.scope) || row.scope !== accepts) return null;
   if ((await erasureVerdict(env, now, row.account_id)) !== "clear") return null;
   if (
-    row.last_used_at === null ||
-    row.last_used_at < now - LAST_USED_GRANULARITY
+    opts.touch !== false &&
+    (row.last_used_at === null ||
+      row.last_used_at < now - LAST_USED_GRANULARITY)
   ) {
-    const write = db
-      .run(
-        "UPDATE account_tokens SET last_used_at = ? WHERE id = ?",
-        now,
-        row.id,
-      )
-      .catch(() => undefined);
+    const write = stmtTouch(db, row.id, now);
     if (opts.waitUntil) opts.waitUntil(write);
     else await write;
   }

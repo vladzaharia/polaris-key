@@ -72,3 +72,19 @@ manifest still declares `devices.registration`, it reports `invalid_registration
 
 A services `PATCH` that still sends `registration`, with any value including `null`, answers `422`
 and writes nothing.
+
+## 0.9.x — Added: exit code 4 for a refusal
+
+**Action required:** Only if a script wraps [`pkey whoami`](/docs/reference/cli/#pkey-whoami) or
+[`pkey logout`](/docs/reference/cli/#pkey-logout), which are new, or `pkey login`. These commands
+exit 4 when they refuse, and print `▲` rather than `✗`. A refusal is: not signed in, a sign-in that
+has ended, no credential store, or a token the server rejects. A network or server failure
+exits 1, as it does for every other command, and `--json` prints one result line with `ok`, `exit`
+and `error` either way.
+
+| Exit | Meaning                                                               |
+| ---- | --------------------------------------------------------------------- |
+| 0    | Success.                                                              |
+| 1    | Failure: an invalid manifest, a network or server error.              |
+| 2    | Usage: an unknown command or a missing or misused flag.               |
+| 4    | Refused: not signed in, no credential store, or a token not accepted. |

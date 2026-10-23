@@ -19,6 +19,13 @@
  * that is `POST /products/:slug/bundles` and the three read-side migration rows. A tokenised row still goes through `can()` for
  * its area like any other, and never needs a step-up (a token has none).
  *
+ * Personal-token reach (ST-34.3). An admin-scope personal token (`Bearer pkeyp_`) reaches a row only
+ * through `personalToken: true`; default deny, as above. Today: `GET /me`, `GET /access/admins`,
+ * `GET /products`, `POST /products/:slug/bundles`, `GET /products/:slug/integration`, the three
+ * read-side migration rows, `POST /products/:slug/distribution/listing/import` and (personal token
+ * only, ST-34.4) `DELETE /me/personal-tokens/current`. The holder's own principal still passes `can()` per row, and a row
+ * that needs a step-up never carries the flag (`test/adminPersonalToken.test.ts` pins it).
+ *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
  * removed row updates it in the same change, and a changed area needs an `AREA_MOVES` entry
  * (`core/rbac/areas.ts`). The sidebar is never an input. `test/rbacRouteMatrix.test.ts` drives
@@ -55,6 +62,11 @@ import { handlePlatform } from "./handlers/platform.js";
 import { handlePlatformConnections } from "./handlers/platformConnections.js";
 import { handleProducts } from "./handlers/products.js";
 import { handleIntegration } from "./handlers/integration.js";
+import {
+  handleMyTokenList,
+  handleMyTokenRevoke,
+  handleMyTokenRevokeCurrent,
+} from "./handlers/myTokens.js";
 import { handleProductScoped } from "./productScoped.js";
 import {
   handleApiTokenList,
@@ -163,7 +175,10 @@ const product: AdminHandler = (c) =>
 
 // ── The table ────────────────────────────────────────────────────────────────────────────────
 
-type Opts = Pick<AdminRoute, "level" | "stepUp" | "tokenScope">;
+type Opts = Pick<
+  AdminRoute,
+  "level" | "stepUp" | "tokenScope" | "personalToken" | "personalOnly"
+>;
 
 function rows(
   methods: readonly Method[],
@@ -185,7 +200,7 @@ function serviceRows(slug: ServiceSlug): AdminRoute[] {
 
 export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── Membership: what every console member may use ─────────────────────────────────────────
-  ...rows(["GET"], "/me", "console", me),
+  ...rows(["GET"], "/me", "console", me, { personalToken: true }),
   // ST-30c.3 (SM-3(a), (d)): my own sign-in methods. Session only (break-glass refused in the
   // handler); each write needs a step-up. No removal here: that stays in the Locker account.
   ...rows(["GET"], "/me/methods", "console", handleMyMethods),
@@ -199,6 +214,25 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     stepUp: true,
   }),
   ...rows(["POST"], "/logout", "console", logout),
+  // ST-34.4: the caller's own personal tokens. The list and the id revoke are session-only; `current`
+  // is the one row that ends the presenting token (`pkey logout`), personal token only.
+  ...rows(["GET"], "/me/personal-tokens", "console", handleMyTokenList),
+  ...rows(
+    ["DELETE"],
+    "/me/personal-tokens/current",
+    "console",
+    handleMyTokenRevokeCurrent,
+    {
+      personalToken: true,
+      personalOnly: true,
+    },
+  ),
+  ...rows(
+    ["DELETE"],
+    "/me/personal-tokens/:id",
+    "console",
+    handleMyTokenRevoke,
+  ),
   // Home's Needs attention: composed on the server, filtered by product and by fix area.
   ...rows(["GET"], "/attention", "console", attention),
   // I-41: a support code resolved to {product, subject}; the handler checks the caller's product access.
@@ -206,9 +240,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ST-52: the palette's entity search and pasted-key resolution; each product is held to its own area.
   ...rows(["POST"], "/search", "console", search),
   // The product list, filtered the same way.
-  ...rows(["GET"], "/products", "console", registry),
+  ...rows(["GET"], "/products", "console", registry, { personalToken: true }),
   // NoAccessPage: who can give the caller access to a scope and area.
-  ...rows(["GET"], "/access/admins", "console", handleAccessAdmins),
+  ...rows(["GET"], "/access/admins", "console", handleAccessAdmins, {
+    personalToken: true,
+  }),
 
   // ── Platform ──────────────────────────────────────────────────────────────────────────────
   ...rows(["GET"], "/github/repositories", "platform", github),
@@ -243,12 +279,15 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // down need a step-up, which a token cannot have, so they refuse every token.
   ...rows(["GET"], "/platform/migrations", "platform", platform, {
     tokenScope: "migrations:report",
+    personalToken: true,
   }),
   ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform, {
     tokenScope: "migrations:report",
+    personalToken: true,
   }),
   ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform, {
     tokenScope: "migrations:report",
+    personalToken: true,
   }),
   ...rows(["POST"], "/platform/migrations/apply", "platform", platform, {
     stepUp: true,
@@ -419,6 +458,13 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     product,
   ),
 
+  // ST-34.4: `pkey listing import` presents an admin personal token. The specific row narrows the
+  // distribution prefix: same area, `ship`, so the holder's own principal still has to pass it, and
+  // only POST exists here (the diff and the confirmed apply are one route).
+  ...rows(["POST"], `${P}/distribution/listing/import`, "ship", product, {
+    personalToken: true,
+  }),
+
   // ── One product: Core's resources ─────────────────────────────────────────────────────────
   // Every product setting the registry serves (ST-05b); the handler lists only the keys whose
   // area the caller holds, and `byKey` takes a key's own area.
@@ -439,7 +485,9 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PATCH"], `${P}/services`, "core", product),
   ...rows(["POST"], `${P}/services/revert`, "core", product),
   ...rows(["GET"], `${P}/activity`, "core", product),
-  ...rows(["GET"], `${P}/integration`, "core", handleIntegration),
+  ...rows(["GET"], `${P}/integration`, "core", handleIntegration, {
+    personalToken: true,
+  }),
   ...rows(["GET"], `${P}/refusals`, "core", product),
   ...rows(["GET"], `${P}/blob-gc`, "core", product),
   ...rows(["GET"], `${P}/blob-gc/bundles`, "core", product),
@@ -496,6 +544,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // token reaches: `bundles:mint`, what `pkey bundle` presents.
   ...rows(["POST"], `${P}/bundles`, "license", product, {
     tokenScope: "bundles:mint",
+    personalToken: true,
   }),
   // The Polaris Key storefront's panel (PS-06) is Commerce's surface (CM-29 §10).
   ...rows(["GET"], `${P}/storefronts/:store`, "commerce", product),

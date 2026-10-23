@@ -373,6 +373,52 @@ const ROUTES: Record<string, unknown> = {
     identity: null,
     recipes: [],
   },
+  // ST-34.11: Personal tokens, Yours (both scopes, a long host) and Everyone.
+  "/manage/api/me/personal-tokens": {
+    tokens: [
+      {
+        id: "ptok_cli",
+        label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+        hint: "Hq2a",
+        scope: "admin",
+        createdAt: NOW - 3 * DAY,
+        expiresAt: NOW + 4 * DAY,
+        lastUsedAt: NOW - 2 * 3600,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+      {
+        id: "ptok_ci",
+        label: "CI build server",
+        hint: "j3eX",
+        scope: "packages:read",
+        createdAt: NOW - 60 * DAY,
+        expiresAt: NOW + 30 * DAY,
+        lastUsedAt: null,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+    ],
+  },
+  "/manage/api/account-tokens": {
+    tokens: [
+      {
+        id: "ptok_cli",
+        email: "ada@example.com",
+        label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+        hint: "Hq2a",
+        scope: "admin",
+        createdAt: NOW - 3 * DAY,
+        expiresAt: NOW + 4 * DAY,
+        lastUsedAt: NOW - 2 * 3600,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+    ],
+  },
   "/manage/api/me": ME,
   "/manage/api/products": { products: PRODUCTS },
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.

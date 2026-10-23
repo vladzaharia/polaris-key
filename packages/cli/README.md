@@ -386,9 +386,10 @@ file is created with mode `0600` and is never written through a symbolic link: w
 an existing file is refused by the kernel (`O_EXCL`), and `--force` truncates a regular file and
 tightens its mode but still refuses a link.
 
-`pkey listing import` is the one admin command that still presents the console session: its
-route is outside a token's `bundles:mint` scope, so it reads the `__Host-pkey_admin` cookie from
-`PKEY_ADMIN_COOKIE` and applies the same `--base-url` rule before sending it anywhere.
+`pkey bundle`, `pkey migrate` and `pkey listing import` all use the same credential: the sign-in
+`pkey login` saved, or a token in `PKEY_ADMIN_TOKEN` (`pkeyp_` for any of them; `pkeya_` for
+`bundle` and `migrate`, never for `listing import`). A person who lacks the access gets a refusal
+that names the product and area, their roles and who to ask, and the command exits 4.
 
 ### Boolean flags
 

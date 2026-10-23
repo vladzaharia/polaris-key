@@ -402,6 +402,8 @@ export type PortalCopyKey =
   | "locker.packages.atLimit"
   | "locker.packages.create"
   | "locker.packages.none"
+  | "locker.packages.atLimitAdmin"
+  | "locker.packages.adminPointer"
   | "locker.packages.reconnectPersonal"
   | "locker.packages.showAll"
   | "locker.packages.createTitle"

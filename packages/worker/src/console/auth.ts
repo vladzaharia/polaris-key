@@ -182,8 +182,15 @@ const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
  */
 const RETURN_TO_HASH_RE = /^\/manage\/#\/[A-Za-z0-9\-._~/]*$/;
 
+/**
+ * ST-34.6: the `pkey login` approval card, with its code: the one place a `returnTo` may carry a
+ * query, so a step-up lands back on the request. Exactly `?code=` and a short code, nothing else.
+ */
+const RETURN_TO_DEVICE_RE = /^\/manage\/device\?code=[A-Za-z0-9-]{4,20}$/;
+
 export function sanitizeReturnTo(raw: string | null): string | null {
   if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
+  if (RETURN_TO_DEVICE_RE.test(raw)) return raw;
   if (!RETURN_TO_RE.test(raw) && !RETURN_TO_HASH_RE.test(raw)) return null;
   if (raw.includes("//")) return null;
   if (raw.split(/[/#]/).some((seg) => seg === "." || seg === "..")) return null;

@@ -6081,6 +6081,16 @@
       "role": "hint",
       "note": "Account → Packages (P0-36)."
     },
+    "locker.packages.atLimitAdmin": {
+      "value": "At most {count} personal tokens, admin tokens included. Revoke one first; admin tokens are in the console",
+      "role": "hint",
+      "note": "Account → Packages at the limit while an admin token holds a place (ST-34.11)."
+    },
+    "locker.packages.adminPointer": {
+      "value": "Admin tokens are in the console.",
+      "role": "hint",
+      "note": "Account → Packages lists packages tokens only; admin tokens are in the console (ST-34.11, D-9)."
+    },
     "locker.packages.reconnectPersonal": {
       "value": "Create a new one and set it again to reconnect.",
       "role": "hint",

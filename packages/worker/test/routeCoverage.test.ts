@@ -48,6 +48,7 @@ const NARRATIVE_ONLY = new Set([
   "adminSpa",
   "adminApi",
   "adminLogin",
+  "adminDevice",
   "adminCallback",
   "adminPasskey",
   "portalSpa",
@@ -239,6 +240,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // the handler's, through the grant rules).
     ["/manage/api/bindings", ["post"]],
     ["/manage/api/bindings/{id}", ["patch", "delete"]],
+    // ST-34.4: the caller's own personal tokens, and the one row that ends the presenting token.
+    ["/manage/api/me/personal-tokens", ["get"]],
+    ["/manage/api/me/personal-tokens/{id}", ["delete"]],
+    ["/manage/api/me/personal-tokens/current", ["delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -250,6 +255,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/integration", ["get"]],
     // A-20.4: the channel read model (delivery and commerce facets per channel).
     ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // ST-34.4: the store-listing import `pkey listing import` calls (session or admin token).
+    ["/manage/api/products/{product}/distribution/listing/import", ["post"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.

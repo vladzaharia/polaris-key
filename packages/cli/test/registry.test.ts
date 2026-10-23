@@ -23,6 +23,7 @@ import {
   VALUELESS_FLAGS,
   type PkeyCommand,
 } from "../src/help.js";
+import { memoryStore } from "../src/credentials.js";
 import { HANDLERS, runPkey } from "../src/index.js";
 import { termFor } from "../src/terminal.js";
 import { CLI_VERSION } from "../src/version.js";
@@ -64,6 +65,8 @@ async function run(
     stdout,
     stderr,
     env: opts.env ?? {},
+    // No one is signed in: doctor must not open the machine's keychain.
+    credentialStore: async () => memoryStore(),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
   return { code, out: stdout.text(), err: stderr.text() };
@@ -109,13 +112,17 @@ describe("the command table", () => {
         .map((c) => c.name)
         .sort(),
     ).toEqual([
+      "bundle",
       "dev",
       "doctor",
       "feeds",
       "listing",
+      "login",
+      "logout",
       "migrate",
       "storefront",
       "validate",
+      "whoami",
     ]);
   });
 
@@ -452,7 +459,10 @@ describe("pkey doctor", () => {
       return new Response(
         JSON.stringify({
           services: { license: { enabled: true }, config: { enabled: false } },
-          trust: { keys: [{ kid: "djdl-2026", status: "active" }] },
+          trust: {
+            keys: [{ kid: "djdl-2026", status: "active" }],
+            pinnedKeys: { "djdl-2026": "key" },
+          },
         }),
       );
     }) as typeof fetch;
@@ -503,8 +513,8 @@ describe("pkey doctor", () => {
       expect(line.facts).toContainEqual({
         id: "discovery",
         state: "todo",
-        detail: "not found (404)",
-        fix: "Is djdl registered at key.plrs.im?",
+        detail: "Answered 404 at key.plrs.im",
+        code: "discovery-failed",
       });
     } finally {
       globalThis.fetch = real;
@@ -548,14 +558,17 @@ describe("pkey doctor", () => {
     const real = globalThis.fetch;
     globalThis.fetch = discovery({
       services: { license: { enabled: true } },
-      trust: { keys: [{ kid: "djdl-2026", status: "active" }] },
+      trust: {
+        keys: [{ kid: "djdl-2026", status: "active" }],
+        pinnedKeys: { "djdl-2026": "key" },
+      },
     });
     try {
       const out = await run(["doctor"], { cwd });
       expect(out.code).toBe(0);
-      expect(out.out).toContain("✓  Live product  answers");
-      expect(out.out).toContain("✓  Live features  license");
-      expect(out.out).toContain("✓  Signing key  djdl-2026, active");
+      expect(out.out).toContain("DJDL (djdl) · key.plrs.im");
+      expect(out.out).toMatch(/✓ Services +license/);
+      expect(out.out).toMatch(/✓ Signing key +djdl-2026 · active/);
     } finally {
       globalThis.fetch = real;
     }

@@ -387,6 +387,8 @@
   "locker.packages.atLimit": "Höchstens {count} persönliche Tokens. Widerrufen Sie zuerst eines",
   "locker.packages.create": "Persönliches Token erstellen",
   "locker.packages.none": "Noch keine persönlichen Tokens. Erstellen Sie eines für jeden Computer oder Build-Server.",
+  "locker.packages.atLimitAdmin": "Höchstens {count} persönliche Tokens, Admin-Tokens eingeschlossen. Widerrufen Sie zuerst eines; Admin-Tokens finden Sie in der Konsole",
+  "locker.packages.adminPointer": "Admin-Tokens finden Sie in der Konsole.",
   "locker.packages.reconnectPersonal": "Erstellen Sie ein neues und setzen Sie es erneut, um die Verbindung wiederherzustellen.",
   "locker.packages.showAll": "Alle {count} anzeigen",
   "locker.packages.createTitle": "Persönliches Token erstellen",

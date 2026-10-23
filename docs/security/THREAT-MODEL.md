@@ -44,7 +44,7 @@ and what binary it installs next.
 | A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | A16  | **`pkeya_` admin API tokens**                                                                                                                | `admin_api_tokens`, stored only as `hashKey(token, pepper)`                                           | A bearer credential for the admin API. Narrower than A4 by construction, and the reason it exists is that the alternative was worse: see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| A17  | **`pkeyp_` personal tokens**                                                                                                                 | `account_tokens`, stored only as `hashKey(token, pepper)`                                             | A person's bearer credential, one scope per token. `packages:read` reads every package the account may read across products (the registry host); ST-34 adds `admin`. Shown once, expiring, individually revocable. See "Personal tokens" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| A17  | **`pkeyp_` personal tokens**                                                                                                                 | `account_tokens`, stored only as `hashKey(token, pepper)`                                             | A person's bearer credential, one scope per token. `packages:read` reads every package the account may read across products (the registry host); `admin` (ST-34.3) is accepted by the admin API alone, on the flagged rows and under the holder's roles at use time (see "Admin-scope personal tokens: the principal"). Shown once, expiring, individually revocable. See "Personal tokens" below.                                                                                                                                                                                                                                                                                                                                   |
 
 **A16 is deliberately narrow, and it replaced something broader.** Before it, the one non-browser
 caller of the admin API, `pkey bundle`, run from terminals and CI, authenticated by having an
@@ -1899,7 +1899,7 @@ minutes), CSRF-protected, and spends `portalPersonalToken` (20 an hour, fail clo
 The portal mints `packages:read` and refuses anything else with a 422, so a client that asks for
 `admin` learns it did not get it. The registry host resolves a personal token for
 `packages:read` only: a row of any other scope (ST-34's `admin`) resolves to nothing there, and the
-admin API will take `admin` tokens only. A package token therefore cannot reach the admin API, and
+admin API takes `admin` tokens only. A package token therefore cannot reach the admin API, and
 an admin token cannot read a feed, whatever a row says. A personal token never publishes: the
 publish and OCI push paths do not accept the prefix, and a pull token for one grants no `push`.
 
@@ -1942,13 +1942,14 @@ leaves out `revokedBy`, which names the revoking account.
 `revokeAllAccountTokens` is the account-wide store half); by erasure (the erasure stops the account's
 tokens first, reason `account_deleted`, then deletes them in its closing batch, labels included; and the request-time erasure fence refuses a restored token of an
 erased account: a ledger that cannot be read resolves to nothing for that request). A merge moves
-the tokens to the surviving account and its undo moves exactly those back. A revoke takes effect
+its `packages:read` tokens to the surviving account and its undo moves exactly those back; its `admin`
+tokens are revoked (`access_removed`) and stay revoked. A revoke takes effect
 within the registry's 30-second per-isolate window, at once on the isolate that served it. Rows are
 purged 90 days after they ended. Personal tokens appear in the account export (metadata only).
 
 **Residual.** A token pasted into a shared CI is as shareable as the licence behind it; the bound
 is expiry, the per-account cap, the licence's status and revocation. `last_used_at` is written at
-most hourly, so "last used" lags by up to an hour. A USE is not audited per request.
+most hourly, so "last used" lags by up to an hour. A `packages:read` use is not audited per request; an `admin` use is (`account_token.used`, ST-34.3).
 
 **Review triggers.** A second scope on `packages:read`'s path; the registry host accepting any
 scope but `packages:read`; a personal token accepted by a publish path; a licence-free grant in
@@ -7917,6 +7918,96 @@ session from a credential that is not the console IdP.
 **Tests:** `test/consolePasskeySignin.test.ts`; `consoleSessionV2`, `consoleStrongMethod`,
 `consoleTokenSubject`, `identityErasureFence`, `routeCoverage`, `boundaries`, `rateLimit`.
 
+### Admin-scope personal tokens: the principal (ST-34.3)
+
+**What arrived.** `Authorization: Bearer pkeyp_…` is accepted by the admin API (`console/api.ts`) when the
+row's scope is `admin` (ST-34.1; minted by a console-approved `pkey login`). The registry host still
+resolves `packages:read` only, so a packages token gets the admin API's one 401 and an admin token
+reads no feed.
+
+**Control.**
+
+- **Principal source.** The credential is routed by its prefix (`isPersonalToken`), then
+  `resolvePersonalToken(…, "admin")` (live, unexpired, unrevoked, account not on the erasure ledger),
+  then `consoleTokenSubject` (ST-34.2: account active and not merged, a strong link through an allowed
+  issuer, the root rule recomputed). The session it builds carries the member id as `sub`, the account as
+  `aid`, `root` from the rule, `csrf: ""`, `exp` = the token's expiry, `tokenId` and no `stepUpAt`.
+  `callerFor` then reads the holder's stored bindings through `aid` (ST-31.2), so the principal is the
+  holder's roles NOW, never what they were at mint. Nothing is cached: the token, the subject and the
+  bindings are three reads per request, well inside `LIVE_CHECK_SECONDS`. Any failure is the one 401.
+- **Reach is default deny (D-1).** A row must carry `personalToken: true`: `GET /me`,
+  `GET /access/admins`, `GET /products`, `POST /products/:slug/bundles`,
+  `GET /products/:slug/integration` and the three read-side `/platform/migrations` rows. Every other
+  row, unknown path and method is the same 403 a `pkeya_` gets. Each flagged row still passes
+  `can()` under the holder's principal (the token adds no authority), so a holder narrowed to `ship`
+  gets 403 `{area: "license"}` on the bundle mint on the next request, and a deleted binding ends the
+  token's reach at once. The token routes (`/tokens`, `/account-tokens`) carry no flag, so a token
+  cannot mint or list tokens. `test/adminPersonalToken.test.ts` pins the flagged rows and that none needs
+  a step-up.
+- **Step-up is refused.** The session has no `stepUpAt`, so a row with `stepUp` answers 403
+  `step_up_required` (and no flagged row has one; the table test fails if one gains the flag).
+  CSRF does not apply: the credential is a header nothing attaches ambiently, and `csrf: ""` can
+  never match, so removing the exemption would fail closed.
+- **Root freshness (D-3).** The root rule is the session's: a strong link, the platform group in
+  `groups_json` and `asserted_at` under the admin session TTL. A root-only holder's token therefore
+  stops being root when the assertion goes stale (403 `console`; `/me` still answers); a token that
+  must last needs a stored Superadmin binding, which is the holder's decision with a Superadmin.
+- **Limiter.** `ptok:<token id>` in the `adminApi` bucket (600 a minute), so a CLI loop cannot spend
+  the person's console budget (keyed by the member id) and one token cannot spend another's. Since
+  ST-34.4 one more cap spans all of a member's personal tokens (`adminApiPersonal`, 600 a minute), so
+  25 tokens do not multiply the budget, and with it the use rows a holder can write.
+- **Audit (D-15).** Every use that clears the gates writes `account_token.used` before the handler:
+  `audit` on the product for a product row, `platform_audit` otherwise. The actor is the member id
+  (`mbr_…`); the summary names the label, the last four characters and `METHOD path`; the target is
+  the `ptok_` id. Never the token, its hash or the account id. A refused request (401, 403) writes no
+  row (a budgeted `access.denied` still records a product reach, as for a session).
+- **A merge** revokes the absorbed account's admin tokens (ST-34.1), and an account that merged away
+  answers `consoleTokenSubject` `null`, so its token is a 401 either way.
+
+**Residual.** A stolen admin `pkeyp_` acts as its holder on the flagged rows for up to 7 days (30 at
+most) or until revoked, with no second factor: bounded by the roles, the rows and the use trail, not
+removed. `GET /products` and `/access/admins` disclose names and roles to anyone holding the token.
+The audit row holds the holder's name and email as every console audit row does. A stolen token's
+bundle-mint output outlives the token: the mint consumes no device row or seat, has no count limit
+beyond the per-token rate, takes `graceDays` up to 365 (clamped only where the product clamps), and
+revoking the token recalls no bundle.
+
+### Admin-scope personal tokens: own-token routes, self-revoke and the listing import (ST-34.4)
+
+**What arrived.** `GET /me/personal-tokens`, `DELETE /me/personal-tokens/:id` and
+`DELETE /me/personal-tokens/current` (`console/handlers/myTokens.ts`), and a specific row
+`POST /products/:slug/distribution/listing/import` (area `ship`, `personalToken: true`) for
+`pkey listing import`.
+
+**Control.**
+
+- **Own tokens only, no IDOR.** The account is the session's `aid`, never a request field. Every query
+  is `account_id = ? AND id = ?`, so another account's id is a 404, indistinguishable from an absent
+  one, and nothing is revoked or audited. The list and the id revoke carry no `personalToken` flag
+  and so refuse every token (personal or `pkeya_`): a stolen token cannot enumerate or kill its
+  siblings, and cannot learn their labels. A v1 cookie names no account and answers 409 `reauth`. No
+  response carries the account id, a hash, the plaintext or `revokedBy`.
+- **Self-revoke only narrows.** `current` revokes `session.tokenId`, which the dispatcher set from the
+  token it just resolved (a cookie body cannot name one: `verifySession` drops `tokenId`). The row
+  is `personalOnly`, gated on the dispatcher's `personal`, never on `aid` or `tokenId` being present
+  (a token session carries an `aid`): a session is 403, a `packages:read` token is the usual 401. A
+  stolen token can end itself and nothing else. Revoking twice answers the token as it stands and
+  writes no second row.
+- **Audit and caches.** `account_token.revoke` in `platform_audit`, actor the member id, summary the
+  label and last four characters. `forgetRegistryTokens` drops this isolate's 30-second cache; other
+  isolates follow within 30 seconds, and an admin token is re-read on every request anyway.
+- **The listing-import row.** It narrows the `distribution/**` prefix without changing its area, so
+  `can()` runs under the holder's own principal: a holder without `ship` on that product is 403, and
+  every other listing path stays unreachable by token. POST only; the diff and the confirmed apply
+  are one route, and the apply needs the diff's `digest`.
+- **Write amplification (34.3 review).** A de-privileged holder's token reaches only `GET /me`, so its
+  use rows are budgeted like `access.denied` (3 per member per 5 minutes) while the request is still
+  answered, and the per-member cap above bounds the rest. `last_used_at` is written only after every
+  gate has passed, so a refused request leaves no mark.
+
+**Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
+A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead, where `GET /me/personal-tokens` and `DELETE /me/personal-tokens/:id` are no-grant rows (session only, own tokens only, a revoke only narrows, no product data read), so a holder with no grants can still find and end their own tokens. Two concurrent revokes of one token write one `account_token.revoke` row (the UPDATE's change count decides).
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product
@@ -8668,7 +8759,7 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   never an approval. The design's approve screen (§4.24) carries the warning "Only approve if you
   started this yourself, on a device in front of you".
 - **The place is shown.** The request records the asking browser and OS and its coarse place
-  (Cloudflare's edge geolocation, which the client cannot set); `lookup` shows them next to the
+  (Cloudflare's edge geolocation, which a client cannot forge in the request; a VPN can choose the exit city); the device line comes from the User-Agent and is attacker-chosen too; `lookup` shows them next to the
   approver's own country, and the security notice names them.
 - **Step-up for a new location.** Approving a request whose country is not the approver's, or
   where either is unknown (Tor, an unlocated address), needs a sign-in no older than 5 minutes
@@ -8701,6 +8792,160 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   `portal.device_login.step_up_required`, the trace of someone being talked into approving a
   device elsewhere; an approval sends "A new device signed in" to every verified address on the
   account, with "Wasn't you? Secure your account".
+- **A CLI purpose (ST-34.5).** `start` also takes `{purpose: "cli", scope: "admin", client:
+{name, version, host}}`, for `pkey login`. The record shares the store, the code index and the
+  binding cookie, and it is the console's alone: the portal's `lookup` and `approve` answer it
+  exactly like an expired request (`410 expired`, the same body as an unknown code), because a
+  portal session is never strong enough to mint an admin token; only
+  `cliDeviceLoginLookup` / `cliDeviceLoginDecide` (Identity's `public.ts`) read or decide it, with
+  the same atomic code consume and compare-and-set. Nothing mints at the decision: the poll that
+  takes an approved record (binding cookie required, record consumed in one step, so one poll
+  ever) re-checks the account's status and the erasure fence, then mints through Core's
+  `mintAccountToken` (scope `admin`, 7 days, label `pkey on <host>`). The plaintext exists only in
+  that response, which sets no session cookie. A start skips the `portalEnabled` gate (it runs in
+  console context) and asks for `admin` only; `packages:read` is a `422 bad_request`. The client
+  block is attacker-chosen text, cleaned (control and bidi characters dropped, host at most 64
+  characters) and shown to the approver as "unverified"; the approver also sees the place
+  (edge geolocation), which a client cannot forge in the request (a VPN can choose the exit city); the device line comes from the User-Agent and is attacker-chosen too. **Residual:** the phishing of the portal feature
+  applies, and an admin token is worth more. The console card (ST-34.6) must require a stepped-up
+  console session, so approving needs a fresh sign-in, not just a cookie.
+
+### The console's approval card for `pkey login` (ST-34.6)
+
+`GET|POST /manage/device` is where a person approves a CLI request (a `purpose: "cli"` device
+login, ST-34.5). Approving hands a 7-day `admin` personal token to whoever holds the terminal that
+showed the code, so the threat is phishing: someone starts `pkey login` on their own machine and
+talks an operator into approving it. The card is server-rendered, script-free and on the console
+sign-in card's CSP (`form-action 'self'`, no inline script). Every gate on a decision, in order
+(`console/devicePage.ts`):
+
+1. **A console cookie session, from the one reader** (`resolveConsoleCaller`) and a v2 one: it
+   must carry an account id and a session id and its actor must be an `mbr_`. A portal cookie, a v1
+   cookie (no `aid`) and any `Authorization` token (the reader ignores the header) are sent to
+   sign in, whatever the form says; the account id is the session's own, never a field.
+2. **A member:** a principal with at least one grant, else the no-access card.
+3. **A per-member budget** (`DEVICE_LOGIN_APPROVE_LIMIT` a minute, bucket `adminDeviceApprove`, fail
+   closed), spent before any code is looked up, so it bounds guessing someone else's code.
+4. **Same origin** (`sameOriginPost`, Core, shared with the device-flow pages): `Sec-Fetch-Site`
+   must be `same-origin` when the browser sends it; without it, a missing `Origin`, the console's,
+   or the literal `null` passes. `null` is needed: the card is served `referrer-policy:
+no-referrer`, and Chromium and WebKit then send `Origin: null` on its own form post. The CSRF
+   field (5) is the other half; curl with no headers passes this step and still needs it.
+5. **CSRF:** the hidden `csrf` field, compared in constant time with the session's token, on both
+   forms; a missing or wrong one is a 403 that decides nothing.
+6. **An explicit decision:** only `approve` or `deny`; anything else is a 400.
+7. **Step-up, for approve only:** `isSteppedUp` (the console's own five-minute rule). Without it the
+   card shows no Approve button, a forged POST is a 403 before the decision is made (the read-only
+   lookup runs to show the card; `cliDeviceLoginDecide` does not, so the code stays live), and the refusal leaves `cli.login.step_up_required`, the trace of someone being talked
+   into it. Cancelling needs the session but no step-up: it ends a request and mints nothing.
+8. **The account's token limit:** at 25 live personal tokens the card says so and nothing is
+   consumed, so nobody is told "approved" when the poll could not mint.
+9. **`cliDeviceLoginDecide`:** the code is consumed atomically and the record moves out of
+   `pending` by compare-and-set; an unknown, expired, reused, portal-purpose or already decided
+   code is the same expired card (410).
+
+Only after `{ok: true}` does the page write `cli.login.approve` or `.deny` (platform audit, actor
+the member id) and, on approval, send a console-branded security notice (`cliSignInNotice`: "A
+command line signed in to the Polaris Key console as you", the remedy being Personal tokens or a
+Superadmin, to every verified address) rather than Locker's new-device mail. The request's program
+name, version and host are attacker-chosen text: escaped, cut at the CLI's own caps (an ellipsis marks
+a cut), and the card says once that Polaris Key cannot check them, next to the code panel "Check this
+matches your terminal". The place is "<place> (approximate)" because edge geolocation is
+approximate and a VPN can choose it. The body is read with a byte cap, never trusting
+`Content-Length`. The audit target is the request's id (the token does not exist yet: the poll mints
+it later). The approval notice is sent in a `finally`, so a failed audit write cannot swallow it.
+A signed-out visit that arrives cross-site (the IdP's redirect back after the step-up) is answered
+with a script-free meta refresh to the same card instead of a 303, so the cookie rides the
+same-site hop. A `returnTo` of exactly `/manage/device?code=<code>` is
+the one query the sign-in's sanitizer allows, so a step-up lands back on the request; an absolute
+URL, `//host`, an encoded or extended variant is still refused. **Residual:** a phisher whose code
+the operator reads out and who passes the step-up gets a token; the shown host and place, the
+warning line and the notice are the defence. If the audit write fails after a decision lands, the
+approval stands (the mint writes its own row) and the page answers 500.
+
+### Admin-scope personal tokens: the CLI credential store (ST-34.7)
+
+**What arrived.** `packages/cli/src/credentials.ts`, `account.ts`: the place `pkey login` (ST-34.8)
+keeps a `pkeyp_` admin token, and `pkey whoami` / `pkey logout`, which read it back. The store is
+the operating system's credential store through `@napi-rs/keyring` (optional, loaded on first use,
+pinned to an exact version in `packages/cli` and `packages/sdk-node`). There is no file fallback and
+no shelling out (`security` would put the secret in argv).
+
+**Control.**
+
+- **Origin keying.** An entry is service `pkey`, account `https://host[:port]`, read after the
+  https-or-loopback rule and before anything is sent. A token minted by one origin is looked up only
+  for that origin and is never offered to another; `--base-url` selects the entry and cannot make
+  pkey send an entry's token elsewhere. **Residual:** `PKEY_ADMIN_TOKEN` is not origin-bound. It is
+  sent to whatever `--base-url` (or `PKEY_BASE_URL`) names, https or loopback, so a script that lets
+  an attacker choose the base URL, with the variable set, hands the attacker the token.
+- **Redirects are refused.** Every request is `redirect: "manual"`; a 3xx stops the command and
+  names no `Location`, so the `Authorization` header cannot follow a redirect to another host.
+  `logout` still clears the local entry on a 3xx and says the token was not revoked.
+- **No echo.** A token is not written to a screen, `--json`, an error, a log or `PKEY_DEBUG` output.
+  A store failure is a fixed sentence; the keyring's own text is classified (denied or locked
+  against absent) and dropped. Only the label and the token's last four characters are shown, as
+  the console's Personal tokens page shows them. The encoded entry is `{t, e, l, h}` (token,
+  expiry in epoch seconds, label, last-4 hint); a bare `{t, e}` and a bare token still read, and the
+  store holds `pkeyp_` only (a `pkeya_` is refused on write and ignored on read).
+- **Seven days.** A `pkey login` token lives 7 days (ST-34.5, D-2) and `whoami` and `logout` treat
+  an entry past its end as ended without asking the server. A copied entry is therefore a bearer
+  token with a bounded life, individually revocable in Personal tokens, and `logout` of a live one
+  is a server-side revoke, not only a local delete.
+- **Linux is pinned to the Secret Service.** Unpinned, `@napi-rs/keyring` falls back silently to
+  the kernel keyutils keyring (in memory, per session or user, gone at reboot, readable by the
+  user's other processes). Every Linux entry is created with `{linux: {store: "secret-service"}}`
+  (sdk-node's R4-11 precedent), so a headless host gets "No credential store on this computer",
+  not a quietly weaker store.
+- **Logout clears the local copy whether or not the revoke is confirmed.** The token is deleted
+  from the store after the request returns, however it returned: revoked, already ended, refused,
+  an error, a redirect, or no answer. A computer that is offline or a server that refuses leaves a
+  token that still works until its end date; pkey then says so, with the date in the person's local
+  time, and where to revoke it. `DELETE /me/personal-tokens/current` is a no-grant row (ST-34.4's
+  rule extended): a holder who lost every role can still end the token, and the revoke only
+  narrows. The CLI counts a 404 as "already ended" only when it is the Worker's JSON `not_found`.
+- **A rejected `PKEY_ADMIN_TOKEN` and `pkeya_`.** `whoami` refuses a `pkeya_` (no person behind it)
+  without sending it, and `logout` refuses while the variable is set: pkey ends only a sign-in it
+  stored.
+- **The hostname is the label.** `pkey login` sends the computer's hostname as `client.host`; the
+  Worker cleans it (control and bidi characters dropped, 64 characters at most), shows it to the
+  approver as unverified text, and mints the token as `pkey on <host>`, the label Personal tokens
+  lists, that `whoami` and `logout` print, and that the store keeps (`l`). The name is therefore
+  disclosed to the console and to whoever approves, and a hostile machine can choose a misleading
+  one: a label is for telling tokens apart, never for deciding trust (the code, the shown host and
+  the approver's own check are). pkey prints a stored label through the same cleaning and token
+  masking as any server text.
+- **`pkey login` bounds what a console can make it do.** Every response is read through a 64 KiB
+  cap, a code lives at most 600 seconds whatever `expiresIn` says, and a request that has not
+  answered in 15 seconds is a network failure (the poll gives up after five). The token this sign-in
+  replaces is revoked only after the new one is stored and read back, so a cancel, a denial, an
+  expiry or a lost network leaves the old sign-in working; if that revoke fails, pkey says so.
+- **The Action never loads a keyring.** `bundle-action.mjs` aliases `@napi-rs/keyring` to a stub
+  that throws, so the committed Action bundle can neither load a native addon nor resolve a
+  `@napi-rs/keyring` from the runner's working directory.
+
+**Residual: same-user access, per platform.** The store defends a token from other users and from
+the disk, not from code running as the person.
+
+- **macOS.** The Keychain item's access list trusts the binary that created it, `node`. Any script
+  run by that `node` reads the token without a prompt, and a malicious dependency in any Node
+  project the person runs can do so. (A denied prompt or a locked Keychain is "The credential store
+  refused access".)
+- **Windows.** The Credential Manager entry is readable by any process running as the same user.
+  `keyring-rs` writes it with `CRED_PERSIST_ENTERPRISE`, which on a domain-joined account roams the
+  credential with the profile (confirm against the pinned `@napi-rs/keyring` release when it is
+  bumped). A roaming credential is readable on every computer the profile reaches.
+- **Linux.** Any client on the session's D-Bus that can talk to the unlocked Secret Service can read
+  the entry. The collection is unlocked for the login session, so any process of that user can.
+- **Native-library override.** `NAPI_RS_NATIVE_LIBRARY_PATH` makes `@napi-rs/keyring` load a
+  native addon from that path, so it is equivalent to `NODE_OPTIONS` (`--require`): whoever sets the
+  environment of a `pkey` process runs code in it and reads the token. The environment is
+  the person's own; it is no wider than the same-user rule above, and the Action cannot load the
+  module at all.
+- **What bounds it.** The seven-day life, the per-use audit (`account_token.used`), the owner
+  revoking from Personal tokens, and `can()` applied under the holder's roles at every use. A
+  Superadmin held only through the identity provider's root rule lapses 8 hours after a console
+  sign-in whatever the token's life, which `pkey whoami` says.
 
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
@@ -10350,6 +10595,21 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   Residual: I-30 sends the platform IdP's `/callback` through the gate (an identity with no
   account always opens it), so only the legacy product callback still creates accounts without
   the step until I-32b retires it, and publishing waits for that (docs/RUNBOOK.md).
+- **Personal tokens (I-27 §2.5; `admin` scope ST-34.3 to 34.5).** A `pkeyp_` token is a bearer
+  credential for one account. `packages:read` is minted in the portal. `admin` is minted nowhere
+  but a console-approved `pkey login` (PX-W14's `cli` purpose, above): the poll mints it after a
+  stepped-up console session approved the code, never a portal session. **Phishing:** an attacker
+  runs `pkey login` on their machine and talks an operator into approving the code, which would
+  hand the attacker the operator's console reach for 7 days. Mitigations: the approval is a
+  console-only, stepped-up decision (never auto, never a portal session); the card shows the
+  machine name, place and the code to compare with the terminal ("Check this matches your
+  terminal"); the code lives 5 minutes and is single use; the poll needs the browser binding
+  cookie, so a leaked code or handle mints nothing; the token is default-deny on the admin API
+  (`personalToken` rows), re-checked against the holder's roles on every use, audited on every use,
+  individually revocable by the holder and by Superadmins, and revoked with the account. The
+  approver is also sent the new-device security notice. **Residual:** an operator who approves a
+  code they did not start, after comparing nothing, is phished; the card copy and the notice are
+  the defence.
 
 ### App passthrough on authorize and token (I-08)
 
@@ -10947,16 +11207,16 @@ No personal data is added: the reports hold release metadata only.
 
 ## 4. Adversaries
 
-| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                    | Priority                           |
-| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                        | **Highest**                        |
-| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                        | **Highest**                        |
-| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                               | High                               |
-| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6             |
-| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                               |
-| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                               |
-| T7  | **Insider / compromised admin**                                                                         | Valid admin session, or a `pkeya_` token                                             | Anything the admin API permits — which for a session is everything, on every tenant; for a token, the bundle mint                                                             | High                               |
-| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low — see the transport note below |
+| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                                        | Priority                           |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                                            | **Highest**                        |
+| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                                            | **Highest**                        |
+| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                                                   | High                               |
+| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                                       | Medium — bounded by §6             |
+| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02)                     | High                               |
+| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                                          | High                               |
+| T7  | **Insider / compromised admin**                                                                         | Valid admin session, a `pkeya_` token, or an admin `pkeyp_`                          | Anything the admin API permits — which for a session is everything, on every tenant; for a `pkeya_` token, the bundle mint; for an admin `pkeyp_`, its holder's roles on the eight flagged routes | High                               |
+| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                                                   | Low — see the transport note below |
 
 **T8, stated precisely.** Two different things are easy to conflate here, and they are not the same
 control.
@@ -11165,6 +11425,7 @@ Forge a signed config doc for product P
 Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
 ├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
+├── Steal an admin `pkeyp_` (A17) ────────► LIVE but BOUNDED by the holder's roles at use time (bindings re-read per request, root only while asserted_at is fresh), ten flagged routes (`personalToken`), no step-up, 7 days (30 at most), revocation (self, Superadmin, merge) and an `account_token.used` row per use
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 ├── Use the break-glass link ─────────────► needs the root group at a fresh IdP login in the browser that started the flow; one hour, no account, audited and mailed to every Superadmin (Break-glass, ST-30c.1)
@@ -11313,7 +11574,7 @@ operator; and denial of service originating from Cloudflare's own network contro
 ## 9. Review triggers
 
 Revisit this document when any of the following changes: a `pkeya_` admin API token gains a scope
-(an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope`, which widens a credential
+(an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope` or `personalToken: true` (the rows an admin `pkeyp_` reaches, A17), which widens a credential
 that exists precisely because it is narrower than a session, and A16 stops being true the moment
 the scope vocabulary stops being one word; a new tenant that is not first-party is
 onboarded; a route writes `licenses.account_id` other than through the compare-and-set claim, an

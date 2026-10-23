@@ -439,7 +439,9 @@ export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
-  personalTokens: () => globalPage("personal-tokens"),
+  /** Personal tokens: Yours, or the Everyone tab (`?who=everyone`). */
+  personalTokens: (who?: "everyone") =>
+    globalPage("personal-tokens", who ? { who } : undefined),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),

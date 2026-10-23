@@ -214,6 +214,10 @@ export const ACTION_LEVELS = {
   "registryToken.revoke": 2,
   // The admin API tokens (`pkeya_…`): a revoked token cannot be restored, only replaced.
   "apiToken.revoke": 2,
+  // A member's own personal token: a packages token only stops installs and is replaced in the
+  // portal (L1); an admin token stops the person's CLI and automation (L2).
+  "ownToken.revokePackages": 1,
+  "ownToken.revokeAdmin": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;

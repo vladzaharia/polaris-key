@@ -16,6 +16,7 @@ import {
   isUsageError,
   networkMessage,
 } from "../src/errors.js";
+import { memoryStore } from "../src/credentials.js";
 import { runPkey } from "../src/index.js";
 
 const TOKEN = `pkeya_${"A".repeat(43)}`;
@@ -47,6 +48,8 @@ async function run(
     env: { CI: "true", ...opts.env },
     stdout: { write: (c: string) => ((out += c), true) },
     stderr: { write: (c: string) => ((err += c), true) },
+    // Never the real keychain: a test machine's own sign-in must not answer for the test.
+    credentialStore: async () => memoryStore(),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
   return { code, out, err };
@@ -182,13 +185,9 @@ describe("a failed request says what to check", () => {
       fetchImpl: refused(),
     });
     expect(r.code).toBe(1);
-    expect(r.out).toContain(
-      "✗  error Live product: Could not reach http://127.0.0.1:1/demo/",
-    );
-    expect(r.out).toContain("the connection was refused");
-    expect(r.out).toContain("→ Check the network and --base-url");
-    expect(r.out).not.toContain("fetch failed");
-    expect(r.err).toBe("");
+    expect(r.out).toContain("Can't reach 127.0.0.1:1.");
+    expect(r.out).toContain("Check your network, or --base-url.");
+    expect(r.out + r.err).not.toContain("fetch failed");
   });
 
   it("doctor --json keeps the same sentence in the discovery fact", async () => {
@@ -210,7 +209,8 @@ describe("a failed request says what to check", () => {
     expect(line.ok).toBe(false);
     expect(line.facts.find((f) => f.id === "discovery")).toMatchObject({
       state: "todo",
-      detail: expect.stringContaining("Could not reach"),
+      detail: "Can't reach 127.0.0.1:1.",
+      code: "network",
     });
   });
 
@@ -234,22 +234,17 @@ describe("a failed request says what to check", () => {
         new Response("", { status: 404 })) as typeof fetch,
     });
     expect(r.code).toBe(1);
-    expect(r.out).toContain("→ Is demo registered at key.plrs.im?");
+    expect(r.out).toContain("Answered 404 at key.plrs.im");
+    expect(r.out).toContain("register the product");
   });
 });
 
 describe("no stack trace reaches a person", () => {
-  // A reply whose body throws a TypeError where pkey reads it: a bug in pkey, not a refusal.
-  const crash: typeof fetch = (async () => ({
-    ok: true,
-    status: 200,
-    text: async () => {
-      throw new TypeError("x is not a function");
-    },
-    json: async () => {
-      throw new TypeError("x is not a function");
-    },
-  })) as unknown as typeof fetch;
+  // A request that throws a TypeError with no code where pkey makes it: a bug in pkey, not a
+  // refusal and not a network failure.
+  const crash: typeof fetch = (async () => {
+    throw new TypeError("x is not a function");
+  }) as unknown as typeof fetch;
 
   it("a bug prints one line and how to get the detail", async () => {
     const r = await run(["migrate", "list"], {
@@ -312,29 +307,42 @@ describe("flags never swallow the next word", () => {
   });
 });
 
-describe("credentials: the message names the right command and scope", () => {
-  it("pkey migrate without a token talks about migrate, not bundle", async () => {
-    const r = await run(["migrate", "list"]);
-    expect(r.code).toBe(1);
-    expect(r.err).toContain("PKEY_ADMIN_TOKEN is not set");
-    expect(r.err).toContain("`pkey migrate`");
-    expect(r.err).toContain("migrations:report");
-    expect(r.err).not.toContain("`pkey bundle`");
-  });
-
-  it("pkey bundle without a token still names bundles:mint", async () => {
-    const r = await run([
+describe("credentials: a signed-out admin command refuses with the fix", () => {
+  it.each([
+    ["migrate", ["migrate", "list"]],
+    [
       "bundle",
-      "--product",
-      "demo",
-      "--device",
-      "A".repeat(32),
-      "--grace-days",
-      "5",
-    ]);
-    expect(r.err).toContain("`pkey bundle`");
-    expect(r.err).toContain("bundles:mint");
-  });
+      [
+        "bundle",
+        "--product",
+        "demo",
+        "--device",
+        "A".repeat(32),
+        "--grace-days",
+        "5",
+      ],
+    ],
+    [
+      "listing import",
+      [
+        "listing",
+        "import",
+        "--godot",
+        path.join(import.meta.dirname, "fixtures", "godot-listing"),
+        "--product",
+        "demo",
+      ],
+    ],
+  ])(
+    "pkey %s without a sign-in is a refusal: exit 4, pkey login",
+    async (_n, argv) => {
+      const r = await run(argv);
+      expect(r.code).toBe(4);
+      expect(r.err).toContain("▲  Not signed in to key.plrs.im.");
+      expect(r.err).toContain("Run pkey login.");
+      expect(r.out).toBe("");
+    },
+  );
 });
 
 describe("trust refuses a key no SDK could verify with", () => {
@@ -380,10 +388,22 @@ describe("CI never waits on a prompt", () => {
       );
     for (const f of files(src)) {
       const text = readFileSync(f, "utf8");
-      expect(text, f).not.toMatch(
-        /node:readline|process\.stdin|createInterface/,
-      );
+      // `pkey login` alone reads keys (Enter, c, Esc), from a TTY and never under CI or --json.
+      const pattern =
+        path.basename(f) === "login.ts"
+          ? /node:readline|createInterface/
+          : /node:readline|process\.stdin|createInterface/;
+      expect(text, f).not.toMatch(pattern);
     }
+  });
+
+  it("pkey login under CI refuses (4) without waiting, and names the fix", async () => {
+    const r = await run(["login"]);
+    expect(r.code).toBe(4);
+    expect(r.err).toContain(
+      "pkey login needs a person; in CI use PKEY_ADMIN_TOKEN",
+    );
+    expect(r.out).toBe("");
   });
 });
 
@@ -463,5 +483,246 @@ describe("terminology", () => {
       const r = await run(["help", c.name]);
       expect(r.out, c.name).not.toMatch(/\bmachines?\b/i);
     }
+  });
+});
+
+describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
+  const PERSONAL = `pkeyp_${"P".repeat(39)}h7Q2`;
+  const ORIGIN = "https://key.plrs.im";
+  const role = (r: string, scope: string, source = "grant") => ({
+    role: r,
+    scope,
+    areas: null,
+    source,
+  });
+  const ME = {
+    sub: "s1",
+    name: "Priya Raman",
+    email: "priya@example.com",
+    products: [{ slug: "djdl", name: "DJDL" }],
+    permissions: {
+      roles: [
+        role("platform_admin", "platform"),
+        role("product_admin", "product:djdl"),
+        role("product_admin", "products:*"),
+        role("superadmin", "platform", "root"),
+        role("console_access", "platform"),
+      ],
+    },
+    sessionExpiresAt: 1_793_000_000,
+  };
+
+  async function narrow(
+    argv: string[],
+    columns: number,
+    fetchImpl: typeof fetch,
+  ) {
+    let out = "";
+    let err = "";
+    const entries = new Map([
+      [
+        ORIGIN,
+        {
+          token: PERSONAL,
+          expiresAt: 1_793_000_000,
+          label: "pkey on priya-mbp",
+          hint: "h7Q2",
+        },
+      ],
+    ]);
+    const store = {
+      get: (o: string) => entries.get(o) ?? null,
+      set: () => undefined,
+      delete: (o: string) => entries.delete(o),
+    };
+    const code = await runPkey(argv, {
+      cwd: await tempDir(),
+      env: { CI: "true", NO_COLOR: "1", TERM: "dumb", TZ: "UTC" },
+      stdout: {
+        write: (c: string) => ((out += c), true),
+        isTTY: true,
+        columns,
+      },
+      stderr: {
+        write: (c: string) => ((err += c), true),
+        isTTY: true,
+        columns,
+      },
+      fetchImpl,
+      credentialStore: async () => store,
+    });
+    return { code, out, err };
+  }
+
+  const answers = (async () =>
+    new Response(JSON.stringify(ME), { status: 200 })) as typeof fetch;
+
+  it("whoami at 40 columns", async () => {
+    const r = await narrow(["whoami"], 40, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya@example.com",
+        "Roles   Platform admin, DJDL admin,",
+        "        All products admin, Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami at 32 columns", async () => {
+    const r = await narrow(["whoami"], 32, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya@example.com",
+        "Roles   Platform admin,",
+        "        DJDL admin,",
+        "        All products admin,",
+        "        Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after",
+        "   your last console sign-in.",
+        "   Ask for a stored Superadmin",
+        "   role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami at 28 columns: each label on its own line, values at column 0", async () => {
+    const r = await narrow(["whoami"], 28, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host",
+        "key.plrs.im",
+        "Name",
+        "Priya Raman",
+        "Email",
+        "priya@example.com",
+        "Roles",
+        "Platform admin, DJDL admin,",
+        "All products admin,",
+        "Superadmin, Console access",
+        "Token",
+        '"pkey on priya-mbp"',
+        "(pkeyp_...h7Q2)",
+        "Ends",
+        "2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours",
+        "   after your last console",
+        "   sign-in. Ask for a stored",
+        "   Superadmin role to",
+        "   keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami with a long email wraps it at its own break points (40 columns)", async () => {
+    const long = (async () =>
+      new Response(
+        JSON.stringify({
+          ...ME,
+          email: "priya.ramanathan-subramanian@analytical-engine.example",
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    const r = await narrow(["whoami"], 40, long);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya.ramanathan-",
+        "        subramanian@analytical-engine",
+        "        .example",
+        "Roles   Platform admin, DJDL admin,",
+        "        All products admin, Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (offline) at 40 columns", async () => {
+    const off = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const r = await narrow(["logout"], 40, off);
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      [
+        "!  Signed out on this computer, but",
+        "   couldn't reach key.plrs.im, so it",
+        "   still works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in Personal tokens:",
+        "   https://key.plrs.im/manage/#/",
+        "   personal-tokens",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (offline) at 32 columns", async () => {
+    const off = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const r = await narrow(["logout"], 32, off);
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      [
+        "!  Signed out on this computer,",
+        "   but couldn't reach",
+        "   key.plrs.im, so it still",
+        "   works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in",
+        "   Personal tokens:",
+        "   https://key.plrs.im/manage/#/",
+        "   personal-tokens",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (revoked) at 32 columns", async () => {
+    const r = await narrow(
+      ["logout"],
+      32,
+      (async () => new Response("{}", { status: 200 })) as typeof fetch,
+    );
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      ["+  Signed out of key.plrs.im.", "   The token is revoked.", ""].join(
+        "\n",
+      ),
+    );
   });
 });

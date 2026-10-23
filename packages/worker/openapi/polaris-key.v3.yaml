@@ -13355,6 +13355,40 @@ paths:
         is an SVG `data:` URI of `approveUrl` (the signed-in app's `#/account/approve?code=`).
         10 starts per client network per 10 minutes (fails closed); `404 auth_method_disabled`
         while the portal is off.
+
+
+        ST-34.5: the body may be `{purpose: "cli", scope: "admin", client: {name, version, host}}`
+        (`pkey login`). A CLI start skips the portal-off gate, answers `approveUrl`
+        `/manage/device?code=` with `qr` null, and only the console can decide it: the portal's
+        `lookup` and `approve` answer its code `410 expired`. `scope` other than `admin` is
+        `422 bad_request`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose: { type: string, enum: [portal, cli], default: portal }
+                scope: { type: string, enum: [admin] }
+                client:
+                  type: object
+                  properties:
+                    name:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    version:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    host:
+                      {
+                        type: string,
+                        description: "Truncated to 64 characters.",
+                      }
       responses:
         "201":
           description: "The request. `cache-control: no-store`."
@@ -13375,7 +13409,12 @@ paths:
                     expiresIn: 300
                     interval: 3
         "404":
-          description: "`auth_method_disabled`: the portal is off."
+          description: "`auth_method_disabled`: the portal is off (portal purpose only)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`bad_request`: an unknown purpose, or a `cli` start whose scope is not `admin`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13538,6 +13577,14 @@ paths:
         set. The answer to a decision is given once: the record is taken in one atomic step, so
         only one poll is ever signed in, and the next answers `410`. 60 polls per client network
         per minute.
+
+
+        ST-34.5: the poll of an approved `cli` request mints one `admin` personal token (7 days,
+        label `pkey on <host>`) and answers it with `token`, once; no session cookie is set. A
+        refused mint answers `409`/`422 bad_request` with a `reason`; `reason: token_limit` (the
+        account holds the most tokens it may) is stable and the CLI and the console copy key off
+        it. The approval is spent by a refused mint, so the person starts a new login. If the
+        approving account was merged away before the poll, the answer is `410`.
       parameters:
         - {
             name: requestId,
@@ -13548,18 +13595,39 @@ paths:
           }
       responses:
         "200":
-          description: "`pending` (with `expiresIn`, `interval`), `denied`, or `approved` (sets `__Host-pkey_portal`)."
+          description: "`pending` (with `expiresIn`, `interval`), `denied`, or `approved` (a portal request sets `__Host-pkey_portal`; a `cli` request answers the token and sets no session cookie)."
           content:
             application/json:
               schema:
-                type: object
-                required: [status]
-                properties:
-                  status: { type: string, enum: [pending, approved, denied] }
-                  expiresIn: { type: integer }
-                  interval: { type: integer }
+                oneOf:
+                  - type: object
+                    required: [status]
+                    not: { required: [token] }
+                    properties:
+                      status:
+                        { type: string, enum: [pending, approved, denied] }
+                      expiresIn: { type: integer }
+                      interval: { type: integer }
+                  - type: object
+                    description: "An approved `cli` request. The token is shown once."
+                    required: [status, token, scope, expiresAt, label]
+                    properties:
+                      status: { type: string, enum: [approved] }
+                      token:
+                        {
+                          type: string,
+                          description: "`pkeyp_…`; never stored.",
+                        }
+                      scope: { type: string, enum: [admin] }
+                      expiresAt: { type: integer, description: "Unix seconds." }
+                      label: { type: string }
         "403":
           description: "`account_disabled`: the approving account can no longer sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`bad_request` with `reason: token_limit`: the account holds the most personal tokens it may, so no token was minted."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13570,6 +13638,11 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`erasure_ledger_unavailable`: the erasure ledger could not be read; the approval is not spent, so poll again."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -16185,6 +16258,9 @@ paths:
     get:
       operationId: listAdminProducts
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Every registered product, as the console's registry, Home and switcher read it
       description: >
         The product registry: one row per product that is not deleted, with its enablement
@@ -16673,6 +16749,9 @@ paths:
     get:
       operationId: getAdminIntegration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: What the product needs wired, and where an SDK has answered it
       description: >
         ST-40. Per enabled feature (`licensing`, `config`, `identity`, `update`, `packs`, `sync`,
@@ -18231,6 +18310,9 @@ paths:
     get:
       operationId: listAdminMigrations
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: The data-migration jobs and their latest runs
       description: >
         Every job a mounted service contributes, each with its five newest runs (without units).
@@ -18263,6 +18345,9 @@ paths:
     get:
       operationId: getAdminMigrationRun
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: One run with its units (the report)
       description: Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       parameters:
@@ -18288,6 +18373,9 @@ paths:
     post:
       operationId: dryRunAdminMigration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Plan a job and store the report, changing no data
       description: >
         Plans every unit of the job and stores the report (`changes` is the diff count; zero means
@@ -19185,6 +19273,143 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/me/personal-tokens:
+    get:
+      operationId: listMyPersonalTokens
+      tags: [admin]
+      summary: List your own personal tokens
+      description: >
+        ST-34.4. The caller's own `pkeyp_` tokens in both scopes (`packages:read`, `admin`), live
+        first, then newest: id, label, the last four characters, scope, times and status. Never a
+        token, a hash, an account id or who revoked it. Admin session cookie only: a token (of
+        either kind) is refused, so a stolen token cannot list its siblings. A pre-account (v1)
+        cookie answers 409 `reauth`.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The caller's tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/{id}:
+    delete:
+      operationId: revokeMyPersonalToken
+      tags: [admin]
+      summary: Revoke one of your own personal tokens
+      description: >
+        ST-34.4. Reason `manual`. Another account's id is a 404, not a 403. Revoking a revoked
+        token answers it as it stands, with no second audit row. Audited in the platform activity
+        log as `account_token.revoke`, naming the label and last four characters. The registry
+        host stops accepting a `packages:read` token at once on this isolate and within 30 seconds
+        on the others. Admin session cookie and CSRF header; a token is refused. To end the token
+        you are presenting, use `DELETE /manage/api/me/personal-tokens/current`.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The token's opaque id (`ptok_…`), from the list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: The caller holds no token with that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/distribution/listing/import:
+    post:
+      operationId: importAdminListing
+      tags: [admin]
+      summary: Import a product's store listing (session or admin personal token)
+      description: >
+        ST-34.4. `{ sources: [{source, outlet?, godot?}] }` (or one `source`), `locale?`,
+        `overwrite?`, `confirm?`, `fields?`. Without `confirm`, the field-by-field diff of an
+        import; with the diff's `digest` as `confirm`, apply it. Needs the Ship builds area on the
+        product. What `pkey listing import` sends: `Authorization: Bearer pkeyp_…` with the admin
+        scope (the holder's own role is checked on every request), or the admin session cookie
+        with the CSRF header.
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: The diff, or the applied import.
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/current:
+    delete:
+      operationId: revokeCurrentPersonalToken
+      tags: [admin]
+      summary: Revoke the personal token you are presenting
+      description: >
+        ST-34.4. What `pkey logout` calls. Revokes exactly the presenting admin-scope token
+        (reason `manual`) and nothing else; its next use is a 401. A session cookie is refused
+        (403), as is a `packages:read` token (401). Audited as `account_token.revoke`.
+      security:
+        - adminPersonalToken: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
@@ -21456,6 +21681,15 @@ components:
         `migrations:report`, the data-migration runner's job list, run report and dry run
         (`/manage/api/platform/migrations`, `.../runs/{runId}`, `.../dry-run`); apply and down need
         a step-up and refuse every token.
+    adminPersonalToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeyp_
+      description: >
+        An admin-scope personal token (`pkeyp_…`, ST-34): the holder's own credential for the admin
+        API, an ALTERNATIVE to the session. Default deny: it reaches only the routes that name it,
+        and the holder's own role is checked on every request. It has no step-up, so no route that
+        needs one accepts it. A `packages:read` token is not accepted here.
   parameters:
     TokenId:
       name: tokenId
@@ -24144,10 +24378,27 @@ components:
         code: { type: string, description: "The 8-letter code, `XXXX-XXXX`." }
         qr:
           type: [string, "null"]
-          description: "An SVG `data:` URI of `approveUrl`, for an `<img>`."
+          description: "An SVG `data:` URI of `approveUrl`, for an `<img>`; null for a `cli` request."
         approveUrl: { type: string }
         expiresIn: { type: integer, description: Seconds. }
         interval: { type: integer, description: "Seconds between polls." }
+        purpose:
+          type: string
+          enum: [portal, cli]
+          description: "What the request asked for (ST-34.5); absent on a portal request."
+        scope:
+          {
+            type: string,
+            enum: [admin],
+            description: "A `cli` request's scope.",
+          }
+        client:
+          type: object
+          description: "A `cli` request's cleaned client block, as shown to the approver."
+          properties:
+            name: { type: string }
+            version: { type: string }
+            host: { type: string }
     PortalDeviceLoginRequest:
       type: object
       required:
@@ -25387,6 +25638,37 @@ components:
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
         email: { type: [string, "null"] }
+    OwnPersonalToken:
+      type: object
+      description: >
+        One of the caller's own personal tokens (ST-34.4). No account id and no `revokedBy`;
+        `revokeReason` says who ended it (`manual` is the owner).
+      required:
+        [
+          id,
+          label,
+          hint,
+          scope,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokeReason,
+          status,
+        ]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        hint: { type: string }
+        scope: { type: string, enum: ["packages:read", admin] }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokeReason:
+          type: [string, "null"]
+          enum: [manual, admin, account_deleted, access_removed, null]
+        status: { type: string, enum: [active, expired, revoked] }
     FlatError:
       type: object
       description: >

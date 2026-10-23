@@ -260,8 +260,20 @@ const AUTH_CARD_RULES = [
   // Under the card: Help and Privacy, quiet, with 24 px targets.
   `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
   `.ac-links a+a{position:relative}`,
-  `.ac-links a+a::before{content:"\\00b7";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
+  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
   `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
+  `@media (max-width: 30rem){.ac-links a{min-height:2.75rem;padding:.125rem .5rem}}`,
+  `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
+  // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
+  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken);text-align:center}`,
+  `.codepanel p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem}`,
+  `.facts{display:grid;gap:.5rem;min-width:0}`,
+  `.facts>*,.facts .fine{margin:0}`,
+  `.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}`,
+  `.tags .tag{display:inline-flex;gap:.375rem;align-items:center;max-width:100%;padding:.125rem .5rem;white-space:nowrap}`,
+  `.tags .tag .muted{white-space:normal}`,
+  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;color:var(--strong);font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
@@ -502,6 +514,8 @@ export interface AppFacts {
   action?: string;
   /** The product's art (Core Presentation header), an image-host URL; none: icon and text only. */
   artUrl?: string | null;
+  /** An icon in the art tile instead of the initial. */
+  glyph?: IconName;
 }
 
 export type AuthCardOptions = Omit<
@@ -534,6 +548,8 @@ const ICON_PATHS = {
   fingerprint:
     '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
   "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  terminal:
+    '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
 } as const;
 export type IconName = keyof typeof ICON_PATHS;
 
@@ -572,6 +588,8 @@ export function personRow(opts: {
   name: string;
   email?: string | null;
   notYouForm?: { form: string; field: string; value: string };
+  /** A **Not you?** link to a page that signs in as someone else (no form to submit). */
+  notYouHref?: string;
 }): string {
   const initial = [...opts.name][0]?.toUpperCase() ?? "?";
   const email =
@@ -583,7 +601,9 @@ export function personRow(opts: {
     `<div class="person-text"><span class="person-name">${escapeHtml(opts.name)}</span>${email}</div>` +
     (opts.notYouForm
       ? `<button class="quiet" type="submit" form="${escapeHtml(opts.notYouForm.form)}" name="${escapeHtml(opts.notYouForm.field)}" value="${escapeHtml(opts.notYouForm.value)}">Not you?</button>`
-      : "") +
+      : opts.notYouHref
+        ? `<a class="quiet" href="${escapeHtml(opts.notYouHref)}">Not you?</a>`
+        : "") +
     `</div>`
   );
 }
@@ -606,11 +626,19 @@ export function appHeader(opts: {
   sub?: string;
   /** The device the app named: its own line, with a device glyph. */
   device?: string | null;
+  /** An icon in the art tile instead of the initial (a program with no hosted icon). */
+  glyph?: IconName;
 }): string {
-  return `<div class="ac-head">${appArt(opts.name, opts.iconUrl)}<div class="ac-head-text">${appLines(opts)}</div></div>`;
+  return `<div class="ac-head">${appArt(opts.name, opts.iconUrl, opts.glyph)}<div class="ac-head-text">${appLines(opts)}</div></div>`;
 }
 
-function appArt(name: string, iconUrl?: string | null): string {
+function appArt(
+  name: string,
+  iconUrl?: string | null,
+  glyph?: IconName,
+): string {
+  if (!iconUrl && glyph)
+    return `<span class="ac-mono" aria-hidden="true">${icon(glyph)}</span>`;
   return iconUrl
     ? `<img src="${escapeHtml(iconUrl)}" alt="" width="48" height="48">`
     : `<span class="ac-mono" aria-hidden="true">${escapeHtml([...name][0]?.toUpperCase() ?? "")}</span>`;
@@ -640,7 +668,7 @@ function passportPane(f: AppFacts): string {
   const where = f.device
     ? `<p class="ac-head-sub ac-dev ac-pass-where">${deviceIcon(f.device)}<span>on <bdi>${escapeHtml(f.device)}</bdi></span></p>`
     : "";
-  return `<aside class="ac-passport${f.artUrl ? "" : " ac-noart"}">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
+  return `<aside class="ac-passport${f.artUrl ? "" : " ac-noart"}">${art}${appArt(f.name, f.iconUrl, f.glyph)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
 }
 
 let keyLockup: string | null = null;
@@ -778,6 +806,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
               ? { sub: opts.passport.developer }
               : {}),
             device: opts.passport.device ?? null,
+            ...(opts.passport.glyph ? { glyph: opts.passport.glyph } : {}),
           })
         : "");
   // One trimmed Locker lockup (48 px tall, 262 wide) on every page (no size jump between steps): muted in an app's

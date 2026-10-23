@@ -10,6 +10,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runAction, writeOutputs } from "../src/action.js";
+import { memoryStore } from "../src/credentials.js";
 import { mask } from "../src/oidc.js";
 import {
   COMMAND_BREAK,
@@ -408,16 +409,22 @@ describe("pkey doctor against a hostile discovery document", () => {
               { kid: CSI8, status: ALL },
               { kid: "\u0085::error::x", status: "active" },
             ],
+            pinnedKeys: {},
           },
         })) as typeof fetch);
       const io = capture();
       const code = await runPkey(
         ["doctor", "--base-url", BASE, "--product", SLUG],
-        { cwd, ...io, env: actions ? { ...ACTIONS } : {} },
+        {
+          cwd,
+          ...io,
+          env: actions ? { ...ACTIONS } : {},
+          credentialStore: async () => memoryStore(),
+        },
       );
       expect(code).toBe(0);
-      expect(io.out()).toContain("Live product");
-      expect(io.out()).toMatch(/Live features +.*release/);
+      expect(io.out()).toContain("Manifest");
+      expect(io.out()).toMatch(/Services[\s\S]*release/);
       expectInert(`${io.out()}${io.err()}`, actions);
     });
 
@@ -433,7 +440,12 @@ describe("pkey doctor against a hostile discovery document", () => {
     const io = capture();
     const code = await runPkey(
       ["doctor", "--base-url", BASE, "--product", SLUG],
-      { cwd, ...io, env: { ...ACTIONS } },
+      {
+        cwd,
+        ...io,
+        env: { ...ACTIONS },
+        credentialStore: async () => memoryStore(),
+      },
     );
     expect(code).toBe(1);
     expectInert(`${io.out()}${io.err()}`, true);

@@ -19,7 +19,7 @@
  */
 
 import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
-import { DEFAULT_BASE_URL } from "./bundle.js";
+import { DEFAULT_BASE_URL, maskTokens } from "./bundle.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
 import { UsageError } from "./errors.js";
 
@@ -78,11 +78,13 @@ export function normalizeBaseUrl(baseUrl: string | undefined): string {
   try {
     url = new URL(raw);
   } catch {
-    throw new UsageError(`--base-url ${JSON.stringify(raw)} is not a URL.`);
+    throw new UsageError(
+      `--base-url ${JSON.stringify(maskTokens(raw))} is not a URL.`,
+    );
   }
   if (url.protocol !== "https:" && url.hostname !== "localhost")
     throw new UsageError(
-      `--base-url must be https (got ${url.protocol}//${url.host}); a CI token must never cross plain HTTP.`,
+      `--base-url must be https (got ${url.protocol}//${maskTokens(url.host)}); a CI token must never cross plain HTTP.`,
     );
   return raw;
 }

@@ -22,6 +22,7 @@ import {
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
 import { handleConsolePasskey } from "./passkeySignin.js";
+import { handleDevicePage } from "./devicePage.js";
 import { appSecurityHeaders } from "../core/securityHeaders.js";
 import { imgOrigin } from "../core/hosts.js";
 import { isPublicSpaAssetPath } from "../platform/http.js";
@@ -96,6 +97,8 @@ export async function handleAdmin(
       now,
     );
   }
+  if (clean === "/device" || clean.startsWith("/device/"))
+    return handleDevicePage(req, env, db, clean, now);
   if (clean === "/callback")
     return handleAdminCallback(req, env, db, now, verifier);
   if (clean === "/api" || clean.startsWith("/api/")) {

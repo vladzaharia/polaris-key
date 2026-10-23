@@ -90,6 +90,7 @@ export const qk = {
   members: (): QueryKey => ["platform", "members"],
   /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */
   productMembers: (slug: string) => product(slug, "members"),
+  myPersonalTokens: (): QueryKey => ["me", "personal-tokens"],
   /** Platform → Connections (I-31): the page and every connection on it. */
   platformConnections: (): QueryKey => ["platform", "connections"],
   platformConnection: (id: string): QueryKey => ["platform", "connections", id],

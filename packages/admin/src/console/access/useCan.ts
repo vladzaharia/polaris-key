@@ -48,7 +48,7 @@ export function useBreakGlassReason(): string | undefined {
 }
 
 /** The session `/me` the shell already loaded, read from the cache without fetching it. */
-function useCachedMe(): Me | undefined {
+export function useCachedMe(): Me | undefined {
   return useQuery({ queryKey: qk.me(), queryFn: fetchMe, enabled: false }).data;
 }
 

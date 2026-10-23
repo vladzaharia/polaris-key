@@ -55,9 +55,17 @@ export function packagesVisible(d: PortalPersonalTokens | undefined): boolean {
   if (!d) return true;
   return (
     d.feeds.length > 0 ||
-    d.tokens.some((x) => x.status !== "revoked") ||
+    d.tokens.some((x) => x.status !== "revoked" && !isAdminToken(x)) ||
     d.legacy.some((x) => x.status !== "revoked")
   );
+}
+
+/**
+ * An `admin` token is `pkey login`'s and is listed in the console (ST-34.11, D-9): this card lists
+ * `packages:read` tokens only and points to the console when an admin token is live.
+ */
+export function isAdminToken(x: { scope: string }): boolean {
+  return x.scope === "admin";
 }
 
 /** Focus a control once the list has re-rendered (two frames: the refetch lands, then paints). */
@@ -90,8 +98,11 @@ export function PackagesCard(): React.ReactElement | null {
   const pendingFocus = React.useRef<number | null>(null);
   const data = q.data;
   const now = Math.floor(Date.now() / 1000);
-  const listed = (data?.tokens ?? []).filter((x) => x.status !== "revoked");
-  const live = listed.filter((x) => x.status === "active").length;
+  const own = data?.tokens ?? [];
+  const listed = own.filter((x) => x.status !== "revoked" && !isAdminToken(x));
+  // The limit counts every scope: an admin token takes a place too.
+  const live = own.filter((x) => x.status === "active").length;
+  const hasAdmin = own.some((x) => isAdminToken(x) && x.status === "active");
   const atLimit = data ? live >= data.limits.perAccount : false;
   // Personal tokens read every feed but Godot's: the editor sends no credentials, so a Godot feed
   // has its own per-app URL (`GodotUrl`).
@@ -153,7 +164,7 @@ export function PackagesCard(): React.ReactElement | null {
         />
       ) : (
         <div className="space-y-6">
-          {hasPersonal || listed.length > 0 ? (
+          {hasPersonal || listed.length > 0 || hasAdmin ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3
@@ -172,9 +183,12 @@ export function PackagesCard(): React.ReactElement | null {
                     onClick={() => setCreating(true)}
                     disabledReason={
                       atLimit
-                        ? t("locker.packages.atLimit", {
-                            count: data.limits.perAccount,
-                          })
+                        ? t(
+                            hasAdmin
+                              ? "locker.packages.atLimitAdmin"
+                              : "locker.packages.atLimit",
+                            { count: data.limits.perAccount },
+                          )
                         : undefined
                     }
                   >
@@ -183,9 +197,11 @@ export function PackagesCard(): React.ReactElement | null {
                 ) : null}
               </div>
               {listed.length === 0 ? (
-                <p className="text-sm text-fg-muted">
-                  {t("locker.packages.none")}
-                </p>
+                hasPersonal ? (
+                  <p className="text-sm text-fg-muted">
+                    {t("locker.packages.none")}
+                  </p>
+                ) : null
               ) : (
                 <ul className="divide-y divide-border border-y border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
                   {shown.map((tok, i) => (
@@ -233,6 +249,11 @@ export function PackagesCard(): React.ReactElement | null {
                 >
                   {t("locker.packages.showAll", { count: listed.length })}
                 </Button>
+              ) : null}
+              {hasAdmin ? (
+                <p className="text-sm text-fg-muted">
+                  {t("locker.packages.adminPointer")}
+                </p>
               ) : null}
             </div>
           ) : null}
