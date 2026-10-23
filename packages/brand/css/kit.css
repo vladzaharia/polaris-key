@@ -317,13 +317,13 @@
   --pk-kit-focus-offset: 0;
   --pk-kit-focus-inner: 1px;
   --pk-kit-focus-glow: 0;
-  --pk-kit-type-display-size: 40px;
-  --pk-kit-type-display-line-height: 52px;
+  --pk-kit-type-display-size: 28px;
+  --pk-kit-type-display-line-height: 36px;
   --pk-kit-type-display-weight: 600;
   --pk-kit-type-display-tracking: 0;
   --pk-kit-type-display-family: var(--pk-font-sans);
-  --pk-kit-type-title-size: 28px;
-  --pk-kit-type-title-line-height: 36px;
+  --pk-kit-type-title-size: 20px;
+  --pk-kit-type-title-line-height: 28px;
   --pk-kit-type-title-weight: 600;
   --pk-kit-type-title-tracking: 0;
   --pk-kit-type-title-family: var(--pk-font-sans);

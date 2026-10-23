@@ -28,6 +28,7 @@ export {
   settingText,
   sliderStep,
   type SettingsRow,
+  dialogControls,
   placeKeys,
   provideTable,
   spellOut,

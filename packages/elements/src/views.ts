@@ -13,6 +13,7 @@ import {
 import { ifDefined } from "lit/directives/if-defined.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import { POWERED_BY } from "@polaris-key/brand";
 import {
   countdown,
@@ -21,7 +22,7 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 
-import { LAYOUTS, type Layout } from "./layout.js";
+import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
 import {
   actions,
@@ -339,8 +340,8 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       </div>
       ${contentFor(c)} ${progressFor(c)} ${percentFor(c)}
       ${callout(c, errorKeys)}
-      ${actions(c, p.controls, view.component === "UpdatePrompt")}
-      ${links(c, p.links)} ${a11yOnly(c)}
+      ${controlsAndLinks(c, p, view.component === "UpdatePrompt")}
+      ${a11yOnly(c)}
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
       ${attribution(c, p.meta)}
     </div>
@@ -2031,3 +2032,20 @@ function updateNotes(c: RenderCtx): TemplateResult | typeof nothing {
 }
 
 export { countdown };
+
+/** The controls and links of a screen. In a modal dialog under the Windows chrome the footer is
+ *  drawn last, so the links come before it in the DOM and Tab follows the eye (WCAG 2.4.3), and
+ *  the sign-in methods are choices in the body with Cancel the one command in the footer. */
+function controlsAndLinks(
+  c: RenderCtx,
+  p: { controls: string[]; links: string[] },
+  row: boolean,
+): TemplateResult {
+  if (!(c.dialog && platformVariant(c.resolved.theme) === "windows"))
+    return html`${actions(c, p.controls, row)}${links(c, p.links)}`;
+  const { choices, footer } = dialogControls(p.controls, c.view);
+  return html`${actions(c, choices, false, false, "choices")}${links(
+    c,
+    p.links,
+  )}${actions(c, footer, row)}`;
+}

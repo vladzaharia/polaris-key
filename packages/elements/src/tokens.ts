@@ -202,6 +202,10 @@ function platformCss(): string {
       (scheme) =>
         `[data-theme="${scheme}"][data-pk-platform="${p}"] {\n${decl(platformScrim(p, scheme))}\n}`,
     ),
+    // A coarse pointer takes the variant's touch height. It is written here, after the variant's
+    // own block and with its specificity, so the light-DOM sheet's single layer cannot let the
+    // variant's fine-pointer height outrank the general coarse rule (UK-06 U6).
+    `@media (pointer: coarse) {\n[data-pk-platform="${p}"] {\n  --pk-kit-control-height: var(--pk-kit-control-height-coarse);\n}\n}`,
   ]).join("\n\n");
 }
 

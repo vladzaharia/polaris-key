@@ -285,6 +285,10 @@ export class PkUpdatePrompt extends PkElement {
     );
   }
 
+  protected override isDialog(): boolean {
+    return this.asDialog;
+  }
+
   protected override renderBody(c: RenderCtx): unknown {
     const body = renderView(c);
     if (!this.asDialog) return body;

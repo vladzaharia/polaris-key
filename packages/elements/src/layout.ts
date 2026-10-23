@@ -444,3 +444,28 @@ export const TAGS: Readonly<Record<ComponentName, string>> = {
   ChannelPicker: "pk-channel-picker",
   Toast: "pk-toast",
 };
+
+// ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────
+
+/**
+ * The controls of a view drawn in a modal dialog under the Windows chrome, split the way a
+ * ContentDialog divides them: the footer holds the dialog's commands, and the choices the person
+ * makes inside it stay in the body. The sign-in form's first step offers its methods as choices
+ * with Cancel as the only command; every other view's controls are all commands.
+ */
+export function dialogControls(
+  controls: readonly string[],
+  view: { component: string; state: string },
+): { choices: string[]; footer: string[] } {
+  if (
+    view.component === "SignIn" &&
+    (view.state === "methods" || view.state === "error") &&
+    controls.includes("common.cancel") &&
+    controls.length > 1
+  )
+    return {
+      choices: controls.filter((k) => k !== "common.cancel"),
+      footer: ["common.cancel"],
+    };
+  return { choices: [], footer: [...controls] };
+}

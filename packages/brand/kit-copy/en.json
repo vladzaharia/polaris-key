@@ -1912,7 +1912,7 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
     "signin.choice.continue": {
-      "value": "Use this license and continue",
+      "value": "Use this license",
       "role": "button",
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },

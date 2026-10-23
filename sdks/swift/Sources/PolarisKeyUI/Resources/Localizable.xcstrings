@@ -50159,13 +50159,13 @@
               "mac": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Use This License and Continue"
+                  "value": "Use This License"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Use this license and continue"
+                  "value": "Use this license"
                 }
               }
             }

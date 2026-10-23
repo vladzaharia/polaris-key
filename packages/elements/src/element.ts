@@ -381,6 +381,7 @@ export abstract class PkElement extends LitElement {
       copy,
       resolved,
       fill: this.fill || this.fillsWindow(view.state),
+      dialog: this.isDialog(),
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
@@ -565,6 +566,11 @@ export abstract class PkElement extends LitElement {
   /** The body of the kit root; a subclass may draw more around the view (the gate's app slot). */
   protected renderBody(c: RenderCtx): unknown {
     return renderView(c);
+  }
+
+  /** The view is drawn in a modal dialog: the sign-in sheet, or the update prompt's dialog. */
+  protected isDialog(): boolean {
+    return this.isSheet();
   }
 
   /** True where the element draws in a modal sheet (the sign-in form's `presentation`). */

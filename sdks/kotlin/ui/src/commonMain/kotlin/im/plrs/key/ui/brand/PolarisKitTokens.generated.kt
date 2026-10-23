@@ -130,8 +130,8 @@ public object PolarisKitTokens {
 
         /** The type scale (sp). Weights are 400, 500 and 600 only. */
         public object Typography {
-            public val display: KitTypeRole = KitTypeRole(size = 40.0f, lineHeight = 52.0f, weight = 600, tracking = 0.0f, mono = false)
-            public val title: KitTypeRole = KitTypeRole(size = 28.0f, lineHeight = 36.0f, weight = 600, tracking = 0.0f, mono = false)
+            public val display: KitTypeRole = KitTypeRole(size = 28.0f, lineHeight = 36.0f, weight = 600, tracking = 0.0f, mono = false)
+            public val title: KitTypeRole = KitTypeRole(size = 20.0f, lineHeight = 28.0f, weight = 600, tracking = 0.0f, mono = false)
             public val body: KitTypeRole = KitTypeRole(size = 14.0f, lineHeight = 20.0f, weight = 400, tracking = 0.0f, mono = false)
             public val label: KitTypeRole = KitTypeRole(size = 14.0f, lineHeight = 20.0f, weight = 500, tracking = 0.0f, mono = false)
             public val button: KitTypeRole = KitTypeRole(size = 14.0f, lineHeight = 20.0f, weight = 500, tracking = 0.0f, mono = false)

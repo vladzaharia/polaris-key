@@ -775,13 +775,16 @@ export function kitComponent(component: ComponentName) {
             }),
           }
         : undefined;
-    const ctx = withChoice(kit.ctxFor(view, labels ? { labels } : undefined));
-    const body = renderView(ctx);
     const asDialog =
       component === "UpdatePrompt" &&
       !props.embedded &&
       props.asWindow !== true &&
       !UPDATE_BLOCKING.has(view.state);
+    const ctx = {
+      ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
+      dialog: asDialog,
+    };
+    const body = renderView(ctx);
     return (
       <KitRoot
         kit={kit}
