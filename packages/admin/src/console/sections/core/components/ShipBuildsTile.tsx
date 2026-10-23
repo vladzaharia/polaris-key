@@ -1,9 +1,9 @@
 import * as React from "react";
+import { releaseStoreQuery } from "../../release/data.js";
+import { feedQuery, rolloutsQuery } from "../../distribution/data.js";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
 import { formatCount } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
-import { qk } from "../../../data/queries.js";
 import { useReleaseHealth } from "../../release/data.js";
 import { r } from "../../../routes.js";
 import { FeatureCard } from "./TileFrame.js";
@@ -39,19 +39,14 @@ export function ShipBuildsTile({
   /** Items the product's attention read holds for this feature. */
   attention?: number;
 }): React.ReactElement {
-  const store = useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
+  const store = useQuery(releaseStoreQuery(slug));
   const health = useReleaseHealth(slug);
   const rollouts = useQuery({
-    queryKey: qk.rollouts(slug),
-    queryFn: () => api.rollouts(slug),
+    ...rolloutsQuery(slug),
     enabled: distribution,
   });
   const feed = useQuery({
-    queryKey: qk.feed(slug),
-    queryFn: () => api.updateSettings(slug),
+    ...feedQuery(slug),
     enabled: update,
   });
   const latest = latestAppRelease(store.data?.releases);

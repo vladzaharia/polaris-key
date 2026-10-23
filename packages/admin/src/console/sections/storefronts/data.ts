@@ -4,7 +4,11 @@
  */
 
 import { channelLabel } from "@polaris-key/manifest";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type PolarisKeyAnalyticsResponse,
@@ -17,13 +21,16 @@ import {
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
 
-export function useStorefronts(
-  slug: string,
-): UseQueryResult<StorefrontsResponse> {
-  return useQuery({
+export const storefrontsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.storefronts(slug),
     queryFn: () => api.storefronts(slug),
   });
+
+export function useStorefronts(
+  slug: string,
+): UseQueryResult<StorefrontsResponse> {
+  return useQuery(storefrontsQuery(slug));
 }
 
 export function useSlots(

@@ -6,7 +6,11 @@
  * invalidation; nothing here invalidates by hand.
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type ConnectorsResponse,
@@ -102,11 +106,14 @@ export function useMatrix(
   });
 }
 
-export function useRollouts(slug: string): UseQueryResult<RolloutsResponse> {
-  return useQuery({
+export const rolloutsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.rollouts(slug),
     queryFn: () => api.rollouts(slug),
   });
+
+export function useRollouts(slug: string): UseQueryResult<RolloutsResponse> {
+  return useQuery(rolloutsQuery(slug));
 }
 
 export function useHealth(
@@ -189,11 +196,14 @@ export function useConnectorRead<T>(
   });
 }
 
-export function useFeed(slug: string): UseQueryResult<UpdateSettings> {
-  return useQuery({
+export const feedQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.feed(slug),
     queryFn: () => api.updateSettings(slug),
   });
+
+export function useFeed(slug: string): UseQueryResult<UpdateSettings> {
+  return useQuery(feedQuery(slug));
 }
 
 /** The epoch-ms instant a query last answered (for the T1 freshness line). */

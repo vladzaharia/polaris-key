@@ -11,13 +11,12 @@
  * Listing text is data: shown escaped, never as HTML.
  */
 
+import { reads } from "../../../data/reads.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { qk } from "../../../data/queries.js";
 import { useProduct, useProductServices } from "../../../data/hooks.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -62,10 +61,7 @@ export function PresentationBaseRows({
   const listingOn = !services || services.distribution?.enabled !== false;
   const listing = useListing(slug);
   const area = "general";
-  const settings = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const settings = useQuery(reads.productSettings(slug, area));
   const presentation = settings.data?.settings.find(
     (s) => s.key === "core.presentation",
   )?.value as { accent?: unknown; accentDark?: unknown } | null | undefined;
