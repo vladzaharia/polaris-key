@@ -21,8 +21,10 @@ src/
                           shell/, access/, templates/, settings.generated.ts
     nav.ts                the page table: sidebar, router, top bar and palette read it
   portal/                 customer portal app: pages/, model/, components/, copy/, api.ts
-  ui/                     shared React kit (Button, Dialog, Table pieces, Badges, ...)
-  lib/                    pure helpers; docsLinks.ts is the dialog/empty-state help-link table
+  ui/                     shared React kit (Button, Dialog, Table pieces, Badges, ...);
+                          focusRoute.ts moves focus to the h1 and announces on a route change
+  lib/                    pure helpers; docsLinks.ts is the dialog/empty-state help-link table;
+                          router-core.ts is the hash-router store both apps sit on
   schema/                 catalog-driven field editors
   components/             theme and brand pieces shared by both apps
   kit/                    component gallery at #/__kit, compiled in development only

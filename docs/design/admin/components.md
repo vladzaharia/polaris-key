@@ -432,7 +432,7 @@ useUnsavedChangesGuard(form.isDirty, {
 });
 ```
 
-- Registers with the router's blocker and with `beforeunload`.
+- Registers with the shared router core's blocker (`lib/router-core.ts` `blockNavigation`, so the console and the portal share one guard path) and with `beforeunload`.
 - Route changes, product switches and tab changes away from a mounted dirty panel prompt with a
   `ConfirmDialog` offering "Keep editing" / "Discard".
 - Fixes SH-6, LDT-4, PRF-6 and the MPE guard gap.
