@@ -36,6 +36,7 @@ describe("activity verbs for emailed keys and invitations (LX-27c.2)", () => {
     for (const code of [
       "license.key.send",
       "license.key.send.failed",
+      "license.key.send.revoked",
       "license.invite.send",
       "license.invite.send.failed",
     ])
