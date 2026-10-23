@@ -64,7 +64,19 @@ function mount(o: {
     ...makeFakeBridge(
       okBridgeState({
         capabilities: services("license", "config", "update", "release"),
-        ...(o.desktop ? { host: { os: "macos" } } : {}),
+        ...(o.desktop
+          ? {
+              host: { os: "macos" },
+              capabilities: services(
+                "license",
+                "config",
+                "update",
+                "release",
+                "identity",
+              ),
+              profile: { name: "Mara Lindqvist" },
+            }
+          : {}),
         config: makeConfig({ "audio.dither": entry("default", true) }),
       }),
     ),
@@ -230,5 +242,53 @@ describe("the menu-opened dialogs on a desktop host (UK-06-KITFIX)", () => {
     expect(d.textContent).toContain("Install and Relaunch");
     expect(d.textContent).not.toContain("Opens in your browser");
     expect(d.textContent).not.toMatch(/Download 2\.5\.0/);
+  });
+
+  it("Settings has a Done, a click on the scrim closes it, and focus returns", async () => {
+    const m = mount({ newer: false, desktop: true });
+    const app = await m.findByTestId("app");
+    app.focus();
+    m.open("settings");
+    const done = await waitFor(() => {
+      const b = m.container.querySelector('button[data-key="common.done"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    fireEvent.click(done);
+    await waitFor(() => expect(dialog(m.container)).toBeNull());
+    expect(document.activeElement).toBe(app);
+    m.open("settings");
+    const d = await waitFor(() => {
+      const x = dialog(m.container);
+      expect(x).not.toBeNull();
+      return x!;
+    });
+    fireEvent.click(d);
+    await waitFor(() => expect(dialog(m.container)).toBeNull());
+  });
+
+  it("Manage License shows the account group, and Sign Out signs out", async () => {
+    const m = mount({ newer: false, desktop: true });
+    await m.findByTestId("app");
+    m.open("settings");
+    const out = await waitFor(() => {
+      const b = m.container.querySelector('button[data-key="common.signOut"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    const d = dialog(m.container)!;
+    expect(d.querySelector('[data-key="account.devices"]')).not.toBeNull();
+    expect(
+      d.querySelector('[data-key="account.version"]')?.textContent,
+    ).toContain("2.4.1");
+    fireEvent.click(out);
+    await waitFor(() =>
+      expect(
+        m.container
+          .querySelector('[data-component="PolarisKeyGate"]')
+          ?.getAttribute("data-state"),
+      ).toBe("needs-activation"),
+    );
+    expect(dialog(m.container)).toBeNull();
   });
 });

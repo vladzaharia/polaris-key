@@ -39,6 +39,7 @@ const Devices_ = kitComponent("Devices");
 const Settings_ = kitComponent("Settings");
 const UpdatePrompt_ = kitComponent("UpdatePrompt");
 const About_ = kitComponent("About");
+const AccountAndLicense_ = kitComponent("AccountAndLicense");
 
 /** The adapter and what the provider knows, or `null` outside `<PolarisKeyProvider>`. */
 function useSdk() {
@@ -259,8 +260,70 @@ function parseSetting(row: SettingsRow, raw: string): JSONValue | undefined {
   return raw;
 }
 
-function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
-  const { adapter, ...rest } = props;
+/** The account pane a host-opened Settings carries (the menu's "Manage License…"): the license,
+ *  its devices, the version, the update controls and Sign Out, from what the SDK knows. */
+function OpenedAccount(props: {
+  adapter: PolarisAdapter;
+  version?: string;
+  theme?: KitProps["theme"];
+  onCheckUpdates?: () => void;
+  onSignedOut: () => void;
+}): ReactNode {
+  const { adapter } = props;
+  const state = useAdapterState(adapter);
+  const [used, setUsed] = useState<number | null>(null);
+  const licenseOn = state.capabilities.license.enabled;
+  useEffect(() => {
+    if (!licenseOn) return;
+    let live = true;
+    adapter
+      .listDevices()
+      .then((l) => live && setUsed(l.length))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [adapter, licenseOn]);
+  const caps = state.capabilities;
+  const name = state.profile?.name ?? state.profile?.email;
+  const tier = state.entitlements.tier;
+  const input: UiInput = {
+    services: (Object.keys(caps) as (keyof typeof caps)[]).filter(
+      (s) => caps[s].enabled,
+    ),
+    gate: { status: state.status },
+    account: {
+      signedIn: caps.identity.enabled && name !== undefined,
+      ...(name !== undefined ? { holder: name } : {}),
+      ...(typeof tier === "string" ? { tier } : {}),
+      ...(used !== null ? { devices: { used, limit: null } } : {}),
+    },
+    ...(props.version ? { bundle: { slug: "", version: props.version } } : {}),
+  };
+  return (
+    <AccountAndLicense_
+      bare
+      headingLevel={3}
+      driven
+      {...(props.theme ? { theme: props.theme } : {})}
+      input={input}
+      onAction={(a: KitAction) => {
+        if (a.key === "common.signOut")
+          void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
+        else if (a.key === "update.checkNow") props.onCheckUpdates?.();
+      }}
+    />
+  );
+}
+
+function DrivenSettings(
+  props: Props & {
+    adapter: PolarisAdapter;
+    version?: string;
+    onCheckUpdates?: () => void;
+  },
+): ReactNode {
+  const { adapter, version, onCheckUpdates, ...rest } = props;
   // Re-read whenever the SDK's state moves (a local write lands there).
   const state = useAdapterState(adapter);
   const [catalog, setCatalog] = useState<ProductCatalog | null>(null);
@@ -313,6 +376,19 @@ function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
     <Settings_
       {...rest}
       driven
+      {...(props.onDismiss
+        ? {
+            account: (
+              <OpenedAccount
+                adapter={adapter}
+                {...(version !== undefined ? { version } : {})}
+                {...(props.theme ? { theme: props.theme } : {})}
+                {...(onCheckUpdates ? { onCheckUpdates } : {})}
+                onSignedOut={props.onDismiss}
+              />
+            ),
+          }
+        : {})}
       input={input}
       onAction={both((a: KitAction) => {
         if (a.key === "common.tryAgain" && last.current)
@@ -516,7 +592,15 @@ function OpenedHost(props: {
   useEffect(() => adapter.onOpen?.((v) => setView(v)), [adapter]);
   const onClose = useCallback(() => setView(null), []);
   if (view === "settings")
-    return <DrivenSettings adapter={adapter} onDismiss={onClose} {...theme} />;
+    return (
+      <DrivenSettings
+        adapter={adapter}
+        onDismiss={onClose}
+        onCheckUpdates={() => setView("update")}
+        {...(version !== undefined ? { version } : {})}
+        {...theme}
+      />
+    );
   if (view === "update")
     return (
       <DrivenUpdate

@@ -148,6 +148,8 @@ export interface KitProps {
    *  dialog over the app, and call this when the person closes it (Escape, the scrim or Later).
    *  The dialog hands focus back to what held it. */
   onDismiss?: () => void;
+  /** `Settings`, opened by the host: the account pane drawn above its rows (the drop-in's). */
+  account?: ReactNode;
 }
 
 const ThemeContext = createContext<KitTheme | null>(null);
@@ -808,7 +810,18 @@ export function kitComponent(component: ComponentName) {
               props.onAction?.(a);
             },
           }
-        : props,
+        : component === "Settings" && props.onDismiss
+          ? {
+              ...props,
+              onAction: (a) => {
+                if (a.key === "common.done") {
+                  setDismissed(stateRef.current);
+                  props.onDismiss?.();
+                }
+                props.onAction?.(a);
+              },
+            }
+          : props,
     );
     stateRef.current = kit.view.state;
     useEffect(() => {
@@ -848,6 +861,7 @@ export function kitComponent(component: ComponentName) {
     const ctx = {
       ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
       dialog: asDialog,
+      ...(asDialog && props.account ? { account: props.account } : {}),
     };
     const body = renderView(ctx);
     return (
