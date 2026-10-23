@@ -77,6 +77,26 @@ export function modelListingFields(row: ModelListingRow): ModelListingFields {
   return out;
 }
 
+const MODEL_QUERY = `SELECT ${MODEL_LISTING_COLUMNS}
+         FROM dist_listings l
+         LEFT JOIN dist_listing_locales loc
+           ON loc.product = l.product AND loc.locale = l.default_locale
+        WHERE l.product = ?`;
+
+/**
+ * The shared model's own fields (default locale), or `null` when the product has no model row or
+ * the model holds none of them. No blob fallback: for a reader that has a fallback of its own.
+ */
+export async function modelListing(
+  db: Db,
+  product: string,
+): Promise<ModelListingFields | null> {
+  const row = await db.first<ModelListingRow>(MODEL_QUERY, product);
+  if (!row) return null;
+  const fields = modelListingFields(row);
+  return Object.keys(fields).length ? fields : null;
+}
+
 /**
  * The product's listing: the model over the stored root-listing blob, field by field, or `null`
  * when neither holds anything.
@@ -85,19 +105,9 @@ export async function resolvedListing(
   db: Db,
   product: string,
 ): Promise<ManifestListing | null> {
-  const [blob, row] = await Promise.all([
+  const [blob, model] = await Promise.all([
     getListing(db, product),
-    db.first<ModelListingRow>(
-      `SELECT ${MODEL_LISTING_COLUMNS}
-         FROM dist_listings l
-         LEFT JOIN dist_listing_locales loc
-           ON loc.product = l.product AND loc.locale = l.default_locale
-        WHERE l.product = ?`,
-      product,
-    ),
+    modelListing(db, product),
   ]);
-  if (!row) return blob;
-  const model = modelListingFields(row);
-  if (Object.keys(model).length === 0) return blob;
-  return { ...(blob ?? {}), ...model };
+  return model ? { ...(blob ?? {}), ...model } : blob;
 }

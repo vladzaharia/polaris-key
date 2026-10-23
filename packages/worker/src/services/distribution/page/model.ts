@@ -56,6 +56,8 @@ import type {
   ServiceHooks,
 } from "../../../core/hooks.js";
 import { listOutlets } from "../outlets.js";
+import { modelListing } from "../listing/resolved.js";
+import { presentationText } from "../../../core/presentation.js";
 import { FULL_ROLLOUT_BP } from "../rollouts.js";
 import {
   feedOutlet,
@@ -1051,12 +1053,18 @@ export async function buildDownloadModel(
     outlets.find((o) => o.kind === "direct" && o.listing)?.listing ??
     outlets.find((o) => o.listing)?.listing ??
     null;
-  const listingName = lineOf(listingSource?.name);
-  const description =
-    typeof listingSource?.description === "string" &&
-    PROSE_RE.test(listingSource.description)
-      ? listingSource.description
-      : null;
+  // A-27.8: the shared listing model first, field by field, then the direct outlet's merged copy
+  // (D10: today's source, so a product with no model reads exactly what it always did).
+  const model = await modelListing(ctx.db, slug);
+  const first = <T>(...c: (T | null)[]): T | null =>
+    c.find((v) => v !== null) ?? null;
+  const prose = (v: unknown): string | null =>
+    typeof v === "string" && PROSE_RE.test(v) ? v : null;
+  const listingName = first(lineOf(model?.name), lineOf(listingSource?.name));
+  const description = first(
+    prose(model?.description),
+    prose(listingSource?.description),
+  );
 
   const keys = (await delivery.keys())
     .filter(
@@ -1075,11 +1083,19 @@ export async function buildDownloadModel(
     channel: history.channel,
     pageUrl: ctx.bytesOrigin ? `${ctx.bytesOrigin}/${slug}` : null,
     listing: {
-      name: listingName ?? lineOf(ctx.product.name) ?? slug,
-      subtitle: lineOf(listingSource?.subtitle),
+      name:
+        lineOf(presentationText(ctx.product, { name: listingName }).name) ??
+        slug,
+      subtitle: first(lineOf(model?.subtitle), lineOf(listingSource?.subtitle)),
       description,
-      developerName: lineOf(listingSource?.developerName),
-      website: httpsUrl(listingSource?.website),
+      developerName: first(
+        lineOf(model?.developerName),
+        lineOf(listingSource?.developerName),
+      ),
+      website: first(
+        httpsUrl(model?.website),
+        httpsUrl(listingSource?.website),
+      ),
     },
     release: newest
       ? {

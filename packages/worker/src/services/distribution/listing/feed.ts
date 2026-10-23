@@ -13,6 +13,7 @@
 import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import type { RenderListing } from "../feeds/render.js";
+import { productSource } from "./inherit.js";
 import {
   MODEL_LISTING_COLUMNS,
   modelListingFields,
@@ -83,7 +84,11 @@ export async function modelFeedListing(
   return out;
 }
 
-/** The feed's listing: the model over the manifest, field by field (see the file comment). */
+/**
+ * The feed's listing: the model over the manifest, field by field (see the file comment), then
+ * the product's presentation accent over the tint (A-27.9; HA-12's order: the presentation's
+ * accent outranks the listing's tint). A product with no presentation accent keeps its bytes.
+ */
 export async function feedListing(
   db: Db,
   product: string,
@@ -91,7 +96,11 @@ export async function feedListing(
   manifest: RenderListing | null,
 ): Promise<RenderListing | null> {
   const model = await modelFeedListing(db, product, store);
-  if (!model) return manifest;
-  const merged: RenderListing = { ...(manifest ?? {}), ...model };
+  const merged: RenderListing = model
+    ? { ...(manifest ?? {}), ...model }
+    : { ...(manifest ?? {}) };
+  const accent = (await productSource(db, product))?.presentation?.accent;
+  if (accent) merged.tintColor = accent.toLowerCase();
+  if (!model && !accent) return manifest;
   return Object.keys(merged).length ? merged : null;
 }

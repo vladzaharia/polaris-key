@@ -25,6 +25,7 @@ import {
 } from "../../../core/storefront/projection.js";
 import { notesForProjection, releaseNotesView } from "./notes.js";
 import { readListing } from "./store.js";
+import { inheritStored } from "./inherit.js";
 
 export type AppleListingInput =
   | { ok: true; input: ProjectionInput | null }
@@ -40,7 +41,11 @@ export async function appleListingInput(
   product: string,
   releaseId: string | null,
 ): Promise<AppleListingInput> {
-  const stored = await readListing(db, product);
+  const stored = await inheritStored(
+    db,
+    product,
+    await readListing(db, product),
+  );
   let releaseNotes = null;
   if (releaseId !== null) {
     const catalog = hooks.releaseCatalog();

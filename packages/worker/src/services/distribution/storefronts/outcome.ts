@@ -17,6 +17,7 @@ import {
 import type { Db } from "../../../db/types.js";
 import { readListing } from "../listing/store.js";
 import type { FlowRefusal, RunOutcome } from "./runtime.js";
+import { inheritStored } from "../listing/inherit.js";
 
 export const refusal = (
   status: FlowRefusal["status"],
@@ -100,7 +101,11 @@ export async function projectionFor(
   product: string,
   store: ListingStore,
 ): Promise<FitReportRow | null> {
-  const stored = await readListing(db, product);
+  const stored = await inheritStored(
+    db,
+    product,
+    await readListing(db, product),
+  );
   if (!stored) return null;
   return fitReport({ model: stored.model }, [store])[0] ?? null;
 }
