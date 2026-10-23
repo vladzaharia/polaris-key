@@ -1149,7 +1149,7 @@ msgstr "Diese Version überspringen"
 msgid "update.install"
 msgstr "Jetzt aktualisieren"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "Jetzt aktualisieren"

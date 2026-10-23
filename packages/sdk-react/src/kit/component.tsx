@@ -820,7 +820,10 @@ export function kitComponent(component: ComponentName) {
     let view =
       props.onInput !== undefined ? adaptPane(kit.view, kit.input) : kit.view;
     // The driven prompt on the web: one Download action (the page cannot install), and Later.
-    const download = props.driven && component === "UpdatePrompt";
+    // A desktop host installs in place: its prompt keeps "Update now" (Install and Relaunch).
+    const desktop =
+      kit.hostFacts !== null || platformVariant(kit.resolved.theme) !== "web";
+    const download = props.driven && component === "UpdatePrompt" && !desktop;
     const version = kit.input.update?.version;
     view = oneVerb(view);
     if (download) view = adaptUpdate(view);

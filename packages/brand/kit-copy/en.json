@@ -856,7 +856,10 @@
     "update.install": {
       "value": "Update now",
       "role": "button",
-      "note": "UpdatePrompt: an app update."
+      "note": "UpdatePrompt: an app update.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
     },
     "common.updateDownload": {
       "value": "Download {version}",

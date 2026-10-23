@@ -505,18 +505,24 @@ function DrivenUpdate(
  * Settings, or an update check that ends in the prompt or "You're up to date", each as a modal
  * dialog over the app. Closing returns focus to what held it. Draws nothing when nothing is open.
  */
-function OpenedHost(props: { adapter: PolarisAdapter; version?: string }) {
+function OpenedHost(props: {
+  adapter: PolarisAdapter;
+  version?: string;
+  theme?: KitProps["theme"];
+}) {
   const { adapter, version } = props;
+  const theme = props.theme ? { theme: props.theme } : {};
   const [view, setView] = useState<KitView | null>(null);
   useEffect(() => adapter.onOpen?.((v) => setView(v)), [adapter]);
   const onClose = useCallback(() => setView(null), []);
   if (view === "settings")
-    return <DrivenSettings adapter={adapter} onDismiss={onClose} />;
+    return <DrivenSettings adapter={adapter} onDismiss={onClose} {...theme} />;
   if (view === "update")
     return (
       <DrivenUpdate
         adapter={adapter}
         opened={{ onClose }}
+        {...theme}
         {...(version !== undefined ? { version } : {})}
       />
     );
@@ -538,6 +544,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       {props.children}
       <OpenedHost
         adapter={sdk.adapter}
+        {...(props.theme ? { theme: props.theme } : {})}
         {...(sdk.version !== undefined ? { version: sdk.version } : {})}
       />
     </Gate_>

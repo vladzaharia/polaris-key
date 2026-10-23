@@ -1153,7 +1153,7 @@ msgstr "Pular esta versão"
 msgid "update.install"
 msgstr "Atualizar agora"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "Atualizar agora"

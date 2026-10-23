@@ -51,7 +51,12 @@ const BINARY = {
   discardStaged: false,
 };
 
-function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
+function mount(o: {
+  newer: boolean;
+  withOpen?: boolean;
+  install?: unknown;
+  desktop?: boolean;
+}) {
   const openers = new Set<(v: KitView) => void>();
   const progress = new Set<(p: BridgeUpdateProgress) => void>();
   const calls: string[] = [];
@@ -59,6 +64,7 @@ function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
     ...makeFakeBridge(
       okBridgeState({
         capabilities: services("license", "config", "update", "release"),
+        ...(o.desktop ? { host: { os: "macos" } } : {}),
         config: makeConfig({ "audio.dither": entry("default", true) }),
       }),
     ),
@@ -100,7 +106,7 @@ function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
     <PolarisKeyProvider
       config={{ productSlug: "acme", adapter, version: "2.4.1" }}
     >
-      <PolarisKeyGate>
+      <PolarisKeyGate {...(o.desktop ? { theme: { platform: "auto" } } : {})}>
         <button data-testid="app">APP</button>
       </PolarisKeyGate>
     </PolarisKeyProvider>,
@@ -202,5 +208,27 @@ describe("the host opens a view in the gate's window", () => {
     await m.findByTestId("app");
     m.open("settings");
     expect(dialog(m.container)).toBeNull();
+  });
+});
+
+describe("the menu-opened dialogs on a desktop host (UK-06-KITFIX)", () => {
+  it("the update offer is the in-app install, not the web download", async () => {
+    const m = mount({ newer: true, desktop: true });
+    await m.findByTestId("app");
+    m.open("update");
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('button[data-key="update.install"]'),
+      ).not.toBeNull(),
+    );
+    const d = dialog(m.container)!;
+    expect(
+      [...m.container.querySelectorAll("[data-pk-platform]")].map((e) =>
+        e.getAttribute("data-pk-platform"),
+      ),
+    ).toEqual(["macos"]);
+    expect(d.textContent).toContain("Install and Relaunch");
+    expect(d.textContent).not.toContain("Opens in your browser");
+    expect(d.textContent).not.toMatch(/Download 2\.5\.0/);
   });
 });

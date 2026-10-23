@@ -1149,10 +1149,10 @@ msgstr "Skip This Version"
 msgid "update.install"
 msgstr "Update now"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
-msgstr "Update Now"
+msgstr "Install and Relaunch"
 
 #. Download {version}
 #. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.

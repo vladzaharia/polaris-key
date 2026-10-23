@@ -1145,7 +1145,7 @@ msgstr "이 버전 건너뛰기"
 msgid "update.install"
 msgstr "지금 업데이트"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "지금 업데이트"
