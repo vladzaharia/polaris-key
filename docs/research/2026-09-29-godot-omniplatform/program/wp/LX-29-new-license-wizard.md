@@ -183,6 +183,9 @@ Built on the ST-39 kit (`ui/wizard` drawer host) from `integ/next`. Verified aga
   Licenses page with the drawer open), Overview's primary. The `n` shortcut and the launch path's
   **First license** do not exist in the console today; not added.
 
+**Superseded by LX-27c**: the first two items below (the invitation and the auto-link-off line) are built
+there (LX-27c.1 to .4). The mockup-frame item stays open.
+
 Not done (follow-ups):
 
 - **The Identity-default invitation** (a sign-in link with no key, "Also create a key" optional). It needs
