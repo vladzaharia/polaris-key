@@ -45,6 +45,8 @@ The code is the fact; `/Users/vlad/Repos/pk-wt/_lead/plans/UK-06-slices.md` (sli
 - **U1. Names.** Keep the shipped `exposePolarisBridge(client, { ipcMain })` and the preload import. Where this page says `registerPolarisKey` or `exposePolarisKey`, read these.
 - **U2. Bridge additions.** `host`, `onUpdateProgress` and `onOpen` are optional v4 members. `POLARIS_BRIDGE_VERSION` stays 4.
 
+- **UK-06.6 UX review notes left for UK-06.15 (2026-10-22).** M2: on the board, inline steps (Activate, Device limit, Sign-in code, Signed out) use a side-by-side equal pair, "primary | Back", and Welcome stacks two buttons at most 320 px wide; the build stacks full-width slabs, and at 900 x 600 DeviceLimit's primary is cut off (also on the web). M5: the depth model is inverted against Fluent (lists and groups are sunken wells where Fluent raises cards; the light secondary button is a grey slab; the dark footer is near black). M6: narrow windows draw the phone layout (a centred 96 px icon over empty space) where the board start-aligns under a one-line strip. M8: not itemised in the review file; ask the reviewer.
+
 ## Consolidation 2026-10-07
 
 The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.

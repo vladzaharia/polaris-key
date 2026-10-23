@@ -5,7 +5,14 @@
 
 import type { ReactNode } from "react";
 import { withRenew, type View } from "@polaris-key/ui-core";
-import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
+import {
+  LAYOUTS,
+  dialogControls,
+  placeKeys,
+  platformLabel,
+  type Layout,
+} from "./contract.js";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import { rowsOf } from "./lazy.js";
 export type { SettingsRow } from "./contract.js";
 
@@ -502,8 +509,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {progressFor(c)}
         {percentFor(c)}
         {callout(c, errorKeys)}
-        {actions(c, p.controls)}
-        {links(c, p.links)}
+        {controlsAndLinks(c, p)}
         {a11yOnly(c)}
         {p.footnote.length ? paragraphs(c, p.footnote, "footnote") : null}
         {attribution(c, p.meta)}
@@ -803,6 +809,30 @@ function deviceLimitContent(c: KitCtx): ReactNode {
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+}
+
+/** The controls and links of a screen. In a modal dialog under the Windows chrome the footer is
+ *  drawn last, so the links come before it in the DOM and Tab follows the eye (WCAG 2.4.3), and
+ *  the sign-in methods are choices in the body with Cancel the one command in the footer. */
+function controlsAndLinks(
+  c: KitCtx,
+  p: { controls: string[]; links: string[] },
+): ReactNode {
+  if (!(c.dialog && platformVariant(c.resolved.theme) === "windows"))
+    return (
+      <>
+        {actions(c, p.controls)}
+        {links(c, p.links)}
+      </>
+    );
+  const { choices, footer } = dialogControls(p.controls, c.view);
+  return (
+    <>
+      {actions(c, choices, false, "choices")}
+      {links(c, p.links)}
+      {actions(c, footer)}
     </>
   );
 }

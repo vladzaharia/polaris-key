@@ -454,7 +454,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.portalOff": "{developer} manages devices for this license.",
     "signin.choice.keyInstead": "Use a license key instead",
     "signin.choice.freeDevice": "Free a device",
-    "signin.choice.continue": "Use this license and continue",
+    "signin.choice.continue": "Use this license",
     "signin.choice.raced": "That device was just replaced. Choose again.",
     "signin.choice.codeExpired":
       "The code on {device} expired. Get a new code there and scan it again.",
@@ -14230,7 +14230,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.choice.create": { macos: "Create a New Free License" },
   "signin.choice.keyInstead": { macos: "Use a License Key Instead" },
   "signin.choice.freeDevice": { macos: "Free a Device" },
-  "signin.choice.continue": { macos: "Use This License and Continue" },
+  "signin.choice.continue": { macos: "Use This License" },
   "signin.none.otherAccount": { macos: "Use Another Account" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },

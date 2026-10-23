@@ -508,7 +508,11 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     body_.state === "code" &&
     kit.copy.has(HANDOFF_WAITING);
   const chrome: Chrome = waiting ? { meta: [HANDOFF_WAITING] } : {};
-  const c = { ...withChoice(kit.ctxFor(body_, chrome)), form: true };
+  const c = {
+    ...withChoice(kit.ctxFor(body_, chrome)),
+    form: true,
+    dialog: sheet,
+  };
   const announce = step.announce.length ? (
     <p className="visually-hidden" role="status">
       {step.announce.map((k) => (
@@ -563,8 +567,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             if (e.target === e.currentTarget) close();
           }}
         >
-          {announce}
-          {body}
+          {/* First in the DOM, as in the elements: it is drawn at the top, so Tab reaches it there. */}
           <button
             type="button"
             className="sheet-close"
@@ -589,6 +592,8 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
+          {announce}
+          {body}
         </dialog>
       ) : (
         <>

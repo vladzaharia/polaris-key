@@ -51,6 +51,8 @@ export interface KitCtx {
   embedded?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
+  dialog?: boolean;
   chrome?: Chrome;
   view: View;
   copy: Copy;
@@ -811,6 +813,7 @@ export function actions(
   c: KitCtx,
   controls: string[],
   layoutRow = false,
+  group?: "choices",
 ): ReactNode {
   if (controls.length === 0) return null;
   const primary = c.view.decisions.primary;
@@ -825,6 +828,7 @@ export function actions(
       className="actions"
       data-part="actions"
       data-layout={layoutRow ? "row" : "stack"}
+      data-group={group}
     >
       {sorted.map((k) =>
         button(c, k, k === primary ? "primary" : "secondary", {

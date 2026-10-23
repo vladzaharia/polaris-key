@@ -324,15 +324,15 @@ export const KIT_TOKENS = {
     },
     windows: {
       display: {
-        size: 40,
-        lineHeight: 52,
+        size: 28,
+        lineHeight: 36,
         weight: 600,
         tracking: 0,
         family: "sans",
       },
       title: {
-        size: 28,
-        lineHeight: 36,
+        size: 20,
+        lineHeight: 28,
         weight: 600,
         tracking: 0,
         family: "sans",

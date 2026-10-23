@@ -2383,15 +2383,15 @@ msgctxt "macos"
 msgid "signin.choice.freeDevice"
 msgstr "Free a Device"
 
-#. Use this license and continue
+#. Use this license
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.continue"
-msgstr "Use this license and continue"
+msgstr "Use this license"
 
-#. macos: Use This License and Continue
+#. macos: Use This License
 msgctxt "macos"
 msgid "signin.choice.continue"
-msgstr "Use This License and Continue"
+msgstr "Use This License"
 
 #. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
