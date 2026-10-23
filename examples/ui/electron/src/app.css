@@ -1,0 +1,18 @@
+:root {
+  color-scheme: dark light;
+  font-family: system-ui, sans-serif;
+  background: #0d1416;
+  color: #e6efee;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    background: #f4f7f7;
+    color: #142022;
+  }
+}
+body {
+  margin: 0;
+}
+.studio {
+  padding: 2rem;
+}
