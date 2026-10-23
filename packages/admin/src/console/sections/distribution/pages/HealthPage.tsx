@@ -54,13 +54,8 @@ import {
   Panel,
   type AttentionItem,
 } from "../../../templates/Dashboard.js";
-import {
-  HEALTH_WINDOWS,
-  QUERY,
-  updatedAt,
-  useHealth,
-  useReleaseStore,
-} from "../data.js";
+import { HEALTH_WINDOWS, QUERY, updatedAt, useHealth } from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 import { rolloutSummary } from "../model/format.js";
 import { serverFieldErrors, SubmitError } from "../components/forms.js";
 

@@ -2,8 +2,7 @@ import * as React from "react";
 import { CircleAlert, KeyRound, Loader, UsersRound } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ApiError, type SearchLicenseDto } from "../../../api.js";
-import { mutate } from "../../data/mutations.js";
-import { qk } from "../../data/queries.js";
+import { reads } from "../../data/reads.js";
 import { r } from "../../routes.js";
 import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
 
@@ -80,12 +79,8 @@ export function useEntityItems(
   const settled = useSettled(typed, isKey ? 0 : ENTITY_SEARCH_DELAY_MS);
   const enabled = typed.length >= ENTITY_SEARCH_MIN && settled === typed;
   const found = useQuery({
-    queryKey: qk.search(typed),
-    // A read sent as POST (the key stays out of the URL): it declares no invalidation.
-    queryFn: () => mutate("search", typed),
+    ...reads.search(typed),
     enabled,
-    retry: false,
-    staleTime: 30_000,
     // A pasted key is held in memory only as long as it is on screen.
     gcTime: isKey ? 0 : 5 * 60_000,
     placeholderData: isKey ? undefined : keepPreviousData,

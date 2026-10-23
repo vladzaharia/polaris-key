@@ -58,8 +58,8 @@ import {
   QUERY,
   useDistributionKeys,
   useOutlets,
-  useReleaseStore,
 } from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 import {
   BINARY_ORDER,
   BINARY_UPDATE_LABEL,

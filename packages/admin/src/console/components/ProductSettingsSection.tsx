@@ -23,7 +23,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type ProductSetting } from "../../api.js";
+import { ApiError, type ProductSetting } from "../../api.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
@@ -37,7 +37,7 @@ import { useWriteGate } from "../access/useCan.js";
 import { useProduct } from "../data/hooks.js";
 import { useSettingTarget } from "../useSettingTarget.js";
 import { mutate } from "../data/mutations.js";
-import { qk } from "../data/queries.js";
+import { reads } from "../data/reads.js";
 import { SettingsSection } from "../templates/Settings.js";
 
 /** Per-setting copy a page supplies: value labels, and what a change to a value means. */
@@ -101,10 +101,7 @@ export function ProductSettingsSection({
   /** Above the rows, shown only when the section has rows. */
   note?: React.ReactNode;
 }): React.ReactElement | null {
-  const q = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const q = useQuery(reads.productSettings(slug, area));
   const product = useProduct(slug).data;
   // `?setting=<key>` (a palette or All settings link) lands on this section's row.
   useSettingTarget(!q.isPending);
