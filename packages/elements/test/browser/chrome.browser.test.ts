@@ -18,7 +18,6 @@ import {
   HOST_APP_HTML,
   WINDOWS_PLATFORM,
   WINDOWS_SCENES,
-  SCENES as MAC_SCENES,
   sceneInput,
   type Scene,
 } from "../../../sdk-react/test/chromeScenes.js";
@@ -34,6 +33,9 @@ declare const __PKEY_FONTS__: string;
 
 const MAC_SIZES = [
   { label: "390", width: 390, height: 844 },
+  { label: "480x520", width: 480, height: 520 },
+  { label: "480x640", width: 480, height: 640 },
+  { label: "900x600", width: 900, height: 600 },
   { label: "1440", width: 1440, height: 900 },
 ] as const;
 const SIZES = [
@@ -74,15 +76,16 @@ async function mount(
   el.theme = { platform };
   el.input = sceneInput(
     scene,
-    platform === "windows" ? WINDOWS_PLATFORM : undefined,
+    platform === "windows"
+      ? WINDOWS_PLATFORM
+      : { os: "macos", formFactor: "mac" },
   );
   if (scene.sheet) {
     el.presentation = "sheet";
     el.open = true;
   }
-  // The Windows scenes put dialogs over a host window; the macOS ones keep the earlier render.
-  const overHost =
-    platform === "windows" && (scene.sheet === true || scene.dialog === true);
+  // Dialogs are drawn over a host window, so the smoke layer has something to dim.
+  const overHost = scene.sheet === true || scene.dialog === true;
   if (
     !overHost &&
     scene.component !== "PolarisKeyGate" &&
@@ -166,7 +169,7 @@ describe("the Windows chrome under a coarse pointer, drawn by the elements", () 
 });
 
 describe("the macOS chrome, drawn by the elements", () => {
-  for (const scene of MAC_SCENES)
+  for (const scene of WINDOWS_SCENES)
     for (const scheme of SCHEMES)
       for (const size of MAC_SIZES)
         it(`macos ${scene.id} ${size.label} ${scheme}`, async () => {
@@ -184,6 +187,7 @@ describe("the macOS chrome, drawn by the elements", () => {
             expect(parseFloat(cs.minHeight)).toBe(
               scene.component === "Welcome" ? 36 : 28,
             );
+            expect(parseFloat(cs.minHeight)).toBeGreaterThan(0);
             expect(parseFloat(cs.borderTopLeftRadius)).toBeGreaterThan(100);
           }
           if (scene.sheet || scene.dialog)

@@ -1752,8 +1752,10 @@ dialog.sheet .identity {
 .pk-root[data-pk-platform="macos"] .btn {
   min-inline-size: 4.5rem;
   padding-block: 0;
-  padding-inline: 0.875rem;
   line-height: 1;
+}
+.pk-root[data-pk-platform="macos"] .btn:is([data-variant="primary"], [data-variant="secondary"], [data-variant="danger"]) {
+  padding-inline: 0.875rem;
 }
 /* The Welcome hero's push button is the one 36 pt control. */
 .pk-root[data-pk-platform="macos"][data-component="Welcome"] .btn[data-variant="primary"] {
@@ -1773,21 +1775,16 @@ dialog.sheet .identity {
   outline: 3px solid color-mix(in srgb, var(--pk-ring) 55%, transparent);
   outline-offset: 0;
 }
-/* The sheet floats below the title-bar row, 440 pt wide, radius 24 on every side, on a glass
-   ground; the parent stays lit (no scrim) and never docks to the bottom edge. */
+/* The sheet is the dialog box itself: floating below the title-bar row, 440 pt wide, radius 24
+   on every side, its own shadow and glass ground; the parent stays lit (no scrim) and it never
+   docks to the bottom edge. The card scrolls its body above a pinned footer. */
 .pk-root[data-pk-platform="macos"] dialog.sheet {
   margin-block: 3.25rem auto;
   margin-inline: auto;
   inline-size: min(27.5rem, 100% - 2 * var(--pk-space-4));
   max-inline-size: none;
-  max-block-size: calc(100% - 4.25rem);
-}
-.pk-root[data-pk-platform="macos"] dialog::backdrop {
-  background: transparent;
-  backdrop-filter: none;
-}
-.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card {
-  padding: 1.375rem 1.375rem 1.125rem;
+  max-block-size: none;
+  overflow: visible;
   border-radius: 1.5rem;
   background: color-mix(in oklab, var(--pk-surface-raised) 86%, transparent);
   backdrop-filter: blur(40px) saturate(1.6);
@@ -1795,32 +1792,84 @@ dialog.sheet .identity {
     inset 0 0 0 0.5px var(--pk-border-subtle),
     0 18px 40px -8px color-mix(in srgb, black 45%, transparent);
 }
-/* Cancel then the default, the default at the trailing edge (the DOM puts it first). */
-.pk-root[data-pk-platform="macos"] .actions[data-layout="row"],
-.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
-  flex-direction: row-reverse;
-  justify-content: flex-start;
+.pk-root[data-pk-platform="macos"] dialog::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card {
+  container: pkdlg / inline-size;
+  padding: 1.375rem 1.375rem 0;
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+  overflow: hidden auto;
+  max-block-size: calc(100dvh - 4.25rem);
+}
+/* Only the filled buttons take side padding; links sit on the column's edge. */
+.pk-root[data-pk-platform="macos"] .btn:is([data-variant="link"]) {
+  min-inline-size: 0;
+  padding-inline: 0;
+}
+/* Paste is a square inside the field, as tall as the field. */
+.pk-root[data-pk-platform="macos"] .field-paste .paste {
+  padding: 0;
+  min-block-size: 0;
+  min-inline-size: 0;
+  block-size: 100%;
+  inline-size: var(--pk-kit-control-height);
+}
+/* Welcome's two buttons are one height. */
+.pk-root[data-pk-platform="macos"][data-component="Welcome"] .btn[data-variant="secondary"] {
+  min-block-size: var(--pk-kit-control-height-hero);
+}
+/* A dialog's footer: Cancel then the default at the trailing edge (the DOM is in that order, so
+   Tab follows the eye), pinned to the card's bottom; labels never wrap, and it stacks when the
+   dialog is narrow. The choices the person makes stay in the body, full width. */
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin: 0 -1.375rem;
+  padding: 0.75rem 1.375rem 1.125rem;
+  background: color-mix(in oklab, var(--pk-surface-raised) 94%, transparent);
+  box-shadow: none;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) .btn {
+  inline-size: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@container pkdlg (max-width: 22rem) {
+  .pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+    flex-direction: column;
+  }
+  .pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) .btn {
+    inline-size: 100%;
+  }
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions[data-group] .btn {
+  inline-size: 100%;
+}
+/* A choice between actions in page content: content-sized at the trailing edge, in DOM order. */
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"] {
+  flex-direction: row;
+  justify-content: flex-end;
   flex-wrap: wrap;
 }
-.pk-root[data-pk-platform="macos"] .actions[data-layout="row"] .btn,
-.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions .btn {
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"] .btn {
   inline-size: auto;
 }
 /* The update prompt's web layout gives the primary a line of its own; on the Mac the buttons sit
    in one trailing row, each as wide as its label. */
 .pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 .pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn,
 .pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn[data-variant="primary"] {
   flex: 0 0 auto;
-}
-.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
-  position: static;
-  margin: 0;
-  padding: 0;
-  background: none;
-  box-shadow: none;
 }
 /* Increase Contrast: every hairline at full contrast. */
 @media (prefers-contrast: more) {

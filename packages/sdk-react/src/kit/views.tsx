@@ -820,7 +820,8 @@ function controlsAndLinks(
   c: KitCtx,
   p: { controls: string[]; links: string[] },
 ): ReactNode {
-  if (!(c.dialog && platformVariant(c.resolved.theme) === "windows"))
+  const variant = platformVariant(c.resolved.theme);
+  if (!(c.dialog && (variant === "windows" || variant === "macos")))
     return (
       <>
         {actions(c, p.controls)}
@@ -832,7 +833,7 @@ function controlsAndLinks(
     <>
       {actions(c, choices, false, "choices")}
       {links(c, p.links)}
-      {actions(c, footer)}
+      {actions(c, footer, false, undefined, variant === "macos")}
     </>
   );
 }

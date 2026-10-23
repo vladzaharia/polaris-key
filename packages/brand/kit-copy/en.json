@@ -1949,7 +1949,10 @@
     "signin.replace.open": {
       "value": "Replace a device",
       "role": "button",
-      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7).",
+      "variants": {
+        "macos": "Replace a Device"
+      }
     },
     "signin.replace.lede": {
       "value": "Choose a device to sign out. {thisDevice} takes its place.",

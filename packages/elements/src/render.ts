@@ -22,6 +22,7 @@ import { encodeQr } from "@polaris-key/node/qr";
 import { actionOf, OPENS, placeKeys } from "./contract.js";
 import { LAYOUTS, type Layout } from "./layout.js";
 import type { Resolved } from "./theme.js";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import { monogramOf } from "./monogram.js";
 import { spellOut } from "./spell.js";
 
@@ -782,8 +783,11 @@ export function actions(
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast || (layoutRow && platformVariant(c.resolved.theme) === "macos");
   const sorted = [...controls].sort((a, b) =>
-    primaryLast
+    last
       ? Number(a === primary) - Number(b === primary)
       : Number(b === primary) - Number(a === primary),
   );

@@ -3,6 +3,7 @@
 // same shared stylesheet, so a state drawn here and by `<pk-*>` is the same pixels (UI-KITS.md
 // §3.2, §7.1). Every string is a catalog key of the view (DL8).
 
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import {
   Fragment,
   useEffect,
@@ -814,11 +815,17 @@ export function actions(
   controls: string[],
   layoutRow = false,
   group?: "choices",
+  primaryLast = false,
 ): ReactNode {
   if (controls.length === 0) return null;
   const primary = c.view.decisions.primary;
-  const sorted = [...controls].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast || (layoutRow && platformVariant(c.resolved.theme) === "macos");
+  const sorted = [...controls].sort((a, b) =>
+    last
+      ? Number(a === primary) - Number(b === primary)
+      : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
   const busy =
