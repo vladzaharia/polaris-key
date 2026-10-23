@@ -635,7 +635,7 @@ export function chooserBody(input: {
     empty +
     `<div class="actions stack">` +
     (canContinue
-      ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license and continue")}</button>` // signin.choice.continue
+      ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license")}</button>` // signin.choice.continue
       : "") +
     keyLink(input.keyHref) +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +

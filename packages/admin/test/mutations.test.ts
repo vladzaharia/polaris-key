@@ -150,6 +150,8 @@ describe("every write declares its invalidation", () => {
 describe("no view writes around mutate()", () => {
   function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
+      // `__*` files are another suite's transient probes (noDirectFetch writes one).
+      if (name.startsWith("__")) return [];
       const path = join(dir, name);
       if (statSync(path).isDirectory()) return sources(path);
       return /\.(ts|tsx)$/.test(name) ? [path] : [];

@@ -134,7 +134,7 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
       "the rows the license step offers, which one is selected and what each says about itself (tier, origin and term, seats)",
     model: "LicenseChoice",
     shows:
-      'Step 3 of sign-in, when an account holds several licenses: each is a row with its tier, origin, a seat meter and a tag ("On this device", "All devices in use"). One row is selected and Use this license and continue is the one primary; a full license offers Replace a device instead',
+      'Step 3 of sign-in, when an account holds several licenses: each is a row with its tier, origin, a seat meter and a tag ("On this device", "All devices in use"). One row is selected and Use this license is the one primary; a full license offers Replace a device instead',
   },
   UpdatePrompt: {
     view: "update/pkey_update_prompt",
