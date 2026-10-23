@@ -1,23 +1,15 @@
 import * as React from "react";
-import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
-import { Button } from "../../ui/Button.js";
-import { CopyDetails } from "../../ui/CopyDetails.js";
+import { ErrorState } from "../../ui/ErrorState.js";
+import { ErrorVoiceProvider } from "../../ui/errorVoice.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
-import { cn } from "../../lib/cn.js";
-import { PortalApiError } from "../api.js";
-import { portalErrorCopy } from "../errors.js";
+import { portalVoice } from "../errors.js";
 import { href } from "../router.js";
 import { t } from "../../lib/copy.js";
-import { HelpLink } from "./HelpLink.js";
 
 /**
  * A failed load, in the person's words with a Retry (PORTAL.md §4.28, §6.4). Never the HTTP
- * status. `asPage` makes the title the screen's `h1`.
- *
- * A page that knows what it was loading (LK-polish M6) passes `page`: its own title stays as the
- * `h1` (`asPage` only; the Library draws its own), the panel drops the catalog's "Something went
- * wrong" for one sentence naming what failed (`message`, used for the catch-all code only; a
- * specific refusal keeps its own sentence), and `backToLibrary` adds the way out.
+ * status. It is `ErrorState` in the portal's voice (see `ui/ErrorState.tsx` for `asPage`, `page`
+ * and `message`); `backToLibrary` adds the way out.
  */
 export function ErrorPanel({
   error,
@@ -42,74 +34,25 @@ export function ErrorPanel({
   backToLibrary?: boolean;
   className?: string;
 }): React.ReactElement {
-  const copy = portalErrorCopy(error, { account });
-  const Title = asPage ? "h1" : "h2";
-  const named = message !== undefined || page !== undefined;
-  const panel = (
-    <div
-      role="alert"
-      className={cn(
-        "flex flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6",
-        className,
-      )}
-    >
-      <AlertCircle aria-hidden className="size-6 text-danger" />
-      {named ? (
-        <p className="text-fg-strong">
-          {copy.generic && message ? message : copy.line}
-        </p>
-      ) : (
-        <>
-          <Title className="text-lg font-semibold text-fg-strong">
-            {copy.title}
-          </Title>
-          <p className="text-fg-muted">{copy.description}</p>
-        </>
-      )}
-      {copy.help ? (
-        <HelpLink href={copy.help}>{t("locker.help.whatToDo")}</HelpLink>
-      ) : null}
-      {onRetry && copy.retry ? (
-        <Button
-          variant="outline"
-          iconStart={<RefreshCw aria-hidden />}
-          onClick={onRetry}
-        >
-          {t("signin.retry")}
-        </Button>
-      ) : null}
-      <CopyDetails
-        copy={{ action: "copy-details", details: errorDetails(error) }}
-      />
-      {backToLibrary ? (
-        <a
-          href={href.library()}
-          className="inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          {t("locker.library.title")}
-        </a>
-      ) : null}
-    </div>
-  );
-  if (page === undefined) return panel;
+  // Its own provider, so a panel drawn outside `PortalApp` (an error boundary) still speaks portal.
   return (
-    <div className="space-y-6">
-      <h1 className="text-headline font-semibold leading-tight text-fg-strong [overflow-wrap:anywhere] desk:text-4xl">
-        {page}
-      </h1>
-      {panel}
-    </div>
+    <ErrorVoiceProvider voice={portalVoice}>
+      <ErrorState
+        error={error}
+        onRetry={onRetry}
+        asPage={asPage}
+        account={account}
+        page={page}
+        message={message}
+        backTo={
+          backToLibrary
+            ? { href: href.library(), label: t("locker.library.title") }
+            : undefined
+        }
+        className={className}
+      />
+    </ErrorVoiceProvider>
   );
-}
-
-/** What a bug report needs from a failed load: the refusal's code and status, or the error's name and message. */
-function errorDetails(error: unknown): Record<string, unknown> {
-  if (error instanceof PortalApiError)
-    return { code: error.code, status: error.status, message: error.message };
-  if (error instanceof Error)
-    return { name: error.name, message: error.message };
-  return { message: String(error) };
 }
 
 /** A centred screen with the stationary star: boot, network errors and other no-context states. */

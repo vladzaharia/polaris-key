@@ -12,7 +12,6 @@ import {
 } from "../../api.js";
 import {
   capabilitiesOrNone,
-  portalKeys,
   refreshSession,
   useCapabilities,
 } from "../../data.js";
@@ -24,6 +23,12 @@ import {
   passkeysSupported,
 } from "../../webauthn.js";
 import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
+import { qk } from "../../queries.js";
+import {
+  mutate,
+  refreshAfterAccountChange,
+  refreshAfterStepUp,
+} from "../../mutations.js";
 
 /**
  * "Confirm it's you first" (PORTAL.md §4.26; PX-W12's step-up rule): an account change needs a
@@ -133,12 +138,12 @@ export function StepUp({
     setError(null);
     try {
       const replaced = await currentSessionId(qc);
-      const { options } = await portalApi.passkeySignInOptions();
+      const { options } = await mutate("passkeySignInOptions");
       const response = await passkeyAssertion(
         options,
         view.passkeys.map((p) => ({ id: p.id, transports: p.transports })),
       );
-      await portalApi.passkeySignInVerify(response);
+      await mutate("passkeySignInVerify", response);
       await confirmed(replaced);
     } catch (err) {
       setError(passkeyErrorText(err));
@@ -154,8 +159,8 @@ export function StepUp({
     try {
       // A code already went out: "Send a new code" is PX-W4's resend for this sign-in, which
       // retires the old code and link and asks for no new security check.
-      if (sent) await portalApi.resendSignInCode();
-      else await portalApi.startEmailSignIn(email);
+      if (sent) await mutate("resendSignInCode");
+      else await mutate("startEmailSignIn", email);
       setSent(true);
       setCode("");
       requestAnimationFrame(() => document.getElementById(codeId)?.focus());
@@ -177,7 +182,7 @@ export function StepUp({
     setError(null);
     try {
       const replaced = await currentSessionId(qc);
-      await portalApi.verifySignInCode(value);
+      await mutate("verifySignInCode", value);
       await confirmed(replaced);
     } catch (err) {
       setError(codeErrorText(err));
@@ -385,7 +390,7 @@ function SignInAgain({
 /** This browser's session row, before a step-up replaces it. */
 async function currentSessionId(qc: QueryClient): Promise<string | null> {
   const cached = qc.getQueryData<{ id: string; current: boolean }[] | null>(
-    portalKeys.sessions,
+    qk.sessions(),
   );
   const found = cached?.find((s) => s.current)?.id;
   if (found) return found;
@@ -411,20 +416,19 @@ async function afterStepUp(
   if (!me) throw new PortalApiError(401, "unauthorized");
   if (me.account.id !== accountId) {
     // Signed in to another account after all: everything on the page belongs to it now.
-    void qc.invalidateQueries();
+    await refreshAfterAccountChange(qc);
     throw new PortalApiError(409, "other_account");
   }
   if (replaced) {
     try {
       const { sessions } = await portalApi.sessions();
       const old = sessions.find((s) => s.id === replaced);
-      if (old && !old.current) await portalApi.endSession(replaced);
+      if (old && !old.current) await mutate("endSession", replaced);
     } catch {
       // Best effort: the old session expires by itself.
     }
   }
-  void qc.invalidateQueries({ queryKey: portalKeys.sessions });
-  await qc.invalidateQueries({ queryKey: portalKeys.methods });
+  await refreshAfterStepUp(qc);
 }
 
 function passkeyErrorText(err: unknown): string {

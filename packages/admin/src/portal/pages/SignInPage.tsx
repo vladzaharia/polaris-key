@@ -43,7 +43,7 @@ import { LegalNav } from "../components/signin/LegalNav.js";
 import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
-import { portalKeys, useCapabilities } from "../data.js";
+import { useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import {
   blocksResend,
@@ -71,6 +71,8 @@ import {
 } from "../components/signin/RequestHeader.js";
 import { requestHandleFromUrl } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
+import { qk } from "../queries.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
@@ -773,7 +775,7 @@ function MethodsStep({
         onHint(value, last);
         return;
       }
-      onSent(value, await portalApi.startEmailSignIn(value));
+      onSent(value, await mutate("startEmailSignIn", value));
     } catch (err) {
       setError(startErrorText(err));
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
@@ -1023,11 +1025,11 @@ function CodeStep({
 
   const verify = async (value: string): Promise<CodeVerifyOutcome | void> => {
     try {
-      const out = await portalApi.verifySignInCode(value);
+      const out = await mutate("verifySignInCode", value);
       rememberVia("email");
       // A new address finishes first (I-33): the account is created there.
       if (out?.status === "finish") return void onFinish();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
+      await qc.invalidateQueries({ queryKey: qk.me() });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
       if (err instanceof PortalApiError && err.next)
@@ -1049,7 +1051,7 @@ function CodeStep({
 
   const resend = async (): Promise<CodeResendOutcome | void> => {
     try {
-      const out = await portalApi.resendSignInCode();
+      const out = await mutate("resendSignInCode");
       return {
         status: { text: t("signin.code.resent", { email }), tone: "success" },
         wait: resendDelay(out),
@@ -1195,7 +1197,7 @@ function SsoStep({
     setSending(true);
     setError(null);
     try {
-      onCode(resendDelay(await portalApi.resendSignInCode()));
+      onCode(resendDelay(await mutate("resendSignInCode")));
     } catch (err) {
       if (err instanceof PortalApiError && err.next) {
         onRouted(err.next);
@@ -1349,7 +1351,7 @@ function KeyStep({
     setChecking(true);
     setRefused(null);
     try {
-      const preview = await portalApi.previewKeySignedOut(key);
+      const preview = await mutate("previewKeySignedOut", key);
       if (preview.verdict === "addable") return onPreview(key, preview);
       if (preview.verdict === "portal_off") return onContinue(key);
       setRefused(

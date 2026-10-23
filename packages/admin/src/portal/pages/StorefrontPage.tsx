@@ -16,7 +16,6 @@ import { ProductIcon } from "../components/ProductIcon.js";
 import { SectionCard } from "../components/product/Card.js";
 import { ErrorPanel } from "../components/States.js";
 import {
-  portalKeys,
   useClaimDiscover,
   useLibraryView,
   useStorefrontProduct,
@@ -34,6 +33,7 @@ import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
 import { t } from "../../lib/copy.js";
 import { platformConsumerName } from "../../lib/vocab/platforms.js";
+import { qk } from "../queries.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -160,8 +160,7 @@ function StorefrontBody({
     } catch (err) {
       const failed = addError(product, err);
       // The offer is gone: Discover stops listing it.
-      if (failed.ended)
-        void qc.invalidateQueries({ queryKey: portalKeys.discover });
+      if (failed.ended) void qc.invalidateQueries({ queryKey: qk.discover() });
       setError(failed);
     } finally {
       inFlight.current = false;

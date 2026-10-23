@@ -9,22 +9,18 @@ import { PORTAL_FMT } from "../date.js";
 import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
-  portalApi,
   PortalApiError,
   type PortalLinkAccount,
   type PortalLinkReason,
   type PortalLinkView,
 } from "../api.js";
-import {
-  portalKeys,
-  refreshAfterMethodChange,
-  useLinkView,
-  useSession,
-} from "../data.js";
+import { useLinkView, useSession } from "../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { beginSecondSignIn } from "../linkSecond.js";
 import { focusPageHeading, href, navigate } from "../router.js";
 import { StepUpInline } from "./account/StepUpInline.js";
+import { qk } from "../queries.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Link an existing account (SIGN-IN.md D-27, PORTAL.md §4.11; PX-W12's `/api/me/link`): the signed-in
@@ -99,7 +95,7 @@ export function LinkAccountsDialog({
   const close = (): void => {
     // Leaving a half-done link forgets it: the proof lives on the server for 15 minutes.
     if (flow && action.kind !== "joined")
-      void portalApi.linkCancel().catch(() => undefined);
+      void mutate("linkCancel").catch(() => undefined);
     onClose();
   };
 
@@ -117,7 +113,7 @@ export function LinkAccountsDialog({
         flow: null,
         undoable: view.data?.undoable ?? [],
       };
-      qc.setQueryData(portalKeys.link, reset);
+      qc.setQueryData(qk.link(), reset);
       return setAction({ kind: "idle", error: t("signin.join.expired") });
     }
     if (err instanceof PortalApiError && err.reason === "same_account")
@@ -154,7 +150,7 @@ export function LinkAccountsDialog({
   const start = async (): Promise<void> => {
     setAction({ kind: "busy" });
     try {
-      await portalApi.linkStart();
+      await mutate("linkStart");
       signInOther();
     } catch (err) {
       if (isStepUpRequired(err))
@@ -164,7 +160,7 @@ export function LinkAccountsDialog({
   };
 
   const startAgain = async (): Promise<void> => {
-    await portalApi.linkCancel().catch(() => undefined);
+    await mutate("linkCancel").catch(() => undefined);
     await start();
   };
 
@@ -185,9 +181,7 @@ export function LinkAccountsDialog({
     }
     setAction({ kind: "busy" });
     try {
-      const out = await portalApi.linkConfirm();
-      refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      const out = await mutate("linkConfirm");
       setAction({
         kind: "joined",
         undoUntil: out.merge?.undoUntil ?? null,
@@ -202,9 +196,7 @@ export function LinkAccountsDialog({
     const before = action;
     setAction({ kind: "busy" });
     try {
-      await portalApi.linkUndo(merge);
-      refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      await mutate("linkUndo", merge);
       setAction({ kind: "undone" });
     } catch (err) {
       if (isStepUpRequired(err))
@@ -216,7 +208,7 @@ export function LinkAccountsDialog({
             ? portalErrorCopy(err).title
             : t("signin.join.undoFailed");
       if (err instanceof PortalApiError && err.status === 404)
-        void qc.invalidateQueries({ queryKey: portalKeys.link });
+        void qc.invalidateQueries({ queryKey: qk.link() });
       // Back where the person was, with the reason: the Undo they pressed stays in reach.
       if (before.kind === "joined") setAction({ ...before, error: msg });
       else setAction({ kind: "idle", error: msg });

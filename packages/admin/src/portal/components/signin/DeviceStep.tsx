@@ -10,8 +10,9 @@ import {
   type PortalDeviceLoginStart,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
-import { portalKeys } from "../../data.js";
 import { announceSignedIn } from "../../session.js";
+import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * Sign in with another device (SIGN-IN.md §3.11; PX-W14's wire): this browser shows a QR and an
@@ -60,7 +61,7 @@ export function DeviceStep({
             if (!alive) return;
             if (out.status === "approved") {
               announceSignedIn();
-              await qc.invalidateQueries({ queryKey: portalKeys.me });
+              await qc.invalidateQueries({ queryKey: qk.me() });
               return;
             }
             if (out.status === "denied") return setState({ kind: "denied" });
@@ -84,7 +85,7 @@ export function DeviceStep({
     };
     void (async () => {
       try {
-        const start = await portalApi.deviceLoginStart();
+        const start = await mutate("deviceLoginStart");
         if (!alive) return;
         const endsAt = Date.now() + start.expiresIn * 1000;
         setState({ kind: "waiting", start, endsAt });

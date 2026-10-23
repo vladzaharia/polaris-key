@@ -21,7 +21,7 @@ import {
   type PortalGateChoice,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
-import { portalKeys, useCapabilities } from "../../data.js";
+import { useCapabilities } from "../../data.js";
 import { toast } from "../../../ui/toast.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
@@ -33,6 +33,8 @@ import {
   GoogleGlyph,
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
+import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * FinishStep (identity.finish, SIGN-IN.md §3.5, I-27 §2.4; API I-33): every new account finishes
@@ -188,12 +190,12 @@ export function FinishStep({
     } catch {
       window.history.replaceState(null, "", "/");
     }
-    await qc.invalidateQueries({ queryKey: portalKeys.me });
+    await qc.invalidateQueries({ queryKey: qk.me() });
   };
 
   const cancel = async (): Promise<void> => {
     try {
-      await portalApi.gateCancel();
+      await mutate("gateCancel");
     } catch {
       // Already gone: the same end.
     }
@@ -293,8 +295,8 @@ async function afterUpload(file: File | null): Promise<void> {
   if (!file) return;
   try {
     setPortalCsrf((await portalApi.me()).csrf);
-    const { upload } = await portalApi.uploadPicture(file);
-    await portalApi.updateProfile({ picture: { upload: upload.asset } });
+    const { upload } = await mutate("uploadPicture", file);
+    await mutate("updateProfile", { picture: { upload: upload.asset } });
   } catch {
     toast.info(t("signin.gate.uploadFailed"));
   }
@@ -528,8 +530,8 @@ function FinishForm({
   const addPasskey = async (): Promise<void> => {
     setBusy(true);
     try {
-      const { options } = await portalApi.passkeyRegistrationOptions();
-      await portalApi.addPasskey(await createPasskey(options));
+      const { options } = await mutate("passkeyRegistrationOptions");
+      await mutate("addPasskey", await createPasskey(options));
       setPasskeyResult("added");
     } catch {
       setPasskeyResult("failed");
@@ -657,7 +659,7 @@ function FinishForm({
               loading={busy}
               onClick={() =>
                 void run(async () => {
-                  const out = await portalApi.gateJoin();
+                  const out = await mutate("gateJoin");
                   await onPassed(out.next, out.nudge);
                 })
               }
@@ -712,7 +714,7 @@ function FinishForm({
     const verify = async (value: string): Promise<CodeVerifyOutcome | void> => {
       setBusy(true);
       try {
-        const out = await portalApi.gateVerify(value);
+        const out = await mutate("gateVerify", value);
         await done(out.next, out.nudge);
       } catch (err) {
         if (err instanceof PortalApiError) {
@@ -737,7 +739,7 @@ function FinishForm({
     };
     const resend = async (): Promise<CodeResendOutcome | void> => {
       try {
-        await portalApi.gateChoose({ ...body(), choice: "typed", email: to });
+        await mutate("gateChoose", { ...body(), choice: "typed", email: to });
         return {
           wait: RESEND_S,
           status: {
@@ -939,7 +941,7 @@ function FinishForm({
             return failTerms();
           setTermsError({ platform: false, product: false });
           void run(async () => {
-            const out = await portalApi.gateChoose(body());
+            const out = await mutate("gateChoose", body());
             if (out.status === "signed_in") return done(out.next, out.nudge);
             setEditing(false);
             await reload();
