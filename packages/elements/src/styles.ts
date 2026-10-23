@@ -2090,7 +2090,7 @@ dialog.sheet .identity {
 }
 /* Increase Contrast: every hairline at full contrast. */
 @media (prefers-contrast: more) {
-  .pk-root[data-pk-platform="macos"] {
+  .pk-root[data-pk-platform="macos"][data-theme] {
     --pk-border-subtle: var(--pk-text-strong);
     --pk-border-strong: var(--pk-text-strong);
   }
@@ -2133,6 +2133,23 @@ dialog.sheet .identity {
     forced-color-adjust: none;
     background: CanvasText;
   }
+  /* A switch's track and thumb are backgrounds, which forced colours drop: draw them in system colours. */
+  .switch {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+  .switch[aria-checked="true"] {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  .switch-thumb {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .switch[aria-checked="true"] .switch-thumb {
+    background: HighlightText;
+  }
   .row[aria-checked="true"] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
@@ -2147,7 +2164,7 @@ dialog.sheet .identity {
   }
 }
 @media (prefers-contrast: more) {
-  .pk-root {
+  .pk-root[data-theme] {
     --pk-border-subtle: var(--pk-border-strong);
     --pk-text-muted: var(--pk-text-default);
     --pk-text-subtle: var(--pk-text-default);
@@ -2165,12 +2182,12 @@ dialog.sheet .identity {
 }
 /* The desktop host's own report (the bridge host facts, UK-06) draws what the media features draw:
    Increase Contrast, and Reduce Transparency, which makes the glass sheet and the scrim opaque. */
-.pk-root[data-contrast="more"] {
+.pk-root[data-contrast="more"][data-theme] {
   --pk-border-subtle: var(--pk-border-strong);
   --pk-text-muted: var(--pk-text-default);
   --pk-text-subtle: var(--pk-text-default);
 }
-.pk-root[data-contrast="more"][data-pk-platform="macos"] {
+.pk-root[data-contrast="more"][data-pk-platform="macos"][data-theme] {
   --pk-border-subtle: var(--pk-text-strong);
   --pk-border-strong: var(--pk-text-strong);
 }

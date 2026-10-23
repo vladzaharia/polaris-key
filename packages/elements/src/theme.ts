@@ -259,7 +259,10 @@ export function resolveFor(
   });
   const accent = accentFor(identity, scheme.scheme as Scheme);
   const hostColor =
-    native && accent === null && hostAccent && /^#[0-9a-f]{6}$/i.test(hostAccent)
+    native &&
+    accent === null &&
+    hostAccent &&
+    /^#[0-9a-f]{6}$/i.test(hostAccent)
       ? hostAccent
       : null;
   const colors =
