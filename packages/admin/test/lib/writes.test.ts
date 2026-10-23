@@ -73,7 +73,7 @@ describe("mutate", () => {
     const un = w.bindWriteInvalidation(client);
     await expect(w.mutate("save", "a")).rejects.toBe(boom);
     expect(stale(["items"])).toBe(false);
-    expect(onError).toHaveBeenCalledWith(boom, expect.any(Set));
+    expect(onError).toHaveBeenCalledWith(boom, expect.any(Set), "save", ["a"]);
     un();
   });
 
