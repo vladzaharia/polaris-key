@@ -127,7 +127,7 @@ The following are intentionally not presented above as shipped portal functional
 ## 8. Source map
 
 - App composition and signed-in/signed-out boundary: `packages/admin/src/portal/App.tsx`
-- Canonical routes, legacy redirects, focus, and deep-link sanitisation: `packages/admin/src/portal/router.ts`
+- Canonical routes, legacy redirects and deep-link sanitisation: `packages/admin/src/portal/router.ts`, on the shared hash-router core `packages/admin/src/lib/router-core.ts`; route focus and its announcement: `packages/admin/src/ui/focusRoute.ts`
 - Server client, queries, mutations, and cache invalidation: `packages/admin/src/portal/api.ts` and `packages/admin/src/portal/data.ts`
 - Shell, sign-in card, page components, and focused flows: `packages/admin/src/portal/components/` and `packages/admin/src/portal/pages/`
 - Portal API route and handler composition: `packages/worker/src/console/routes.ts` and `packages/worker/src/console/`

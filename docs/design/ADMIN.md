@@ -40,6 +40,8 @@ toasts.
   a **Page moved** state with the new destination; the console does not silently redirect the
   bookmark.
 - Page changes reset the content scroll, focus the page `h1`, and announce that the page loaded.
+  The hash store, redirects, blockers and View Transitions live in `lib/router-core.ts`, shared with
+  the portal; focus and the announcement are `ui/focusRoute.ts`. Each app keeps its own route table.
   Filtering through a query parameter does not remount the page or move focus.
 - Product sections are shown only for enabled services. A deep link to an unavailable service
   names the problem and links to Services rather than rendering a failing page.
