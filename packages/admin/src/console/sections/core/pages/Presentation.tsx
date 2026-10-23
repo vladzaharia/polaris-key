@@ -114,7 +114,7 @@ export function PresentationPage({
             {presentation.map(slotRow)}
             {slotRow(heroSlot!)}
           </SettingsSection>
-          <SettingsSection id="presentation-listing" title="Listing">
+          <SettingsSection id="presentation-listing" title="Listing images">
             {listingRest.map(slotRow)}
           </SettingsSection>
           {other.length ? (

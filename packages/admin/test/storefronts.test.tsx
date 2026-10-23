@@ -732,7 +732,7 @@ describe("Distribution → Listing", () => {
   it("the fit report names what does not fit and offers an override", async () => {
     bootWith(`${LISTING}?tab=fit`, routes());
     expect(
-      await screen.findByText(/title \(en-US\) too long: 34 of 30/),
+      await screen.findByText(/title \(en-US\) too long: 34 of 30/i),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Override…" })).toBeTruthy();
   });

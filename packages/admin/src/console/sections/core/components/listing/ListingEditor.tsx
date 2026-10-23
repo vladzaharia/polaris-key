@@ -40,6 +40,7 @@ import { FitReport } from "../../../storefronts/components/FitReport.js";
 import { ImportPanel } from "../../../storefronts/components/ImportPanel.js";
 import { SlotBoard } from "../../../storefronts/components/SlotBoard.js";
 import { NotesTab } from "./ListingNotes.js";
+import { OverridesTab } from "./ListingOverrides.js";
 import { PushTab } from "./ListingPush.js";
 
 export const LISTING_TABS = ["text", "fit", "images", "notes", "push"] as const;
@@ -59,7 +60,7 @@ import type { StorefrontId } from "./ListingPush.js";
 
 /** The line under the header: where an edit shows. */
 export const LISTING_SCOPE_NOTE =
-  "Changes here show in Polaris Locker, on the download page and on every channel.";
+  "Changes here show in Polaris Locker, on the download page and on every storefront.";
 
 /**
  * The listing editor (A-27.10). Unscoped it is the Listing page: the shared model's text, the fit
@@ -70,9 +71,15 @@ export const LISTING_SCOPE_NOTE =
 export function ListingEditor({
   slug,
   store,
+  toolbar,
+  notice,
 }: {
   slug: string;
   store?: StorefrontId;
+  /** The page's storefront switcher, in the header's action cluster. */
+  toolbar?: React.ReactNode;
+  /** A line above the tabs (the storefronts failed to load). */
+  notice?: React.ReactNode;
 }): React.ReactElement {
   const [tab] = useSearchParam("tab", tabCodec);
   const q = useListing(slug);
@@ -83,18 +90,30 @@ export function ListingEditor({
       : sf.data?.stores.find((s) => s.id === store || s.listingStore === store);
   // The store's listing column (`play`, `ms-store`…); `""` matches no fit row or slot group.
   const column = store === undefined ? undefined : (scoped?.listingStore ?? "");
+  // A storefront's view has no shared Text or Release notes: those are edited under "Every
+  // storefront". Its first tab is the storefront's own overrides.
+  const isScoped = store !== undefined;
+  const shown = LISTING_TABS.filter((t) => !isScoped || t !== "notes");
+  const here: ListingTab = isScoped && tab === "notes" ? "text" : tab;
+  const label = scoped?.label ?? "This storefront";
+  const nOver = q.data?.overrides.filter((o) => o.store === column).length ?? 0;
   return (
     <div className="space-y-6" data-template="record">
       <PageHeader
         title="Listing"
-        description={LISTING_SCOPE_NOTE}
+        toolbar={toolbar}
+        description={
+          isScoped
+            ? `${label}: the shared listing plus ${nOver} override${nOver === 1 ? "" : "s"}. Shared text is edited under Every storefront.`
+            : LISTING_SCOPE_NOTE
+        }
         tabs={
           <PageTabs
             label="Listing"
-            value={tab}
-            items={LISTING_TABS.map((t) => ({
+            value={here}
+            items={shown.map((t) => ({
               value: t,
-              label: TAB_LABELS[t],
+              label: isScoped && t === "text" ? "Overrides" : TAB_LABELS[t],
               to: r.listing(slug, {
                 ...(t === "text" ? {} : { tab: t }),
                 ...(store === undefined ? {} : { store }),
@@ -103,6 +122,7 @@ export function ListingEditor({
           />
         }
       />
+      {notice}
       <div className="pk-vt-tabpanel" data-scope={store ?? "all"}>
         {q.isPending || (store !== undefined && sf.isPending) ? (
           <Skeleton className="h-64 w-full" />
@@ -112,14 +132,26 @@ export function ListingEditor({
             onRetry={() => void q.refetch()}
             context={{ area: "distribution", thing: "Listing" }}
           />
-        ) : tab === "text" ? (
+        ) : isScoped && here === "text" ? (
+          <OverridesTab
+            slug={slug}
+            data={q.data}
+            column={column ?? ""}
+            storeLabel={label}
+          />
+        ) : here === "text" ? (
           <TextTab slug={slug} data={q.data} />
         ) : tab === "fit" ? (
           <FitTab slug={slug} column={column} />
         ) : tab === "images" ? (
           <SlotBoard
             slug={slug}
-            {...(column === undefined ? {} : { groups: ["masters", column] })}
+            {...(column === undefined
+              ? {}
+              : {
+                  groups: ["masters", column],
+                  groupLabels: { [column]: label },
+                })}
           />
         ) : tab === "notes" ? (
           <NotesTab slug={slug} data={q.data} />

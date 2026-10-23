@@ -52,6 +52,25 @@ export function PushTab({
   const stores = q.data.stores.filter(
     (s) => s.pushListing !== null && (store === undefined || s.id === store),
   );
+  const scoped =
+    store === undefined ? undefined : q.data.stores.find((s) => s.id === store);
+  if (scoped && scoped.pushListing === null)
+    return (
+      <EmptyState
+        kind="first-run"
+        headingLevel={2}
+        title={
+          scoped.builtIn
+            ? `${scoped.label} reads the listing directly`
+            : `${scoped.label} takes no listing push`
+        }
+        description={
+          scoped.builtIn
+            ? "There is nothing to push."
+            : "Polaris Key cannot write this storefront's listing."
+        }
+      />
+    );
   if (stores.length === 0)
     return (
       <EmptyState
