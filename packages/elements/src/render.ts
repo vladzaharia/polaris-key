@@ -38,6 +38,8 @@ export interface RenderCtx {
   form?: boolean;
   /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
   dialog?: boolean;
+  /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
+  shape?: "landscape" | "portrait" | "short";
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */
@@ -783,11 +785,18 @@ export function actions(
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
-  // GNOME puts the suggested action last, visually and in Tab order (no CSS reordering); a group
-  // of choices keeps its order.
+  // GNOME: two responses in a row (landscape or short boxes) put the suggested action last, at
+  // the trailing end, in the DOM too so Tab follows the eye; stacked (portrait, or three or more)
+  // it is first, on top. A group of choices keeps its order. No CSS reordering either way.
   const last =
     primaryLast ||
-    (group !== "choices" && platformVariant(c.resolved.theme) === "gnome");
+    (group !== "choices" &&
+      controls.length === 2 &&
+      c.view.component !== "StatusScreen" &&
+      c.view.component !== "Boot" &&
+      c.shape !== undefined &&
+      c.shape !== "portrait" &&
+      platformVariant(c.resolved.theme) === "gnome");
   const sorted = [...controls].sort((a, b) =>
     last
       ? Number(a === primary) - Number(b === primary)

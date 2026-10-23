@@ -929,7 +929,6 @@
     <string name="signin_replace_confirm__macos">替换并继续</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_confirmNamed">替换%1$s并继续</string>
-    <string name="signin_replace_confirmNamed__macos">替换%1$s并继续</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">返回</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->

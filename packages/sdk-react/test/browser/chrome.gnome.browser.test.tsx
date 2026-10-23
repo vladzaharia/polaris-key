@@ -3,8 +3,7 @@
 // The GNOME (libadwaita) chrome of the React kit in real Chromium (UK-06.7, UI-KITS §3.1
 // `platform`): `theme.platform: "linux"` (the variant id `gnome`) sets `data-pk-platform="gnome"` on
 // the kit root and the same web DOM draws as libadwaita: pill responses (40 px) with the suggested
-// action LAST (the DOM order puts it last, so Tab follows the eye: at the end of a row, at the
-// bottom of a stack), 34 px controls at radius 8, cards at 12, the sheet an AdwDialog (radius 14
+// action last in a row of two and first in a stack (the DOM order, so Tab follows the eye), 34 px controls at radius 8, cards at 12, the sheet an AdwDialog (radius 14
 // on the box, a soft shadow, a 7 % hairline in light and a light hairline in dark, never a dark
 // outline) over the host window with a pinned footer, the update prompt an AdwAlertDialog, message
 // screens an AdwStatusPage, opaque surfaces. Every render also passes axe (WCAG 2.2 AA), has no
@@ -343,8 +342,8 @@ function chrome(
       );
       const p = buttons.findIndex((b) => b.dataset.variant === "primary");
       if (buttons.length >= 2 && p >= 0) {
-        // Equal width, never a wrapped label; the suggested action last: at the end of a row, at
-        // the bottom of a stack.
+        // Equal width, never a wrapped label; the suggested action last at the end of a row and
+        // first, on top, in a stack (the DOM order, so Tab follows the eye).
         const rects = buttons.map((b) => b.getBoundingClientRect());
         const widths = rects.map((r) => Math.round(r.width));
         expect(new Set(widths).size, `equal width ${widths}`).toBe(1);
@@ -356,8 +355,8 @@ function chrome(
           );
         } else {
           expect(new Set(rects.map((r) => Math.round(r.left))).size).toBe(1);
-          expect(rects[p]!.top, "suggested last").toBe(
-            Math.max(...rects.map((r) => r.top)),
+          expect(rects[p]!.top, "suggested first, on top").toBe(
+            Math.min(...rects.map((r) => r.top)),
           );
         }
       }
@@ -367,7 +366,7 @@ function chrome(
   } else {
     expect(tabOrderProblems(kit).join("\n")).toBe("");
   }
-  // AdwStatusPage: no card surface, the responses stacked and centred, the suggested one last.
+  // AdwStatusPage: no card surface, the responses stacked and centred, the suggested one first.
   if (scene.id.startsWith("StatusScreen.")) {
     const card = kit.querySelector<HTMLElement>(".stage .card")!;
     const cs = getComputedStyle(card);
@@ -383,7 +382,7 @@ function chrome(
           .size,
       ).toBe(1);
       const p = btns.findIndex((b) => b.dataset.variant === "primary");
-      expect(tops[p]).toBe(Math.max(...tops));
+      expect(tops[p]).toBe(Math.min(...tops));
     }
   }
   expect(width).toBeGreaterThan(0);

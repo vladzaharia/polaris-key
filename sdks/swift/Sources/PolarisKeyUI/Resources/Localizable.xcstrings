@@ -70878,21 +70878,9 @@
       "extractionState": "manual",
       "localizations": {
         "en": {
-          "variations": {
-            "device": {
-              "mac": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Replace %1$@ and Continue"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Replace %1$@ and continue"
-                }
-              }
-            }
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace %1$@"
           }
         },
         "de": {

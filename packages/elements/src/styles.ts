@@ -1365,8 +1365,8 @@ dialog.sheet .card,
    the sheet an AdwDialog, the update prompt an AdwAlertDialog, message screens an AdwStatusPage,
    every surface opaque. The measures are the variant's tokens (tokens.ts writes them from brand);
    this block is structure, and every rule is scoped to data-pk-platform="gnome". The suggested
-   action is the LAST response (the DOM order puts it last, so Tab follows the eye): at the end of a
-   row, at the bottom of a stack. ─────────────────── */
+   action is last in a row of two and first in a stack, in the DOM order too, so Tab follows the eye.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
 .pk-root[data-pk-platform="gnome"] {
   --pk-kit-radius-card: 0.75rem;
   --pk-kit-radius-group: 0.75rem;
@@ -1409,47 +1409,62 @@ dialog.sheet .card,
 .pk-root[data-pk-platform="gnome"][data-keyboard] .field textarea:focus-visible {
   outline-offset: var(--pk-kit-focus-offset);
 }
-/* Two responses side by side at equal width, the suggested one at the end; when a label does not
-   fit beside the other, they wrap and stack (the suggested action last), never a wrapped label: each takes half the
-   row, a label wider than that cannot shrink, so the line breaks. */
-.pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) {
+/* Stacked by default: one column in the DOM order, the suggested action first and on top (first in
+   Tab order). Two responses in a landscape or short box are a row at equal width, the suggested
+   action last at the trailing end (the renderer puts it last in the DOM, so no CSS reordering);
+   a label wider than its half cannot shrink, so the pair wraps rather than wrapping a label. */
+.pk-root[data-pk-platform="gnome"] .actions {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.pk-root[data-pk-platform="gnome"] .actions .btn:not([data-variant="link"]) {
+  flex: none;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+.pk-root[data-pk-platform="gnome"][data-shape="short"] .stage[data-kind="screen"] .card > .actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.pk-root[data-pk-platform="gnome"]:not([data-shape="portrait"]) .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))),
+.pk-root[data-pk-platform="gnome"][data-shape="short"] .stage[data-kind="screen"] .card > .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: stretch;
 }
-.pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) .btn:not([data-variant="link"]) {
+.pk-root[data-pk-platform="gnome"]:not([data-shape="portrait"]) .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) .btn:not([data-variant="link"]) {
   flex: 1 1 calc(50% - var(--pk-gap) / 2);
-  min-inline-size: max-content;
+  min-inline-size: min(max-content, 100%);
   inline-size: auto;
 }
-.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+/* The two-pane gate keeps its response bar in the window: pinned to the bottom edge on the page's
+   own ground, so a window shorter than the form (900 x 600) never hides the suggested action. */
+.pk-root[data-pk-platform="gnome"][data-shape="landscape"] .stage[data-split] .card > .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  padding-block: var(--pk-space-3);
+  margin-block-end: calc(-1 * var(--pk-space-3));
+  background: var(--pk-surface-page);
+}
+/* AdwBanner: a content-sized row at the trailing end of a strip (Reconnect a pill, Dismiss flat);
+   under a narrow window it drops below the text. */
+.pk-root[data-pk-platform="gnome"] .banner .actions {
   flex-direction: row;
-  justify-content: stretch;
+  flex-wrap: nowrap;
+  margin-inline-start: auto;
 }
-.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn {
-  flex: 1 1 calc(50% - var(--pk-gap) / 2);
-  min-inline-size: max-content;
-}
-/* Three or a narrow container: they stack in the DOM order, the suggested action last. */
-.pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(3)) {
-  flex-direction: column;
-}
-.pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(3)) .btn:not([data-variant="link"]) {
+.pk-root[data-pk-platform="gnome"] .banner .actions .btn:not([data-variant="link"]) {
   flex: none;
-  inline-size: 100%;
+  inline-size: auto;
+  min-inline-size: 0;
 }
-@container pk (max-width: 34.99rem) {
-  .pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))),
-  .pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-  .pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) .btn:not([data-variant="link"]),
-  .pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn,
-  .pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn[data-variant="primary"] {
-    flex: none;
-    inline-size: 100%;
-  }
+.pk-root[data-pk-platform="gnome"] .banner .actions .btn[data-variant="secondary"] {
+  background: none;
+}
+/* Links are accent text. */
+.pk-root[data-pk-platform="gnome"] .btn[data-variant="link"] {
+  color: var(--pk-accent-fg, var(--pk-text-strong));
 }
 /* AdwDialog (the sheet): centred at 28.75 rem, radius 14 with a soft shadow and a hairline edge
    on the dialog box itself (its own overflow cannot clip it), opaque. Narrow, it docks to the
@@ -1497,7 +1512,7 @@ dialog.sheet .card,
   backdrop-filter: none;
 }
 /* AdwStatusPage: a message screen has no card, only the icon, the title, the body and the
-   responses, stacked and centred, the suggested action last. */
+   responses, stacked and centred, the suggested action first. */
 .pk-root[data-pk-platform="gnome"]:is([data-component="StatusScreen"], [data-component="Boot"]:is([data-state="blocked"], [data-state="error"], [data-state="offline"], [data-state="declined"], [data-state="rolled-back"])) .stage[data-kind="screen"] .card {
   inline-size: min(35rem, 100%);
   background: transparent;

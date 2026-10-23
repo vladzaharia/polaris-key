@@ -494,6 +494,7 @@ export function useKit(
     copy,
     resolved,
     input,
+    shape,
     headingLevel:
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),

@@ -382,6 +382,7 @@ export abstract class PkElement extends LitElement {
       resolved,
       fill: this.fill || this.fillsWindow(view.state),
       dialog: this.isDialog(),
+      shape: this.shape,
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {

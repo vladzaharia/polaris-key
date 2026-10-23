@@ -482,7 +482,7 @@ export const KIT_COPY: Readonly<
       "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
     "signin.replace.inUse": "{device} is in use right now.",
     "signin.replace.confirm": "Replace and continue",
-    "signin.replace.confirmNamed": "Replace {device} and continue",
+    "signin.replace.confirmNamed": "Replace {device}",
     "signin.replace.back": "Back",
     "signin.replace.gone": "That device was already removed. Choose again.",
     "signin.replace.rateLimited":
@@ -14281,7 +14281,6 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.none.otherAccount": { macos: "Use Another Account" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },
-  "signin.replace.confirmNamed": { macos: "Replace {device} and Continue" },
   "signin.notYou": { macos: "Not You?" },
   "signin.key.addAndUse": { macos: "Add and Use on This Device" },
   "signin.key.keep": { macos: "Keep {product} in an Account" },
