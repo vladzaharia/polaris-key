@@ -3,7 +3,6 @@ import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Eye, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type AttentionItemDto,
   type PlatformSwitchSetting,
 } from "../../../../api.js";
@@ -26,7 +25,7 @@ import {
   usePlatformReady,
   useProducts,
 } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
+
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import {
@@ -54,6 +53,7 @@ import {
 import { useSetupGuideHidden } from "../model/setupGuide.js";
 import { cn } from "../../../../lib/cn.js";
 import { toast } from "../../../../ui/toast.js";
+import { reads } from "../../../data/reads.js";
 
 /**
  * The platform row's first line: the server's fact with when and by whom folded in, "Cloud Sync
@@ -217,8 +217,7 @@ export function Home(): React.ReactElement {
   const firstRunHeading = React.useRef<HTMLElement>(null);
   const [resumeBusy, setResumeBusy] = React.useState(false);
   const platformSettings = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
+    ...reads.platformSettings(),
     retry: false,
     enabled: platformItem !== undefined,
   });

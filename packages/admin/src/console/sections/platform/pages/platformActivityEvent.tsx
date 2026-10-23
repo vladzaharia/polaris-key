@@ -7,7 +7,6 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import {
-  api,
   type PlatformActivityItem,
   type PlatformSetting,
   type ProductDetail,
@@ -23,7 +22,8 @@ import {
 } from "../../../../ui/Drawer.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { actorName, whatOf } from "./platformActivityParts.js";
@@ -64,8 +64,7 @@ export function EventDrawer({
 }): React.ReactElement {
   const known = id ? loaded.find((i) => i.id === id) : undefined;
   const fetched = useQuery({
-    queryKey: qk.platformActivityEvent(id ?? ""),
-    queryFn: () => api.platformActivity(null, { product: "all", id }, 1),
+    ...platformReads.activityEvent(id),
     enabled: Boolean(id) && !known,
   });
   const item = known ?? fetched.data?.items[0];

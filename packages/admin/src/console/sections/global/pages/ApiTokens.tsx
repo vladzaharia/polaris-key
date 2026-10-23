@@ -14,7 +14,6 @@ import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import {
-  api,
   type AdminApiToken,
   type AdminApiTokenStatus,
 } from "../../../../api.js";
@@ -38,18 +37,15 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useBreakGlassReason, useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
 import { MintApiTokenFlow } from "../components/MintApiTokenFlow.js";
-
-export function fetchApiTokens(): Promise<AdminApiToken[]> {
-  return api.apiTokens().then((r) => r.tokens);
-}
+import { globalReads } from "../data.js";
 
 export function useApiTokens(): UseQueryResult<AdminApiToken[]> {
-  return useQuery({ queryKey: qk.apiTokens(), queryFn: fetchApiTokens });
+  return useQuery(globalReads.apiTokens());
 }
 
 /** Active, expired and revoked each read differently: the list's whole triage value. */

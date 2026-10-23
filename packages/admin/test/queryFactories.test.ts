@@ -254,26 +254,11 @@ describe("portal reads are factories", () => {
  * `queryKey` that is not a `qk.x(...)` call, or an `api.*` member access.
  */
 const KNOWN: Record<string, string[]> = {
-  // P0-.14-.19 (shell)
-  access: ["access/InviteDrawer.tsx"],
-  // P0-32.16
-  "sections/commerce": [
-    "sections/commerce/CommerceOverview.tsx",
-    "sections/commerce/CommerceTile.tsx",
-  ],
   // P0-32.17
   "sections/config": [
     "sections/config/components/MintRecipeFields.tsx",
     "sections/config/components/RemovedValues.tsx",
     "sections/config/data.ts",
-  ],
-  // P0-32.16
-  "sections/global": [
-    "sections/global/pages/ApiTokens.tsx",
-    "sections/global/pages/Home.tsx",
-    "sections/global/pages/OwnPersonalTokens.tsx",
-    "sections/global/pages/PersonalTokensRoster.tsx",
-    "sections/global/pages/ProductNew.tsx",
   ],
   // P0-32.17
   "sections/identity": [
@@ -288,26 +273,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/license/pages/LicenseConfig.tsx",
     "sections/license/pages/LicenseDelete.tsx",
     "sections/license/pages/LicenseRecord.tsx",
-  ],
-  // P0-32.16
-  "sections/notify": ["sections/notify/AlertDestinations.tsx"],
-  // P0-32.16
-  "sections/platform": [
-    "sections/platform/index.tsx",
-    "sections/platform/pages/platformActivity.tsx",
-    "sections/platform/pages/platformActivityEvent.tsx",
-    "sections/platform/pages/platformConnectionPage.tsx",
-    "sections/platform/pages/platformConnections.tsx",
-    "sections/platform/pages/platformHistory.tsx",
-    "sections/platform/pages/platformKeyring.tsx",
-    "sections/platform/pages/platformLicensing.tsx",
-    "sections/platform/pages/platformMembers.tsx",
-    "sections/platform/pages/platformReach.tsx",
-    "sections/platform/pages/platformSettingRow.tsx",
-    "sections/platform/pages/platformSettings.tsx",
-    "sections/platform/pages/platformStatus.tsx",
-    "sections/platform/pages/platformStores.tsx",
-    "sections/platform/pages/useConnectionTest.ts",
   ],
 };
 

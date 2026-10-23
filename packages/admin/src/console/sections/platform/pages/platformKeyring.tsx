@@ -7,10 +7,8 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import {
-  api,
   ApiError,
   type PlatformDeployValue,
-  type PlatformKekStatus,
   type PlatformSettingsView,
 } from "../../../../api.js";
 import { formatCount } from "../../../../lib/format.js";
@@ -18,13 +16,10 @@ import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { LegacyKeyRow, ResealProgressRow } from "./platformKeyringRows.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
 import { Section } from "../../../../ui/Section.js";
 import { SettingsRow } from "../../../templates/Settings.js";
-
-export function fetchPlatformKek(): Promise<PlatformKekStatus> {
-  return api.platformKek();
-}
 
 const KEK_GROUPS: Record<string, string> = {
   keys: "Signing keys",
@@ -43,11 +38,7 @@ export function KeyringSection({
   secrets: Map<string, boolean>;
   warning?: string;
 }): React.ReactElement {
-  const kek = useQuery({
-    queryKey: qk.platformKek(),
-    queryFn: fetchPlatformKek,
-    retry: false,
-  });
+  const kek = useQuery({ ...platformReads.kek(), retry: false });
   const k = kek.data;
   const ring = secrets.get("PLATFORM_KEK_KEYS");
   const single = secrets.get("PLATFORM_KEK");

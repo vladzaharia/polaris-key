@@ -8,7 +8,6 @@ import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type CommerceStore,
   type CommerceStoreIdentity,
   type CommerceView,
@@ -21,7 +20,7 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { ScrollTable } from "../../../ui/ScrollTable.js";
 import { useProduct } from "../../data/hooks.js";
-import { qk } from "../../data/queries.js";
+
 import {
   channelInScope,
   navFeaturesOf,
@@ -40,6 +39,7 @@ import {
   STOREFRONT_DOCS,
   SET_UP_STOREFRONT,
 } from "../core/components/serviceFeatures.js";
+import { commerceReads } from "./data.js";
 
 /** `channel` is the catalogue channel the store sells through: the scope a row needs (A-20.7). */
 const STORES: readonly {
@@ -102,10 +102,7 @@ export function CommerceOverviewPage({
   slug: string;
 }): React.ReactElement {
   const product = useProduct(slug);
-  const view = useQuery({
-    queryKey: qk.commerceView(slug),
-    queryFn: () => api.commerceView(slug),
-  });
+  const view = useQuery(commerceReads.view(slug));
   const off = product.data?.services?.commerce?.enabled === false;
   const features = navFeaturesOf(product.data);
   // The nav collapses Commerce to this one page when In-app purchases is out of scope: say "Commerce".

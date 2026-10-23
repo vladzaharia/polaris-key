@@ -8,11 +8,10 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchSettingsHistory } from "../data.js";
 import { Lock } from "lucide-react";
 import {
-  api,
   ApiError,
-  type PlatformActivityItem,
   type PlatformCursor,
   type PlatformSetting,
 } from "../../../../api.js";
@@ -221,35 +220,6 @@ function consequencesOf(
     default:
       return [`${setting.label} changes from ${before} to ${next}.`, reach];
   }
-}
-
-const SETTING_ACTIONS = new Set([
-  "platform.setting.set",
-  "platform.setting.revert",
-]);
-
-export interface HistoryPage {
-  items: PlatformActivityItem[];
-  nextCursor: PlatformCursor | null;
-}
-
-/** Pages read per fetch before showing what was found: the trail holds other actions too. */
-const HISTORY_PAGE_BUDGET = 5;
-const HISTORY_TARGET = 10;
-
-/** The settings writes of the platform trail, from `cursor` on, filtered client-side. */
-export async function fetchSettingsHistory(
-  cursor: PlatformCursor | null = null,
-): Promise<HistoryPage> {
-  const items: PlatformActivityItem[] = [];
-  let next = cursor;
-  for (let i = 0; i < HISTORY_PAGE_BUDGET; i++) {
-    const page = await api.platformActivity(next);
-    items.push(...page.items.filter((a) => SETTING_ACTIONS.has(a.action)));
-    next = page.nextCursor;
-    if (!next || items.length >= HISTORY_TARGET) break;
-  }
-  return { items, nextCursor: next };
 }
 
 // ── Row chrome ───────────────────────────────────────────────────────────────────────────────
