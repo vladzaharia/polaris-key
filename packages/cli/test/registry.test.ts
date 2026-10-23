@@ -493,6 +493,7 @@ describe("pkey doctor", () => {
         ["discovery", "ok"],
         ["services", "ok"],
         ["signing-keys", "ok"],
+        ["in-sync", "ok"],
       ]);
       expect(out.out.trim().split("\n")).toHaveLength(1);
     } finally {
