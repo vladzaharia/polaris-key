@@ -192,7 +192,7 @@ function LibraryBody({
               />
             </li>
           ))}
-          <LibraryKeyTile count={products.length} />
+          <LibraryKeyTile />
         </ul>
       </section>
     );

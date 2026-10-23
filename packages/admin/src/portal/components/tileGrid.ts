@@ -1,6 +1,6 @@
 /**
  * The Library's and Discover's tile grid (PX-35): on phones one or two columns, three from
- * 761 px, four from 1180 px, five from 1700 px. Keep in step with `keyTileSpan`.
+ * 761 px, four from 1180 px, five from 1700 px.
  *
  * The phone track is rem-based (WCAG 1.4.4): a tile is never narrower than 8.5 rem, so two
  * columns hold at 100 % text from 320 px up (the minimum is then half the row less half the gap)

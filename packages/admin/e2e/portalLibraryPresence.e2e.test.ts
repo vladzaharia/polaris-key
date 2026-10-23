@@ -83,16 +83,7 @@ function libraryRoute(
 async function geometry(page: Page) {
   return page.evaluate(() => {
     const grid = document.querySelector("section[aria-labelledby='all-h'] ul")!;
-    const g = grid.getBoundingClientRect();
     const items = [...grid.children].map((li) => li.getBoundingClientRect());
-    const rows = new Map<number, DOMRect[]>();
-    for (const r of items) {
-      const key = Math.round(r.top);
-      rows.set(key, [...(rows.get(key) ?? []), r]);
-    }
-    const last = [...rows.entries()].sort((a, b) => a[0] - b[0]).pop()![1];
-    const lastRight = Math.max(...last.map((r) => r.right));
-    const lastLeft = Math.min(...last.map((r) => r.left));
     const arts = [...grid.querySelectorAll("article > [data-art]")].map(
       (el) => {
         const a = el.getBoundingClientRect();
@@ -111,9 +102,8 @@ async function geometry(page: Page) {
       "section[aria-label='Missing a license?']",
     );
     return {
-      // PX-35: the key tile fills the rest of the products' last row (`keyTileSpan`), so the last
-      // row is never half empty; it is a whole row (one line) when the products fill theirs.
-      fullRow: lastLeft - g.left < 2 && g.right - lastRight < 2,
+      // The key tile is one grid cell, as wide as a product tile, never a band across the row.
+      oneCell: Math.abs(items.at(-1)!.width - items[0]!.width) < 2,
       arts,
       names,
       titleSize: title.fontSize,
@@ -134,7 +124,7 @@ async function geometry(page: Page) {
 /**
  * The header lockup's wordmark, in px. BR-lockups trimmed the Locker horizontal lockup to its mark
  * and wordmark (`LOCKER_TRIM`), so the wordmark is 3.7 times the lockup's height; the header draws
- * the lockup 36 px tall (40 from the desk breakpoint), see `HeaderBrand`.
+ * the lockup 33 px tall (the 180 px minimum width), see `HeaderBrand`.
  */
 async function wordmarkWidth(page: Page): Promise<number> {
   return page.evaluate(() => {
@@ -210,7 +200,7 @@ describe.concurrent("library 2-7 grid presence", () => {
               expect
                 .soft(g.strip && g.stripAfter, "Missing a license? after")
                 .toBe(true);
-              expect.soft(g.fullRow, "key tile fills the last row").toBe(true);
+              expect.soft(g.oneCell, "key tile is one cell").toBe(true);
               for (const a of g.arts) {
                 expect.soft(a.h, "art height").toBeLessThanOrEqual(280.5);
                 expect
@@ -233,7 +223,7 @@ describe.concurrent("library 2-7 grid presence", () => {
                 const wordmark = await wordmarkWidth(o.page);
                 expect
                   .soft(wordmark, "header wordmark width")
-                  .toBeCloseTo(3.7 * (size.label === "1440" ? 40 : 36), 0);
+                  .toBeCloseTo(3.7 * 33, 0);
               }
             } finally {
               await o.close();
