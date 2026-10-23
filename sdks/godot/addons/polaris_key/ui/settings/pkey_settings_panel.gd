@@ -767,6 +767,7 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 			te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 			tab_leaves(te)
 			te.focus_exited.connect(func(): _write_text(key, te.text))
+			PKeyFocusRing.attach(te)
 			ctl = te
 		"password", "text":
 			var le := LineEdit.new()
@@ -1003,14 +1004,17 @@ func _focus_chain() -> Array:
 ## Close a `closable` panel: `closed`, the focus back to the game's control that had it, and the
 ## panel freed when `open()` made it.
 func close() -> void:
-	if not closable:
+	if not closable or is_closing():
 		return
-	closed.emit()
-	restore_opener()
-	if has_meta(FREE_ON_CLOSE_META):
-		queue_free()
-	else:
-		hide()
+	close_then(func() -> void:
+		if not is_instance_valid(self):
+			return
+		closed.emit()
+		restore_opener()
+		if has_meta(FREE_ON_CLOSE_META):
+			queue_free()
+		else:
+			hide())
 
 
 func _cancel() -> bool:

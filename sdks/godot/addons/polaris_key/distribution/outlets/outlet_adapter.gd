@@ -108,6 +108,15 @@ static func is_https(url: Variant) -> bool:
 	return url is String and url.begins_with("https://") and url.length() > 8
 
 
+## Open `url` in the player's browser, only when it is https (the kit's validating opener, DL14).
+## Returns whether it was opened.
+static func open_https(url: Variant) -> bool:
+	if not is_https(url):
+		return false
+	OS.shell_open(String(url))
+	return true
+
+
 ## The first https URL among `urls`, or "".
 static func first_https(urls: Array) -> String:
 	for u in urls:

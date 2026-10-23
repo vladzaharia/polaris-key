@@ -161,6 +161,7 @@
   "update.current": "Você tem a versão {version} · download de {size}",
   "common.updateCurrentNoSize": "Você tem a versão {version}",
   "update.whatsNew": "Novidades",
+  "part.hint.select": "Selecionar",
   "update.allChanges": "Todas as mudanças da {version}",
   "update.later": "Depois",
   "update.restartWhenReady": "Reiniciar quando terminar",

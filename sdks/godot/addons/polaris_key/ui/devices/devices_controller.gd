@@ -103,6 +103,36 @@ static func this_device_key(row: Dictionary) -> String:
 	return "this_device_" + form_factor(row)
 
 
+## "This Mac" on the row the runtime knows is this device (never "This device" without knowing);
+## "Windows · last used 3 days ago" on every other.
+static func meta_text(d: Dictionary, t: PKeyUiCopy) -> String:
+	if bool(d.get("current", false)):
+		return t.text(this_device_key(d))
+	var key := platform_key(String(d.get("platform", "")))
+	var platform := t.text(key) if key != "" else ""
+	var when := when_text(d.get("lastSeenDays"), t)
+	if platform != "" and when != "":
+		return t.text("devices_meta", [platform, when])
+	return platform if platform != "" else when
+
+
+## "today", "yesterday", "3 days ago", "2 months ago", "last year": a relative time off whole days.
+static func when_text(days: Variant, t: PKeyUiCopy) -> String:
+	if not PKeyClaims.is_number(days):
+		return ""
+	var n := int(days)
+	if n <= 0:
+		return t.text("when_today")
+	if n == 1:
+		return t.text("when_yesterday")
+	if n < 45:
+		return t.text("when_days_ago", n)
+	if n < 365:
+		return t.text("when_months_ago", maxi(2, roundi(n / 30.0)))
+	var years := roundi(n / 365.0)
+	return t.text("when_last_year") if years <= 1 else t.text("when_years_ago", years)
+
+
 ## The row's copy key for its form factor's name (a screen reader reads it for the glyph).
 static func form_factor_key(row: Dictionary) -> String:
 	return "form_factor_" + form_factor(row)

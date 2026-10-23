@@ -161,6 +161,7 @@
   "update.current": "현재 버전 {version} · 다운로드 {size}",
   "common.updateCurrentNoSize": "현재 버전 {version}",
   "update.whatsNew": "새로운 기능",
+  "part.hint.select": "선택",
   "update.allChanges": "{version}의 모든 변경 사항",
   "update.later": "나중에",
   "update.restartWhenReady": "준비되면 재시작",

@@ -402,6 +402,8 @@
     <string name="common_updateCurrentNoSize">Hai la versione %1$s</string>
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Novità</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
+    <string name="part_hint_select">Seleziona</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">Tutte le modifiche della versione %1$s</string>
     <string name="update_allChanges__macos">Tutte le modifiche della versione %1$s</string>

@@ -152,8 +152,9 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## palette, Rubik, your product's accent and icon; no Polaris Key mark on the screens). `none`: the
 ## scenes follow your game's project theme and font instead.
 @export_enum("none", "polaris-key") var ui_branding := "polaris-key"
-## The Polaris Key theme's scheme when `ui_branding` is `polaris-key`: `dark` or `light`.
-@export_enum("dark", "light") var ui_brand_scheme := "dark"
+## The Polaris Key theme's scheme when `ui_branding` is `polaris-key`: `dark` (the default for a
+## game), `light`, or `system` to follow the OS live (dark where it has no preference).
+@export_enum("dark", "light", "system") var ui_brand_scheme := "dark"
 ## Your accent in the Polaris Key theme (primary button, chips, focus ring); transparent derives
 ## it from your product's icon, else ink. It is resolved for contrast on every surface.
 @export var ui_accent := Color(0, 0, 0, 0)
@@ -188,7 +189,12 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## The game's key art: the landscape identity pane's ground on Welcome and the boot screen's ground
 ## (ProductIdentity.art); null: the icon on the accent ground, as before.
 @export var ui_product_art: Texture2D = null
+## Vibrate a handheld briefly when a kit button is pressed or a dialog opens or closes. Off by default.
+@export var ui_haptics := false
 @export_group("")
+## UI sound hook: a Callable taking one StringName, `focus`, `confirm`, `open` or `close` (see
+## PKeyUiFeedback). The kit plays nothing itself; your hook plays your game's sound. Not exported.
+var ui_sound_hook: Callable = Callable()
 
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.
 var store: PKeyStore = null

@@ -37,6 +37,38 @@ Godot kit: game look, five standalone scenes, PNG baselines, UK-59 leftovers, BU
 
 - Work owned by the packages in the Depends on and Unblocks rows, and everything UK-11 already shipped.
 
+## Verified against the code (2026-10-22, tip 328e1a12e)
+
+The code is the fact. Corrections to the scope above:
+
+- **Already shipped; not slice work.** 60 px controls (`PKeyKitTokens.CONTROL_HEIGHT`, the `spacious` density default) and the scrim with its opaque page under `ui_reduce_transparency` and `ui_reduce_motion` (UK-11, DL16). KX-GD-PLAY: nodes run while the tree is paused, `PolarisKey.in_play` and `input_captured`, the shared toast host (`PKeyToast`, `toast_anchor`), What's new and All changes in the update prompt. KX-GD-ID: the live key verdict, the input hint under the key field (words only: "Enter to activate", "A to select"; no glyph), `product.wordmark` and `product.art` in the theme.
+- **Standalone scenes already exist** with scenarios, text snapshots and matrix rows: `PKeyDeviceList` (Devices), `PKeyAccountTab`, `PKeyToast`, `PKeyUpdateProgress`, `PKeyLicenseChoice`; the device limit is a state of the gate and the activation panel, and release notes are a section of `PKeyUpdatePrompt`. Still missing as scenes of their own: Paywall (copy exists, no scene), CloudSyncStatus, About, a standalone DeviceLimit, a standalone ReleaseNotes. "Five standalone scenes" is those five, not the nine named in the UK-11 scope.
+- **Not shipped before this slice:** glass card, focus glow (`FOCUS_GLOW` was unused), tweens (none), `colorScheme: system`, sound hooks, haptics, the input glyph control. Glass blur (`SCRIM_*_BLUR`, both 0 in the tokens) stays out.
+- **The 4.4.1 `sign_in / native28 / 1170x2532@3` overflow is already fixed, but the same row failed on 4.7.2 on the scrim path.** Commit 0b5782771 counts the icon's width in `_fit_label` before Godot 4.5, and `ui_matrix sign_in native28` passes on 4.4.1 (checked 2026-10-22). On 4.7.2 with `PKEY_UI_REDUCE_TRANSPARENCY=0` the row failed on the unchanged base too (the dialog's minimum 400 px on a 390 px screen: the Open browser button's minimum still counts its icon when it does not wrap, so `_fit_label` saw 246 px against a 280 px room and did not wrap). Hidden until now because the 4.7 lane runs the opaque path. Fixed in slice 1: `_icon_extent` counts the icon on every engine.
+- **PNG baselines:** `tests/ui/snapshots/` holds text snapshots only; `tools/ui_screenshots.gd` and the new `tools/ui_look_shots.gd` render PNGs but no suite compares them. The kit is not yet in ui-qa's `BASELINE_DIRS`.
+
+## Slices
+
+Each is 90 minutes or less and ends with a BUILT UX review (`pkey-ux-reviewer`, screens built and run, not mockups). Order:
+
+1. **Game look, part 1 (this slice, built).** `PKEY_UI_REDUCE_TRANSPARENCY=0/1` override (and `run_tests.sh` `PKEY_UI_MATRIX_PATHS=both`, set for the 4.7.2 lane in `ci.yml`, so the matrix runs on the scrim path and the opaque path); glass card on the scrim path (94 % dark, 96 % light until the blur ships; opaque under reduced transparency, web and `gl_compatibility`); light scrim 35 %; a ring for multi-line fields before Godot 4.6; focus glow; dialog fade-in and press scale (`PKeyUiMotion`, off under reduced motion); `ui_brand_scheme = "system"` following the OS live; sound hook and haptics (`PKeyUiFeedback`, `ui_sound_hook`, `ui_haptics`); `PKeyInputGlyphs` with the confirm swap, on the activation hint. Look shots: `tools/ui_look_shots.gd`.
+2. **Game look, part 2 (built; the hint-bar verb keys landed with it, so the warning below no longer applies). Must ship before the next Godot SDK release:** until the catalog verb keys land, the hint reads "[Enter] Enter to activate" (the glyph repeats the key name), so hide the glyph if this slice slips past a release. Step crossfade and sheet exit tween; the hint bar on the gate, update prompt and sign-in (needs catalog verb keys, `pnpm gen brand`, so the hint words stop carrying the key name); toast anchor inside 5 % title-safe verified at TV; scheme-follow test on a real OS change; BUILT UX review of slices 1 and 2 together.
+3. **PNG baselines.** The shots wait for the entry fade to finish; they must not inherit reduced motion (the loading bar would render its still variant). Promote `ui_screenshots.gd` to a compared suite: dark and light, the UI-KITS §7.1 sizes, committed lossless under `tests/ui/snapshots/`; add the kit to ui-qa's `BASELINE_DIRS`. Largest of the slices; may need two sessions if the compare tolerance across engines is not stable.
+4. **Standalone scenes, A:** Paywall and a standalone DeviceLimit on the view models, with scenarios, snapshots and matrix rows.
+5. **Standalone scenes, B:** CloudSyncStatus, About and a standalone ReleaseNotes, same shape; BUILT UX review.
+6. **UK-59 leftovers** (the Godot targets on the UK-59 boards, listed against the built screens), then the final BUILT UX pass, the full `ui_matrix` on 4.4.1 and on 4.7.2 (both paths) and `set UK-11b in-review`.
+
+## Notes from the slice 2 review
+
+- Pre-existing, not fixed here: a pad-only gate with Identity off has no primary button, because `pkey_activation_panel.gd` demotes Activate whenever a pad is in use, even when Sign in is hidden.
+- The toast's default anchor is `bottom_right`; UI-KITS §4.3 says bottom centre above the hints.
+- Settings has no hint bar yet (a pad player cannot see "B Close"); worth the next slice. The scheme-follow test on a real OS change needs a window and is not in the suite.
+- The `part.hint.select` key is the only new catalog key; "Activate" is core copy (`core.gate.needs-activation.title`) and Back is `common.back`. `part` is a shared namespace, so the key is listed under no component.
+
+## Slice 3 (built): the PNG baselines
+
+`tests/suite_ui_png.gd` draws 15 screens (sign-in on a keyboard and on a pad, the gate and its device limit, activation, offline, settings, the update modal and banner, devices, license choice, account, Paywall, DeviceLimit, boot consent), dark and light, at 1280x720 and 750x1334 (2x), and compares them with the 58 lossless PNGs in `tests/ui/snapshots/png/` (`<screen>-<tv|phone>-<theme>.png`; the dir has a `.gdignore` so Godot does not import them). It needs a renderer, so it runs windowed (`PKEY_TEST_PNG=1 tools/run_tests.sh`, or `--pkey-test ui_png [update]`) and skips itself headless. The shots wait for the entry fade, force reduced motion off and the scrim path (`PKeyUiTheme.reduce_transparency_override`), so they are the same on both presentation paths. **Recorded on macOS arm64, Godot 4.7.2; CI's Linux jobs are headless and do not compare.** Linux baselines (and a display or software GL in the job) are needed before CI can: that is the open item. Tolerance: 0.4 % of pixels on 4.7, 8 % on another engine (4.4.1 measured 5.8 % at worst, text and edges); 4.7.2 measures 0.000 % on both paths. Not covered: every components.json state (one state per component), other sizes and locales.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -44,12 +76,16 @@ Godot kit: game look, five standalone scenes, PNG baselines, UK-59 leftovers, BU
 
 ## Acceptance criteria
 
-- [ ] Game look: glass sheet, glyphs, tweens, system scheme, sound/haptics, 60 px TV targets
-- [ ] Five standalone scenes
-- [ ] PNG baselines committed
-- [ ] The Godot 4.4.1 `sign_in / native28` 1170x2532 overflow is fixed
-- [ ] UK-59 leftovers closed; `pkey-ux-reviewer` passes the built screens (BUILT mode)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Game look: glass sheet, glyphs, tweens, system scheme, sound/haptics, 60 px TV targets (slices 1 and 2; BUILT UX reviewed and fixed, re-review passed for slice 1, slice 2 fixes not re-reviewed)
+- [x] Five standalone scenes: Paywall and DeviceLimit (slice 4), CloudSyncStatus, About and ReleaseNotes (slice 5). Not BUILT-UX reviewed yet.
+- [x] PNG baselines committed (58, recorded on macOS arm64 with 4.7.2; CI's Linux jobs are headless and do not compare, see "Slice 3")
+- [x] The Godot 4.4.1 `sign_in / native28` 1170x2532 overflow is fixed (0b5782771 on 4.4.1, and the 4.7.2 scrim-path case in slice 1)
+- [ ] UK-59 leftovers closed; `pkey-ux-reviewer` passes the built screens (BUILT mode): the kit-side Godot items are met (below), the BUILT UX pass of slices 3 to 5 is still to run
+- [ ] The green gate passes (`AGENTS.md`): the Godot suites, the full `ui_matrix` (4.4.1, and 4.7.2 on both paths), kit-lint and the brand and ui-core tests were run per slice; `pnpm test` and the rest of the JS gate were not run here (owner direction: scoped checks)
+
+## UK-59 leftovers, the Godot kit side (slice 6)
+
+The UK-59 Godot items are board redraws (two labelled tiers per frame, host-owns-pause note, DL7 loading, QR only on pad-only screens and offline request codes); the kit already behaves as they say: the QR code shows only on pad-only screens and the offline request (`PKeySignInDialog._qr_wanted`, the ui_matrix QR rules), the kit never pauses the tree (KX-GD-PLAY, `input_captured`), and loading is the 250 ms DL7 bar (`loading_bar`). The boards themselves are UK-59's.
 
 ## Verify
 

@@ -161,6 +161,7 @@
   "update.current": "You have {version} · {size} download",
   "common.updateCurrentNoSize": "You have {version}",
   "update.whatsNew": "What's new",
+  "part.hint.select": "Select",
   "update.allChanges": "All changes in {version}",
   "update.later": "Later",
   "update.restartWhenReady": "Restart when ready",

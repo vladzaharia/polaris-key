@@ -188,6 +188,7 @@ func _render() -> void:
 	show_text(_title, t.text("account_title") if show_title and not nested else "")
 	show_text(_notice, t.text("account_offline") if state == "offline" else "")
 	_list.visible = state != "loading"
+	fx_error("sync_error" if cloud_sync == "error" else "")
 	var sig := JSON.stringify([state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options, channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note, PKeyUiTheme.powered_by, mask_email, pad_only()])
 	if sig != _signature and state != "loading":
 		_signature = sig

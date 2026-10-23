@@ -83,8 +83,6 @@ const DEFAULTS := {
 	"key_cut_short": "This key is cut short: after %s it has %d of %d characters.",
 	"activation_verdict": "{product} %s",
 	"activation_verdict_devices": "{product} %s · %d devices",
-	"hint_keyboard": "Enter to activate",
-	"hint_pad": "A to select",
 	"activation_key_empty": "Enter a license key first.",
 	"activation_device_limit": "This license has reached its device limit.",
 	"activation_device_limit_count": "This license has reached its device limit (%s of %s devices).",

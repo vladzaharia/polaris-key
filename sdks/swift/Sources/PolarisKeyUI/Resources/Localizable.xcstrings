@@ -43621,6 +43621,66 @@
         }
       }
     },
+    "part.hint.select": {
+      "comment": "Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auswählen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionner"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecionar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择"
+          }
+        }
+      }
+    },
     "part.keyField.cutShort": {
       "comment": "Inline error when a pasted key is missing its end. {used} and {limit} count characters here, not devices. Arguments: {prefix} = the start of a license key, such as pkey_tidewater_; {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=prefix, 2=used, 3=limit.",
       "extractionState": "manual",

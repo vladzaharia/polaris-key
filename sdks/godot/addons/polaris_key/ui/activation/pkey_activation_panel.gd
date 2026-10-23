@@ -101,7 +101,7 @@ var _submit: Button
 var _msg_key: Label
 ## The live verdict under the field ("Key for <Product>"), and the input hint beside it.
 var _verdict: Label
-var _hint: Label
+var _hint_bar: PKeyHintBar
 ## The kind of the last input: keyboard, pad or touch (&"" before any; a mouse leaves the hint off).
 var _input_kind: StringName = &""
 var _sign_in_block: VBoxContainer
@@ -197,7 +197,8 @@ func _build() -> void:
 	_submit = button(row, "Activate", _on_submit, "PKeyPrimary")
 	_msg_key = label(_key_field, "Message")
 	_verdict = label(_key_field, "Verdict", "PKeyMuted")
-	_hint = label(_key_field, "Hint", "PKeyMuted")
+	# The hint: the glyph of the confirm control of the last input device, then its words.
+	_hint_bar = hint_bar(_key_field, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": {"keyboard": "core.gate.needs-activation.title", "pad": "part.hint.select"}}])
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
@@ -483,8 +484,8 @@ func _render() -> void:
 	# The verdict follows the text as it is typed, and holds back while an error or an answer shows.
 	var v := PKeyActivationController.key_verdict(_key.text) if message == "" and not busy else {}
 	show_text(_verdict, t.text(v["copy"], v["args"]) if not v.is_empty() else "")
-	var hint_key := PKeyActivationController.input_hint(input_kind())
-	show_text(_hint, t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else "")
+	_hint_bar.follow(input_kind())
+	_hint_bar.enabled = caps["key_entry"] and mode == "main"
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
 	_sign_in.text = t.text("sign_in")
@@ -507,6 +508,7 @@ func _render() -> void:
 			slots[k].remove_meta(DATA_META)
 		(slots[k] as Label).theme_type_variation = &"PKeyMuted" if message_ok or not message_danger else &"PKeyError"
 	_key.theme_type_variation = &"PKeyFieldError" if message != "" and not message_ok and message_danger and message_slot == "key" else &""
+	fx_error(message if message != "" and not message_ok and message_danger else "")
 	_render_limit(t)
 
 

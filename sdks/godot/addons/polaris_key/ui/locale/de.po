@@ -1089,6 +1089,11 @@ msgstr "Sie haben {version}"
 msgid "update.whatsNew"
 msgstr "Neuerungen"
 
+#. Select
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
+msgid "part.hint.select"
+msgstr "Auswählen"
+
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
 msgid "update.allChanges"

@@ -113,7 +113,11 @@ func _build() -> void:
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
 	_dismiss = button(_actions, "Dismiss", _on_dismiss)
+	_hint_bar = hint_bar(_card, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "update.later"}])
 	minimum_size_changed.connect(_queue_fit)
+
+
+var _hint_bar: PKeyHintBar
 
 
 func _floats() -> bool:
@@ -171,6 +175,7 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
+	_hint_bar.enabled = _covering
 	var row := _row()
 	set_columns(_card, row)
 	# In a row the actions sit at the end on one line; stacked, they lead under the words.
@@ -565,13 +570,15 @@ func _on_action() -> void:
 
 
 func _on_dismiss() -> void:
-	if model.get("locked", false):
+	if model.get("locked", false) or is_closing():
 		return
-	is_dismissed = true
-	refresh_view()
-	dismissed.emit()
-	# Back to the control (the game's own) that had focus when the modal opened.
-	restore_opener()
+	# The modal fades out first; a banner goes at once.
+	close_then(func() -> void:
+		is_dismissed = true
+		refresh_view()
+		dismissed.emit()
+		# Back to the control (the game's own) that had focus when the modal opened.
+		restore_opener())
 
 
 func _cancel() -> bool:
