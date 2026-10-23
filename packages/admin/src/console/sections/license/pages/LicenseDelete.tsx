@@ -16,7 +16,6 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  api,
   ApiError,
   type LicenseBulkDeleteResult,
   type LicenseCleanupCandidate,
@@ -25,6 +24,7 @@ import {
   type LicenseSummary,
 } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
+import { licenseCleanupQuery } from "../data.js";
 import { qk } from "../../../data/queries.js";
 import { r } from "../../../routes.js";
 import { navigate } from "../../../router.js";
@@ -258,11 +258,7 @@ export function BulkDeleteDialog({
 // ── the cleanup helper ───────────────────────────────────────────────────────────────────────
 
 export function useLicenseCleanup(slug: string, enabled: boolean) {
-  return useQuery({
-    queryKey: qk.licenseCleanup(slug),
-    queryFn: () => api.licenseCleanupCandidates(slug),
-    enabled,
-  });
+  return useQuery({ ...licenseCleanupQuery(slug), enabled });
 }
 
 /**

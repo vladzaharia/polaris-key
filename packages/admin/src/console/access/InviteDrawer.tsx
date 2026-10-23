@@ -18,7 +18,6 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Fingerprint } from "lucide-react";
 import {
-  api,
   ApiError,
   type AreaId,
   type InviteResult,
@@ -43,7 +42,7 @@ import { Drawer, DrawerBody } from "../../ui/Drawer.js";
 import { toast } from "../../ui/toast.js";
 import { startStepUp } from "../../lib/stepUp.js";
 import { formatRelative } from "../../lib/format.js";
-import { qk } from "../data/queries.js";
+
 import { mutate } from "../data/mutations.js";
 import {
   cannotEditAreas,
@@ -77,6 +76,7 @@ import {
   type ProductName,
 } from "./InviteDrawerParts.js";
 import { RoleSet } from "./RoleTag.js";
+import { reads } from "../data/reads.js";
 
 /** The one stash key: only one drawer is open at a time. */
 export const DRAWER_KEY = "members:drawer";
@@ -271,8 +271,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
 
   // Email on or off (a refused or failed read counts as on: the Worker says when a link is needed).
   const ops = useQuery({
-    queryKey: qk.platformOperations(),
-    queryFn: () => api.platformOperations(),
+    ...reads.platformOperations(),
     enabled: open,
     retry: false,
     staleTime: 60_000,

@@ -5,7 +5,6 @@
  */
 
 import * as React from "react";
-import { api, type PlatformDeployment } from "../../../api.js";
 import { PlatformActivityRoute } from "./pages/platformActivity.js";
 import { PlatformMembers } from "./pages/platformMembers.js";
 import { PlatformStatus } from "./pages/platformStatus.js";
@@ -16,14 +15,6 @@ import type { GlobalPageId } from "../../nav.js";
 import type { Route } from "../../routes.js";
 import { FeedsArea } from "../feeds/pages/FeedsArea.js";
 import { PLATFORM_SCOPE } from "../feeds/model/model.js";
-
-export function fetchPlatformDeployment(): Promise<PlatformDeployment> {
-  return api.platformDeployment();
-}
-
-export function fetchPlatformActivity() {
-  return api.platformActivity();
-}
 
 /** The section's page for a route. A page that is not built redirects before here. */
 export default function PlatformPages({

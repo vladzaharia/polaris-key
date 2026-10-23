@@ -18,14 +18,14 @@ import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type FingerprintMode,
   type FingerprintPolicyDto,
   type FingerprintProbeDto,
 } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { fingerprintPolicyQuery } from "../data.js";
+import { coreBReads } from "../../core/data.js";
 import { r } from "../../../routes.js";
 import { Link } from "../../../router.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -113,10 +113,7 @@ export function policyPatch(mode: FingerprintMode): {
 }
 
 export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
-  const policyQ = useQuery({
-    queryKey: qk.fingerprintPolicy(slug),
-    queryFn: () => api.fingerprintPolicy(slug),
-  });
+  const policyQ = useQuery(fingerprintPolicyQuery(slug));
   return (
     <SettingsTemplate
       header={
@@ -207,10 +204,7 @@ function ProbesShell({
 }
 
 function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
-  const servicesQ = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
+  const servicesQ = useQuery(coreBReads.services(slug));
   const data = servicesQ.data;
   const label = (v: string) => REGISTRATION_LABELS[v] ?? v;
   return (

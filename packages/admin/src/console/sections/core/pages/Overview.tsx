@@ -19,9 +19,9 @@
 import {
   deviceSummaryQuery,
   integrationQuery,
-  licensesQuery,
   coreBReads,
 } from "../data.js";
+import { licensesQuery } from "../../license/data.js";
 import { catalogQuery, profilesQuery } from "../../config/data.js";
 import { releaseStoreQuery } from "../../release/data.js";
 import { storefrontsQuery } from "../../storefronts/data.js";

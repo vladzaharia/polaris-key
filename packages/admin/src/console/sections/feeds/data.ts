@@ -1,5 +1,5 @@
 /**
- * The Feeds area's queries (F-11). One fetcher per key family (`test/queryKeyShapes.test.ts`),
+ * The Feeds area's queries (F-11). One fetcher per key family (`test/queryFactories.test.ts`),
  * keyed by scope so the platform's and a product's views of one feed are separate entries; the
  * write table (`data/mutations.ts`) invalidates both.
  */

@@ -68,6 +68,10 @@ export function fetchDevice(
   return api.productDevice(slug, deviceId);
 }
 
+export function fetchPlatformConnections() {
+  return api.platformConnections();
+}
+
 export const reads = {
   me: () => queryOptions({ queryKey: qk.me(), queryFn: fetchMe }),
   products: () =>
@@ -145,5 +149,17 @@ export const reads = {
     queryOptions({
       queryKey: qk.settingsDrift(slug),
       queryFn: () => api.settingsDrift(slug),
+    }),
+  /** The operations probes (Platform status, the invite drawer's email probe). */
+  platformOperations: () =>
+    queryOptions({
+      queryKey: qk.platformOperations(),
+      queryFn: () => api.platformOperations(),
+    }),
+  /** The sign-in connections (Platform connections, the identity sign-in sections). */
+  platformConnections: () =>
+    queryOptions({
+      queryKey: qk.platformConnections(),
+      queryFn: fetchPlatformConnections,
     }),
 };

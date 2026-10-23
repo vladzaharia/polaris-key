@@ -15,7 +15,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { api, type AdminPersonalToken } from "../../../../api.js";
+import { type AdminPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
@@ -50,11 +50,11 @@ import {
   revokeCopy,
   scopeName,
 } from "./personalTokenParts.js";
+import { globalReads } from "../data.js";
 
 export function usePersonalTokens(): UseQueryResult<AdminPersonalToken[]> {
   return useQuery({
-    queryKey: qk.personalTokens(),
-    queryFn: () => api.personalTokens().then((r) => r.tokens),
+    ...globalReads.personalTokens(),
   });
 }
 

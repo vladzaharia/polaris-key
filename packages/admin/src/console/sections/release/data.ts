@@ -1,6 +1,6 @@
 /**
  * The Release section's queries (ADMIN.md §6.3). One fetcher per key family: the
- * `queryKeyShapes` guard compares every reader of a family by source text, so every Release page
+ * `queryFactories` guard compares every reader of a family by source text, so every Release page
  * reads through these hooks rather than writing its own `queryFn`.
  *
  * Writes go through `mutate()` (`console/data/mutations.ts`), whose table invalidates these keys:
