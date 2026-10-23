@@ -10,19 +10,17 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   api,
   type ConnectorsResponse,
-  type DeliverablesResponse,
   type DeliveryAccess,
   type DistributionKeysResponse,
   type DistributionMatrix,
   type OutletCredentialsResponse,
   type OutletsResponse,
-  type ReleaseStoreResponse,
   type RolloutsResponse,
   type UpdateHealthResponse,
   type UpdateSettings,
 } from "../../../api.js";
-import type { ProductCatalog } from "@polaris-key/catalog";
 import { qk } from "../../data/queries.js";
+import { deliveryAccessQuery } from "../release/data.js";
 import { navigate } from "../../router.js";
 import { codecs, type QueryCodec } from "../../routes.js";
 
@@ -124,10 +122,7 @@ export function useHealth(
 }
 
 export function useAccess(slug: string): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-  });
+  return useQuery(deliveryAccessQuery(slug));
 }
 
 export function useCredentials(
@@ -191,38 +186,6 @@ export function useConnectorRead<T>(
     queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
     enabled: opts.enabled ?? true,
     refetchInterval: opts.poll ?? false,
-  });
-}
-
-/** Release's deliverables (the same fetcher as the Release pages). */
-export function useDeliverables(
-  slug: string,
-): UseQueryResult<DeliverablesResponse> {
-  return useQuery({
-    queryKey: qk.deliverables(slug),
-    queryFn: () => api.deliverables(slug),
-  });
-}
-
-/** Release's store: releases and channel pointers (the same fetcher as the Release pages). */
-export function useReleaseStore(
-  slug: string,
-): UseQueryResult<ReleaseStoreResponse> {
-  return useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
-}
-
-/** The config catalog (the same fetcher as the Config pages): the pack gates' flags. */
-export function useCatalog(
-  slug: string,
-  enabled = true,
-): UseQueryResult<ProductCatalog> {
-  return useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-    enabled,
   });
 }
 

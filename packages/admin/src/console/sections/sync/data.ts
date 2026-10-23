@@ -10,6 +10,7 @@ import {
 } from "@polaris-key/catalog";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { qk } from "../../data/queries.js";
+import { reads } from "../../data/reads.js";
 import {
   api,
   ApiError,
@@ -69,11 +70,7 @@ export function useProductCeilingSetting(
   slug: string,
 ): UseQueryResult<{ settings: ProductSetting[] }> {
   const area = CEILING_AREA;
-  return useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-    retry: false,
-  });
+  return useQuery({ ...reads.productSettings(slug, area), retry: false });
 }
 
 /**

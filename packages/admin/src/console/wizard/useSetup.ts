@@ -10,12 +10,12 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "../../api.js";
+import { ApiError } from "../../api.js";
 import { errorCopy } from "../../lib/errorCopy.js";
 import { toast } from "../../ui/toast.js";
 import { useMe } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
-import { qk } from "../data/queries.js";
+import { reads } from "../data/reads.js";
 import { useWriteGate } from "../access/useCan.js";
 import {
   edit,
@@ -54,10 +54,7 @@ const isConflict = (e: unknown): boolean =>
 export function useSetup(slug: string): UseSetup {
   const area = SETUP_AREA;
   const queryClient = useQueryClient();
-  const q = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const q = useQuery(reads.productSettings(slug, area));
   const me = useMe().data;
   const gate = useWriteGate("core", slug);
   const [saving, setSaving] = React.useState(false);
@@ -81,8 +78,7 @@ export function useSetup(slug: string): UseSetup {
         if (!isConflict(e)) throw e;
         // Someone saved first: apply this edit to what they saved, once.
         const fresh = await queryClient.fetchQuery({
-          queryKey: qk.productSettings(slug, area),
-          queryFn: () => api.productSettings(slug, area),
+          ...reads.productSettings(slug, area),
           staleTime: 0,
         });
         const now = fresh.settings?.find((s) => s.key === SETUP_KEY);

@@ -8,7 +8,11 @@
  * under it) and `distribution.matrix.*` (the overlay lives under it).
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type CompatResponse,
@@ -32,13 +36,16 @@ export const COMPAT_PAGE = 10;
 export const MATRIX_WINDOW = 50;
 
 /** The release truth store: releases, the sync's channel map and the rollback floors. */
-export function useReleaseStore(
-  slug: string,
-): UseQueryResult<ReleaseStoreResponse> {
-  return useQuery({
+export const releaseStoreQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.releases(slug),
     queryFn: () => api.releases(slug),
   });
+
+export function useReleaseStore(
+  slug: string,
+): UseQueryResult<ReleaseStoreResponse> {
+  return useQuery(releaseStoreQuery(slug));
 }
 
 /** Every deliverable's channels: policy, source and per-platform resolution. */
@@ -60,13 +67,16 @@ export function useReleaseHealth(slug: string): UseQueryResult<ReleaseHealth> {
 }
 
 /** The app and every pack, with declaration, gate and latest release. */
-export function useDeliverables(
-  slug: string,
-): UseQueryResult<DeliverablesResponse> {
-  return useQuery({
+export const deliverablesQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.deliverables(slug),
     queryFn: () => api.deliverables(slug),
   });
+
+export function useDeliverables(
+  slug: string,
+): UseQueryResult<DeliverablesResponse> {
+  return useQuery(deliverablesQuery(slug));
 }
 
 /** One pack's releases, newest first, each with the app releases that pin it. */
@@ -138,15 +148,17 @@ export function useMatrixOverlay(
 }
 
 /** Delivery access per deliverable (Distribution's `dist_access`). */
+export const deliveryAccessQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.access(slug),
+    queryFn: () => api.deliveryAccess(slug),
+  });
+
 export function useDeliveryAccess(
   slug: string,
   enabled: boolean,
 ): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-    enabled,
-  });
+  return useQuery({ ...deliveryAccessQuery(slug), enabled });
 }
 
 /** The simulator inputs as one stable key string (sorted, blanks dropped). */

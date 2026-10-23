@@ -29,11 +29,8 @@ import {
 import { OrderedMultiSelect } from "../../../../ui/OrderedMultiSelect.js";
 import { toast } from "../../../../ui/toast.js";
 import { InlineFailure } from "../components/InlineFailure.js";
-import {
-  MAX_OFFLINE_DAYS,
-  MIN_OFFLINE_DAYS,
-  useProfiles,
-} from "../components/shared.js";
+import { MAX_OFFLINE_DAYS, MIN_OFFLINE_DAYS } from "../components/shared.js";
+import { useProfiles } from "../../config/data.js";
 
 export interface TermsValues {
   [key: string]: unknown;
