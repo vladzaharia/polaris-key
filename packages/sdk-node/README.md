@@ -142,7 +142,7 @@ const client = await PolarisKeyClient.create({
   store: new SafeStorageStore("djdl", app.getPath("userData"), { safeStorage }),
 });
 // Without `allowSender` the bridge answers the top frame of the app's own origin only
-// (set `appOrigin` when the window loads a remote https page). release.fetch writes only under
+// (set `appOrigin` for a remote https page; a custom scheme is pinned by scheme and host, `file:` is refused). release.fetch writes only under
 // this host-owned directory; renderers pass a relative filename, never an absolute path.
 exposePolarisBridge(client, {
   ipcMain,
