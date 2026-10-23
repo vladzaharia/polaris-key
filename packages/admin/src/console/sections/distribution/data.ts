@@ -20,6 +20,7 @@ import {
   type UpdateSettings,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
+import { deliveryAccessQuery } from "../release/data.js";
 import { navigate } from "../../router.js";
 import { codecs, type QueryCodec } from "../../routes.js";
 
@@ -121,10 +122,7 @@ export function useHealth(
 }
 
 export function useAccess(slug: string): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-  });
+  return useQuery(deliveryAccessQuery(slug));
 }
 
 export function useCredentials(

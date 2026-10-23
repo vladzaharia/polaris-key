@@ -148,15 +148,17 @@ export function useMatrixOverlay(
 }
 
 /** Delivery access per deliverable (Distribution's `dist_access`). */
+export const deliveryAccessQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.access(slug),
+    queryFn: () => api.deliveryAccess(slug),
+  });
+
 export function useDeliveryAccess(
   slug: string,
   enabled: boolean,
 ): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-    enabled,
-  });
+  return useQuery({ ...deliveryAccessQuery(slug), enabled });
 }
 
 /** The simulator inputs as one stable key string (sorted, blanks dropped). */
