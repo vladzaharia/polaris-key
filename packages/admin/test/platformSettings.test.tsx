@@ -189,6 +189,30 @@ function reservedDisplayNames(over: Setting = {}): Setting {
   };
 }
 
+function reservedTerms(over: Setting = {}): Setting {
+  return {
+    key: "identity.reservedDisplayTerms",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    kind: "list",
+    max: 64,
+    maxLength: 64,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: [],
+    deployValue: null,
+    value: [],
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { change: "L1" },
+    ...over,
+  };
+}
+
 const RESERVED = {
   mode: "warn",
   keys: [
@@ -586,6 +610,42 @@ describe("Reserved display names (PX-W13)", () => {
     ).toBe("true");
     const jobs = await section("Jobs");
     expect(within(jobs).queryByText("Reserved display names")).toBeNull();
+  });
+});
+
+describe("Extra reserved display terms (PX-W13c)", () => {
+  it("adds a term: one per line, a draft until Save, then L1 and the whole list is written", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => reservedTerms({ value: ["Acme"], version: 1 }),
+          () => ({
+            ...view(),
+            settings: [...view().settings, reservedTerms()],
+          }),
+        ),
+      }),
+    });
+    const identity = await section("Sign-in");
+    const field = within(identity).getByLabelText(
+      "Extra reserved display terms",
+    );
+    await userEvent.type(field, "Acme{Enter}  {Enter}Zephyr");
+    const bar = await within(identity).findByRole("region", {
+      name: "Unsaved changes in Extra reserved display terms",
+    });
+    expect(within(identity).getByText("was None")).toBeTruthy();
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/none can be removed/)).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Save|Change/ }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toMatchObject({
+      value: ["Acme", "Zephyr"],
+      expectedVersion: 0,
+    });
   });
 });
 

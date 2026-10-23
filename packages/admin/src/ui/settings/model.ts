@@ -118,6 +118,8 @@ export function formatSettingValue(
     return `${formatCount(n)} ${unit}`;
   }
   if (spec.kind === "enum") return map?.[String(value)] ?? String(value);
+  if (spec.kind === "list" && Array.isArray(value))
+    return value.length === 0 ? "None" : value.join(", ");
   return JSON.stringify(value);
 }
 
@@ -144,6 +146,10 @@ export function fieldUnit(spec: SettingSpec): string | undefined {
 
 /** The message a draft fails with, or `null` when it can be saved. */
 export function draftError(spec: SettingSpec, draft: unknown): string | null {
+  if (spec.kind === "list")
+    return Array.isArray(draft) && draft.length > spec.max
+      ? `Use ${spec.max} or fewer.`
+      : null;
   if (spec.kind !== "integer") return null;
   if (typeof draft !== "number" || Number.isNaN(draft)) return "Enter a value.";
   const min = toField(spec, spec.min);

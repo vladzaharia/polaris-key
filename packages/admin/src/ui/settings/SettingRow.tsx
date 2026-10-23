@@ -3,6 +3,7 @@ import { formatCount } from "../../lib/format.js";
 import { Lock } from "lucide-react";
 import { Button } from "../Button.js";
 import { RowRevertContext } from "../SourceBadge.js";
+import { ListField } from "./ListField.js";
 import { NumberInput } from "../NumberInput.js";
 import { SegmentedControl } from "../SegmentedControl.js";
 import { Select } from "../Select.js";
@@ -283,6 +284,24 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
               `${formatCount(min)} to ${formatCount(max)}${unit ? ` ${unit}` : ""}.`}
           </p>
         )}
+      </div>
+    );
+  } else if (spec.kind === "list") {
+    control = (
+      <div className="w-full text-start sm:w-80">
+        <ListField
+          id={id}
+          label={label}
+          value={Array.isArray(w.draft) ? (w.draft as string[]) : []}
+          onChange={(next) => w.setDraft(next)}
+          disabled={off}
+          readOnly={frozen}
+          describedBy={hintId}
+          invalid={w.error && !w.conflict ? true : undefined}
+        />
+        <p id={hintId} className="mt-1 text-xs text-fg-muted">
+          {bounds ?? `Up to ${spec.max}, one per line.`}
+        </p>
       </div>
     );
   } else control = <code className="font-mono text-xs">{fmt(value)}</code>;

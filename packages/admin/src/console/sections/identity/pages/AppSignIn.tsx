@@ -55,6 +55,21 @@ const TIER_SYNC_COPY = {
   },
 };
 
+const APPROVAL_KEY = "identity.displayNameApproved";
+const APPROVAL_COPY = {
+  [APPROVAL_KEY]: {
+    consequences: (to: unknown) =>
+      to === true
+        ? [
+            "Every name this product uses may match a reserved term. The sign-in card shows the name, not the product slug.",
+            "It covers this product only.",
+          ]
+        : [
+            "A name that matches a reserved term is flagged again, and the sign-in card shows the product slug.",
+          ],
+  },
+};
+
 const LIMIT_KEY = "identity.keyEntry.limit";
 const TIER_AREA = "identity.signIn";
 const TIER_KEY = "identity.oidc.syncTierOnSignIn";
@@ -329,6 +344,14 @@ function PageBody({
               copy={TIER_SYNC_COPY}
             />
           </div>
+          <ProductSettingsSection
+            slug={slug}
+            area={TIER_AREA}
+            keys={[APPROVAL_KEY]}
+            id="display-name"
+            title="Display name"
+            copy={APPROVAL_COPY}
+          />
           <TermsSection slug={slug} name={name} />
           <LicenseKeysSection
             slug={slug}

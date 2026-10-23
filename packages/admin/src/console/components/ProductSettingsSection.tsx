@@ -211,9 +211,12 @@ function ProductSettingRow({
   onConflict: () => void;
 }): React.ReactElement {
   // A member without edit on the setting's area reads it; a 403 after typing a reason is too late.
-  const write = useWriteGate(s.rbacArea ?? "settings", slug);
+  const write = useWriteGate(
+    s.platformOnly ? "platform" : (s.rbacArea ?? "settings"),
+    s.platformOnly ? null : slug,
+  );
   const readOnly =
-    s.rbacArea === undefined || write.allowed
+    (s.rbacArea === undefined && !s.platformOnly) || write.allowed
       ? undefined
       : (write.disabledReason ?? "You can't edit this.");
   const undo = (written: ProductSetting) => {

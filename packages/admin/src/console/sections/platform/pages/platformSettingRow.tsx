@@ -47,6 +47,12 @@ export function specOf(s: PlatformSetting): SettingSpec {
   if (s.kind === "switch") return { kind: "switch" };
   if (s.kind === "choice")
     return { kind: "enum", values: s.options.map((o) => o.value) };
+  if (s.kind === "list")
+    return {
+      kind: "list",
+      of: { kind: "string", maxLength: s.maxLength },
+      max: s.max,
+    };
   // The hosted-asset quotas are gigabytes of images and mirrored files, not megabytes.
   const gib = s.unit === "bytes" && s.key.startsWith("assets.quota.");
   return {
@@ -62,6 +68,7 @@ export function specOf(s: PlatformSetting): SettingSpec {
 export function confirmOf(s: PlatformSetting): SettingConfirm {
   if (s.kind === "switch") return s.confirm;
   if (s.kind === "choice") return { byValue: s.confirm };
+  if (s.kind === "list") return s.confirm;
   return { up: s.confirm.raise, down: s.confirm.lower };
 }
 
@@ -91,6 +98,7 @@ export function isConflict(error: unknown): boolean {
 function parsedDeployValue(
   setting: PlatformSetting,
 ): string | number | undefined {
+  if (setting.kind === "list") return undefined;
   const raw = setting.deployValue?.trim();
   if (!raw) return undefined;
   if (setting.kind === "switch") {
@@ -107,7 +115,7 @@ function parsedDeployValue(
 
 /** What a revert leaves in effect, and where it comes from. */
 export function afterRevert(setting: PlatformSetting): {
-  value: string | number;
+  value: string | number | string[];
   from: "deploy" | "default";
 } {
   const deploy = parsedDeployValue(setting);
@@ -119,7 +127,7 @@ export function afterRevert(setting: PlatformSetting): {
 /** What a change does, one effect per line, for its confirmation. */
 function consequencesOf(
   setting: PlatformSetting,
-  after: string | number,
+  after: string | number | string[],
   propagationSeconds: number,
 ): string[] {
   const before = formatPlatformValue(setting, setting.value);
@@ -129,6 +137,12 @@ function consequencesOf(
       ? `Takes effect within ${propagationSeconds} seconds in both Worker scripts.`
       : `Takes effect within ${propagationSeconds} seconds.`;
   switch (setting.key) {
+    case "identity.reservedDisplayTerms":
+      return [
+        "A name that uses a listed term is reserved like a built-in one: a warning, or refused when reserved display names is set to Refuse.",
+        "Terms only add to the built-in list; none can be removed from it.",
+        reach,
+      ];
     case "LAZY_DELTAS":
       return after === "on"
         ? [
@@ -403,7 +417,7 @@ export function EditableRow({
     const restore =
       prev.stored && prev.stored.valid
         ? mutate("patchPlatformSetting", prev.key, {
-            value: prev.stored.value as string | number,
+            value: prev.stored.value as string | number | string[],
             expectedVersion: written.version,
           })
         : mutate("revertPlatformSetting", prev.key, written.version);
@@ -431,7 +445,11 @@ export function EditableRow({
       labels={labelsOf(setting)}
       value={setting.value}
       version={setting.version}
-      commit={setting.kind === "integer" ? "explicit" : "immediate"}
+      commit={
+        setting.kind === "integer" || setting.kind === "list"
+          ? "explicit"
+          : "immediate"
+      }
       source={<SettingSource setting={setting} />}
       disabled={!storeAvailable}
       locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
@@ -442,15 +460,17 @@ export function EditableRow({
           : undefined
       }
       bounds={
-        setting.kind === "integer"
-          ? bytes
-            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
-                setting.key === "LAZY_DELTA_MAX_BYTES"
-                  ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
-                  : ""
-              }`
-            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
-          : undefined
+        setting.kind === "list"
+          ? `Up to ${setting.max} terms, one per line. They add to the built-in list.`
+          : setting.kind === "integer"
+            ? bytes
+              ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
+                  setting.key === "LAZY_DELTA_MAX_BYTES"
+                    ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
+                    : ""
+                }`
+              : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
+            : undefined
       }
       reloadedBy={
         stored ? (
@@ -483,11 +503,15 @@ export function EditableRow({
         setting.key === "identity.keyEntry.limit" ? "per license" : undefined
       }
       consequences={(to) =>
-        consequencesOf(setting, to as string | number, propagationSeconds)
+        consequencesOf(
+          setting,
+          to as string | number | string[],
+          propagationSeconds,
+        )
       }
       save={(value, ctx) =>
         mutate("patchPlatformSetting", setting.key, {
-          value: value as string | number,
+          value: value as string | number | string[],
           expectedVersion: ctx.expectedVersion,
           ...(LEVEL_RANK[ctx.level] >= 2 ? { confirm: setting.key } : {}),
         })
