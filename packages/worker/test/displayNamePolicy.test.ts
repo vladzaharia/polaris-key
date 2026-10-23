@@ -227,6 +227,33 @@ describe("an approved product", () => {
     expect(refused.ok).toBe(false);
     expect((await displayCheckOptions(env, db, ACME)).approved).toBe(false);
 
+    // PX-W13c: nor can the product's own admin, with every area: only the platform's admins.
+    const own = await writeSetting(
+      ctx(),
+      {
+        key: "identity.displayNameApproved",
+        value: true,
+        expectedVersion: 0,
+        reason: "x",
+      },
+      wopts({
+        product: ACME,
+        principal: {
+          memberId: "m-own",
+          grants: [
+            {
+              role: "product_admin",
+              scope: `product:${ACME}`,
+              areas: null,
+              source: "grant",
+            },
+          ],
+        },
+      }),
+    );
+    expect(own).toMatchObject({ ok: false, status: 403, reason: "no_access" });
+    expect((await displayCheckOptions(env, db, ACME)).approved).toBe(false);
+
     await approve(ACME);
     const audit = await db.all<{ action: string; setting_key: string }>(
       "SELECT action, setting_key FROM audit WHERE setting_key = ?",

@@ -248,6 +248,11 @@ export interface SettingDef<T = unknown> {
    * one area cannot widen that area's trust (`SECURITY_WIDENING_AREAS`, rules.ts).
    */
   rbacArea: AreaId;
+  /**
+   * A product entry only the platform's own admins write (PX-W13c): a console write also needs
+   * `platform` edit, so a product admin holding `rbacArea` cannot grant it to their own product.
+   */
+  platformOnly?: boolean;
   /** When the owning service is off: hide the row, show it read-only, or show it as usual. */
   visibleWhen?: {
     service?: ServiceSlug;
