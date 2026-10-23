@@ -82,6 +82,8 @@ export const SEND_KEY_WINDOW_SECONDS = 600;
 /** The audit actions: the attempt, and its failure (a row whose `parent_id` is the attempt's). */
 export const SEND_KEY_ACTION = "license.key.send";
 export const SEND_KEY_FAILED_ACTION = "license.key.send.failed";
+/** A child of the attempt: how many other keys the send revoked. Not a window input. */
+export const SEND_KEY_REVOKED_ACTION = "license.key.send.revoked";
 /** LX-27c.2: send-invite's attempt and failure rows. They share send-key's window (L4). */
 export const SEND_INVITE_ACTION = "license.invite.send";
 export const SEND_INVITE_FAILED_ACTION = "license.invite.send.failed";
@@ -369,20 +371,22 @@ export async function handleSendKey(
       Math.max(1, await sendKeyRetryAfter(ctx, license.id)),
       "a key was sent for this license in the last 10 minutes",
     );
-  const key = mintLicenseKey(product.slug);
-  const hash = await hashKey(key, env.KEY_HASH_PEPPER);
-  const row = {
-    product: product.slug,
-    key_hash: hash,
-    license_id: license.id,
-    status: "active",
-    label: SENT_KEY_LABEL,
-    created_at: now,
-    created_by: session.sub,
-    last_used_at: null,
-  };
+  let key = "";
+  let hash = "";
   let revoked = 0;
   try {
+    key = mintLicenseKey(product.slug);
+    hash = await hashKey(key, env.KEY_HASH_PEPPER);
+    const row = {
+      product: product.slug,
+      key_hash: hash,
+      license_id: license.id,
+      status: "active",
+      label: SENT_KEY_LABEL,
+      created_at: now,
+      created_by: session.sub,
+      last_used_at: null,
+    };
     if (revokeOthers) revoked = await replaceLicenseKeys(db, row);
     else await insertKey(db, row);
   } catch (e) {
@@ -399,6 +403,19 @@ export async function handleSendKey(
     });
     throw e;
   }
+  // The claim row was written before the mint, so the exact count lives on a child of it.
+  if (revokeOthers)
+    await appendAudit(db, {
+      product: product.slug,
+      at: now,
+      ...actor,
+      action: SEND_KEY_REVOKED_ACTION,
+      target_kind: "license",
+      target_id: license.id,
+      parent_id: attemptId,
+      summary: `Revoked ${revoked} other key${revoked === 1 ? "" : "s"} of ${license.id}`,
+      after_json: JSON.stringify({ revoked }),
+    });
   const result = await emailLicenseKey(ctx, license, key, context);
   if (result.email === "failed")
     await appendAudit(db, {

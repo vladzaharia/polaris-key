@@ -1,7 +1,7 @@
 // LX-27: a licence created with its own device limit and its key emailed in the same request,
 // and send-key (a fresh key, optionally revoking the others, once per 10 minutes).
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, mkReq, NOW, seedProduct, seedTier } from "./seed.js";
@@ -23,6 +23,19 @@ import {
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { listKeysByLicense } from "../src/core/licensing/store.js";
 import { consoleTestSession } from "./consoleSessionHelper.js";
+
+// Lets one test make the mint throw after the send window is claimed.
+const mintFault = vi.hoisted(() => ({ on: false }));
+vi.mock("../src/platform/crypto.js", async (orig) => {
+  const real = await orig<typeof import("../src/platform/crypto.js")>();
+  return {
+    ...real,
+    mintLicenseKey: (product: string) => {
+      if (mintFault.on) throw new Error("mint down");
+      return real.mintLicenseKey(product);
+    },
+  };
+});
 
 /** ST-11: a product's own cap is the `email.dailyCap` `product_settings` row. */
 async function setProductDailyEmailCap(
@@ -242,6 +255,50 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     clock += 540;
     expect((await admin("POST", `/${id}/send-key`, {})).status).toBe(201);
     expect(sent).toHaveLength(2);
+  });
+
+  it("send-key records the exact revoked count as a child of the attempt", async () => {
+    const created = (await (
+      await create({ email: "holder@example.com" })
+    ).json()) as Created;
+    const id = created.licenseId;
+    const res = await admin("POST", `/${id}/send-key`, { revokeOthers: true });
+    expect(res.status).toBe(201);
+    const rows = await db.all<{
+      id: string;
+      action: string;
+      parent_id: string | null;
+      after_json: string | null;
+    }>(
+      "SELECT id, action, parent_id, after_json FROM audit WHERE target_id = ? AND action LIKE 'license.key.send%'",
+      id,
+    );
+    const attempt = rows.find((r) => r.action === "license.key.send")!;
+    const child = rows.find((r) => r.action === "license.key.send.revoked")!;
+    expect(child.parent_id).toBe(attempt.id);
+    expect(JSON.parse(child.after_json!)).toEqual({ revoked: 1 });
+    expect(attempt.after_json).not.toContain("revoked");
+    // Not a `.failed` child: the window stays held.
+    clock += 60;
+    expect((await admin("POST", `/${id}/send-key`, {})).status).toBe(429);
+  });
+
+  it("a throw while minting frees the window", async () => {
+    const created = (await (
+      await create({ email: "holder@example.com" })
+    ).json()) as Created;
+    const id = created.licenseId;
+    mintFault.on = true;
+    try {
+      await admin("POST", `/${id}/send-key`, {}).then(
+        (r) => expect(r.status).toBeGreaterThanOrEqual(500),
+        () => undefined,
+      );
+    } finally {
+      mintFault.on = false;
+    }
+    const next = await admin("POST", `/${id}/send-key`, {});
+    expect(next.status).toBe(201);
   });
 
   it("a failed send-key stays retryable at once; the new key stays valid", async () => {
