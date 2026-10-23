@@ -252,6 +252,18 @@ function areaRefusal(
   opts: WriteOptions,
 ): WriteRefusal | null {
   if (!opts.principal && !OPERATOR_ORIGINS.includes(opts.origin)) return null;
+  if (
+    def.platformOnly &&
+    scope.kind === "product" &&
+    !can(opts.principal, PLATFORM, "platform", "edit")
+  )
+    return refuse(
+      403,
+      "no_access",
+      `writing ${def.key} needs the platform area`,
+      def.key,
+      { scope: "platform", area: "platform" },
+    );
   if (can(opts.principal, scope, def.rbacArea, "edit")) return null;
   return refuse(
     403,

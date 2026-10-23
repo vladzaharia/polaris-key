@@ -127,6 +127,8 @@ export interface ProductSettingDto {
   serviceEnabled: boolean;
   /** The console area a write needs (`SettingDef.rbacArea`): a member without edit sees it read-only. */
   rbacArea: SettingDef["rbacArea"];
+  /** Only platform admins write it (`SettingDef.platformOnly`). */
+  platformOnly: boolean;
   /** Who may write it (`SettingDef.ownership`): a `manifest` or `read-only` key is shown, not edited. */
   ownership: SettingDef["ownership"];
   value: unknown;
@@ -168,6 +170,7 @@ function dto(
     serviceEnabled:
       d.service === "core" || services[d.service]?.enabled === true,
     rbacArea: d.rbacArea,
+    platformOnly: d.platformOnly === true,
     ownership: d.ownership,
     value: view.value,
     source: view.source,
