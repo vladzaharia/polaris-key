@@ -3,6 +3,7 @@
 // same shared stylesheet, so a state drawn here and by `<pk-*>` is the same pixels (UI-KITS.md
 // §3.2, §7.1). Every string is a catalog key of the view (DL8).
 
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import {
   Fragment,
   useEffect,
@@ -53,6 +54,10 @@ export interface KitCtx {
   form?: boolean;
   /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
   dialog?: boolean;
+  /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
+  shape?: "landscape" | "portrait" | "short";
+  /** The window is wider than a docked sheet (35 rem). */
+  wide?: boolean;
   chrome?: Chrome;
   view: View;
   copy: Copy;
@@ -814,11 +819,30 @@ export function actions(
   controls: string[],
   layoutRow = false,
   group?: "choices",
+  primaryLast = false,
 ): ReactNode {
   if (controls.length === 0) return null;
   const primary = c.view.decisions.primary;
-  const sorted = [...controls].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+  // GNOME: two responses in a row (landscape or short boxes) put the suggested action last, at
+  // the trailing end, in the DOM too so Tab follows the eye; stacked (portrait, or three or more)
+  // it is first, on top. A group of choices keeps its order. No CSS reordering either way.
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast ||
+    (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    (group !== "choices" &&
+      controls.length === 2 &&
+      c.view.component !== "StatusScreen" &&
+      c.view.component !== "Boot" &&
+      // A dialog floats (a row) in a window wider than a docked sheet; a page follows its shape.
+      (c.dialog
+        ? c.wide === true
+        : c.shape !== undefined && c.shape !== "portrait") &&
+      platformVariant(c.resolved.theme) === "gnome");
+  const sorted = [...controls].sort((a, b) =>
+    last
+      ? Number(a === primary) - Number(b === primary)
+      : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
   const busy =
@@ -828,6 +852,7 @@ export function actions(
       className="actions"
       data-part="actions"
       data-layout={layoutRow ? "row" : "stack"}
+      data-primary={last ? "last" : undefined}
       data-group={group}
     >
       {sorted.map((k) =>

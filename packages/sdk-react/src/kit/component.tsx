@@ -143,6 +143,10 @@ export interface KitProps {
   onSelect?: (id: string) => void;
   /** Extra classes on the kit root (`pk-root` stays). */
   className?: string;
+  /** `Settings` and `UpdatePrompt`, opened by the host (a native menu item): draw as a modal
+   *  dialog over the app, and call this when the person closes it (Escape, the scrim or Later).
+   *  The dialog hands focus back to what held it. */
+  onDismiss?: () => void;
 }
 
 const ThemeContext = createContext<KitTheme | null>(null);
@@ -410,6 +414,8 @@ export function useKit(
   // would read a short landscape window as portrait.
   const [shape, setShape] = useState<Shape>("portrait");
   const [tight, setTight] = useState(false);
+  // The window is wider than a docked sheet (35 rem): a dialog is then a floating box.
+  const [wide, setWide] = useState(false);
   const fill = props.fill === true;
   useIsoLayoutEffect(() => {
     const el = rootRef.current;
@@ -430,9 +436,11 @@ export function useKit(
         wh > 0 && wh / rem < 34 && (next !== "short" || wh / rem < 18);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
+      const isWide = w / rem > 35;
       frame = requestAnimationFrame(() => {
         setShape(next);
         setTight(snug);
+        setWide(isWide);
       });
     };
     const ro = new ResizeObserver(([entry]) => {
@@ -490,6 +498,8 @@ export function useKit(
     copy,
     resolved,
     input,
+    shape,
+    wide,
     headingLevel:
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),
@@ -705,12 +715,16 @@ function UpdateDialog(props: {
     if (typeof d.showModal === "function") d.showModal();
     else d.setAttribute("open", "");
   });
-  useEffect(() => {
-    if (open) return;
+  const giveBack = () => {
     const o = opener.current;
     opener.current = null;
     if (o?.isConnected) o.focus({ preventScroll: true });
+  };
+  useEffect(() => {
+    if (!open) giveBack();
   }, [open]);
+  // A host that unmounts the dialog on close (onDismiss) gets the same focus return.
+  useEffect(() => giveBack, []);
   if (!open) return null;
   const dismiss = () => (props.hasLater ? props.later() : props.close());
   return (
@@ -776,10 +790,11 @@ export function kitComponent(component: ComponentName) {
           }
         : undefined;
     const asDialog =
-      component === "UpdatePrompt" &&
-      !props.embedded &&
-      props.asWindow !== true &&
-      !UPDATE_BLOCKING.has(view.state);
+      (component === "UpdatePrompt" &&
+        !props.embedded &&
+        props.asWindow !== true &&
+        !UPDATE_BLOCKING.has(view.state)) ||
+      (component === "Settings" && props.onDismiss !== undefined);
     const ctx = {
       ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
       dialog: asDialog,
@@ -798,7 +813,10 @@ export function kitComponent(component: ComponentName) {
             hasLater={view.copy.includes("update.later")}
             later={() => ctx.act("update.later")}
             dismissed={dismissed}
-            close={() => setDismissed(view.state)}
+            close={() => {
+              setDismissed(view.state);
+              props.onDismiss?.();
+            }}
           >
             {body}
           </UpdateDialog>

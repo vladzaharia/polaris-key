@@ -1006,6 +1006,34 @@
         "macos": "Check for Updates…"
       }
     },
+    "menu.manageLicense": {
+      "value": "Manage license",
+      "role": "menu",
+      "note": "App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.",
+      "variants": {
+        "macos": "Manage License…"
+      }
+    },
+    "notify.updateReady.title": {
+      "value": "Update ready",
+      "role": "title",
+      "note": "Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.updateReady.body": {
+      "value": "Restart to finish updating.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.title": {
+      "value": "Signed in",
+      "role": "title",
+      "note": "Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.body": {
+      "value": "You're signed in on this device.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
     "updateProgress.contentTitle": {
       "value": "Downloading content",
       "role": "title",
@@ -1949,7 +1977,10 @@
     "signin.replace.open": {
       "value": "Replace a device",
       "role": "button",
-      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7).",
+      "variants": {
+        "macos": "Replace a Device"
+      }
     },
     "signin.replace.lede": {
       "value": "Choose a device to sign out. {thisDevice} takes its place.",
@@ -2007,7 +2038,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
     "signin.replace.confirmNamed": {
-      "value": "Replace {device} and continue",
+      "value": "Replace {device}",
       "role": "button",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },

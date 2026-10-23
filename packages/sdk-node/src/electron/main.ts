@@ -29,12 +29,17 @@ import {
   DEFAULT_BRIDGE_CHANNEL,
   DEFAULT_INVOKE_VERBS,
   POLARIS_BRIDGE_VERSION,
+  KIT_VIEWS,
   channelOf,
+  openChannel,
   stateChannel,
   updateProgressChannel,
   type BridgeEnvelope,
   type BridgeMethod,
+  type KitView,
 } from "./protocol.js";
+import { resolveLocale } from "../cli/copy.js";
+import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
 /** The part of Electron's `WebContents` the bridge uses. */
 export interface WebContentsLike {
@@ -42,6 +47,10 @@ export interface WebContentsLike {
   send(channel: string, ...args: unknown[]): void;
   isDestroyed?(): boolean;
   once?(event: "destroyed", listener: () => void): unknown;
+  removeListener?(event: "destroyed", listener: () => void): unknown;
+  /** The window's top frame (Electron's `webContents.mainFrame`). Pushes that are not a reply to
+   *  a call (`open`) are re-checked against it; a window that reports none gets no such push. */
+  readonly mainFrame?: { url: string; parent?: unknown } | null;
 }
 
 /** The part of Electron's `IpcMainInvokeEvent` the bridge uses. */
@@ -79,8 +88,36 @@ export interface BridgeHostFacts {
   reducedTransparency?: boolean;
 }
 
+/** The part of an Electron `Notification` instance the bridge uses. */
+export interface NotificationLike {
+  show(): void;
+  on(event: "click" | "close", listener: () => void): unknown;
+}
+
+/** Electron's `Notification` class, injected (this module imports no `electron`). */
+export interface NotificationClassLike {
+  new (options: { title: string; body: string }): NotificationLike;
+  isSupported?(): boolean;
+}
+
+/** Opt-in OS notifications (UK-06.5): two events, each only while the app is not focused. */
+export interface BridgeNotifications {
+  /** Electron's `Notification` class. */
+  Notification: NotificationClassLike;
+  /** Whether the app has focus right now; a notification is shown only when this is false. */
+  isAppFocused: () => boolean;
+  /** Runs when the person clicks a notification: focus the host window. */
+  onClick?: () => void;
+  /** The kit-copy locale of the text (default English). */
+  locale?: string;
+}
+
 export interface ExposePolarisBridgeOptions {
   ipcMain: IpcMainLike;
+  /** OS notifications for "update ready to restart" and "signed in", only while the app is not
+   *  focused. Without it the bridge shows none. The text is the kit copy's `notify.*` keys:
+   *  static sentences, never a key, code, email or license id. */
+  notifications?: BridgeNotifications;
   /** Electron's `systemPreferences` and `nativeTheme`, for the accent colour, high contrast and
    *  reduced transparency in `state.host`. Without it `host` carries the OS only. */
   electron?: HostElectronLike;
@@ -152,11 +189,48 @@ function defaultAllowSender(
 /** At most this often (10 per second) an install pushes progress to its window. */
 const PROGRESS_INTERVAL_MS = 100;
 
+/** One app-menu item the host places: Electron's `MenuItemConstructorOptions` accepts it as is
+ *  (this module imports no `electron`). */
+export interface PolarisMenuItem {
+  id: string;
+  label: string;
+  click: () => void;
+}
+
+/** The menu items' copy keys, in menu order, and the view each opens. */
+const MENU_ITEMS: readonly { id: string; key: string; view: KitView }[] = [
+  {
+    id: "polaris-key.checkForUpdates",
+    key: "update.checkNow",
+    view: "update",
+  },
+  {
+    id: "polaris-key.manageLicense",
+    key: "menu.manageLicense",
+    view: "settings",
+  },
+];
+
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */
 export type PolarisBridgeHandle = {
   close(): void;
   /** Push the current state to every subscribed renderer now. */
   pushState(): void;
+  /**
+   * Ask the subscribed renderers to open a view in their window: Settings (the license) or the
+   * update check (`polaris-key:open`). A renderer subscribes by listening (the preload's
+   * `onOpen`, which `<PolarisKeyGate>` uses); one that does not listen, or an older renderer,
+   * ignores it. An unknown view is refused with a thrown error, never pushed.
+   */
+  open(view: KitView): void;
+  /**
+   * The app-menu items for the host to place ("Check for updates" and "Manage license"), as plain
+   * `{ id, label, click }` objects. The labels come from the kit copy in `locale` (default
+   * English): sentence case, and on macOS (`platform` "darwin" or "macos", default
+   * `process.platform`) title case with an ellipsis, in English only (§1.5 rule 11). A click calls
+   * `open(view)`.
+   */
+  menuItems(opts?: { platform?: string; locale?: string }): PolarisMenuItem[];
 };
 
 interface FlowEntry {
@@ -481,6 +555,10 @@ export function exposePolarisBridge(
         continue;
       }
       try {
+        // Re-checked at push time, like `open` and the progress push: a window that navigated off
+        // the app since it subscribed gets no state (no frame, no push).
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
         wc.send(stateChannel(prefix), state);
       } catch {
         subscribers.delete(id);
@@ -515,39 +593,64 @@ export function exposePolarisBridge(
   /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
    *  (never `subscribers`), at most 10 per second, and never after the install settled or its
    *  window went away. The sender is re-checked against `allowSender` on every push: a frame
-   *  that navigated off the app's origin mid-install stops receiving. */
+   *  that navigated off the app's origin mid-install stops receiving. A custom `allowSender`
+   *  that admits subframes still receives the push on the window's MAIN frame (`wc.send`): the
+   *  push is addressed to the window, not to the frame that asked.
+   *
+   *  `finish()` (the install succeeded) sends the newest event the throttle held back, so a UI
+   *  can reach `done === total`; `end()` (any outcome) stops everything and removes the
+   *  `destroyed` listener. After a failure or a cancel nothing is sent, not even the held event. */
   const installProgress = (
     event: IpcMainInvokeEventLike,
     decision: UpdateDecision,
   ): {
     onProgress: (done: number, total: number) => void;
     signal: AbortSignal;
+    finish: () => void;
     end: () => void;
   } => {
     const wc = event.sender;
     const ctl = new AbortController();
     let ended = false;
     let last = -Infinity;
-    // The window closing cancels the install: nobody is left to restart into.
-    wc.once?.("destroyed", () => {
+    let held: Record<string, unknown> | null = null;
+    const onDestroyed = (): void => {
       ended = true;
+      held = null;
       ctl.abort();
-    });
+    };
+    // The window closing cancels the install: nobody is left to restart into.
+    wc.once?.("destroyed", onDestroyed);
     const version =
       decision.action === "binary" || decision.action === "store"
         ? decision.release.version
         : undefined;
+    const push = (payload: Record<string, unknown>): boolean => {
+      try {
+        if (!senderAllowed(event)) return false;
+        wc.send(updateProgressChannel(prefix), payload);
+        return true;
+      } catch {
+        // A window that cannot receive is not the install's problem.
+        return false;
+      }
+    };
     return {
       signal: ctl.signal,
+      finish: () => {
+        const h = held;
+        held = null;
+        if (h && !ended && !wc.isDestroyed?.()) push(h);
+      },
       end: () => {
         ended = true;
+        held = null;
+        wc.removeListener?.("destroyed", onDestroyed);
       },
       onProgress: (done, total) => {
         if (ended || wc.isDestroyed?.()) return;
         if (typeof done !== "number" || !Number.isFinite(done) || done < 0)
           return;
-        const now = Date.now();
-        if (now - last < PROGRESS_INTERVAL_MS) return;
         // A total is a count only when it is a positive number no smaller than what arrived;
         // anything else is "unknown", never a guessed percentage.
         const known =
@@ -555,18 +658,19 @@ export function exposePolarisBridge(
           Number.isFinite(total) &&
           total > 0 &&
           total >= done;
-        try {
-          if (!senderAllowed(event)) return;
-          last = now;
-          wc.send(updateProgressChannel(prefix), {
-            ...(version ? { version } : {}),
-            done,
-            total: known ? total : null,
-            phase: "download",
-          });
-        } catch {
-          // A window that cannot receive is not the install's problem.
+        const payload = {
+          ...(version ? { version } : {}),
+          done,
+          total: known ? total : null,
+          phase: "download",
+        };
+        const now = Date.now();
+        if (now - last < PROGRESS_INTERVAL_MS) {
+          held = payload;
+          return;
         }
+        held = null;
+        if (push(payload)) last = now;
       },
     };
   };
@@ -632,6 +736,8 @@ export function exposePolarisBridge(
           onProgress: progress.onProgress,
           signal: progress.signal,
         });
+        // Installed: the newest held-back event goes out before the answer.
+        progress.finish();
       } finally {
         // Success, failure or cancel: nothing is pushed after the install has settled.
         progress.end();
@@ -640,6 +746,7 @@ export function exposePolarisBridge(
       pendingRestart = null;
       if (outcome.kind === "restartRequired") {
         pendingRestart = outcome.restart;
+        notify("updateReady");
         return { kind: outcome.kind, version: outcome.version };
       }
       return outcome;
@@ -941,6 +1048,7 @@ export function exposePolarisBridge(
         case "ready":
           forgetFlow(flowId as string);
           pushState();
+          notify("signedIn");
           return r.identity
             ? { kind: "ok", identity: r.identity }
             : { kind: "ok" };
@@ -1015,8 +1123,81 @@ export function exposePolarisBridge(
     );
   }
 
+  // OS notifications (opt-in). A failure here is never the verb's failure.
+  const live = new Set<NotificationLike>();
+  const notify = (kind: "updateReady" | "signedIn"): void => {
+    const n = opts.notifications;
+    if (!n) return;
+    try {
+      if (n.isAppFocused()) return;
+      if (n.Notification.isSupported && !n.Notification.isSupported()) return;
+      const locale = resolveLocale(n.locale);
+      const text = (part: "title" | "body"): string =>
+        KIT_COPY[locale][`notify.${kind}.${part}`] ??
+        KIT_COPY.en[`notify.${kind}.${part}`]!;
+      const note = new n.Notification({
+        title: text("title"),
+        body: text("body"),
+      });
+      live.add(note); // kept until it is clicked or closed, so it is not collected unseen
+      note.on("click", () => {
+        live.delete(note);
+        try {
+          n.onClick?.();
+        } catch {
+          // The host's focus handler failing is its own.
+        }
+      });
+      note.on("close", () => void live.delete(note));
+      note.show();
+    } catch {
+      // No notification is better than a failed install or sign-in.
+    }
+  };
+
+  const open = (view: KitView): void => {
+    if (!KIT_VIEWS.includes(view))
+      throw new Error(`open(): ${String(view)} is not a view the kit opens.`);
+    for (const [id, wc] of subscribers) {
+      if (wc.isDestroyed?.()) {
+        subscribers.delete(id);
+        continue;
+      }
+      try {
+        // Re-checked at push time, as the progress push is: a window that navigated off the app
+        // since it subscribed gets nothing. `allowSender` runs against the window's main frame
+        // (what a call from the window's top frame would have carried); no frame, no push.
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
+        wc.send(openChannel(prefix), view);
+      } catch {
+        subscribers.delete(id);
+      }
+    }
+  };
+
+  const menuItems = (
+    o: { platform?: string; locale?: string } = {},
+  ): PolarisMenuItem[] => {
+    const locale = resolveLocale(o.locale);
+    const platform = o.platform ?? process.platform;
+    const mac = platform === "darwin" || platform === "macos";
+    return MENU_ITEMS.map(({ id, key, view }) => ({
+      id,
+      // The macOS wording is English's (the catalog's `macos` variants); other locales keep
+      // their own text on every platform.
+      label:
+        (mac && locale === "en" ? KIT_COPY_VARIANTS[key]?.macos : undefined) ??
+        KIT_COPY[locale][key] ??
+        KIT_COPY.en[key]!,
+      click: () => open(view),
+    }));
+  };
+
   return {
     pushState,
+    open,
+    menuItems,
     close() {
       for (const method of BRIDGE_METHODS)
         opts.ipcMain.removeHandler(channelOf(prefix, method));
@@ -1025,6 +1206,7 @@ export function exposePolarisBridge(
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();
+      live.clear();
     },
   };
 }

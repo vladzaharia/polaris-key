@@ -478,6 +478,17 @@
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Check for updates</string>
     <string name="update_checkNow__macos">Check for Updates…</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">Manage license</string>
+    <string name="menu_manageLicense__macos">Manage License…</string>
+    <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_title">Update ready</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_body">Restart to finish updating.</string>
+    <!-- Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_title">Signed in</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_body">You're signed in on this device.</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">Downloading content</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
@@ -924,8 +935,7 @@
     <string name="signin_replace_confirm">Replace and continue</string>
     <string name="signin_replace_confirm__macos">Replace and Continue</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_confirmNamed">Replace %1$s and continue</string>
-    <string name="signin_replace_confirmNamed__macos">Replace %1$s and Continue</string>
+    <string name="signin_replace_confirmNamed">Replace %1$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">Back</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->

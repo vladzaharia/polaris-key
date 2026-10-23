@@ -99,6 +99,10 @@ export function updateProgressChannel(prefix: string): string {
   return `${prefix}:updateProgress`;
 }
 
+/** A view the host can ask the renderer to open (`@polaris-key/react`'s `KitView`). */
+export type KitView = "settings" | "update";
+export const KIT_VIEWS: readonly KitView[] = ["settings", "update"];
+
 /** v4 (UK-06): the main process sends `<prefix>:open` (a `KitView`) when a native menu item asks
  *  the renderer to open Settings or Update. Optional: an older host never sends it. */
 export function openChannel(prefix: string): string {

@@ -20,7 +20,15 @@ import axe from "axe-core";
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
 import * as Kit from "@polaris-key/react/kit";
-import { SCENES, sceneInput, type Scene } from "../chromeScenes.js";
+import {
+  HOST_APP_HTML,
+  WINDOWS_SCENES as SCENES,
+  sceneInput,
+  type Scene,
+} from "../chromeScenes.js";
+
+/** A Mac: the platform every scene is drawn on. */
+const MAC_PLATFORM = { os: "macos", formFactor: "mac" };
 
 declare module "vitest/browser" {
   interface BrowserCommands {
@@ -31,8 +39,13 @@ declare module "vitest/browser" {
 declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_KIT_BASELINES__: string;
 
+/** The phone row, the narrowest Mac window (480 x 520), the narrow and default windows, and the
+ *  desktop row. */
 const SIZES = [
   { label: "390", width: 390, height: 844 },
+  { label: "480x520", width: 480, height: 520 },
+  { label: "480x640", width: 480, height: 640 },
+  { label: "900x600", width: 900, height: 600 },
   { label: "1440", width: 1440, height: 900 },
 ] as const;
 const SCHEMES = ["dark", "light"] as const;
@@ -81,17 +94,26 @@ async function mount(scene: Scene, scheme: Scheme): Promise<HTMLElement> {
   const Component = COMPONENTS[scene.component];
   if (!Component) throw new Error(`no React kit component ${scene.component}`);
   root = createRoot(host);
+  const dialogScene = scene.sheet === true || scene.dialog === true;
   root.render(
-    <Component
-      input={sceneInput(scene)}
-      {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
-      fill={LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"}
-      theme={{ product: PRODUCT, colorScheme: scheme, platform: "macos" }}
-    >
-      <main data-host-content="">
-        <p>The app</p>
-      </main>
-    </Component>,
+    <>
+      {dialogScene ? (
+        <div dangerouslySetInnerHTML={{ __html: HOST_APP_HTML }} />
+      ) : null}
+      <Component
+        input={sceneInput(scene, MAC_PLATFORM)}
+        {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
+        fill={
+          !dialogScene &&
+          LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"
+        }
+        theme={{ product: PRODUCT, colorScheme: scheme, platform: "macos" }}
+      >
+        <main data-host-content="">
+          <p>The app</p>
+        </main>
+      </Component>
+    </>,
   );
   for (let i = 0; i < 100 && !host.querySelector(".pk-root"); i++)
     await new Promise((r) => setTimeout(r, 20));
@@ -136,24 +158,85 @@ async function axeViolations(kit: HTMLElement): Promise<string[]> {
   );
 }
 
+/** True when a scrolling ancestor (the card's body, a long list) hides the element from view. */
+function scrolledAway(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  for (
+    let a = el.parentElement;
+    a && a !== document.body;
+    a = a.parentElement
+  ) {
+    if (getComputedStyle(a).overflowY === "visible") continue;
+    const box = a.getBoundingClientRect();
+    if (r.bottom <= box.top + 1 || r.top >= box.bottom - 1) return true;
+  }
+  return false;
+}
+
+/** Tab order is the visual order (WCAG 2.4.3): each stop is at or below the one before it, and in
+ *  the same row it is further along the reading direction. */
+function tabOrderProblems(root: ParentNode): string[] {
+  const stops = [
+    ...root.querySelectorAll<HTMLElement>(
+      "button, a[href], input, textarea, select, [tabindex='0']",
+    ),
+  ].filter(
+    (el) => visible(el) && !scrolledAway(el) && !el.hasAttribute("disabled"),
+  );
+  const rtl = getComputedStyle(stops[0] ?? document.body).direction === "rtl";
+  const out: string[] = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1]!.getBoundingClientRect();
+    const b = stops[i]!.getBoundingClientRect();
+    const sameRow = Math.abs(b.top - a.top) <= 2;
+    if (b.top < a.top - 2)
+      out.push(`${label(stops[i]!)} is above ${label(stops[i - 1]!)}`);
+    else if (sameRow && (rtl ? b.left > a.left + 2 : b.left < a.left - 2))
+      out.push(
+        `${label(stops[i]!)} is before ${label(stops[i - 1]!)} in its row`,
+      );
+  }
+  return out;
+}
+
 function chrome(kit: HTMLElement, scene: Scene) {
   expect(kit.getAttribute("data-pk-platform")).toBe("macos");
   // Mac scale: a 13 pt body.
   expect(parseFloat(getComputedStyle(kit).fontSize), "body size").toBe(13);
-  const primary = [
-    ...kit.querySelectorAll<HTMLElement>('.btn[data-variant="primary"]'),
-  ].find(visible);
-  if (primary && !matchMedia("(pointer: coarse)").matches) {
-    const cs = getComputedStyle(primary);
-    // 28 pt capsule controls; the Welcome hero's is 36 pt.
-    expect(parseFloat(cs.minHeight), "control height").toBe(
+  const fine = !matchMedia("(pointer: coarse)").matches;
+  for (const b of kit.querySelectorAll<HTMLElement>(
+    '.btn:is([data-variant="primary"], [data-variant="secondary"])',
+  )) {
+    const r = visible(b);
+    if (!r || !fine) continue;
+    // 28 pt capsule controls; Welcome's two are the 36 pt hero size.
+    expect(r.height, `${label(b)} height`).toBe(
       scene.component === "Welcome" ? 36 : 28,
     );
-    expect(parseFloat(cs.borderTopLeftRadius), "capsule").toBeGreaterThan(100);
+    expect(parseFloat(getComputedStyle(b).borderTopLeftRadius)).toBeGreaterThan(
+      100,
+    );
   }
   for (const list of kit.querySelectorAll<HTMLElement>(".list"))
     if (visible(list))
       expect(parseFloat(getComputedStyle(list).borderTopLeftRadius)).toBe(10);
+  for (const l of kit.querySelectorAll<HTMLElement>(
+    '.links .btn[data-variant="link"]',
+  ))
+    if (visible(l))
+      expect(
+        parseFloat(getComputedStyle(l).paddingInlineStart),
+      ).toBeLessThanOrEqual(4);
+  const paste = kit.querySelector<HTMLElement>(".field-paste .paste");
+  if (paste && visible(paste)) {
+    const field = kit
+      .querySelector<HTMLElement>(".field-paste")!
+      .getBoundingClientRect();
+    const r = paste.getBoundingClientRect();
+    expect(r.bottom).toBeLessThanOrEqual(field.bottom + 0.5);
+    expect(r.top).toBeGreaterThanOrEqual(field.top - 0.5);
+    expect(r.width).toBeLessThanOrEqual(field.height + 0.5);
+  }
   const dialog = kit.querySelector<HTMLDialogElement>("dialog[open]");
   if (scene.sheet || scene.dialog) {
     expect(dialog, "the sheet is a modal dialog").not.toBeNull();
@@ -161,29 +244,56 @@ function chrome(kit: HTMLElement, scene: Scene) {
     expect(getComputedStyle(dialog!, "::backdrop").backgroundColor).toMatch(
       /^rgba\(0, 0, 0, 0\)|transparent/,
     );
-    const card = dialog!.querySelector<HTMLElement>(".card")!;
-    const cs = getComputedStyle(card);
+    // The dialog itself is the rounded, shadowed panel.
+    const dcs = getComputedStyle(dialog!);
     for (const c of [
       "borderTopLeftRadius",
       "borderTopRightRadius",
       "borderBottomLeftRadius",
       "borderBottomRightRadius",
     ] as const)
-      expect(parseFloat(cs[c]), c).toBe(24);
+      expect(parseFloat(dcs[c]), c).toBe(24);
+    expect(dcs.boxShadow).not.toBe("none");
+    expect(dcs.overflow).toBe("visible");
     const box = dialog!.getBoundingClientRect();
     // Floats inset below the title-bar row, 440 pt at most, never docked to the bottom.
     expect(box.top).toBeGreaterThanOrEqual(51);
     expect(box.width).toBeLessThanOrEqual(440 + 1);
     expect(box.bottom).toBeLessThan(innerHeight);
-    const buttons = [...dialog!.querySelectorAll<HTMLElement>(".actions .btn")]
-      .filter(visible)
-      .filter((b) => b.dataset.variant !== "link");
-    const p = buttons.find((b) => b.dataset.variant === "primary");
-    if (p && buttons.length >= 2) {
-      // The default is the trailing control: the rightmost in a left-to-right page.
-      const rights = buttons.map((b) => b.getBoundingClientRect().right);
-      expect(p.getBoundingClientRect().right).toBe(Math.max(...rights));
+    const footer = dialog!.querySelector<HTMLElement>(
+      ".card > .actions:not([data-group])",
+    );
+    if (footer) {
+      // Pinned: the default is always in view, whatever the window height.
+      expect(
+        footer.getBoundingClientRect().bottom,
+        "footer bottom",
+      ).toBeLessThanOrEqual(innerHeight + 0.5);
+      const buttons = [...footer.querySelectorAll<HTMLElement>(".btn")].filter(
+        visible,
+      );
+      if (fine)
+        for (const b of buttons)
+          expect(
+            b.getBoundingClientRect().height,
+            `${label(b)} is one line`,
+          ).toBe(28);
+      const p = buttons.find((b) => b.dataset.variant === "primary");
+      const tops = buttons.map((b) => b.getBoundingClientRect().top);
+      if (
+        p &&
+        buttons.length >= 2 &&
+        Math.max(...tops) - Math.min(...tops) <= 2
+      ) {
+        // In a row the default is the trailing control, and the last in the DOM.
+        const rights = buttons.map((b) => b.getBoundingClientRect().right);
+        expect(p.getBoundingClientRect().right).toBe(Math.max(...rights));
+        expect(buttons[buttons.length - 1]).toBe(p);
+      }
     }
+    expect(tabOrderProblems(dialog!).join("\n")).toBe("");
+  } else {
+    expect(tabOrderProblems(kit).join("\n")).toBe("");
   }
 }
 
@@ -232,6 +342,8 @@ describe("the macOS chrome, behaviour", () => {
     await page.viewport(1440, 900);
     let kit = await mount(byId("UpdatePrompt.available"), "dark");
     expect(kit.textContent).toContain("Remind Me Later");
+    root?.unmount();
+    host?.remove();
     root?.unmount();
     host?.remove();
     kit = await mount(byId("AccountAndLicense.signed-in"), "dark");

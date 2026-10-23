@@ -16,7 +16,6 @@ import type { ComponentName } from "@polaris-key/ui-core";
 import { kitComponent } from "./component.js";
 
 export {
-  PolarisKeyGate,
   PolarisKeyTheme,
   kitComponent,
   type KitAction,
@@ -56,7 +55,13 @@ export {
 
 // The parts that act run themselves inside the provider (layer a) and are the plain parts given an
 // `input` (layer b).
-export { About, Devices, Settings, UpdatePrompt } from "./drive.js";
+export {
+  About,
+  Devices,
+  PolarisKeyGate,
+  Settings,
+  UpdatePrompt,
+} from "./drive.js";
 
 const c = (name: ComponentName) => kitComponent(name);
 

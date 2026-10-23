@@ -116,6 +116,7 @@ import {
   BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
+  type KitView,
   type BridgeOidcBegin,
   type BridgeState,
   type PolarisBridge,
@@ -1213,6 +1214,19 @@ export class DesktopAdapter implements PolarisAdapter {
         detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose ${what}; bridge protocol v4 adds it.`,
       },
       "unsupported",
+    );
+  }
+
+  /**
+   * The host asks the renderer to open Settings or Update (a native menu item,
+   * `exposePolarisBridge(...).menuItems()`): `bridge.onOpen`, which pushes `polaris-key:open`.
+   * A host without the push never calls it. Only the two views the kit knows are passed on.
+   */
+  onOpen(cb: (view: KitView) => void): () => void {
+    return (
+      this.bridge.onOpen?.((view) => {
+        if (view === "settings" || view === "update") cb(view);
+      }) ?? (() => undefined)
     );
   }
 

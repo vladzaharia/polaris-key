@@ -15,6 +15,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 
 import { KIT_GLYPHS } from "@polaris-key/brand";
 import { encodeQr } from "@polaris-key/node/qr";
@@ -37,6 +38,10 @@ export interface RenderCtx {
   form?: boolean;
   /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
   dialog?: boolean;
+  /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
+  shape?: "landscape" | "portrait" | "short";
+  /** The window is wider than a docked sheet (35 rem). */
+  wide?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */
@@ -782,8 +787,24 @@ export function actions(
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
+  // GNOME: two responses in a row (landscape or short boxes) put the suggested action last, at
+  // the trailing end, in the DOM too so Tab follows the eye; stacked (portrait, or three or more)
+  // it is first, on top. A group of choices keeps its order. No CSS reordering either way.
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast ||
+    (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    (group !== "choices" &&
+      controls.length === 2 &&
+      c.view.component !== "StatusScreen" &&
+      c.view.component !== "Boot" &&
+      // A dialog floats (a row) in a window wider than a docked sheet; a page follows its shape.
+      (c.dialog
+        ? c.wide === true
+        : c.shape !== undefined && c.shape !== "portrait") &&
+      platformVariant(c.resolved.theme) === "gnome");
   const sorted = [...controls].sort((a, b) =>
-    primaryLast
+    last
       ? Number(a === primary) - Number(b === primary)
       : Number(b === primary) - Number(a === primary),
   );
@@ -796,6 +817,7 @@ export function actions(
     data-part="actions"
     data-layout=${layoutRow ? "row" : "stack"}
     data-group=${ifDefined(group)}
+    data-primary=${ifDefined(last ? "last" : undefined)}
   >
     ${sorted.map((k) =>
       button(

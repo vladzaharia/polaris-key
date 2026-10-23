@@ -1173,6 +1173,7 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
     const destroyed: (() => void)[] = [];
     return {
       sent,
+      listeners: () => destroyed.length,
       destroy: () => destroyed.forEach((f) => f()),
       event: {
         sender: {
@@ -1180,6 +1181,10 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
           send: (channel: string, payload: unknown) =>
             void sent.push({ channel, payload }),
           once: (_e: "destroyed", f: () => void) => void destroyed.push(f),
+          removeListener: (_e: "destroyed", f: () => void) => {
+            const i = destroyed.indexOf(f);
+            if (i >= 0) destroyed.splice(i, 1);
+          },
         },
         senderFrame: { url },
       },
@@ -1317,8 +1322,49 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
       return { kind: "handedOff", version: "2.0.0" };
     };
     await call(win);
-    expect(win.sent.length).toBeGreaterThanOrEqual(9);
-    expect(win.sent.length).toBeLessThanOrEqual(10);
+    // Ten leading pushes in the second, then the held final one when the install completes.
+    expect(win.sent.length).toBeGreaterThanOrEqual(10);
+    expect(win.sent.length).toBeLessThanOrEqual(11);
+    expect(win.sent.at(-1)!.payload).toMatchObject({ done: 100, total: 100 });
+  });
+
+  it("a throttled final event is flushed on success, never after a failure or a cancel", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const ok = windowAt("app://main", 20);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100); // inside the 100 ms window: held back
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(ok);
+    expect(ok.sent.map((m) => (m.payload as { done: number }).done)).toEqual([
+      10, 100,
+    ]);
+    expect(ok.listeners()).toBe(0); // the destroyed listener is gone
+
+    const failed = windowAt("app://main", 21);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      throw new Error("verify failed");
+    };
+    expect(await call(failed)).toMatchObject({ ok: false });
+    expect(failed.sent).toHaveLength(1);
+    expect(failed.listeners()).toBe(0);
+
+    const cancelled = windowAt("app://main", 22);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      cancelled.destroy();
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(cancelled);
+    expect(cancelled.sent).toHaveLength(1);
   });
 
   it("pushes nothing after an error, a late callback, or the window closing", async () => {
@@ -1421,6 +1467,146 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
     } finally {
       Object.defineProperty(process, "platform", { value: real });
     }
+  });
+});
+
+describe("menu items and open(view) (UK-06.4)", () => {
+  const OPEN = "polaris-key:open";
+
+  it("labels follow the platform and the locale: title case only on macOS, English only", async () => {
+    const { handle } = await setup();
+    const labels = (o?: { platform?: string; locale?: string }) =>
+      handle.menuItems(o).map((m) => m.label);
+    expect(labels({ platform: "linux" })).toEqual([
+      "Check for updates",
+      "Manage license",
+    ]);
+    expect(labels({ platform: "win32" })).toEqual(
+      labels({ platform: "linux" }),
+    );
+    expect(labels({ platform: "darwin" })).toEqual([
+      "Check for Updates…",
+      "Manage License…",
+    ]);
+    expect(labels({ platform: "macos", locale: "en-US" })).toEqual(
+      labels({ platform: "darwin" }),
+    );
+    // Another locale keeps its own sentence on macOS too.
+    expect(labels({ platform: "darwin", locale: "de" })).toEqual([
+      "Nach Updates suchen",
+      "Lizenz verwalten",
+    ]);
+    expect(labels({ platform: "linux", locale: "pt-BR" })[1]).toBe(
+      "Gerenciar a licença",
+    );
+    // Every launch locale has both labels, none an untranslated placeholder.
+    for (const locale of [
+      "en",
+      "de",
+      "fr",
+      "es",
+      "pt-BR",
+      "it",
+      "ja",
+      "ko",
+      "zh-Hans",
+    ])
+      for (const label of labels({ locale })) {
+        expect(label).not.toBe("");
+        expect(label).not.toMatch(/[{}]|menu\./);
+      }
+    expect(handle.menuItems().map((m) => m.id)).toEqual([
+      "polaris-key.checkForUpdates",
+      "polaris-key.manageLicense",
+    ]);
+    // Plain objects (Electron's MenuItemConstructorOptions takes them as they are).
+    for (const m of handle.menuItems())
+      expect(Object.keys(m).sort()).toEqual(["click", "id", "label"]);
+  });
+
+  it("a click pushes open to the subscribed windows only", async () => {
+    const ipc = ipcPair();
+    const { client } = await setup();
+    const handle = exposePolarisBridge(client, {
+      ipcMain: ipc.ipcMain,
+      allowSender: allowApp,
+      channel: "polaris-key",
+    });
+    const bridge = createPreloadBridge(ipc.ipcRenderer);
+    const typed: PolarisBridge = bridge;
+    const seen: string[] = [];
+    const [update, settings] = handle.menuItems();
+    update!.click(); // nobody subscribed yet
+    const off = typed.onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0)); // the preload's subscribe call lands
+    update!.click();
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    off();
+    await new Promise((r) => setTimeout(r, 0));
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    handle.close();
+  });
+
+  it("refuses an unknown view, and the preload drops one it does not know", async () => {
+    const { handle, ipc, bridge } = await setup();
+    expect(() => handle.open("admin" as never)).toThrow(/not a view/);
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    ipc.sender.send(OPEN, "admin");
+    ipc.sender.send(OPEN, { view: "settings" });
+    ipc.sender.send(OPEN, "settings");
+    expect(seen).toEqual(["settings"]);
+  });
+
+  it("a window that navigated off the app after subscribing gets no state push", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const states: unknown[] = [];
+    bridge.on("stateChanged", (s) => states.push(s));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.pushState();
+    expect(states).toHaveLength(1);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.pushState();
+    expect(states).toHaveLength(1);
+  });
+
+  it("a window that navigated off the app after subscribing gets no open", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.open("settings");
+    expect(seen).toEqual(["settings"]);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+    // A window that reports no frame at all is not pushed to either.
+    ipc.sender.mainFrame = undefined as never;
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+  });
+
+  it("a destroyed window is dropped and the others still get the push", async () => {
+    const sent: unknown[] = [];
+    const live = {
+      id: 1,
+      mainFrame: { url: "app://main" },
+      send: (_c: string, v: unknown) => void sent.push(v),
+    };
+    const dead = {
+      id: 2,
+      send: () => {
+        throw new Error("gone");
+      },
+      isDestroyed: () => true,
+    };
+    const { handle } = await setup({}, "pkeyt_seed", {
+      host: { webContents: [dead, live] },
+    });
+    handle.open("settings");
+    expect(sent).toEqual(["settings"]);
   });
 });
 
