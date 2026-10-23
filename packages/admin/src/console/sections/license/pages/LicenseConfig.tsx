@@ -32,18 +32,17 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   ApiError,
   type ConfigEntry,
   type LicenseConfigOverrides,
   type LicenseDetail,
   type ManagementState,
   type OverrideUpdate,
-  type ProductCatalog,
   type RedactedPayload,
 } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { profileStackQuery } from "../data.js";
+import { catalogQuery } from "../../config/data.js";
 import { r } from "../../../routes.js";
 import { Link } from "../../../router.js";
 import { ManagedPayloadEditor } from "../../../../ManagedPayloadEditor.js";
@@ -241,10 +240,7 @@ function ConfigEditor({
   slug: string;
   license: LicenseDetail;
 }): React.ReactElement {
-  const catalogQ = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-  });
+  const catalogQ = useQuery(catalogQuery(slug));
   const tiers = useTiers(slug).data?.tiers;
   const [serverFields, setServerFields] = React.useState<
     string[] | undefined
@@ -262,20 +258,7 @@ function ConfigEditor({
   }, [tiers, license]);
   const stackKey = profileIds.join("|");
   // One query for the whole stack, so the hook count never depends on the profile count.
-  const stackQ = useQuery({
-    queryKey: qk.profileStack(slug, stackKey),
-    queryFn: () =>
-      stackKey === ""
-        ? Promise.resolve([])
-        : Promise.all(
-            profileIds.map((profileId) =>
-              api.profile(slug, profileId).then((profile) => ({
-                source: `profile “${profile.name || profile.id}”`,
-                payload: profile.payload,
-              })),
-            ),
-          ),
-  });
+  const stackQ = useQuery(profileStackQuery(slug, stackKey, profileIds));
 
   const co = configOverridesOf(license);
   const catalog = catalogQ.data;

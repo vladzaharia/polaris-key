@@ -223,13 +223,16 @@ describe("a rendered tab", () => {
     }
   });
 
-  it("reads Activate and Paywall from the addon", () => {
+  it("reads Activate, Paywall and the headless-only EntitlementGate from the addon", () => {
     expect(godotTab("Activate").map(plain).join("\n")).toContain(
       "`PKeyActivationPanel` (`activation/pkey_activation_panel.tscn`)",
     );
     const paywall = godotTab("Paywall").map(plain).join("\n");
-    expect(paywall).toContain("no scene");
+    expect(paywall).toContain("`PKeyPaywall` (`paywall/pkey_paywall.tscn`)");
     expect(paywall).toContain('`view_of("Paywall", input)`');
+    const gate = godotTab("EntitlementGate").map(plain).join("\n");
+    expect(gate).toContain("no scene");
+    expect(gate).toContain('`view_of("EntitlementGate", input)`');
   });
 
   it("refuses a component the kit does not implement", () => {

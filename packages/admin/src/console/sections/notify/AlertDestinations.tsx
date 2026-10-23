@@ -17,19 +17,19 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
-import { api, type AlertDestination, type AlertScope } from "../../../api.js";
+import { type AlertDestination, type AlertScope } from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { OneTimeSecretDialog } from "../../../ui/OneTimeSecretPanel.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { useWriteGate } from "../../access/useCan.js";
-import { qk } from "../../data/queries.js";
 import { useStepUp } from "../core/pages/UserRelink.js";
 import { DestinationDialog } from "./DestinationDialog.js";
 import { DestinationRow } from "./DestinationRow.js";
 import { RoutingSummary } from "./RoutingSummary.js";
 import { SignInCallout } from "./SignInCallout.js";
 import { nameOf, secondsUntil } from "./alertShared.js";
+import { notifyReads } from "./data.js";
 
 export function AlertDestinations({
   scope,
@@ -41,10 +41,7 @@ export function AlertDestinations({
 }): React.ReactElement {
   const slug = scope.kind === "product" ? scope.slug : null;
   const write = useWriteGate(slug ? "settings" : "platform", slug);
-  const query = useQuery({
-    queryKey: qk.alertDestinations(scope),
-    queryFn: () => api.alertDestinations(scope),
-  });
+  const query = useQuery(notifyReads.alertDestinations(scope));
   const { fresh, markStale } = useStepUp(true);
   const [needSignIn, setNeedSignIn] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | "new" | null>(null);

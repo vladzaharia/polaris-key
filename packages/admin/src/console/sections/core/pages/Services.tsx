@@ -35,6 +35,7 @@ import {
   type PendingChange,
   type ServiceChange,
 } from "../components/serviceFeatures.js";
+import { coreBReads } from "../data.js";
 
 /**
  * The Features tab: the feature list, and under it the product's own settings (name, origins,
@@ -74,10 +75,7 @@ function FeatureList({
   detailsOpen: boolean;
   onDetails: (open: boolean) => void;
 }): React.ReactElement {
-  const query = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
+  const query = useQuery(coreBReads.services(slug));
   useLoadingAnnouncement("features", query.isPending);
 
   if (query.isPending) {

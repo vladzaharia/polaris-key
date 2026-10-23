@@ -4,7 +4,11 @@
  */
 
 import { channelLabel } from "@polaris-key/manifest";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type PolarisKeyAnalyticsResponse,
@@ -17,70 +21,91 @@ import {
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
 
-export function useStorefronts(
-  slug: string,
-): UseQueryResult<StorefrontsResponse> {
-  return useQuery({
+export const storefrontsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.storefronts(slug),
     queryFn: () => api.storefronts(slug),
   });
+
+export const slotsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.storefrontSlots(slug),
+    queryFn: () => api.storefrontSlots(slug),
+  });
+
+export const listingQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.listing(slug),
+    queryFn: () => api.listing(slug),
+  });
+
+export const listingFitQuery = (slug: string, release: string | null = null) =>
+  queryOptions({
+    queryKey: qk.listingFit(slug, release),
+    queryFn: () => api.listingFit(slug, release),
+  });
+
+export const releaseNotesQuery = (slug: string, release: string | null) =>
+  queryOptions({
+    queryKey: qk.listingNotes(slug, release ?? ""),
+    queryFn: () => api.listingReleaseNotes(slug, release!),
+    enabled: release !== null && release !== "",
+  });
+
+/** PS-06: the Polaris Key panel (the first-party `status` op). */
+export const polarisKeyQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.polarisKey(slug),
+    queryFn: () => api.polarisKey(slug),
+  });
+
+/** PS-06: the Polaris Key analytics card (the last 28 days). */
+export const polarisKeyAnalyticsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.polarisKeyAnalytics(slug),
+    queryFn: () => api.polarisKeyAnalytics(slug),
+  });
+
+export function useStorefronts(
+  slug: string,
+): UseQueryResult<StorefrontsResponse> {
+  return useQuery(storefrontsQuery(slug));
 }
 
 export function useSlots(
   slug: string,
 ): UseQueryResult<{ slots: ListingSlotDto[] }> {
-  return useQuery({
-    queryKey: qk.storefrontSlots(slug),
-    queryFn: () => api.storefrontSlots(slug),
-  });
+  return useQuery(slotsQuery(slug));
 }
 
 export function useListing(slug: string): UseQueryResult<ListingResponse> {
-  return useQuery({
-    queryKey: qk.listing(slug),
-    queryFn: () => api.listing(slug),
-  });
+  return useQuery(listingQuery(slug));
 }
 
 export function useListingFit(
   slug: string,
   release: string | null = null,
 ): UseQueryResult<ListingFitResponse> {
-  return useQuery({
-    queryKey: qk.listingFit(slug, release),
-    queryFn: () => api.listingFit(slug, release),
-  });
+  return useQuery(listingFitQuery(slug, release));
 }
 
 export function useReleaseNotes(
   slug: string,
   release: string | null,
 ): UseQueryResult<ListingReleaseNotesResponse> {
-  return useQuery({
-    queryKey: qk.listingNotes(slug, release ?? ""),
-    queryFn: () => api.listingReleaseNotes(slug, release!),
-    enabled: release !== null && release !== "",
-  });
+  return useQuery(releaseNotesQuery(slug, release));
 }
 
-/** PS-06: the Polaris Key panel (the first-party `status` op). */
 export function usePolarisKey(
   slug: string,
 ): UseQueryResult<PolarisKeyStatusResponse> {
-  return useQuery({
-    queryKey: qk.polarisKey(slug),
-    queryFn: () => api.polarisKey(slug),
-  });
+  return useQuery(polarisKeyQuery(slug));
 }
 
-/** PS-06: the Polaris Key analytics card (the last 28 days). */
 export function usePolarisKeyAnalytics(
   slug: string,
 ): UseQueryResult<PolarisKeyAnalyticsResponse> {
-  return useQuery({
-    queryKey: qk.polarisKeyAnalytics(slug),
-    queryFn: () => api.polarisKeyAnalytics(slug),
-  });
+  return useQuery(polarisKeyAnalyticsQuery(slug));
 }
 
 /** A per-intent key: random, never stored. One per opened dialog, so a retry replays. */

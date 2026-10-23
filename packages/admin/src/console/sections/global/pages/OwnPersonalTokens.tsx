@@ -15,7 +15,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { api, ApiError, type OwnPersonalToken } from "../../../../api.js";
+import { ApiError, type OwnPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -50,11 +50,11 @@ import {
   revokeCopy,
   scopeName,
 } from "./personalTokenParts.js";
+import { globalReads } from "../data.js";
 
 export function useMyPersonalTokens(): UseQueryResult<OwnPersonalToken[]> {
   return useQuery({
-    queryKey: qk.myPersonalTokens(),
-    queryFn: () => api.myPersonalTokens().then((r) => r.tokens),
+    ...globalReads.myPersonalTokens(),
     // A v1 cookie's answer is permanent for the session: do not retry it.
     retry: (n, e) => !(e instanceof ApiError && e.status === 409) && n < 2,
   });

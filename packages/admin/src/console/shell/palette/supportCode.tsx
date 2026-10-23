@@ -1,7 +1,7 @@
 import * as React from "react";
 import { LifeBuoy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError } from "../../../api.js";
+import { ApiError } from "../../../api.js";
 import {
   SUPPORT_CODE_BAD_CHECK,
   SUPPORT_CODE_LOOKALIKE,
@@ -9,7 +9,7 @@ import {
   looksLikeSupportCode,
   parseSupportCode,
 } from "../../../lib/supportCode.js";
-import { qk } from "../../data/queries.js";
+import { reads } from "../../data/reads.js";
 import { r } from "../../routes.js";
 import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
 
@@ -29,11 +29,8 @@ export function useSupportCodeItems(
   const parsed = parseSupportCode(typed);
   const code = parsed.kind === "code" ? parsed.code : null;
   const found = useQuery({
-    queryKey: qk.supportCode(code ?? ""),
-    queryFn: () => api.supportCode(code!),
+    ...reads.supportCode(code ?? ""),
     enabled: code !== null,
-    retry: false,
-    staleTime: 60_000,
   });
   if (parsed.kind === "not_code") return [];
   const icon = <LifeBuoy aria-hidden className="size-4" />;

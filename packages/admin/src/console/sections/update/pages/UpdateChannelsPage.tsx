@@ -46,11 +46,8 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
-import {
-  useAccess,
-  useFeed,
-  useReleaseStore,
-} from "../../distribution/data.js";
+import { useAccess, useFeed } from "../../distribution/data.js";
+import { useReleaseStore } from "../../release/data.js";
 import { publicUrl } from "../../distribution/model/format.js";
 import {
   BASE_ENDPOINTS,

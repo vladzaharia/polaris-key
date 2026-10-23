@@ -5802,7 +5802,7 @@ version answers `unsupported` (`version`) and installs nothing.
     server body.
   - `allowSender` defaults to the **top frame of the app's own origin**: an iframe, a window that
     navigated to remote content, or an event with no sender frame is refused. Without
-    `appOrigin` the default accepts local origins only (`file:`, a custom scheme, loopback); a
+    `appOrigin` the default accepts local origins only (`file:`, a custom scheme, loopback); a custom-scheme pin matches scheme and host (its origin is opaque) and a `file:` pin is refused; a
     host that loads a remote `https:` page sets `appOrigin`. A host that passes its own
     `allowSender` replaces the default, and should still pin the origin
     (`senderFrame.url.startsWith("app://")`). Attach the preload only to windows you trust.

@@ -9,7 +9,169 @@
     "kotlin": "camel",
     "godot": "snake"
   },
-  "surfaces": {},
+  "surfaces": {
+    "node": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "packages/sdk-node/src/client.ts"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "packages/sdk-node/src/config/client.ts"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "packages/sdk-node/src/config/client.ts"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "packages/sdk-node/src/license/client.ts"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "packages/sdk-node/src/identity/client.ts"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "packages/sdk-node/src/devices/client.ts"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "packages/sdk-node/src/release/client.ts"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "packages/sdk-node/src/update/client.ts"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "packages/sdk-node/src/distribution/client.ts"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "packages/sdk-node/src/commerce/client.ts"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "packages/sdk-node/src/packs/client.ts"
+      },
+      {
+        "ns": "events",
+        "type": "PolarisEventEmitter",
+        "file": "packages/sdk-node/src/core/events.ts"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "packages/sdk-node/src/core/store.ts"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationStore",
+        "file": "packages/sdk-node/src/core/presentation.ts"
+      },
+      {
+        "ns": "boot",
+        "file": "packages/sdk-node/src/boot.ts"
+      }
+    ],
+    "python": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/python/src/polaris_key/client.py"
+      },
+      {
+        "ns": "client",
+        "type": "AsyncPolarisKeyClient",
+        "file": "sdks/python/src/polaris_key/aio.py"
+      },
+      {
+        "ns": "client",
+        "file": "sdks/python/src/polaris_key/server_client.py"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/python/src/polaris_key/config/client.py"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "sdks/python/src/polaris_key/config/client.py"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/python/src/polaris_key/license/client.py"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/python/src/polaris_key/identity/client.py"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "sdks/python/src/polaris_key/devices/client.py"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/python/src/polaris_key/release/client.py"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/python/src/polaris_key/update/client.py"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/python/src/polaris_key/distribution/__init__.py"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/python/src/polaris_key/commerce/__init__.py"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/python/src/polaris_key/update/packs/client.py"
+      },
+      {
+        "ns": "events",
+        "type": "EventBus",
+        "file": "sdks/python/src/polaris_key/core/events.py"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/python/src/polaris_key/core/store.py"
+      },
+      {
+        "ns": "presentation",
+        "type": "DiscoveryPresentationSource",
+        "file": "sdks/python/src/polaris_key/presentation.py"
+      },
+      {
+        "ns": "boot",
+        "file": "sdks/python/src/polaris_key/boot.py"
+      }
+    ]
+  },
   "ignore": [
     {
       "path": "client-core",
@@ -67,6 +229,521 @@
     {
       "path": "cli-commands",
       "reason": "CLI commands and Action inputs are not SDK names"
+    },
+    {
+      "sdk": "node",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.events",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "config.entries",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.emitChanges",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.enabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.key",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.useCatalog",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.packInstalls",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.reportExtras",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.reportAccepted",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.fingerprint",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.requestRegistration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "update.packs",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.journal",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.guard",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.packageName",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.driver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.packInstalls",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "events.safeEmit",
+      "reason": "internal emit helper"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.decodable",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.dir",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.accept",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.cachedFiles",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.prune",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "client.getConfig",
+      "reason": "facade of config.get; follows its SP-35 rename"
+    },
+    {
+      "sdk": "node",
+      "path": "license.isEntitled",
+      "reason": "row entitlements.has (spelling license.isEntitled, planned SP-35); rule 1 matches rows by the surface namespace only"
+    },
+    {
+      "sdk": "node",
+      "path": "license.entitlementValue",
+      "reason": "row entitlements.value (planned SP-35); see license.isEntitled"
+    },
+    {
+      "sdk": "node",
+      "path": "license.getEntitlements",
+      "reason": "row entitlements.all (planned SP-35); see license.isEntitled"
+    },
+    {
+      "sdk": "node",
+      "path": "license.onDeactivated",
+      "reason": "an event-emitter field, not a verb; deactivation reaches apps through the events stream"
+    },
+    {
+      "sdk": "python",
+      "path": "client.on_config_change",
+      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
+    },
+    {
+      "sdk": "python",
+      "path": "client.get_config",
+      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
+    },
+    {
+      "sdk": "python",
+      "path": "config.doc",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.local_values",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.enabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.resolve_with_source",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "license.doc",
+      "reason": "the licence document property read through the entitlement rows; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "license.is_entitled",
+      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "python",
+      "path": "license.entitlement_value",
+      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "python",
+      "path": "license.get_entitlements",
+      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.fingerprint",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.request_registration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.snapshot",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "update.configured",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.ensure_releases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.pack_installs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.content_input",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.record_revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.pack_set_id",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.recover_state",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.boot_options",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.boot_fetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.refused_embedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.subscribe",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.on",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.emit",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.get_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.set_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.clear_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.get_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.read_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.write_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.clear_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.accept",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.cached_files",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.prune",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "client.aclose",
+      "reason": "asyncio face only (AsyncPolarisKeyClient): the awaitable close; the row is client.close"
+    },
+    {
+      "sdk": "python",
+      "path": "client.run_refresh",
+      "reason": "asyncio face only (AsyncPolarisKeyClient): the awaitable refresh loop"
+    },
+    {
+      "sdk": "python",
+      "path": "client.resolve_server_device_id",
+      "reason": "server helper in server_client.py (L4/L8: server layer, the mount contract is UK-48's); not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "client.server_client",
+      "reason": "server helper in server_client.py (L4/L8: its trust option renames to pinned_keys with options.pinnedKeys); not a client verb"
     }
   ],
   "concepts": [
@@ -116,7 +793,11 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {},
+        "kotlin": {
+          "spelling": "bootHost",
+          "planned": "SP-35b",
+          "reason": "an extension function today: PolarisKeyClient.bootHost(...) in the sdk module"
+        },
         "godot": {},
         "react": {
           "spelling": "useBoot",
@@ -312,7 +993,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "python": {},
         "godot": {},
         "swift": {
@@ -338,7 +1018,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "python": {},
         "swift": {},
         "kotlin": {},
@@ -429,7 +1108,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "swift": {},
         "python": {
           "spelling": "on_change",
@@ -926,6 +1604,983 @@
       "feature": "server.license",
       "layer": "server",
       "reason": "the framework drop-ins' gate family (L4); a layer row with no scan"
+    },
+    {
+      "id": "client.discover",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.init",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.portal",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentation",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentationIcon",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentationSource",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.discovery",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.servicesPinned",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.hasToken",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.ensureActivated",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.capabilities",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.supports",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.caps",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.sync",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.getSyncState",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.importBundle",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.crashTags",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.status",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeStatus",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.isLicensed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.getCurrentDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.listDevices",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.deauthorizeDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.renameDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.startRefresh",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.close",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.listUserConfig",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.schemaVersion",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.fetchSchema",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.isLocked",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.activation",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.licenseInfo",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.entitledChannels",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getProfile",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getLicenseId",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.enroll",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.deactivate",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.current",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.forget",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInWithBrowser",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.beginSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.pollSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.waitForSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.register",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.list",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.rename",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.deauthorize",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.fetch",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.changelog",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.installUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.downloadUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.onUpdateAvailable",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.decidable",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.install",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.check",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.appcastUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feedUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.decide",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.releaseRecord",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.buildUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.ensureDiscovery",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.reload",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.useDriver",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {
+          "spelling": "set_driver"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.confirmBoot",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.markBootAttempt",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "distribution.downloadModel",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "distribution.thisPlatform",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.binding",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claim",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimSteam",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimAppStore",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimPlay",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.ensure",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.state",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.path",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.registerHandler",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.on",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.isAvailable",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packFor",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.rollback",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.confirm",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.subscribe",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.load",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.icon",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.iconFor",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.runBoot",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.tryDiscover",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.subscribe",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.outletId",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.register",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.currentDevice",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.deactivate",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getLicenseUser",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.acceptSignIn",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.hiddenHere",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.isUnlocked",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.loadCached",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.registrationOpen",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.status",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.isLicensed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.current",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.ensureActivated",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
     }
   ],
   "removed": []

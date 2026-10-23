@@ -1,8 +1,11 @@
 /**
- * Reads are spelled once. In the portal (the console joins later in P0-32) `portal/queries.ts` is
- * the only file with a `queryFn`, and the only one that builds a `queryKey` array: one `qk` entry
- * and one `pq` factory per key family. A hook calls `useQuery(pq.x(...))`, a write invalidates
- * with `queryKey: qk.x(...)`.
+ * Reads are spelled once. In the portal `portal/queries.ts` is the only file with a `queryFn`, and
+ * the only one that builds a `queryKey` array: one `qk` entry and one `pq` factory per key family.
+ * A hook calls `useQuery(pq.x(...))`, a write invalidates with `queryKey: qk.x(...)`.
+ *
+ * The console follows (P0-32.13 to .19): its data modules (`console/data/*.ts`,
+ * `console/sections/<section>/data.ts`) are the only files with a `queryFn` or a bare `api.*`
+ * member access, and each key family has one factory there.
  *
  * The scan is on the AST, so line breaks and aliases cannot hide a literal.
  */
@@ -30,6 +33,16 @@ function sources(dir: string): string[] {
     return /\.(ts|tsx)$/.test(name) ? [path] : [];
   });
 }
+
+const CONSOLE = join(SRC, "console");
+
+/** The console's data modules: where a `queryFn`, a factory and an `api.*` read may live. */
+const isDataModule = (file: string): boolean => {
+  const rel = relative(CONSOLE, file).split("\\").join("/");
+  return (
+    /^data\/[^/]+\.tsx?$/.test(rel) || /^sections\/[^/]+\/data\.ts$/.test(rel)
+  );
+};
 
 const parse = (text: string) =>
   ts.createSourceFile("f.tsx", text, ts.ScriptTarget.Latest, true);
@@ -66,6 +79,71 @@ function offences(text: string): string[] {
         const ok =
           ts.isPropertyAssignment(node) && qkCall(node.initializer) !== null;
         if (!ok) found.push(`${line} queryKey is not qk.x(...)`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return found;
+}
+
+/** Member accesses on the `api` binding imported from `api.js` (`api.schema(slug)`). */
+function apiReads(text: string): string[] {
+  const sf = parse(text);
+  let bound = false;
+  for (const st of sf.statements)
+    if (
+      ts.isImportDeclaration(st) &&
+      ts.isStringLiteral(st.moduleSpecifier) &&
+      /(^|\/)api\.js$/.test(st.moduleSpecifier.text)
+    ) {
+      const named = st.importClause?.namedBindings;
+      if (
+        named &&
+        ts.isNamedImports(named) &&
+        named.elements.some((e) => e.name.text === "api" && !e.propertyName)
+      )
+        bound = true;
+    }
+  if (!bound) return [];
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "api"
+    ) {
+      const line = sf.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+      found.push(`${line} api.${node.name.text}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return found;
+}
+
+/** In a data module: a `queryFn` object that is not the argument of `queryOptions(...)`. */
+function inlineReads(text: string): string[] {
+  const sf = parse(text);
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isObjectLiteralExpression(node) &&
+      node.properties.some(
+        (p) =>
+          (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
+          p.name.getText(sf) === "queryFn",
+      )
+    ) {
+      const parent = node.parent;
+      const factory =
+        ts.isCallExpression(parent) &&
+        ts.isIdentifier(parent.expression) &&
+        (parent.expression.text === "queryOptions" ||
+          parent.expression.text === "infiniteQueryOptions");
+      if (!factory) {
+        const line = sf.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+        found.push(`${line} inline query (wrap it in queryOptions)`);
       }
     }
     ts.forEachChild(node, visit);
@@ -156,6 +234,66 @@ describe("portal reads are factories", () => {
           offences(readFileSync(f, "utf8")).map(() => relative(SRC, f)),
         );
       expect(stray).toContain("portal/__queryProbe__.ts");
+    } finally {
+      rmSync(probe, { force: true });
+    }
+  });
+});
+
+describe("console reads are factories", () => {
+  const files = sources(CONSOLE);
+  const offending = (f: string): string[] => {
+    const text = readFileSync(f, "utf8");
+    return isDataModule(f)
+      ? inlineReads(text)
+      : [...offences(text), ...apiReads(text)];
+  };
+  it("reads are queryOptions factories in a data module (no queryFn, queryKey literal or api.* outside one)", () => {
+    const offenders = files
+      .filter((f) => offending(f).length > 0)
+      .map((f) => `${relative(SRC, f)}: ${offending(f).join(", ")}`);
+    expect(offenders, "add a factory to the section's data.ts").toEqual([]);
+  });
+
+  it("each qk family has one factory across the console's data modules", () => {
+    const owner = new Map<string, string[]>();
+    for (const f of sources(CONSOLE).filter(isDataModule)) {
+      const sf = parse(readFileSync(f, "utf8"));
+      const visit = (node: ts.Node): void => {
+        if (ts.isObjectLiteralExpression(node)) {
+          const prop = (name: string) =>
+            node.properties.find(
+              (p): p is ts.PropertyAssignment =>
+                ts.isPropertyAssignment(p) && p.name.getText(sf) === name,
+            );
+          const key = prop("queryKey");
+          const family = key ? qkCall(key.initializer) : null;
+          if (family && prop("queryFn"))
+            owner.set(family, [
+              ...(owner.get(family) ?? []),
+              relative(CONSOLE, f),
+            ]);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sf);
+    }
+    const dup = [...owner].filter(([, where]) => where.length > 1);
+    expect(dup.map(([k, where]) => `qk.${k}: ${where.join(", ")}`)).toEqual([]);
+  });
+
+  it("a stray console read fails the scan, and a data module may hold it", () => {
+    const probe = join(CONSOLE, "components", "__queryProbe__.ts");
+    writeFileSync(
+      probe,
+      'import { api } from "../../api.js";\nexport const q = () => api.me();\n',
+    );
+    try {
+      const stray = sources(CONSOLE)
+        .filter((f) => !isDataModule(f) && offending(f).length > 0)
+        .map((f) => relative(CONSOLE, f));
+      expect(stray).toContain("components/__queryProbe__.ts");
+      expect(apiReads("const api = {}; api.x();")).toEqual([]);
     } finally {
       rmSync(probe, { force: true });
     }

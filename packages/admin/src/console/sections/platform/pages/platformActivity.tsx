@@ -18,7 +18,6 @@ import * as React from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Download, List, Rows3 } from "lucide-react";
 import {
-  api,
   type PlatformActivityFilters,
   type PlatformActivityItem,
   type PlatformActivityPage,
@@ -36,7 +35,9 @@ import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { toast } from "../../../../ui/toast.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
+import { reads } from "../../../data/reads.js";
 import { EventDrawer } from "./platformActivityEvent.js";
 import {
   ActivityTable,
@@ -100,14 +101,7 @@ function focusEventLink(id: string | undefined): void {
 }
 
 function useActivityFeed(filters: PlatformActivityFilters) {
-  return useInfiniteQuery({
-    queryKey: qk.platformActivityFeed(JSON.stringify(filters)),
-    queryFn: ({ pageParam }) =>
-      api.platformActivity(pageParam, filters, PAGE_SIZE),
-    initialPageParam: null as PlatformActivityPage["nextCursor"],
-    getNextPageParam: (last: PlatformActivityPage) =>
-      last.nextCursor ?? undefined,
-  });
+  return useInfiniteQuery(platformReads.activityFeed(filters, PAGE_SIZE));
 }
 
 /** The route's record: the list, or the list with one event's drawer open. */
@@ -135,8 +129,7 @@ export function PlatformActivityPage({
   useLoadingAnnouncement("activity", feed.isPending || feed.isRefetching);
   const products = useProducts();
   const platformSettings = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
+    ...reads.platformSettings(),
   });
   const settings = React.useMemo(
     () =>

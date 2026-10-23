@@ -28,16 +28,16 @@ describe("Discover's grid (B-080)", () => {
 });
 
 describe("the key tile (B-077)", () => {
-  it("is one line from 36 rem, its button is capped, and the icon stacks above the title when tiny", () => {
+  it("is one cell, its button is capped, and the icon stacks above the title when tiny", () => {
     render(
       <ul>
-        <LibraryKeyTile count={3} />
+        <LibraryKeyTile />
       </ul>,
     );
     const li = screen.getByRole("listitem");
     const box = li.firstElementChild as HTMLElement;
-    expect(box.className).toContain("@xl:flex-row");
-    expect(box.className).not.toContain("@2xl");
+    expect(box.className).not.toContain("@xl:flex-row");
+    expect(li.className).not.toContain("col-span");
     const button = within(li).getByRole("button", {
       name: "Activate a license",
     });

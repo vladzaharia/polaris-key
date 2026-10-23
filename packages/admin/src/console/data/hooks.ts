@@ -1,7 +1,7 @@
 /**
- * The shell's data hooks (components.md §7). One query each: the five inline `product:<slug>`
- * fetchers collapse into `useProduct`, and `me` is a query like any other, so a product create or
- * delete refreshes the switcher and Home (fixes SH-1).
+ * The shell's data hooks (components.md §7). One query each, over the factories in `./reads.ts`:
+ * the five inline `product:<slug>` fetchers collapse into `useProduct`, and `me` is a query like
+ * any other, so a product create or delete refreshes the switcher and Home (fixes SH-1).
  */
 
 import {
@@ -9,51 +9,32 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import {
-  api,
-  setCsrf,
-  type AttentionItemDto,
-  type PlatformReadyDto,
-  type Me,
-  type PlatformIdentity,
-  type ProductDetail,
-  type ProductSecretDto,
+import type {
+  AttentionItemDto,
+  Me,
+  PlatformIdentity,
+  PlatformReadyDto,
+  ProductDetail,
 } from "../../api.js";
 import type { ServiceState } from "../nav.js";
-import { noteIdentity } from "../shell/endedState.js";
 import { qk } from "./queries.js";
+import { reads } from "./reads.js";
 
-/** Fetch the session and arm the CSRF token every write echoes. */
-export async function fetchMe(): Promise<Me> {
-  const me = await api.me();
-  setCsrf(me.csrf);
-  // A session that loads again ends "Your session ended" (a sign-in in another tab, or a blip),
-  // unless a different person signed in: then held writes are dropped, never sent as them.
-  noteIdentity(me.sub, me.name || me.email);
-  return me;
-}
+export {
+  fetchAttention,
+  fetchMe,
+  fetchPlatformVersion,
+  fetchProduct,
+  fetchProducts,
+  fetchSecrets,
+} from "./reads.js";
 
 export function useMe(): UseQueryResult<Me> {
-  return useQuery({ queryKey: qk.me(), queryFn: fetchMe });
-}
-
-/**
- * The registry list, as cached under `qk.products()`. Every reader of that key must fetch through
- * this function: the cache holds one shape per key, and a view that stored the raw response
- * (`{ products }`) under the same key broke the shell's switcher and the Products page in turn.
- */
-export function fetchProducts(): Promise<ProductDetail[]> {
-  // The system product (F-03) is the platform's own (the package-feeds owner of our SDKs): it is
-  // reached from Platform, never listed beside registered products or offered by the switcher.
-  return api.products().then((r) => r.products.filter((p) => !p.system));
+  return useQuery(reads.me());
 }
 
 export function useProducts(): UseQueryResult<ProductDetail[]> {
-  return useQuery({ queryKey: qk.products(), queryFn: fetchProducts });
-}
-
-export function fetchAttention(): Promise<AttentionItemDto[]> {
-  return api.attention().then((r) => r?.items ?? []);
+  return useQuery(reads.products());
 }
 
 /**
@@ -62,27 +43,14 @@ export function fetchAttention(): Promise<AttentionItemDto[]> {
  * the switcher's per-product badge read it.
  */
 export function useAttention(): UseQueryResult<AttentionItemDto[]> {
-  return useQuery({
-    queryKey: qk.attention(),
-    queryFn: fetchAttention,
-    retry: 1,
-  });
+  return useQuery(reads.attention());
 }
 
 /** Platform ready (`GET /manage/api/platform/ready`); `enabled` is the member's Platform area. */
 export function usePlatformReady(
   enabled = true,
 ): UseQueryResult<PlatformReadyDto> {
-  return useQuery({
-    queryKey: qk.platformReady(),
-    queryFn: () => api.platformReady(),
-    retry: 1,
-    enabled,
-  });
-}
-
-export function fetchProduct(slug: string): Promise<ProductDetail> {
-  return api.product(slug).then((r) => r.product);
+  return useQuery({ ...reads.platformReady(), enabled });
 }
 
 /**
@@ -92,8 +60,7 @@ export function fetchProduct(slug: string): Promise<ProductDetail> {
 export function useProduct(slug: string | null): UseQueryResult<ProductDetail> {
   const queryClient = useQueryClient();
   return useQuery({
-    queryKey: qk.product(slug ?? ""),
-    queryFn: () => fetchProduct(slug!),
+    ...reads.product(slug ?? ""),
     enabled: !!slug,
     placeholderData: () =>
       queryClient
@@ -112,10 +79,6 @@ export function useProductServices(slug: string): ServiceState {
   return data?.services ?? null;
 }
 
-export function fetchPlatformVersion(): Promise<PlatformIdentity> {
-  return api.platformVersion();
-}
-
 /**
  * The running build (A-11), for the account menu's version chip. It changes only on a deploy, so
  * it is not refetched on every focus; a failure hides the chip rather than reporting anything.
@@ -123,17 +86,6 @@ export function fetchPlatformVersion(): Promise<PlatformIdentity> {
 export function usePlatformVersion(
   enabled = true,
 ): UseQueryResult<PlatformIdentity> {
-  return useQuery({
-    queryKey: qk.platformVersion(),
-    queryFn: fetchPlatformVersion,
-    staleTime: 5 * 60_000,
-    retry: false,
-    // ST-29: the build identity is the Platform area's; a member without it never asks.
-    enabled,
-  });
-}
-
-/** The product's secrets inventory, as cached under `qk.secrets(slug)` (Keys and secrets, mint recipes). */
-export function fetchSecrets(slug: string): Promise<ProductSecretDto[]> {
-  return api.productSecrets(slug).then((r) => r.secrets);
+  // ST-29: the build identity is the Platform area's; a member without it never asks.
+  return useQuery({ ...reads.platformVersion(), enabled });
 }

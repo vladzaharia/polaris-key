@@ -1,0 +1,261 @@
+---
+title: "SDK API names"
+description: "The canonical name of every SDK concept in each SDK, and the names removed in 0.9."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Every SDK exposes the same concepts under the same names, up to casing. The tables list each
+concept's spelling per SDK, from `conformance/parity/api.json`. A dash means the SDK does
+not ship the concept. `planned` marks a name that changes, or a symbol that does not exist
+yet, in the named work package; the spelling shown is the SDK's current one.
+
+## Naming policy
+
+During 0.9 a release may rename or remove an SDK name without an alias. Every removal is listed
+here and in that release's notes, and a removed option fails with `invalid-options` naming
+its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver against
+`api.json`.
+
+## client
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `client.create` | `client.create` | `PolarisKeyProvider` | `client.create` | `client.create` | `client.create` | `PolarisKey.configure` | — |
+| `client.fromConfig` | reserved for SP-32a | | | | | | — |
+| `client.doctor` | reserved for SP-32b | | | | | | — |
+| `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `bootHost` (planned: SP-35b) | `client.boot` | `ui.boot` |
+| `client.discover` | `client.discover` | — | `client.discover` | — | — | — | — |
+| `client.init` | `client.init` | — | `client.init` | — | — | — | — |
+| `client.portal` | `client.portal` | — | `client.portal` | — | — | — | — |
+| `client.presentation` | `client.presentation` | — | `client.presentation` | — | — | — | — |
+| `client.presentationIcon` | `client.presentationIcon` | — | `client.presentation_icon` | — | — | — | — |
+| `client.presentationSource` | `client.presentationSource` | — | — | — | — | — | — |
+| `client.discovery` | `client.discovery` | — | `client.discovery` | — | — | — | — |
+| `client.servicesPinned` | `client.servicesPinned` | — | — | — | — | — | — |
+| `client.hasToken` | `client.hasToken` | — | — | — | — | — | — |
+| `client.ensureActivated` | `client.ensureActivated` | — | `client.ensure_activated` | — | — | — | — |
+| `client.capabilities` | `client.capabilities` | — | `client.capabilities` | — | — | — | — |
+| `client.supports` | `client.supports` | — | `client.supports` | — | — | — | — |
+| `client.caps` | `client.caps` | — | `client.caps` | — | — | — | — |
+| `client.sync` | `client.sync` | — | `client.sync` | — | — | — | — |
+| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | — | — | — | — |
+| `client.importBundle` | `client.importBundle` | — | `client.import_bundle` | — | — | — | — |
+| `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | — | — | — | — |
+| `client.status` | `client.status` | — | `client.status` | — | — | — | — |
+| `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | — | — | — | — |
+| `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | — | — | — | — |
+| `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
+| `client.listDevices` | `client.listDevices` | — | `client.list_devices` | — | — | — | — |
+| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | — | — | — | — |
+| `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | — | — | — | — |
+| `client.startRefresh` | `client.startRefresh` | — | — | — | — | — | — |
+| `client.close` | `client.close` | — | `client.close` | — | — | — | — |
+| `client.tryDiscover` | — | — | `client.try_discover` | — | — | — | — |
+| `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
+| `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
+| `client.register` | — | — | `client.register` | — | — | — | — |
+| `client.currentDevice` | — | — | `client.current_device` | — | — | — | — |
+| `client.deactivate` | — | — | `client.deactivate` | — | — | — | — |
+
+## options
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `product` (planned: SP-35b) | — |
+| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `trust` (planned: SP-35) | `core.pinnedKeys` | `core.pinnedKeys` | `pinned_trust_keys` (planned: SP-35b) | — |
+| `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
+| `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
+| `options.expectedServices` | `options.expectedServices` | `expectServices` (planned: SP-35) | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
+
+## config
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `config.get` | `getConfig` (planned: SP-35) | `useManagedConfig().get` | `get_config` (planned: SP-35) | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
+| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
+| `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
+| `config.mintToken` | `config.mintToken` | — | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
+| `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
+| `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
+| `config.clearAll` | planned (SP-35) | `config.clearAll` | planned (SP-35) | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
+| `config.onConfigChange` | `config.onConfigChange` | — | `on_change` (planned: SP-35) | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
+| `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
+| `config.setting.value` | `get` (planned: SP-35) | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
+| `config.setting.source` | `source` (planned: SP-35) | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
+| `config.setting.locked` | `locked` (planned: SP-35) | `config.setting.locked` | `enforced` (planned: SP-35) | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
+| `config.setting.visibility` | planned (SP-35) | planned (SP-35) | planned (SP-35) | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
+| `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
+| `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
+| `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | — | — | — | — |
+| `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | — | — | — | — |
+| `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | — | — | — | — |
+| `config.isLocked` | `config.isLocked` | — | — | — | — | — | — |
+
+## license
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
+| `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `license.activation` | `license.activation` | — | `license.activation` | — | — | — | — |
+| `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | — | — | — | — |
+| `license.entitledChannels` | `license.entitledChannels` | — | `license.entitled_channels` | — | — | — | — |
+| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | — | — | — | — |
+| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | — | — | — | — |
+| `license.enroll` | `license.enroll` | — | `license.enroll` | — | — | — | — |
+| `license.deactivate` | `license.deactivate` | — | `license.deactivate` | — | — | — | — |
+| `license.getLicenseUser` | — | — | `license.get_license_user` | — | — | — | — |
+| `license.status` | `license.status` | — | `license.status` | — | — | — | — |
+| `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | — | — | — | — |
+
+## entitlements
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `entitlements.has` | `license.isEntitled` (planned: SP-35) | `useEntitlement` | `license.is_entitled` (planned: SP-35) | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `license.entitlementValue` (planned: SP-35) | — | `license.entitlement_value` (planned: SP-35) | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `license.getEntitlements` (planned: SP-35) | — | `license.get_entitlements` (planned: SP-35) | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
+| `entitlements.acknowledge` | reserved for LX-42 | | | | | | `license.entitlements` |
+
+## identity
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `identity.signIn` | reserved for I-10a | | | | | | `identity.oidc` |
+| `identity.subject` | reserved for I-10a | | | | | | `identity.account` |
+| `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | planned (I-10b) | `identity.sign_out` | `identity.account` |
+| `identity.current` | `identity.current` | — | `identity.current` | — | — | — | — |
+| `identity.forget` | `identity.forget` | — | — | — | — | — | — |
+| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | — | — | — | — |
+| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | — | — | — | — |
+| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | — | — | — | — |
+| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | — | — | — | — |
+| `identity.acceptSignIn` | — | — | `identity.accept_sign_in` | — | — | — | — |
+
+## events
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `licenseChanges` (planned: SP-35b) | planned (SP-35b) | — |
+
+## cloudSync
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `cloudSync.saves` | reserved for U-22 | | | | | | `sync.saves` |
+| `cloudSync.collection` | reserved for U-23 | | | | | | `sync.saves` |
+
+## auth
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `auth` | — | `auth` | — | — | — | — | — |
+
+## server
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `server.isEntitled` | — | — | — | — | — | — | `server.license` |
+| `server.entitlementValue` | — | — | — | — | — | — | `server.license` |
+| `server.requireLicense` | — | — | — | — | — | — | `server.license` |
+
+## devices
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `devices.register` | `devices.register` | — | `devices.register` | — | — | — | — |
+| `devices.list` | `devices.list` | — | `devices.list` | — | — | — | — |
+| `devices.rename` | `devices.rename` | — | `devices.rename` | — | — | — | — |
+| `devices.deauthorize` | `devices.deauthorize` | — | `devices.deauthorize` | — | — | — | — |
+
+## release
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `release.fetch` | `release.fetch` | — | `release.fetch` | — | — | — | — |
+| `release.changelog` | `release.changelog` | — | `release.changelog` | — | — | — | — |
+| `release.installUrl` | `release.installUrl` | — | `release.install_url` | — | — | — | — |
+| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | — | — | — | — |
+
+## update
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | — | — | — |
+| `update.decidable` | `update.decidable` | — | — | — | — | — | — |
+| `update.install` | `update.install` | — | `update.install` | — | — | — | — |
+| `update.check` | `update.check` | — | `update.check` | — | — | — | — |
+| `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | — | — | — |
+| `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | — | — | — | — |
+| `update.decide` | `update.decide` | — | `update.decide` | — | — | — | — |
+| `update.feed` | `update.feed` | — | `update.feed` | — | — | — | — |
+| `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | — | — | — | — |
+| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | — | — | — | — |
+| `update.ensureDiscovery` | `update.ensureDiscovery` | — | — | — | — | — | — |
+| `update.reload` | `update.reload` | — | `update.reload` | — | — | — | — |
+| `update.useDriver` | `update.useDriver` | — | `set_driver` | — | — | — | — |
+| `update.confirmBoot` | `update.confirmBoot` | — | `update.confirm_boot` | — | — | — | — |
+| `update.markBootAttempt` | `update.markBootAttempt` | — | `update.mark_boot_attempt` | — | — | — | — |
+
+## distribution
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `distribution.downloadModel` | `distribution.downloadModel` | — | `distribution.download_model` | — | — | — | — |
+| `distribution.thisPlatform` | `distribution.thisPlatform` | — | `distribution.this_platform` | — | — | — | — |
+
+## commerce
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | — | — | — | — |
+| `commerce.claim` | `commerce.claim` | — | `commerce.claim` | — | — | — | — |
+| `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | — | — | — | — |
+| `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | — | — | — | — |
+| `commerce.claimPlay` | `commerce.claimPlay` | — | `commerce.claim_play` | — | — | — | — |
+| `commerce.hiddenHere` | — | — | `commerce.hidden_here` | — | — | — | — |
+| `commerce.isUnlocked` | — | — | `commerce.is_unlocked` | — | — | — | — |
+
+## packs
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `packs.ensure` | `packs.ensure` | — | `packs.ensure` | — | — | — | — |
+| `packs.state` | `packs.state` | — | `packs.state` | — | — | — | — |
+| `packs.path` | `packs.path` | — | `packs.path` | — | — | — | — |
+| `packs.registerHandler` | `packs.registerHandler` | — | `packs.register_handler` | — | — | — | — |
+| `packs.on` | `packs.on` | — | `packs.on` | — | — | — | — |
+| `packs.isAvailable` | `packs.isAvailable` | — | `packs.is_available` | — | — | — | — |
+| `packs.packFor` | `packs.packFor` | — | `packs.pack_for` | — | — | — | — |
+| `packs.rollback` | `packs.rollback` | — | `packs.rollback` | — | — | — | — |
+| `packs.confirm` | `packs.confirm` | — | `packs.confirm` | — | — | — | — |
+
+## presentation
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `presentation.subscribe` | `presentation.subscribe` | — | `presentation.subscribe` | — | — | — | — |
+| `presentation.load` | `presentation.load` | — | — | — | — | — | — |
+| `presentation.icon` | `presentation.icon` | — | `presentation.icon` | — | — | — | — |
+| `presentation.iconFor` | `presentation.iconFor` | — | — | — | — | — | — |
+| `presentation.loadCached` | — | — | `presentation.load_cached` | — | — | — | — |
+| `presentation.current` | `presentation.current` | — | `presentation.current` | — | — | — | — |
+
+## boot
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `boot.runBoot` | `boot.runBoot` | — | `boot.run_boot` | — | — | — | — |
+| `boot.registrationOpen` | — | — | `boot.registration_open` | — | — | — | — |
+| `boot.ensureActivated` | `boot.ensureActivated` | — | `boot.ensure_activated` | — | — | — | — |
+
+## Removed in 0.9
+
+Nothing is removed yet. Each rename lists its old name here when it ships.

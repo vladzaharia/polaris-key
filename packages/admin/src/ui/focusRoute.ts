@@ -1,5 +1,9 @@
 import { CLOSING_OVERLAYS, OPEN_OVERLAYS } from "../lib/router-core.js";
-import { announce } from "./LiveRegion.js";
+import {
+  announce,
+  beginPageAnnouncement,
+  markPageAnnounced,
+} from "./LiveRegion.js";
 
 /**
  * Route-change focus (WCAG 2.4.3, ADMIN.md §5.6): after a navigation settles, move focus to the
@@ -23,7 +27,7 @@ import { announce } from "./LiveRegion.js";
  * deadlines; it then ends silently. Without `alive()` it ends silently at the deadline.
  */
 export interface FocusRouteOptions {
-  /** The announced name; default the heading's text. */
+  /** The announced name only when the page has no heading; the heading's accessible name wins. */
   title?: string;
   /** Where the page renders; default the document. */
   root?: ParentNode;
@@ -47,6 +51,31 @@ export const FOCUS_DEADLINE_MS = 1500;
 /** An `alive()` call keeps waiting for a real heading this many deadlines at most. */
 export const MAX_WAIT_FACTOR = 10;
 
+/**
+ * The heading's accessible name: its `aria-label` if present, else its text with `aria-hidden` and
+ * `hidden` parts left out (badges and chips marked decorative), `img` alt text kept.
+ */
+export function headingName(el: Element): string {
+  const label = el.getAttribute("aria-label")?.trim();
+  if (label) return label;
+  const walk = (n: Node): string => {
+    if (n.nodeType === 3) return n.textContent ?? "";
+    if (n.nodeType !== 1) return "";
+    const e = n as Element;
+    if (e.getAttribute("aria-hidden") === "true" || e.hasAttribute("hidden"))
+      return "";
+    const own = e.getAttribute("aria-label")?.trim();
+    if (own) return ` ${own} `;
+    if (e.tagName === "IMG") return ` ${e.getAttribute("alt") ?? ""} `;
+    return Array.from(e.childNodes).map(walk).join("");
+  };
+  return Array.from(el.childNodes)
+    .map(walk)
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function focusRoute(
   opts: FocusRouteOptions = {},
 ): Promise<FocusRouteResult> {
@@ -58,8 +87,13 @@ export function focusRoute(
   // performance.now(): monotonic, and not pinned by a test harness that freezes Date.
   const started = performance.now();
   const initial = doc.activeElement;
+  const end = beginPageAnnouncement();
 
-  return new Promise((resolve) => {
+  return new Promise((resolveRaw) => {
+    const resolve = (r: FocusRouteResult): void => {
+      end();
+      resolveRaw(r);
+    };
     const step = (): void => {
       if (alive && !alive()) return resolve("cancelled");
       if (doc.querySelector(OPEN_OVERLAYS)) return resolve("kept");
@@ -74,8 +108,9 @@ export function focusRoute(
         if (!heading.hasAttribute("tabindex"))
           heading.setAttribute("tabindex", "-1");
         heading.focus({ preventScroll: true });
-        const name = (title ?? heading.textContent ?? "").trim();
+        const name = (headingName(heading) || (title ?? "")).trim();
         announce(name ? `${name}, page loaded` : "Page loaded");
+        markPageAnnounced();
         return resolve("focused");
       }
       if (expired && (!alive || elapsed >= deadline * MAX_WAIT_FACTOR))

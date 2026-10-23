@@ -1026,7 +1026,116 @@ ${parts.join("\n")}
 }
 
 // ── driver ─────────────────────────────────────────────────────────────────────
+// The canonical SDK names (conformance/parity/api.json): one table per namespace, the 0.9
+// removals and the naming policy.
+function apiNames() {
+  const api = JSON.parse(read("conformance", "parity", "api.json"));
+  const sdkOrder = ["node", "react", "python", "swift", "kotlin", "godot"];
+  const sdkLabel = {
+    node: "Node",
+    react: "React",
+    python: "Python",
+    swift: "Swift",
+    kotlin: "Kotlin",
+    godot: "Godot",
+  };
+  const words = (name) =>
+    name
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .toLowerCase()
+      .split(" ");
+  const cased = (sdk, name) => {
+    const w = words(name);
+    return api.casing[sdk] === "snake"
+      ? w.join("_")
+      : w[0] +
+          w
+            .slice(1)
+            .map((x) => x[0].toUpperCase() + x.slice(1))
+            .join("");
+  };
+  const generated = (sdk, id) =>
+    id
+      .split(".")
+      .map((seg) => cased(sdk, seg))
+      .join(".");
+  const code = (text) => `\`${text}\``;
+  const cell = (c, sdk) => {
+    const e = c.sdks?.[sdk];
+    if (!e) return "—";
+    const base =
+      e.path ?? e.spelling ?? (e.planned ? null : generated(sdk, c.id));
+    if (e.planned)
+      return base
+        ? `${code(base)} (planned: ${e.planned})`
+        : `planned (${e.planned})`;
+    return code(base);
+  };
+  const escapeCell = (text) => text.replace(/\|/g, "\\|");
+  const byNamespace = new Map();
+  for (const c of api.concepts) {
+    const ns = c.id.split(".")[0];
+    if (!byNamespace.has(ns)) byNamespace.set(ns, []);
+    byNamespace.get(ns).push(c);
+  }
+  const sections = [];
+  for (const [ns, concepts] of byNamespace) {
+    const rows = concepts.map((c) => {
+      if (c.reserved)
+        return `| ${code(c.id)} | reserved for ${c.reserved} | | | | | | ${c.feature ? code(c.feature) : "—"} |`;
+      return `| ${code(c.id)} | ${sdkOrder.map((sdk) => escapeCell(cell(c, sdk))).join(" | ")} | ${c.feature ? code(c.feature) : "—"} |`;
+    });
+    sections.push(
+      [
+        `## ${ns}`,
+        "",
+        `| Concept | ${sdkOrder.map((s) => sdkLabel[s]).join(" | ")} | Feature |`,
+        `| --- | ${sdkOrder.map(() => "---").join(" | ")} | --- |`,
+        ...rows,
+      ].join("\n"),
+    );
+  }
+  const removedRows = (api.removed ?? []).map(
+    (r) =>
+      `| ${sdkLabel[r.sdk] ?? r.sdk} | ${code(r.from)} | ${r.to ? code(r.to) : r.note} | ${r.package} |`,
+  );
+  const removed = removedRows.length
+    ? [
+        "| SDK | Old name | New name or note | Package |",
+        "| --- | --- | --- | --- |",
+        ...removedRows,
+      ].join("\n")
+    : "Nothing is removed yet. Each rename lists its old name here when it ships.";
+  return `---
+title: "SDK API names"
+description: "The canonical name of every SDK concept in each SDK, and the names removed in 0.9."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with \`pnpm --filter @polaris-key/docs gen\`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Every SDK exposes the same concepts under the same names, up to casing. The tables list each
+concept's spelling per SDK, from \`conformance/parity/api.json\`. A dash means the SDK does
+not ship the concept. \`planned\` marks a name that changes, or a symbol that does not exist
+yet, in the named work package; the spelling shown is the SDK's current one.
+
+## Naming policy
+
+During 0.9 a release may rename or remove an SDK name without an alias. Every removal is listed
+here and in that release's notes, and a removed option fails with \`invalid-options\` naming
+its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver against
+\`api.json\`.
+
+${sections.join("\n\n")}
+
+## Removed in 0.9
+
+${removed}
+`;
+}
+
 export const EMITTERS = {
+  "reference/api-names.mdx": apiNames,
   "reference/validation-codes.mdx": manifestValidationCodes,
   "reference/config-entry.mdx": configEntryReference,
   "reference/error-codes.mdx": errorCodes,

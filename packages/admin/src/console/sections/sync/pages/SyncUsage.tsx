@@ -13,7 +13,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type ProductCatalog,
   type SyncUsageResponse,
 } from "../../../../api.js";
@@ -30,12 +29,16 @@ import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatTile } from "../../../../ui/charts/StatTile.js";
 import { DOCS_LINKS } from "../../../../lib/docsLinks.js";
 import { useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
+import { catalogQuery } from "../../config/data.js";
 import { SECTIONS } from "../../../nav.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { Panel } from "../../../templates/Dashboard.js";
-import { declaresSaves, useProductCeilingBytes } from "../data.js";
+import {
+  declaresSaves,
+  syncUsageQuery,
+  useProductCeilingBytes,
+} from "../data.js";
 import { SyncHeader } from "../SyncHeader.js";
 import {
   formatStorage,
@@ -55,14 +58,11 @@ export function SyncUsagePage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   const off = product.data?.services?.sync?.enabled === false;
   const usage = useQuery({
-    queryKey: qk.syncUsage(slug),
-    queryFn: () => api.syncUsage(slug),
-    retry: false,
+    ...syncUsageQuery(slug),
     enabled: !off && !product.isPending,
   });
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     retry: false,
     enabled: !off,
   });

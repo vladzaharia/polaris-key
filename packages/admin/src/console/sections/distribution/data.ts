@@ -1,28 +1,30 @@
 /**
  * The Distribution and Update pages' reads (ADMIN.md §6.4, chunk 9): one fetcher per query key
- * family, so every reader of a key caches the same shape (`test/queryKeyShapes.test.ts`).
+ * family, so every reader of a key caches the same shape (`test/queryFactories.test.ts`).
  *
  * Writes go through `mutate()` (`console/data/mutations.ts`), which runs each write's declared
  * invalidation; nothing here invalidates by hand.
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type ConnectorsResponse,
-  type DeliverablesResponse,
   type DeliveryAccess,
   type DistributionKeysResponse,
   type DistributionMatrix,
   type OutletCredentialsResponse,
   type OutletsResponse,
-  type ReleaseStoreResponse,
   type RolloutsResponse,
   type UpdateHealthResponse,
   type UpdateSettings,
 } from "../../../api.js";
-import type { ProductCatalog } from "@polaris-key/catalog";
 import { qk } from "../../data/queries.js";
+import { deliveryAccessQuery } from "../release/data.js";
 import { navigate } from "../../router.js";
 import { codecs, type QueryCodec } from "../../routes.js";
 
@@ -93,75 +95,95 @@ export function fetchMatrix(
   return api.distributionMatrix(slug, { deliverable, limit });
 }
 
+export const matrixQuery = (slug: string, deliverable: string, limit: number) =>
+  queryOptions({
+    queryKey: qk.matrix(slug, `${deliverable}:${limit}`),
+    queryFn: () => fetchMatrix(slug, deliverable, limit),
+  });
+
 export function useMatrix(
   slug: string,
   deliverable: string,
   limit: number,
 ): UseQueryResult<DistributionMatrix> {
-  return useQuery({
-    queryKey: qk.matrix(slug, `${deliverable}:${limit}`),
-    queryFn: () => fetchMatrix(slug, deliverable, limit),
-  });
+  return useQuery(matrixQuery(slug, deliverable, limit));
 }
 
-export function useRollouts(slug: string): UseQueryResult<RolloutsResponse> {
-  return useQuery({
+export const rolloutsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.rollouts(slug),
     queryFn: () => api.rollouts(slug),
   });
+
+export function useRollouts(slug: string): UseQueryResult<RolloutsResponse> {
+  return useQuery(rolloutsQuery(slug));
 }
+
+export const healthQuery = (slug: string, windowHours: number) =>
+  queryOptions({
+    queryKey: qk.health(slug, windowHours),
+    queryFn: () => api.updateHealth(slug, windowHours),
+  });
 
 export function useHealth(
   slug: string,
   windowHours: number,
 ): UseQueryResult<UpdateHealthResponse> {
   return useQuery({
-    queryKey: qk.health(slug, windowHours),
-    queryFn: () => api.updateHealth(slug, windowHours),
+    ...healthQuery(slug, windowHours),
     // A window change keeps the last reading on screen while the next loads.
     placeholderData: (prev) => prev,
   });
 }
 
 export function useAccess(slug: string): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-  });
+  return useQuery(deliveryAccessQuery(slug));
 }
+
+export const credentialsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.credentials(slug),
+    queryFn: () => api.outletCredentials(slug),
+  });
 
 export function useCredentials(
   slug: string,
 ): UseQueryResult<OutletCredentialsResponse> {
-  return useQuery({
-    queryKey: qk.credentials(slug),
-    queryFn: () => api.outletCredentials(slug),
-  });
+  return useQuery(credentialsQuery(slug));
 }
 
-export function useOutlets(slug: string): UseQueryResult<OutletsResponse> {
-  return useQuery({
+export const outletsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.outlets(slug),
     queryFn: () => api.distributionOutlets(slug),
   });
+
+export function useOutlets(slug: string): UseQueryResult<OutletsResponse> {
+  return useQuery(outletsQuery(slug));
 }
+
+export const distributionKeysQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.distributionKeys(slug),
+    queryFn: () => api.distributionKeys(slug),
+  });
 
 export function useDistributionKeys(
   slug: string,
 ): UseQueryResult<DistributionKeysResponse> {
-  return useQuery({
-    queryKey: qk.distributionKeys(slug),
-    queryFn: () => api.distributionKeys(slug),
-  });
+  return useQuery(distributionKeysQuery(slug));
 }
+
+export const connectorsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.connectors(slug),
+    queryFn: () => api.connectors(slug),
+  });
 
 export function useConnectors(
   slug: string,
 ): UseQueryResult<ConnectorsResponse> {
-  return useQuery({
-    queryKey: qk.connectors(slug),
-    queryFn: () => api.connectors(slug),
-  });
+  return useQuery(connectorsQuery(slug));
 }
 
 /** One connector read (A-17g), by its path under the connector and its query. */
@@ -174,6 +196,22 @@ export function fetchConnectorRead<T>(
   return api.connectorRead<T>(slug, kind, path, query);
 }
 
+export const connectorReadQuery = <T>(
+  slug: string,
+  kind: string,
+  path: string,
+  query: Record<string, string>,
+) =>
+  queryOptions({
+    queryKey: qk.connectorRead(
+      slug,
+      kind,
+      path,
+      new URLSearchParams(query).toString(),
+    ),
+    queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
+  });
+
 /**
  * A connector read (A-17g: `distribute/builds`, `iap/products`, …). `poll` refetches while the
  * page is open (a build that is still processing); `enabled` waits for what the query needs.
@@ -185,52 +223,21 @@ export function useConnectorRead<T>(
   query: Record<string, string> = {},
   opts: { enabled?: boolean; poll?: number | false } = {},
 ): UseQueryResult<T> {
-  const qs = new URLSearchParams(query).toString();
   return useQuery({
-    queryKey: qk.connectorRead(slug, kind, path, qs),
-    queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
+    ...connectorReadQuery<T>(slug, kind, path, query),
     enabled: opts.enabled ?? true,
     refetchInterval: opts.poll ?? false,
   });
 }
 
-/** Release's deliverables (the same fetcher as the Release pages). */
-export function useDeliverables(
-  slug: string,
-): UseQueryResult<DeliverablesResponse> {
-  return useQuery({
-    queryKey: qk.deliverables(slug),
-    queryFn: () => api.deliverables(slug),
-  });
-}
-
-/** Release's store: releases and channel pointers (the same fetcher as the Release pages). */
-export function useReleaseStore(
-  slug: string,
-): UseQueryResult<ReleaseStoreResponse> {
-  return useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
-}
-
-/** The config catalog (the same fetcher as the Config pages): the pack gates' flags. */
-export function useCatalog(
-  slug: string,
-  enabled = true,
-): UseQueryResult<ProductCatalog> {
-  return useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-    enabled,
-  });
-}
-
-export function useFeed(slug: string): UseQueryResult<UpdateSettings> {
-  return useQuery({
+export const feedQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.feed(slug),
     queryFn: () => api.updateSettings(slug),
   });
+
+export function useFeed(slug: string): UseQueryResult<UpdateSettings> {
+  return useQuery(feedQuery(slug));
 }
 
 /** The epoch-ms instant a query last answered (for the T1 freshness line). */

@@ -41,10 +41,10 @@ import {
   MATRIX_LIMITS,
   patchQuery,
   QUERY,
-  useDeliverables,
   useMatrix,
   type MatrixView,
 } from "../data.js";
+import { useDeliverables } from "../../release/data.js";
 import {
   outletKindLabel,
   READINESS_LABEL,

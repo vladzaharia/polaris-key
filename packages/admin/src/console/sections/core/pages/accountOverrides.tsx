@@ -38,6 +38,8 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import type { UserSlotProps } from "../model/userSlots.js";
+import { coreBReads } from "../data.js";
+import { catalogQuery } from "../../config/data.js";
 
 /**
  * The catalog an account override edits: its `config` and `secret` entries. Entitlements (`flag`)
@@ -71,14 +73,8 @@ export function AccountOverrideEditor({
   slug,
   subject,
 }: UserSlotProps): React.ReactElement {
-  const overridesQ = useQuery({
-    queryKey: qk.userOverrides(slug, subject),
-    queryFn: () => api.productUserOverrides(slug, subject),
-  });
-  const catalogQ = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-  });
+  const overridesQ = useQuery(coreBReads.userOverrides(slug, subject));
+  const catalogQ = useQuery(catalogQuery(slug));
   const [serverFields, setServerFields] = React.useState<
     string[] | undefined
   >();

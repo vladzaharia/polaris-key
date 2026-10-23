@@ -4,14 +4,8 @@
  */
 
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import {
-  api,
-  type AccessAdmin,
-  type AccessAdmins,
-  type Me,
-} from "../../api.js";
-import { fetchMe } from "../data/hooks.js";
-import { qk } from "../data/queries.js";
+import type { AccessAdmin, AccessAdmins, Me } from "../../api.js";
+import { reads } from "../data/reads.js";
 import {
   AREA_NAMES,
   canIn,
@@ -49,7 +43,7 @@ export function useBreakGlassReason(): string | undefined {
 
 /** The session `/me` the shell already loaded, read from the cache without fetching it. */
 export function useCachedMe(): Me | undefined {
-  return useQuery({ queryKey: qk.me(), queryFn: fetchMe, enabled: false }).data;
+  return useQuery({ ...reads.me(), enabled: false }).data;
 }
 
 /** The `scope` query value for an area in a product (or the platform). */
@@ -67,8 +61,7 @@ export function useAccessAdmins(
 ): UseQueryResult<AccessAdmins> {
   const scope = accessScope(area, slug);
   return useQuery({
-    queryKey: qk.accessAdmins(scope, area),
-    queryFn: () => api.accessAdmins(scope, area),
+    ...reads.accessAdmins(scope, area),
     // Platform access is given by Superadmins, never a product's admin (the server lists no
     // Platform admins either):
     // whatever a worker answers, a platform scope names none.
@@ -77,7 +70,6 @@ export function useAccessAdmins(
         ? { ...d, admins: d.admins.filter((a) => a.role !== "product_admin") }
         : d,
     enabled,
-    staleTime: 60_000,
   });
 }
 

@@ -16,7 +16,7 @@ import {
   SettingsRow,
   SettingsSection,
 } from "../../../../templates/Settings.js";
-import { useReleaseStore } from "../../../distribution/data.js";
+import { useReleaseStore } from "../../../release/data.js";
 import { useReleaseNotes } from "../../../storefronts/data.js";
 import { docsUrl } from "../../../../../lib/docsLinks.js";
 

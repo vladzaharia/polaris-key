@@ -24,7 +24,6 @@ import * as React from "react";
 import { ArrowRight, CircleAlert, Lock, TriangleAlert } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type PlatformIntegerSetting,
   type PlatformSwitchSetting,
   type ProductCatalog,
@@ -44,7 +43,8 @@ import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { useWriteGate } from "../../access/useCan.js";
 import { useProduct } from "../../data/hooks.js";
-import { qk } from "../../data/queries.js";
+import { reads } from "../../data/reads.js";
+import { catalogQuery } from "../config/data.js";
 import { Link, navigate, useLocation } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -82,14 +82,12 @@ export function CloudSyncSetupPage({
   const product = useProduct(slug);
   const gate = useWriteGate("platform", null, "Platform");
   const platform = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
+    ...reads.platformSettings(),
     retry: false,
     enabled: gate.allowed,
   });
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     retry: false,
   });
   const usageQuery = useSyncUsage(slug);

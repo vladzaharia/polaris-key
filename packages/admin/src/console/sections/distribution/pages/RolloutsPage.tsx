@@ -42,9 +42,9 @@ import {
   patchQuery,
   QUERY,
   useMatrix,
-  useReleaseStore,
   useRollouts,
 } from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 import {
   cellKey,
   indexCells,
