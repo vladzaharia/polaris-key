@@ -140,7 +140,9 @@ func _rebuild() -> void:
 		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(l)
 		add_child(row)
-	visible = _wanted and (home == null or not is_instance_valid(home) or home.is_visible_in_tree() or top_level)
+	# `PKeyUiView._place_hints()` owns where the bar is and whether it shows.
+	if not _wanted:
+		visible = false
 	if view != null:
 		view.queue_layout()
 

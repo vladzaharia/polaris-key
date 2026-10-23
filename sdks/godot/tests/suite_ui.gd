@@ -605,11 +605,16 @@ func _fix1(t: PKeyTestContext) -> void:
 	# a card panel.
 	var gate: PKeyGateView = _sc.gate_flow("sign-in")
 	PKeyUiTheme.reduce_motion_mode = "off"
-	await _tree().create_timer(0.5, true, false, true).timeout
+	var waited := 0
+	while waited < 300 and (waited < 20 or PKeyUiMotion.entering(gate)):
+		await _tree().process_frame
+		waited += 1
+	await _tree().create_timer(0.3, true, false, true).timeout
 	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
 	var cards := gate.find_children("Card", "PanelContainer", true, false)
 	var min_card := 1.0
 	var dipped := false
+	PKeyUiTheme.reduce_motion_mode = "off"
 	dialog.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 	for i in 30:
 		await _tree().process_frame

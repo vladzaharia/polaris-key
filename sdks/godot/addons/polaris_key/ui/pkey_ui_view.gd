@@ -1953,7 +1953,6 @@ func _place_hints(m: Dictionary) -> void:
 		var wanted: bool = bar._wanted and bar.home.is_visible_in_tree()
 		var screen: Vector2 = m["screen"]
 		if not wanted:
-			_dock_hint(bar, false)
 			bar.visible = false
 			continue
 		var footer := not phone_screen() and not outer._no_footer()
@@ -1971,7 +1970,6 @@ func _place_hints(m: Dictionary) -> void:
 				bar.visible = true
 				continue
 			# The footer would sit on a card that fills the screen: nothing to show it beside.
-			_dock_hint(bar, false)
 			bar.visible = false
 			continue
 		# A phone: the panel's own last row.
@@ -1997,17 +1995,27 @@ func _no_footer() -> bool:
 
 
 func _dock_hint(bar: PKeyHintBar, footer: bool) -> void:
-	if footer:
-		if not bar.top_level or bar.get_parent() != outer_view():
-			if bar.get_parent() != null:
-				bar.get_parent().remove_child(bar)
-			bar.top_level = true
-			outer_view().add_child(bar)
-	elif bar.top_level or bar.get_parent() != bar.home:
-		if bar.get_parent() != null:
-			bar.get_parent().remove_child(bar)
-		bar.top_level = false
-		bar.home.add_child(bar)
+	var target: Node = outer_view() if footer else bar.home
+	if bar.get_parent() == target and bar.top_level == footer:
+		return
+	if bar.has_meta(&"pkey_docking"):
+		return
+	# Deferred: a layout that runs while a parent is still setting up its children cannot add one.
+	bar.set_meta(&"pkey_docking", true)
+	_finish_dock.call_deferred(bar, target, footer)
+
+
+func _finish_dock(bar: PKeyHintBar, target: Node, footer: bool) -> void:
+	if not is_instance_valid(bar):
+		return
+	bar.remove_meta(&"pkey_docking")
+	if not is_instance_valid(target):
+		return
+	if bar.get_parent() != null:
+		bar.get_parent().remove_child(bar)
+	bar.top_level = footer
+	target.add_child(bar)
+	queue_layout()
 
 
 ## A column whose gap is the theme's: `variation` is PKeyStack (related items, the default),
