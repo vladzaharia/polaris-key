@@ -1,11 +1,12 @@
 /**
  * `errorCopy(error, context)`: the console's one error mapper (docs/design/ADMIN.md §5.9,
- * components.md §5.5). It reads an `ApiError` (status, code, reason, errors, fields) and returns a
+ * components.md §5.5). It reads an `HttpError` (status, code, reason, errors, fields) and returns a
  * title, a description and the next step, so no view ever shows "api 422" again (P9). Toasts,
  * `ErrorState` and confirm dialogs all render through it.
  */
 
-import { ApiError, SERVICE_ERROR_MESSAGES } from "../api.js";
+import { HttpError } from "./http.js";
+import { SERVICE_ERROR_MESSAGES } from "./serviceErrorMessages.js";
 import { AREA_NAMES } from "./areaNames.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./releasePolicyMessages.js";
 
@@ -255,7 +256,7 @@ function withoutStatus(message: string | null): string | null {
 type SlugProblem = "taken" | "reserved" | "invalid";
 
 function slugProblem(
-  error: ApiError,
+  error: HttpError,
   message: string,
   area: ErrorArea | undefined,
 ): SlugProblem | null {
@@ -315,27 +316,29 @@ function githubProblem(
 }
 
 /** The field a refused request should focus: the first one the server named. */
-function firstField(error: ApiError): string | undefined {
+function firstField(error: HttpError): string | undefined {
   return error.fields?.[0];
 }
 
 /**
  * Is this a network failure (fetch rejected before any response)? Only fetch's own failure is:
- * the api client tags it (`isFetchFailure`), and other fetch callers' errors read as one by their
+ * the client throws it as status 0, and other fetch callers' errors read as one by their
  * message. A bare `TypeError` is usually a render crash, which is not "Can't reach Polaris Key".
  */
 function isNetworkError(error: unknown): boolean {
-  if ((error as { isFetchFailure?: unknown } | null)?.isFetchFailure === true)
-    return true;
+  if (error instanceof HttpError) return error.status === 0;
   return (
     error instanceof Error &&
     /network|failed to fetch|load failed/i.test(error.message)
   );
 }
 
-/** The server's own message, when it sent one (ApiError's default message is "api {status}"). */
-function serverMessage(error: ApiError): string | null {
-  return error.message && error.message !== `api ${error.status}`
+/** The server's own message, when it sent one (the default message is "api {status}" or "http {status}"). */
+function serverMessage(error: HttpError): string | null {
+  return error.message &&
+    error.message !== `api ${error.status}` &&
+    error.message !== `http ${error.status}` &&
+    error.status !== 0
     ? error.message
     : null;
 }
@@ -345,7 +348,7 @@ function detailsOf(error: unknown): Record<string, unknown> {
     time: new Date().toISOString(),
     path: typeof window !== "undefined" ? window.location.hash : undefined,
   };
-  if (error instanceof ApiError) {
+  if (error instanceof HttpError) {
     return {
       ...base,
       status: error.status,
@@ -360,8 +363,8 @@ function detailsOf(error: unknown): Record<string, unknown> {
   return { ...base, value: String(error) };
 }
 
-function referencesOf(error: ApiError): string[] | undefined {
-  const refs = (error as ApiError & { references?: unknown }).references;
+function referencesOf(error: HttpError): string[] | undefined {
+  const refs = (error as HttpError & { references?: unknown }).references;
   return Array.isArray(refs) ? refs.map(String) : undefined;
 }
 
@@ -373,7 +376,7 @@ export function errorCopy(
   const details = detailsOf(error);
   const thing = context.thing ?? "This item";
 
-  if (!(error instanceof ApiError)) {
+  if (!(error instanceof HttpError) || error.status === 0) {
     if (isNetworkError(error)) {
       return {
         title: "Can't reach Polaris Key",
@@ -636,7 +639,7 @@ function problemCount(n: number): string {
  * that don't fit together. Null when the error is none of these, so the status table words it.
  */
 function setupCopy(
-  error: ApiError,
+  error: HttpError,
   message: string,
   context: ErrorContext,
   details: Record<string, unknown>,
