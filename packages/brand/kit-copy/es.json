@@ -410,7 +410,7 @@
     "signin.replace.consequence": "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su lugar. Te lo notificaremos por correo.",
     "signin.replace.inUse": "{device} se está usando ahora mismo.",
     "signin.replace.confirm": "Reemplazar y continuar",
-    "signin.replace.confirmNamed": "Reemplazar {device} y continuar",
+    "signin.replace.confirmNamed": "Reemplazar {device}",
     "signin.replace.back": "Atrás",
     "signin.replace.gone": "Ese dispositivo ya se quitó. Vuelve a elegir.",
     "signin.replace.rateLimited": "Demasiados cambios de dispositivo. Vuelve a intentarlo en {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}.",

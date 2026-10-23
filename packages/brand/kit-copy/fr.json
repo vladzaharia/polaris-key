@@ -410,7 +410,7 @@
     "signin.replace.consequence": "{device} sera déconnecté de {product} et {thisDevice} le remplacera. Nous vous enverrons un e-mail à ce sujet.",
     "signin.replace.inUse": "{device} est en cours d’utilisation.",
     "signin.replace.confirm": "Remplacer et continuer",
-    "signin.replace.confirmNamed": "Remplacer {device} et continuer",
+    "signin.replace.confirmNamed": "Remplacer {device}",
     "signin.replace.back": "Retour",
     "signin.replace.gone": "Cet appareil a déjà été retiré. Faites un autre choix.",
     "signin.replace.rateLimited": "Trop de changements d’appareil. Réessayez dans {seconds, plural, one {# seconde} many {# de secondes} other {# secondes}}.",

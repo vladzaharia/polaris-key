@@ -2071,7 +2071,7 @@ export const KIT_COPY: Readonly<
       "{device} wird von {product} abgemeldet und durch {thisDevice} ersetzt. Wir informieren Sie per E-Mail darüber.",
     "signin.replace.inUse": "{device} wird gerade verwendet.",
     "signin.replace.confirm": "Ersetzen und fortfahren",
-    "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
+    "signin.replace.confirmNamed": "{device} ersetzen",
     "signin.replace.back": "Zurück",
     "signin.replace.gone":
       "Dieses Gerät wurde bereits entfernt. Wählen Sie erneut.",
@@ -3729,7 +3729,7 @@ export const KIT_COPY: Readonly<
       "{device} sera déconnecté de {product} et {thisDevice} le remplacera. Nous vous enverrons un e-mail à ce sujet.",
     "signin.replace.inUse": "{device} est en cours d’utilisation.",
     "signin.replace.confirm": "Remplacer et continuer",
-    "signin.replace.confirmNamed": "Remplacer {device} et continuer",
+    "signin.replace.confirmNamed": "Remplacer {device}",
     "signin.replace.back": "Retour",
     "signin.replace.gone":
       "Cet appareil a déjà été retiré. Faites un autre choix.",
@@ -5375,7 +5375,7 @@ export const KIT_COPY: Readonly<
       "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su lugar. Te lo notificaremos por correo.",
     "signin.replace.inUse": "{device} se está usando ahora mismo.",
     "signin.replace.confirm": "Reemplazar y continuar",
-    "signin.replace.confirmNamed": "Reemplazar {device} y continuar",
+    "signin.replace.confirmNamed": "Reemplazar {device}",
     "signin.replace.back": "Atrás",
     "signin.replace.gone": "Ese dispositivo ya se quitó. Vuelve a elegir.",
     "signin.replace.rateLimited":
@@ -7016,7 +7016,7 @@ export const KIT_COPY: Readonly<
       "{device} sai de {product} e {thisDevice} entra no lugar dele. Enviaremos um e-mail sobre isso.",
     "signin.replace.inUse": "{device} está em uso agora.",
     "signin.replace.confirm": "Substituir e continuar",
-    "signin.replace.confirmNamed": "Substituir {device} e continuar",
+    "signin.replace.confirmNamed": "Substituir {device}",
     "signin.replace.back": "Voltar",
     "signin.replace.gone":
       "Esse dispositivo já foi removido. Escolha novamente.",
@@ -8616,7 +8616,7 @@ export const KIT_COPY: Readonly<
       "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo.",
     "signin.replace.inUse": "{device} è in uso in questo momento.",
     "signin.replace.confirm": "Sostituisci e continua",
-    "signin.replace.confirmNamed": "Sostituisci {device} e continua",
+    "signin.replace.confirmNamed": "Sostituisci {device}",
     "signin.replace.back": "Indietro",
     "signin.replace.gone":
       "Quel dispositivo è già stato rimosso. Scegli di nuovo.",
@@ -10245,7 +10245,7 @@ export const KIT_COPY: Readonly<
       "{device}は{product}からサインアウトされ、代わりに{thisDevice}が使われます。この件についてはメールでお知らせします。",
     "signin.replace.inUse": "{device}は現在使用中です。",
     "signin.replace.confirm": "置き換えて続ける",
-    "signin.replace.confirmNamed": "{device}を置き換えて続ける",
+    "signin.replace.confirmNamed": "{device}を置き換える",
     "signin.replace.back": "戻る",
     "signin.replace.gone":
       "そのデバイスはすでに削除されています。もう一度選択してください。",
@@ -11872,7 +11872,7 @@ export const KIT_COPY: Readonly<
       "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요.",
     "signin.replace.inUse": "{device}에서 지금 사용 중이에요.",
     "signin.replace.confirm": "교체하고 계속",
-    "signin.replace.confirmNamed": "{device} 교체하고 계속",
+    "signin.replace.confirmNamed": "{device} 교체",
     "signin.replace.back": "뒤로",
     "signin.replace.gone": "이미 제거된 기기예요. 다시 선택하세요.",
     "signin.replace.rateLimited":
@@ -13410,7 +13410,7 @@ export const KIT_COPY: Readonly<
       "{device}将退出登录{product}，由{thisDevice}取代。我们会通过电子邮件通知你。",
     "signin.replace.inUse": "{device}正在使用中。",
     "signin.replace.confirm": "替换并继续",
-    "signin.replace.confirmNamed": "替换{device}并继续",
+    "signin.replace.confirmNamed": "替换{device}",
     "signin.replace.back": "返回",
     "signin.replace.gone": "该设备已被移除。请重新选择。",
     "signin.replace.rateLimited":

@@ -410,7 +410,7 @@
     "signin.replace.consequence": "{device} sai de {product} e {thisDevice} entra no lugar dele. Enviaremos um e-mail sobre isso.",
     "signin.replace.inUse": "{device} está em uso agora.",
     "signin.replace.confirm": "Substituir e continuar",
-    "signin.replace.confirmNamed": "Substituir {device} e continuar",
+    "signin.replace.confirmNamed": "Substituir {device}",
     "signin.replace.back": "Voltar",
     "signin.replace.gone": "Esse dispositivo já foi removido. Escolha novamente.",
     "signin.replace.rateLimited": "Muitas alterações de dispositivo. Tente novamente em {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}.",
