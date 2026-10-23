@@ -10,7 +10,7 @@ import { useTheme } from "../../components/theme.js";
  * Decorative here: the link around it carries the name.
  */
 export function Lockup({
-  height = 40,
+  height = 33,
   className,
 }: {
   height?: number;
@@ -66,7 +66,7 @@ export function HeaderBrand({
 }
 
 /**
- * The sign-in card's brand row (SIGN-IN.md §3.1): 36 px on a phone, where a 48 px lockup sat 4 px
+ * The sign-in card's brand row (SIGN-IN.md §3.1; a card's lockup, not a header's 33 px): 36 px on a phone, where a 48 px lockup sat 4 px
  * from the card's top edge (B-066; BRAND.md sets 36), 48 px from `sm`. The size never changes
  * between steps.
  */
