@@ -1716,7 +1716,7 @@ describe("?setting= deep links", () => {
     ],
     [
       "the display name approval",
-      "#/p/djdl/app-sign-in?setting=identity.displayNameApproved",
+      "#/p/djdl/identity/app-sign-in?setting=identity.displayNameApproved",
       "setting-identity.displayNameApproved",
     ],
   ];

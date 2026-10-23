@@ -135,7 +135,15 @@ export function SettingsRow({
             control === "field" && "max-sm:flex-col max-sm:items-stretch",
           )}
         >
-          <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
+          {/* In the stacked phone layout the basis would be a height: the label keeps its own. */}
+          <div
+            className={cn(
+              "min-w-0 flex-[1_1_16rem]",
+              control === "field" && "max-sm:flex-none",
+            )}
+          >
+            {labelBlock}
+          </div>
           {/* Flush right, and so is every line of a value that wraps (a chain of pills). */}
           <div
             className={cn(
