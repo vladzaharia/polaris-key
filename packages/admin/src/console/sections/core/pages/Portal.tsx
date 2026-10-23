@@ -35,6 +35,7 @@ import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { ClaimByKeyWarning } from "../../identity/components/ClaimByKeyWarning.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
+import { coreBReads } from "../data.js";
 
 /** The branding fields the Locker reads, in editor order (Worker: `portal/branding.ts`). */
 export const BRANDING_FIELDS = [
@@ -138,10 +139,7 @@ const toggleRows = (name: string) =>
 
 export function PortalPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  const query = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const query = useQuery(coreBReads.portal(slug));
   useLoadingAnnouncement("Polaris Locker", query.isPending);
   if (query.isPending)
     return <PageSkeleton template="form" label="Polaris Locker" />;

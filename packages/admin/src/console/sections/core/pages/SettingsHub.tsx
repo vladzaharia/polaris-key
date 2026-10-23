@@ -27,6 +27,7 @@ import { Link } from "../../../router.js";
 import { useSettingTarget } from "../../../useSettingTarget.js";
 import { anchorOfKey } from "../model/settingHomes.js";
 import { productPage, r } from "../../../routes.js";
+import { coreBReads } from "../data.js";
 
 /**
  * The hub's tabs in order; All settings words its destinations with these labels. `settings`
@@ -83,8 +84,7 @@ export function SettingsHub({
   // The tab's count is the Admins table: people and the invites waiting. The page reads the same
   // query, so one request serves both.
   const roster = useQuery({
-    queryKey: qk.productMembers(slug),
-    queryFn: () => api.productMembers(slug),
+    ...coreBReads.productMembers(slug),
     enabled: canMembers,
   });
   const name = product.data?.name ?? slug;

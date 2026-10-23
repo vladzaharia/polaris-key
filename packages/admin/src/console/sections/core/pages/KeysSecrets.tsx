@@ -33,7 +33,7 @@ import { Input } from "../../../../ui/Input.js";
 import { SecretInput } from "../../../../ui/SecretInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
-import { fetchSecrets } from "../../../data/hooks.js";
+import { reads } from "../../../data/reads.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { codecs } from "../../../routes.js";
@@ -59,10 +59,7 @@ export function neededBy(
 }
 
 export function SecretsSection({ slug }: { slug: string }): React.ReactElement {
-  const secrets = useQuery({
-    queryKey: qk.secrets(slug),
-    queryFn: () => fetchSecrets(slug),
-  });
+  const secrets = useQuery(reads.secrets(slug));
   const [editing, setEditing] = React.useState<{ name: string } | null>(null);
   // `?secret=<name>` opens Set secret with the name filled in; closing it drops the parameter.
   const [linked, setLinked] = useSearchParam("secret", SECRET_PARAM);
