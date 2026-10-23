@@ -29,7 +29,9 @@ import {
   productIconUrl,
   SEND_INVITE_ACTION,
   SEND_INVITE_FAILED_ACTION,
+  claimSendWindow,
   sendKeyRetryAfter,
+  sendWindowRefusal,
   type EmailFailure,
 } from "./keyEmail.js";
 
@@ -184,34 +186,30 @@ export async function handleSendInvite(
       reason: refusal,
     });
   const retryAfter = await sendKeyRetryAfter(ctx, license.id);
-  if (retryAfter > 0) {
-    const res = err(
-      429,
-      "rate_limited",
+  if (retryAfter > 0)
+    return sendWindowRefusal(
+      retryAfter,
       "a key or invitation was sent for this license in the last 10 minutes",
-      { retryAfter },
     );
-    res.headers.set("retry-after", String(retryAfter));
-    return res;
-  }
   const blocked = await keyEmailBlocked(ctx, to);
   if (blocked)
     return err(409, ErrorCode.BadRequest, "the invitation cannot be sent", {
       reason: blocked,
     });
-  // The attempt is recorded BEFORE the send, so the limit holds even if the send never returns.
+  // The attempt is recorded BEFORE the send, by an atomic claim of the window (LX-27c).
   const attemptId = randomId("aud");
   const actor = actorColumns(actorOf(session));
-  await appendAudit(db, {
-    product: product.slug,
+  const claimed = await claimSendWindow(ctx, license.id, {
     id: attemptId,
-    at: now,
     ...actor,
     action: SEND_INVITE_ACTION,
-    target_kind: "license",
-    target_id: license.id,
     summary: `Sent invitation for ${license.id}`,
   });
+  if (!claimed)
+    return sendWindowRefusal(
+      Math.max(1, await sendKeyRetryAfter(ctx, license.id)),
+      "a key or invitation was sent for this license in the last 10 minutes",
+    );
   const result = await emailLicenseInvitation(ctx, license, context);
   if (result.invite === "failed")
     await appendAudit(db, {
