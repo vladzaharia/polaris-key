@@ -18,7 +18,9 @@ import { momentSeen } from "../../../../ui/motion/index.js";
 import { FormStep, Wizard } from "../../../../ui/wizard/index.js";
 import { NEW_LICENSE_FLOW } from "../../../wizard/flows.js";
 import { useProduct } from "../../../data/hooks.js";
+import { useQueryClient } from "@tanstack/react-query";
 import { mutate } from "../../../data/mutations.js";
+import { qk } from "../../../data/queries.js";
 import { momentKey } from "../../../components/Moment.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -88,8 +90,9 @@ export function NewLicenseWizard({
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
   const hasLicenses = useHasLicenses(slug);
+  const queryClient = useQueryClient();
   const invitations = useInvitations(slug);
-  const canInvite = invitations?.invitations === true;
+  const canInvite = invitations.invitations;
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   // A 404 means the service has nothing to give: not a failure.
   const tiersError =
@@ -287,8 +290,13 @@ export function NewLicenseWizard({
           err instanceof ApiError && field === "delivery" ? err.reason : null;
         const words = refusedWords(field, reason);
         // The product can't invite after all: stop offering it.
-        if (reason === "identity_off" || reason === "auto_link_off")
+        if (reason === "identity_off" || reason === "auto_link_off") {
           setDraft((d) => ({ ...d, invites: false, delivery: null }));
+          // The list is stale: the next license must not offer the invitation again.
+          void queryClient.invalidateQueries({
+            queryKey: qk.licensesFirst(slug),
+          });
+        }
         if (field === "tier") void tiersQ.refetch();
         announce(words);
         goStep(FIELD_STEP[field]!);
@@ -311,8 +319,16 @@ export function NewLicenseWizard({
     }
   };
 
-  const { retrying, retryWait, refusal, tryAgain, clearRetryError } =
-    useRetrySend({ slug, result, setResult, setKept });
+  const {
+    retrying,
+    retryWait,
+    refusal,
+    inviteNote,
+    tryAgain,
+    makeKey,
+    makingKey,
+    clearRetryError,
+  } = useRetrySend({ slug, result, setResult, setKept });
 
   // ── Footer and body per step ─────────────────────────────────────────────────────────────────
   const cancel = (
@@ -368,8 +384,11 @@ export function NewLicenseWizard({
             </Callout>
           ) : null
         }
+        refusal={inviteNote}
         retryWait={retryWait}
         onRetry={() => void tryAgain()}
+        onMakeKey={() => void makeKey()}
+        makingKey={makingKey}
         onTryIt={() => {
           finished();
           if (window.location.hash.startsWith(r.integration(slug))) {
@@ -508,7 +527,8 @@ export function NewLicenseWizard({
         <DeliveryStep
           {...common}
           productName={product?.name ?? slug}
-          invitationsOff={invitations?.off ?? null}
+          invitationsOff={invitations.off}
+          loading={invitations.pending}
         />,
       );
     } else {

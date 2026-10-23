@@ -232,7 +232,7 @@ function LicenseRecordBody({
     waiting && active && !expired && Boolean(license.email?.trim());
   // LX-27c.5: where invitations work, the primary resends the invitation (no key); elsewhere it
   // is LX-30's, which sends a new key.
-  const canInvite = useInvitations(slug)?.invitations === true;
+  const canInvite = useInvitations(slug).invitations;
   const tier = license.tier ? tiers.find((t) => t.id === license.tier) : null;
   // A license with no tier is on the Default tier (LX-33.7).
   const tierLabel = license.tier

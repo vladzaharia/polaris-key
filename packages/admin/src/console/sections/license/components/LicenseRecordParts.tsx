@@ -102,7 +102,7 @@ export function StatusTab({
   const holder = holderOf(license);
   const floating = holder.kind === "floating";
   const waiting = holder.kind === "assigned" && !holder.inAccount;
-  const canInvite = useInvitations(slug)?.invitations === true;
+  const canInvite = useInvitations(slug).invitations;
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">

@@ -33,11 +33,11 @@ import type { StepProps } from "./steps.js";
 
 const DELIVERY_COPY: Record<
   Delivery,
-  { label: string; hint: (to: string) => string }
+  { label: string; hint: (to: string, email: string) => string }
 > = {
   invite: {
     label: "Email an invitation",
-    hint: (to) => `${to} gets a sign-in link. No key is sent.`,
+    hint: (to, email) => `${to} signs in with ${email} to use it. No key.`,
   },
   "email-show": {
     label: "Email the key and show it once",
@@ -59,14 +59,40 @@ export function DeliveryStep({
   set,
   productName,
   invitationsOff,
+  loading = false,
 }: StepProps & {
   productName: string;
   /** Why invitations are not offered here, when the product has sign-in but cannot link by email. */
-  invitationsOff?: "identity_off" | "auto_link_off" | null;
+  invitationsOff?: "identity_off" | "auto_link_off" | "no_mail" | null;
+  /** The list has not said yet whether invitations work: the choices wait for it. */
+  loading?: boolean;
 }): React.ReactElement {
   const fits = deliveriesFor(draft);
   const current = deliveryOf(draft);
-  const to = draft.name.trim() || draft.email.trim() || "They";
+  const email = draft.email.trim();
+  const to = draft.name.trim() || email || "They";
+  if (loading && draft.who === "person")
+    return (
+      <p role="status" className="text-sm text-fg-muted">
+        Checking how {to} can get it…
+      </p>
+    );
+  const alsoKey = (
+    <label className="flex min-h-6 items-start gap-2 pt-2 text-sm text-fg">
+      <input
+        type="checkbox"
+        checked={draft.alsoKey}
+        onChange={(e) => set("alsoKey", e.target.checked)}
+        className="mt-0.5 size-4 accent-(--pk-accent)"
+      />
+      <span>
+        Also create a key
+        <span className="block text-xs text-fg-muted">
+          Shown once here, never emailed.
+        </span>
+      </span>
+    </label>
+  );
   return (
     <div className="space-y-4">
       <ChoiceStep<Delivery>
@@ -77,30 +103,21 @@ export function DeliveryStep({
         choices={fits.map((d, i) => ({
           value: d,
           label: DELIVERY_COPY[d].label,
-          description: DELIVERY_COPY[d].hint(to),
+          description: DELIVERY_COPY[d].hint(to, email),
           ...(i === 0 && draft.who === "person" ? { recommended: "" } : {}),
+          ...(d === "invite" ? { footer: alsoKey } : {}),
         }))}
       />
-      {invitesPerson(draft) ? (
-        <label className="flex min-h-6 items-start gap-2 text-sm text-fg">
-          <input
-            type="checkbox"
-            checked={draft.alsoKey}
-            onChange={(e) => set("alsoKey", e.target.checked)}
-            className="mt-0.5 size-4 accent-(--pk-accent)"
-          />
-          <span>
-            Also create a key
-            <span className="block text-xs text-fg-muted">
-              Shown once here. It is never in the invitation.
-            </span>
-          </span>
-        </label>
-      ) : null}
       {draft.who === "person" && invitationsOff === "auto_link_off" ? (
         <p className="text-sm text-fg-muted">
           Invitations aren&apos;t offered: this product&apos;s sign-in
           doesn&apos;t add licenses by email.
+        </p>
+      ) : null}
+      {draft.who === "person" && invitationsOff === "no_mail" ? (
+        <p className="text-sm text-fg-muted">
+          Invitations aren&apos;t offered: email isn&apos;t set up on this
+          Polaris Key server.
         </p>
       ) : null}
       {invitesPerson(draft) ? (

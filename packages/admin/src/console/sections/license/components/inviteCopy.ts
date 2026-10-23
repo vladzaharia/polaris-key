@@ -19,7 +19,7 @@ export function inviteFailureCopy(
   if (reason === "suppressed") return `${email} can't receive email from us.`;
   if (reason === "daily_cap")
     return "This product has reached today's email limit.";
-  return "The email provider didn't accept it. Try again.";
+  return "The email provider didn't accept it.";
 }
 
 /** Whether another try could help: only a provider hiccup can clear on its own. */
@@ -32,9 +32,11 @@ const minutesText = (seconds: number): string =>
 export interface InviteRefusal {
   title: string;
   description: string;
-  tone: "danger" | "warning";
+  tone: "danger" | "warning" | "success";
   /** A 409 that no retry changes. */
   permanent: boolean;
+  /** `wait`: the 10-minute window; `in_account`: they already have it (good news, not an error). */
+  kind: "wait" | "in_account" | "other";
 }
 
 /** What a refused send-invite says: each 409 reason, the 429 with its wait, else errorCopy's. */
@@ -49,10 +51,17 @@ export function inviteRefusal(
       ...base,
       permanent,
       description,
+      kind: "other",
     });
     switch (error.reason) {
       case "in_account":
-        return say("They already have this license in their account.", true);
+        return {
+          tone: "success",
+          title: "Already in their account",
+          description: `${email} already has it in their account. Nothing to send.`,
+          permanent: true,
+          kind: "in_account",
+        };
       case "identity_off":
         return say("Turn on Sign-in for this product to invite people.", true);
       case "auto_link_off":
@@ -75,6 +84,7 @@ export function inviteRefusal(
     return {
       tone: "warning",
       permanent: false,
+      kind: "wait",
       title: "Sent a moment ago",
       description: `You can send another in ${minutesText(waitSeconds)}.`,
     };
@@ -82,6 +92,7 @@ export function inviteRefusal(
   return {
     tone: "danger",
     permanent: false,
+    kind: "other",
     title: copy.title,
     description: copy.description,
   };

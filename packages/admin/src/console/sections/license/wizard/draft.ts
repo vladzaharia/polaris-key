@@ -137,7 +137,11 @@ export const FIELD_STEP: Record<string, StepId> = {
 
 export const deliveryOf = (d: Draft): Delivery => {
   const fits = deliveriesFor(d);
-  return d.delivery && fits.includes(d.delivery) ? d.delivery : fits[0]!;
+  // Email-the-key-alone is not offered where invitations work: a stored one maps to its nearest,
+  // never to the invitation (the operator chose a key).
+  const want =
+    d.invites && d.delivery === "email" ? ("email-show" as const) : d.delivery;
+  return want && fits.includes(want) ? want : fits[0]!;
 };
 
 export const emailsKey = (d: Draft): boolean =>

@@ -7,6 +7,7 @@
 import * as React from "react";
 import { ApiError } from "../../../../api.js";
 import { announce } from "../../../../ui/LiveRegion.js";
+import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { inviteRefusal } from "../components/inviteCopy.js";
 import { sendKeyRefusal } from "../components/SendKeyDialog.js";
@@ -27,6 +28,28 @@ export function useRetrySend({
   const [retrying, setRetrying] = React.useState(false);
   const [retryError, setRetryError] = React.useState<unknown>(null);
   const [retryUntil, setRetryUntil] = React.useState(0);
+
+  const [makingKey, setMakingKey] = React.useState(false);
+  /** An invitation that did not go out left no key: make one, shown once like any other. */
+  const makeKey = async (): Promise<void> => {
+    if (result?.kind !== "single") return;
+    setMakingKey(true);
+    try {
+      const res = await mutate(
+        "mintKey",
+        slug,
+        result.id,
+        "Created with the license",
+      );
+      setResult({ ...result, key: res.key, showKey: true, onlyCopy: true });
+      setKept(false);
+      announce("Key created. Copy it now.");
+    } catch {
+      toast.warning("The key wasn't created. Try again.");
+    } finally {
+      setMakingKey(false);
+    }
+  };
 
   const tryAgain = async (): Promise<void> => {
     if (result?.kind !== "single" || !result.email) return;
@@ -80,17 +103,22 @@ export function useRetrySend({
     }
   };
   const retryWait = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
+  const single = retryError && result?.kind === "single" ? result : null;
   const refusal =
-    retryError && result?.kind === "single"
-      ? result.invite
-        ? inviteRefusal(retryError, result.email ?? "", retryWait || 600)
-        : sendKeyRefusal(retryError, result.email ?? "", retryWait || 600)
+    single && !single.invite
+      ? sendKeyRefusal(retryError, single.email ?? "", retryWait || 600)
       : null;
+  const inviteNote = single?.invite
+    ? inviteRefusal(retryError, single.email ?? "", retryWait || 600)
+    : null;
   return {
     retrying,
     retryWait,
     refusal,
+    inviteNote,
     tryAgain,
+    makeKey,
+    makingKey,
     clearRetryError: () => setRetryError(null),
   };
 }

@@ -591,7 +591,7 @@ describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
 
   it("says each refusal in words, and the 429 with its wait", async () => {
     const reasons: [string, RegExp][] = [
-      ["in_account", /already have this license in their account/],
+      ["in_account", /already has it in their account/],
       ["identity_off", /Turn on Sign-in/],
       ["auto_link_off", /doesn't add licenses by email/],
       ["license_not_active", /Enable the license first/],
@@ -617,7 +617,11 @@ describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
         within(dialog).getByRole("button", { name: "Send invitation" }),
       );
       expect(
-        await within(dialog).findByText("No invitation was sent"),
+        await within(dialog).findByText(
+          reason === "in_account"
+            ? "Already in their account"
+            : "No invitation was sent",
+        ),
       ).toBeTruthy();
       expect(within(dialog).getAllByText(words).length).toBeGreaterThan(0);
     }

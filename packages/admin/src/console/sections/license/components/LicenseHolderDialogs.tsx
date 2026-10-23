@@ -137,7 +137,7 @@ function AssignForm({
   onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
   // LX-27c.5 (L14): where invitations work, the box mails an invitation, not a key.
-  const canInvite = useInvitations(slug)?.invitations === true;
+  const canInvite = useInvitations(slug).invitations;
   const form = useAdminForm<AssignValues>({
     values: { email: "", name: license.name ?? "", sendKey: false },
     validate: (v) => {

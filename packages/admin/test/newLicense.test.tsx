@@ -29,6 +29,7 @@ import {
 import { endOfLocalDay } from "../src/lib/format.js";
 import {
   deliveriesFor,
+  deliveryOf,
   EMPTY,
   loadDraft,
 } from "../src/console/sections/license/wizard/draft.js";
@@ -212,9 +213,11 @@ describe("New license wizard", () => {
     expect(
       within(dialog).getByText(/The email provider didn't accept it/),
     ).toBeTruthy();
-    expect(primary(dialog, "Try again")).toHaveProperty("disabled", true);
+    expect(primary(dialog, "Try again").getAttribute("aria-disabled")).toBe(
+      "true",
+    );
     expect(
-      within(dialog).getByText("Tick “I've stored it” first."),
+      within(dialog).getAllByText("Tick “I've stored it” first.")[0],
     ).toBeTruthy();
     expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
@@ -622,7 +625,12 @@ describe("New license wizard: the invitation (LX-27c.4)", () => {
       delivery: { invite: true },
       key: false,
     });
-    expect(within(dialog).getByText("Invitation sent to g@x.io.")).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        /When they sign in with g@x\.io, the license is in their Polaris Locker library\./,
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/^Invitation sent to/)).toBeNull();
     // No key, so nothing to keep: Done is open.
     expect(within(dialog).queryByText("License key")).toBeNull();
     expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBeNull();
@@ -690,7 +698,7 @@ describe("New license wizard: the invitation (LX-27c.4)", () => {
     await waitFor(() => expect(GOT(log, "/send-invite")).toHaveLength(1));
     await waitFor(() =>
       expect(
-        within(dialog).getByText("Invitation sent to g@x.io."),
+        within(dialog).getByText(/When they sign in with g@x\.io/),
       ).toBeTruthy(),
     );
     expect(GOT(log, "/send-key")).toHaveLength(0);
@@ -761,6 +769,225 @@ describe("New license wizard: the invitation (LX-27c.4)", () => {
     expect(
       within(dialog).queryByRole("radio", { name: /Email an invitation/ }),
     ).toBeNull();
+  });
+});
+
+describe("New license wizard: the invitation fix round (LX-27c.4 review)", () => {
+  const reachDelivery = async (dialog: HTMLElement) => {
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+  };
+  const createAnswer = (delivered: Record<string, unknown>, key?: string) => ({
+    [`POST ${API}/license/licenses`]: {
+      licenseId: "lic_new",
+      ...(key ? { key } : {}),
+      delivered,
+      license: ADA,
+    },
+  });
+  const failed = createAnswer({ invite: "failed", reason: "provider_refused" });
+  const toDone = async (dialog: HTMLElement) => {
+    await reachDelivery(dialog);
+    await press(dialog, "Continue");
+    await press(dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Invitation not sent"),
+    );
+  };
+  const problem = (status: number, body: Record<string, unknown>) =>
+    new Response(JSON.stringify({ error: { code: "bad_request" }, ...body }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+
+  it("B1: a failed send says the license is waiting, and Create a key makes the one-time key", async () => {
+    const { log, dialog } = await open({
+      ...INVITING,
+      ...failed,
+      [`POST ${API}/license/licenses/lic_new/keys`]: {
+        key: "PK-MADE-KEY",
+        hash: "h",
+        record: {},
+      },
+    });
+    await toDone(dialog);
+    expect(
+      within(dialog).getByText(
+        /The license is waiting for g@x\.io\. When they sign in with it, it's theirs\./,
+      ),
+    ).toBeTruthy();
+    await userEvent.click(primary(dialog, "Create a key"));
+    expect(await within(dialog).findByText("PK-MADE-KEY")).toBeTruthy();
+    expect(GOT(log, "/lic_new/keys")).toHaveLength(1);
+    // The key is the only copy: leaving waits for "I've stored it".
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(dialog).queryByRole("button", { name: "Create a key" }),
+    ).toBeNull();
+  });
+
+  it("B1: no mail on the server offers no invitation, and says so", async () => {
+    const { dialog } = await open({
+      [`${API}/license/licenses`]: {
+        licenses: LICENSES,
+        holders: { invitations: false, invitationsOff: "no_mail" },
+      },
+    });
+    await reachDelivery(dialog);
+    expect(
+      within(dialog).getByText(/email isn't set up on this Polaris Key server/),
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("radio", { name: /Email an invitation/ }),
+    ).toBeNull();
+  });
+
+  it("B2: Done says things once", async () => {
+    const sent = await open({
+      ...INVITING,
+      ...createAnswer({ invite: "sent" }),
+    });
+    await reachDelivery(sent.dialog);
+    await press(sent.dialog, "Continue");
+    await press(sent.dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(sent.dialog).textContent).toContain("Invitation sent"),
+    );
+    expect(within(sent.dialog).queryByText(/^Invitation sent to/)).toBeNull();
+    expect(
+      within(sent.dialog).getByText(/is in their Polaris Locker library/),
+    ).toBeTruthy();
+    cleanup();
+    window.sessionStorage.clear();
+    const bad = await open({ ...INVITING, ...failed });
+    await toDone(bad.dialog);
+    expect(
+      within(bad.dialog).queryByText("The invitation wasn't sent"),
+    ).toBeNull();
+    expect(within(bad.dialog).queryByText(/Try again\.$/)).toBeNull();
+    expect(
+      within(bad.dialog).queryByText("Sends the invitation again."),
+    ).toBeNull();
+  });
+
+  it("M1/M2: the key box is inside the invitation card, and no key is said once", async () => {
+    const { dialog } = await open(INVITING);
+    await reachDelivery(dialog);
+    const invite = within(dialog).getByRole("radio", {
+      name: /Email an invitation/,
+    });
+    const box = within(dialog).getByRole("checkbox", {
+      name: /Also create a key/,
+    });
+    expect(invite.parentElement!.contains(box)).toBe(true);
+    expect(
+      within(dialog).getByText(
+        /g@x\.io signs in with g@x\.io to use it\. No key\./,
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Shown once here, never emailed."),
+    ).toBeTruthy();
+  });
+
+  it("M3: after a 429 Try again is aria-disabled with the wait; in_account is good news with no Try again", async () => {
+    const wait = await open({
+      ...INVITING,
+      ...failed,
+      [`POST ${API}/license/licenses/lic_new/send-invite`]: problem(429, {
+        retryAfter: 412,
+      }),
+    });
+    await toDone(wait.dialog);
+    await userEvent.click(primary(wait.dialog, "Try again"));
+    expect(
+      await within(wait.dialog).findByText(
+        "An email went to this license in the last 10 minutes.",
+      ),
+    ).toBeTruthy();
+    expect(within(wait.dialog).queryByText("Sent a moment ago")).toBeNull();
+    const again = primary(wait.dialog, "Try again");
+    expect(again.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(wait.dialog).getAllByText("Try again in 7 min.").length,
+    ).toBeGreaterThan(0);
+    cleanup();
+    window.sessionStorage.clear();
+    const acct = await open({
+      ...INVITING,
+      ...failed,
+      [`POST ${API}/license/licenses/lic_new/send-invite`]: problem(409, {
+        reason: "in_account",
+      }),
+    });
+    await toDone(acct.dialog);
+    await userEvent.click(primary(acct.dialog, "Try again"));
+    expect(
+      await within(acct.dialog).findByText(/already has it in their account/),
+    ).toBeTruthy();
+    expect(
+      within(acct.dialog).queryByRole("button", { name: "Try again" }),
+    ).toBeNull();
+  });
+
+  it("M4: a refused invitation refreshes the list so the next license doesn't offer it again", async () => {
+    const { log, dialog } = await open({
+      ...INVITING,
+      [`POST ${API}/license/licenses`]: problem(422, {
+        fields: ["delivery"],
+        reason: "auto_link_off",
+      }),
+    });
+    await reachDelivery(dialog);
+    const reads = () =>
+      log.calls.filter(
+        (c) => c.method === "GET" && c.path.endsWith("/license/licenses"),
+      ).length;
+    const before = reads();
+    await press(dialog, "Continue");
+    await press(dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Delivery"),
+    );
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
+  });
+
+  it("N1/N4: a stored key-only choice maps to email-and-show, and an invitation retry needs no stored key", async () => {
+    expect(
+      deliveryOf({ ...EMPTY, who: "person", invites: true, delivery: "email" }),
+    ).toBe("email-show");
+    expect(
+      deliveryOf({ ...EMPTY, who: "person", invites: true, delivery: null }),
+    ).toBe("invite");
+    const { dialog } = await open({
+      ...INVITING,
+      ...createAnswer({ invite: "failed", reason: "provider_refused" }, "PK-K"),
+    });
+    await reachDelivery(dialog);
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /Also create a key/ }),
+    );
+    await press(dialog, "Continue");
+    await press(dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Invitation not sent"),
+    );
+    // The key is on screen and not yet stored; resending touches no key, so Try again is open.
+    expect(
+      primary(dialog, "Try again").getAttribute("aria-disabled"),
+    ).toBeNull();
+  });
+
+  it("N2: the Who step on an inviting product doesn't sell the key", async () => {
+    const { dialog } = await open(INVITING);
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    expect(
+      within(dialog).getByText(/They sign in with it to use the license/),
+    ).toBeTruthy();
   });
 });
 

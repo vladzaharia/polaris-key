@@ -3781,7 +3781,7 @@ export interface LicensePage {
   /** LX-27c.4: whether an invitation can reach this product's licences, and why not. First page. */
   holders?: {
     invitations: boolean;
-    invitationsOff: "identity_off" | "auto_link_off" | null;
+    invitationsOff: "identity_off" | "auto_link_off" | "no_mail" | null;
   };
   /** What the filters match, and by state. First page only (the Worker sends them without a cursor). */
   total?: number;

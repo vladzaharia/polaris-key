@@ -10,6 +10,11 @@ export interface RadioCardOption<V extends string = string> {
   description?: React.ReactNode;
   icon?: React.ReactNode;
   disabled?: boolean;
+  /**
+   * A dependent control, shown inside the card while it is selected (an option that modifies the
+   * choice). It sits beside the radio, not in it, so the tab order is the group, then the control.
+   */
+  footer?: React.ReactNode;
 }
 
 export interface RadioCardsProps<V extends string = string> {
@@ -82,60 +87,69 @@ export function RadioCards<V extends string = string>({
     >
       {options.map((o) => {
         const itemId = `${id ?? name ?? "rc"}-${o.value}`;
+        const withFooter = o.footer && value === o.value;
         return (
-          <RadioGroup.Item
-            key={o.value}
-            value={o.value}
-            id={itemId}
-            disabled={o.disabled}
-            aria-describedby={o.description ? `${itemId}-desc` : undefined}
-            className={cn(
-              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-start @max-[18rem]:gap-2 @max-[18rem]:p-2",
-              // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
-              "pk-pressable hover:border-border-strong",
-              "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
-              "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
-              check &&
-                "data-[state=checked]:shadow-[inset_3px_0_0_var(--pk-locker-accent,var(--pk-accent))]",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-            )}
-          >
-            <span
-              aria-hidden
+          <div key={o.value} className="min-w-0">
+            <RadioGroup.Item
+              value={o.value}
+              id={itemId}
+              disabled={o.disabled}
+              aria-describedby={o.description ? `${itemId}-desc` : undefined}
               className={cn(
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent",
+                "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-start @max-[18rem]:gap-2 @max-[18rem]:p-2",
+                // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
+                "pk-pressable hover:border-border-strong",
+                "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
+                "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
                 check &&
-                  "order-last ms-auto size-5 group-data-[state=checked]:border-fg-strong group-data-[state=checked]:bg-fg-strong",
+                  "data-[state=checked]:shadow-[inset_3px_0_0_var(--pk-locker-accent,var(--pk-accent))]",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                "w-full",
+                withFooter && "rounded-b-none border-b-0",
               )}
             >
-              {check ? (
-                <Check
-                  className="size-3 text-surface-raised opacity-0 group-data-[state=checked]:opacity-100"
-                  strokeWidth={3}
-                />
-              ) : (
-                <span className="size-2 scale-50 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[Highlight] opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
-                {o.icon ? (
-                  <span aria-hidden className="[&_svg]:size-4">
-                    {o.icon}
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent",
+                  check &&
+                    "order-last ms-auto size-5 group-data-[state=checked]:border-fg-strong group-data-[state=checked]:bg-fg-strong",
+                )}
+              >
+                {check ? (
+                  <Check
+                    className="size-3 text-surface-raised opacity-0 group-data-[state=checked]:opacity-100"
+                    strokeWidth={3}
+                  />
+                ) : (
+                  <span className="size-2 scale-50 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[Highlight] opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
+                  {o.icon ? (
+                    <span aria-hidden className="[&_svg]:size-4">
+                      {o.icon}
+                    </span>
+                  ) : null}
+                  {o.label}
+                </span>
+                {o.description ? (
+                  <span
+                    id={`${itemId}-desc`}
+                    className="mt-0.5 block text-xs text-fg-muted"
+                  >
+                    {o.description}
                   </span>
                 ) : null}
-                {o.label}
               </span>
-              {o.description ? (
-                <span
-                  id={`${itemId}-desc`}
-                  className="mt-0.5 block text-xs text-fg-muted"
-                >
-                  {o.description}
-                </span>
-              ) : null}
-            </span>
-          </RadioGroup.Item>
+            </RadioGroup.Item>
+            {withFooter ? (
+              <div className="rounded-b-lg border border-t-0 border-accent bg-accent-subtle px-3 pb-3 ps-10 @max-[18rem]:ps-8">
+                {o.footer}
+              </div>
+            ) : null}
+          </div>
         );
       })}
     </RadioGroup.Root>

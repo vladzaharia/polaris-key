@@ -24,7 +24,10 @@ import {
   canRetryKeyEmail,
   keyEmailFailureCopy,
 } from "../components/SendKeyDialog.js";
-import { inviteFailureCopy } from "../components/inviteCopy.js";
+import {
+  inviteFailureCopy,
+  type InviteRefusal,
+} from "../components/inviteCopy.js";
 import {
   csvOf,
   deliveryOf,
@@ -41,6 +44,8 @@ export type Result =
       key: string | null;
       /** An invitation was asked for: how it went. Never carries a key. */
       invite: { outcome: InviteOutcome; reason?: KeyEmailFailure } | null;
+      /** The holder's name, when given (Done's next-step line says it). */
+      name: string | null;
       /** The address the key or invitation was emailed to, or null when no email was asked for. */
       email: string | null;
       /** The key is on screen (not for "Email the key" alone, unless the email failed). */
@@ -90,6 +95,7 @@ export function singleResult(
     invite: invited
       ? { outcome: res.delivered?.invite ?? "failed", ...reason }
       : null,
+    name: draft.name.trim() || null,
     email: draft.who === "person" ? draft.email.trim() : null,
     // "Email the key" alone never shows it, unless the email did not go out. An invitation shows
     // a key only when one was asked for, and never emailed it.
@@ -139,8 +145,11 @@ export function DoneBody({
   onKept,
   retrying,
   retryNote,
+  refusal,
   retryWait,
   onRetry,
+  onMakeKey,
+  makingKey,
   onTryIt,
 }: {
   slug: string;
@@ -151,9 +160,14 @@ export function DoneBody({
   retrying: boolean;
   /** A refusal of Try again, in words. */
   retryNote: React.ReactNode;
+  /** A refused invitation Try again, in words: it replaces the failure line, never stacks. */
+  refusal: InviteRefusal | null;
   /** Seconds until another send is allowed (0: now). */
   retryWait: number;
   onRetry: () => void;
+  /** An invitation that did not go out left no key: make one (shown once, as ever). */
+  onMakeKey: () => void;
+  makingKey: boolean;
   onTryIt: () => void;
 }): React.ReactElement {
   const [downloadedAt, setDownloadedAt] = React.useState<Date | null>(null);
@@ -251,22 +265,40 @@ export function DoneBody({
 
   const inviteFailed = result.invite?.outcome === "failed";
   const failed = result.delivered?.email === "failed" || inviteFailed;
-  const retryReason = !kept
-    ? "Tick “I've stored it” first."
-    : retryWait > 0
+  const wait =
+    retryWait > 0
       ? `Try again in ${Math.max(1, Math.ceil(retryWait / 60))} min.`
       : null;
+  // Resending an invitation touches no key, so it never waits for one to be kept (N4).
+  const retryReason = result.invite
+    ? wait
+    : !kept
+      ? "Tick “I've stored it” first."
+      : wait;
+  const who = result.name ?? "they";
+  const email = result.email ?? "";
   return (
     <div className="space-y-4">
       {result.invite && !inviteFailed ? (
-        <Callout tone="success" live>
-          Invitation sent to {result.email}.
-        </Callout>
+        <p className="text-sm text-fg-muted">
+          When {who} sign{result.name ? "s" : ""} in with {email}, the license
+          is in their Polaris Locker library.
+        </p>
       ) : null}
       {result.invite && inviteFailed ? (
-        <Callout tone="warning" title="The invitation wasn't sent" live>
-          {inviteFailureCopy(result.invite.reason, result.email ?? "")}
-        </Callout>
+        refusal ? (
+          <Callout tone={refusal.tone} live>
+            {refusal.kind === "wait"
+              ? "An email went to this license in the last 10 minutes."
+              : refusal.description}
+          </Callout>
+        ) : (
+          <Callout tone="warning" live>
+            The license is waiting for {email}. When {who} sign
+            {result.name ? "s" : ""} in with it, it&apos;s theirs. The email
+            didn&apos;t go out. {inviteFailureCopy(result.invite.reason, email)}
+          </Callout>
+        )
       ) : null}
       {result.delivered && !failed ? (
         <Callout tone="success" live>
@@ -278,7 +310,7 @@ export function DoneBody({
           {keyEmailFailureCopy(result.delivered?.reason, result.email ?? "")}
         </Callout>
       ) : null}
-      {retryNote}
+      {result.invite ? null : retryNote}
       {result.showKey && result.key !== null ? (
         <SecretValue
           label="License key"
@@ -298,6 +330,7 @@ export function DoneBody({
         />
       ) : null}
       {failed &&
+      !refusal?.permanent &&
       canRetryKeyEmail(
         result.invite ? result.invite.reason : result.delivered?.reason,
       ) ? (
@@ -305,19 +338,22 @@ export function DoneBody({
           <Button
             variant="outline"
             loading={retrying}
-            disabled={retryReason !== null}
-            aria-describedby="new-license-retry-note"
+            disabledReason={retryReason ?? undefined}
             onClick={onRetry}
           >
             Try again
           </Button>
-          <p id="new-license-retry-note" className="text-xs text-fg-muted">
-            {retryReason ??
-              (result.invite
-                ? "Sends the invitation again."
-                : "Emails another new key. This one keeps working.")}
-          </p>
+          {result.invite && !wait ? null : (
+            <p className="text-xs text-fg-muted">
+              {retryReason ?? "Emails another new key. This one keeps working."}
+            </p>
+          )}
         </div>
+      ) : null}
+      {inviteFailed && result.key === null && refusal?.kind !== "in_account" ? (
+        <Button variant="outline" loading={makingKey} onClick={onMakeKey}>
+          Create a key
+        </Button>
       ) : null}
       {first}
     </div>

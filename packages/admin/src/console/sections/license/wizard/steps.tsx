@@ -129,7 +129,9 @@ export function HolderStep({
           {
             value: "person",
             label: "Someone specific",
-            description: "Tied to their email. You can email them the key.",
+            description: draft.invites
+              ? "Tied to their email. They sign in with it to use the license."
+              : "Tied to their email. You can email them the key.",
             recommended: "It stays findable if the key is lost.",
           },
           {

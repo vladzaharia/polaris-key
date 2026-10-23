@@ -67,14 +67,20 @@ export function useHasLicenses(slug: string): boolean | null {
  */
 export function useInvitations(slug: string): {
   invitations: boolean;
-  off: "identity_off" | "auto_link_off" | null;
-} | null {
+  off: "identity_off" | "auto_link_off" | "no_mail" | null;
+  /** The list has not answered yet: what is offered may still change. */
+  pending: boolean;
+} {
   const q = useQuery({
     queryKey: qk.licensesFirst(slug),
     queryFn: () => api.licensesPage(slug, { limit: 1 }),
   });
   const h = q.data?.holders;
-  return h ? { invitations: h.invitations, off: h.invitationsOff } : null;
+  return {
+    invitations: h?.invitations === true,
+    off: h?.invitationsOff ?? null,
+    pending: q.isPending,
+  };
 }
 
 /**
