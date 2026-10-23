@@ -25,7 +25,7 @@ import {
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { fingerprintPolicyQuery } from "../data.js";
-import { reads } from "../../../data/reads.js";
+import { coreBReads } from "../../core/data.js";
 import { r } from "../../../routes.js";
 import { Link } from "../../../router.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -204,7 +204,7 @@ function ProbesShell({
 }
 
 function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
-  const servicesQ = useQuery(reads.services(slug));
+  const servicesQ = useQuery(coreBReads.services(slug));
   const data = servicesQ.data;
   const label = (v: string) => REGISTRATION_LABELS[v] ?? v;
   return (

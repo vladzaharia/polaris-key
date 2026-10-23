@@ -26,13 +26,6 @@ export const integrationQuery = (slug: string) =>
     queryFn: () => api.integration(slug),
   });
 
-/** The licence list Overview's tiles count. */
-export const licensesQuery = (slug: string) =>
-  queryOptions({
-    queryKey: qk.licenses(slug),
-    queryFn: () => api.licenses(slug),
-  });
-
 export const deviceSummaryQuery = (slug: string) =>
   queryOptions({
     queryKey: qk.devicesSummary(slug),

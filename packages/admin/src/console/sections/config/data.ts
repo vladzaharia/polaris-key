@@ -4,6 +4,7 @@
  * cache holds one shape per key (`test/queryKeyShapes.test.ts`).
  */
 
+import { coreBReads } from "../core/data.js";
 import {
   queryOptions,
   type QueryObserverOptions,
@@ -83,12 +84,6 @@ export const mintQuery = (slug: string) =>
     queryFn: () => api.edgeMintRecipes(slug),
   });
 
-const userOverridesQuery = (slug: string, subject: string) =>
-  queryOptions({
-    queryKey: qk.userOverrides(slug, subject),
-    queryFn: () => api.productUserOverrides(slug, subject),
-  });
-
 /** One removed-value holder, read whole under its own key (the config is picked from it). */
 export const holderQuery = (
   slug: string,
@@ -99,7 +94,7 @@ export const holderQuery = (
     ? profileQuery(slug, id)
     : kind === "license"
       ? licenseQuery(slug, id)
-      : userOverridesQuery(slug, id)) as QueryObserverOptions<unknown>;
+      : coreBReads.userOverrides(slug, id)) as QueryObserverOptions<unknown>;
 
 export function useCatalogVersions(
   slug: string,

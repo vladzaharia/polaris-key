@@ -27,6 +27,7 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { reads } from "../../../data/reads.js";
 import { mintQuery } from "../../config/data.js";
+import { coreBReads } from "../../core/data.js";
 import {
   ProductConnectionSection,
   type ConnectionState,
@@ -104,8 +105,8 @@ function useHasTierSync(slug: string): boolean {
 
 export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  const services = useQuery(reads.services(slug));
-  const portal = useQuery(reads.portal(slug));
+  const services = useQuery(coreBReads.services(slug));
+  const portal = useQuery(coreBReads.portal(slug));
   // Managed config access is a different area: without it this card says so and the rest renders.
   const mint = useQuery({ ...mintQuery(slug), retry: false });
   const area = "identity.keyEntry";
