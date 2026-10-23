@@ -15,6 +15,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 
 import { KIT_GLYPHS } from "@polaris-key/brand";
 import { encodeQr } from "@polaris-key/node/qr";
@@ -782,8 +783,13 @@ export function actions(
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
+  // GNOME puts the suggested action last, visually and in Tab order (no CSS reordering); a group
+  // of choices keeps its order.
+  const last =
+    primaryLast ||
+    (group !== "choices" && platformVariant(c.resolved.theme) === "gnome");
   const sorted = [...controls].sort((a, b) =>
-    primaryLast
+    last
       ? Number(a === primary) - Number(b === primary)
       : Number(b === primary) - Number(a === primary),
   );

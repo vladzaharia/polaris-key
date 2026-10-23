@@ -813,14 +813,15 @@ function deviceLimitContent(c: KitCtx): ReactNode {
   );
 }
 
-/** The controls and links of a screen. In a modal dialog under the Windows chrome the footer is
+/** The controls and links of a screen. In a modal dialog under the Windows or GNOME chrome the footer is
  *  drawn last, so the links come before it in the DOM and Tab follows the eye (WCAG 2.4.3), and
  *  the sign-in methods are choices in the body with Cancel the one command in the footer. */
 function controlsAndLinks(
   c: KitCtx,
   p: { controls: string[]; links: string[] },
 ): ReactNode {
-  if (!(c.dialog && platformVariant(c.resolved.theme) === "windows"))
+  const variant = platformVariant(c.resolved.theme);
+  if (!(c.dialog && (variant === "windows" || variant === "gnome")))
     return (
       <>
         {actions(c, p.controls)}

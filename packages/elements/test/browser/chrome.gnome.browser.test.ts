@@ -2,10 +2,10 @@
 //
 // The elements' GNOME chrome baselines (UK-06.7): the same scenes as the React lane
 // (sdk-react/test/chromeScenes.ts, test/browser/chrome.gnome.browser.test.tsx), drawn by the
-// `<pk-*>` elements with `theme.platform: "linux"` (the variant id `gnome`), so `pnpm ui:report` can hold both renderers to
-// the same pixels. The elements share the React kit's stylesheet and DOM, so the checks here are
-// the chrome's own: the variant on the kit root, pill responses at 40 px, the sheet an AdwDialog
-// at radius 14, the suggested action at the end of a row.
+// `<pk-*>` elements with `theme.platform: "linux"` (the variant id `gnome`), so `pnpm ui:report`
+// can hold both renderers to the same pixels. The elements share the React kit's stylesheet and
+// DOM, so the checks here are the chrome's own: the variant on the kit root, pill responses at
+// 40 px, the footer pinned inside the window, 44 px under touch.
 //
 //   PKEY_KIT_BASELINES=test/visual/__screenshots__ pnpm test:browser   (or `pnpm test:visual`)
 //
@@ -14,9 +14,9 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 import { PolarisKey, TAGS, LAYOUTS, type PkElement } from "../../src/index.js";
-import type { UiInput } from "@polaris-key/ui-core";
 import {
-  SCENES,
+  HOST_APP_HTML,
+  WINDOWS_SCENES as SCENES,
   sceneInput,
   type Scene,
 } from "../../../sdk-react/test/chromeScenes.js";
@@ -24,6 +24,7 @@ import {
 declare module "vitest/browser" {
   interface BrowserCommands {
     kitShot: (file: string) => Promise<void>;
+    emulateTouch: (on: boolean) => Promise<void>;
   }
 }
 declare const __PKEY_KIT_BASELINES__: string;
@@ -31,14 +32,13 @@ declare const __PKEY_FONTS__: string;
 
 const SIZES = [
   { label: "390", width: 390, height: 844 },
+  { label: "480x640", width: 480, height: 640 },
+  { label: "900x600", width: 900, height: 600 },
   { label: "1440", width: 1440, height: 900 },
 ] as const;
+/** A GNOME machine: the platform every scene is drawn on. */
+const GNOME_PLATFORM = { os: "linux", formFactor: "computer" };
 const SCHEMES = ["dark", "light"] as const;
-/** The scenes' input on a GNOME host: the corpus rows default to a Mac, so the platform is Linux. */
-const gnomeInput = (scene: Scene): UiInput => ({
-  ...sceneInput(scene),
-  platform: { os: "linux", formFactor: "computer" },
-});
 const PRODUCT = {
   name: "Tidewater",
   developer: "Lumen Games",
@@ -50,8 +50,9 @@ beforeAll(() => {
   PolarisKey.theme({ product: PRODUCT });
   document.body.style.margin = "0";
 });
-afterEach(() => {
+afterEach(async () => {
   document.body.replaceChildren();
+  await commands.emulateTouch(false);
 });
 
 async function mount(
@@ -66,12 +67,14 @@ async function mount(
   ) as PkElement & { presentation?: string; open?: boolean };
   el.colorScheme = scheme;
   el.theme = { platform: "linux" };
-  el.input = gnomeInput(scene);
+  el.input = sceneInput(scene, GNOME_PLATFORM);
   if (scene.sheet) {
     el.presentation = "sheet";
     el.open = true;
   }
   if (
+    !scene.sheet &&
+    !scene.dialog &&
     scene.component !== "PolarisKeyGate" &&
     LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"
   )
@@ -81,6 +84,9 @@ async function mount(
   main.innerHTML = "<p>The app</p>";
   el.append(main);
   document.body.replaceChildren(el);
+  // The host window behind a dialog, so the smoke layer has something to dim.
+  if (scene.sheet || scene.dialog)
+    document.body.insertAdjacentHTML("afterbegin", HOST_APP_HTML);
   await el.updateComplete;
   await document.fonts.ready;
   await new Promise((r) =>
@@ -107,14 +113,28 @@ describe("the GNOME chrome, drawn by the elements", () => {
           const el = await mount(scene, scheme);
           const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
           expect(kit.getAttribute("data-pk-platform")).toBe("gnome");
-          const res = [
-            ...kit.querySelectorAll<HTMLElement>(".actions .btn"),
-          ].find((b) => b.getBoundingClientRect().height > 0);
-          if (res && !matchMedia("(pointer: coarse)").matches) {
-            const cs = getComputedStyle(res);
-            expect(parseFloat(cs.minHeight)).toBe(40);
-            expect(parseFloat(cs.borderTopLeftRadius)).toBeGreaterThan(20);
+          const fine = !matchMedia("(pointer: coarse)").matches;
+          for (const b of kit.querySelectorAll<HTMLElement>(
+            '.actions .btn:not([data-variant="link"])',
+          )) {
+            const r = b.getBoundingClientRect();
+            if (r.height === 0 || !fine) continue;
+            expect(
+              r.height,
+              "a response is a 40 px pill",
+            ).toBeGreaterThanOrEqual(40);
+            expect(
+              parseFloat(getComputedStyle(b).borderTopLeftRadius),
+            ).toBeGreaterThan(20);
           }
+          const footer = kit.querySelector<HTMLElement>(
+            "dialog[open] .card > .actions:not([data-group])",
+          );
+          if (footer)
+            expect(
+              footer.getBoundingClientRect().bottom,
+              "the footer is inside the window",
+            ).toBeLessThanOrEqual(innerHeight + 0.5);
           if (scene.sheet || scene.dialog)
             expect(kit.querySelector("dialog[open]")).not.toBeNull();
           if (__PKEY_KIT_BASELINES__)
@@ -122,4 +142,21 @@ describe("the GNOME chrome, drawn by the elements", () => {
               `${__PKEY_KIT_BASELINES__}/${scene.id}/gnome-${size.label}-${scheme}.png`,
             );
         });
+});
+
+describe("the GNOME chrome under a coarse pointer, drawn by the elements", () => {
+  it("takes 44 px controls (touch)", async () => {
+    await page.viewport(900, 600);
+    await commands.emulateTouch(true);
+    const scene = SCENES.find((x) => x.id === "Activate.parsed")!;
+    const el = await mount(scene, "light");
+    expect(matchMedia("(pointer: coarse)").matches).toBe(true);
+    const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+    expect(
+      kit
+        .querySelector<HTMLElement>('.btn[data-variant="primary"]')!
+        .getBoundingClientRect().height,
+    ).toBe(44);
+    expect(kit.querySelector("input")!.getBoundingClientRect().height).toBe(44);
+  });
 });

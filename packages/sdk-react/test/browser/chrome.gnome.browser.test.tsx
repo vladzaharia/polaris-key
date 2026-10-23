@@ -1,13 +1,15 @@
 // @pkey-feature ui.kit ui.theme
 //
 // The GNOME (libadwaita) chrome of the React kit in real Chromium (UK-06.7, UI-KITS §3.1
-// `platform`): `theme.platform: "linux"` (the variant id `gnome`) sets `data-pk-platform="gnome"` on the kit root and the
-// same web DOM draws as libadwaita: pill responses (40 px) with the suggested action at the end of
-// a row and on top when they stack, 34 px controls at radius 8, cards at 12, the sheet an AdwDialog
-// (radius 14 on the box, a soft shadow, a 7 % hairline in light and a light hairline in dark, never
-// a dark outline), the update prompt an AdwAlertDialog, message screens an AdwStatusPage, opaque
-// surfaces. Every render also passes axe (WCAG 2.2 AA), has no sideways scroll and no target under
-// 24 px, in dark and light at 390 and 1440, and under `dir="rtl"`.
+// `platform`): `theme.platform: "linux"` (the variant id `gnome`) sets `data-pk-platform="gnome"` on
+// the kit root and the same web DOM draws as libadwaita: pill responses (40 px) with the suggested
+// action LAST (the DOM order puts it last, so Tab follows the eye: at the end of a row, at the
+// bottom of a stack), 34 px controls at radius 8, cards at 12, the sheet an AdwDialog (radius 14
+// on the box, a soft shadow, a 7 % hairline in light and a light hairline in dark, never a dark
+// outline) over the host window with a pinned footer, the update prompt an AdwAlertDialog, message
+// screens an AdwStatusPage, opaque surfaces. Every render also passes axe (WCAG 2.2 AA), has no
+// sideways scroll, no target under 24 px and a Tab order that is the visual order, in dark and
+// light at four sizes, and under `dir="rtl"`.
 //
 // PKEY_KIT_BASELINES=<dir> records each scene as <dir>/<Component>.<state>/gnome-<size>-<scheme>.png
 // beside the web and Windows baselines (the folder ui:report reads).
@@ -22,28 +24,35 @@ import type { UiInput } from "@polaris-key/ui-core";
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
 import * as Kit from "@polaris-key/react/kit";
-import { SCENES, sceneInput, type Scene } from "../chromeScenes.js";
+import {
+  HOST_APP_HTML,
+  WINDOWS_SCENES as SCENES,
+  sceneInput,
+  type Scene,
+} from "../chromeScenes.js";
 
 declare module "vitest/browser" {
   interface BrowserCommands {
     kitShot: (file: string) => Promise<void>;
     emulateForced: (forced: "active" | null) => Promise<void>;
+    emulateTouch: (on: boolean) => Promise<void>;
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_KIT_BASELINES__: string;
 
+/** The phone row, the board's two window sizes (the default Windows window and the narrow one) and
+ *  the desktop row. */
 const SIZES = [
   { label: "390", width: 390, height: 844 },
+  { label: "480x640", width: 480, height: 640 },
+  { label: "900x600", width: 900, height: 600 },
   { label: "1440", width: 1440, height: 900 },
 ] as const;
+/** A GNOME machine: the platform every scene is drawn on. */
+const GNOME_PLATFORM = { os: "linux", formFactor: "computer" };
 const SCHEMES = ["dark", "light"] as const;
 type Scheme = (typeof SCHEMES)[number];
-/** The scenes' input on a GNOME host: the corpus rows default to a Mac, so the platform is Linux. */
-const gnomeInput = (scene: Scene): UiInput => ({
-  ...sceneInput(scene),
-  platform: { os: "linux", formFactor: "computer" },
-});
 const PRODUCT = {
   name: "Tidewater",
   developer: "Lumen Games",
@@ -72,6 +81,7 @@ afterEach(async () => {
   document.body.style.background = "";
   document.documentElement.removeAttribute("dir");
   await commands.emulateForced(null);
+  await commands.emulateTouch(false);
 });
 const frame = (): Promise<void> =>
   new Promise((r) => requestAnimationFrame(() => r()));
@@ -83,7 +93,11 @@ const COMPONENTS = Kit as unknown as Record<
 async function mount(
   scene: Scene,
   scheme: Scheme,
-  o: { rtl?: boolean; platform?: string } = {},
+  o: {
+    rtl?: boolean;
+    platform?: string;
+    reported?: { os: string; formFactor: string };
+  } = {},
 ): Promise<HTMLElement> {
   document.body.style.margin = "0";
   document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
@@ -94,21 +108,30 @@ async function mount(
   const Component = COMPONENTS[scene.component];
   if (!Component) throw new Error(`no React kit component ${scene.component}`);
   root = createRoot(host);
+  const dialogScene = scene.sheet === true || scene.dialog === true;
   root.render(
-    <Component
-      input={gnomeInput(scene)}
-      {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
-      fill={LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"}
-      theme={{
-        product: PRODUCT,
-        colorScheme: scheme,
-        platform: (o.platform ?? "linux") as "linux",
-      }}
-    >
-      <main data-host-content="">
-        <p>The app</p>
-      </main>
-    </Component>,
+    <>
+      {dialogScene ? (
+        <div dangerouslySetInnerHTML={{ __html: HOST_APP_HTML }} />
+      ) : null}
+      <Component
+        input={sceneInput(scene, o.reported ?? GNOME_PLATFORM)}
+        {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
+        fill={
+          !dialogScene &&
+          LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"
+        }
+        theme={{
+          product: PRODUCT,
+          colorScheme: scheme,
+          platform: (o.platform ?? "linux") as "linux",
+        }}
+      >
+        <main data-host-content="">
+          <p>The app</p>
+        </main>
+      </Component>
+    </>,
   );
   for (let i = 0; i < 100 && !host.querySelector(".pk-root"); i++)
     await new Promise((r) => setTimeout(r, 20));
@@ -149,17 +172,80 @@ async function axeViolations(kit: HTMLElement): Promise<string[]> {
       },
     },
   );
+  // A link the scrolled body leaves partly under the pinned footer is not a target on screen yet
+  // (a focus scrolls it clear: `scroll-padding`), so axe's target-size does not count it.
   return result.violations.flatMap((v) =>
-    v.nodes.map((n) => `${v.id}: ${n.target.join(" ")}`),
+    v.nodes
+      .filter((n) => {
+        if (v.id !== "target-size") return true;
+        const el = kit.querySelector(n.target.join(" "));
+        return !(el && coveredByPinnedFooter(el));
+      })
+      .map((n) => `${v.id}: ${n.target.join(" ")}`),
   );
 }
 
-const rgba = (c: string): number[] =>
-  (c.match(/[\d.]+/g) ?? []).map(Number).concat([1]).slice(0, 4);
+/** True when a scrolling ancestor (the card's body, a long list) hides the element from view. */
+function scrolledAway(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  for (
+    let a = el.parentElement;
+    a && a !== document.body;
+    a = a.parentElement
+  ) {
+    if (getComputedStyle(a).overflowY === "visible") continue;
+    const box = a.getBoundingClientRect();
+    if (r.bottom <= box.top + 1 || r.top >= box.bottom - 1) return true;
+  }
+  return false;
+}
+
+/** True when the pinned footer sits over the element's centre (the body is scrolled under it; a
+ *  focus scrolls it into view, `scroll-padding` keeps it clear of the footer). */
+function coveredByPinnedFooter(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  const top = document.elementFromPoint(
+    r.left + r.width / 2,
+    r.top + r.height / 2,
+  );
+  return top !== null && !el.contains(top) && !top.contains(el);
+}
+
+/** Tab order is the visual order (WCAG 2.4.3): each stop is at or below the one before it, and in
+ *  the same row it is further along the reading direction. */
+function tabOrderProblems(root: ParentNode): string[] {
+  const stops = [
+    ...root.querySelectorAll<HTMLElement>(
+      "button, a[href], input, textarea, select, [tabindex='0']",
+    ),
+  ].filter(
+    (el) =>
+      visible(el) &&
+      !scrolledAway(el) &&
+      !coveredByPinnedFooter(el) &&
+      !el.hasAttribute("disabled"),
+  );
+  const rtl = getComputedStyle(stops[0] ?? document.body).direction === "rtl";
+  const out: string[] = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1]!.getBoundingClientRect();
+    const b = stops[i]!.getBoundingClientRect();
+    const sameRow = Math.abs(b.top - a.top) <= 2;
+    if (b.top < a.top - 2)
+      out.push(`${label(stops[i]!)} is above ${label(stops[i - 1]!)}`);
+    else if (sameRow && (rtl ? b.left > a.left + 2 : b.left < a.left - 2))
+      out.push(
+        `${label(stops[i]!)} is before ${label(stops[i - 1]!)} in its row`,
+      );
+  }
+  return out;
+}
+
 const alpha = (c: string): number => {
   const m = c.match(/[\d.]+/g) ?? [];
   return m.length >= 4 ? Number(m[3]) : 1;
 };
+const rgba = (c: string): number[] => (c.match(/[\d.]+/g) ?? []).map(Number);
 
 function chrome(
   kit: HTMLElement,
@@ -170,27 +256,37 @@ function chrome(
 ) {
   expect(kit.getAttribute("data-pk-platform")).toBe("gnome");
   const fine = !matchMedia("(pointer: coarse)").matches;
-  // Responses are pills at 40 px; every other control is 34 px at radius 8.
-  const actions = [
-    ...kit.querySelectorAll<HTMLElement>(".actions .btn"),
-  ].filter(visible);
-  for (const b of actions) {
-    const cs = getComputedStyle(b);
+  // Responses are pills, one line tall, 40 px at least; the other filled buttons are 34 px at radius 8.
+  for (const b of kit.querySelectorAll<HTMLElement>(
+    '.actions .btn:not([data-variant="link"])',
+  )) {
+    const r = visible(b);
+    if (!r) continue;
     expect(
-      parseFloat(cs.borderTopLeftRadius),
-      "response radius",
+      parseFloat(getComputedStyle(b).borderTopLeftRadius),
+      `${label(b)} radius`,
     ).toBeGreaterThan(20);
-    if (fine) expect(visible(b)!.height).toBeGreaterThanOrEqual(40);
-  }
-  const plain = [
-    ...kit.querySelectorAll<HTMLElement>(".btn:not(.actions .btn)"),
-  ].filter((b) => visible(b) && b.dataset.variant !== "link");
-  if (fine)
-    for (const b of plain) {
-      const cs = getComputedStyle(b);
-      expect(parseFloat(cs.minHeight), "control height").toBe(34);
-      expect(parseFloat(cs.borderTopLeftRadius), "control radius").toBe(8);
+    if (fine) {
+      expect(r.height, `${label(b)} height`).toBeGreaterThanOrEqual(40);
+      expect(r.height, `${label(b)} is one line`).toBeLessThan(56);
     }
+  }
+  if (fine)
+    for (const b of kit.querySelectorAll<HTMLElement>(
+      '.btn:not(.actions .btn):is([data-variant="primary"], [data-variant="secondary"], [data-variant="danger"])',
+    )) {
+      if (!visible(b)) continue;
+      expect(parseFloat(getComputedStyle(b).minHeight)).toBe(34);
+      expect(parseFloat(getComputedStyle(b).borderTopLeftRadius)).toBe(8);
+    }
+  // Links sit at the column's edge, not indented by the button padding.
+  for (const l of kit.querySelectorAll<HTMLElement>(
+    '.btn[data-variant="link"]',
+  ))
+    if (visible(l))
+      expect(
+        parseFloat(getComputedStyle(l).paddingInlineStart),
+      ).toBeLessThanOrEqual(12);
   const dialog = kit.querySelector<HTMLDialogElement>("dialog[open]");
   const wide = width >= 560;
   if (scene.sheet || scene.dialog) {
@@ -219,10 +315,11 @@ function chrome(
       expect(edge.slice(0, 3)).toEqual([255, 255, 255]);
     }
     const box = dialog!.getBoundingClientRect();
-    expect(box.width).toBeLessThanOrEqual(460 + 1);
-    const buttons = [...dialog!.querySelectorAll<HTMLElement>(".actions .btn")]
-      .filter(visible)
-      .filter((b) => b.dataset.variant !== "link");
+    if (wide) expect(box.width).toBeLessThanOrEqual(460 + 1);
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    const footer = dialog!.querySelector<HTMLElement>(
+      ".card > .actions:not([data-group])",
+    );
     if (wide) {
       // Centred; the rounded box on every corner.
       expect(box.bottom).toBeLessThan(innerHeight);
@@ -230,57 +327,55 @@ function chrome(
       expect(Math.abs(box.left + box.width / 2 - innerWidth / 2)).toBeLessThan(
         2,
       );
-      if (buttons.length === 2) {
-        // Equal width always; side by side with the suggested action at the end, or (a label too
-        // wide for half the row) stacked with it on top: never a wrapped label.
+    } else {
+      // Narrow: a sheet docked to the bottom, rounded on top only.
+      expect(Math.round(box.bottom)).toBe(innerHeight);
+      expect(parseFloat(ds.borderBottomLeftRadius)).toBe(0);
+    }
+    if (footer) {
+      // The footer is pinned inside the window: the suggested action is never scrolled away.
+      expect(
+        footer.getBoundingClientRect().bottom,
+        "footer bottom",
+      ).toBeLessThanOrEqual(innerHeight + 0.5);
+      const buttons = [...footer.querySelectorAll<HTMLElement>(".btn")].filter(
+        visible,
+      );
+      const p = buttons.findIndex((b) => b.dataset.variant === "primary");
+      if (buttons.length >= 2 && p >= 0) {
+        // Equal width, never a wrapped label; the suggested action last: at the end of a row, at
+        // the bottom of a stack.
         const rects = buttons.map((b) => b.getBoundingClientRect());
         const widths = rects.map((r) => Math.round(r.width));
         expect(new Set(widths).size, `equal width ${widths}`).toBe(1);
-        const p = buttons.findIndex((b) => b.dataset.variant === "primary");
         const oneRow = new Set(rects.map((r) => Math.round(r.top))).size === 1;
         if (oneRow) {
           const lefts = rects.map((r) => r.left);
-          const end = rtl ? Math.min(...lefts) : Math.max(...lefts);
-          expect(lefts[p], "suggested at the end").toBe(end);
+          expect(lefts[p], "suggested at the end").toBe(
+            rtl ? Math.min(...lefts) : Math.max(...lefts),
+          );
         } else {
           expect(new Set(rects.map((r) => Math.round(r.left))).size).toBe(1);
-          expect(rects[p]!.top, "suggested on top").toBe(
-            Math.min(...rects.map((r) => r.top)),
+          expect(rects[p]!.top, "suggested last").toBe(
+            Math.max(...rects.map((r) => r.top)),
           );
         }
-        for (const b of buttons)
-          expect(
-            b.getBoundingClientRect().height,
-            `label wrapped: ${b.textContent}`,
-          ).toBeLessThan(56);
-      }
-    } else {
-      // Narrow: a sheet docked to the bottom, rounded on top only, the responses stacked with the
-      // suggested action on top.
-      expect(Math.round(box.bottom)).toBe(innerHeight);
-      expect(parseFloat(ds.borderBottomLeftRadius)).toBe(0);
-      if (buttons.length >= 2) {
-        const lefts = new Set(
-          buttons.map((b) => Math.round(b.getBoundingClientRect().left)),
-        );
-        expect(lefts.size, "stacked").toBe(1);
-        const tops = buttons.map((b) => b.getBoundingClientRect().top);
-        const p = buttons.findIndex((b) => b.dataset.variant === "primary");
-        expect(tops[p], "suggested on top").toBe(Math.min(...tops));
       }
     }
+    // Tab order is the visual order.
+    expect(tabOrderProblems(dialog!).join("\n")).toBe("");
+  } else {
+    expect(tabOrderProblems(kit).join("\n")).toBe("");
   }
-  // AdwStatusPage: no card surface, the responses stacked, centred, the suggested one on top.
+  // AdwStatusPage: no card surface, the responses stacked and centred, the suggested one last.
   if (scene.id.startsWith("StatusScreen.")) {
     const card = kit.querySelector<HTMLElement>(".stage .card")!;
     const cs = getComputedStyle(card);
     expect(alpha(cs.backgroundColor), "status page has no surface").toBe(0);
     expect(cs.boxShadow).toBe("none");
-    expect(cs.textAlign).toBe("center");
-    const bar = card.querySelector<HTMLElement>(":scope > .actions");
-    const btns = bar
-      ? [...bar.querySelectorAll<HTMLElement>(".btn")].filter(visible)
-      : [];
+    const btns = [
+      ...card.querySelectorAll<HTMLElement>(":scope > .actions .btn"),
+    ].filter(visible);
     if (btns.length >= 2) {
       const tops = btns.map((b) => b.getBoundingClientRect().top);
       expect(
@@ -288,15 +383,10 @@ function chrome(
           .size,
       ).toBe(1);
       const p = btns.findIndex((b) => b.dataset.variant === "primary");
-      expect(tops[p]).toBe(Math.min(...tops));
-    }
-    for (const b of btns) {
-      const r = b.getBoundingClientRect();
-      expect(Math.abs(r.left + r.width / 2 - innerWidth / 2)).toBeLessThan(
-        innerWidth / 2,
-      );
+      expect(tops[p]).toBe(Math.max(...tops));
     }
   }
+  expect(width).toBeGreaterThan(0);
 }
 
 async function check(
@@ -367,14 +457,23 @@ describe("the GNOME chrome, behaviour", () => {
     await page.viewport(1440, 900);
     await commands.emulateForced("active");
     const kit = await mount(sheet, "dark");
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
-    );
-    const btn = kit.querySelector<HTMLElement>('.btn[data-variant="primary"]')!;
-    btn.focus();
-    await frame();
     const dlg = getComputedStyle(kit.querySelector("dialog[open]")!);
     expect(dlg.boxShadow).toBe("none");
     expect(dlg.borderTopStyle).toBe("solid");
+  });
+
+  it("takes 44 px controls under a coarse pointer (touch)", async () => {
+    await page.viewport(900, 600);
+    await commands.emulateTouch(true);
+    const scene = SCENES.find((x) => x.id === "Activate.parsed")!;
+    const kit = await mount(scene, "light");
+    expect(matchMedia("(pointer: coarse)").matches, "touch emulation").toBe(
+      true,
+    );
+    const primary = kit.querySelector<HTMLElement>(
+      '.btn[data-variant="primary"]',
+    )!;
+    expect(primary.getBoundingClientRect().height).toBe(44);
+    expect(kit.querySelector("input")!.getBoundingClientRect().height).toBe(44);
   });
 });

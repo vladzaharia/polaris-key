@@ -1365,7 +1365,8 @@ dialog.sheet .card,
    the sheet an AdwDialog, the update prompt an AdwAlertDialog, message screens an AdwStatusPage,
    every surface opaque. The measures are the variant's tokens (tokens.ts writes them from brand);
    this block is structure, and every rule is scoped to data-pk-platform="gnome". The suggested
-   action sits at the END of a row of responses and on TOP when they stack. ─────────────────── */
+   action is the LAST response (the DOM order puts it last, so Tab follows the eye): at the end of a
+   row, at the bottom of a stack. ─────────────────── */
 .pk-root[data-pk-platform="gnome"] {
   --pk-kit-radius-card: 0.75rem;
   --pk-kit-radius-group: 0.75rem;
@@ -1409,10 +1410,10 @@ dialog.sheet .card,
   outline-offset: var(--pk-kit-focus-offset);
 }
 /* Two responses side by side at equal width, the suggested one at the end; when a label does not
-   fit beside the other, they wrap and stack (the suggested action on top), never a wrapped label: each takes half the
+   fit beside the other, they wrap and stack (the suggested action last), never a wrapped label: each takes half the
    row, a label wider than that cannot shrink, so the line breaks. */
 .pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(2)):not(:has(> :nth-child(3))) {
-  flex-direction: row-reverse;
+  flex-direction: row;
   flex-wrap: wrap;
   justify-content: stretch;
 }
@@ -1421,7 +1422,15 @@ dialog.sheet .card,
   min-inline-size: max-content;
   inline-size: auto;
 }
-/* Three or a narrow container: they stack, the suggested action on top (the DOM order). */
+.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+  flex-direction: row;
+  justify-content: stretch;
+}
+.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn {
+  flex: 1 1 calc(50% - var(--pk-gap) / 2);
+  min-inline-size: max-content;
+}
+/* Three or a narrow container: they stack in the DOM order, the suggested action last. */
 .pk-root[data-pk-platform="gnome"] .actions:has(> :nth-child(3)) {
   flex-direction: column;
 }
@@ -1442,13 +1451,6 @@ dialog.sheet .card,
     inline-size: 100%;
   }
 }
-.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
-  justify-content: stretch;
-}
-.pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn {
-  flex: 1 1 calc(50% - var(--pk-gap) / 2);
-  min-inline-size: max-content;
-}
 /* AdwDialog (the sheet): centred at 28.75 rem, radius 14 with a soft shadow and a hairline edge
    on the dialog box itself (its own overflow cannot clip it), opaque. Narrow, it docks to the
    bottom edge as a sheet, rounded on top only. */
@@ -1468,6 +1470,9 @@ dialog.sheet .card,
   box-shadow: none;
 }
 /* A window that fills (landscape, data-fill) pads its stage; the dialog's stage never does. */
+.pk-root[data-pk-platform="gnome"] dialog.sheet {
+  scroll-padding-block-end: 6rem;
+}
 .pk-root[data-pk-platform="gnome"][data-shape] dialog.sheet .stage {
   padding: 0;
   min-block-size: 0;
@@ -1492,7 +1497,7 @@ dialog.sheet .card,
   backdrop-filter: none;
 }
 /* AdwStatusPage: a message screen has no card, only the icon, the title, the body and the
-   responses, stacked and centred, the suggested action on top. */
+   responses, stacked and centred, the suggested action last. */
 .pk-root[data-pk-platform="gnome"]:is([data-component="StatusScreen"], [data-component="Boot"]:is([data-state="blocked"], [data-state="error"], [data-state="offline"], [data-state="declined"], [data-state="rolled-back"])) .stage[data-kind="screen"] .card {
   inline-size: min(35rem, 100%);
   background: transparent;

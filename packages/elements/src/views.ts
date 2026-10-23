@@ -2033,7 +2033,7 @@ function updateNotes(c: RenderCtx): TemplateResult | typeof nothing {
 
 export { countdown };
 
-/** The controls and links of a screen. In a modal dialog under the Windows chrome the footer is
+/** The controls and links of a screen. In a modal dialog under the Windows or GNOME chrome the footer is
  *  drawn last, so the links come before it in the DOM and Tab follows the eye (WCAG 2.4.3), and
  *  the sign-in methods are choices in the body with Cancel the one command in the footer. */
 function controlsAndLinks(
@@ -2041,7 +2041,8 @@ function controlsAndLinks(
   p: { controls: string[]; links: string[] },
   row: boolean,
 ): TemplateResult {
-  if (!(c.dialog && platformVariant(c.resolved.theme) === "windows"))
+  const variant = platformVariant(c.resolved.theme);
+  if (!(c.dialog && (variant === "windows" || variant === "gnome")))
     return html`${actions(c, p.controls, row)}${links(c, p.links)}`;
   const { choices, footer } = dialogControls(p.controls, c.view);
   return html`${actions(c, choices, false, false, "choices")}${links(
