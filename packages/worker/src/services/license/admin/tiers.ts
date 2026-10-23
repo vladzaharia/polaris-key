@@ -30,6 +30,7 @@ import {
 } from "../../../core/licensing/store.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { withIncludedChannels } from "../../../core/channels.js";
+import { isImplicitTier } from "../../../core/licensing/implicitTier.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value, or null. */
@@ -75,6 +76,16 @@ async function profileExists(
   return profiles.some((p) => p.id === profile);
 }
 
+/** The PATCH fields that set a limit: refused on the implicit Default tier (LX-33.7). */
+const IMPLICIT_LIMIT_FIELDS = [
+  "profile",
+  "policyExpiryDays",
+  "policyDeviceLimit",
+  "channels",
+  "minVersion",
+  "maxVersion",
+] as const;
+
 export async function handleTiers(
   ctx: LicenseAdminContext,
   id: string | undefined,
@@ -97,6 +108,8 @@ export async function handleTiers(
           maxVersion: t.max_version,
           // ST-01b: who owns the row; a resync leaves `console` rows alone.
           source: t.source ?? "manifest",
+          // LX-33.7: the product's Default tier (used when a licence names no tier).
+          implicit: isImplicitTier(t),
         })),
       });
     }
@@ -163,6 +176,17 @@ export async function handleTiers(
   if (!row) return adminNotFound();
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    // LX-33.7: in release N the Default tier's limits follow the product's licence defaults.
+    if (isImplicitTier(row)) {
+      const edited = IMPLICIT_LIMIT_FIELDS.filter((f) => f in body);
+      if (edited.length > 0)
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "the Default tier follows the product's license defaults",
+          { fields: edited },
+        );
+    }
     const refused = tierWriteChecks(body).response();
     if (refused) return refused;
     if ("profile" in body && !(await profileExists(db, slug, body.profile)))
@@ -221,11 +245,29 @@ export async function handleTiers(
     return adminJson({ ok: true, id });
   }
   if (req.method === "DELETE") {
+    if (isImplicitTier(row))
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "the Default tier cannot be deleted",
+        { fields: ["tier"] },
+      );
     const refs = await countLicensesUsingTier(db, slug, id);
     if (refs > 0)
       return err(409, ErrorCode.BadRequest, "tier is still referenced", {
         references: refs,
       });
+    // LX-33.6: a License product keeps at least one tier, so a licence issued with none always
+    // has one to land on.
+    if ((await listTiers(db, slug)).length <= 1)
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "a product keeps at least one tier",
+        {
+          fields: ["tier"],
+        },
+      );
     await deleteTier(db, slug, id);
     await audit(
       db,

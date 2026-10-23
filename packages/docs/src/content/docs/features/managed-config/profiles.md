@@ -33,7 +33,7 @@ A profile is a named set of values, written once and attached by tier or license
 
 ## Where it sits
 
-A tier names at most one profile. A license can carry its own ordered list, layered after the tier's profile and before its own overrides. Both are layers in the [management-state merge](/docs/features/managed-config/management-states/). A profile takes effect only once a tier or license attaches it.
+A tier names at most one profile. A license can carry its own ordered list, layered after the tier's profile and before its own overrides (layer 4, for floating and owned licenses alike). Both are layers in the [management-state merge](/docs/features/managed-config/management-states/). A profile takes effect only once a tier or license attaches it.
 
 A catalog entry's `ui.scopes` says where a key matters: `profile`, `license`, `device`, or all. It only shapes the editor, so a device-only toggle isn't offered where setting it would do nothing.
 

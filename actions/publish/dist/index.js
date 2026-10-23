@@ -17871,6 +17871,15 @@ function add3(list2, file, path32, code, message) {
   list2.push({ file, path: path32, code, message });
 }
 var globWork = { steps: 0 };
+function withIncludedChannels(channels2) {
+  const out = [];
+  for (const c of channels2) {
+    if (c === "dev" && !channels2.includes("beta") && !out.includes("beta"))
+      out.push("beta");
+    out.push(c);
+  }
+  return out;
+}
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
 var LOCATION_PROVIDERS = [
@@ -22325,7 +22334,9 @@ function normalizeTier(raw) {
     policyExpiryDays: typeof raw.policyExpiryDays === "number" ? raw.policyExpiryDays : typeof raw.expiryDays === "number" ? raw.expiryDays : typeof raw.maxOfflineDays === "number" ? raw.maxOfflineDays : null,
     policyDeviceLimit: typeof raw.policyDeviceLimit === "number" ? raw.policyDeviceLimit : null,
     policyFingerprint: isOneOf2(raw.policyFingerprint, FINGERPRINT_MODE_VALUES) ? raw.policyFingerprint : null,
-    channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
+    channels: withIncludedChannels(
+      arrayAt(raw, "channels")?.filter(isString) ?? []
+    ),
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
     rank: typeof raw.rank === "number" && nonNegativeInteger2(raw.rank) ? raw.rank : 0,

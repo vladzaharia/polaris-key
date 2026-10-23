@@ -2,7 +2,7 @@
  * LX-27 (S-24 §8.4, D11/D12): emailing a licence key to the licence's holder. Used by the create
  * route (`delivery.email`) and by `POST …/licenses/<id>/send-key`.
  *
- * The key leaves only in the email body (sent as "<App> via Polaris Key", I-18's passthrough
+ * The key leaves only in the email body (sent as "<App> via Polaris Locker", I-18's passthrough
  * sender, through Core's one send choke point) and in the response of the request that minted it.
  * It is never in a log, an audit summary or the subject. A send that does not go out never rolls
  * anything back: the answer says `failed` and the operator tries again through send-key.
@@ -76,9 +76,12 @@ export const SEND_KEY_WINDOW_SECONDS = 600;
 /** The audit actions: the attempt, and its failure (a row whose `parent_id` is the attempt's). */
 export const SEND_KEY_ACTION = "license.key.send";
 export const SEND_KEY_FAILED_ACTION = "license.key.send.failed";
+/** LX-27c.2: send-invite's attempt and failure rows. They share send-key's window (L4). */
+export const SEND_INVITE_ACTION = "license.invite.send";
+export const SEND_INVITE_FAILED_ACTION = "license.invite.send.failed";
 
 /** The product's hosted icon for the email's hero, or null. */
-async function productIconUrl(
+export async function productIconUrl(
   ctx: LicenseAdminContext,
 ): Promise<string | null> {
   try {
@@ -98,6 +101,12 @@ async function productIconUrl(
   }
 }
 
+/** No mail binding, or no usable sender for this product: nothing can be emailed. */
+export function mailUnavailable(ctx: LicenseAdminContext): boolean {
+  const { env, product } = ctx;
+  return !env.EMAIL || !passthroughSender(env, product.name, product.slug);
+}
+
 /**
  * Refuse BEFORE minting what no retry can fix: no mail binding or sender, an unusable address,
  * a suppressed recipient, the product's spent daily cap. Answers the reason, or null when a send
@@ -108,8 +117,7 @@ export async function keyEmailBlocked(
   to: string,
 ): Promise<EmailFailure | null> {
   const { env, db, product, now } = ctx;
-  if (!env.EMAIL || !passthroughSender(env, product.name, product.slug))
-    return "no_mail_binding";
+  if (mailUnavailable(ctx)) return "no_mail_binding";
   if (
     strictEmail(to) === null ||
     (isApplePrivateRelay(to) && !applePrivateRelayRegistered(env))
@@ -126,6 +134,30 @@ export async function keyEmailBlocked(
 }
 
 /**
+ * The links a licence email carries: the portal origin, the plain sign-in page (no token, no
+ * address) and the product's download page when Release and the portal are both on. Shared by the
+ * key email and the invitation.
+ */
+export async function emailLinks(ctx: LicenseAdminContext): Promise<{
+  origin: string;
+  signInUrl: string;
+  downloadUrl: string | null;
+}> {
+  const { env, db, product, req } = ctx;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
+  const downloadUrl =
+    ctx.hooks.releaseCatalog() !== null &&
+    (await portalEnabled(db, product.slug))
+      ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
+      : null;
+  return {
+    origin,
+    signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
+    downloadUrl,
+  };
+}
+
+/**
  * Email `key` to the licence's address. Never throws; `failed` carries a `reason`.
  */
 export async function emailLicenseKey(
@@ -138,20 +170,15 @@ export async function emailLicenseKey(
   if (!to) return { email: "failed", reason: "address_unusable" };
   const blocked = await keyEmailBlocked(ctx, to);
   if (blocked) return { email: "failed", reason: blocked };
-  const { env, db, product, req, now } = ctx;
+  const { env, db, product, now } = ctx;
   try {
-    const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
-    const download =
-      ctx.hooks.releaseCatalog() !== null &&
-      (await portalEnabled(db, product.slug))
-        ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
-        : null;
+    const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
     const message = licenseKeyEmail({
       productName: product.name,
       holderName: license.name,
       key,
-      signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
-      downloadUrl: download,
+      signInUrl,
+      downloadUrl,
       iconUrl: await productIconUrl(ctx),
       context,
       origin,
@@ -182,23 +209,27 @@ export async function emailLicenseKey(
 }
 
 /**
- * Seconds until send-key may run again for this licence, or 0 now. Counts attempts that did not fail
+ * Seconds until send-key or send-invite may run again for this licence, or 0 now. Counts attempts that did not fail
  * (a `license.key.send.failed` row with the attempt as its parent frees it), read from the audit trail so it holds across isolates.
  */
 export async function sendKeyRetryAfter(
   ctx: LicenseAdminContext,
   licenseId: string,
 ): Promise<number> {
+  // L4 (LX-27c.2): one window per licence, shared by send-key and send-invite, so a licence cannot
+  // be mailed more than once in 10 minutes by either route. Either action's `.failed` child frees it.
   const row = await ctx.db.first<{ at: number }>(
-    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action = ? AND a.target_id = ?
+    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action IN (?, ?) AND a.target_id = ?
        AND a.at > ?
-       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action = ?)
+       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action IN (?, ?))
      ORDER BY a.at DESC LIMIT 1`,
     ctx.product.slug,
     SEND_KEY_ACTION,
+    SEND_INVITE_ACTION,
     licenseId,
     ctx.now - SEND_KEY_WINDOW_SECONDS,
     SEND_KEY_FAILED_ACTION,
+    SEND_INVITE_FAILED_ACTION,
   );
   if (!row) return 0;
   return Math.max(0, row.at + SEND_KEY_WINDOW_SECONDS - ctx.now);

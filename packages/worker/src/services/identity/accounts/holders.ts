@@ -22,12 +22,14 @@ import {
   autoAttachBlockedAccounts,
   type LicenseHolderHooks,
   type LicenseHolderContext,
+  type JoinedLicense,
 } from "../../../core/licensing/licenseHolders.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import {
-  attachWaitingLicensesByEmail,
+  attachWaitingLicensesByEmailRows,
   licenseAutoLinkEnabled,
+  autoLinkEnabled,
 } from "../portal/repo.js";
 import { attachLicense } from "./claim.js";
 import { accountsVerifyingEmail, verifiedAccountEmails } from "./repo.js";
@@ -39,12 +41,17 @@ import { accountsVerifyingEmail, verifiedAccountEmails } from "./repo.js";
 export async function accountEmailVerified(
   db: Db,
   args: { accountId: string; email: string; now: number },
-): Promise<number> {
+): Promise<JoinedLicense[]> {
   const address = normalizeEmail(args.email);
-  if (!address) return 0;
+  if (!address) return [];
   const verified = await verifiedAccountEmails(db, args.accountId);
-  if (!verified.includes(address)) return 0;
-  return attachWaitingLicensesByEmail(db, args.accountId, address, args.now);
+  if (!verified.includes(address)) return [];
+  return attachWaitingLicensesByEmailRows(
+    db,
+    args.accountId,
+    address,
+    args.now,
+  );
 }
 
 /**
@@ -93,4 +100,5 @@ export async function licenseEmailAssigned(
 export const licenseHolderHooks: LicenseHolderHooks = {
   accountEmailVerified,
   licenseEmailAssigned,
+  autoLinksNewLicenses: autoLinkEnabled,
 };

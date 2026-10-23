@@ -7435,13 +7435,14 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
-### The account override layer and the licence-override migration (U-03)
+### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
-product's pairwise subject) replaces the licence's config and secret overrides on every product
-(notes/S-17 §5.12, owner decisions 3, 4, 20 and 21). Core merges it after the licence overrides
-and before the device's (`core/licensing/payload.ts`); a one-time, owner-run migration moves owned licences'
-values onto it and drops unowned licences'.
+product's pairwise subject) is layer 5 of the config merge (notes/S-17 §5.12, owner decisions 3, 4,
+20 and 21). Core merges it after the licence's own overrides, layer 4, and before the device's
+(`core/licensing/payload.ts`). The licence layer is read and writable for every licence, floating
+or owned (U-27.1); there is no migration, freeze or retirement state. U-03's one-time migration of
+licence values was deleted in U-27.
 
 - **Whose layer (S-17 T16, intended).** `overrideSubject` (`core/accounts/accountOverrides.ts`) is the
   Cloud Sync principal (`resolveSyncPrincipal`, with all of its checks: an authorized device, a
@@ -7454,42 +7455,75 @@ values onto it and drops unowned licences'.
   owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
   binding on the device. The owner line reads the subject without creating one, so a document GET
   writes nothing.
-- **No account id leaves.** Rows, the console route, the inventory, the dry run, the report, the
-  audit rows and the export name the owner only by the product's pairwise subject (S-16 §5.1);
-  the run groups licences by account internally only. Tests assert no account id appears.
+- **No account id leaves.** Rows, the console route, the job's reports, the audit
+  rows and the export name the owner only by the product's pairwise subject (S-16 §5.1). Tests
+  assert no account id appears.
+- **Where a sign-in's provisioned secrets go (U-27.2).** `provisionedSecretTarget`
+  (`core/licensing/provisioning.ts`) answers `account` only when the licence has an owner and the
+  signing identity's `sub` is linked to that owner's account: an `account_links` row with
+  `kind='oidc'` and `tenant_scope=''`. Every other licence keeps the secrets in its column as
+  before: floating, waiting on its email, identified only by its `sub`, an email-only identity, or
+  handed over to another account. The target is decided per licence, not by a switch, because
+  writing the account row of an unowned licence would drop its secrets.
+- **Checked twice.** The target is decided on sign-in, in the claim arm and in
+  `issueAccountLicense`, and `applyProvisionedAccountSecrets` repeats the same link query before it
+  writes. A licence handed over between the two checks takes nothing from its previous owner's
+  sign-in. Residual: the link query does not check the issuer, because `OidcIdentity` carries no
+  issuer key (the same predicate as `licenseChoice.ts:132`). Abuse needs the product's sign-in IdP
+  to hand an attacker a `sub` equal to a subject the owner linked from another global issuer, and
+  the attacker also needs a licence the owner holds. A malicious product operator gains nothing:
+  they already control that product's config. Residual, unchanged from before U-27 (L-U1): a
+  licence handed over before its previous holder signs in again still gets that holder's
+  provisioned secret in its column, and the new owner's devices on that licence receive it.
+- **Exposure.** Only a device signed in as the owner gets the row's secrets. A key-entry device of
+  an owned licence still gets the owner's config but not their secrets
+  (`answer.via === "owner"`).
 - **Secrets stay sealed.** Account-layer secrets (and config keys the catalog flags `secret`) are
   sealed under PLATFORM_KEK with the same AAD as the licence's (`…:managed-secret:<key>`; a value
   sealed under the earlier `…:product-secret:managed:<key>` still opens and is re-sealed on its
-  next write), so the run copies sealed values as they are and seals any legacy plaintext on the
-  way; the KEK sweep covers the table. The console never echoes a value back (`redactPayload`).
-  The inventory, the dry run, the report (and its CSV), the export and the merge's collision audit
-  row never carry a secret: a value is shown only when the active catalog positively declares the
-  key a non-secret `config` key and the stored value is not a sealed envelope (fail closed). Tests
-  feed sealed and plaintext secrets through every output and search for them.
-- **The migration cannot start early or by accident.** The notice is refused until an operator
-  flags the login card (I-07) and the Library (I-11) live in production, and the guard is the
-  conditional write itself; the run is refused before the 30-day notice window ends, needs the
-  operator's step-up (a sign-in from the last 5 minutes), runs under a lease so two requests never
-  process one product at once (renewed per product, cleared only by its holder), and resumes
-  exactly (report rows are the per-licence progress marker). Its account-row write is a
-  compare-and-set on the row it planned from, with that unit's report and audit rows written only
-  if it applied, so an operator's edit or a sign-in that lands meanwhile is re-planned on, never
-  overwritten. The licence route's freeze check and its write are one statement. Every step is in the platform activity log; every licence the run touches has an audit
-  row. Nothing in the Worker starts the run: the nightly job only refreshes the inventory, purges
-  the report after 90 days and, after the report window, empties the licences' config and secrets
-  columns. Residual: the prerequisites are facts about production that only an operator can
-  assert; a wrong flag starts the notice early (the owner sets them, RUNBOOK).
-- **Freeze, then retire.** From the run's start, `PUT /licenses/<id>/overrides` refuses config and
-  secrets (entitlements stay writable, decision 20) and the OIDC provisioning writer puts its
-  secrets on the owner's account row; from its completion, documents stop reading config and
-  secrets from licences. Until the columns are emptied (90 days later), the licence values remain
-  in D1 and the run can be reasoned about or reversed by hand; the report keeps non-secret values
-  for re-application.
-- **Data the report holds.** A licence's own email (`buyer_email`), key names, non-secret config
-  values and the owner's subject, for 90 days, platform admins only. A subject's report rows go
-  with its account × product data (the store's `delete`: per-product removal, account deletion,
-  the console's data deletion) and follow it through a merge. Deleting a product deletes all of
-  its account overrides and report rows (`deleteProduct`), and deleting a licence its report rows.
+  next write). The AAD binds the product and the key, not the home: a sealed value opens
+  wherever it sits, so moving it between the licence column and the account row needs no
+  re-sealing. That is acceptable because a writer of D1 can already place any sealed value in
+  either home; the AAD stops a value moving to another product or key, not within one. The KEK
+  sweep covers the table. The console never echoes a value back (`redactPayload`). The move job's
+  reports carry counts and capped licence ids only (a test searches them for the value). The
+  export names secrets only (`configured`). The merge's collision audit row carries non-secret
+  values only. A value is shown only when the active catalog positively declares the key a
+  non-secret `config` key and the stored value is not a sealed envelope (fail closed).
+- **The move job (`core.provisioned-secrets-to-account`, U-27.5, U-27.6).** It moves an owned
+  licence's declared provisioned secrets to the owner's row, one layer up. A dry run reads only
+  and carries no value (counts and capped ids). Per move, the `provisioned_secret_moves` ledger
+  row is written first, then the entry is added to the owner's row by compare-and-set exactly as
+  stored (writer `migration`), then removed from the licence column by a guarded write that never
+  touches `modified_at`. A sign-in or edit between plan and apply loses the compare-and-set and is
+  skipped, never overwritten. Conflicts (several licences of one owner with different entries and
+  no account value) and devices signed in as another subject are skipped and reported. The result
+  is value-equal, not byte-identical: the order of keys inside a document's secrets may change,
+  so the config ETag changes once and a device sees one full response; the SDK `onChange`
+  callbacks that key on the ETag may fire once with identical values.
+- **`down` is exact for every moved entry and handover-safe.** The ledger stores the licence id, key, subject, a
+  SHA-256 of the moved entry and whether the job added it, never a value. `down` puts an entry
+  back on its licence only while the account row still hashes to the recorded entry and the
+  licence is still owned by the same account. It removes the entry from the row only when the job
+  added it and every licence of that entry has its copy back, and settles a kept group before a
+  pending one. A copy removed as shadowed is restored from the account entry only when its
+  recorded hash matches that entry. A shadowed copy that differed, which is the usual case after a
+  sign-in re-seals with a random IV, is not restored. The entry above it stays, so no device's
+  value changes, but the invisible copy is gone. A later edit stays. If the row's compare-and-set fails three times, `down`
+  reports a counted retry and is run again.
+- **Residuals, each to be closed by U-27b.**
+  - `down` is product-wide, not per run: undoing an older apply also undoes a newer one.
+  - Legacy plaintext provisioned values move as they are, without sealing, and the ledger hash
+    covers the plaintext; only a database reader could use that. U-27b's drop removes the ledger hash. The value itself stays plaintext on the account row, as
+    it was on the licence column, until the owner's next sign-in re-seals it.
+  - One instance of the shadowed-copy rule above: an `added` row together with a non-matching
+    shadowed copy in one group. The entry stays, so devices keep what they saw, and the invisible
+    older copy is lost.
+  - `override_migration_report` rows (a licence's own email, key names, non-secret values and the
+    owner's subject) are no longer erased: nothing reads or deletes them from U-27, and a
+    licence, account or product deletion leaves them. Production has none, because no run happened. U-27b drops the table.
+  - The ledger holds the owner's subject; erasure, merge, licence deletion and product deletion
+    remove or re-key its rows, and U-27b drops the table.
 - **Merges never overwrite silently.** The registered store's `merge` keeps the survivor's value
   per key, copies keys only the absorbed account had (secrets copied sealed, never decrypted),
   deletes the absorbed row in the same batch, and lists every collision in the product's activity
@@ -8656,13 +8690,86 @@ rate_limited`, `retryAfter`), read from the audit trail (the attempt row is writ
 - **The key appears only in the email body and the one response that minted it.** Never in the
   subject, the audit summary, a log, or the audit row's address (the recipient is not recorded).
 - **Only to the licence's own address.** There is no recipient field; a floating licence is
-  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Key"
+  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Locker"
   through Core's one send choke point, so suppression, the relay gate and the per-product daily
-  cap apply (I-18). The "Open in Polaris Key" link is a plain sign-in page that carries no token,
+  cap apply (I-18). The "Open in Polaris Locker" link is a plain sign-in page that carries no token,
   so a forwarded email signs nobody in.
 - **Residual, accepted.** An operator can still mint keys with `POST …/keys` as before; emailing
   adds a delivery channel, not a capability. Two concurrent send-keys can both pass the 10-minute
   check; each mints its own key and both are audited.
+
+### Licence administration: emailing an invitation (LX-27c)
+
+An operator can invite a licence's holder instead of mailing a key: `delivery: {invite: true}` on
+create, optionally with `key: false` (no key is minted at all). The email is a plain sign-in link,
+sent as "<App> via Polaris Locker" through Core's one send choke point, so suppression, the relay
+gate and the per-product daily cap apply as for the key email. Same product-admin session and CSRF
+as any licence write.
+
+- **It carries nothing secret.** No key (an invited licence may have none; one created with "also
+  a key" keeps it out of the email), no token, and no address in any URL: the body names the
+  address and the link is the plain `/signin?product=<slug>`, so a URL in a log, a history or a
+  forwarded message says nothing about who. A forwarded invitation signs nobody in: using the
+  licence needs a verified sign-in with that exact address (Identity attaches only on an address
+  the account verified, T-H3).
+- **No account oracle (D4).** The copy, the work done and the answer are the same whether or not
+  the address has an account: the email is rendered from the licence alone, the answer is built as
+  if no account took the licence (no `inAccount`), and association at creation runs on every create
+  with an email as before.
+- **Refused where it cannot work.** 422 `bad_request` with a `reason`: no email, `email` and
+  `invite` together, `key: false` without `invite`, Identity off for the product (`identity_off`),
+  auto-link resolving off (`auto_link_off`; a custom-issuer product resolves off). The last two
+  stop an operator promising a join that would never happen. License learns the auto-link rule
+  only through Core's `LicenseHolderHooks.autoLinksNewLicenses`, which Identity implements; with
+  nothing contributed the answer is "no invitation" (fail closed), and License imports nothing from
+  Identity (`boundaries.test.ts`).
+- **A failed send never undoes the licence.** The answer says `failed` with the reason. A send
+  that went out stamps `licenses.invited_at` (epoch seconds; no address, no key) and the audit
+  summary reads "invitation sent" or "invitation failed", never the address.
+- **Residual, accepted.** An operator can still mail an invitation to any address they type, as
+  they could already mail a key; the per-product daily cap and suppression bound it. No open
+  tracking and no pixel (a privacy line).
+- **Resend (`POST …/licenses/<id>/send-invite`).** Same session and CSRF. It mints nothing and is
+  allowed only for a waiting licence: a floating licence is refused (400) and one already in an
+  account is `409 in_account` (the holder shows `inAccount` on every read, so the refusal is no
+  new oracle). It also refuses a disabled or expired licence, Identity or auto-link off, and what
+  no retry can fix (no mail binding, an unusable or suppressed address, the daily cap), all before
+  any send. One mail per licence per 10 minutes, SHARED with send-key (`429 rate_limited`,
+  `retryAfter`), read from the audit trail: the attempt row `license.invite.send` is written before
+  the send, so the window holds across isolates and a crash mid-send, and a
+  `license.invite.send.failed` child row frees it. The audit rows carry the licence id and the
+  outcome, never the address. `invited_at` is stamped only after an accepted send. Because the two
+  routes share one window, mixing them cannot double the mail a licence receives.
+
+### Licence holders: the library notice at first verification (LX-27c.3)
+
+When a license waiting on an address joins an account at that address's verification (a sign-in
+method added or auto-linked, or the sign-in's link sweep), the person gets one notice per product:
+"<Product> is in your Polaris Locker library", "From <developer>".
+
+- **Only the verified address.** The notice goes to the address that was just verified on the
+  account, which is also the license's own address, because the attach itself only happens for an
+  address the account verified (T-H3, re-checked in the hook). Never to an unverified address and
+  never to another address of the account, so it hands out no address.
+- **No oracle.** It is sent after the join, to a person who has just proven the address, and says
+  nothing the person could not see in the library. Creating a license for an address still answers
+  the same whether or not an account exists (D4). A license an invitation already went out for
+  (`invited_at`) sends none.
+- **Display values.** The developer name (the listing's, otherwise the product name) and the
+  product name go through `displayValue` (control and bidi characters stripped, length bounded)
+  before the subject or text, and are HTML-escaped on top. The notice never says how the license
+  was delivered and carries no key.
+- **Only an active license announces itself.** An inactive (disabled, revoked) or expired license
+  attaches silently, with no notice; the attach itself is unchanged. A deleted product sends none.
+- **Best effort.** It goes through Core's send choke point (suppression, relay gate, cap); a failed
+  or blocked send is swallowed and never undoes or reports the join.
+- **Every path that attaches by address sends it,** under the same rules: the hook's callers, the
+  sign-in's sweep, the portal's per-request sweeps (`/api/me`, `/api/licenses`, the portal
+  dispatch), the device-login poll and the product sign-in's claim sweep. A sweep that cannot
+  build a link origin runs without sending.
+- **The developer name comes from Core.** `productDeveloperName` (`core/presentation.ts`) builds
+  the product's hooks from the bound registry, gated on that product's enablement, and reads the
+  listing through them; Identity imports no service. Any failure falls back to the product name.
 
 ### Licence holders: association by email and the auto-attach block (LX-26)
 

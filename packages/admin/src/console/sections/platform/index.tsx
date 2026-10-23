@@ -15,7 +15,6 @@ import type { GlobalPageId } from "../../nav.js";
 import type { Route } from "../../routes.js";
 import { FeedsArea } from "../feeds/pages/FeedsArea.js";
 import { PLATFORM_SCOPE } from "../feeds/model/model.js";
-import { OverrideMigrationPage } from "./pages/platformOverrideMigration.js";
 
 export function fetchPlatformDeployment(): Promise<PlatformDeployment> {
   return api.platformDeployment();
@@ -49,7 +48,6 @@ export default function PlatformPages({
   if (page === "platform-stores") return <StoreConnections />;
   if (page === "platform-connections")
     return <ConnectionsRoute id={route?.id} />;
-  if (page === "platform-override-migration") return <OverrideMigrationPage />;
   return null;
 }
 

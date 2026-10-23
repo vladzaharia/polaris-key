@@ -10,7 +10,11 @@
 
 import * as React from "react";
 import { Download, FileText } from "lucide-react";
-import type { KeyEmailFailure, KeyEmailOutcome } from "../../../../api.js";
+import type {
+  InviteOutcome,
+  KeyEmailFailure,
+  KeyEmailOutcome,
+} from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
@@ -20,14 +24,29 @@ import {
   canRetryKeyEmail,
   keyEmailFailureCopy,
 } from "../components/SendKeyDialog.js";
-import { csvOf, type CsvRow } from "./draft.js";
+import {
+  inviteFailureCopy,
+  type InviteRefusal,
+} from "../components/inviteCopy.js";
+import {
+  csvOf,
+  deliveryOf,
+  invitesPerson,
+  type CsvRow,
+  type Draft,
+} from "./draft.js";
 
 export type Result =
   | {
       kind: "single";
       id: string;
-      key: string;
-      /** The address the key was emailed to, or null when no email was asked for. */
+      /** Absent for an invitation without "Also create a key". */
+      key: string | null;
+      /** An invitation was asked for: how it went. Never carries a key. */
+      invite: { outcome: InviteOutcome; reason?: KeyEmailFailure } | null;
+      /** The holder's name, when given (Done's next-step line says it). */
+      name: string | null;
+      /** The address the key or invitation was emailed to, or null when no email was asked for. */
       email: string | null;
       /** The key is on screen (not for "Email the key" alone, unless the email failed). */
       showKey: boolean;
@@ -49,10 +68,58 @@ export type Result =
       summary: string;
     };
 
+/** The result of `POST …/licenses` for one assigned or floating license, in the draft's terms. */
+export function singleResult(
+  res: {
+    licenseId: string;
+    key?: string;
+    delivered?: {
+      email?: KeyEmailOutcome;
+      invite?: InviteOutcome;
+      reason?: KeyEmailFailure;
+    };
+  },
+  draft: Draft,
+  first: boolean,
+  summary: string,
+): Result {
+  const invited = invitesPerson(draft);
+  const failed = res.delivered?.email === "failed";
+  const delivery = deliveryOf(draft);
+  const key = res.key ?? null;
+  const reason = res.delivered?.reason ? { reason: res.delivered.reason } : {};
+  return {
+    kind: "single",
+    id: res.licenseId,
+    key,
+    invite: invited
+      ? { outcome: res.delivered?.invite ?? "failed", ...reason }
+      : null,
+    name: draft.name.trim() || null,
+    email: draft.who === "person" ? draft.email.trim() : null,
+    // "Email the key" alone never shows it, unless the email did not go out. An invitation shows
+    // a key only when one was asked for, and never emailed it.
+    showKey: key !== null && (invited || delivery !== "email" || failed),
+    // Only then is this screen the one copy: Show it once, an email that failed, or a key no
+    // email carries.
+    onlyCopy: key !== null && (invited || delivery === "show" || failed),
+    delivered:
+      !invited && res.delivered?.email
+        ? { email: res.delivered.email, ...reason }
+        : null,
+    first,
+    summary,
+  };
+}
+
 /** The step heading: what happened, in the words of the outcome. */
 export function doneTitle(result: Result): string {
   if (result.kind === "batch")
     return `${result.rows.length} ${result.rows.length === 1 ? "key" : "keys"} created`;
+  if (result.invite)
+    return result.invite.outcome === "failed"
+      ? "Invitation not sent"
+      : "Invitation sent";
   return result.delivered?.email === "failed"
     ? "Key not emailed"
     : "License created";
@@ -78,8 +145,11 @@ export function DoneBody({
   onKept,
   retrying,
   retryNote,
+  refusal,
   retryWait,
   onRetry,
+  onMakeKey,
+  makingKey,
   onTryIt,
 }: {
   slug: string;
@@ -90,9 +160,14 @@ export function DoneBody({
   retrying: boolean;
   /** A refusal of Try again, in words. */
   retryNote: React.ReactNode;
+  /** A refused invitation Try again, in words: it replaces the failure line, never stacks. */
+  refusal: InviteRefusal | null;
   /** Seconds until another send is allowed (0: now). */
   retryWait: number;
   onRetry: () => void;
+  /** An invitation that did not go out left no key: make one (shown once, as ever). */
+  onMakeKey: () => void;
+  makingKey: boolean;
   onTryIt: () => void;
 }): React.ReactElement {
   const [downloadedAt, setDownloadedAt] = React.useState<Date | null>(null);
@@ -188,56 +263,97 @@ export function DoneBody({
     );
   }
 
-  const failed = result.delivered?.email === "failed";
-  const retryReason = !kept
-    ? "Tick “I've stored it” first."
-    : retryWait > 0
+  const inviteFailed = result.invite?.outcome === "failed";
+  const failed = result.delivered?.email === "failed" || inviteFailed;
+  const wait =
+    retryWait > 0
       ? `Try again in ${Math.max(1, Math.ceil(retryWait / 60))} min.`
       : null;
+  // Resending an invitation touches no key, so it never waits for one to be kept (N4).
+  const retryReason = result.invite
+    ? wait
+    : !kept
+      ? "Tick “I've stored it” first."
+      : wait;
+  const who = result.name ?? "they";
+  const email = result.email ?? "";
   return (
     <div className="space-y-4">
+      {result.invite && !inviteFailed ? (
+        <p className="text-sm text-fg-muted">
+          When {who} sign{result.name ? "s" : ""} in with {email}, the license
+          is in their Polaris Locker library.
+        </p>
+      ) : null}
+      {result.invite && inviteFailed ? (
+        refusal ? (
+          <Callout tone={refusal.tone} live>
+            {refusal.kind === "wait"
+              ? "An email went to this license in the last 10 minutes."
+              : refusal.description}
+          </Callout>
+        ) : (
+          <Callout tone="warning" live>
+            The license is waiting for {email}. When {who} sign
+            {result.name ? "s" : ""} in with it, it&apos;s theirs. The email
+            didn&apos;t go out. {inviteFailureCopy(result.invite.reason, email)}
+          </Callout>
+        )
+      ) : null}
       {result.delivered && !failed ? (
         <Callout tone="success" live>
           Emailed to {result.email}.
         </Callout>
       ) : null}
-      {failed ? (
+      {result.delivered?.email === "failed" ? (
         <Callout tone="warning" live>
           {keyEmailFailureCopy(result.delivered?.reason, result.email ?? "")}
         </Callout>
       ) : null}
-      {retryNote}
-      {result.showKey ? (
+      {result.invite ? null : retryNote}
+      {result.showKey && result.key !== null ? (
         <SecretValue
           label="License key"
           value={result.key}
           hint={
-            result.onlyCopy
-              ? "Shown once. Copy it now."
-              : result.retried
-                ? "Their email has a newer key. This one works too."
-                : "Shown once. It is in their email too."
+            result.invite
+              ? "Shown once. It isn't in the invitation. Copy it now."
+              : result.onlyCopy
+                ? "Shown once. Copy it now."
+                : result.retried
+                  ? "Their email has a newer key. This one works too."
+                  : "Shown once. It is in their email too."
           }
           hideAck={!result.onlyCopy}
           acknowledged={kept}
           onAcknowledgedChange={onKept}
         />
       ) : null}
-      {failed && canRetryKeyEmail(result.delivered?.reason) ? (
+      {failed &&
+      !refusal?.permanent &&
+      canRetryKeyEmail(
+        result.invite ? result.invite.reason : result.delivered?.reason,
+      ) ? (
         <div className="space-y-1">
           <Button
             variant="outline"
             loading={retrying}
-            disabled={retryReason !== null}
-            aria-describedby="new-license-retry-note"
+            disabledReason={retryReason ?? undefined}
             onClick={onRetry}
           >
             Try again
           </Button>
-          <p id="new-license-retry-note" className="text-xs text-fg-muted">
-            {retryReason ?? "Emails another new key. This one keeps working."}
-          </p>
+          {result.invite && !wait ? null : (
+            <p className="text-xs text-fg-muted">
+              {retryReason ?? "Emails another new key. This one keeps working."}
+            </p>
+          )}
         </div>
+      ) : null}
+      {inviteFailed && result.key === null && refusal?.kind !== "in_account" ? (
+        <Button variant="outline" loading={makingKey} onClick={onMakeKey}>
+          Create a key
+        </Button>
       ) : null}
       {first}
     </div>

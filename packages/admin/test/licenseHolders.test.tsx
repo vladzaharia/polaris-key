@@ -523,6 +523,339 @@ describe("Assign… and Edit holder", () => {
   });
 });
 
+describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
+  const INVITING = {
+    [`${API}/license/licenses`]: {
+      licenses: LIST,
+      holders: { invitations: true, invitationsOff: null },
+    },
+  };
+  const refuse = (status: number, body: Record<string, unknown>) =>
+    new Response(JSON.stringify({ error: { code: "bad_request" }, ...body }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  const INVITED = summary("lic_wait", {
+    ...WAITING,
+    invitedAt: NOW_S - 2 * DAY,
+  });
+  const record = (extra: Record<string, unknown> = {}) =>
+    bootLicense("#/p/djdl/license/licenses/lic_wait", {
+      routes: {
+        ...ROUTES,
+        ...INVITING,
+        // An invitation went out already: the record resends (N1: with none it says Send).
+        [`${API}/license/licenses/lic_wait`]: detail(INVITED),
+        ...extra,
+      },
+    });
+
+  it("the primary resends the invitation where invitations work, and the key elsewhere", async () => {
+    const log = record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: {
+        delivered: { invite: "sent" },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    expect(within(dialog).getByText(/No key is sent/)).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((w) => `${w.method} ${w.path}`)).toEqual([
+        `POST ${API}/license/licenses/lic_wait/send-invite`,
+      ]),
+    );
+    cleanup();
+
+    // Identity or auto-link off (no `holders`): LX-30's primary, which sends a key.
+    bootLicense("#/p/djdl/license/licenses/lic_wait", { routes: ROUTES });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Resend invitation" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Send a new key" }),
+    ).toBeTruthy();
+  });
+
+  it("Send a new key… stays in the overflow", async () => {
+    record();
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await more("Send a new key…");
+    expect(
+      await screen.findByRole("dialog", { name: "Send a new key" }),
+    ).toBeTruthy();
+  });
+
+  it("says each refusal in words, and the 429 with its wait", async () => {
+    const reasons: [string, RegExp][] = [
+      ["in_account", /already has it in their account/],
+      ["identity_off", /Turn on Sign-in/],
+      ["auto_link_off", /doesn't add licenses by email/],
+      ["license_not_active", /Enable the license first/],
+      ["license_expired", /has expired/],
+      ["suppressed", /can't receive email from us/],
+      ["daily_cap", /today's email limit/],
+    ];
+    for (const [reason, words] of reasons) {
+      cleanup();
+      record({
+        [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(409, {
+          reason,
+        }),
+      });
+      await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Resend invitation" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Resend invitation",
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Send invitation" }),
+      );
+      expect(
+        await within(dialog).findByText(
+          reason === "in_account"
+            ? "Already in their account"
+            : "No invitation was sent",
+        ),
+      ).toBeTruthy();
+      expect(within(dialog).getAllByText(words).length).toBeGreaterThan(0);
+    }
+    cleanup();
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(429, {
+        retryAfter: 412,
+      }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    expect(await within(dialog).findByText("Sent a moment ago")).toBeTruthy();
+    expect(
+      within(dialog).getByText("You can send another in 7 min."),
+    ).toBeTruthy();
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Send invitation" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+
+  it("B1: when the 429 wait ends the refusal goes and Send is live again", async () => {
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(429, {
+        retryAfter: 1,
+      }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    expect(await within(dialog).findByText("Sent a moment ago")).toBeTruthy();
+    await waitFor(
+      () => expect(within(dialog).queryByText("Sent a moment ago")).toBeNull(),
+      { timeout: 3000 },
+    );
+    expect(within(dialog).queryByText(/You can send another/)).toBeNull();
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Send invitation" })
+        .getAttribute("aria-disabled"),
+    ).toBeNull();
+  });
+
+  it("N2/N3: in_account ends in one Done; a disabled license offers no Send invitation", async () => {
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(409, {
+        reason: "in_account",
+      }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    await within(dialog).findByText("Already in their account");
+    expect(within(dialog).getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: "Send invitation" }),
+    ).toBeNull();
+    cleanup();
+
+    record({
+      [`${API}/license/licenses/lic_wait`]: detail({
+        ...INVITED,
+        status: "disabled",
+      } as LicenseSummary),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    expect(
+      screen.queryByRole("button", {
+        name: /Send invitation|Resend invitation/,
+      }),
+    ).toBeNull();
+  });
+
+  it("a failed send says why and offers Try again", async () => {
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: {
+        delivered: { invite: "failed", reason: "provider_refused" },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    expect(
+      await within(dialog).findByText(/The email provider didn't accept it/),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
+  });
+
+  it("the Invitation card says when it was sent, or offers Send invitation", async () => {
+    record({ [`${API}/license/licenses/lic_wait`]: detail(INVITED) });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    let card = await screen.findByRole("region", { name: "Invitation" });
+    expect(within(card).getByText(/^Sent /)).toBeTruthy();
+    expect(within(card).queryByText(/Not opened/i)).toBeNull();
+    expect(
+      within(card).queryByRole("button", { name: "Send invitation" }),
+    ).toBeNull();
+    expect(
+      within(card).getByRole("button", { name: "Change email…" }),
+    ).toBeTruthy();
+    cleanup();
+
+    record({ [`${API}/license/licenses/lic_wait`]: detail(WAITING) });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    card = await screen.findByRole("region", { name: "Invitation" });
+    expect(within(card).getByText("Not sent")).toBeTruthy();
+    // N1: one button for one action, and it says Send, not Resend; the card has none of its own.
+    expect(
+      within(card).queryByRole("button", { name: /invitation/i }),
+    ).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send invitation" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Send invitation" }),
+    ).toBeTruthy();
+    cleanup();
+
+    // Where invitations are off the card is as LX-30 drew it.
+    bootLicense("#/p/djdl/license/licenses/lic_wait", { routes: ROUTES });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    card = await screen.findByRole("region", { name: "Invitation" });
+    expect(within(card).queryByText("Not sent")).toBeNull();
+    expect(
+      within(card).queryByRole("button", { name: "Send invitation" }),
+    ).toBeNull();
+  });
+
+  it("Assign… emails an invitation, not a key, where invitations work", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_float", {
+      routes: {
+        ...ROUTES,
+        ...INVITING,
+        [`PATCH ${API}/license/licenses/lic_float`]: {
+          ok: true,
+          id: "lic_float",
+        },
+        [`POST ${API}/license/licenses/lic_float/send-invite`]: {
+          delivered: { invite: "sent" },
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Floating license" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Assign to a person" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Assign license",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /^Email/ }),
+      "ada@example.com",
+    );
+    expect(within(dialog).queryByLabelText(/Email them the key/)).toBeNull();
+    await userEvent.click(
+      within(dialog).getByLabelText(/Email them an invitation/),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Assign and invite" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((w) => `${w.method} ${w.path}`)).toEqual([
+        `PATCH ${API}/license/licenses/lic_float`,
+        `POST ${API}/license/licenses/lic_float/send-invite`,
+      ]),
+    );
+    expect(writes(log)[1]!.body).toEqual({ context: "assigned" });
+  });
+
+  it("the list says Invited only after an invitation went out, else Added", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        ...ROUTES,
+        [`${API}/license/licenses`]: {
+          licenses: [
+            INVITED,
+            summary("lic_wait2", {
+              name: "Kim Lee",
+              email: "kim@lee.io",
+              holder: {
+                kind: "assigned",
+                inAccount: false,
+                email: "kim@lee.io",
+              },
+            }),
+          ],
+        },
+      },
+    });
+    const t = await table(false);
+    await within(t).findByText("Sam Reyes");
+    expect(within(rowOf(t, "Sam Reyes")).getByText(/^Invited /)).toBeTruthy();
+    expect(within(rowOf(t, "Kim Lee")).getByText(/^Added /)).toBeTruthy();
+    expect(within(rowOf(t, "Kim Lee")).queryByText(/^Invited /)).toBeNull();
+  });
+});
+
 describe("Reassign… and Make floating… (I-12's relink tool)", () => {
   it("Reassign needs the step-up, a reason, a new email and the typed name, then posts them", async () => {
     const log = bootLicense("#/p/djdl/license/licenses/lic_in", {

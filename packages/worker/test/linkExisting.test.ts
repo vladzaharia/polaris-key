@@ -523,7 +523,7 @@ describe("linkExistingProduct", () => {
     const schema = await getActiveSchema(db, "tonebox");
     expect(schema?.catalog_version).toBe(2);
     const tiers = await db.all<{ id: string }>(
-      "SELECT id FROM tiers WHERE product = 'tonebox'",
+      "SELECT id FROM tiers WHERE product = 'tonebox' AND implicit = 0",
     );
     expect(tiers.map((t) => t.id)).toEqual(["pro"]);
   });
@@ -718,7 +718,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
     );
     expect(res.plan.conflicts).toEqual([]);
     const tiers = await db.all<{ id: string }>(
-      "SELECT id FROM tiers WHERE product = 'tonebox'",
+      "SELECT id FROM tiers WHERE product = 'tonebox' AND implicit = 0",
     );
     expect(tiers.map((t) => t.id)).toEqual(["pro"]);
     const after = await db.first<{ n: number }>(

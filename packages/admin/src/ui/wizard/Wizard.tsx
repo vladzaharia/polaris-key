@@ -138,6 +138,11 @@ export function Wizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
+  // A result that changes in place (a retry that went out) is announced again, with no focus move.
+  React.useEffect(() => {
+    if (result) setAnnounced(`${label}, ${title}`);
+  }, [result, label, title]);
+
   const isDrawer = host === "drawer";
   const reasonId = `${uid}-reason`;
 

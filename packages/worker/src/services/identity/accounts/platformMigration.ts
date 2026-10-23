@@ -45,6 +45,7 @@
  *     first attach only, never an owned licence, never a custom-issuer product's.
  */
 
+import { syncLicenseLinksAndNotify } from "./libraryNotice.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Db } from "../../../db/types.js";
@@ -53,7 +54,6 @@ import {
   portalIdentityIssuerKey,
   recordLinkGroups,
   rekeyLegacyPortalIdentities,
-  syncAccountLicenseLinks,
 } from "../portal/repo.js";
 import { providerVouchesForEmail } from "../providers/vouch.js";
 import {
@@ -357,13 +357,16 @@ export async function claimPlatformSubject(
  * that is no longer active.
  */
 export async function attachClaimedLicenses(
+  env: Env,
   db: Db,
   accountId: string,
   now: number,
+  /** The origin the library notice links to; `null` runs the sweep without notices. */
+  origin: string | null,
 ): Promise<void> {
   const account = await getAccountRow(db, accountId);
   if (!account || account.status !== "active") return;
-  await syncAccountLicenseLinks(db, accountId, now);
+  await syncLicenseLinksAndNotify(env, db, accountId, now, origin);
 }
 
 // ── the count ────────────────────────────────────────────────────────────────────────────────

@@ -69,17 +69,19 @@ this page or fails the freshness gate.
 | `device_store_identities` | 0105_a_licensing_core.sql | `product`, `device_id`, `store`, `store_identity_hash`, `verified_at` |
 | `holder_versions` | 0105_a_licensing_core.sql | `product`, `holder_kind`, `holder_id`, `version` |
 | `entitlement_events` | 0105_a_licensing_core.sql | `product`, `id`, `subject`, `license_id`, `keys_json`, `created_at` |
+| `provisioned_secret_moves` | 0130_provisioned_secret_moves.sql | `product`, `license_id`, `key`, `subject`, `entry_sha256`, `added_to_account`, `shadowed`, `position`, `run_id`, `at` |
 
 ## license
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)`, `email_issuer_class (0118)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)`, `email_issuer_class (0118)`, `invited_at (0131)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
-| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)`, `rank (0105)`, `policy_offline_grace_days (0105)` |
+| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)`, `rank (0105)`, `policy_offline_grace_days (0105)`, `implicit (0129)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
 | `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
 | `license_batches` | 0095_a_license_batches.sql | `product`, `id`, `label`, `count`, `tier_id`, `created_by`, `created_at` |
+| `license_limit_backfill` | 0129_a_default_tier.sql | `product`, `subject_kind`, `subject_id`, `field`, `before_json`, `after_json`, `run_id`, `at` |
 
 ## config
 

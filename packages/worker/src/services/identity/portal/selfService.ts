@@ -62,6 +62,7 @@ import {
 import { getProduct } from "../../../core/products/store.js";
 import { setDeviceLabel, getDevice } from "../../../core/devices/store.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
+import { customerTierOf } from "../../../core/licensing/implicitTier.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   keyEntryRefusalsOn,
@@ -281,9 +282,10 @@ async function licenseTerms(
   const tier = license.tier_id
     ? await getTier(db, license.product, license.tier_id)
     : null;
+  const shown = customerTierOf(license, tier);
   return {
-    tier: license.tier_id,
-    tierLabel: tier?.label ?? null,
+    tier: shown?.id ?? null,
+    tierLabel: shown?.label ?? null,
     status: license.status,
     usable: licenseUsable(license, now),
     expiresAt: license.expires_at,
@@ -637,7 +639,7 @@ export async function handleKeyPreview(
     product: view,
     verdict,
     license: {
-      tierName: tier?.label ?? null,
+      tierName: customerTierOf(license, tier)?.label ?? null,
       term: license.expires_at ?? "perpetual",
     },
     keyEntries,

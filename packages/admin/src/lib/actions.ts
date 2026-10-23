@@ -118,13 +118,6 @@ export const ACTION_LEVELS = {
   "storeApp.release": 1,
   // Users (I-12): an undo puts a licence back on the subject it was relinked from.
   "user.undoRelink": 1,
-  // The licence override migration (U-03). Flagging a prerequisite asserts a fact about
-  // production only the owner can; the notice starts the 30-day clock and can be withdrawn
-  // until the run.
-  "overrideMigration.flagPrerequisite": 1,
-  "overrideMigration.unflagPrerequisite": 1,
-  "overrideMigration.startNotice": 1,
-  "overrideMigration.withdrawNotice": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,
@@ -173,9 +166,6 @@ export const ACTION_LEVELS = {
   // Owner request (2026-10-05): deleting a licence removes it, its keys and its devices for good;
   // typed `delete <id>` (a bulk deletion types `delete <n> licenses`). The Worker compares.
   "license.delete": 3,
-  // U-03: the licence override migration's run, platform-wide and one-way: unowned licences'
-  // config and secret overrides are dropped. Typed `migrate`, after a fresh sign-in.
-  "overrideMigration.run": 3,
   // LX-30 (S-24 D20, R7): Reassign and Make floating are I-12's relink tool on the licence record
   // (step-up, reason, notices, 72-hour undo) and typed with the licence's name, else its id; the
   // Worker compares. Disable unused keys contains a leaked batch, typed with the batch label.
@@ -240,7 +230,6 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "storefront.audienceEveryone": "slug",
   "user.deleteData": "delete",
   "license.delete": "deleteId",
-  "overrideMigration.run": "migrate",
   "license.reassign": "licenseName",
   "license.makeFloating": "licenseName",
   "batch.disableUnused": "batchLabel",

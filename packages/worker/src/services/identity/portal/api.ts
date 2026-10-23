@@ -1,5 +1,9 @@
 import { publicBranding } from "./branding.js";
 import {
+  noticeOrigin,
+  syncLicenseLinksAndNotify,
+} from "../accounts/libraryNotice.js";
+import {
   activePlatformConnections,
   audienceCovers,
 } from "../../../core/oidc/connections.js";
@@ -14,6 +18,7 @@ import {
   platformFromFileName,
 } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
@@ -74,7 +79,6 @@ import {
   portalAuthCapabilities,
   portalAudit,
   releaseServiceEnabled,
-  syncAccountLicenseLinks,
   type PortalLicenseRow,
 } from "./repo.js";
 import {
@@ -212,7 +216,10 @@ function isMutation(method: string): boolean {
 
 export { readBody };
 
-function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
+function licenseBase(
+  row: PortalLicenseRow,
+  tier: string | null,
+): Record<string, unknown> {
   return {
     id: row.id,
     product: row.product,
@@ -221,7 +228,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
-    tier: row.tier_id,
+    tier,
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,
@@ -248,7 +255,7 @@ export async function shapeLicenseSummary(
   const activeKeyCount = keys.filter((k) => k.status === "active").length;
   const settings = await getPortalProductSettings(db, row.product);
   return {
-    ...licenseBase(row),
+    ...licenseBase(row, await customerTierId(db, row)),
     ...portalLicenseOrigin({
       origin: row.origin ?? null,
       sub: row.sub,
@@ -793,7 +800,13 @@ async function handleMe(
 ): Promise<Response> {
   const account = await getPortalAccount(db, session.accountId);
   if (!account) return unauthorized();
-  await syncAccountLicenseLinks(db, session.accountId, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    session.accountId,
+    now,
+    noticeOrigin(env, req),
+  );
   return portalJson({
     account: {
       id: account.id,
@@ -968,13 +981,21 @@ async function handleCapabilities(
 }
 
 async function handleLicenses(
+  req: Request,
+  env: Env,
   db: Db,
   session: PortalSession,
   rest: string[],
   now: number,
   hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
-  await syncAccountLicenseLinks(db, session.accountId, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    session.accountId,
+    now,
+    noticeOrigin(env, req),
+  );
   const [product, licenseId] = rest;
   if (!product) {
     const rows = await listPortalLicenses(db, session.accountId);
@@ -1910,7 +1931,13 @@ async function dispatchPortalApi(
       () => readableFeeds(db, hooksFor, session.accountId, now),
       () => accountRegistryTokens(db, session.accountId, now),
     );
-  await syncAccountLicenseLinks(db, session.accountId, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    session.accountId,
+    now,
+    noticeOrigin(env, req),
+  );
 
   const [head, ...rest] = segments;
   // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
@@ -2078,7 +2105,7 @@ async function dispatchPortalApi(
     return handleLicenseRemove(req, env, db, session, rest[0], rest[1], now);
   }
   if (head === "licenses")
-    return handleLicenses(db, session, rest, now, hooksFor);
+    return handleLicenses(req, env, db, session, rest, now, hooksFor);
   if (head === "claim" && rest[0] === "license-key") {
     return handleClaimKey(req, env, db, session, now, hooksFor, settings);
   }

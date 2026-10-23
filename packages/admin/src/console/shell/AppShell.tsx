@@ -636,11 +636,7 @@ export function routeSkeleton(route: Route): SkeletonTemplate {
   if (route.id !== undefined || route.child) return "record";
   if (route.page === "overview" || route.page === "platform-status")
     return "dashboard";
-  if (
-    route.page === "platform-settings" ||
-    route.page === "platform-override-migration"
-  )
-    return "form";
+  if (route.page === "platform-settings") return "form";
   return "table";
 }
 

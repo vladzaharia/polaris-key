@@ -58,9 +58,12 @@ const LICENSE_KEYED = [
   "license_refusals",
   "license_relinks",
   "license_store_grants",
-  // U-03: Config's licence-override migration report.
+  // U-03: Config's licence-override migration report. Nothing deletes its rows with the licence
+  // yet (U-27b erases them); the list claims the table so the suite sees it.
   "override_migration_report",
   "portal_license_links",
+  // U-27.6: the provisioned-secret backfill ledger; Core deletes the row (`core/licensing/grants.ts`).
+  "provisioned_secret_moves",
   "registry_tokens",
 ].sort();
 

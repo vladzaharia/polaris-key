@@ -26,6 +26,7 @@ import type { Env } from "../platform/env.js";
 import { appendAudit } from "./audit.js";
 import { randomId } from "../platform/crypto.js";
 import type { ServicesMap } from "./services.js";
+import { seedImplicitTierStatement } from "./licensing/store.js";
 import { clearDeviceSubjects } from "./accounts/subjectHooks.js";
 
 /** Who made the write, for the audit row: the verified admin session, or the resync. */
@@ -75,7 +76,15 @@ export async function applyServiceTransitions(
   after: ServicesMap,
   actor: ServicesActor,
   now: number,
+  /** `seedDefaultTier: false`: a manifest resync never touches the Default tier (LX-33.7). */
+  opts: { seedDefaultTier?: boolean } = {},
 ): Promise<ServiceTransitionResult> {
+  // LX-33.7: License on ⇒ the product has its Default tier (a no-op when it does, so an enable
+  // and a re-enable both land here).
+  if (after.license?.enabled && opts.seedDefaultTier !== false) {
+    const seed = await seedImplicitTierStatement(db, product, now);
+    if (seed) await db.run(seed.sql, ...seed.params);
+  }
   if (after.identity?.enabled) return { signedInDevicesCleared: 0 };
   const { cleared } = await clearDeviceSubjects(
     db,

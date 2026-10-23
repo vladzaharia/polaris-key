@@ -24,6 +24,7 @@ import {
   createBrowserSession,
   type BrowserSessionSubject,
 } from "../browserSession.js";
+import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { readBinder } from "../licenseChoice.js";
 import {
   attachClaimedLicenses,
@@ -351,7 +352,13 @@ export async function handleAuthCallback(
     return errorResponse(403, "forbidden", "not entitled");
   }
   if (flow.claimAccount)
-    await attachClaimedLicenses(db, flow.claimAccount, now);
+    await attachClaimedLicenses(
+      env,
+      db,
+      flow.claimAccount,
+      now,
+      noticeOrigin(env, req),
+    );
   return completeBrowserFlow(
     req,
     env,

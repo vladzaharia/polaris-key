@@ -61,6 +61,29 @@ export function useHasLicenses(slug: string): boolean | null {
 }
 
 /**
+ * LX-27c.4 (L15): whether an invitation can reach this product's licences (Identity on and auto-link
+ * on), and why not, from the same one-row page; `null` while unknown or from an older Worker. The
+ * wizard and the record read this one fact.
+ */
+export function useInvitations(slug: string): {
+  invitations: boolean;
+  off: "identity_off" | "auto_link_off" | "no_mail" | null;
+  /** The list has not answered yet: what is offered may still change. */
+  pending: boolean;
+} {
+  const q = useQuery({
+    queryKey: qk.licensesFirst(slug),
+    queryFn: () => api.licensesPage(slug, { limit: 1 }),
+  });
+  const h = q.data?.holders;
+  return {
+    invitations: h?.invitations === true,
+    off: h?.invitationsOff ?? null,
+    pending: q.isPending,
+  };
+}
+
+/**
  * The Licenses page's rows, one page at a time (P0-29). Pages append in the Worker's order; a
  * licence write refreshes every loaded page (the key sits under `qk.licenses`). `filter` goes to
  * the Worker, which narrows before it pages; `total` and `counts` come with page 1.
@@ -533,6 +556,13 @@ export function resolvedDeviceLimit(
 }
 
 /** A tier's policy in one line, for pickers and tables: "365-day term · 5 devices · stable, beta". */
+/** The product's Default tier, if the Worker has seeded one (LX-33.7). */
+export function defaultTierOf(
+  tiers: readonly TierSummary[],
+): TierSummary | undefined {
+  return tiers.find((t) => t.implicit);
+}
+
 export function tierSummary(t: TierSummary): string {
   return [
     t.policyExpiryDays != null ? `${t.policyExpiryDays}-day term` : "No term",

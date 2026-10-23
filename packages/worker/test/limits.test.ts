@@ -103,10 +103,6 @@ const INTERNAL: Record<string, string[]> = {
   "core/oidc/client.ts": ["OIDC_MAX_BYTES", "OIDC_TIMEOUT_MS"],
   "core/oidc/connections.ts": ["CLAIM_MAP_MAX_CLAIMS"],
   "core/ops/operations.ts": ["PROBE_TIMEOUT_MS"],
-  "core/ops/overrideMigration.ts": [
-    "OVERRIDE_MIGRATION_NOTICE_DAYS",
-    "OVERRIDE_MIGRATION_REPORT_DAYS",
-  ],
   "core/ops/platformOps.ts": [
     "ERROR_SUMMARY_MAX",
     "SUMMARY_NAMES_MAX",

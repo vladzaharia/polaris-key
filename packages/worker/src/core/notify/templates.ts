@@ -25,6 +25,11 @@
  */
 
 import {
+  INVITE_FOOTERS,
+  inviteEmailIntro,
+  inviteEmailPrimaryLabel,
+  inviteEmailSubject,
+  type InviteEmailContext,
   KEY_EMAIL_AFTER,
   KEY_FOOTERS,
   keyEmailIntro,
@@ -162,6 +167,30 @@ export function licenseAddedNotice(input: {
 }
 
 /**
+ * LX-26 N1 / LX-27c.3: a license waiting on the address joined the account when the address was
+ * verified. "From <developer>" names who it comes from (the listing's developer, else the product
+ * name). It never says how it was delivered and never carries a key or another address.
+ */
+export function licenseFromDeveloperNotice(input: {
+  productName: string | null | undefined;
+  productSlug: string;
+  developerName?: string | null;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "Your new product");
+  const from = displayValue(input.developerName, name);
+  return buildNotice({
+    subject: `${name} is in your Polaris Locker library`,
+    paragraphs: [`From ${from}.`, `${name} was added to your library.`],
+    action: {
+      label: `Open ${name}`,
+      url: appLink(input.origin, productRoute(input.productSlug)),
+    },
+    origin: input.origin,
+  });
+}
+
+/**
  * S-16: a license was added to an account with its key, and the license's own email is a
  * different address. Tells the buyer which product, never which account (no address, no id).
  */
@@ -290,6 +319,75 @@ export function licenseKeyEmail(input: {
     brand: "locker",
   };
   return { subject, text, html: renderEmail(content) };
+}
+
+/** Why the invitation was sent: it picks the footer. */
+export type { InviteEmailContext };
+
+/**
+ * LX-27c: the invitation an operator emailed to a licence's holder, sent as "<App> via Polaris
+ * Locker" like the key email and rendered the same way (product hero, download or **Open in Polaris
+ * Locker**). It carries no key and no token, and the sign-in link names no address, so a forwarded
+ * email signs nobody in and a URL in a log says nothing about who. The address is in the body
+ * only. The copy does not depend on whether the address has an account (D4).
+ */
+export function licenseInvitationEmail(input: {
+  productName: string | null | undefined;
+  holderName: string | null | undefined;
+  /** The licence's address, named in the body ("Sign in with ada@example.com"). */
+  address: string;
+  /** The portal's sign-in page; carries no token and no address. */
+  signInUrl: string;
+  /** The product's download page, when it has one. */
+  downloadUrl?: string | null;
+  /** The product's hosted icon (https), when it has one. */
+  iconUrl?: string | null;
+  context?: InviteEmailContext;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "");
+  const holder = displayValue(input.holderName, "");
+  const subject = inviteEmailSubject(name);
+  const footer = INVITE_FOOTERS[input.context ?? "created"];
+  // The address is what the reader must type: stripped of control and bidi characters, never cut.
+  const intro = inviteEmailIntro(holder, name, plainAddress(input.address));
+  const primary = input.downloadUrl
+    ? { label: inviteEmailPrimaryLabel(true), url: input.downloadUrl }
+    : { label: inviteEmailPrimaryLabel(false), url: input.signInUrl };
+  const secondary = input.downloadUrl
+    ? { label: inviteEmailPrimaryLabel(false), url: input.signInUrl }
+    : undefined;
+  const text = [
+    ...(name ? [name] : []),
+    ...intro,
+    `${primary.label}: ${primary.url}`,
+    ...(secondary ? [`${secondary.label}: ${secondary.url}`] : []),
+    footer,
+  ].join("\n\n");
+  const content: EmailContent = {
+    subject,
+    heading: name || "Your license",
+    ...(name
+      ? { hero: { name, ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}) } }
+      : {}),
+    paragraphs: intro,
+    wrapAnywhere: true,
+    action: primary,
+    ...(secondary ? { secondary } : {}),
+    footer,
+    origin: emailAssetOrigin(input.origin),
+    brand: "locker",
+  };
+  return { subject, text, html: renderEmail(content) };
+}
+
+/** An email address for display: control, line-break, bidi and space characters removed, never cut. */
+function plainAddress(raw: string): string {
+  return raw.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069\s]/g,
+    "",
+  );
 }
 
 // ── Security notices ─────────────────────────────────────────────────────────────────────────

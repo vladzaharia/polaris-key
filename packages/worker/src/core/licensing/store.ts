@@ -84,6 +84,24 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
   };
 }
 
+/**
+ * LX-27c (0131_a): record that an invitation email for the licence went out at `at`. Written by
+ * the License service only, after a send that was accepted; a failed send leaves the column alone.
+ */
+export async function setLicenseInvitedAt(
+  db: Db,
+  product: string,
+  licenseId: string,
+  at: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE licenses SET invited_at = ? WHERE product = ? AND id = ?",
+    at,
+    product,
+    licenseId,
+  );
+}
+
 /** Resolve the auto-issued license bound to a machine. Backed by the partial unique index
  *  `idx_licenses_enroll_hwid`, which is what actually guarantees one per machine. */
 export async function getLicenseByEnrollHwid(
@@ -125,7 +143,7 @@ export async function claimEnrolledLicense(
   at: number,
 ): Promise<void> {
   await db.run(
-    `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
+    `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = COALESCE(?, tier_id),
        expires_at = ?, origin = 'oidc', email_issuer_class = ?, modified_by = 'oidc',
        modified_at = ? WHERE product = ? AND id = ?`,
     identity.sub,
@@ -725,6 +743,42 @@ export async function patchLicense(
   );
 }
 
+/**
+ * A compare-and-set write of ONE licence's `overrides_json` that leaves `modified_at` and
+ * `modified_by` alone (U-27.6: moving a provisioned secret between layers is not an edit). It
+ * applies only while the column is still `expected` and, when `accountGuard` is given, while the
+ * owner's account row still holds exactly `payloadJson` (`null` = no row), so a sign-in between
+ * the read and the write skips the move. Answers whether the row changed.
+ */
+export async function casLicenseOverrides(
+  db: Db,
+  product: string,
+  id: string,
+  expected: string | null,
+  next: string,
+  accountGuard?: { subject: string; payloadJson: string | null },
+): Promise<boolean> {
+  const params: (string | null)[] = [next, product, id, expected];
+  let guard = "";
+  if (accountGuard) {
+    params.push(product, accountGuard.subject);
+    if (accountGuard.payloadJson === null)
+      guard =
+        " AND NOT EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ?)";
+    else {
+      params.push(accountGuard.payloadJson);
+      guard =
+        " AND EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ? AND payload_json = ?)";
+    }
+  }
+  const changes = await db.runChanges(
+    `UPDATE licenses SET overrides_json = ?
+      WHERE product = ? AND id = ? AND overrides_json IS ?${guard}`,
+    ...params,
+  );
+  return changes > 0;
+}
+
 // ── Keys ─────────────────────────────────────────────────────────────────────
 export async function countKeysByLicense(
   db: Db,
@@ -942,6 +996,75 @@ export function stmtInsertConsoleTier(t: {
           VALUES (?, ?, ?, ?, 0, ?, ?, 'console')`,
     params: [t.product, t.id, t.label, t.profileId, t.author, t.now],
   };
+}
+
+/** The first free of `default`, `default-2`, ... among `taken` tier ids. */
+export function freeImplicitTierId(taken: Iterable<string>): string {
+  const set = new Set(taken);
+  if (!set.has("default")) return "default";
+  for (let n = 2; ; n++) if (!set.has(`default-${n}`)) return `default-${n}`;
+}
+
+/**
+ * LX-33.7: the product's implicit Default tier, seeded from the product's licence defaults (the
+ * device limit and offline days; every other column empty). The one insert every seed site uses
+ * (ST-42 create, manifest ingest, turning License on). It does nothing when the product already
+ * has an implicit tier or the id is taken, so a second seed, a resync and a re-enable are no-ops.
+ */
+export function stmtInsertImplicitTier(t: {
+  product: string;
+  id: string;
+  deviceLimit: number | null;
+  offlineDays: number | null;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source, implicit)
+          SELECT ?, ?, 'Default', NULL, NULL, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, 'console', 1
+           WHERE NOT EXISTS (SELECT 1 FROM tiers WHERE product = ? AND (implicit = 1 OR id = ?))`,
+    params: [
+      t.product,
+      t.id,
+      t.deviceLimit,
+      t.offlineDays,
+      t.now,
+      t.product,
+      t.id,
+    ],
+  };
+}
+
+/**
+ * {@link stmtInsertImplicitTier} for a product that exists: the statement, or null when it
+ * already has its Default tier. Reads the product's defaults and its tier ids.
+ */
+export async function seedImplicitTierStatement(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<DbStatement | null> {
+  const row = await db.first<{
+    default_device_limit: number | null;
+    default_max_offline_days: number | null;
+  }>(
+    "SELECT default_device_limit, default_max_offline_days FROM products WHERE slug = ?",
+    product,
+  );
+  if (!row) return null;
+  const tiers = await db.all<{ id: string; implicit: number }>(
+    "SELECT id, implicit FROM tiers WHERE product = ?",
+    product,
+  );
+  if (tiers.some((t) => t.implicit === 1)) return null;
+  return stmtInsertImplicitTier({
+    product,
+    id: freeImplicitTierId(tiers.map((t) => t.id)),
+    deviceLimit: row.default_device_limit,
+    offlineDays: row.default_max_offline_days,
+    now,
+  });
 }
 
 /**

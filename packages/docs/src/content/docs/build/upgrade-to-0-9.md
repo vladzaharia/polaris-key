@@ -45,6 +45,25 @@ License gets no keyless device token under 0.9. Enrollment is a different mechan
 different result: it issues a license to an anonymous caller, and it does not change the
 registration policy. See [Enrollment](/docs/features/licensing/access/).
 
+## Removed: the license-override migration
+
+**Action required:** None for a manifest. Stop calling the seven routes below and stop running the script.
+A license's own config and secret overrides stay: they are layer 4 of the merge, and the license overrides route accepts config, secret and flag keys on every license, floating or owned.
+
+| Removed                                                                                                                                                             | Use instead                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| GET `/manage/api/platform/override-migration`                                                                                                                       | Nothing: there is no run to read.                                                                                      |
+| PUT `/manage/api/platform/override-migration/prerequisites`                                                                                                         | Nothing.                                                                                                               |
+| POST and DELETE `/manage/api/platform/override-migration/notice`                                                                                                    | Nothing.                                                                                                               |
+| POST `/manage/api/platform/override-migration/dry-run`                                                                                                              | Nothing.                                                                                                               |
+| POST `/manage/api/platform/override-migration/run`                                                                                                                  | Nothing.                                                                                                               |
+| GET `/manage/api/platform/override-migration/report`                                                                                                                | Nothing.                                                                                                               |
+| `pnpm --filter @polaris-key/worker override-migration:dry-run`                                                                                                      | Nothing.                                                                                                               |
+| The job `core.licence-override-migration`                                                                                                                           | `core.provisioned-secrets-to-account` moves provisioned secrets to the owner's account row (see the migration ledger). |
+| `configOverrides.phase` and `runNotBefore` in the license detail, `licenseLayerRetired` in the account overrides answer, `migrationReport` in the Users data answer | Read the license's `overrides`; an owned license shows `owned`, `ownerSubject` and `signUpUrl`.                        |
+
+Provisioned secrets now live on the owner's account row when the signing identity is linked to the license's owner. The tables `override_migration` and `override_migration_report` are neither read nor written; a later release drops them.
+
 ## Check the result
 
 Run [`pkey validate`](/docs/reference/cli/#pkey-validate) from the product repository. If a

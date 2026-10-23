@@ -16,6 +16,10 @@ import {
   entitlementEventStore,
 } from "../licensing/entitlementEvents.js";
 import {
+  PROVISIONED_SECRET_MOVES_STORE,
+  provisionedSecretMovesStore,
+} from "../migrate/provisionedSecretsJob.js";
+import {
   forgetRegistryTokens,
   stmtRevokeRegistryTokens,
 } from "../registry/registryTokens.js";
@@ -80,6 +84,7 @@ const TEST_STORES = new Map<string, SubjectStore>();
 function allStores(): Map<string, SubjectStore> {
   const all = new Map<string, SubjectStore>([
     [ENTITLEMENT_EVENT_STORE, entitlementEventStore],
+    [PROVISIONED_SECRET_MOVES_STORE, provisionedSecretMovesStore],
   ]);
   for (const [name, store] of contributedSubjectStores()) all.set(name, store);
   for (const [name, store] of TEST_STORES) all.set(name, store);

@@ -510,7 +510,6 @@ describe("the nav model (nav.ts)", () => {
       "platform-stores",
       "platform-feeds",
       "platform-activity",
-      "platform-override-migration",
       "package-feeds",
       "overview",
       "integration",
@@ -738,7 +737,6 @@ describe("global pages", () => {
       "platform-stores",
       "platform-feeds",
       "platform-activity",
-      "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
       expect(isPlatformPage(p.page)).toBe(true);
@@ -752,8 +750,6 @@ describe("global pages", () => {
       "api-tokens",
       "personal-tokens",
     ]);
-    // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
-    // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
       "platform-status",
@@ -762,9 +758,10 @@ describe("global pages", () => {
       "platform-feeds",
       "platform-activity",
     ]);
-    expect(
-      parseLocation("#/platform/override-migration").redirect,
-    ).toBeUndefined();
+    // U-27 deleted Override migration: its URL no longer addresses a page.
+    expect(parseLocation("#/platform/override-migration").route.kind).toBe(
+      "not-found",
+    );
   });
 
   it("#/platform redirects to Settings; every Platform page renders in place", () => {
@@ -775,9 +772,6 @@ describe("global pages", () => {
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
     expect(parseLocation("#/platform/feeds").redirect).toBeUndefined();
-    expect(
-      parseLocation("#/platform/override-migration").redirect,
-    ).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
     expect(r.platformStatus()).toBe("#/platform/status");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");

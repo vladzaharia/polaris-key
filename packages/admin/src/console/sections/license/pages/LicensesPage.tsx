@@ -34,7 +34,6 @@ import {
   BulkEnableDialog,
   isForbidden,
   NO_BATCH,
-  NO_TIER,
   BulkKeysButton,
   LicenseCard,
   HOLDER_CHIP_ICONS,
@@ -46,7 +45,6 @@ import {
   useServerFilter,
 } from "../components/LicenseListParts.js";
 import { useLicenseColumns } from "../components/licenseColumns.js";
-import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
   CleanupDialog,
@@ -67,6 +65,7 @@ import { EMPTY, loadDraft, saveDraft } from "../wizard/draft.js";
 import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
+  defaultTierOf,
   licenseState,
   seatLimitOf,
   useLicensePages,
@@ -213,11 +212,9 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         label: "Tier",
         // Folds into More below 1280 px, so the band keeps one row down to the rail.
         secondary: "narrow",
-        options: [
-          ...tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
-          { value: NO_TIER, label: "No tier" },
-        ],
-        accessor: (l) => l.tier ?? NO_TIER,
+        options: tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
+        // A license with no tier is on the Default tier (LX-33.7).
+        accessor: (l) => l.tier ?? defaultTierOf(tiers)?.id ?? null,
       },
       {
         id: "origin",
@@ -384,7 +381,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         ) : undefined
       }
     >
-      <OverrideMigrationNotice slug={slug} />
       {oneBatch ? (
         <p className="text-sm text-fg-muted" data-testid="batch-filter-link">
           Showing the licenses of batch{" "}
@@ -502,10 +498,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                     v === "inAccount"
                       ? "in-account"
                       : HOLDER_STATE_LABELS[v as HolderState],
-                  tier: (v) =>
-                    v === NO_TIER
-                      ? "no-tier"
-                      : (tiers.find((t) => t.id === v)?.label ?? v),
+                  tier: (v) => tiers.find((t) => t.id === v)?.label ?? v,
                 }),
               }
         }
@@ -516,7 +509,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             primary={primary}
             now={now}
             seats={seatsOf(l)}
-            tierLabel={l.tier ? tierLabel(l.tier) : null}
+            tierLabel={
+              l.tier
+                ? tierLabel(l.tier)
+                : (defaultTierOf(tiers)?.label ?? "Default")
+            }
           />
         )}
       />

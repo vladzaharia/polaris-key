@@ -36,6 +36,7 @@ import {
   licenseHolder,
 } from "../../../core/licensing/licenseHolders.js";
 import { tierExpiresAt } from "../../../core/licensing/authz.js";
+import { issueTierFor } from "../../../core/licensing/implicitTier.js";
 import {
   BATCH_PAGE_MAX,
   batchDisabledDeviceTokens,
@@ -284,10 +285,13 @@ async function createBatch(ctx: LicenseAdminContext): Promise<Response> {
       "expiresAt must be epoch seconds or null",
       { fields: ["expiresAt"] },
     );
-  const tier =
-    typeof body.tier === "string" && body.tier !== ""
-      ? await getTier(db, slug, body.tier)
-      : null;
+  // LX-33.6: no tier named takes the product's implicit Default tier (null before the job seeds it).
+  const tierId = await issueTierFor(
+    db,
+    slug,
+    typeof body.tier === "string" && body.tier !== "" ? body.tier : null,
+  );
+  const tier = tierId ? await getTier(db, slug, tierId) : null;
   if (!tier)
     return err(
       422,

@@ -485,7 +485,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(oidc?.provider).toBe("custom");
     expect(oidc?.client_id).toBe("acme-client");
     const tier = await db.first<{ id: string }>(
-      "SELECT * FROM tiers WHERE product = ?",
+      "SELECT * FROM tiers WHERE product = ? AND implicit = 0",
       "acme",
     );
     expect(tier?.id).toBe("pro");

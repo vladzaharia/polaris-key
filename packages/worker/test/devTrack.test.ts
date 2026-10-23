@@ -22,6 +22,7 @@ import {
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { policyChannelOf } from "../src/services/release/channels.js";
 import { withIncludedChannels } from "../src/core/channels.js";
+import { withIncludedChannels as manifestWithIncluded } from "@polaris-key/manifest";
 import { channelEntitled } from "../src/core/channels.js";
 import { parseChannels } from "../src/services/license/admin/licenses.js";
 import {
@@ -114,6 +115,10 @@ describe("GET /update/dev/feed.jws", () => {
 });
 
 describe("what an editor stores", () => {
+  it("is the manifest's function, not a copy", () => {
+    expect(withIncludedChannels).toBe(manifestWithIncluded);
+  });
+
   it("choosing dev stores beta with it, once, in order", () => {
     expect(withIncludedChannels(["dev"])).toEqual(["beta", "dev"]);
     expect(withIncludedChannels(["beta", "dev"])).toEqual(["beta", "dev"]);

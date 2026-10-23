@@ -1927,6 +1927,21 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
     });
   });
 
+  it("stores a dev tier with beta, in order, and widens nothing else", () => {
+    const chans = (channels: string[]) => {
+      const res = parseManifest({
+        product: JSON.stringify(tiered({ channels }).product),
+        schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+      });
+      expect(res.ok).toBe(true);
+      return res.ok ? res.manifest.tiers[0]?.channels : undefined;
+    };
+    expect(chans(["dev"])).toEqual(["beta", "dev"]);
+    expect(chans(["beta", "dev"])).toEqual(["beta", "dev"]);
+    expect(chans(["qa", "dev"])).toEqual(["qa", "beta", "dev"]);
+    expect(chans(["beta"])).toEqual(["beta"]);
+  });
+
   it("warns, without erroring, for deviceLimit and maxOfflineDays on a tier", () => {
     const res = validateManifestDocuments(
       tiered({ deviceLimit: 5, maxOfflineDays: 14 }),

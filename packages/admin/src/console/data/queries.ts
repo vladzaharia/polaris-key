@@ -89,18 +89,6 @@ export const qk = {
   /** Platform → Connections (I-31): the page and every connection on it. */
   platformConnections: (): QueryKey => ["platform", "connections"],
   platformConnection: (id: string): QueryKey => ["platform", "connections", id],
-  /**
-   * The licence override migration (U-03): its state and inventory. As a prefix, also the
-   * per-product reads and the report.
-   */
-  overrideMigration: (): QueryKey => ["platform", "override-migration"],
-  /** The run's report, all products (`""`) or one. Under `overrideMigration`. */
-  overrideMigrationReport: (product: string): QueryKey => [
-    "platform",
-    "override-migration",
-    "report",
-    product,
-  ],
   /** Every store connection; as a prefix, also every store's apps listing. */
   platformStores: (): QueryKey => ["platform", "store-connections"],
   platformStoreApps: (store: string, tracks: boolean): QueryKey => [

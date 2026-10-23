@@ -16624,6 +16624,16 @@ paths:
                       expiring: { type: integer }
                       expired: { type: integer }
                       disabled: { type: integer }
+                  holders:
+                    type: object
+                    required: [invitations, invitationsOff]
+                    description: "LX-27c.4: whether an invitation can reach a licence of this product. First page only."
+                    properties:
+                      invitations: { type: boolean }
+                      invitationsOff:
+                        type: [string, "null"]
+                        enum: [identity_off, auto_link_off, no_mail, null]
+                        description: "Why not: Identity is off for the product, its auto-link resolves off (a custom issuer), or email is not set up on this server (`no_mail`). `null` when invitations are on."
         "400":
           description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:
@@ -16649,10 +16659,18 @@ paths:
         The answer has the same shape either way: `license.holder` says what a read would. The
         account lookup runs on every create with an email, whatever the outcome. LX-27: `deviceLimit`
         sets the licence's own limit; `delivery: {email: true}` (needs an email) mails the key as
-        "Your <product> license", from "<product> via Polaris Key", in this request, and the answer
+        "Your <product> license", from "<product> via Polaris Locker", in this request, and the answer
         gains `delivered: {email: sent | queued | failed}`. A failed send never undoes the licence:
         send a new key with `POST …/licenses/{licenseId}/send-key`. The key is in the email body
-        and this answer only, never in the audit row. Audited `license.create` with the holder.
+        and this answer only, never in the audit row. LX-27c: `delivery: {invite: true}` (needs an
+        email, exclusive with `delivery.email`) mails an invitation instead, "Your <product>
+        license is ready", with a plain sign-in link and no key, token or address in any URL; the
+        answer gains `delivered: {invite: sent | failed}` and the licence's `invitedAt`. `key:
+        false` (valid only with `delivery.invite`) mints no key, so the answer has no `key`.
+        An invitation is refused with 422 and a `reason` when Identity is off for the product
+        (`identity_off`) or its auto-link resolves off (`auto_link_off`, as for a custom issuer),
+        since the licence could never join an account. The answer is the same whether or not the
+        address has an account. Audited `license.create` with the holder.
         Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -16675,15 +16693,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [licenseId, key, license]
+                required: [licenseId, license]
                 properties:
                   licenseId: { type: string }
                   delivered:
                     type: object
-                    description: "Present when the request asked for `delivery.email`."
-                    required: [email]
+                    description: "Present when the request asked for `delivery.email` (`email`) or `delivery.invite` (`invite`)."
                     properties:
                       email: { type: string, enum: [sent, queued, failed] }
+                      invite: { type: string, enum: [sent, failed] }
                       reason:
                         type: string
                         enum:
@@ -16694,11 +16712,11 @@ paths:
                             daily_cap,
                             provider_refused,
                           ]
-                        description: "Present when `email` is `failed`."
+                        description: "Present when `email` or `invite` is `failed`."
                   key:
                     {
                       type: string,
-                      description: "`pkey_<slug>_…`, shown once.",
+                      description: "`pkey_<slug>_…`, shown once. Absent when the request sent `key: false`.",
                     }
                   license:
                     oneOf:
@@ -16727,7 +16745,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, a bad `deviceLimit`, `delivery` or `key`, `delivery.email` or `delivery.invite` without an email, both together (`reason: email_and_invite`), `key: false` without `delivery.invite` (`reason: key_false_without_invite`), an invitation where Identity is off or auto-link resolves off (`reason: identity_off | auto_link_off`), or a value a signed document cannot carry. A create that names no `tier` lands on the product's Default tier (LX-33.6)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16739,9 +16757,8 @@ paths:
       description: >
         The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
         hash), devices, profiles, offline window, device count and redacted overrides, and (U-03)
-        `configOverrides`: where its config and secret overrides live (`phase`: `license`,
-        `notice`, `moving`, `moved`), whether an account owns it, the owner's subject and the
-        portal's Activate License link offered for a licence with none. Platform admins only;
+        `configOverrides`: whether an account owns it, the owner's subject and the portal's
+        Activate License link offered for a licence with none. Platform admins only;
         admin session cookie. DELETE on this path is documented on the docs site.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -16777,8 +16794,9 @@ paths:
         (LX-30): that is Reassign (`…/users/licenses/{licenseId}/reassign`). A case-only edit of
         the same address, and a first email on a licence in an account that has none, stay a
         PATCH. A tier or device-limit change also answers `overLimit` when the licence
-        already has more devices than the new effective limit. Platform admins only; admin
-        session cookie and CSRF header.
+        already has more devices than the new effective limit. `tier` is a tier id; `null` is refused
+        (`422`, `fields: [tier]`) because every licence has a tier (LX-33.6). Platform admins only;
+        admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -16824,7 +16842,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, `tier: null` (a licence always has a tier: `fields: [tier]`), a bad `deviceLimit`, or a value a signed document cannot carry."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16888,7 +16906,7 @@ paths:
       tags: [admin]
       summary: Create up to 500 floating licences in one labelled batch (keys shown once)
       description: >
-        Creates `count` licences (1 to 500) of one tier, each with its first key, in one labelled
+        Creates `count` licences (1 to 500) of one tier (absent: the product's Default tier), each with its first key, in one labelled
         batch (LX-28, notes/S-24 §5.6, §7.1, D10). Every licence is floating (no name, no email,
         no account; a name, an email or profiles are refused), `origin: admin`, and carries the
         batch's `batchId`. The batch row, the licences, their keys and the `license.batch.create`
@@ -17355,16 +17373,14 @@ paths:
     put:
       operationId: putAdminLicenseOverrides
       tags: [admin]
-      summary: Edit a licence's own overrides (entitlements only from the override migration's run)
+      summary: Edit a licence's own overrides (config, secret and flag keys)
       description: >
         A batch of override updates, validated against the product's ACTIVE catalog
         all-or-nothing; a catalog-declared secret is sealed under PLATFORM_KEK before it is stored
-        and never echoed. U-03 (notes/S-17 §5.12 step 4, decision 20): from the start of the
-        licence-override migration's run, config and secret keys are refused with `400
-        bad_request` naming the account override route (`accountOverrides.route`, `null` for a
-        licence with no account), and entitlement (`flag`) keys are still accepted, on owned and
-        floating licences alike. Before the run every kind is accepted, as before. Platform admins
-        only; admin session cookie and CSRF header.
+        and never echoed. The licence override layer is layer 4 of the merge and is read for every
+        licence, so config, secret and entitlement (`flag`) keys are accepted on owned and floating
+        licences alike. For an owned licence the owner's account override layer sits above it and
+        wins for the same key. Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -17428,7 +17444,7 @@ paths:
         other active keys in the same batch as the insert. The key is in the email and this answer
         only. A failed send keeps the new key valid (`delivered.email` is `failed`); call again to
         retry, which a failed send does not count against. One send per licence per 10
-        minutes (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
+        minutes, shared with send-invite (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
         label and whether others were revoked, never the key or the address. Platform admins
         only; admin session cookie and CSRF header.
       parameters:
@@ -17503,6 +17519,92 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429":
           description: A key was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/send-invite:
+    post:
+      operationId: sendAdminLicenseInvite
+      tags: [admin]
+      summary: Email an invitation (a sign-in link, no key) to a waiting licence
+      description: >
+        LX-27c: mails the invitation, "Your <product> license is ready", to the licence's email
+        as "<product> via Polaris Locker". It mints nothing, and carries no key, token or address
+        in any URL. Allowed only for a waiting licence (assigned, with an email, in no account) of
+        a product with Identity on and auto-link resolving on. One mail per licence per 10
+        minutes, shared with send-key (a failed send frees it; `429 rate_limited` with
+        `retryAfter`). A send that goes out stamps the licence's `invitedAt`; a failed one does
+        not. Audited `license.invite.send`, and `license.invite.send.failed` on a failure, never
+        with the address. A floating licence is refused (400). Platform admins only; admin session
+        cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: string
+                  enum: [assigned]
+                  description: "Worded into the email's footer: the licence was just assigned. Default: the invitation was sent again."
+      responses:
+        "200":
+          description: "The send was attempted. A failed send is a 200 with `invite: failed`."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivered]
+                properties:
+                  delivered:
+                    type: object
+                    required: [invite]
+                    properties:
+                      invite: { type: string, enum: [sent, failed] }
+                      reason:
+                        type: string
+                        enum:
+                          [
+                            no_mail_binding,
+                            address_unusable,
+                            suppressed,
+                            daily_cap,
+                            provider_refused,
+                          ]
+                        description: "Present when `invite` is `failed`."
+        "400":
+          description: The licence is floating, so it has no email (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Refused before any send: the licence is already in an account (`reason: in_account`), disabled (`license_not_active`) or expired (`license_expired`, with `expiresAt`), Identity is off (`identity_off`) or auto-link resolves off (`auto_link_off`), mail is not set up (`no_mail_binding`), the address is unusable (`address_unusable`) or cannot receive our mail (`suppressed`), or the product's daily email cap is spent (`daily_cap`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`context` is not `assigned`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429":
+          description: A key or an invitation was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -17823,303 +17925,6 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
           description: "No such product, or no such licence of this product (`license_not_found`)."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration:
-    get:
-      operationId: getAdminOverrideMigration
-      tags: [admin]
-      summary: The licence-override migration's state and inventory
-      description: >
-        U-03 (notes/S-17 §5.12 step 1, decision 21): the one platform-wide migration that moves
-        owned licences' config and secret overrides onto the owner's account overrides and drops
-        unowned licences'. Answers the phase (`idle`, `notice`, `running`, `completed`), the two
-        prerequisites (the login card, I-07, and the portal Library, I-11, flagged live in
-        production), the notice and its earliest run date, the run, and the daily inventory
-        (counts per product). With `product`, that product's licences carrying config or secret
-        overrides (key names only, never a value or an account id) and its live report row
-        count. Platform admins only; admin session cookie.
-      parameters:
-        - {
-            name: product,
-            in: query,
-            required: false,
-            schema: { type: string },
-          }
-      responses:
-        "200":
-          description: The state.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-                  product:
-                    type: object
-                    additionalProperties: true
-                    properties:
-                      slug: { type: string }
-                      counts: { type: object, additionalProperties: true }
-                      licences:
-                        {
-                          type: array,
-                          items: { type: object, additionalProperties: true },
-                        }
-                      reportRows: { type: integer }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/prerequisites:
-    put:
-      operationId: putAdminOverrideMigrationPrerequisites
-      tags: [admin]
-      summary: Flag the login card and the Library live in production
-      description: >
-        Decision 21: the notice may not start until customers can act on it, so an operator
-        flags the login card (I-07) and the portal Library with Activate License (I-11) live in
-        production. Unflagging is refused once the notice has started (`409 notice_started`).
-        Audited in the platform activity log. Platform admins only; admin session cookie and CSRF
-        header.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                loginCard: { type: boolean }
-                library: { type: boolean }
-      responses:
-        "200":
-          description: Saved.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`notice_started`: withdraw the notice first."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-        "422":
-          description: Neither member, or a member that is not a boolean.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/notice:
-    post:
-      operationId: startAdminOverrideMigrationNotice
-      tags: [admin]
-      summary: Start the 30-day notice
-      description: >
-        Starts the notice; the run is possible 30 days later (`runNotBefore`). Refused with `409
-        prerequisites_missing` (and `missing`) until both prerequisites are flagged: the guard is
-        the conditional write itself. Audited. Platform admins only; admin session cookie and
-        CSRF header.
-      responses:
-        "200":
-          description: Started.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`prerequisites_missing` (with `missing`), `notice_started` or `run_started`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-    delete:
-      operationId: withdrawAdminOverrideMigrationNotice
-      tags: [admin]
-      summary: Withdraw the notice (before the run)
-      description: >
-        Withdraws the notice; a later notice starts a fresh 30 days. Refused once the run has
-        started (`409 run_started`). Audited. Platform admins only; admin session cookie and CSRF
-        header.
-      responses:
-        "200":
-          description: Withdrawn.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`run_started`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/dry-run:
-    post:
-      operationId: dryRunAdminOverrideMigration
-      tags: [admin]
-      summary: The inventory and report the run would write, writing nothing
-      description: >
-        Plans the run for every product (or `product`) and answers the inventory and every report
-        row it would write. Writes nothing, not even an owner's pairwise subject (an owner with
-        none for the product is reported `subjectCreatedAtRun`), and reads no secret: secrets and
-        config keys the catalog flags `secret` are listed by name only. Platform admins only;
-        admin session cookie and CSRF header.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                product: { type: string }
-      responses:
-        "200":
-          description: The dry run.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [computedAt, inventory, report]
-                properties:
-                  computedAt: { type: integer }
-                  inventory:
-                    { $ref: "#/components/schemas/AdminOverrideInventory" }
-                  report:
-                    type: array
-                    items:
-                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/run:
-    post:
-      operationId: runAdminOverrideMigration
-      tags: [admin]
-      summary: Start or continue the run (owner-scheduled; step-up)
-      description: >
-        Starts the run, or continues it: each call processes up to 25 products under a short
-        lease and answers `progress`; call again while `done` is false. From the first call,
-        `PUT …/licenses/{licenseId}/overrides` refuses config and secrets (step 4); from
-        completion, documents stop reading them from licences (step 5). Owned licences merge
-        into the owner's account overrides (several licences of one product collapse to the most
-        recently updated value, listed in the report); unowned licences' overrides are dropped
-        with an audit row each. Needs a sign-in from the last 5 minutes (`403
-        step_up_required`). Refused before the notice window ends (`409 notice_window`, with
-        `runNotBefore`). The production run is the owner's to schedule (RUNBOOK). Platform admins
-        only; admin session cookie and CSRF header.
-      responses:
-        "200":
-          description: Progress.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [progress, state]
-                properties:
-                  progress:
-                    type: object
-                    required:
-                      [runId, done, productsDone, productsRemaining, written]
-                    properties:
-                      runId: { type: string }
-                      done: { type: boolean }
-                      completedAt: { type: [integer, "null"] }
-                      productsDone: { type: array, items: { type: string } }
-                      productsRemaining:
-                        { type: array, items: { type: string } }
-                      written:
-                        type: object
-                        properties:
-                          moved: { type: integer }
-                          collapsed: { type: integer }
-                          dropped: { type: integer }
-                      conflicts:
-                        type: integer
-                        description: >
-                          Accounts whose row kept changing between the plan and its
-                          compare-and-set write in this call; their product stays undone and the
-                          next call re-plans it.
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403":
-          description: "Not a platform admin, a CSRF failure, or `step_up_required` (with `maxAgeSeconds`)."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-        "409":
-          description: "`notice_not_started`, `notice_window` (with `runNotBefore`), `run_completed` or `run_in_progress`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/report:
-    get:
-      operationId: getAdminOverrideMigrationReport
-      tags: [admin]
-      summary: The migration report (90 days)
-      description: >
-        One row per licence the run touched (`moved`, `collapsed`, `dropped`), kept 90 days so an
-        operator can re-apply values by hand: the licence, the owner's subject, the licence's own
-        email, the key names, and non-secret config values (with each collapse's kept and lost
-        values). Secret values are never in it. `format=csv` answers a CSV attachment. Platform
-        admins only; admin session cookie.
-      parameters:
-        - {
-            name: product,
-            in: query,
-            required: false,
-            schema: { type: string },
-          }
-        - {
-            name: format,
-            in: query,
-            required: false,
-            schema: { type: string, enum: [json, csv] },
-          }
-      responses:
-        "200":
-          description: The report.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [rows]
-                properties:
-                  rows:
-                    type: array
-                    items:
-                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
-            text/csv:
-              schema: { type: string }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -22178,6 +21983,9 @@ components:
             description: "The licence's own email; `''` when none.",
           }
         status: { type: string, enum: [active, disabled] }
+        invitedAt:
+          type: [integer, "null"]
+          description: "LX-27c: epoch seconds of the last invitation email that went out; `null` when none did."
         endedReason:
           type: [string, "null"]
           enum: [revoked, superseded, refunded, chargeback, null]
@@ -22276,6 +22084,12 @@ components:
           description: "LX-27: how the key reaches the holder. `email: true` mails the first key to the licence's `email` in this request; refused (422) without an email."
           properties:
             email: { type: boolean }
+            invite:
+              type: boolean
+              description: "LX-27c: mails an invitation (a sign-in link, no key) instead; exclusive with `email`; refused (422, `reason`) without an email, with Identity off or with auto-link off."
+        key:
+          type: boolean
+          description: "LX-27c: `false` mints no key; valid only with `delivery.invite`. Default `true`."
     AdminLicensePatch:
       type: object
       properties:
@@ -22304,15 +22118,7 @@ components:
     AdminAccountOverrides:
       type: object
       description: One subject's account override layer (U-03), redacted.
-      required:
-        [
-          subject,
-          configOn,
-          overrides,
-          updatedAt,
-          updatedBy,
-          licenseLayerRetired,
-        ]
+      required: [subject, configOn, overrides, updatedAt, updatedBy]
       properties:
         subject: { type: string }
         configOn:
@@ -22338,64 +22144,6 @@ components:
         updatedBy:
           type: [string, "null"]
           description: "The operator's subject, or `migration`, `merge` or `signin`."
-        licenseLayerRetired:
-          type: boolean
-          description: Whether the override migration has completed (licences no longer deliver config and secrets).
-    AdminOverrideInventory:
-      type: object
-      required: [computedAt, products, totals]
-      properties:
-        computedAt: { type: integer }
-        products:
-          type: array
-          items:
-            type: object
-            required: [product, licences, owned, dropped, collapsingAccounts]
-            properties:
-              product: { type: string }
-              licences: { type: integer }
-              owned: { type: integer }
-              dropped: { type: integer }
-              collapsingAccounts: { type: integer }
-        totals:
-          type: object
-          properties:
-            licences: { type: integer }
-            owned: { type: integer }
-            dropped: { type: integer }
-    AdminOverrideMigrationState:
-      type: object
-      description: The licence-override migration's state (U-03).
-      required: [phase, prerequisites, notice, run]
-      additionalProperties: true
-      properties:
-        phase: { type: string, enum: [idle, notice, running, completed] }
-        noticeDays: { type: integer, const: 30 }
-        reportDays: { type: integer, const: 90 }
-        prerequisites:
-          type: object
-          properties:
-            loginCard: { type: object, additionalProperties: true }
-            library: { type: object, additionalProperties: true }
-        notice:
-          type: object
-          additionalProperties: true
-          properties:
-            startedAt: { type: [integer, "null"] }
-            runNotBefore: { type: [integer, "null"] }
-            runAllowed: { type: boolean }
-        run:
-          type: object
-          additionalProperties: true
-          properties:
-            id: { type: [string, "null"] }
-            startedAt: { type: [integer, "null"] }
-            completedAt: { type: [integer, "null"] }
-            productsDone: { type: array, items: { type: string } }
-        inventory:
-          oneOf:
-            - { type: "null" }
-            - { $ref: "#/components/schemas/AdminOverrideInventory" }
     AdminMigrationRun:
       type: object
       required: [id, job, mode, status, startedAt, changes, units, remaining]
@@ -22424,40 +22172,6 @@ components:
               changes: { type: integer }
               detail: {}
               error: { type: [string, "null"] }
-    AdminOverrideReportRow:
-      type: object
-      description: >
-        One licence of the migration report. Never a secret value: secrets, and config keys the
-        catalog flags `secret`, are listed by name only.
-      required: [product, licenseId, outcome, subject, buyerEmail, keys, values]
-      additionalProperties: true
-      properties:
-        product: { type: string }
-        licenseId: { type: string }
-        outcome: { type: string, enum: [moved, collapsed, dropped] }
-        subject: { type: [string, "null"] }
-        buyerEmail: { type: [string, "null"] }
-        keys:
-          type: object
-          properties:
-            config: { type: array, items: { type: string } }
-            secrets: { type: array, items: { type: string } }
-        values:
-          type: object
-          properties:
-            config: { type: object, additionalProperties: true }
-            collapsed:
-              type: array
-              items:
-                type: object
-                required: [bucket, key, keptFrom]
-                properties:
-                  bucket: { type: string, enum: [config, secrets] }
-                  key: { type: string }
-                  keptFrom:
-                    { type: string, description: "A licence id, or `account`." }
-                  kept: { description: A non-secret value. }
-                  lost: { description: A non-secret value. }
     AdminSlugCheck:
       type: object
       required: [slug, status]

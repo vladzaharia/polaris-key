@@ -38,7 +38,9 @@ import {
   associateLicenseHolder,
   licenseHolder,
   licenseHolderHooksRegistered,
+  newLicensesAutoLink,
   onAccountEmailVerified,
+  onAccountEmailVerifiedJoined,
 } from "../src/core/licensing/licenseHolders.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
@@ -65,6 +67,9 @@ import {
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
+import { attachClaimedLicenses } from "../src/services/identity/accounts/platformMigration.js";
+import { suppressEmail } from "../src/core/notify/emailDelivery.js";
+import { sendLibraryNotices } from "../src/services/identity/accounts/libraryNotice.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 
 const SLUG = "tonebox";
@@ -241,6 +246,16 @@ describe("the holder rule (S-24 D1)", () => {
 
   it("Identity's hooks are registered at the composition root", () => {
     expect(licenseHolderHooksRegistered()).toBe(true);
+  });
+
+  it("LX-27c: the auto-link hook answers on for a platform product and off for a custom issuer", async () => {
+    expect(await newLicensesAutoLink(db, SLUG)).toBe(true);
+    await db.run(
+      `INSERT INTO oidc_config (product, issuer, client_id, provider)
+       VALUES (?, 'https://id.example.com', 'c', 'custom')`,
+      SLUG,
+    );
+    expect(await newLicensesAutoLink(db, SLUG)).toBe(false);
   });
 });
 
@@ -1081,5 +1096,228 @@ describe("the creation-time email holder hook reads the licence issuer class", (
     );
     expect(await associateLicenseHolder(ctx, SLUG, licenseId)).toBe(true);
     expect(await ownerOf(licenseId)).toBe(ada.id);
+  });
+});
+
+describe("the library notice at an address's first verification (LX-27c.3)", () => {
+  type Mail = { to: string; subject: string; text: string; html: string };
+  let mail: Mail[];
+  beforeEach(() => {
+    mail = [];
+    env.EMAIL = {
+      send: async (m: Mail) => {
+        mail.push(m);
+      },
+    } as unknown as Env["EMAIL"];
+  });
+  const link = (accountId: string, email: string, verified = true) =>
+    linkIdentity(
+      ctx,
+      { accountId, authenticatedAt: NOW },
+      {
+        issuerKey: "https://accounts.google.com",
+        subject: `g-${email}`,
+        kind: "google",
+        email,
+        emailVerified: verified,
+      },
+    );
+
+  it("sends one notice per product to the verified address, from the product when no developer is known", async () => {
+    await create({ email: "dee@example.com" });
+    await create({ email: "dee@example.com" });
+    const dee = await account("dee.old@example.com");
+    mail = [];
+    expect((await link(dee.id, "dee@example.com")).ok).toBe(true);
+    const notices = mail.filter((m) =>
+      m.subject.endsWith("is in your Polaris Locker library"),
+    );
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.to).toBe("dee@example.com");
+    expect(notices[0]!.text).toContain("From ");
+    expect(notices[0]!.text).not.toContain("license key");
+    expect(notices[0]!.text + notices[0]!.html).not.toContain("pkey_");
+  });
+
+  it("sends nothing for an invited license, nor for an address that is not verified", async () => {
+    const invited = await create({ email: "inv@example.com" });
+    await db.run(
+      "UPDATE licenses SET invited_at = ? WHERE id = ?",
+      NOW,
+      invited.licenseId,
+    );
+    const inv = await account("inv.old@example.com");
+    mail = [];
+    await link(inv.id, "inv@example.com");
+    expect(await ownerOf(invited.licenseId)).toBe(inv.id);
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+
+    const waiting = await create({ email: "unv@example.com" });
+    const unv = await account("unv.old@example.com");
+    await link(unv.id, "unv@example.com", false);
+    expect(await ownerOf(waiting.licenseId)).toBeNull();
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+  });
+
+  it("sends nothing on a later sweep, when the pair is blocked, or to a suppressed address", async () => {
+    const created = await create({ email: "bo@example.com" });
+    const bo = await account("bo.old@example.com");
+    await link(bo.id, "bo@example.com");
+    mail = [];
+    expect(
+      await onAccountEmailVerifiedJoined(db, bo.id, "bo@example.com", NOW),
+    ).toEqual([]);
+    await portalMe(bo.id);
+    expect(mail).toHaveLength(0);
+
+    await detachLicense(ctx, {
+      accountId: bo.id,
+      product: SLUG,
+      licenseId: created.licenseId,
+    });
+    const joined = await onAccountEmailVerifiedJoined(
+      db,
+      bo.id,
+      "bo@example.com",
+      NOW,
+    );
+    expect(joined).toEqual([]);
+    expect(
+      await sendLibraryNotices(env, db, {
+        to: "bo@example.com",
+        joined,
+        origin: "https://key.plrs.im",
+        now: NOW,
+      }),
+    ).toBe(0);
+
+    await create({ email: "sup@example.com" });
+    const sup = await account("sup.old@example.com");
+    await suppressEmail(env, db, "sup@example.com", "operator", NOW);
+    mail = [];
+    await link(sup.id, "sup@example.com");
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+  });
+
+  /** A license waiting on an address its account already verified (a sweep, not the hook, joins it). */
+  async function waitingForVerified(email: string) {
+    const acct = await account(email);
+    const created = await create({ email: "elsewhere@example.com" });
+    await db.run(
+      "UPDATE licenses SET email = ? WHERE product = ? AND id = ?",
+      email,
+      SLUG,
+      created.licenseId,
+    );
+    return { acct, licenseId: created.licenseId };
+  }
+  const libraryMail = () => mail.filter((m) => m.subject.includes("library"));
+
+  it("names the developer from the listing when Distribution has one", async () => {
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        identity: { enabled: true },
+        distribution: { enabled: true },
+      }),
+      SLUG,
+    );
+    await db.run(
+      "INSERT INTO dist_listing (product, listing_json, modified_at) VALUES (?, ?, ?)",
+      SLUG,
+      JSON.stringify({ developerName: "Fennick Studio" }),
+      NOW,
+    );
+    await create({ email: "dev@example.com" });
+    const acct = await account("dev.old@example.com");
+    mail = [];
+    await link(acct.id, "dev@example.com");
+    expect(libraryMail()).toHaveLength(1);
+    expect(libraryMail()[0]!.text).toContain("From Fennick Studio.");
+  });
+
+  it("sends the notice from the portal's per-request sweeps too, once", async () => {
+    const { acct, licenseId } = await waitingForVerified("sweep@example.com");
+    mail = [];
+    expect(await portalMe(acct.id)).toBe(200);
+    expect(await ownerOf(licenseId)).toBe(acct.id);
+    expect(libraryMail()).toHaveLength(1);
+    expect(libraryMail()[0]!.to).toBe("sweep@example.com");
+    expect(await portalMe(acct.id)).toBe(200);
+    expect(libraryMail()).toHaveLength(1);
+
+    const second = await waitingForVerified("list@example.com");
+    mail = [];
+    const { token } = await issuePortalSessionRow(
+      env,
+      db,
+      { accountId: second.acct.id, email: null, name: null },
+      NOW,
+    );
+    await handlePortalApi(
+      new Request("https://key.plrs.im/api/licenses", {
+        headers: { cookie: `${PORTAL_COOKIE}=${token}` },
+      }),
+      env,
+      db,
+      "/api/licenses",
+      NOW,
+    );
+    expect(await ownerOf(second.licenseId)).toBe(second.acct.id);
+    expect(libraryMail().map((m) => m.to)).toEqual(["list@example.com"]);
+  });
+
+  it("sends it after a product sign-in's claim sweep, and none for an invited license or without an origin", async () => {
+    const a = await waitingForVerified("claim@example.com");
+    mail = [];
+    await attachClaimedLicenses(env, db, a.acct.id, NOW, "https://key.plrs.im");
+    expect(await ownerOf(a.licenseId)).toBe(a.acct.id);
+    expect(libraryMail().map((m) => m.to)).toEqual(["claim@example.com"]);
+
+    const inv = await waitingForVerified("claim2@example.com");
+    await db.run(
+      "UPDATE licenses SET invited_at = ? WHERE id = ?",
+      NOW,
+      inv.licenseId,
+    );
+    mail = [];
+    await attachClaimedLicenses(
+      env,
+      db,
+      inv.acct.id,
+      NOW,
+      "https://key.plrs.im",
+    );
+    expect(await ownerOf(inv.licenseId)).toBe(inv.acct.id);
+    expect(libraryMail()).toHaveLength(0);
+
+    const none = await waitingForVerified("claim3@example.com");
+    mail = [];
+    await attachClaimedLicenses(env, db, none.acct.id, NOW, null);
+    expect(await ownerOf(none.licenseId)).toBe(none.acct.id);
+    expect(libraryMail()).toHaveLength(0);
+  });
+
+  it("announces only an active, unexpired license; a disabled or expired one joins silently", async () => {
+    const acct = await account("mix@example.com");
+    const make = async (sql: string) => {
+      const c = await create({ email: "elsewhere@example.com" });
+      await db.run(
+        `UPDATE licenses SET email = 'mix@example.com'${sql} WHERE product = ? AND id = ?`,
+        SLUG,
+        c.licenseId,
+      );
+      return c.licenseId;
+    };
+    const disabled = await make(", status = 'disabled'");
+    const expired = await make(`, expires_at = ${NOW - 10}`);
+    const active = await make("");
+    mail = [];
+    expect(await portalMe(acct.id)).toBe(200);
+    for (const id of [disabled, expired, active])
+      expect(await ownerOf(id)).toBe(acct.id);
+    // One sweep joined all three; only the active license announced itself.
+    expect(libraryMail()).toHaveLength(1);
   });
 });

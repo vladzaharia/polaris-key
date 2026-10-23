@@ -79,6 +79,7 @@ import {
 } from "../../../core/licensing/store.js";
 import { appendAudit } from "../../../core/audit.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
+import { customerTierOf } from "../../../core/licensing/implicitTier.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   isObtainPathKind,
@@ -627,10 +628,11 @@ async function claimedLicenseView(
   const tier = license.tier_id
     ? await getTier(db, product.slug, license.tier_id)
     : null;
+  const shown = customerTierOf(license, tier);
   return {
     id: license.id,
-    tier: license.tier_id,
-    tierLabel: tier?.label ?? null,
+    tier: shown?.id ?? null,
+    tierLabel: shown?.label ?? null,
     status: license.status,
     usable: licenseUsable(license, now),
     expiresAt: license.expires_at,

@@ -25,7 +25,6 @@ import {
   Activity,
   AppWindow,
   Archive,
-  ArrowRightLeft,
   Blocks,
   Box,
   Boxes,
@@ -113,8 +112,7 @@ export type GlobalPageId =
   | "platform-stores"
   | "platform-connections"
   | "platform-feeds"
-  | "platform-activity"
-  | "platform-override-migration";
+  | "platform-activity";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
 export type ProductPageId =
@@ -942,19 +940,6 @@ const PLATFORM_PAGES: NavPage[] = [
     inNav: true,
     group: "platform",
     record: { noun: "Event" },
-  },
-  {
-    // U-03: the one-time move of licence config and secret overrides onto account overrides,
-    // and its report for the 90 days after the run. The run is cancelled (owner decision 1), so
-    // the page leaves the sidebar and the palette (P0-47); it still answers its URL and the
-    // licence notice's link until U-27 removes it.
-    page: "platform-override-migration",
-    label: "Override migration",
-    path: "platform/override-migration",
-    icon: ArrowRightLeft,
-    docs: "/docs/features/managed-config/",
-    inNav: false,
-    group: "platform",
   },
 ];
 

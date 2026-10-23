@@ -80,6 +80,7 @@ describe("what the descriptors contribute", () => {
     expect(subjectStoreNames()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",
+      "core.provisionedSecretMoves",
     ]);
     expect(contributedLicenseHolders()).not.toBeNull();
     expect(maintenanceContributions().length).toBeGreaterThanOrEqual(3);

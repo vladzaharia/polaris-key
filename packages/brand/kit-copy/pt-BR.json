@@ -907,6 +907,7 @@
     "getIt.downloadAria": "{name} {product} {version} para {platform}",
     "license.developerFallback": "o desenvolvedor",
     "license.developerFallbackCap": "O desenvolvedor",
+    "license.channelIncludedByDev": "Incluído com o canal dev.",
     "getIt.device.macos": "Mac",
     "getIt.device.windows": "PC com Windows",
     "getIt.device.linux": "computador Linux",

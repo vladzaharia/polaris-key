@@ -26,7 +26,6 @@ import {
   getAccountOverrides,
   parseAccountOverridePayload,
 } from "../../core/accounts/accountOverrides.js";
-import { readOverrideMigrationState } from "../../core/ops/overrideMigration.js";
 import {
   applyOverrides,
   type OverrideUpdate,
@@ -69,16 +68,12 @@ export async function handleUserOverrides(
       { config: payload.config, secrets: payload.secrets, entitlements: {} },
       catalog,
     );
-    const migration = await readOverrideMigrationState(db);
     return adminJson({
       subject,
       configOn,
       overrides: { config: redacted.config, secrets: redacted.secrets },
       updatedAt: row?.updated_at ?? null,
       updatedBy: row?.updated_by ?? null,
-      // Whether licence config and secrets still reach devices (the migration's step 5): until
-      // then the licence layer sits below this one, so a value here already wins.
-      licenseLayerRetired: migration.runCompletedAt !== null,
     });
   }
 

@@ -10,6 +10,7 @@ import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { getLicense } from "../../../core/licensing/store.js";
 import { authorizeDevice } from "../../../core/licensing/authz.js";
+import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
 import {
   consumeArtefact,
@@ -137,6 +138,8 @@ export async function pollAuthFlow(
   deviceId: string | null,
   now: number,
   ask: DevicePollAsk = NO_ASK,
+  /** The origin the library notice links to (the request's); `null`: no notice. */
+  origin: string | null = null,
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
@@ -231,7 +234,7 @@ export async function pollAuthFlow(
     // I-17: the licence joins the account the callback's claim signed this subject in to. An
     // idempotent sync, so it runs on every attempt: a retry after it threw still joins them.
     if (flow.claimAccount)
-      await attachClaimedLicenses(db, flow.claimAccount, now);
+      await attachClaimedLicenses(env, db, flow.claimAccount, now, origin);
 
     // Redeem the flow atomically BEFORE minting (G15): of two racing polls, exactly one takes the
     // record and mints; the other sees it gone and answers `timeout`, as it would a moment later.
@@ -444,6 +447,7 @@ export async function handleAuthDevicePoll(
       attachLicense:
         typeof body.attachLicense === "boolean" ? body.attachLicense : null,
     },
+    noticeOrigin(env, req),
   );
   const bodyOut = (await res
     .clone()

@@ -38,6 +38,7 @@
  * secret and says whether it is set, never its value (`config.accountOverrides`).
  */
 
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import {
   listAccountTokens,
   type PersonalTokenView,
@@ -621,7 +622,7 @@ async function exportLicense(
     name: row.name,
     email: row.email,
     status: row.status,
-    tier: row.tier_id,
+    tier: await customerTierId(db, row),
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,

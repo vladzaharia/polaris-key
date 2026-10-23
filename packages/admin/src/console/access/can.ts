@@ -97,7 +97,6 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "platform-connections": "platform",
   "platform-feeds": "platform",
   "platform-activity": "platform",
-  "platform-override-migration": "platform",
 };
 
 export const PAGE_AREAS: Record<PageId, AreaId> = {

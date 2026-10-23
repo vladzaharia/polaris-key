@@ -18,7 +18,9 @@ import { toast } from "../src/ui/toast.js";
 import { NONE, resetConsole, type Enablement } from "./consoleHarness.js";
 import {
   API,
+  DEFAULT_TIER,
   DETAIL,
+  TIERS,
   NOW_S,
   axe,
   bootLicense,
@@ -561,12 +563,46 @@ describe("license record: Status (Limits, Duration, Change tier)", () => {
     );
   });
 
-  it("a license with no tier shows a muted No tier (D12)", async () => {
+  it("a license with no tier reads as the Default tier (D12, LX-33.7)", async () => {
     bootLicense(REC, { routes: { [LIC]: { ...DETAIL, tier: null } } });
     await header();
     expect(
-      screen.getByRole("button", { name: "Tier: No tier. Change tier" }),
+      screen.getByRole("button", { name: "Tier: Default. Change tier" }),
     ).toBeTruthy();
+  });
+
+  it("Change tier has no No tier choice; a tierless license starts on Default", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: { ...DETAIL, tier: null },
+        [`${API}/license/tiers`]: { tiers: [DEFAULT_TIER, ...TIERS] },
+      },
+    });
+    await header();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tier: Default. Change tier" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change Ada Lovelace's tier",
+    });
+    const box = within(dialog).getByLabelText(/^Move to/);
+    expect(box.textContent).toContain("Default");
+    // Nothing to move to yet.
+    expect(
+      within(dialog).getByRole("button", { name: "Move to Default" }),
+    ).toHaveProperty("disabled", true);
+    expect(within(dialog).queryByRole("button", { name: /clear/i })).toBeNull();
+    await userEvent.click(box);
+    expect(screen.queryByRole("option", { name: /No tier/ })).toBeNull();
+    await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to Edu" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { tier: "edu" } },
+      ]),
+    );
   });
 
   it("the Activity tab asks the server for this license's entries", async () => {

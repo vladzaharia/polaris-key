@@ -10,6 +10,7 @@ import {
   deliverySkipped,
   emailsKey,
   expiryWords,
+  invitesPerson,
   isBatch,
   type CsvRow,
   type Draft,
@@ -17,6 +18,7 @@ import {
 import type { ReviewRow } from "./stepsDelivery.js";
 
 export const DELIVERY_WORDS = {
+  invite: "Email an invitation",
   "email-show": "Email the key and show it once",
   email: "Email the key",
   show: "Show it once",
@@ -76,7 +78,10 @@ export function reviewRows(
     },
     {
       label: "Delivery",
-      value: DELIVERY_WORDS[delivery],
+      value:
+        delivery === "invite" && d.alsoKey
+          ? `${DELIVERY_WORDS.invite}, and a key to show once`
+          : DELIVERY_WORDS[delivery],
       // One way to get the keys: nothing to change.
       ...(deliverySkipped(d) ? {} : { step: "delivery" as const }),
       noun: "delivery",
@@ -106,24 +111,39 @@ export function willItems(d: Draft, submitting: boolean): AutoItem[] {
           } satisfies AutoItem,
         ]
       : []),
-    {
-      id: "keep",
-      label: isBatch(d)
-        ? "Offer the keys as a CSV"
-        : delivery === "email"
-          ? "Keep the key out of sight"
-          : "Show the key once",
-      state: "will",
-    },
+    ...(invitesPerson(d)
+      ? [
+          {
+            id: "invite",
+            label: `Email an invitation to ${d.email.trim()}`,
+            state: doing,
+          } satisfies AutoItem,
+        ]
+      : []),
+    ...(invitesPerson(d) && !d.alsoKey
+      ? []
+      : [
+          {
+            id: "keep",
+            label: isBatch(d)
+              ? "Offer the keys as a CSV"
+              : delivery === "email"
+                ? "Keep the key out of sight"
+                : "Show the key once",
+            state: "will",
+          } satisfies AutoItem,
+        ]),
   ];
 }
 
 export function primaryLabel(d: Draft): string {
   return isBatch(d)
     ? `Create ${d.count} keys`
-    : emailsKey(d)
-      ? "Create and email license"
-      : "Create license";
+    : invitesPerson(d)
+      ? "Create and invite"
+      : emailsKey(d)
+        ? "Create and email license"
+        : "Create license";
 }
 
 /** "Pro · 5 devices · for lena@ortiz.audio". */

@@ -134,6 +134,9 @@ export interface LicenseRow {
   ended_reason?: string | null;
   /** LX-08 (0105_d): the licence that replaced this one (a merge's survivor); NULL otherwise. */
   superseded_by?: string | null;
+  /** LX-27c (0131_a): epoch seconds of the last invitation email that went out; NULL (or absent on
+   *  a row read before the migration) when none did. Written only by the License service. */
+  invited_at?: number | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -232,6 +235,10 @@ export interface TierRow {
   /** LX-08 (0105_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
    *  falls back to the product default. Stored for LX-09's `combined` mode. */
   policy_offline_grace_days?: number | null;
+  /** LX-33.1 (0129): 1 marks the product's implicit Default tier (at most one per product); 0
+   *  otherwise. No reader or writer yet. Optional because `upsertTier` callers build rows without it
+   *  and the upsert must not write it. */
+  implicit?: number;
   modified_by: string | null;
   modified_at: number;
   /** ST-01b (0079): who owns the row. */

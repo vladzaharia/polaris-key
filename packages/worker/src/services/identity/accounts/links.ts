@@ -14,7 +14,8 @@
 import type { Db, DbStatement } from "../../../db/types.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Env } from "../../../platform/env.js";
-import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
+import { sendLibraryNotices } from "./libraryNotice.js";
+import { onAccountEmailVerifiedJoined } from "../../../core/licensing/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import {
@@ -158,7 +159,12 @@ export async function linkIdentity(
   });
   // LX-26 (S-24 §5.4): a newly verified address brings the licences waiting on it.
   if (id.email && id.emailVerified)
-    await onAccountEmailVerified(db, account.id, id.email, now);
+    await sendLibraryNotices(ctx.env, db, {
+      to: id.email,
+      joined: await onAccountEmailVerifiedJoined(db, account.id, id.email, now),
+      origin: ctx.origin,
+      now,
+    });
   await sendSecurityNotice(
     ctx.env,
     db,

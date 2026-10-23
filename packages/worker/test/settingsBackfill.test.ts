@@ -309,7 +309,8 @@ const productRow = (db: Db, slug = SLUG) =>
 
 const rows = (db: Db, table: "tiers" | "profiles") =>
   db.all<{ id: string; source: string; label?: string; name?: string }>(
-    `SELECT * FROM ${table} WHERE product = ? ORDER BY id`,
+    // LX-33.7: the implicit Default tier is neither the manifest's nor the console's row.
+    `SELECT * FROM ${table} WHERE product = ? AND ${table === "tiers" ? "implicit = 0" : "1 = 1"} ORDER BY id`,
     SLUG,
   );
 

@@ -223,29 +223,6 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], "/platform/migrations/down", "platform", platform, {
     stepUp: true,
   }),
-  ...rows(["GET"], "/platform/override-migration", "platform", platform),
-  ...rows(
-    ["PUT"],
-    "/platform/override-migration/prerequisites",
-    "platform",
-    platform,
-  ),
-  ...rows(
-    ["POST", "DELETE"],
-    "/platform/override-migration/notice",
-    "platform",
-    platform,
-  ),
-  ...rows(
-    ["POST"],
-    "/platform/override-migration/dry-run",
-    "platform",
-    platform,
-  ),
-  ...rows(["POST"], "/platform/override-migration/run", "platform", platform, {
-    stepUp: true,
-  }),
-  ...rows(["GET"], "/platform/override-migration/report", "platform", platform),
   ...rows(["POST"], "/platform/feeds/bootstrap", "platform", platform),
   ...rows(["GET", "PUT", "POST"], "/platform/feeds/**", "platform", platform),
   // I-31: the platform's OIDC connections. Reads and the dry checks (discovery, the test) need

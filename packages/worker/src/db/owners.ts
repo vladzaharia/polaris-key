@@ -73,6 +73,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "entitlement_events",
     // ST-28 (plans/ST-28.md §10): operator-owned console role bindings; the migration is ST-31's.
     "console_role_bindings",
+    // U-27's backfill ledger (no values, `entry_sha256` only); dropped in U-27b.
+    "provisioned_secret_moves",
   ],
   license: [
     "licenses",
@@ -81,6 +83,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "license_profiles",
     "license_store_grants",
     "license_batches",
+    // LX-33's P0-49 job ledger; dropped after release N+1.
+    "license_limit_backfill",
   ],
   config: [
     "product_schema",

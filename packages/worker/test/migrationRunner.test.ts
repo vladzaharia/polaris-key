@@ -654,40 +654,30 @@ describe("the admin route", () => {
     expect(undone.body.run.status).toBe("reverted");
   });
 
-  it("reports Update's delegated resolver comparison but never applies or undoes it", async () => {
-    const w = await seededWorld();
-    const env = Object.assign(w.env, {
-      ADMIN_SESSION_SECRET: "test-admin-session-secret",
-      PLATFORM_ADMIN_GROUP: "platform-admins",
-      PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
-      PLATFORM_OIDC_CLIENT_ID: "platform-client",
-    }) as Env;
-    const job = "update.resolver-compare";
-    const dry = await route(
-      env,
-      w.db,
-      "POST",
-      "/api/platform/migrations/dry-run",
-      { job },
-    );
-    expect(dry.status).toBe(200);
-    expect(dry.body.run.status).toBe("reported");
-    for (const verb of ["apply", "down"]) {
-      const r = await route(
-        env,
-        w.db,
-        "POST",
-        `/api/platform/migrations/${verb}`,
-        { job, report: dry.body.run.id, run: dry.body.run.id },
-      );
-      expect(r.status, verb).toBe(409);
-      expect(r.body.code ?? r.body.error?.code, verb).toBe("delegated");
-    }
-    // Nothing ran: no apply row exists for the report.
+  it("reports a delegated job's dry run but never applies or undoes it", async () => {
+    const { db, ctx } = await setup();
+    const { job: fake, state } = fakeJob();
+    const job: MigrationJob = {
+      ...fake,
+      id: "test.delegated",
+      delegatedTo: "its own console flow",
+    };
+    const report = await dryRun(ctx(), job, ACTOR);
+    expect(report.status).toBe("reported");
+    expect(await apply(ctx(), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "delegated",
+    });
+    expect(await down(ctx(), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "delegated",
+    });
+    // Nothing ran: the data is untouched and no apply row exists for the report.
+    expect([...state.values()]).toEqual([0, 0, 0]);
     expect(
-      await w.db.first(
+      await db.first(
         "SELECT id FROM data_migration_runs WHERE source_id = ?",
-        dry.body.run.id,
+        report.id,
       ),
     ).toBeNull();
   });
@@ -700,7 +690,7 @@ describe("the admin route", () => {
       PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
       PLATFORM_OIDC_CLIENT_ID: "platform-client",
     }) as Env;
-    const job = "core.licence-override-migration";
+    const job = "release.scrub-manifest-snapshots";
     const statuses: number[] = [];
     for (let i = 0; i < 7; i++)
       statuses.push(
