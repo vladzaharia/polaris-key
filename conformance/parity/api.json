@@ -1,0 +1,932 @@
+{
+  "$schema": "./api.schema.json",
+  "apiVersion": 1,
+  "casing": {
+    "node": "camel",
+    "react": "camel",
+    "python": "snake",
+    "swift": "camel",
+    "kotlin": "camel",
+    "godot": "snake"
+  },
+  "surfaces": {},
+  "ignore": [
+    {
+      "path": "client-core",
+      "reason": "the isomorphic core and the bridge v4 verbs are SP-31's, not an SDK surface"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/server",
+      "reason": "server layer: verdict objects keep isEntitled and entitlementValue (L4)"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/electron",
+      "reason": "a runtime adapter, not the client namespace surface"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/cli",
+      "reason": "CLI layer (L4); its getConfig(client, key) command function stays"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/terminal",
+      "reason": "terminal UI subpath"
+    },
+    {
+      "sdk": "react",
+      "path": "ui.*",
+      "reason": "the kits' ui surface belongs to UK-41"
+    },
+    {
+      "sdk": "react",
+      "path": "PolarisAdapter",
+      "reason": "the adapter root keeps getConfig and isEntitled (A2); it is the kit contract, not the app surface"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.server",
+      "reason": "server layer: verdict objects keep is_entitled and entitlement_value (L4)"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.cli",
+      "reason": "CLI layer (L4)"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.ui",
+      "reason": "UI layer; terminal flows are not the client surface"
+    },
+    {
+      "path": "@polaris-key/server",
+      "reason": "server layer (L4): verdict objects and the requireLicense family are layer rows with no scan"
+    },
+    {
+      "path": "cli-commands",
+      "reason": "CLI commands and Action inputs are not SDK names"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "client.create",
+      "kind": "method",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "react": {
+          "spelling": "PolarisKeyProvider",
+          "shape": "provider",
+          "reason": "a React app starts with a provider component"
+        },
+        "godot": {
+          "spelling": "PolarisKey.configure",
+          "reason": "an autoload singleton is configured, not constructed"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.fromConfig",
+      "kind": "method",
+      "reserved": "SP-32a",
+      "layer": "client"
+    },
+    {
+      "id": "client.doctor",
+      "kind": "method",
+      "reserved": "SP-32b",
+      "layer": "client"
+    },
+    {
+      "id": "client.boot",
+      "kind": "method",
+      "feature": "ui.boot",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "useBoot",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.productSlug",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "product",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.pinnedKeys",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {
+          "path": "trust.pinnedKeys"
+        },
+        "react": {
+          "path": "trust.pinnedKeys"
+        },
+        "python": {
+          "spelling": "trust",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "path": "core.pinnedKeys"
+        },
+        "kotlin": {
+          "path": "core.pinnedKeys"
+        },
+        "godot": {
+          "spelling": "pinned_trust_keys",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.pinnedReleaseKeys",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {
+          "path": "update.pinnedReleaseKeys"
+        },
+        "react": {
+          "path": "update.pinnedReleaseKeys",
+          "reason": "only the browser adapter takes it"
+        },
+        "python": {
+          "path": "update.pinned_release_keys"
+        },
+        "swift": {},
+        "kotlin": {
+          "path": "update.pinnedReleaseKeys"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.baseUrl",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.expectedServices",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "expectServices",
+          "planned": "SP-35"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.get",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "fallback",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "spelling": "getConfig",
+          "planned": "SP-35"
+        },
+        "react": {
+          "spelling": "useManagedConfig().get",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "python": {
+          "spelling": "get_config",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "spelling": "config",
+          "planned": "SP-35b",
+          "labels": ["_", "default"]
+        },
+        "kotlin": {
+          "spelling": "config",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "spelling": "get_value",
+          "reason": "Object.get is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.getConfigSource",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "returns": "configSource",
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {
+          "spelling": "configSource",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "configSource",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "spelling": "get_source",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.getSecret",
+      "kind": "method",
+      "feature": "config.secret",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "godot": {},
+        "swift": {
+          "spelling": "secret",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "secret",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.mintToken",
+      "kind": "method",
+      "feature": "config.mint",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.set",
+      "kind": "method",
+      "feature": "config.local",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "set_value",
+          "reason": "Object.set is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clear",
+      "kind": "method",
+      "feature": "config.local",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clearAll",
+      "kind": "method",
+      "feature": "config.local",
+      "sdks": {
+        "node": {
+          "planned": "SP-35",
+          "reason": "absent today; SP-35 adds it"
+        },
+        "python": {
+          "planned": "SP-35",
+          "reason": "absent today; SP-35 adds it"
+        },
+        "react": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.onConfigChange",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "swift": {},
+        "python": {
+          "spelling": "on_change",
+          "planned": "SP-35"
+        },
+        "kotlin": {
+          "spelling": "changes",
+          "shape": "flow",
+          "reason": "Kotlin observes a Flow"
+        },
+        "godot": {
+          "spelling": "config_changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "useConfigSetting",
+          "shape": "hook",
+          "reason": "a hook returns a render value; its fallback argument stays (L7)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.value",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {
+          "spelling": "get",
+          "planned": "SP-35"
+        },
+        "python": {},
+        "react": {},
+        "swift": {
+          "spelling": "value",
+          "planned": "SP-35b",
+          "labels": ["default"]
+        },
+        "kotlin": {
+          "spelling": "value",
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.source",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {
+          "spelling": "source",
+          "planned": "SP-35"
+        },
+        "python": {},
+        "react": {},
+        "swift": {
+          "spelling": "source",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.locked",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {
+          "spelling": "locked",
+          "planned": "SP-35"
+        },
+        "python": {
+          "spelling": "enforced",
+          "planned": "SP-35"
+        },
+        "react": {},
+        "swift": {
+          "spelling": "isLocked",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.visibility",
+      "kind": "property",
+      "feature": "config.resolve",
+      "enum": "settingVisibility",
+      "sdks": {
+        "node": {
+          "planned": "SP-35",
+          "reason": "absent today; SP-35 adds it"
+        },
+        "python": {
+          "planned": "SP-35",
+          "reason": "absent today; SP-35 adds it"
+        },
+        "react": {
+          "planned": "SP-35",
+          "reason": "absent today; SP-35 adds it"
+        },
+        "swift": {
+          "planned": "SP-35b",
+          "reason": "absent today"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "absent today"
+        },
+        "godot": {
+          "planned": "SP-35b",
+          "reason": "absent today"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.set",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "value",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "set_value",
+          "reason": "Object.set is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.clear",
+      "kind": "method",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.on",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {
+          "spelling": "subscribe",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "spelling": "onChange",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {
+          "spelling": "changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.sync",
+      "kind": "method",
+      "feature": "config.sync",
+      "reserved": "U-06",
+      "layer": "client"
+    },
+    {
+      "id": "license.activateWithKey",
+      "kind": "method",
+      "feature": "license.activate",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "godot": {},
+        "swift": {
+          "spelling": "activate",
+          "planned": "SP-35b",
+          "labels": ["key"]
+        },
+        "kotlin": {
+          "spelling": "activate",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.has",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "returns": "bool",
+      "layer": "client",
+      "sdks": {
+        "node": {
+          "spelling": "license.isEntitled",
+          "planned": "SP-35"
+        },
+        "python": {
+          "spelling": "license.is_entitled",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "spelling": "license.isEntitled",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "license.isEntitled",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "spelling": "license.is_entitled",
+          "planned": "SP-35b"
+        },
+        "react": {
+          "spelling": "useEntitlement",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
+      }
+    },
+    {
+      "id": "entitlements.value",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "spelling": "license.entitlementValue",
+          "planned": "SP-35"
+        },
+        "python": {
+          "spelling": "license.entitlement_value",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "spelling": "license.entitlementValue",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "license.entitlementValue",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "planned": "SP-35b",
+          "reason": "absent today"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.all",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "sdks": {
+        "node": {
+          "spelling": "license.getEntitlements",
+          "planned": "SP-35"
+        },
+        "python": {
+          "spelling": "license.get_entitlements",
+          "planned": "SP-35"
+        },
+        "swift": {
+          "spelling": "license.entitlements",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "license.entitlements",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "spelling": "license.get_entitlements",
+          "planned": "SP-35b"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.quantity",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.grants",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.consume",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-42",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.acknowledge",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-42",
+      "layer": "client"
+    },
+    {
+      "id": "license.term",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn",
+      "kind": "method",
+      "feature": "identity.oidc",
+      "reserved": "I-10a",
+      "layer": "client"
+    },
+    {
+      "id": "identity.subject",
+      "kind": "method",
+      "feature": "identity.account",
+      "reserved": "I-10a",
+      "layer": "client"
+    },
+    {
+      "id": "identity.signOut",
+      "kind": "method",
+      "feature": "identity.account",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "godot": {},
+        "react": {},
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "planned"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "events",
+      "kind": "stream",
+      "enum": "eventKind",
+      "sdks": {
+        "node": {},
+        "swift": {
+          "spelling": "changes",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "licenseChanges",
+          "planned": "SP-35b"
+        },
+        "godot": {
+          "planned": "SP-35b",
+          "reason": "gains signal event(kind, data)"
+        },
+        "react": {
+          "spelling": "hooks and subscribe",
+          "shape": "hook",
+          "reason": "React observes through hooks"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves",
+      "kind": "property",
+      "feature": "sync.saves",
+      "reserved": "U-22",
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection",
+      "kind": "method",
+      "feature": "sync.saves",
+      "reserved": "U-23",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "layer": "client"
+    },
+    {
+      "id": "auth",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React session mode; SP-40 removes \"cookie\" with its own removed row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "server.isEntitled",
+      "kind": "property",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "verdict object, not the client's license namespace (L4)"
+    },
+    {
+      "id": "server.entitlementValue",
+      "kind": "property",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "verdict object, not the client's license namespace (L4)"
+    },
+    {
+      "id": "server.requireLicense",
+      "kind": "method",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "the framework drop-ins' gate family (L4); a layer row with no scan"
+    }
+  ],
+  "removed": []
+}
