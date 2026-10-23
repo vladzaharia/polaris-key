@@ -20,10 +20,10 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type LicenseDetail } from "../../../../api.js";
+import { ApiError, type LicenseDetail } from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { licenseQuery } from "../data.js";
 import { r } from "../../../routes.js";
 import { navigate } from "../../../router.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
@@ -90,10 +90,7 @@ export const LICENSE_TABS = [
 export type LicenseTab = (typeof LICENSE_TABS)[number];
 
 export function useLicense(slug: string, id: string) {
-  return useQuery({
-    queryKey: qk.license(slug, id),
-    queryFn: () => api.license(slug, id),
-  });
+  return useQuery(licenseQuery(slug, id));
 }
 
 export function LicenseRecord({

@@ -13,11 +13,7 @@ import {
   Mail,
   type LucideIcon,
 } from "lucide-react";
-import {
-  api,
-  type PlatformConnectionsPage,
-  type ProductDetail,
-} from "../../../../api.js";
+import { type ProductDetail } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -28,6 +24,8 @@ import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { useCan, useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { reads } from "../../../data/reads.js";
+import { signInSettingsQuery } from "../data.js";
 import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -38,7 +36,6 @@ import {
   patchFor,
   type OffConfirmation,
 } from "../../core/components/serviceFeatures.js";
-import { fetchPlatformConnections } from "../../platform/pages/platformConnections.js";
 
 export const linkClass = "text-accent-fg underline underline-offset-2";
 
@@ -224,13 +221,9 @@ const BUILT_INS = [
 export function MethodsSection({ slug }: { slug: string }): React.ReactElement {
   // Reading the connections is platform access; anyone else sees what the platform sets.
   const canPlatform = useCan("platform", null, "view");
-  const settings = useQuery({
-    queryKey: qk.signInSettings(slug),
-    queryFn: () => api.signInSettings(slug).then((res) => res.settings),
-  });
-  const q = useQuery<PlatformConnectionsPage>({
-    queryKey: qk.platformConnections(),
-    queryFn: fetchPlatformConnections,
+  const settings = useQuery(signInSettingsQuery(slug));
+  const q = useQuery({
+    ...reads.platformConnections(),
     enabled: canPlatform,
     retry: false,
   });
@@ -329,10 +322,7 @@ export function TermsSection({
   name: string;
 }): React.ReactElement {
   const area = "identity.signIn";
-  const q = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const q = useQuery(reads.productSettings(slug, area));
   const value = q.data?.settings.find((s) => s.key === "identity.terms")
     ?.value as { version?: string; url?: string } | null | undefined;
   return (

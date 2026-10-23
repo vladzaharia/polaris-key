@@ -8,22 +8,20 @@
 
 import * as React from "react";
 import { Clock } from "lucide-react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
-import {
-  api,
   type DeviceLimitSource,
-  LICENSE_PAGE_MAX,
   type LicenseListFilter,
-  type LicensePage,
   type LicenseSummary,
   type ProductDetail,
   type TierSummary,
 } from "../../../../api.js";
-import { qk } from "../../../data/queries.js";
+import {
+  licensePagesQuery,
+  licensesFirstQuery,
+  licensesQuery,
+  tiersQuery,
+} from "../data.js";
 import { useReleaseStore } from "../../release/data.js";
 import { fromSeconds, formatDate } from "../../../../lib/format.js";
 import { compareVersions } from "../../../../lib/version.js";
@@ -42,10 +40,7 @@ import {
 // ── Queries ────────────────────────────────────────────────────────────────────────────────────
 
 export function useLicenses(slug: string) {
-  return useQuery({
-    queryKey: qk.licenses(slug),
-    queryFn: () => api.licenses(slug),
-  });
+  return useQuery(licensesQuery(slug));
 }
 
 /**
@@ -53,10 +48,7 @@ export function useLicenses(slug: string) {
  * unknown. The key sits under `qk.licenses`, so a licence write refreshes it.
  */
 export function useHasLicenses(slug: string): boolean | null {
-  const q = useQuery({
-    queryKey: qk.licensesFirst(slug),
-    queryFn: () => api.licensesPage(slug, { limit: 1 }),
-  });
+  const q = useQuery(licensesFirstQuery(slug));
   if (!q.data) return null;
   return (q.data.total ?? (q.data.nextCursor ? 1 : q.data.licenses.length)) > 0;
 }
@@ -72,10 +64,7 @@ export function useInvitations(slug: string): {
   /** The list has not answered yet: what is offered may still change. */
   pending: boolean;
 } {
-  const q = useQuery({
-    queryKey: qk.licensesFirst(slug),
-    queryFn: () => api.licensesPage(slug, { limit: 1 }),
-  });
+  const q = useQuery(licensesFirstQuery(slug));
   const h = q.data?.holders;
   return {
     invitations: h?.invitations === true,
@@ -92,19 +81,7 @@ export function useInvitations(slug: string): {
 export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
   /** Search all reads 90 a page instead of 50. */
   const big = React.useRef(false);
-  const query = useInfiniteQuery({
-    queryKey: [...qk.licensesPages(slug), filter],
-    queryFn: ({ pageParam }) =>
-      api.licensesPage(slug, {
-        cursor: pageParam,
-        ...(big.current ? { limit: LICENSE_PAGE_MAX } : {}),
-        ...filter,
-      }),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
-    // A tile or chip changes the filter: the rows stay until the new first page lands.
-    placeholderData: keepPreviousData,
-  });
+  const query = useInfiniteQuery(licensePagesQuery(slug, filter, big));
   const licenses = React.useMemo(
     () => query.data?.pages.flatMap((p) => p.licenses) ?? [],
     [query.data],
@@ -149,7 +126,7 @@ export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
 }
 
 export function useTiers(slug: string) {
-  return useQuery({ queryKey: qk.tiers(slug), queryFn: () => api.tiers(slug) });
+  return useQuery(tiersQuery(slug));
 }
 
 /**

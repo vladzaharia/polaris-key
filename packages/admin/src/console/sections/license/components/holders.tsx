@@ -18,13 +18,17 @@ import * as React from "react";
 import { KeyRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type LicenseBatch,
   type LicenseHolder,
   type LicenseHolderMove,
   type LicenseSummary,
 } from "../../../../api.js";
-import { qk } from "../../../data/queries.js";
+import {
+  holderCountsQuery,
+  licenseBatchesQuery,
+  licenseBatchQuery,
+  licenseHolderMovesQuery,
+} from "../data.js";
 import { r } from "../../../routes.js";
 import { Link } from "../../../router.js";
 
@@ -211,22 +215,7 @@ export function HolderLine({
  * not count stays out of the result, and its chip draws no number.
  */
 export function useHolderCounts(slug: string) {
-  return useQuery({
-    queryKey: qk.licenseHolderCounts(slug),
-    queryFn: async (): Promise<Partial<Record<HolderState, number>>> => {
-      const pages = await Promise.all(
-        HOLDER_STATES.map((holder) =>
-          api.licensesPage(slug, { limit: 1, holder }),
-        ),
-      );
-      const out: Partial<Record<HolderState, number>> = {};
-      HOLDER_STATES.forEach((h, i) => {
-        const total = pages[i]?.total;
-        if (total !== undefined) out[h] = total;
-      });
-      return out;
-    },
-  });
+  return useQuery(holderCountsQuery(slug, HOLDER_STATES));
 }
 
 /** Up to two letters for a license's avatar: the name's, else the email's. */
@@ -243,50 +232,19 @@ export function licenseInitials(
 
 // ── Batches (LX-28) ──────────────────────────────────────────────────────────────────────────
 
-/** The page size the batch list is read in, and the most pages read (10,000 batches). */
-const BATCH_PAGE = 500;
-const MAX_BATCH_PAGES = 20;
-
-/** Every batch of the product, newest first, all pages read: one key, one shape. */
-export async function fetchLicenseBatches(
-  slug: string,
-): Promise<{ batches: LicenseBatch[] }> {
-  const batches: LicenseBatch[] = [];
-  let cursor: string | undefined;
-  for (let page = 0; page < MAX_BATCH_PAGES; page++) {
-    const res = await api.licenseBatches(slug, { limit: BATCH_PAGE, cursor });
-    batches.push(...(res.batches ?? []));
-    if (!res.nextCursor) break;
-    cursor = res.nextCursor;
-  }
-  return { batches };
-}
-
 export function useLicenseBatches(slug: string) {
-  return useQuery({
-    queryKey: qk.licenseBatches(slug),
-    queryFn: () => fetchLicenseBatches(slug),
-  });
+  return useQuery(licenseBatchesQuery(slug));
 }
 
 /** One batch; `null` reads nothing (a licence created on its own). */
 export function useLicenseBatch(slug: string, id: string | null) {
-  return useQuery({
-    queryKey: qk.licenseBatch(slug, id ?? ""),
-    queryFn: () => api.licenseBatch(slug, id ?? ""),
-    enabled: id !== null,
-  });
+  return useQuery(licenseBatchQuery(slug, id));
 }
 
 // ── Holder moves (I-12's relink tool, keyed by the licence) ─────────────────────────────────
 
 export function useLicenseHolderMoves(slug: string, id: string) {
-  return useQuery({
-    queryKey: qk.licenseHolderMoves(slug, id),
-    queryFn: () => api.licenseHolderMoves(slug, id),
-    // An older Worker has no such route: no moves to undo, nothing to retry.
-    retry: false,
-  });
+  return useQuery(licenseHolderMovesQuery(slug, id));
 }
 
 /** The move an operator can still undo: the newest, while its window is open. */

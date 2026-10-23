@@ -18,6 +18,7 @@ import {
   type ProductDeviceDetail,
   type ProductSecretDto,
 } from "../../api.js";
+import { fetchPlatformConnections } from "../sections/platform/pages/platformConnections.js";
 import { noteIdentity } from "../shell/endedState.js";
 import { mutate } from "./mutations.js";
 import { qk } from "./queries.js";
@@ -134,6 +135,21 @@ export const reads = {
     queryOptions({
       queryKey: qk.productSettings(slug, area),
       queryFn: () => api.productSettings(slug, area),
+    }),
+  services: (slug: string) =>
+    queryOptions({
+      queryKey: qk.services(slug),
+      queryFn: () => api.services(slug),
+    }),
+  portal: (slug: string) =>
+    queryOptions({
+      queryKey: qk.portal(slug),
+      queryFn: () => api.portalSettings(slug).then((r) => r.settings),
+    }),
+  platformConnections: () =>
+    queryOptions({
+      queryKey: qk.platformConnections(),
+      queryFn: fetchPlatformConnections,
     }),
   settingsDrift: (slug: string) =>
     queryOptions({

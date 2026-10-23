@@ -147,7 +147,8 @@ function inlineReads(text: string): string[] {
       const factory =
         ts.isCallExpression(parent) &&
         ts.isIdentifier(parent.expression) &&
-        parent.expression.text === "queryOptions";
+        (parent.expression.text === "queryOptions" ||
+          parent.expression.text === "infiniteQueryOptions");
       if (!factory) {
         const line = sf.getLineAndCharacterOfPosition(node.getStart()).line + 1;
         found.push(`${line} inline query (wrap it in queryOptions)`);
@@ -260,12 +261,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/commerce/CommerceOverview.tsx",
     "sections/commerce/CommerceTile.tsx",
   ],
-  // P0-32.17
-  "sections/config": [
-    "sections/config/components/MintRecipeFields.tsx",
-    "sections/config/components/RemovedValues.tsx",
-    "sections/config/data.ts",
-  ],
   // P0-32.14 and 32.15
   "sections/core": [
     "sections/core/components/CustomerPortalControl.tsx",
@@ -310,20 +305,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/global/pages/OwnPersonalTokens.tsx",
     "sections/global/pages/PersonalTokensRoster.tsx",
     "sections/global/pages/ProductNew.tsx",
-  ],
-  // P0-32.17
-  "sections/identity": [
-    "sections/identity/components/SignInSections.tsx",
-    "sections/identity/pages/AppSignIn.tsx",
-  ],
-  // P0-32.17
-  "sections/license": [
-    "sections/license/components/holders.tsx",
-    "sections/license/components/shared.tsx",
-    "sections/license/pages/EnrollmentPage.tsx",
-    "sections/license/pages/LicenseConfig.tsx",
-    "sections/license/pages/LicenseDelete.tsx",
-    "sections/license/pages/LicenseRecord.tsx",
   ],
   // P0-32.16
   "sections/notify": ["sections/notify/AlertDestinations.tsx"],
