@@ -5,9 +5,7 @@
  *
  * The console follows (P0-32.13 to .19): its data modules (`console/data/*.ts`,
  * `console/sections/<section>/data.ts`) are the only files with a `queryFn` or a bare `api.*`
- * member access, and each key family has one factory there. The files that still read around them
- * are listed in `KNOWN`, one block per section; the batch that migrates a section deletes its
- * block, and a block that no longer matches fails too.
+ * member access, and each key family has one factory there.
  *
  * The scan is on the AST, so line breaks and aliases cannot hide a literal.
  */
@@ -44,12 +42,6 @@ const isDataModule = (file: string): boolean => {
   return (
     /^data\/[^/]+\.tsx?$/.test(rel) || /^sections\/[^/]+\/data\.ts$/.test(rel)
   );
-};
-
-/** The section a console file belongs to: `sections/<name>`, else its top-level folder. */
-const sectionOf = (file: string): string => {
-  const parts = relative(CONSOLE, file).split("\\").join("/").split("/");
-  return parts[0] === "sections" ? `sections/${parts[1]}` : parts[0]!;
 };
 
 const parse = (text: string) =>
@@ -248,14 +240,6 @@ describe("portal reads are factories", () => {
   });
 });
 
-/**
- * Console files that still read around a data module, one block per section. P0-32.14 to .19
- * each delete theirs; the file is the unit, so a block lists every file that has a `queryFn`, a
- * `queryKey` that is not a `qk.x(...)` call, or an `api.*` member access.
- */
-const KNOWN: Record<string, string[]> = {
-};
-
 describe("console reads are factories", () => {
   const files = sources(CONSOLE);
   const offending = (f: string): string[] => {
@@ -264,32 +248,11 @@ describe("console reads are factories", () => {
       ? inlineReads(text)
       : [...offences(text), ...apiReads(text)];
   };
-  const listed = new Set(
-    Object.values(KNOWN).flatMap((list) => list.map((p) => join(CONSOLE, p))),
-  );
-
-  it("reads are queryOptions factories in a data module (no queryFn, queryKey literal or api.* outside one), except KNOWN", () => {
+  it("reads are queryOptions factories in a data module (no queryFn, queryKey literal or api.* outside one)", () => {
     const offenders = files
-      .filter((f) => !listed.has(f) && offending(f).length > 0)
+      .filter((f) => offending(f).length > 0)
       .map((f) => `${relative(SRC, f)}: ${offending(f).join(", ")}`);
     expect(offenders, "add a factory to the section's data.ts").toEqual([]);
-  });
-
-  it("every KNOWN file still offends, sits in its own section's block, and exists", () => {
-    const stale = Object.entries(KNOWN).flatMap(([section, list]) =>
-      list.flatMap((p) => {
-        const file = join(CONSOLE, p);
-        if (sectionOf(file) !== section) return [`${p} is not in ${section}`];
-        try {
-          return offending(file).length > 0
-            ? []
-            : [`${p} has no offence: delete it from KNOWN`];
-        } catch {
-          return [`${p} does not exist`];
-        }
-      }),
-    );
-    expect(stale).toEqual([]);
   });
 
   it("each qk family has one factory across the console's data modules", () => {

@@ -1,6 +1,6 @@
 /**
  * The Distribution and Update pages' reads (ADMIN.md §6.4, chunk 9): one fetcher per query key
- * family, so every reader of a key caches the same shape (`test/queryKeyShapes.test.ts`).
+ * family, so every reader of a key caches the same shape (`test/queryFactories.test.ts`).
  *
  * Writes go through `mutate()` (`console/data/mutations.ts`), which runs each write's declared
  * invalidation; nothing here invalidates by hand.

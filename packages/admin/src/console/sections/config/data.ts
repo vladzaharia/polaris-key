@@ -1,7 +1,7 @@
 /**
  * The Config section's reads (docs/design/ADMIN.md §6.6). One fetcher per query key: the catalog,
  * profile list and tier list keep the exact fetchers every other reader of those keys uses, so the
- * cache holds one shape per key (`test/queryKeyShapes.test.ts`).
+ * cache holds one shape per key (`test/queryFactories.test.ts`).
  */
 
 import { coreBReads } from "../core/data.js";

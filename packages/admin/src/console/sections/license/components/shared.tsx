@@ -3,7 +3,7 @@
  * pill, the product's manual channels, and the "effective policy" read-out that names where
  * each value comes from (license, tier or product default; LIC-4).
  *
- * Every query here is the one fetcher per key the rest of the console uses (`queryKeyShapes`).
+ * Every query here is the one fetcher per key the rest of the console uses (`queryFactories`).
  */
 
 import * as React from "react";

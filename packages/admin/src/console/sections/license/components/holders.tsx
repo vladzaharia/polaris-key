@@ -11,7 +11,7 @@
  *
  * Also here: the batch reads (LX-28) the Licenses list, the record and the batch pages share,
  * and the licence's holder moves (I-12's relink history for one licence, with the 72-hour undo).
- * Each query has one fetcher per key (`queryKeyShapes`).
+ * Each query has one fetcher per key (`queryFactories`).
  */
 
 import * as React from "react";
