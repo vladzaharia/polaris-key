@@ -399,7 +399,7 @@ const DEFAULTS := {
 	"choice_all_full": "Your licenses are on all their devices. Replace a device to use one here.",
 	"choice_all_full_create": "Your licenses are on all their devices. Replace a device, or create a new free license.",
 	"choice_none_replaceable": "%s manages devices for these licenses. Ask %s to free one, or use another license.",
-	"choice_continue": "Use this license and continue",
+	"choice_continue": "Use this license",
 	"choice_raced": "That device was just replaced. Choose again.",
 	"choice_replace_raced": "Someone took that seat first. Choose again.",
 	"choice_term_lifetime": "Lifetime",

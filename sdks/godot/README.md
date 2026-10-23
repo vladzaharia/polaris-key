@@ -425,7 +425,7 @@ other kits read (`ui/model/`), each following that model's state for state:
   `edit_succeeded()` / `edit_failed()`.
 - **`PKeyLicenseChoice`** (LicenseChoice). Rows carry the tier, the origin and term ("Added with a key
   · Lifetime"), a device meter with its count and the "On this device" and "All devices in use" tags;
-  **Use this license and continue** is the one primary (`chosen({kind, id})`). A full license is not a
+  **Use this license** is the one primary (`chosen({kind, id})`). A full license is not a
   choice: its action is **Replace a device** (`replace_requested`). `show_choices(view)` takes the
   sign-in session's LicenseChoiceView; `PKeyGateView.show_license_choice(view)` shows it as the gate's
   own screen and `license_chosen` carries the answer.

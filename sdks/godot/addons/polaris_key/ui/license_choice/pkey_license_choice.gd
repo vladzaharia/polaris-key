@@ -5,7 +5,7 @@ extends PKeyUiView
 ## when a signed-in account holds several licenses, each is a row carrying its tier, its origin and
 ## term in plain words ("Added with a key · Lifetime"), a seat meter with its count ("1 of 3 devices"),
 ## and a tag when it is the one this device uses ("On this device") or has no free seat ("All devices
-## in use"). One row is selected (a check on its end); **Use this license and continue** is the one
+## in use"). One row is selected (a check on its end); **Use this license** is the one
 ## primary. A full license cannot be chosen: its action is **Replace a device**. Keep, create and a
 ## first license are rows of their own and never one outcome (Must not).
 ##

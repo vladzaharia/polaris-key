@@ -27,7 +27,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Seats/Caption: Label "3 of
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Meta: Label "From \u2068Fennick Studio\u2069 · Until 2027-01-01"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Tags/Full: Label "All devices in use"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Replace: Button "Replace a device" [focus 6]
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 7]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 7]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 8]
 == one ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -36,7 +36,7 @@ Card/Scroll/Frame/Head/Titles/Title: Label "Choose a license for this device"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Pick: Button "Pro" [pressed, focus 1]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Seats/Caption: Label "1 of 3 devices"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Lifetime"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 2]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 2]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 3]
 == current ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -49,7 +49,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Tags/Current: Label "On th
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Pick: Button "Pro" [focus 2]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Seats/Caption: Label "1 of 3 devices"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Meta: Label "Until 2027-01-01"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 3]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 3]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 4]
 == keep ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -63,7 +63,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Meta: Label "Until 2027-01
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Pick: Button "Free" [focus 3]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Detail/Seats/Caption: Label "0 of 1 device"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Detail/Meta: Label "Free · Lifetime"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 4]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 4]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 5]
 == new ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -72,7 +72,7 @@ Card/Scroll/Frame/Head/Titles/Title: Label "Choose a license for this device"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Pick: Button "Free" [pressed, focus 1]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Created when you continue"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Tags/New: Label "New"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 2]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 2]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 3]
 == create ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -90,7 +90,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Tags/Full: Label "All devi
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Replace: Button "Replace a device" [focus 2]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Pick: Button "Create a new free license" [pressed, focus 3]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Detail/Meta: Label "A separate license · created when you continue"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 4]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 4]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 5]
 == all-full ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -136,7 +136,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Automatic gra
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Pick: Button "Standard" [focus 2]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Seats/Caption: Label "1 of 3 devices"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Meta: Label "Added with a key · Lifetime"
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 3]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 3]
 Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 4]
 == replace open ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
@@ -170,7 +170,7 @@ Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Seats/Caption: Label "3 of
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Meta: Label "From \u2068Fennick Studio\u2069 · Until 2027-01-01"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Tags/Full: Label "All devices in use"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Replace: Button "Replace a device" [focus 6]
-Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 7]
+Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 7]
 == none (keys) ==
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
