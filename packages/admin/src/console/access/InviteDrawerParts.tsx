@@ -332,7 +332,7 @@ export function RadioRows<V extends string>({
         const id = `${idPrefix}-${o.value}`;
         return (
           <div key={o.value} className="space-y-2">
-            <div className="flex min-h-6 items-center gap-2.5 pointer-coarse:min-h-9">
+            <div className="flex min-h-6 items-center gap-2 pointer-coarse:min-h-9">
               <RadioGroup.Item
                 id={id}
                 value={o.value}

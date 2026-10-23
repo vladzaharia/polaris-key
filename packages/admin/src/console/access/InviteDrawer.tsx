@@ -798,7 +798,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         }
         unsaved={dirty && !pending}
         dismissible={!pending}
-        closeStyle="close"
+        closeStyle="close-narrow"
       >
         <DrawerBody className="space-y-5">
           {!editing ? (
@@ -871,7 +871,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               {notice ? (
                 <div
                   role="status"
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-sunken p-2 text-sm"
                 >
                   <p className="min-w-0 text-fg-strong">{notice.text}</p>
                   {notice.undo || notice.retry ? (
@@ -1035,7 +1035,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               <div
                 id={errorId}
                 role="alert"
-                className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-2.5 text-sm"
+                className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-2 text-sm"
               >
                 <CircleAlert
                   aria-hidden
@@ -1054,7 +1054,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               <div
                 id={errorId}
                 role="status"
-                className="flex gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
+                className="flex gap-2 rounded-md border border-border bg-surface-sunken p-2 text-sm"
               >
                 <Fingerprint
                   aria-hidden
@@ -1074,7 +1074,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               </div>
             ) : null}
             {showSentence && sentence ? (
-              <div className="space-y-1 rounded-md border border-border bg-surface-sunken p-2.5 text-sm">
+              <div className="space-y-1 rounded-md border border-border bg-surface-sunken p-2 text-sm">
                 <p className="text-fg-strong" aria-live="polite">
                   {sentence}
                 </p>
