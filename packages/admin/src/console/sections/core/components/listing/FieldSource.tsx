@@ -13,6 +13,7 @@
  */
 
 import * as React from "react";
+import { channelLabel } from "@polaris-key/manifest";
 import { ApiError, type ListingImportChange } from "../../../../../api.js";
 import { Button } from "../../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../../ui/ConfirmDialog.js";
@@ -31,11 +32,11 @@ export function sourceLabel(source: string): string {
     case "product":
       return ".pkey/product";
     case "app-store":
-      return "App Store";
+      return channelLabel("app-store");
     case "play":
-      return "Google Play";
+      return channelLabel("google-play");
     case "ms-store":
-      return "Microsoft Store";
+      return channelLabel("microsoft-store");
     case "godot":
       return "Godot project";
     default:
