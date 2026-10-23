@@ -900,7 +900,7 @@ describe("overlays under the Worker's CSP", () => {
       .first()
       .waitFor();
     await check(page, "leaving public access", async () => {
-      const access = page.getByRole("form", { name: "Access" });
+      const access = page.getByRole("form", { name: "General" });
       // P0-47: Token and Licensed are one choice, Customers.
       await access.getByRole("radio", { name: /Customers/ }).click();
       await access.getByRole("button", { name: /^Save/ }).click();

@@ -326,7 +326,7 @@ export const REQUEST_STATES: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Choose a license for this device");
       await p
-        .getByRole("button", { name: "Use this license and continue" })
+        .getByRole("button", { name: "Use this license" })
         .click();
       await h1(p, "Continue to Diceroll as Mara?");
     },
@@ -345,7 +345,7 @@ export const REQUEST_STATES: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Choose a license for this device");
       await p
-        .getByRole("button", { name: "Use this license and continue" })
+        .getByRole("button", { name: "Use this license" })
         .click();
       await h1(p, "Continue to Diceroll as Mara?");
       await p.getByRole("button", { name: "Continue to Diceroll" }).click();

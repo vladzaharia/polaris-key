@@ -207,18 +207,17 @@ describe("Invitations on the record and the list under the Worker's CSP", () => 
   for (const theme of ["dark", "light"] as const) {
     for (const width of [1440, 390, 360]) {
       it(`a waiting licence's record, sent and not sent (${theme}, ${width})`, async () => {
-        for (const [id, name] of [
-          ["lic_sam", "sent"],
-          ["lic_kim", "not-sent"],
+        for (const [id, name, action] of [
+          ["lic_sam", "sent", "Resend invitation"],
+          // Never invited: the primary says Send invitation (LX-27c.5).
+          ["lic_kim", "not-sent", "Send invitation"],
         ] as const) {
           const page = await open(
             theme,
             width,
             `#/p/djdl/license/licenses/${id}`,
           );
-          await page
-            .getByRole("button", { name: "Resend invitation" })
-            .waitFor();
+          await page.getByRole("button", { name: action }).waitFor();
           await page.getByRole("region", { name: "Invitation" }).waitFor();
           await shot(page, `record-${name}-${theme}-${width}`);
           expect(await sideways(page)).toBe(false);
