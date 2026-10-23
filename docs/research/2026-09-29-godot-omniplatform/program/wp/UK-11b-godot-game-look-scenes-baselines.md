@@ -65,6 +65,10 @@ Each is 90 minutes or less and ends with a BUILT UX review (`pkey-ux-reviewer`, 
 - Settings has no hint bar yet (a pad player cannot see "B Close"); worth the next slice. The scheme-follow test on a real OS change needs a window and is not in the suite.
 - The `part.hint.select` key is the only new catalog key; "Activate" is core copy (`core.gate.needs-activation.title`) and Back is `common.back`. `part` is a shared namespace, so the key is listed under no component.
 
+## Slice 3 (built): the PNG baselines
+
+`tests/suite_ui_png.gd` draws 15 screens (sign-in on a keyboard and on a pad, the gate and its device limit, activation, offline, settings, the update modal and banner, devices, license choice, account, Paywall, DeviceLimit, boot consent), dark and light, at 1280x720 and 750x1334 (2x), and compares them with the 58 lossless PNGs in `tests/ui/snapshots/png/` (`<screen>-<tv|phone>-<theme>.png`; the dir has a `.gdignore` so Godot does not import them). It needs a renderer, so it runs windowed (`PKEY_TEST_PNG=1 tools/run_tests.sh`, or `--pkey-test ui_png [update]`) and skips itself headless. The shots wait for the entry fade, force reduced motion off and the scrim path (`PKeyUiTheme.reduce_transparency_override`), so they are the same on both presentation paths. **Recorded on macOS arm64, Godot 4.7.2; CI's Linux jobs are headless and do not compare.** Linux baselines (and a display or software GL in the job) are needed before CI can: that is the open item. Tolerance: 0.4 % of pixels on 4.7, 8 % on another engine (4.4.1 measured 5.8 % at worst, text and edges); 4.7.2 measures 0.000 % on both paths. Not covered: every components.json state (one state per component), other sizes and locales.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

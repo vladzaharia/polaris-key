@@ -394,6 +394,10 @@ static func stretched(row: Array) -> Array:
 
 ## Put the UI options for `preset` in place (a scenario configures a fake SDK first, which applies
 ## its own defaults).
+## The reduced-motion mode `apply_preset()` sets: "on" for the layout checks, "off" for the PNG baselines.
+static var motion_mode := "on"
+
+
 static func apply_preset(preset: String) -> void:
 	PKeyUiTheme.reset()
 	match preset:
@@ -409,7 +413,8 @@ static func apply_preset(preset: String) -> void:
 		"custom":
 			PKeyUiTheme.override = custom_theme()
 	# Layout is measured at rest: the fade-in (alpha and a 98 % scale) is the motion tests' business.
-	PKeyUiTheme.reduce_motion_mode = "on"
+	# The PNG baselines ask for "off" and wait for the fade (suite_ui_png).
+	PKeyUiTheme.reduce_motion_mode = motion_mode
 	PKeyUiTheme.product_name = "Diceroll"
 	PKeyUiTheme.product_icon = sample_icon()
 

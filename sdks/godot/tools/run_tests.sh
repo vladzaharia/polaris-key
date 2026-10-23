@@ -11,6 +11,8 @@
 #   PKEY_TEST_SUITES  the --pkey-test selection (default: ci)
 #   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
 #                     by default only with the `ci` selection
+#   PKEY_TEST_PNG     1 compares the PNG baselines (step 3c, windowed: needs a display; macOS-recorded);
+#                     PKEY_TEST_PNG_UPDATE=1 records them
 #   PKEY_TEST_MATRIX  1 runs the UI resolution matrix (step 3b, the ui_matrix suite) whatever the
 #                     selection; it runs by default only with the `ci` selection
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
@@ -237,6 +239,19 @@ if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
       step "ui-matrix$([ "$path" = auto ] || echo "-rt$path")" run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
     ) || exit 1
   done
+fi
+
+# 3c. The PNG baselines (tests/suite_ui_png.gd): the screens drawn and compared with the committed
+# PNGs, windowed (a headless run has no renderer), as a step of its own. Off by default: CI's Linux
+# jobs run headless, and the baselines were recorded on macOS arm64 with Godot 4.7.2 (record Linux
+# ones before turning it on there). PKEY_TEST_PNG=1 compares, PKEY_TEST_PNG_UPDATE=1 records.
+if [ "${PKEY_TEST_PNG:-0}" = 1 ] || [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ]; then
+  (
+    TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+    UPD=""
+    [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ] && UPD="update"
+    step ui-png run "$GODOT" --path "$PROJECT" -- --pkey-test ui_png $UPD
+  ) || exit 1
 fi
 
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.

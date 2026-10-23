@@ -304,6 +304,8 @@ static var _derived := {}
 ## (PKeyOptions.ui_reduce_motion and ui_reduce_transparency).
 static var reduce_motion_mode := "auto"
 static var reduce_transparency_mode := "auto"
+## Tests (the PNG baselines): forces the answer whatever the options, the environment and the system say; null: none.
+static var reduce_transparency_override: Variant = null
 
 static var _cache: Theme = null
 static var _textures := {}
@@ -425,6 +427,8 @@ static func reduce_motion() -> bool:
 ## DL16: true when every scrim (and glass surface) is drawn opaque (the option, else the system's
 ## reduced-transparency setting where the engine reports it).
 static func reduce_transparency() -> bool:
+	if reduce_transparency_override != null:
+		return bool(reduce_transparency_override)
 	if reduce_transparency_mode != "auto":
 		return reduce_transparency_mode == "on"
 	# Tests (the CI lanes run the matrix once per path): PKEY_UI_REDUCE_TRANSPARENCY=1 forces the
