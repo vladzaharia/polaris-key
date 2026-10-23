@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { StorefrontDto } from "../../../../api.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Button } from "../../../../ui/Button.js";
 import {
   CapabilityStrip,
@@ -16,11 +17,14 @@ export function StoreTile({
   slug,
   store,
   hasPanel,
+  outOfScope = false,
 }: {
   slug: string;
   store: StorefrontDto;
   /** The store has a page of its own (`STORE_PANELS`). */
   hasPanel: boolean;
+  /** Declared by the team, but no platform or build of the product fits it (A-20.7). */
+  outOfScope?: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("ship", slug);
   if (store.builtIn)
@@ -45,7 +49,13 @@ export function StoreTile({
                 : "No app assigned"}
           </p>
         </div>
-        <ConnectionIssue store={store} />
+        {outOfScope ? (
+          <StatusPill tone="warning" size="sm">
+            Out of scope
+          </StatusPill>
+        ) : (
+          <ConnectionIssue store={store} />
+        )}
       </div>
       <div className="flex-1 px-4 py-2">
         <CapabilityStrip

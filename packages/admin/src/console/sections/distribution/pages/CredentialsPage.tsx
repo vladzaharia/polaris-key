@@ -29,6 +29,8 @@ import {
   type PutOutletCredentialBody,
 } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
+import { useScopedKinds } from "../model/channelScope.js";
+import { ConnectorGrid } from "../components/ConnectorGrid.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
@@ -68,7 +70,6 @@ import {
   useOutlets,
   useReleaseStore,
 } from "../data.js";
-import { ConnectorCard } from "../components/StoreControls.js";
 
 // ── The kinds ──────────────────────────────────────────────────────────────────────────────────
 
@@ -511,16 +512,11 @@ export function CredentialsPage({
             context={{ area: "distribution" }}
           />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {(connectors.data?.connectors ?? []).map((c) => (
-              <ConnectorCard
-                key={c.kind}
-                slug={slug}
-                connector={c}
-                releases={store.data}
-              />
-            ))}
-          </div>
+          <ConnectorGrid
+            slug={slug}
+            connectors={connectors.data?.connectors ?? []}
+            releases={store.data}
+          />
         )}
       </section>
 
@@ -720,6 +716,7 @@ function SetCredentialDrawer({
   onClose: () => void;
 }): React.ReactElement {
   const outlets = useOutlets(slug);
+  const kinds = useScopedKinds(slug, KINDS, existing);
   const [kind, setKind] = React.useState<OutletCredentialKind | null>(
     (rotate?.kind as OutletCredentialKind | undefined) ?? null,
   );
@@ -841,7 +838,7 @@ function SetCredentialDrawer({
                 {...field}
                 ref={undefined}
                 placeholder="Choose a kind"
-                options={KINDS.map((k) => ({
+                options={kinds.map((k) => ({
                   value: k.value,
                   label: k.label,
                   description: k.description,

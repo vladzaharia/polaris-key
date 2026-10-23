@@ -43,6 +43,7 @@ export const DOCS_LINKS = {
   // PS-06: the built-in storefront's page (listing, audience, ways to add, preview, analytics).
   polarisKeyStorefront: "/docs/features/ship-builds/channels/polaris-key/",
   // B-226: the storefronts pages (the tile list and the Add to storefronts flow) and the listing.
+  channels: "/docs/features/ship-builds/channels/",
   storefronts: "/docs/features/ship-builds/channels/storefronts/",
   storefrontListing: "/docs/features/ship-builds/channels/polaris-key/",
   packageFeeds: "/docs/features/ship-builds/packages/",

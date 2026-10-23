@@ -16559,6 +16559,412 @@ function normalizeAssetRef(v) {
   if (typeof raw.sha256 === "string") out.sha256 = raw.sha256;
   return out;
 }
+var CHANNELS = [
+  {
+    id: "polaris-key",
+    aliases: ["direct"],
+    label: "Polaris Locker",
+    family: "first-party",
+    plane: "worker",
+    outlet: { kind: "direct" },
+    platforms: ["macos", "windows", "linux", "android", "ios"],
+    formats: ["dmg", "zip", "msi", "exe", "appimage", "deb", "apk", "ipa"],
+    deliverableKinds: ["app", "pack", "package"],
+    customerAction: "install",
+    verbs: ["connect", "readListing", "uploadBuild", "release", "status"],
+    auto: ["upload-build", "release"],
+    human: [],
+    storefront: { adapter: "polaris-key", credential: null }
+  },
+  {
+    id: "app-store",
+    aliases: ["appstore"],
+    label: "App Store",
+    family: "apple",
+    plane: "worker",
+    outlet: { kind: "app-store" },
+    platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
+    formats: ["ipa", "pkg"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "identifiers",
+      "createApp",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "category",
+      "contentRating",
+      "privacyDeclarations",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "notificationsUrl",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "submit"],
+    human: ["agreements", "app-privacy", "review"],
+    storefront: {
+      adapter: "app-store",
+      credential: "app-store.api-key",
+      verification: "app-store.in-app-purchase-key",
+      notification: "app-store-server",
+      sku: "app-store-product"
+    }
+  },
+  {
+    id: "testflight",
+    aliases: [],
+    label: "TestFlight",
+    family: "apple",
+    plane: "worker",
+    outlet: { kind: "testflight" },
+    platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
+    formats: ["ipa", "pkg"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["connect", "uploadBuild", "testers", "status"],
+    auto: ["upload-build", "testers"],
+    human: ["beta-review"],
+    storefront: { adapter: "app-store", credential: "app-store.api-key" }
+  },
+  {
+    id: "altstore",
+    aliases: [],
+    label: "AltStore",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "altstore" },
+    platforms: ["ios"],
+    formats: ["ipa"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "altstore-pal",
+    aliases: [],
+    label: "AltStore PAL",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "altstore-pal" },
+    platforms: ["ios"],
+    formats: ["ipa"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: ["marketplace-listing"],
+    storefront: null
+  },
+  {
+    id: "google-play",
+    aliases: ["play"],
+    label: "Google Play",
+    family: "google",
+    plane: "worker",
+    outlet: { kind: "play" },
+    platforms: ["android"],
+    formats: ["aab", "apk"],
+    deliverableKinds: ["app", "pack"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "category",
+      "contentRating",
+      "privacyDeclarations",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "release"],
+    human: ["first-release", "data-safety", "review"],
+    storefront: {
+      adapter: "google-play",
+      credential: "google-play.service-account",
+      verification: "google-play.service-account",
+      notification: "play-rtdn",
+      sku: "play-product"
+    }
+  },
+  {
+    id: "play-testing",
+    aliases: ["google-play-testing"],
+    label: "Google Play testing",
+    family: "google",
+    plane: "worker",
+    outlet: { kind: "play-testing" },
+    platforms: ["android"],
+    formats: ["aab", "apk"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["connect", "uploadBuild", "testers", "release", "status"],
+    auto: ["upload-build", "release"],
+    human: ["testers"],
+    storefront: {
+      adapter: "google-play",
+      credential: "google-play.service-account"
+    }
+  },
+  {
+    id: "obtainium",
+    aliases: [],
+    label: "Obtainium",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "obtainium" },
+    platforms: ["android"],
+    formats: ["apk"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "fdroid",
+    aliases: ["fdroid-repo"],
+    label: "F-Droid repository",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "fdroid-repo" },
+    platforms: ["android"],
+    formats: ["apk"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "microsoft-store",
+    aliases: ["ms-store"],
+    label: "Microsoft Store",
+    family: "microsoft",
+    plane: "worker",
+    outlet: { kind: "ms-store" },
+    platforms: ["windows"],
+    formats: ["msix", "msixbundle", "msi", "exe"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "uploadBuild",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "submit"],
+    human: ["certification"],
+    storefront: {
+      adapter: "microsoft-store",
+      credential: "microsoft-store.partner-center"
+    }
+  },
+  {
+    id: "app-installer",
+    aliases: [],
+    label: "App Installer",
+    family: "microsoft",
+    plane: "feed",
+    outlet: { kind: "app-installer" },
+    platforms: ["windows"],
+    formats: ["msix", "msixbundle", "appinstaller"],
+    deliverableKinds: ["app"],
+    customerAction: "download",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "winget",
+    aliases: [],
+    label: "winget",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "winget" },
+    platforms: ["windows"],
+    formats: ["msi", "exe", "msix", "zip"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "winget", credential: null }
+  },
+  {
+    id: "steam",
+    aliases: ["steamworks"],
+    label: "Steam",
+    family: "pc-store",
+    plane: "worker",
+    outlet: { kind: "steam" },
+    platforms: ["windows", "macos", "linux"],
+    formats: ["depot"],
+    deliverableKinds: ["app", "pack"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "submit",
+      "release",
+      "status"
+    ],
+    auto: ["upload-build", "branch"],
+    human: ["store-page-review", "build-review"],
+    storefront: {
+      adapter: "steam",
+      credential: "steam.publisher-key",
+      verification: "steam.publisher-key",
+      notification: "steam-microtxn",
+      sku: "steam-package"
+    }
+  },
+  {
+    id: "itch",
+    aliases: ["itch.io"],
+    label: "itch.io",
+    family: "pc-store",
+    plane: "ci",
+    outlet: { kind: "itch" },
+    platforms: ["windows", "macos", "linux"],
+    formats: ["zip", "tar.gz"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["uploadBuild", "status"],
+    auto: ["butler-push"],
+    human: ["project-page"],
+    storefront: { adapter: "itch", credential: null }
+  },
+  {
+    id: "flathub",
+    aliases: [],
+    label: "Flathub",
+    family: "linux",
+    plane: "pr",
+    outlet: { kind: "flathub" },
+    platforms: ["linux"],
+    formats: ["flatpak"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "flathub", credential: null }
+  },
+  {
+    id: "snap",
+    aliases: ["snap-store"],
+    label: "Snap Store",
+    family: "linux",
+    plane: "ci",
+    outlet: { kind: "snap" },
+    platforms: ["linux"],
+    formats: ["snap"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["uploadBuild", "release", "status"],
+    auto: ["snapcraft-upload", "release"],
+    human: ["name-registration"],
+    storefront: { adapter: "snap", credential: null }
+  },
+  {
+    id: "homebrew",
+    aliases: [],
+    label: "Homebrew",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "direct", subkind: "homebrew" },
+    platforms: ["macos", "linux"],
+    formats: ["tar.gz", "zip"],
+    deliverableKinds: ["app", "package"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["formula-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "homebrew", credential: null }
+  },
+  {
+    id: "scoop",
+    aliases: [],
+    label: "Scoop",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "direct", subkind: "scoop" },
+    platforms: ["windows"],
+    formats: ["zip", "exe"],
+    deliverableKinds: ["app", "package"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "scoop", credential: null }
+  },
+  {
+    id: "web",
+    aliases: [],
+    label: "Web",
+    family: "web",
+    plane: "feed",
+    outlet: { kind: "web" },
+    platforms: ["web"],
+    formats: ["html"],
+    deliverableKinds: ["app"],
+    customerAction: "open-in-browser",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  }
+];
+var CHANNEL_ALIASES2 = {
+  direct: "polaris-key",
+  appstore: "app-store",
+  play: "google-play",
+  "google-play-testing": "play-testing",
+  "fdroid-repo": "fdroid",
+  "ms-store": "microsoft-store",
+  steamworks: "steam",
+  "itch.io": "itch",
+  "snap-store": "snap"
+};
+function findChannel(idOrAlias) {
+  const id = Object.hasOwn(CHANNEL_ALIASES2, idOrAlias) ? CHANNEL_ALIASES2[idOrAlias] : idOrAlias;
+  return CHANNELS.find((c) => c.id === id) ?? null;
+}
+function channelLabel(idOrAlias) {
+  return findChannel(idOrAlias)?.label ?? idOrAlias;
+}
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -16952,6 +17358,7 @@ function validateDistribution(errors, doc, ctx, warnings) {
     } else {
       for (const [id, entry] of Object.entries(outlets)) {
         validateOutlet(errors, warnings, id, entry, ctx, kinds);
+        if (warnings) warnOutletWithoutBuild(warnings, id, entry, ctx);
       }
     }
   } else {
@@ -16973,6 +17380,33 @@ function validateDistribution(errors, doc, ctx, warnings) {
   }
   if (doc.listing !== void 0) {
     reportListing(errors, warnings, doc.listing, "/listing", "listing");
+  }
+}
+function declaredChannels(id, entry) {
+  const kind = outletKindOf(id, entry);
+  if (!kind || !isRecord4(entry)) return [];
+  const has3 = (...fields) => fields.some((f) => entry[f] !== void 0);
+  return CHANNELS.filter((c) => {
+    if (c.outlet.kind !== kind) return false;
+    if (kind !== "direct") return true;
+    if (c.outlet.subkind === "homebrew")
+      return has3("homebrewCask", "homebrewFormula", "homebrewTap");
+    if (c.outlet.subkind === "scoop") return has3("scoop", "scoopBucket");
+    return false;
+  });
+}
+function warnOutletWithoutBuild(warnings, id, entry, ctx) {
+  const built = ctx.buildPlatforms;
+  if (!built || built.size === 0) return;
+  for (const c of declaredChannels(id, entry)) {
+    if (c.platforms.some((p) => built.has(p))) continue;
+    add3(
+      warnings,
+      "distribution",
+      `/outlets/${id}`,
+      "outlet_without_build",
+      `outlet ${id} (${c.label}) is declared but .pkey/release declares no ${c.platforms.join(" or ")} build in deliverables.app.artifacts, so nothing can ship to it.`
+    );
   }
 }
 function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
@@ -17352,410 +17786,6 @@ function add3(list2, file, path32, code, message) {
   list2.push({ file, path: path32, code, message });
 }
 var globWork = { steps: 0 };
-var CHANNELS = [
-  {
-    id: "polaris-key",
-    aliases: ["direct"],
-    label: "Polaris Locker",
-    family: "first-party",
-    plane: "worker",
-    outlet: { kind: "direct" },
-    platforms: ["macos", "windows", "linux", "android", "ios"],
-    formats: ["dmg", "zip", "msi", "exe", "appimage", "deb", "apk", "ipa"],
-    deliverableKinds: ["app", "pack", "package"],
-    customerAction: "install",
-    verbs: ["connect", "readListing", "uploadBuild", "release", "status"],
-    auto: ["upload-build", "release"],
-    human: [],
-    storefront: { adapter: "polaris-key", credential: null }
-  },
-  {
-    id: "app-store",
-    aliases: ["appstore"],
-    label: "App Store",
-    family: "apple",
-    plane: "worker",
-    outlet: { kind: "app-store" },
-    platforms: ["ios", "macos"],
-    formats: ["ipa", "pkg"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: [
-      "connect",
-      "listApps",
-      "identifiers",
-      "createApp",
-      "readListing",
-      "writeListingText",
-      "writeListingAssets",
-      "category",
-      "contentRating",
-      "privacyDeclarations",
-      "pricing",
-      "iap",
-      "uploadBuild",
-      "notificationsUrl",
-      "submit",
-      "release",
-      "rollout",
-      "status"
-    ],
-    auto: ["upload-build", "listing", "submit"],
-    human: ["agreements", "app-privacy", "review"],
-    storefront: {
-      adapter: "app-store",
-      credential: "app-store.api-key",
-      verification: "app-store.in-app-purchase-key",
-      notification: "app-store-server",
-      sku: "app-store-product"
-    }
-  },
-  {
-    id: "testflight",
-    aliases: [],
-    label: "TestFlight",
-    family: "apple",
-    plane: "worker",
-    outlet: { kind: "testflight" },
-    platforms: ["ios", "macos"],
-    formats: ["ipa", "pkg"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: ["connect", "uploadBuild", "testers", "status"],
-    auto: ["upload-build", "testers"],
-    human: ["beta-review"],
-    storefront: { adapter: "app-store", credential: "app-store.api-key" }
-  },
-  {
-    id: "altstore",
-    aliases: [],
-    label: "AltStore",
-    family: "sideload",
-    plane: "feed",
-    outlet: { kind: "altstore" },
-    platforms: ["ios"],
-    formats: ["ipa"],
-    deliverableKinds: ["app"],
-    customerAction: "add-source",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: [],
-    storefront: null
-  },
-  {
-    id: "altstore-pal",
-    aliases: [],
-    label: "AltStore PAL",
-    family: "sideload",
-    plane: "feed",
-    outlet: { kind: "altstore-pal" },
-    platforms: ["ios"],
-    formats: ["ipa"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: ["marketplace-listing"],
-    storefront: null
-  },
-  {
-    id: "google-play",
-    aliases: ["play"],
-    label: "Google Play",
-    family: "google",
-    plane: "worker",
-    outlet: { kind: "play" },
-    platforms: ["android"],
-    formats: ["aab", "apk"],
-    deliverableKinds: ["app", "pack"],
-    customerAction: "open-listing",
-    verbs: [
-      "connect",
-      "listApps",
-      "readListing",
-      "writeListingText",
-      "writeListingAssets",
-      "category",
-      "contentRating",
-      "privacyDeclarations",
-      "pricing",
-      "iap",
-      "uploadBuild",
-      "submit",
-      "release",
-      "rollout",
-      "status"
-    ],
-    auto: ["upload-build", "listing", "release"],
-    human: ["first-release", "data-safety", "review"],
-    storefront: {
-      adapter: "google-play",
-      credential: "google-play.service-account",
-      verification: "google-play.service-account",
-      notification: "play-rtdn",
-      sku: "play-product"
-    }
-  },
-  {
-    id: "play-testing",
-    aliases: ["google-play-testing"],
-    label: "Google Play testing",
-    family: "google",
-    plane: "worker",
-    outlet: { kind: "play-testing" },
-    platforms: ["android"],
-    formats: ["aab", "apk"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: ["connect", "uploadBuild", "testers", "release", "status"],
-    auto: ["upload-build", "release"],
-    human: ["testers"],
-    storefront: {
-      adapter: "google-play",
-      credential: "google-play.service-account"
-    }
-  },
-  {
-    id: "obtainium",
-    aliases: [],
-    label: "Obtainium",
-    family: "sideload",
-    plane: "feed",
-    outlet: { kind: "obtainium" },
-    platforms: ["android"],
-    formats: ["apk"],
-    deliverableKinds: ["app"],
-    customerAction: "add-source",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: [],
-    storefront: null
-  },
-  {
-    id: "fdroid",
-    aliases: ["fdroid-repo"],
-    label: "F-Droid repository",
-    family: "sideload",
-    plane: "feed",
-    outlet: { kind: "fdroid-repo" },
-    platforms: ["android"],
-    formats: ["apk"],
-    deliverableKinds: ["app"],
-    customerAction: "add-source",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: [],
-    storefront: null
-  },
-  {
-    id: "microsoft-store",
-    aliases: ["ms-store"],
-    label: "Microsoft Store",
-    family: "microsoft",
-    plane: "worker",
-    outlet: { kind: "ms-store" },
-    platforms: ["windows"],
-    formats: ["msix", "msixbundle", "msi", "exe"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: [
-      "connect",
-      "listApps",
-      "readListing",
-      "writeListingText",
-      "writeListingAssets",
-      "uploadBuild",
-      "submit",
-      "release",
-      "rollout",
-      "status"
-    ],
-    auto: ["upload-build", "listing", "submit"],
-    human: ["certification"],
-    storefront: {
-      adapter: "microsoft-store",
-      credential: "microsoft-store.partner-center"
-    }
-  },
-  {
-    id: "app-installer",
-    aliases: [],
-    label: "App Installer",
-    family: "microsoft",
-    plane: "feed",
-    outlet: { kind: "app-installer" },
-    platforms: ["windows"],
-    formats: ["msix", "msixbundle", "appinstaller"],
-    deliverableKinds: ["app"],
-    customerAction: "download",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: [],
-    storefront: null
-  },
-  {
-    id: "winget",
-    aliases: [],
-    label: "winget",
-    family: "package-manager",
-    plane: "pr",
-    outlet: { kind: "winget" },
-    platforms: ["windows"],
-    formats: ["msi", "exe", "msix"],
-    deliverableKinds: ["app"],
-    customerAction: "run-command",
-    verbs: ["submit", "status"],
-    auto: ["manifest-pr"],
-    human: ["pr-review"],
-    storefront: { adapter: "winget", credential: null }
-  },
-  {
-    id: "steam",
-    aliases: ["steamworks"],
-    label: "Steam",
-    family: "pc-store",
-    plane: "worker",
-    outlet: { kind: "steam" },
-    platforms: ["windows", "macos", "linux"],
-    formats: ["depot"],
-    deliverableKinds: ["app", "pack"],
-    customerAction: "open-listing",
-    verbs: [
-      "connect",
-      "listApps",
-      "readListing",
-      "pricing",
-      "iap",
-      "uploadBuild",
-      "submit",
-      "release",
-      "status"
-    ],
-    auto: ["upload-build", "branch"],
-    human: ["store-page-review", "build-review"],
-    storefront: {
-      adapter: "steam",
-      credential: "steam.publisher-key",
-      verification: "steam.publisher-key",
-      notification: "steam-microtxn",
-      sku: "steam-package"
-    }
-  },
-  {
-    id: "itch",
-    aliases: ["itch.io"],
-    label: "itch.io",
-    family: "pc-store",
-    plane: "ci",
-    outlet: { kind: "itch" },
-    platforms: ["windows", "macos", "linux"],
-    formats: ["zip", "tar.gz"],
-    deliverableKinds: ["app"],
-    customerAction: "open-listing",
-    verbs: ["uploadBuild", "status"],
-    auto: ["butler-push"],
-    human: ["project-page"],
-    storefront: { adapter: "itch", credential: null }
-  },
-  {
-    id: "flathub",
-    aliases: [],
-    label: "Flathub",
-    family: "linux",
-    plane: "pr",
-    outlet: { kind: "flathub" },
-    platforms: ["linux"],
-    formats: ["flatpak"],
-    deliverableKinds: ["app"],
-    customerAction: "run-command",
-    verbs: ["submit", "status"],
-    auto: ["manifest-pr"],
-    human: ["pr-review"],
-    storefront: { adapter: "flathub", credential: null }
-  },
-  {
-    id: "snap",
-    aliases: ["snap-store"],
-    label: "Snap Store",
-    family: "linux",
-    plane: "ci",
-    outlet: { kind: "snap" },
-    platforms: ["linux"],
-    formats: ["snap"],
-    deliverableKinds: ["app"],
-    customerAction: "run-command",
-    verbs: ["uploadBuild", "release", "status"],
-    auto: ["snapcraft-upload", "release"],
-    human: ["name-registration"],
-    storefront: { adapter: "snap", credential: null }
-  },
-  {
-    id: "homebrew",
-    aliases: [],
-    label: "Homebrew",
-    family: "package-manager",
-    plane: "pr",
-    outlet: { kind: "direct", subkind: "homebrew" },
-    platforms: ["macos", "linux"],
-    formats: ["tar.gz", "zip"],
-    deliverableKinds: ["app", "package"],
-    customerAction: "run-command",
-    verbs: ["submit", "status"],
-    auto: ["formula-pr"],
-    human: ["pr-review"],
-    storefront: { adapter: "homebrew", credential: null }
-  },
-  {
-    id: "scoop",
-    aliases: [],
-    label: "Scoop",
-    family: "package-manager",
-    plane: "pr",
-    outlet: { kind: "direct", subkind: "scoop" },
-    platforms: ["windows"],
-    formats: ["zip", "exe"],
-    deliverableKinds: ["app", "package"],
-    customerAction: "run-command",
-    verbs: ["submit", "status"],
-    auto: ["manifest-pr"],
-    human: ["pr-review"],
-    storefront: { adapter: "scoop", credential: null }
-  },
-  {
-    id: "web",
-    aliases: [],
-    label: "Web",
-    family: "web",
-    plane: "feed",
-    outlet: { kind: "web" },
-    platforms: ["web"],
-    formats: ["html"],
-    deliverableKinds: ["app"],
-    customerAction: "open-in-browser",
-    verbs: ["status"],
-    auto: ["feed"],
-    human: [],
-    storefront: null
-  }
-];
-var CHANNEL_ALIASES2 = {
-  direct: "polaris-key",
-  appstore: "app-store",
-  play: "google-play",
-  "google-play-testing": "play-testing",
-  "fdroid-repo": "fdroid",
-  "ms-store": "microsoft-store",
-  steamworks: "steam",
-  "itch.io": "itch",
-  "snap-store": "snap"
-};
-function findChannel(idOrAlias) {
-  const id = Object.hasOwn(CHANNEL_ALIASES2, idOrAlias) ? CHANNEL_ALIASES2[idOrAlias] : idOrAlias;
-  return CHANNELS.find((c) => c.id === id) ?? null;
-}
-function channelLabel(idOrAlias) {
-  return findChannel(idOrAlias)?.label ?? idOrAlias;
-}
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
 var LOCATION_PROVIDERS = [
@@ -20674,12 +20704,16 @@ function distributionContext(relRoot) {
   const declared = asRecord(rel.deliverables);
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = /* @__PURE__ */ new Set();
+  const buildPlatforms = /* @__PURE__ */ new Set();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
     if (isRecord6(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
+    if (isRecord6(entry) && typeof entry.platform === "string")
+      buildPlatforms.add(entry.platform);
   }
   return {
     artifactIds,
+    buildPlatforms,
     channels: knownChannelNames(rel, Object.keys(asRecord(app.channels))),
     deliverables: new Map(
       distributionDeliverables(relRoot).map((d) => [d.id, d.kind])

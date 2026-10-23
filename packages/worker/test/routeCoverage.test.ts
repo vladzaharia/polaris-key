@@ -239,6 +239,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // ST-40: the Integration read model (prerequisites, facts, Verified per platform).
     ["/manage/api/products/{product}/integration", ["get"]],
+    // A-20.4: the channel read model (delivery and commerce facets per channel).
+    ["/manage/api/products/{product}/distribution/channels", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.

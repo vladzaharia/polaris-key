@@ -7,7 +7,7 @@ sidebar:
   order: 15
 ---
 
-**Ship builds → Storefronts** shows every storefront Polaris Key has an adapter for, and
+**Ship builds → Storefronts** shows every storefront Polaris Key has an adapter for and that fits the product, and
 **Add to storefronts** provisions the product onto any of them in one flow. Both are for platform
 admins.
 
@@ -15,6 +15,10 @@ Each store's tile and each step is drawn from what the store's adapter declares:
 Polaris Key performs through the store's API, which the release workflow performs in CI, which a
 pull request covers, and which you do yourself from a link. The console has no store-specific
 code, so a store added to the Worker appears here once its adapter is registered.
+
+## Scope
+
+Storefronts lists the stores that fit the product. A Windows-only product shows no Apple store, and a declared store that does not fit stays listed with an **Out of scope** pill. The page opens with a line such as "Stores for Windows". A product with no platform facts yet shows every store. How scope is decided: [Which channels a product sees](/docs/features/ship-builds/channels/#which-channels-a-product-sees).
 
 ## The tiles
 

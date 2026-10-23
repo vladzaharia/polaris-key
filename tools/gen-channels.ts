@@ -42,6 +42,15 @@ export const CUSTOMER_ACTIONS = [
   "run-command",
   "open-in-browser",
 ] as const;
+/** The arches a channel may require (RELEASE_ARCHES; tools/gen-channels.test.ts keeps them equal). */
+export const ARCHES = [
+  "arm64",
+  "x86_64",
+  "universal",
+  "armv7",
+  "wasm32",
+  "any",
+] as const;
 export const DELIVERABLE_KINDS = ["app", "pack", "package"] as const;
 export const PLATFORMS = [
   "macos",
@@ -95,6 +104,8 @@ export interface ChannelRow {
   plane: (typeof PLANES)[number];
   outlet: { kind: string; subkind?: string };
   platforms: string[];
+  /** Platform -> accepted CPU arches; absent means any. */
+  arches?: Record<string, string[]>;
   formats: string[];
   deliverableKinds: string[];
   customerAction: (typeof CUSTOMER_ACTIONS)[number];
@@ -189,6 +200,22 @@ export function validateTable(table: unknown): string[] {
       errors.push(`${at}.platforms: must not be empty`);
     if (strings(row.deliverableKinds) && row.deliverableKinds.length === 0)
       errors.push(`${at}.deliverableKinds: must not be empty`);
+    if (row.arches !== undefined) {
+      const a = row.arches as unknown;
+      if (!a || typeof a !== "object" || Array.isArray(a))
+        errors.push(`${at}.arches: must be an object`);
+      else
+        for (const [plat, v] of Object.entries(a)) {
+          if (!strings(row.platforms) || !row.platforms.includes(plat))
+            errors.push(`${at}.arches: "${plat}" is not one of the platforms`);
+          if (!strings(v) || v.length === 0)
+            errors.push(`${at}.arches.${plat}: must be a non-empty array`);
+          else
+            for (const x of v)
+              if (!(ARCHES as readonly string[]).includes(x))
+                errors.push(`${at}.arches.${plat}: "${x}" is not an arch`);
+        }
+    }
     const sf = row.storefront;
     if (sf !== null) {
       if (!sf || typeof sf !== "object" || typeof sf.adapter !== "string") {
@@ -247,7 +274,14 @@ export function renderManifestTs(table: ChannelTable): string {
     family: ${q(c.family)},
     plane: ${q(c.plane)},
     outlet: { kind: ${q(c.outlet.kind)}${c.outlet.subkind ? `, subkind: ${q(c.outlet.subkind)}` : ""} },
-    platforms: ${list(c.platforms)},
+    platforms: ${list(c.platforms)},${
+      c.arches
+        ? `
+    arches: { ${Object.entries(c.arches)
+      .map(([p, v]) => `${q(p)}: ${list(v)}`)
+      .join(", ")} },`
+        : ""
+    }
     formats: ${list(c.formats)},
     deliverableKinds: ${list(c.deliverableKinds)},
     customerAction: ${q(c.customerAction)},
@@ -291,6 +325,8 @@ export interface ChannelEntry {
   /** The wire outlet kind (and, for a package manager, the \`direct\` subkind). Never a new kind. */
   outlet: { kind: string; subkind?: string };
   platforms: readonly string[];
+  /** Platform -> the CPU arches the channel accepts there; absent means any. */
+  arches?: Readonly<Partial<Record<string, readonly string[]>>>;
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;
@@ -344,9 +380,15 @@ export function channelForOutlet(
 export function renderDoc(table: ChannelTable): string {
   const cell = (xs: readonly string[]): string =>
     xs.length === 0 ? "none" : xs.map((x) => `\`${x}\``).join(", ");
+  const takes = (c: ChannelRow): string =>
+    c.arches
+      ? Object.entries(c.arches)
+          .map(([p, v]) => `${p}: ${v.map((x) => `\`${x}\``).join(", ")}`)
+          .join("; ")
+      : "any";
   const rows = table.channels.map(
     (c) =>
-      `| ${c.label} | \`${c.id}\` | ${cell(c.aliases)} | ${c.family} | ${c.plane} | ${cell(c.platforms)} | ${cell(c.formats)} | ${cell(c.deliverableKinds)} | ${c.customerAction} |`,
+      `| ${c.label} | \`${c.id}\` | ${cell(c.aliases)} | ${c.family} | ${c.plane} | ${cell(c.platforms)} | ${cell(c.formats)} | ${takes(c)} | ${cell(c.deliverableKinds)} | ${c.customerAction} |`,
   );
   return `---
 title: "Channels"
@@ -358,8 +400,8 @@ description: "Every distribution channel Polaris Key knows: its id, plane, platf
 
 A channel is a place builds reach customers. The catalogue holds ids, aliases, platforms, formats and deliverable kinds once; the Worker, the CLI and the console read it. An alias is another spelling that names the same channel, such as a wire outlet kind.
 
-| Channel | Id | Aliases | Family | Plane | Platforms | Formats | Deliverables | Customer |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Channel | Id | Aliases | Family | Plane | Platforms | Formats | Builds it takes | Deliverables | Customer |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join("\n")}
 
 The plane is where the work runs: \`worker\` calls the store's API, \`ci\` runs the store's tool, \`pr\` opens a pull request, \`feed\` serves a signed feed.

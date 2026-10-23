@@ -75,7 +75,8 @@ import {
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
-import type { ServiceSlug } from "../api.js";
+import { CHANNEL_IDS, type ChannelId } from "@polaris-key/manifest";
+import type { ProductDetail, ServiceSlug } from "../api.js";
 import {
   FEATURES,
   type FeatureRow,
@@ -194,11 +195,48 @@ export interface NavChildRecord {
   tabs?: readonly string[];
 }
 
-/** What a nav item needs beyond its section's service (F-11: a Distribution sub-capability). */
-export type NavRequirement = "packageFeeds";
+/**
+ * What a nav item needs beyond its section's service: a Distribution sub-capability (F-11) or a
+ * channel in the product's scope (A-20.7: its platforms and deliverables fit the channel).
+ */
+export type NavRequirement = "packageFeeds" | `channel:${ChannelId}`;
 
 /** The product facts a `requires` reads; `null` while the product is loading. */
 export type NavFeatures = Partial<Record<NavRequirement, boolean>> | null;
+
+/** The requirement that names a channel. */
+export const channelRequirement = (id: string): NavRequirement =>
+  `channel:${id as ChannelId}`;
+
+/**
+ * The nav's facts from a one-product read. The Worker lists a channel when it is in scope or the
+ * team declared it (an out-of-scope declared one stays, flagged), so a listed channel stays and
+ * an unlisted one is out. A product with no platform facts has an unknown scope, not an empty
+ * one, and an older Worker that sends no `channels` has none: both leave the channels unset,
+ * which shows every page as before.
+ */
+export function navFeaturesOf(
+  product:
+    | Pick<ProductDetail, "packageFeeds" | "channels" | "platforms">
+    | null
+    | undefined,
+): NavFeatures {
+  if (!product) return null;
+  const features: Partial<Record<NavRequirement, boolean>> = {
+    packageFeeds: product.packageFeeds === true,
+  };
+  if (product.channels && (product.platforms?.length ?? 0) > 0) {
+    const listed = new Set(product.channels.map((c) => c.id));
+    for (const id of CHANNEL_IDS)
+      features[channelRequirement(id)] = listed.has(id);
+  }
+  return features;
+}
+
+/** Is this channel in the product's scope? True while the facts load or are not sent. */
+export function channelInScope(features: NavFeatures, id: string): boolean {
+  return features === null || features[channelRequirement(id)] !== false;
+}
 
 export interface NavPage {
   page: PageId;
@@ -661,6 +699,7 @@ export const SECTIONS: NavSection[] = [
         icon: Send,
         docs: "/docs/features/ship-builds/channels/app-store/",
         inNav: true,
+        requires: "channel:app-store",
       },
       {
         page: "access",
@@ -806,6 +845,8 @@ export const SECTIONS: NavSection[] = [
         icon: ShoppingBag,
         docs: "/docs/features/commerce/",
         inNav: true,
+        // The mappings are App Store products: a product the App Store is out of scope for has none.
+        requires: "channel:app-store",
       },
     ],
   },
@@ -1062,6 +1103,8 @@ export function meetsRequirement(
   features: NavFeatures,
 ): boolean {
   if (!page.requires || features === null) return true;
+  if (page.requires.startsWith("channel:"))
+    return features[page.requires] !== false;
   return features[page.requires] === true;
 }
 
