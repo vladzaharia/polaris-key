@@ -312,7 +312,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "python": {},
         "godot": {},
         "swift": {
@@ -338,7 +337,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "python": {},
         "swift": {},
         "kotlin": {},
@@ -429,7 +427,6 @@
       ],
       "sdks": {
         "node": {},
-        "react": {},
         "swift": {},
         "python": {
           "spelling": "on_change",
