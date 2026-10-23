@@ -254,26 +254,6 @@ describe("portal reads are factories", () => {
  * `queryKey` that is not a `qk.x(...)` call, or an `api.*` member access.
  */
 const KNOWN: Record<string, string[]> = {
-  // P0-32.17
-  "sections/config": [
-    "sections/config/components/MintRecipeFields.tsx",
-    "sections/config/components/RemovedValues.tsx",
-    "sections/config/data.ts",
-  ],
-  // P0-32.17
-  "sections/identity": [
-    "sections/identity/components/SignInSections.tsx",
-    "sections/identity/pages/AppSignIn.tsx",
-  ],
-  // P0-32.17
-  "sections/license": [
-    "sections/license/components/holders.tsx",
-    "sections/license/components/shared.tsx",
-    "sections/license/pages/EnrollmentPage.tsx",
-    "sections/license/pages/LicenseConfig.tsx",
-    "sections/license/pages/LicenseDelete.tsx",
-    "sections/license/pages/LicenseRecord.tsx",
-  ],
 };
 
 describe("console reads are factories", () => {

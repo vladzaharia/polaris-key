@@ -6,6 +6,7 @@
 
 import {
   queryOptions,
+  type QueryObserverOptions,
   useQuery,
   type UseQueryResult,
 } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import {
 } from "../../../api.js";
 import type { Source } from "../../../ui/SourceBadge.js";
 import { qk } from "../../data/queries.js";
+import { licenseQuery } from "../license/data.js";
 
 /** A 404 from a read: the thing does not exist (a product with no catalog yet). */
 export function isNotFound(error: unknown): boolean {
@@ -50,15 +52,60 @@ export function useCatalog(
   return useQuery({ ...catalogQuery(slug), enabled });
 }
 
+const catalogVersionsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.catalogVersions(slug),
+    queryFn: () => api.catalogVersions(slug),
+  });
+
+const catalogVersionQuery = (slug: string, version: number) =>
+  queryOptions({
+    queryKey: qk.catalogVersion(slug, version),
+    queryFn: () => api.catalogVersion(slug, version),
+  });
+
+const catalogUsageQuery = (slug: string, keys: readonly string[]) =>
+  queryOptions({
+    queryKey: qk.catalogUsage(slug, keys),
+    queryFn: () => api.catalogUsage(slug, keys),
+  });
+
+const profileQuery = (slug: string, id: string) =>
+  queryOptions({
+    queryKey: qk.profile(slug, id),
+    queryFn: () => api.profile(slug, id),
+  });
+
+/** Managed-config mint recipes. */
+export const mintQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.mint(slug),
+    queryFn: () => api.edgeMintRecipes(slug),
+  });
+
+const userOverridesQuery = (slug: string, subject: string) =>
+  queryOptions({
+    queryKey: qk.userOverrides(slug, subject),
+    queryFn: () => api.productUserOverrides(slug, subject),
+  });
+
+/** One removed-value holder, read whole under its own key (the config is picked from it). */
+export const holderQuery = (
+  slug: string,
+  kind: "profile" | "license" | "account",
+  id: string,
+): QueryObserverOptions<unknown> =>
+  (kind === "profile"
+    ? profileQuery(slug, id)
+    : kind === "license"
+      ? licenseQuery(slug, id)
+      : userOverridesQuery(slug, id)) as QueryObserverOptions<unknown>;
+
 export function useCatalogVersions(
   slug: string,
   enabled = true,
 ): UseQueryResult<{ versions: CatalogVersionSummary[] }> {
-  return useQuery({
-    queryKey: qk.catalogVersions(slug),
-    queryFn: () => api.catalogVersions(slug),
-    enabled,
-  });
+  return useQuery({ ...catalogVersionsQuery(slug), enabled });
 }
 
 export function useCatalogVersion(
@@ -66,8 +113,7 @@ export function useCatalogVersion(
   version: number | null,
 ): UseQueryResult<ProductCatalog> {
   return useQuery({
-    queryKey: qk.catalogVersion(slug, version ?? 0),
-    queryFn: () => api.catalogVersion(slug, version ?? 0),
+    ...catalogVersionQuery(slug, version ?? 0),
     enabled: version !== null && version > 0,
   });
 }
@@ -78,8 +124,7 @@ export function useCatalogUsage(
   keys: readonly string[],
 ): UseQueryResult<{ keys: Record<string, CatalogKeyUsage> }> {
   return useQuery({
-    queryKey: qk.catalogUsage(slug, keys),
-    queryFn: () => api.catalogUsage(slug, keys),
+    ...catalogUsageQuery(slug, keys),
     enabled: keys.length > 0,
   });
 }
@@ -94,10 +139,7 @@ export function useProfile(
   slug: string,
   id: string,
 ): UseQueryResult<ProfileDetail> {
-  return useQuery({
-    queryKey: qk.profile(slug, id),
-    queryFn: () => api.profile(slug, id),
-  });
+  return useQuery(profileQuery(slug, id));
 }
 
 /**
@@ -109,8 +151,7 @@ export function useEdgeMint(
   watch = false,
 ): UseQueryResult<EdgeMintRecipesResponse> {
   return useQuery({
-    queryKey: qk.mint(slug),
-    queryFn: () => api.edgeMintRecipes(slug),
+    ...mintQuery(slug),
     ...(watch
       ? { refetchInterval: 15_000, refetchOnWindowFocus: "always" as const }
       : {}),

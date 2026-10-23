@@ -2,11 +2,10 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound, Lock } from "lucide-react";
 import type { MintBlock } from "@polaris-key/catalog";
-import { api, type ConfigEntry } from "../../../../api.js";
+import { type ConfigEntry } from "../../../../api.js";
 import { formatDate, fromSeconds } from "../../../../lib/format.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
-import { qk } from "../../../data/queries.js";
-import { fetchSecrets } from "../../../data/hooks.js";
+import { reads } from "../../../data/reads.js";
 import { Button } from "../../../../ui/Button.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Select } from "../../../../ui/Select.js";
@@ -91,8 +90,7 @@ export function MintRecipeFields({
   const [addingKey, setAddingKey] = React.useState(false);
   const keyless = recipe ? needsKey(recipe) : false;
   const secrets = useQuery({
-    queryKey: qk.secrets(slug),
-    queryFn: () => fetchSecrets(slug),
+    ...reads.secrets(slug),
     enabled: recipe?.secretUsage === "edge-mint",
   });
   const sealed = secrets.data?.find((x) => x.name === recipe?.signingKeySecret);

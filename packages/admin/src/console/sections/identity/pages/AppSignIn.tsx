@@ -13,7 +13,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type ProductSetting } from "../../../../api.js";
+import { ApiError, type ProductSetting } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useAdminForm } from "../../../../ui/form.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -25,7 +25,8 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { reads } from "../../../data/reads.js";
+import { mintQuery } from "../../config/data.js";
 import {
   ProductConnectionSection,
   type ConnectionState,
@@ -91,10 +92,7 @@ function useRowsDirty(ref: React.RefObject<HTMLElement | null>): boolean {
  */
 function useHasTierSync(slug: string): boolean {
   const area = TIER_AREA;
-  const tier = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const tier = useQuery(reads.productSettings(slug, area));
   return tier.data
     ? tier.data.settings.some(
         (st) =>
@@ -106,25 +104,12 @@ function useHasTierSync(slug: string): boolean {
 
 export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  const services = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
-  const portal = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const services = useQuery(reads.services(slug));
+  const portal = useQuery(reads.portal(slug));
   // Managed config access is a different area: without it this card says so and the rest renders.
-  const mint = useQuery({
-    queryKey: qk.mint(slug),
-    queryFn: () => api.edgeMintRecipes(slug),
-    retry: false,
-  });
+  const mint = useQuery({ ...mintQuery(slug), retry: false });
   const area = "identity.keyEntry";
-  const keys = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const keys = useQuery(reads.productSettings(slug, area));
   const hasTierSync = useHasTierSync(slug);
   const name = product.data?.name ?? slug;
   const header = (
