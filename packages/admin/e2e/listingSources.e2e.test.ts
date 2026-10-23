@@ -141,8 +141,8 @@ describe("listing sources, Revert to manifest and Use Presentation", () => {
         "/manage/api/products/djdl/assets": { assets: [] },
         "/manage/api/products/djdl/assets/usage": {
           hosting: true,
-          media: { full: false },
-          release: { full: false },
+          media: { bytes: 0, files: 0, quota: 536870912, full: false },
+          release: { bytes: 0, files: 0, quota: 536870912, full: false },
           settings: [],
         },
       };

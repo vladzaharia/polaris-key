@@ -28,6 +28,7 @@ import { toast } from "../../../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../../../ui/useUnsavedChangesGuard.js";
 import { mutate } from "../../../../data/mutations.js";
 import { PageHeader } from "../../../../../ui/PageHeader.js";
+import { useProduct } from "../../../../data/hooks.js";
 import { PageTabs } from "../../../../components/PageTabs.js";
 import { useSearchParam } from "../../../../router.js";
 import { codecs, r } from "../../../../routes.js";
@@ -360,7 +361,9 @@ function SourceLine({
   locale,
   name,
   label,
+  dirty,
 }: {
+  dirty: boolean;
   slug: string;
   data: ListingResponse;
   locale: string;
@@ -374,6 +377,7 @@ function SourceLine({
       label={label}
       source={f.source}
       inherited={f.inherited}
+      disabledReason={dirty ? "Save or discard your changes first" : undefined}
       {...(f.revert ? { revertPath: f.revert } : {})}
       {...(name === "appName"
         ? { presentationBody: { app: { name: null } } }
@@ -393,6 +397,7 @@ function TextTab({
   const [localeRaw, setLocale] = useSearchParam("locale", localeCodec);
   const locale = localeRaw || fallback;
   const [newLocale, setNewLocale] = React.useState("");
+  const productName = useProduct(slug).data?.name;
   const values = React.useMemo(() => draftOf(data, locale), [data, locale]);
   const creating = data.listing === null;
   const form = useAdminForm<Draft>({
@@ -431,6 +436,11 @@ function TextTab({
             ) : (
               <Input
                 {...f}
+                placeholder={
+                  name === "appName" && data.inherited?.name && productName
+                    ? `${productName} (from Presentation)`
+                    : undefined
+                }
                 maxLength={opts.max}
                 mono={opts.mono}
                 autoComplete="off"
@@ -445,6 +455,7 @@ function TextTab({
             locale={locale}
             name={name}
             label={label}
+            dirty={form.isDirty}
           />
         ) : null}
       </div>
