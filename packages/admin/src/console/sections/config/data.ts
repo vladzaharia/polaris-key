@@ -4,7 +4,11 @@
  * cache holds one shape per key (`test/queryKeyShapes.test.ts`).
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   ApiError,
@@ -24,12 +28,26 @@ export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-/** The active catalog. A 404 means "no catalog yet", which pages render as their first run. */
-export function useCatalog(slug: string): UseQueryResult<ProductCatalog> {
-  return useQuery({
+/** The active catalog, shared with Distribution's pack gates (one fetcher for the key). */
+export const catalogQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.catalog(slug),
     queryFn: () => api.schema(slug),
   });
+
+/** The profile list, shared with Licensing's tier forms (one fetcher for the key). */
+export const profilesQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.profiles(slug),
+    queryFn: () => api.profiles(slug),
+  });
+
+/** The active catalog. A 404 means "no catalog yet", which pages render as their first run. */
+export function useCatalog(
+  slug: string,
+  enabled = true,
+): UseQueryResult<ProductCatalog> {
+  return useQuery({ ...catalogQuery(slug), enabled });
 }
 
 export function useCatalogVersions(
@@ -69,10 +87,7 @@ export function useCatalogUsage(
 export function useProfiles(
   slug: string,
 ): UseQueryResult<{ profiles: ProfileSummary[] }> {
-  return useQuery({
-    queryKey: qk.profiles(slug),
-    queryFn: () => api.profiles(slug),
-  });
+  return useQuery(profilesQuery(slug));
 }
 
 export function useProfile(

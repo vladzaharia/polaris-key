@@ -675,8 +675,8 @@ async function transitionsOf(
 }
 
 /**
- * The page's h1 (`heading`) has focus, and the live region announced the page by its title
- * (`announced`: a record is announced by noun and id, "License lic_1") (ADMIN.md §5.6).
+ * The page's h1 (`heading`) has focus, and the live region announced the page by that heading's
+ * accessible name (`announced`, default the heading) (ADMIN.md §5.6).
  */
 async function focusedHeading(
   page: Page,
@@ -899,7 +899,7 @@ describe("motion on: the console under the Worker's CSP", () => {
         delay: tk.micro,
       });
       expect(groupNames(forward!)).toContain("pk-main");
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       expect(await running(page)).toEqual([]);
 
       // A record tab: the indicator slides (slow), the panel fades through, the main region and
@@ -959,7 +959,7 @@ describe("motion on: the console under the Worker's CSP", () => {
       expect(again!.pseudo["::view-transition-group(pk-key)"]).toMatchObject({
         duration: tk.slow,
       });
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       // The one-shot name is gone from the row once the transition is over.
       await page.goBack();
       await row().first().waitFor();
@@ -1525,7 +1525,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
           .first()
           .click(),
       );
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       await none("tab", () =>
         page
           .getByRole("navigation", { name: "License sections" })

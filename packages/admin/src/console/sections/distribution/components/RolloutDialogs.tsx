@@ -38,12 +38,8 @@ import { Select } from "../../../../ui/Select.js";
 import { toast } from "../../../../ui/toast.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { mutate } from "../../../data/mutations.js";
-import {
-  useDeliverables,
-  useMatrix,
-  useOutlets,
-  useReleaseStore,
-} from "../data.js";
+import { useMatrix, useOutlets } from "../data.js";
+import { useDeliverables, useReleaseStore } from "../../release/data.js";
 import {
   outletKindLabel,
   rolloutSummary,

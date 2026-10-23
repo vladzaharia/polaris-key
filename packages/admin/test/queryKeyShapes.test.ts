@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  * (the raw `{ products }` response in one, the bare array in the other) break each other in
  * whichever order they load: that was the blank Products page and the crashing switcher.
  *
- * So this scans every `useQuery({ queryKey: qk.X(…), queryFn })` in `src/` and requires every
+ * So this scans every `useQuery({ queryKey: qk.X(…), queryFn })` and `queryOptions({…})` in `src/` and requires every
  * reader of one key family to pass the same fetcher (compared as source text, give or take
  * whitespace, `async` and non-null `!`). Sharing a named fetcher such as `fetchProducts` or
  * `fetchProduct` is the way to satisfy it.
@@ -79,7 +79,7 @@ function scan(): { readers: Reader[]; unresolved: string[] } {
   const unresolved: string[] = [];
   for (const path of sourceFiles(SRC)) {
     const text = readFileSync(path, "utf8");
-    if (!/useQuery\(/.test(text)) continue;
+    if (!/(useQuery|queryOptions)\(/.test(text)) continue;
     const file = ts.createSourceFile(
       path,
       text,
@@ -105,7 +105,11 @@ function scan(): { readers: Reader[]; unresolved: string[] } {
     const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
         const callee = node.expression.text;
-        if (callee === "useQuery") {
+        // The portal has its own `qk` (the keys differ in name only), policed by queryFactories.
+        if (
+          callee === "useQuery" ||
+          (callee === "queryOptions" && rel.startsWith("console"))
+        ) {
           const opts = node.arguments[0];
           if (opts && ts.isObjectLiteralExpression(opts)) {
             const prop = (name: string): ts.Expression | undefined => {
@@ -120,7 +124,9 @@ function scan(): { readers: Reader[]; unresolved: string[] } {
             const key = prop("queryKey");
             const fn = prop("queryFn");
             if (key && fn) record(key, fn, node);
-            else
+            // A call that takes its key and fetcher from a factory (`useQuery(reads.x())`,
+            // `{ ...reads.x(), enabled }`) is read where the factory is built.
+            else if (!opts.properties.some((q) => ts.isSpreadAssignment(q)))
               unresolved.push(`${rel}: useQuery without queryKey and queryFn`);
           }
         }
@@ -145,12 +151,13 @@ describe("query keys hold one shape (the qk.products() regression)", () => {
     }
     // The registry list has exactly one reader: the shell's `useProducts`. Home, Products and the
     // switcher all call that hook, so no page can cache another shape under the key (chunk 4
-    // replaced the Products page's own reader with the hook).
+    // replaced the Products page's own reader with the hook, which reads the `reads.products()`
+    // factory).
     expect(
       readers
         .filter((r) => r.family === "products")
         .map((r) => r.at.split(":")[0]),
-    ).toEqual(["console/data/hooks.ts"]);
+    ).toEqual(["console/data/reads.ts"]);
   });
 
   it("every key is a qk.X(…) call, directly or through a const", () => {

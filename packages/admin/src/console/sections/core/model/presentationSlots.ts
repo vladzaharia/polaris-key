@@ -1,6 +1,6 @@
 /** The hosted-asset slots in the operator's words: labels, sources, statuses and refusals. */
 
-import { ApiError, api, type HostedAssetDto } from "../../../../api.js";
+import { ApiError, type HostedAssetDto } from "../../../../api.js";
 import type { Tone } from "../../../../lib/status.js";
 
 export const MiB = 1024 * 1024;
@@ -15,10 +15,6 @@ export const UPLOAD_ACCEPT =
 
 export const MAX_SCREENSHOTS = 16;
 const SCREENSHOT_RE = /^listing\.screenshot:(\d+)$/;
-
-export function fetchHostedAssets(slug: string): Promise<HostedAssetDto[]> {
-  return api.hostedAssets(slug).then((r) => r.assets);
-}
 
 /** Bytes in binary units, as the quotas are set ("512 MiB", "100 GiB"), on every size of the page. */
 export function binaryBytes(bytes: number): string {

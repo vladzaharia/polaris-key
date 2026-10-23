@@ -32,6 +32,7 @@ const VERBS: Record<string, string> = {
   "license.overrides": "changed config overrides of license",
   "license.key.send": "emailed a new key for license",
   "license.key.send.failed": "could not email the new key for license",
+  "license.key.send.revoked": "revoked the other keys of license",
   "license.invite.send": "emailed an invitation for license",
   "license.invite.send.failed": "could not email the invitation for license",
   "license.enable": "enabled license",

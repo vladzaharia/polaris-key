@@ -11,7 +11,7 @@ import { createPreloadBridge } from "../src/electron/renderer.js";
 import { allowApp, ipcPair } from "./electronIpc.js";
 import { seededClient, signedLicense } from "./parityFixtures.js";
 
-async function host(allow: boolean) {
+async function host(allow: boolean, appOrigin?: string) {
   const seeded = await seededClient({
     license: await signedLicense({ pro: true }),
     token: "pkeyt_seed",
@@ -21,6 +21,7 @@ async function host(allow: boolean) {
   exposePolarisBridge(seeded.client, {
     ipcMain: ipc.ipcMain,
     ...(allow ? { allowSender: allowApp } : {}),
+    ...(appOrigin ? { appOrigin } : {}),
   });
   return { ...seeded, ipc, bridge: createPreloadBridge(ipc.ipcRenderer) };
 }
@@ -79,5 +80,48 @@ describe("the default sender rule", () => {
     expect(await answer("about:blank")).toBe(false);
     expect(await answer("https://evil.test/")).toBe(false);
     expect(await answer("app://main/", {})).toBe(false);
+  });
+});
+
+describe("a pinned appOrigin", () => {
+  async function pinned(pin: string, url: string, parent: unknown = null) {
+    const { ipc } = await host(false, pin);
+    const handler = ipc.handlers.get(
+      channelOf(DEFAULT_BRIDGE_CHANNEL, "getSyncState"),
+    )!;
+    const res = (await handler({
+      sender: { id: 1, send() {}, once() {} },
+      senderFrame: { url, parent },
+    })) as { ok: boolean };
+    return res.ok;
+  }
+
+  it("pins a custom scheme by scheme and host, not the opaque origin", async () => {
+    expect(await pinned("app://main", "app://main/")).toBe(true);
+    expect(await pinned("app://main", "app://main/index.html")).toBe(true);
+    expect(await pinned("app://main", "APP://MAIN/")).toBe(true);
+    expect(await pinned("APP://Main", "app://main/x")).toBe(true);
+    expect(await pinned("app://main", "app://evil/")).toBe(false);
+    expect(await pinned("app://main", "app://main.evil/")).toBe(false);
+    expect(await pinned("app://main", "other://main/")).toBe(false);
+    expect(await pinned("app://main", "file:///x")).toBe(false);
+    expect(await pinned("app://main", "data:text/html,x")).toBe(false);
+    expect(await pinned("app://main", "about:blank")).toBe(false);
+    expect(await pinned("app://main", "app://main/", {})).toBe(false);
+  });
+
+  it("keeps the origin comparison for https", async () => {
+    expect(await pinned("https://a.example", "https://a.example/p")).toBe(true);
+    expect(await pinned("https://a.example", "https://b.example/")).toBe(false);
+    expect(await pinned("https://a.example", "http://a.example/")).toBe(false);
+    expect(await pinned("https://a.example", "https://a.example/", {})).toBe(
+      false,
+    );
+  });
+
+  it("refuses a file: pin", async () => {
+    await expect(pinned("file:///app/", "file:///app/x")).rejects.toThrow(
+      /custom scheme/,
+    );
   });
 });

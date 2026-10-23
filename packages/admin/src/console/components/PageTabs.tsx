@@ -180,6 +180,18 @@ export function PageTabs({
   /** The tab a running transition is about to select: `value` until its update lands. */
   const pending = React.useRef<string | null>(null);
 
+  // Back/Forward between route tabs changes the selection without touching the tabs: if focus is
+  // on a tab of this strip, follow the selection, so it never sits on a tab that is not selected.
+  React.useEffect(() => {
+    if (!routed) return;
+    const nav = strip.ref.current;
+    const active = document.activeElement;
+    if (!nav || !active || !nav.contains(active)) return;
+    const on = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    if (on && on !== active && active.matches('[data-edge="tab"]'))
+      on.focus({ preventScroll: true });
+  }, [routed, value, strip.ref]);
+
   if (routed) {
     return (
       <nav

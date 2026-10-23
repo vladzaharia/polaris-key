@@ -24,6 +24,7 @@ import {
   type TierSummary,
 } from "../../../../api.js";
 import { qk } from "../../../data/queries.js";
+import { useReleaseStore } from "../../release/data.js";
 import { fromSeconds, formatDate } from "../../../../lib/format.js";
 import { compareVersions } from "../../../../lib/version.js";
 import {
@@ -151,23 +152,13 @@ export function useTiers(slug: string) {
   return useQuery({ queryKey: qk.tiers(slug), queryFn: () => api.tiers(slug) });
 }
 
-export function useProfiles(slug: string) {
-  return useQuery({
-    queryKey: qk.profiles(slug),
-    queryFn: () => api.profiles(slug),
-  });
-}
-
 /**
  * The product's declared channel names, from the Release truth store (a row for `stable`,
  * `beta` and every declared manual channel). `channelOptions` filters the built-ins back out. An
  * error or a 404 (Release off) means there are none: the picker still offers the canonical ones.
  */
 export function useManualChannels(slug: string): string[] {
-  const res = useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
+  const res = useReleaseStore(slug);
   return React.useMemo(
     () => (res.data?.channels ?? []).map((c) => c.channel),
     [res.data],

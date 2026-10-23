@@ -10,6 +10,9 @@
  * product's own names, with a visible placeholder where it has none yet.
  */
 
+import { integrationQuery } from "../data.js";
+import { catalogQuery } from "../../config/data.js";
+import { deliverablesQuery } from "../../release/data.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,7 +22,6 @@ import {
   sdkAddCommand,
   type PinFingerprint,
 } from "@polaris-key/manifest/integration";
-import { api } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
@@ -32,7 +34,6 @@ import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
@@ -60,22 +61,17 @@ export function IntegrationPage({
 }: {
   slug: string;
 }): React.ReactElement {
-  const view = useQuery({
-    queryKey: qk.integration(slug),
-    queryFn: () => api.integration(slug),
-  });
+  const view = useQuery(integrationQuery(slug));
   const data = view.data;
   const services = data?.snippet.services ?? [];
   // The product's own names for the snippets; a missing catalog or release is just placeholders.
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     enabled: services.includes("config"),
     retry: false,
   });
   const deliverables = useQuery({
-    queryKey: qk.deliverables(slug),
-    queryFn: () => api.deliverables(slug),
+    ...deliverablesQuery(slug),
     enabled: services.includes("release"),
     retry: false,
   });

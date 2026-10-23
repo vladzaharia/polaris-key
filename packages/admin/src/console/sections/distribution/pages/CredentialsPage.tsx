@@ -68,8 +68,8 @@ import {
   useConnectors,
   useCredentials,
   useOutlets,
-  useReleaseStore,
 } from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 
 // ── The kinds ──────────────────────────────────────────────────────────────────────────────────
 

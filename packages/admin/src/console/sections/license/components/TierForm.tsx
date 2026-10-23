@@ -23,7 +23,8 @@ import { NumberInput } from "../../../../ui/NumberInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { VersionInput } from "../../../../ui/VersionInput.js";
 import { InlineFailure } from "./InlineFailure.js";
-import { useManualChannels, useProfiles } from "./shared.js";
+import { useProfiles } from "../../config/data.js";
+import { useManualChannels } from "./shared.js";
 
 /**
  * Every license holds `stable` whatever its tier lists ("none means stable only", terms.ts), so
