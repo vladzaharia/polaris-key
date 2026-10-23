@@ -474,6 +474,17 @@
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">アップデートを確認</string>
     <string name="update_checkNow__macos">アップデートを確認</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">ライセンスを管理</string>
+    <string name="menu_manageLicense__macos">ライセンスを管理</string>
+    <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_title">アップデートの準備ができました</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_body">再起動してアップデートを完了します。</string>
+    <!-- Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_title">サインインしました</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_body">このデバイスでサインインしました。</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">コンテンツをダウンロード中</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->

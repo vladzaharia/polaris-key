@@ -672,3 +672,38 @@ describe("DesktopAdapter — installUpdate progress and host facts (UK-06.3)", (
     b.dispose();
   });
 });
+
+describe("DesktopAdapter — onOpen (UK-06.4)", () => {
+  it("forwards the host's open requests for the two views it knows", () => {
+    const subs = new Set<(v: string) => void>();
+    const bridge = {
+      ...makeFakeBridge(emptyBridgeState()),
+      version: 4,
+      onOpen: (cb: (v: never) => void) => {
+        subs.add(cb as (v: string) => void);
+        return () => void subs.delete(cb as (v: string) => void);
+      },
+    } as PolarisBridge;
+    const a = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const seen: string[] = [];
+    const off = a.onOpen!((v) => seen.push(v));
+    for (const f of subs) {
+      f("settings");
+      f("update");
+      f("admin");
+    }
+    expect(seen).toEqual(["settings", "update"]);
+    off();
+    expect(subs.size).toBe(0);
+    a.dispose();
+  });
+
+  it("an older host (no onOpen) gives an inert unsubscribe", () => {
+    const a = desktopAdapter({
+      bridge: makeFakeBridge(emptyBridgeState()),
+      now: () => NOW_SEC,
+    });
+    expect(() => a.onOpen!(() => undefined)()).not.toThrow();
+    a.dispose();
+  });
+});

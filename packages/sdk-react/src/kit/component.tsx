@@ -143,6 +143,10 @@ export interface KitProps {
   onSelect?: (id: string) => void;
   /** Extra classes on the kit root (`pk-root` stays). */
   className?: string;
+  /** `Settings` and `UpdatePrompt`, opened by the host (a native menu item): draw as a modal
+   *  dialog over the app, and call this when the person closes it (Escape, the scrim or Later).
+   *  The dialog hands focus back to what held it. */
+  onDismiss?: () => void;
 }
 
 const ThemeContext = createContext<KitTheme | null>(null);
@@ -705,12 +709,16 @@ function UpdateDialog(props: {
     if (typeof d.showModal === "function") d.showModal();
     else d.setAttribute("open", "");
   });
-  useEffect(() => {
-    if (open) return;
+  const giveBack = () => {
     const o = opener.current;
     opener.current = null;
     if (o?.isConnected) o.focus({ preventScroll: true });
+  };
+  useEffect(() => {
+    if (!open) giveBack();
   }, [open]);
+  // A host that unmounts the dialog on close (onDismiss) gets the same focus return.
+  useEffect(() => giveBack, []);
   if (!open) return null;
   const dismiss = () => (props.hasLater ? props.later() : props.close());
   return (
@@ -776,10 +784,11 @@ export function kitComponent(component: ComponentName) {
           }
         : undefined;
     const asDialog =
-      component === "UpdatePrompt" &&
-      !props.embedded &&
-      props.asWindow !== true &&
-      !UPDATE_BLOCKING.has(view.state);
+      (component === "UpdatePrompt" &&
+        !props.embedded &&
+        props.asWindow !== true &&
+        !UPDATE_BLOCKING.has(view.state)) ||
+      (component === "Settings" && props.onDismiss !== undefined);
     const ctx = {
       ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
       dialog: asDialog,
@@ -798,7 +807,10 @@ export function kitComponent(component: ComponentName) {
             hasLater={view.copy.includes("update.later")}
             later={() => ctx.act("update.later")}
             dismissed={dismissed}
-            close={() => setDismissed(view.state)}
+            close={() => {
+              setDismissed(view.state);
+              props.onDismiss?.();
+            }}
           >
             {body}
           </UpdateDialog>

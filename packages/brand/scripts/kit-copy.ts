@@ -126,6 +126,10 @@ export const KEY_NAMESPACES = [
   "locker",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
+  // The Electron host's app-menu items (UK-06.4): the host places them, no kit component shows them.
+  "menu",
+  // The Electron host's opt-in OS notifications (UK-06.5): static text, no kit component.
+  "notify",
 ] as const;
 
 /**
@@ -148,6 +152,8 @@ const SHARED_NAMESPACES = new Set([
   "a11y",
   "signin",
   "cli",
+  "menu",
+  "notify",
   ...PORTAL_NAMESPACES,
 ]);
 

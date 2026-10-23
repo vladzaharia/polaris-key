@@ -1313,6 +1313,36 @@ msgctxt "macos"
 msgid "update.checkNow"
 msgstr "Buscar actualizaciones"
 
+#. Manage license
+#. App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.
+msgid "menu.manageLicense"
+msgstr "Administrar la licencia"
+
+#. macos: Manage License…
+msgctxt "macos"
+msgid "menu.manageLicense"
+msgstr "Administrar la licencia"
+
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr "Actualización lista"
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr "Reinicia para terminar de actualizar."
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr "Sesión iniciada"
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
+msgstr "Has iniciado sesión en este dispositivo."
+
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
 msgid "updateProgress.contentTitle"

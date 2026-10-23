@@ -433,7 +433,8 @@ describe("the parts run themselves inside the provider", () => {
     fireEvent.click(
       container.querySelector('button[data-key="update.install"]')!,
     );
-    expect(open).toHaveBeenCalledTimes(1);
+    // The host here has no install driver (decide answers nothing): the download page opens.
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
     fireEvent.click(
       container.querySelector('button[data-key="about.copyDiagnostics"]')!,
     );
