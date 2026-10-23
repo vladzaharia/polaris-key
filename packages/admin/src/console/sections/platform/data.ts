@@ -134,6 +134,11 @@ export const platformReads = {
       queryKey: qk.platformReach(key, value),
       queryFn: () => api.platformSettingReach(key, value),
     }),
+  deployment: () =>
+    queryOptions({
+      queryKey: qk.platformDeployment(),
+      queryFn: () => fetchPlatformDeployment(),
+    }),
   members: () =>
     queryOptions({ queryKey: qk.members(), queryFn: () => api.members() }),
 };

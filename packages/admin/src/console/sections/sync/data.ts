@@ -8,7 +8,11 @@ import {
   syncedSettings,
   type SettingRoute,
 } from "@polaris-key/catalog";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { qk } from "../../data/queries.js";
 import { reads } from "../../data/reads.js";
 import {
@@ -53,13 +57,16 @@ export function localSettings(catalog: ProductCatalog | null): string[] {
     .map((r) => r.key);
 }
 
-/** The Cloud Sync usage read: tiers with their bytes, the default, and the aggregate. */
-export function useSyncUsage(slug: string): UseQueryResult<SyncUsageResponse> {
-  return useQuery({
+export const syncUsageQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.syncUsage(slug),
     queryFn: () => api.syncUsage(slug),
     retry: false,
   });
+
+/** The Cloud Sync usage read: tiers with their bytes, the default, and the aggregate. */
+export function useSyncUsage(slug: string): UseQueryResult<SyncUsageResponse> {
+  return useQuery(syncUsageQuery(slug));
 }
 
 /** The area the product's Cloud Sync limits are listed under (`cloudSync.ceiling.bytes`). */

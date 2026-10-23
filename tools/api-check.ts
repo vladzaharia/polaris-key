@@ -14,11 +14,12 @@
 //   - a concept names a `feature` or `enum` the registries lack;
 //   - a `removed` row whose `from` is a common word has no `scan`.
 //
-// Rule 1 (SP-35.5): every public verb in a file listed under `surfaces.<sdk>` (Node, React, Python)
+// Rule 1 (SP-35.5, .6): every public verb in a file listed under `surfaces.<sdk>`
 // is a concept's spelling for that SDK, a `sdkOnly` entry, or covered by `ignore`. TypeScript is
 // read with the compiler API (class or interface members, or a file's exported functions and
 // consts); Python with `def` at class depth (or module level), `_names` skipped.
-// Swift, Kotlin and Godot scanners land with SP-35.6; removed names and reserved spellings with .7.
+// Swift, Kotlin (regex over brace depth; `private`/`fileprivate`/`internal`, `_names` skipped) and
+// GDScript (top-level `func` and `signal`) are read as text. Removed names and reserved spellings with .7.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -140,10 +141,114 @@ export function scanPython(source: string, type?: string): string[] {
   return [...names];
 }
 
+/** Source with comments and string contents blanked, one entry per line, plus each line's brace depth at its start. */
+function braceLines(source: string): { text: string; depth: number }[] {
+  const clean = source
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/"(?:\\.|[^"\\\n])*"/g, '""')
+    .replace(/\/\/.*$/gm, "");
+  let depth = 0;
+  return clean.split("\n").map((text) => {
+    const d = depth;
+    for (const ch of text) {
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+    }
+    return { text, depth: d };
+  });
+}
+
+/** Lines at member depth: inside every declaration of `type` (matched by `decl`), or at top level with no `type`. */
+function memberLines(
+  source: string,
+  type: string | undefined,
+  decl: RegExp,
+): { text: string; declLine: string }[] {
+  const lines = braceLines(source);
+  if (type === undefined)
+    return lines
+      .filter((l) => l.depth === 0)
+      .map((l) => ({ text: l.text, declLine: "" }));
+  const out: { text: string; declLine: string }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = decl.exec(lines[i]!.text);
+    if (!m || m[1] !== type) continue;
+    const bodyDepth = lines[i]!.depth + 1;
+    let opened = lines[i]!.text.includes("{");
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j]!;
+      if (l.depth >= bodyDepth) {
+        opened = true;
+        if (l.depth === bodyDepth)
+          out.push({ text: l.text, declLine: lines[i]!.text });
+      } else if (opened || l.text.trim() !== "{") break;
+    }
+  }
+  return out;
+}
+
+const SWIFT_DECL =
+  /\b(?:class|struct|enum|actor|extension)\s+(\w+)|\bprotocol\s+(\w+)/;
+const swiftDecl = {
+  exec: (t: string): RegExpExecArray | null => {
+    const m = SWIFT_DECL.exec(t);
+    if (!m) return null;
+    const r = [m[0], m[1] ?? m[2]] as unknown as RegExpExecArray;
+    return r;
+  },
+} as RegExp;
+
+/** Public `func`, `var` and `let` names of `type` (struct, class, enum, actor, protocol or extension) in Swift source; with no `type`, top-level ones. `private`, `fileprivate` and `internal` members (the default) are skipped. */
+export function scanSwift(source: string, type?: string): string[] {
+  const names = new Set<string>();
+  const re =
+    /^\s*((?:(?:@\w+(?:\([^)]*\))?|\w+(?:\(set\))?)\s+)*?)(?:func|var|let)\s+`?(\w+)/;
+  for (const { text, declLine } of memberLines(source, type, swiftDecl)) {
+    const m = re.exec(text);
+    if (!m) continue;
+    const mods = m[1] ?? "";
+    const inProtocol = /\bprotocol\b/.test(declLine);
+    const pub =
+      /\b(?:public|open)\b/.test(mods) ||
+      inProtocol ||
+      /\b(?:public|open)\b[^{]*\bextension\b/.test(declLine);
+    if (!pub || /\b(?:private|fileprivate|internal)\b/.test(mods)) continue;
+    if (!m[2]!.startsWith("_")) names.add(m[2]!);
+  }
+  return [...names];
+}
+
+/** Public `fun`, `val` and `var` names of `type` (class, object or interface) in Kotlin source; with no `type`, top-level ones. `private`, `internal` and `protected` members are skipped; no modifier means public. */
+export function scanKotlin(source: string, type?: string): string[] {
+  const names = new Set<string>();
+  const re =
+    /^\s*((?:(?:@\w+(?:\([^)]*\))?|public|private|internal|protected|open|abstract|override|suspend|inline|operator|infix|final|const|lateinit|actual|expect|external|tailrec)\s+)*)(?:fun|val|var)\s+(?:<[^>]*>\s*)?(?:[\w<>?,. ]+\.)?(\w+)/;
+  for (const { text } of memberLines(
+    source,
+    type,
+    /\b(?:class|object|interface)\s+(\w+)/,
+  )) {
+    const m = re.exec(text);
+    if (!m || /\b(?:private|internal|protected)\b/.test(m[1] ?? "")) continue;
+    if (!m[2]!.startsWith("_")) names.add(m[2]!);
+  }
+  return [...names];
+}
+
+/** Top-level `func` and `signal` names of a GDScript file (a script is one class); `_names` are skipped. */
+export function scanGodot(source: string): string[] {
+  const names = new Set<string>();
+  for (const line of source.split("\n")) {
+    const m = /^(?:static\s+)?(?:func|signal)\s+(\w+)/.exec(line);
+    if (m && !m[1]!.startsWith("_")) names.add(m[1]!);
+  }
+  return [...names];
+}
+
 /** Rule 1: public verbs on the recorded Node, React and Python surfaces that nothing accounts for. */
 function checkSurfaces(root: string, doc: Api): string[] {
   const out: string[] = [];
-  for (const sdk of ["node", "react", "python"]) {
+  for (const sdk of ["node", "react", "python", "swift", "kotlin", "godot"]) {
     const casing = doc.casing?.[sdk] ?? "camel";
     for (const surf of doc.surfaces?.[sdk] ?? []) {
       const abs = join(root, surf.file);
@@ -153,7 +258,15 @@ function checkSurfaces(root: string, doc: Api): string[] {
       }
       const src = readFileSync(abs, "utf8");
       const verbs =
-        sdk === "python" ? scanPython(src, surf.type) : scanTs(src, surf.type);
+        sdk === "python"
+          ? scanPython(src, surf.type)
+          : sdk === "swift"
+            ? scanSwift(src, surf.type)
+            : sdk === "kotlin"
+              ? scanKotlin(src, surf.type)
+              : sdk === "godot"
+                ? scanGodot(src)
+                : scanTs(src, surf.type);
       const accepted = new Set<string>();
       for (const c of doc.concepts) {
         const e = c.sdks?.[sdk];

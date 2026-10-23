@@ -41,6 +41,7 @@ import {
   type SettingHome,
 } from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
+import { coreBReads } from "../data.js";
 
 /** A page as the console words it elsewhere: `Settings → Features and general`, `License → Enrollment`. */
 function destination(page: ProductPageId): string {
@@ -126,10 +127,7 @@ export function SettingsAllPage({
 }): React.ReactElement {
   const product = useProduct(slug).data;
   const me = useMe().data;
-  const values = useQuery({
-    queryKey: qk.productSettingsEvery(slug),
-    queryFn: () => api.productSettings(slug),
-  });
+  const values = useQuery(coreBReads.productSettingsEvery(slug));
   useLoadingAnnouncement("all settings", values.isPending);
   const [text, setText] = React.useState("");
   const find = React.useRef<HTMLInputElement>(null);

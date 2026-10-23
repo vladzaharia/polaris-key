@@ -262,40 +262,16 @@ const KNOWN: Record<string, string[]> = {
   ],
   // P0-32.14 and 32.15
   "sections/core": [
-    "sections/core/components/CustomerPortalControl.tsx",
-    "sections/core/components/PackageFeedsControl.tsx",
     "sections/core/components/PresentationBaseRows.tsx",
     "sections/core/components/ShipBuildsTile.tsx",
-    "sections/core/components/StorefrontListingControl.tsx",
     "sections/core/model/presentationSlots.ts",
     "sections/core/pages/Activity.tsx",
     "sections/core/pages/Devices.tsx",
     "sections/core/pages/Integration.tsx",
-    "sections/core/pages/Keys.tsx",
-    "sections/core/pages/KeysSecrets.tsx",
-    "sections/core/pages/KeysTrust.tsx",
     "sections/core/pages/Overview.tsx",
-    "sections/core/pages/Portal.tsx",
     "sections/core/pages/Presentation.tsx",
-    "sections/core/pages/Services.tsx",
-    "sections/core/pages/SettingsAll.tsx",
-    "sections/core/pages/SettingsHub.tsx",
-    "sections/core/pages/SettingsMembers.tsx",
-    "sections/core/pages/SettingsStorage.tsx",
     "sections/core/pages/UserRecord.tsx",
     "sections/core/pages/Users.tsx",
-    "sections/core/pages/accountOverrides.tsx",
-    "sections/core/pages/ciData.ts",
-  ],
-  // P0-32.18
-  "sections/distribution": ["sections/distribution/data.ts"],
-  // P0-32.19
-  "sections/feeds": [
-    "sections/feeds/data.ts",
-    "sections/feeds/pages/PackageFeedsOff.tsx",
-    "sections/feeds/pages/PackagesOverview.tsx",
-    "sections/feeds/pages/RegistryTokens.tsx",
-    "sections/feeds/pages/TurnOffFeeds.tsx",
   ],
   // P0-32.17
   "sections/identity": [
@@ -310,18 +286,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/license/pages/LicenseConfig.tsx",
     "sections/license/pages/LicenseDelete.tsx",
     "sections/license/pages/LicenseRecord.tsx",
-  ],
-  // P0-32.18
-  "sections/release": ["sections/release/data.ts"],
-  // P0-32.19
-  "sections/storefronts": ["sections/storefronts/data.ts"],
-  // P0-32.19
-  "sections/sync": [
-    "sections/sync/CloudSyncSetup.tsx",
-    "sections/sync/PauseWritesDialog.tsx",
-    "sections/sync/data.ts",
-    "sections/sync/pages/SyncData.tsx",
-    "sections/sync/pages/SyncUsage.tsx",
   ],
 };
 

@@ -139,22 +139,16 @@ export const reads = {
       queryKey: qk.productSettings(slug, area),
       queryFn: () => api.productSettings(slug, area),
     }),
-  settingsDrift: (slug: string) =>
-    queryOptions({
-      queryKey: qk.settingsDrift(slug),
-      queryFn: () => api.settingsDrift(slug),
-    }),
-  /** The product's services view (Services, the Commerce tile, sign-in, enrollment). */
-  services: (slug: string) =>
-    queryOptions({
-      queryKey: qk.services(slug),
-      queryFn: () => api.services(slug),
-    }),
-  /** The platform settings view (Platform settings, Home's pause banner, Cloud Sync setup). */
+  /** The platform settings (the pause switch, the Cloud Sync ceiling default). */
   platformSettings: () =>
     queryOptions({
       queryKey: qk.platformSettings(),
       queryFn: () => api.platformSettings(),
+    }),
+  settingsDrift: (slug: string) =>
+    queryOptions({
+      queryKey: qk.settingsDrift(slug),
+      queryFn: () => api.settingsDrift(slug),
     }),
   /** The operations probes (Platform status, the invite drawer's email probe). */
   platformOperations: () =>

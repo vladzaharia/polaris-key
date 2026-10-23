@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatCount } from "../../../lib/format.js";
 import { r } from "../../routes.js";
 import { FeatureCard } from "../core/components/TileFrame.js";
-import { reads } from "../../data/reads.js";
+import { coreBReads } from "../core/data.js";
 
 /** Commerce's card on the Overview (CM-29): its storefronts and the store purchases they brought. */
 export function CommerceTile({
@@ -13,7 +13,7 @@ export function CommerceTile({
   slug: string;
   attention?: number;
 }): React.ReactElement {
-  const services = useQuery(reads.services(slug));
+  const services = useQuery(coreBReads.services(slug));
   const facts = services.data?.facts.commerce;
   const grants = facts?.storeGrants ?? 0;
   return (

@@ -16,8 +16,7 @@ import { type PlatformDeploy } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { DashboardTemplate } from "../../../templates/Dashboard.js";
-import { qk } from "../../../data/queries.js";
-import { fetchPlatformDeployment } from "../data.js";
+import { fetchPlatformDeployment, platformReads } from "../data.js";
 import { reads } from "../../../data/reads.js";
 import { readPref, writePref } from "../../../storage.js";
 import { r } from "../../../routes.js";
@@ -46,8 +45,7 @@ export function PlatformStatus(): React.ReactElement {
   );
   const poll = auto ? OPERATIONS_REFRESH_MS : false;
   const deployment = useQuery({
-    queryKey: qk.platformDeployment(),
-    queryFn: () => fetchPlatformDeployment(),
+    ...platformReads.deployment(),
     refetchInterval: poll,
   });
   const ops = useQuery({

@@ -22,8 +22,7 @@ import { Section } from "../../../../ui/Section.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
-import { qk } from "../../../data/queries.js";
+import { deliverablesQuery } from "../../release/data.js";
 import { Link } from "../../../router.js";
 import { useFeedPackages } from "../data.js";
 import {
@@ -376,8 +375,7 @@ export function FeedCards({
   const needsDeliverable = scope.kind === "product" && feeds.some(isWaiting);
   const slug = scope.kind === "product" ? scope.slug : "";
   const deliverables = useQuery({
-    queryKey: qk.deliverables(slug),
-    queryFn: () => api.deliverables(slug),
+    ...deliverablesQuery(slug),
     enabled: needsDeliverable,
   });
   return (
