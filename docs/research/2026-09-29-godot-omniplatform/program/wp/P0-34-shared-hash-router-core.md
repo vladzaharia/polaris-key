@@ -81,6 +81,16 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections (2026-10-22)
+
+The code is the fact; plan `_lead/plans/P0-32-P0-34-slices.md` §0 and decisions D12–D17 govern.
+
+- **C1. Console router** (`console/router.tsx`, 376 lines): hash store, blockers, redirects applied in a `useLocation` effect, `useSearchParam` over `routes.ts` codecs, `Link` (`data-vt-shared`), View Transitions through `ui/motion/viewTransition`, `overlayShown()` by class, sonner and popper selectors. Route focus and "{title}, page loaded" are in `console/shell/AppShell.tsx` `useRouteFocus` (:146-200), spoken by a dedicated `<LiveRegion id="route-announcer">` (:616).
+- **C2. Portal router** (`portal/router.ts`, 825 lines): its own store with `ROUTE_EVENT`, redirects applied in `current()`, `setParams`, transitions typed by `navigationKind`, overlay detection by ARIA role (:427), tile shared elements (`data-vt-source`), scroll restoration, `focusPageHeading` (a 600-frame wait). No blockers, no route announcement. `portal/App.tsx` mounts `<Announcer/>`.
+- **C3.** `ui/useUnsavedChangesGuard.tsx:2` imports `console/router.js` (KNOWN edge, P0-34). 10 console files use the guard; the portal uses none.
+- **C4. Importers.** 123 console files import the console router, 44 portal files the portal router. Both modules keep their exports.
+- **C5. One shared-element attribute** is in the audit's target design, not in this brief's scope (decision D15: `data-vt-shared` and `data-vt-source` stay; filed for P0-37).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

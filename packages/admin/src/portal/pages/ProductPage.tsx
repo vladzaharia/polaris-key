@@ -38,6 +38,7 @@ import {
 } from "../model/product.js";
 import {
   focusPageHeading,
+  ROUTE_FOCUS_DEADLINE_MS,
   href,
   navigate,
   scrollBehavior,
@@ -48,6 +49,7 @@ import {
 import { EntryProductBody } from "./EntryProductPage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 import { t } from "../../lib/copy.js";
+import { focusRoute } from "../../ui/focusRoute.js";
 
 /**
  * The product page (§4.20) on today's data: everything about one product in one place. The
@@ -184,7 +186,10 @@ function ProductBody({
   // exit) and handed focus back to its opener, and without scrolling away from a deep link.
   React.useEffect(() => {
     if (consumeHeadingFocus(product.slug))
-      focusPageHeading(() => headingRef.current);
+      void focusRoute({
+        root: document.querySelector("main") ?? undefined,
+        deadline: ROUTE_FOCUS_DEADLINE_MS,
+      });
   }, [product.slug]);
 
   // A section deep link scrolls there once.
