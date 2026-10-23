@@ -239,6 +239,7 @@ const TIGHT_CASES := [
 	["device_limit", "native", "pixel-art canvas_items 640x360 keep"],
 	["device_limit", "native36", "1170x2532@3"],
 	["device_limit.failed", "custom", "pixel-art canvas_items 640x360 keep"],
+	["about", "native36", "1170x2532@3"],
 	["paywall.na", "native36", "1170x2532@3"],
 ]
 
@@ -296,6 +297,11 @@ const SCREENS := [
 	["settings.account", "settings", "catalog, with the account tab", "full"],
 	["dev_menu", "dev_menu", "steam build", "full"],
 	# Devices, LicenseChoice, AccountAndLicense, UpdateProgress and Toast (UI-KITS.md §4.1).
+	["cloud_sync", "cloud_sync", "conflict, Review offered", "strip"],
+	["cloud_sync.signed_out", "cloud_sync", "error: signed out", "strip"],
+	["about", "about", "with every link", "full"],
+	["release_notes", "release_notes", "list", "full"],
+	["release_notes.error", "release_notes", "error", "full"],
 	["paywall", "paywall", "offers, with what it includes", "full"],
 	["paywall.store", "paywall", "offers, the store", "full"],
 	["paywall.purchased", "paywall", "purchased", "full"],

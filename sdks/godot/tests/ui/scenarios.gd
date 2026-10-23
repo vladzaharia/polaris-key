@@ -168,6 +168,13 @@ func all() -> Array:
 		out.append(["paywall", c[0], paywall.bind(c[1])])
 	for c in [["default: replace the least recent", "default"], ["default: the limit is not known", "unknown"], ["browser mode", "browser"], ["browser mode: a QR code on a TV", "browser-tv"], ["busy", "busy"], ["removed", "removed"], ["failed", "failed"]]:
 		out.append(["device_limit", c[0], device_limit.bind(c[1])])
+	# ── PKeyCloudSyncStatus, PKeyAbout and PKeyReleaseNotes (UI-KITS.md §4.1), the models' states.
+	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"]]:
+		out.append(["cloud_sync", c[0], cloud_sync.bind(c[1])])
+	for c in [["with every link", "full"], ["version only", "plain"]]:
+		out.append(["about", c[0], about.bind(c[1])])
+	for c in [["list", "list"], ["loading", "loading"], ["empty", "empty"], ["error", "error"]]:
+		out.append(["release_notes", c[0], release_notes.bind(c[1])])
 	# ── PKeyLicenseChoice (UI-KITS.md LicenseChoice): the corpus rows.
 	for c in CHOICE_CASES:
 		out.append(["license_choice", c[0], license_choice.bind(c[1])])
@@ -469,6 +476,59 @@ func settings_account() -> Control:
 
 
 ## A Devices state: the three fixture devices, and what the player did to them.
+func cloud_sync(kind: String) -> Control:
+	var s := PKeyCloudSyncStatus.new()
+	s.auto_sdk = false
+	add(s)
+	s.sync_time = "2 minutes ago"
+	match kind:
+		"synced", "syncing", "offline", "error":
+			s.state = kind
+		"conflict":
+			s.state = "conflict"
+			s.can_review = true
+		"signed-out":
+			s.state = "error"
+			s.signed_in = false
+	s.refresh_view()
+	return s
+
+
+func about(kind: String) -> Control:
+	var a := PKeyAbout.new()
+	a.auto_sdk = false
+	a.version = "2.5.0 (4182)"
+	add(a)
+	if kind == "full":
+		a.privacy_url = "https://polaris.locker/privacy"
+		a.support_url = "https://polaris.locker/help"
+		a.diagnostics = "version 2.5.0 build 4182 outlet steam"
+	a.refresh_view()
+	return a
+
+
+const RELEASE_ENTRIES := [
+	{"version": "2.5.0", "date": "September 30, 2026", "notes": "Faster sync. Fixes a crash on launch."},
+	{"version": "2.4.1", "date": "August 12, 2026", "notes": "Fixes the mixer on Windows. <b>Not markup.</b>"},
+]
+
+
+func release_notes(kind: String) -> Control:
+	var r := PKeyReleaseNotes.new()
+	r.auto_sdk = false
+	add(r)
+	match kind:
+		"list":
+			r.entries = RELEASE_ENTRIES.duplicate(true)
+		"loading":
+			r.loading = true
+			r._loading_since = Time.get_ticks_msec() - 400
+		"error":
+			r.failed = true
+	r.refresh_view()
+	return r
+
+
 func paywall(kind: String) -> Control:
 	var p := PKeyPaywall.new()
 	p.auto_sdk = false

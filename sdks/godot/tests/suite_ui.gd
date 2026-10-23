@@ -237,6 +237,7 @@ func _game_look(t: PKeyTestContext) -> void:
 	await _slice2(t)
 	await _standalone_a(t)
 	await _fix1(t)
+	await _standalone_b(t)
 	PKeyUiTheme.reset()
 
 
@@ -747,6 +748,62 @@ func _fix1(t: PKeyTestContext) -> void:
 	PKeyUiTheme.reduce_motion_mode = "auto"
 
 
+## Slice 5: the standalone CloudSyncStatus, About and ReleaseNotes, on the models.
+func _standalone_b(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var cs: PKeyCloudSyncStatus = _sc.cloud_sync("conflict")
+	var reviews := [0]
+	cs.review_requested.connect(func(): reviews[0] += 1)
+	await _tree().process_frame
+	t.check("cloud sync: a conflict reads 'Some changes conflict.' and offers Review", cs._text.text == "Some changes conflict." and cs._action.text == "Review")
+	cs._action.pressed.emit()
+	t.check("cloud sync: Review asks the game", reviews[0] == 1)
+	_free(cs)
+	var so: PKeyCloudSyncStatus = _sc.cloud_sync("signed-out")
+	var ins := [0]
+	so.sign_in_requested.connect(func(): ins[0] += 1)
+	await _tree().process_frame
+	t.check("cloud sync: signed out says so and offers Sign in to sync", so._text.text == "You're signed out." and so._action.text == "Sign in to sync")
+	so._action.pressed.emit()
+	t.check("cloud sync: Sign in to sync asks the game", ins[0] == 1)
+	_free(so)
+	var off: PKeyCloudSyncStatus = _sc.cloud_sync("synced")
+	off.service_on = false
+	off.refresh_view()
+	await _tree().process_frame
+	t.check("cloud sync: hidden while the Sync service is off", not off.visible)
+	_free(off)
+	var ab: PKeyAbout = _sc.about("full")
+	await _tree().process_frame
+	ab._on_copy()
+	t.check("about: Copy diagnostics copies the game's text and says so", (DisplayServer.clipboard_get() in ["", "version 2.5.0 build 4182 outlet steam"]) and ab._done.text == "Diagnostics copied")
+	t.check("about: Privacy and Get help show only with an https page", ab._privacy.visible and ab._support.visible)
+	_free(ab)
+	var plain: PKeyAbout = _sc.about("plain")
+	await _tree().process_frame
+	t.check("about: without pages or diagnostics only the licenses link shows", not plain._privacy.visible and not plain._support.visible and not plain._copy.visible and plain._licenses.visible)
+	_free(plain)
+	var rn: PKeyReleaseNotes = _sc.release_notes("list")
+	await _tree().process_frame
+	var texts: Array = []
+	for n in rn.find_children("Notes", "Label", true, false):
+		texts.append((n as Label).text)
+	t.check("release notes: newest first, notes are text", rn._list.get_child_count() == 2 and texts[1].contains("<b>Not markup.</b>"), str(texts))
+	_free(rn)
+	var re: PKeyReleaseNotes = _sc.release_notes("error")
+	var retried := [0]
+	re.retry_requested.connect(func(): retried[0] += 1)
+	await _tree().process_frame
+	re._retry.pressed.emit()
+	t.check("release notes: an error offers Try again", re._retry.text == "Try again" and retried[0] == 1)
+	_free(re)
+	var em: PKeyReleaseNotes = _sc.release_notes("empty")
+	await _tree().process_frame
+	t.check("release notes: empty says so", em._body.text == "No release notes yet.")
+	_free(em)
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
 func _bar_words(bar: PKeyHintBar) -> Array:
 	var out := []
 	for row in bar.get_children():
@@ -939,7 +996,7 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 	var cases: Array = []
 	var seen := {}
 	for c in all:
-		if seen.has(c[0]) or c[0] in ["badge", "banner", "update_progress", "toast"]:
+		if seen.has(c[0]) or c[0] in ["badge", "banner", "update_progress", "toast", "cloud_sync"]:
 			continue
 		var probe: PKeyUiView = await _build(c)
 		var visible := probe.visible and _centred(probe) != null and _centred(probe).is_visible_in_tree()
@@ -1784,7 +1841,7 @@ func _headers(t: PKeyTestContext, all: Array) -> void:
 	var checked := 0
 	var missing: PackedStringArray = []
 	for c in all:
-		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast"] or String(c[1]) in NO_HEADER:
+		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast", "cloud_sync"] or String(c[1]) in NO_HEADER:
 			continue
 		var v: Control = await _build(c)
 		var ok := false
