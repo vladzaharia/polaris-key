@@ -34,15 +34,15 @@ const DIR = join(HERE, "..", "migrations");
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
-const A = "0129_a_console_role_bindings.sql";
-const B = "0129_b_platform_audit_action_idx.sql";
+const A = "0130_a_console_role_bindings.sql";
+const B = "0130_b_platform_audit_action_idx.sql";
 const DOWN_A = readFileSync(
   join(
     HERE,
     "..",
     "scripts",
     "rollback",
-    "0129_a_console_role_bindings.down.sql",
+    "0130_a_console_role_bindings.down.sql",
   ),
   "utf8",
 );
@@ -52,7 +52,7 @@ const DOWN_B = readFileSync(
     "..",
     "scripts",
     "rollback",
-    "0129_b_platform_audit_action_idx.down.sql",
+    "0130_b_platform_audit_action_idx.down.sql",
   ),
   "utf8",
 );

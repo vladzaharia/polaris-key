@@ -16,7 +16,7 @@
 --
 -- Owned by `sync` (TABLE_OWNERS). No foreign keys and no cascades (R11-01). Expand-only: a Worker
 -- built before this migration never names either table. Rollback:
--- scripts/rollback/0130_cloud_sync_directory.down.sql.
+-- scripts/rollback/0131_cloud_sync_directory.down.sql.
 CREATE TABLE IF NOT EXISTS sync_directory (
   product        TEXT NOT NULL,
   subject        TEXT NOT NULL,

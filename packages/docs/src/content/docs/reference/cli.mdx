@@ -125,11 +125,11 @@ Check .pkey/ and the live product.
 pkey doctor [--product slug] [--base-url url] [--json]
 ```
 
-Checks .pkey/ like validate, then asks the live product what it has: whether it answers, its features and its signing keys. It flags features that differ from .pkey/. Exits 1 while anything is to do.
+pkey doctor checks the product in four parts and always runs all of them: Manifest (.pkey/, the services the server enables, who is signed in, polaris-key.json), Keys (the signing and release key ids), Integration (per feature and platform Verified, Waiting or Not seen yet, with CI and Commerce) and Left to do, each with its fix. The product is --product, else the nearest .pkey/product; discovery is its .well-known/polaris.json under the base URL (--base-url, else $PKEY_BASE_URL, else key.plrs.im). Outside a repository it still checks sign-in, the base URL and polaris-key.json.
 
-Waits up to 10 s. With no product it skips the live checks and says so. --json prints one line instead; its shape is at /docs/reference/cli/#doctor.
+Signed in is pkey login, or $PKEY_ADMIN_TOKEN. Signed out, or refused access, is a warning, and signed out makes no console request. The summary counts what is to do and what is a warning, then the run time. It exits 1 while anything is to do: a manifest error, a failed discovery or an open console step.
 
---json prints one result line: \{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"\}, each fact as \{"id","state","detail","fix"\} with id manifest, discovery, services, signing-keys or in-sync and state ok, warn or todo; signing is a list of \{"kid","status"\}. It exits 1 while any fact is todo.
+--json prints one result line with the same facts: \{"v":1, "command":"doctor", "event":"result", "ok", "exit", "product", "baseUrl", "facts", "summary", "services", "signing", "keys"\}. Each fact is \{"id", "state", "detail"\} with id manifest, discovery, services, signing-keys or config-file and state ok, warn or todo; a network failure also carries "code":"network". "summary" is \{"todo", "warnings"\}. "signedIn" has state in, out, ended or unreadable and when it ends; "integration" has state ok, skipped, denied or unavailable, and ok carries features, platforms, ci, commerce and todo.
 
 `--json`: one JSON line on stdout.
 

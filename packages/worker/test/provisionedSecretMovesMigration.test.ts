@@ -1,5 +1,5 @@
 /**
- * U-27.6's `0130_provisioned_secret_moves.sql` (the number is the lead's to assign), rehearsed on
+ * U-27.6's `0133_provisioned_secret_moves.sql` (the number is the lead's to assign), rehearsed on
  * a scratch SQLite: every migration before it, a populated fixture, then the file, once statement
  * by statement and once inside a transaction. Expand-only; the down script restores `sqlite_master`.
  */
@@ -64,7 +64,7 @@ function shape(raw: Database.Database): unknown[] {
 }
 
 describe.each(["each", "transaction"] as const)(
-  "0130_provisioned_secret_moves.sql, applied %s",
+  "0133_provisioned_secret_moves.sql, applied %s",
   (how) => {
     const apply = (raw: Database.Database): void => {
       if (how === "each") runEach(raw, TARGET);

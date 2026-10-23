@@ -15540,7 +15540,8 @@ function invalidDisplayText(text2) {
 }
 function checkDisplayName(text2, opts = {}) {
   if (invalidDisplayText(text2)) return "invalid";
-  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
+  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG || opts.approved === true)
+    return null;
   return reservedDisplayTerm(text2, opts.extraTerms) ? "reserved" : null;
 }
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
@@ -24019,15 +24020,13 @@ var COMMANDS = [
     usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
-        text: "Checks .pkey/ like validate, then asks the live product what it has: whether it answers, its features and its signing keys. It flags features that differ from .pkey/. Exits 1 while anything is to do."
+        text: "pkey doctor checks the product in four parts and always runs all of them: Manifest (.pkey/, the services the server enables, who is signed in, polaris-key.json), Keys (the signing and release key ids), Integration (per feature and platform Verified, Waiting or Not seen yet, with CI and Commerce) and Left to do, each with its fix. The product is --product, else the nearest .pkey/product; discovery is its .well-known/polaris.json under the base URL (--base-url, else $PKEY_BASE_URL, else key.plrs.im). Outside a repository it still checks sign-in, the base URL and polaris-key.json."
       },
       {
-        text: "Waits up to 10 s. With no product it skips the live checks and says so. --json prints one line instead; its shape is at /docs/reference/cli/#doctor."
-      }
-    ],
-    reference: [
+        text: "Signed in is pkey login, or $PKEY_ADMIN_TOKEN. Signed out, or refused access, is a warning, and signed out makes no console request. The summary counts what is to do and what is a warning, then the run time. It exits 1 while anything is to do: a manifest error, a failed discovery or an open console step."
+      },
       {
-        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail","fix"} with id manifest, discovery, services, signing-keys or in-sync and state ok, warn or todo; signing is a list of {"kid","status"}. It exits 1 while any fact is todo.'
+        text: '--json prints one result line with the same facts: {"v":1, "command":"doctor", "event":"result", "ok", "exit", "product", "baseUrl", "facts", "summary", "services", "signing", "keys"}. Each fact is {"id", "state", "detail"} with id manifest, discovery, services, signing-keys or config-file and state ok, warn or todo; a network failure also carries "code":"network". "summary" is {"todo", "warnings"}. "signedIn" has state in, out, ended or unreadable and when it ends; "integration" has state ok, skipped, denied or unavailable, and ok carries features, platforms, ci, commerce and todo.'
       }
     ]
   },
@@ -25109,7 +25108,7 @@ async function findProductManifest(cwd) {
   const file = await findProductFile(cwd);
   if (!file) return null;
   try {
-    const doc = parseFile(file, await readFile2(file, "utf8"));
+    const doc = parseFile(file, await readFile(file, "utf8"));
     if (!isRecord7(doc)) return null;
     const wrapped = isRecord7(doc.product) ? doc.product : doc;
     const slug = wrapped.slug;
@@ -25125,15 +25124,11 @@ async function findProductManifest(cwd) {
   }
 }
 async function findProductFile(cwd) {
-  for (let dir = path3.resolve(cwd); ; dir = path3.dirname(dir)) {
-    const file = await findExisting(path3.join(dir, ".pkey"), PRODUCT_FILES);
+  for (let dir = path2.resolve(cwd); ; dir = path2.dirname(dir)) {
+    const file = await findExisting(path2.join(dir, ".pkey"), PRODUCT_FILES);
     if (file) return file;
-    if (path3.dirname(dir) === dir) return null;
+    if (path2.dirname(dir) === dir) return null;
   }
-}
-async function findManifestRoot(cwd) {
-  const file = await findProductFile(cwd);
-  return file ? path3.dirname(path3.dirname(file)) : cwd;
 }
 async function loadManifest(cwd) {
   const rootDir = path2.join(cwd, ".pkey");
@@ -25379,7 +25374,7 @@ function parseFile(file, raw) {
     const line = e.linePos?.[0]?.line;
     const why = json ? "the JSON is malformed" : yamlReason(e);
     throw new ManifestSyntaxError(
-      `.pkey/${path3.basename(file)}${line ? ` line ${line}` : ""}: not valid ${json ? "JSON" : "YAML"} (${why}).`
+      `.pkey/${path2.basename(file)}${line ? ` line ${line}` : ""}: not valid ${json ? "JSON" : "YAML"} (${why}).`
     );
   }
 }
@@ -27698,8 +27693,24 @@ async function applyContext(keys, flags, input) {
 
 // src/doctor.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var DISCOVERY_TIMEOUT_MS = 1e4;
-function manifestFact(result, problem) {
+var DOCTOR_TIMEOUT_MS = 15e3;
+async function readCapped(res) {
+  const text2 = await readCappedText(res);
+  if (text2 === null) throw new ReadFailure("too large or unreadable");
+  try {
+    return JSON.parse(text2);
+  } catch {
+    throw new ReadFailure("not JSON");
+  }
+}
+var ReadFailure = class extends Error {
+  constructor(why) {
+    super(`The answer could not be read: ${why}.`);
+    this.name = "ReadFailure";
+  }
+};
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function manifestFact(result, problem, fileWarnings = []) {
   if (!result)
     return {
       id: "manifest",
@@ -27712,129 +27723,99 @@ function manifestFact(result, problem) {
       state: "todo",
       detail: plural(result.errors.length, "error")
     };
-  const fixable = result.warnings.some((w) => w.code === "deprecated_spelling");
+  const warnings = result.warnings.length + fileWarnings.length;
   return {
     id: "manifest",
-    state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid",
-    ...fixable ? { fix: "pkey validate --fix" } : {}
+    state: warnings ? "warn" : "ok",
+    detail: warnings ? plural(warnings, "warning") : "valid"
   };
 }
-var NETWORK_FIX = "Check the network and --base-url (or $PKEY_BASE_URL).";
-function todo(id, detail, fix, rest = {}, url = "") {
-  return {
-    url,
-    services: [],
-    signing: [],
-    ...rest,
-    facts: [{ id, state: "todo", detail, fix }]
-  };
-}
-var isRecord8 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-function keysOf(body) {
-  const trust = isRecord8(body.trust) ? body.trust : {};
-  const signing = isRecord8(body.signing) ? body.signing : {};
-  const raw = Array.isArray(trust.keys) ? trust.keys : Array.isArray(signing.keys) ? signing.keys : [];
-  return raw.flatMap(
-    (k) => isRecord8(k) && typeof k.kid === "string" ? [
-      {
-        kid: k.kid,
-        status: typeof k.status === "string" ? k.status : k.active === true ? "active" : "unknown"
-      }
-    ] : []
-  );
-}
-async function checkRemote(opts) {
-  const base = opts.baseUrl.replace(/\/+$/, "");
-  const url = `${base}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
-  const host = base.replace(/^https?:\/\//, "");
-  const timeoutMs = opts.timeoutMs ?? DISCOVERY_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const timedOut = () => todo(
-    "discovery",
-    `${host} did not answer in ${Math.round(timeoutMs / 1e3)} s.`,
-    NETWORK_FIX,
-    {},
-    url
-  );
+function hostOf3(url) {
   try {
-    let res;
-    let text;
-    try {
-      res = await (opts.fetchImpl ?? fetch)(url, { signal: controller.signal });
-      text = res.ok ? await res.text() : "";
-    } catch (err) {
-      if (controller.signal.aborted) return timedOut();
-      const message = networkMessage(err, url);
-      const cut = message.match(/^(.*?\.) Check your network/s);
-      return todo("discovery", cut ? cut[1] : message, NETWORK_FIX, {}, url);
-    }
-    if (!res.ok) {
-      const fix = res.status === 404 ? `Is ${opts.product} registered at ${host}?` : res.status >= 500 ? "The server failed; try again." : `Check --base-url (or $PKEY_BASE_URL) and ${opts.product}.`;
-      return todo(
-        "discovery",
-        res.status === 404 ? "not found (404)" : res.status >= 500 ? `server error (${res.status})` : `failed (${res.status})`,
-        fix,
-        { status: res.status },
-        url
-      );
-    }
-    let body;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = null;
-    }
-    if (!isRecord8(body))
-      return todo(
-        "discovery",
-        `${host} did not answer with discovery JSON.`,
-        "Check --base-url (or $PKEY_BASE_URL); it must be the Polaris Key origin.",
-        {},
-        url
-      );
-    const services = Object.entries(
-      isRecord8(body.services) ? body.services : {}
-    ).filter(([, service]) => isRecord8(service) && service.enabled === true).map(([slug]) => slug);
-    const signing = keysOf(body);
-    return {
-      url,
-      services,
-      signing,
-      facts: [
-        { id: "discovery", state: "ok", detail: "answers" },
-        {
-          id: "services",
-          state: services.length ? "ok" : "warn",
-          detail: services.length ? services.join(", ") : "none enabled",
-          ...services.length ? {} : { fix: "Enable a feature for this product in the console." }
-        },
-        {
-          id: "signing-keys",
-          state: signing.length ? "ok" : "todo",
-          detail: signing.length ? `${signing.length} key${signing.length === 1 ? "" : "s"}` : "none",
-          ...signing.length ? {} : { fix: "Create a signing key for this product in the console." }
-        }
-      ]
-    };
-  } finally {
-    clearTimeout(timer);
+    return maskTokens(new URL(url).host);
+  } catch {
+    return maskTokens(url);
   }
 }
-function syncFact(manifest, live) {
-  const onlyManifest = manifest.filter((s) => !live.includes(s));
-  const onlyLive = live.filter((s) => !manifest.includes(s));
-  if (!onlyManifest.length && !onlyLive.length) return null;
-  const parts = [
-    onlyManifest.length ? `only in .pkey/: ${onlyManifest.join(", ")}` : "",
-    onlyLive.length ? `only live: ${onlyLive.join(", ")}` : ""
-  ].filter(Boolean);
+async function checkRemote(opts) {
+  const raw = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const url = maskTokens(raw);
+  const host = hostOf3(raw);
+  const down = (detail, code, status) => ({
+    url,
+    host,
+    keys: [],
+    keyStates: [],
+    pinned: [],
+    ...status === void 0 ? {} : { status },
+    services: [],
+    signing: null,
+    facts: [
+      {
+        id: "discovery",
+        state: "todo",
+        detail,
+        ...code ? { code } : {}
+      }
+    ]
+  });
+  let res;
+  try {
+    res = await (opts.fetchImpl ?? fetch)(
+      raw,
+      opts.signal ? { signal: opts.signal } : void 0
+    );
+  } catch (err) {
+    if (opts.signal?.aborted)
+      return down("The server did not answer in time.", "timeout");
+    void err;
+    return down(`Can't reach ${host}.`, "network");
+  }
+  if (!res.ok)
+    return down(
+      `Answered ${res.status} at ${host}`,
+      "discovery-failed",
+      res.status
+    );
+  let body;
+  try {
+    body = await readCapped(res);
+  } catch {
+    return down(
+      `${host} did not answer with discovery.`,
+      "discovery-unreadable"
+    );
+  }
+  const services = Object.entries(rec(rec(body)["services"])).filter(([, service]) => rec(service)["enabled"] === true).map(([slug]) => slug);
+  const trust = rec(rec(body)["trust"]);
+  const keyStates = asArray(trust["keys"]).map(rec).filter((k) => typeof k["kid"] === "string" && k["kid"] !== "").map((k) => ({
+    kid: k["kid"],
+    status: typeof k["status"] === "string" ? k["status"] : k["active"] === true ? "active" : "unknown"
+  }));
+  const signing = rec(trust["pinnedKeys"]);
+  const pinned = Object.keys(signing);
+  const keys = keyStates.map((k) => k.kid);
   return {
-    id: "in-sync",
-    state: "warn",
-    detail: `${parts.join("; ")}.`,
-    fix: "Resync the product from .pkey/ in the console."
+    url,
+    host,
+    keys,
+    keyStates,
+    pinned,
+    services,
+    signing,
+    facts: [
+      { id: "discovery", state: "ok", detail: "answers" },
+      {
+        id: "services",
+        state: services.length ? "ok" : "warn",
+        detail: services.length ? services.join(", ") : "none enabled"
+      },
+      {
+        id: "signing-keys",
+        state: keys.length ? "ok" : "warn",
+        detail: keys.length ? `${keys.length} exposed` : "none exposed"
+      }
+    ]
   };
 }
 var FEATURE_LABELS = {
@@ -27873,121 +27854,65 @@ function bareFix(fix) {
   const m = /^Run (pkey [^.]*?)(?: once| again)?\.?$/.exec(fix ?? "");
   return m?.[1] ?? fix ?? "pkey login";
 }
-async function gatherDoctor(opts) {
-  const now = opts.now ?? Date.now;
-  const started = now();
-  const { ctx } = opts;
-  let loaded2 = null;
-  let result = null;
-  let problem;
-  try {
-    loaded2 = await loadManifest(await findManifestRoot(opts.cwd));
-    result = validateLoadedManifest(loaded2);
-  } catch (e) {
-    const message = e.message;
-    problem = e instanceof ManifestSyntaxError ? { id: "manifest", state: "todo", detail: message } : message.startsWith("No .pkey/product") ? {
-      id: "manifest",
-      state: "todo",
-      detail: "No .pkey/product here or above.",
-      fix: "Run pkey init."
-    } : { id: "manifest", state: "todo", detail: message };
-  }
-  const manifest = problem ?? manifestFact(result);
-  const facts = [manifest];
-  let services = [];
-  let signing = null;
-  if (ctx.product) {
-    opts.onStage?.(`Checking ${ctx.baseUrl.url.replace(/^https?:\/\//, "")}…`);
-    const remote = await checkRemote({
-      baseUrl: ctx.baseUrl.url,
-      product: ctx.product.slug,
-      fetchImpl: opts.fetchImpl,
-      timeoutMs: opts.timeoutMs
-    });
-    opts.onStage?.("");
-    facts.push(...remote.facts);
-    if (remote.facts.every((f) => f.id !== "discovery" || f.state === "ok")) {
-      services = remote.services;
-      signing = remote.signing;
-      const differ = result ? syncFact(result.enabledModules, remote.services) : null;
-      if (differ) facts.push(differ);
+function integrationFacts(view2, slug, origin, env) {
+  const u = (v) => untrusted(v, env);
+  const features = asArray(rec(view2)["features"]).map(rec);
+  const seen = /* @__PURE__ */ new Set();
+  for (const f of features)
+    for (const v of asArray(f["verifiedOn"])) {
+      const p = rec(v)["platform"];
+      if (typeof p === "string" && p) seen.add(p);
     }
-  } else {
-    facts.push({
-      id: "discovery",
-      state: "warn",
-      detail: "skipped: no product",
-      fix: "Pass --product, or run where .pkey/product is."
-    });
+  for (const s of asArray(rec(view2)["sightings"])) {
+    const p = rec(s)["platform"];
+    if (typeof p === "string" && p) seen.add(p);
   }
-  return {
-    product: ctx.product ? {
-      slug: ctx.product.slug,
-      ...ctx.product.name ? { name: ctx.product.name } : {}
-    } : null,
-    baseUrl: ctx.baseUrl.url,
-    loaded: loaded2,
-    result,
-    facts,
-    services,
-    signing,
-    ms: now() - started
-  };
-}
-function doctorCounts(model) {
-  const r = model.result;
-  let todo2 = 0;
-  let warnings = 0;
-  for (const f of model.facts) {
-    if (f.id === "manifest" && r) {
-      todo2 += r.errors.length;
-      warnings += r.warnings.length;
-    } else if (f.state === "todo") todo2 += 1;
-    else if (f.state === "warn") warnings += 1;
-  }
-  warnings += model.loaded?.fileWarnings?.length ?? 0;
-  return { todo: todo2, warnings };
-}
-
-// src/suggest.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function nearest(word, candidates) {
-  let best;
-  let bestDistance = Infinity;
-  for (const c of candidates) {
-    const d = distance(word, c);
-    if (d < bestDistance) {
-      best = c;
-      bestDistance = d;
+  const platforms = [...seen].map((id) => ({ id: u(id), label: u(platformLabel2(id)) })).sort((a, b) => a.label.localeCompare(b.label));
+  const out = [];
+  const todo = [];
+  const have = /* @__PURE__ */ new Set();
+  for (const f of features) {
+    const id = String(f["id"] ?? "");
+    have.add(id);
+    const label = u(FEATURE_LABELS[id] ?? id);
+    const status = f["status"];
+    const verifiedOn = new Set(
+      asArray(f["verifiedOn"]).map((v) => String(rec(v)["platform"]))
+    );
+    const base = status === "verified" ? "verified" : status === "not_seen" ? "waiting" : "unseen";
+    const per = {};
+    for (const p of platforms)
+      per[p.id] = verifiedOn.has(p.id) ? "verified" : base === "waiting" ? "waiting" : "unseen";
+    out.push({ id: u(id), label, state: base, platforms: per });
+    if (f["unavailable"] === true) continue;
+    for (const pre of asArray(f["prerequisites"]).map(rec)) {
+      if (pre["met"] !== false) continue;
+      const pid = String(pre["id"] ?? "");
+      const step = STEPS[pid];
+      const stepId = u(STEP_IDS[pid] ?? pid);
+      const dup = todo.find((t) => t.id === stepId);
+      if (dup) {
+        if (!dup.feature.split(", ").includes(label))
+          dup.feature += `, ${label}`;
+        continue;
+      }
+      todo.push({
+        id: stepId,
+        label: u(step?.label ?? pid),
+        feature: label,
+        link: `${origin}/manage/#/p/${encodeURIComponent(slug)}/${step?.page ?? "settings/features"}`
+      });
     }
   }
-  return best !== void 0 && bestDistance <= Math.min(2, Math.floor(Math.max(word.length, 3) / 2)) ? best : void 0;
-}
-function distance(a, b) {
-  const rows = [];
-  for (let i = 0; i <= a.length; i++) {
-    rows[i] = [i];
-    for (let j = 1; j <= b.length; j++) rows[i][j] = i === 0 ? j : 0;
+  let ci = null;
+  for (const f of features) {
+    const facts = rec(f["facts"]);
+    if (typeof facts["packages"] === "number" && facts["packages"] > 0)
+      ci = {
+        firstAt: typeof facts["firstPackageAt"] === "number" ? facts["firstPackageAt"] : null
+      };
   }
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      let d = Math.min(
-        rows[i - 1][j] + 1,
-        rows[i][j - 1] + 1,
-        rows[i - 1][j - 1] + cost
-      );
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
-        d = Math.min(d, rows[i - 2][j - 2] + 1);
-      rows[i][j] = d;
-    }
-  return rows[a.length][b.length];
-}
-
-// src/terminal.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function termFor(out, env, flags = {}) {
-  const caps = detectTerminal({ env, stdout: out, flags });
+  const releaseKeys = asArray(rec(rec(view2)["snippet"])["releaseKeys"]).map((k) => rec(k)["kid"]).filter((k) => typeof k === "string" && k !== "").map(u);
   return {
     features: out,
     platforms,
@@ -28714,6 +28639,41 @@ async function checkConfigFiles(opts) {
     elsewhere,
     stalePins: opts.exposed ? [...pinned].filter((k) => !opts.exposed.includes(k)) : null
   };
+}
+
+// src/suggest.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function nearest(word, candidates) {
+  let best;
+  let bestDistance = Infinity;
+  for (const c of candidates) {
+    const d = distance(word, c);
+    if (d < bestDistance) {
+      best = c;
+      bestDistance = d;
+    }
+  }
+  return best !== void 0 && bestDistance <= Math.min(2, Math.floor(Math.max(word.length, 3) / 2)) ? best : void 0;
+}
+function distance(a, b) {
+  const rows = [];
+  for (let i = 0; i <= a.length; i++) {
+    rows[i] = [i];
+    for (let j = 1; j <= b.length; j++) rows[i][j] = i === 0 ? j : 0;
+  }
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let d = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + cost
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        d = Math.min(d, rows[i - 2][j - 2] + 1);
+      rows[i][j] = d;
+    }
+  return rows[a.length][b.length];
 }
 
 // src/publish.ts
@@ -35471,7 +35431,7 @@ function parseReleaseKeyFlags(values) {
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
-function isRecord9(v) {
+function isRecord8(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 async function resolveSdkFacts(opts) {
@@ -35500,7 +35460,7 @@ async function resolveSdkFacts(opts) {
   } catch {
     throw new Error(`${discoveryUrl} did not answer JSON.`);
   }
-  if (!isRecord9(doc)) throw new Error(`${discoveryUrl} is not an object.`);
+  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
       `Discovery names product ${shown2(JSON.stringify(doc.product))}, not ${opts.product}.`
@@ -35509,8 +35469,8 @@ async function resolveSdkFacts(opts) {
     throw new Error(
       `Discovery speaks protocol ${shown2(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
-  const trust = isRecord9(doc.trust) ? doc.trust : {};
-  const pins = isRecord9(trust.pinnedKeys) ? trust.pinnedKeys : {};
+  const trust = isRecord8(doc.trust) ? doc.trust : {};
+  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
   const pinnedKeys = {};
   for (const kid of Object.keys(pins).sort()) {
     const key = pins[kid];
@@ -35529,12 +35489,12 @@ async function resolveSdkFacts(opts) {
         `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
       );
   }
-  const services = isRecord9(doc.services) ? doc.services : {};
+  const services = isRecord8(doc.services) ? doc.services : {};
   const enabled = SERVICE_SLUGS.filter((slug) => {
     const s = services[slug];
-    return isRecord9(s) && s.enabled === true;
+    return isRecord8(s) && s.enabled === true;
   });
-  const release = isRecord9(services.release) ? services.release : {};
+  const release = isRecord8(services.release) ? services.release : {};
   const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
     (f) => typeof f === "string"
   ) : [];
@@ -49454,8 +49414,7 @@ async function runCommand(argv2, io) {
   const ci = {
     env: io.env,
     fetchImpl: io.fetchImpl,
-    sleep: io.sleep,
-    doctorTimeoutMs: io.doctorTimeoutMs
+    sleep: io.sleep
   };
   const g = { color: global.flags.color, ascii: global.flags.ascii };
   const term = (out) => termFor(out, ci.env, g);
@@ -49523,9 +49482,37 @@ var HANDLERS = {
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout), rt.ci, rt.g),
-  bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
-  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
+  doctor: (p, rt) => guarded(
+    accountIo(p, rt),
+    "doctor",
+    () => cmdDoctor(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.stderr,
+      rt.term(rt.stdout),
+      rt.ci,
+      adminIo(p, rt)
+    )
+  ),
+  bundle: (p, rt) => withAdminCredential(
+    adminIo(p, rt),
+    "bundle",
+    (token) => cmdBundle(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.term(rt.stdout),
+      rt.ci.env,
+      token,
+      rt.ci.fetchImpl
+    )
+  ),
+  migrate: (p, rt) => withAdminCredential(
+    adminIo(p, rt),
+    "migrate",
+    (token) => cmdMigrate(p, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl)
+  ),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -49794,7 +49781,7 @@ async function validateJson(dir, cwd, stdout, fixed) {
     manifest = await loadManifest(dir);
   } catch (e) {
     stdout.write(
-      envelope(1, {
+      envelope2(1, {
         error: /not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
         message: e.message
       })
@@ -49933,7 +49920,7 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout, stderr, term, ci, g) {
+async function cmdDoctor(parsed, cwd, stdout, stderr, term, ci, admin) {
   const bad = checkFlags(
     parsed,
     "doctor",
@@ -49944,147 +49931,69 @@ async function cmdDoctor(parsed, cwd, stdout, stderr, term, ci, g) {
     stderr.write(bad);
     return 2;
   }
-  const json = flagBool(parsed, "json");
+  const started = performance.now();
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url")
   });
-  const spinner = new Spinner(stderr, ci.env, g);
-  let model;
+  originFor({ baseUrl: ctx.baseUrl.url }, "doctor");
+  const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
+  const io = { ...admin, baseUrl: ctx.baseUrl.url, signal };
+  let manifest;
   try {
-    model = await gatherDoctor({
-      ctx,
-      cwd,
-      fetchImpl: ci.fetchImpl,
-      timeoutMs: ci.doctorTimeoutMs,
-      onStage: (label) => json ? void 0 : spinner.stage(label)
-    });
-  } finally {
-    spinner.stop();
+    const loaded2 = await loadManifest(cwd);
+    manifest = {
+      state: "read",
+      result: validateLoadedManifest(loaded2),
+      fileWarnings: loaded2.fileWarnings ?? []
+    };
+  } catch (e) {
+    manifest = { state: "missing", problem: e.message };
   }
-  const exit = doctorOk(model.facts) ? 0 : 1;
-  if (json) {
-    stdout.write(doctorJson(model, exit));
-    return exit;
-  }
-  writeDoctorText(model, cwd, stdout, term, ci.env);
-  return exit;
-}
-function doctorJson(model, exit) {
-  return `${untrustedJson({
-    v: 1,
-    command: "doctor",
-    event: "result",
-    ok: exit === 0,
-    exit,
-    product: model.product?.slug ?? null,
-    baseUrl: model.baseUrl,
-    facts: model.facts,
-    services: model.services,
-    signing: model.signing
-  }).replace(
-    /[\u007f-\uffff]/g,
-    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
-  )}
-`;
-}
-var FACT_LABEL = {
-  manifest: "Manifest",
-  discovery: "Live product",
-  services: "Live features",
-  "signing-keys": "Signing key",
-  "in-sync": "Features differ"
-};
-function writeDoctorText(model, cwd, stdout, term, env) {
-  const { painter, symbols } = term;
-  const u = (v) => untrusted(v, env);
-  const origin = shortUrl(model.baseUrl);
-  const who = model.product ? model.product.name ? `${model.product.name} (${model.product.slug})` : model.product.slug : "no product";
-  const rows = [];
-  const fix = (text) => rows.push({
-    mark: " ",
-    spans: [
-      { text: `${term.caps.unicode ? "→" : "->"} ${text}`, style: ["muted"] }
-    ]
+  const remote = ctx.product ? await checkRemote({
+    baseUrl: ctx.baseUrl.url,
+    product: ctx.product.slug,
+    fetchImpl: ci.fetchImpl,
+    signal
+  }) : null;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product?.slug ?? null,
+    signal
   });
-  const mark = (state) => painter.style(
-    state === "ok" ? symbols.ok : state === "warn" ? symbols.warn : symbols.fail,
-    [state === "ok" ? "success" : state === "warn" ? "warning" : "danger"]
-  );
-  stdout.write(
-    `${wrapSpans(
-      [
-        { text: u(who), style: ["strong"] },
-        { text: ` ${symbols.separator} ${u(origin)}`, style: ["muted"] }
-      ],
-      term.caps.columns
-    ).map((l) => painter.line(l)).join("\n")}
-`
-  );
-  for (const f of model.facts) {
-    if (f.id === "manifest" && model.loaded && model.result) {
-      rows.push(...validateRows(model.loaded, model.result, cwd, term));
-      if (f.fix) fix(f.fix);
-      continue;
-    }
-    const label = FACT_LABEL[f.id];
-    if (f.id === "signing-keys" && model.signing?.length) {
-      model.signing.forEach(
-        (k, i) => rows.push({
-          mark: i === 0 ? mark("ok") : " ",
-          spans: i === 0 ? [
-            { text: `${label}  ` },
-            { text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }
-          ] : [{ text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }]
-        })
-      );
-      continue;
-    }
-    if (f.id === "services" && f.state === "ok")
-      rows.push({
-        mark: mark("ok"),
-        spans: [
-          { text: `${label}  ` },
-          { text: model.services.map(u).join(", "), style: ["muted"] }
-        ]
-      });
-    else if (f.state === "ok")
-      rows.push({
-        mark: mark("ok"),
-        spans: [
-          { text: `${label}  ` },
-          { text: u(f.detail), style: ["muted"] }
-        ]
-      });
-    else {
-      const role2 = f.state === "warn" ? "warning" : "danger";
-      const word = f.state === "warn" ? "warning" : "error";
-      rows.push({
-        mark: mark(f.state),
-        spans: f.id === "manifest" ? [{ text: `${word} `, style: [role2] }, { text: u(f.detail) }] : [
-          { text: `${word} `, style: [role2] },
-          { text: `${label}: ${u(f.detail)}` }
-        ]
-      });
-    }
-    if (f.fix) fix(u(f.fix));
+  const reached = remote?.facts[0]?.state === "ok";
+  const config = await checkConfigFiles({
+    cwd,
+    host: hostOf3(ctx.baseUrl.url),
+    exposed: reached ? remote.pinned : null
+  });
+  const report2 = buildReport({
+    product: ctx.product,
+    baseUrl: ctx.baseUrl.url,
+    manifest,
+    remote,
+    session,
+    config,
+    env: ci.env
+  });
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("doctor", report2.exit, {
+        product: ctx.product?.slug ?? null,
+        baseUrl: maskTokens(ctx.baseUrl.url),
+        ...reportJson(report2),
+        services: remote?.services ?? [],
+        signing: remote?.signing ?? null,
+        keys: remote?.keys ?? [],
+        ...sessionJson(session)
+      })
+    );
+    return report2.exit;
   }
-  writeRows(rows, stdout, term);
-  const { todo: todo2, warnings } = doctorCounts(model);
-  const secs = `${(model.ms / 1e3).toFixed(1)} s`;
-  const role = todo2 ? "danger" : warnings ? "warning" : "success";
-  stdout.write(
-    `
-${painter.line([
-      {
-        text: `${todo2} to do ${symbols.separator} ${warnings} warning${warnings === 1 ? "" : "s"} ${symbols.separator} ${secs}`,
-        style: [role]
-      }
-    ])}
-`
-  );
+  stdout.write(renderReport(report2, term, performance.now() - started));
+  return report2.exit;
 }
 function checkFlags(parsed, command, known, term) {
   const unknown = Object.keys(parsed.flags).find((k) => !known.includes(k));
@@ -50103,7 +50012,7 @@ function checkFlags(parsed, command, known, term) {
     return failLine(`Option --${missing} needs a value.`, term);
   return null;
 }
-async function cmdBundle(parsed, cwd, stdout, env) {
+async function cmdBundle(parsed, cwd, stdout, term, env, token, fetchImpl) {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
   const graceRaw = flagString(parsed, "grace-days");

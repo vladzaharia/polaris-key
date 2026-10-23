@@ -100,7 +100,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 Corrections recorded by slice 31.1 (code is the fact):
 
 - `TABLE_OWNERS` already had a `console_role_bindings` row under `core` (ST-28 added it ahead of the migration); 31.1 only updated its comment.
-- The DDL is ST-28 §5.1 verbatim. Migrations are `0129_a_console_role_bindings.sql` and `0129_b_platform_audit_action_idx.sql` (the `idx_platform_audit_action` index ST-30 never added); the lead renumbers both at merge.
+- The DDL is ST-28 §5.1 verbatim. Migrations are `0130_a_console_role_bindings.sql` and `0130_b_platform_audit_action_idx.sql` (the `idx_platform_audit_action` index ST-30 never added); the lead renumbers both at merge.
 - `normalizeAreas` throws on any id that is not a product area (the prompt said "only product areas"), so a typo never silently narrows or widens a grant.
 
 ## UX coverage (2026-10-09)

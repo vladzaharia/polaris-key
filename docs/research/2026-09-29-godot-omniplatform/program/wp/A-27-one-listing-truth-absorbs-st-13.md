@@ -120,4 +120,4 @@ Phase 1 (A-27.1 to .13) is built; "One listing store" and the green gate stay op
 - The phone tab strip cuts "Push" with no fade or scroll hint.
 - `tools/channel-literals.test.ts` baseline fails on `core/components/listing/FieldSource.tsx` (3 store-name literals, from A-27.12): use `channelLabel(id)` or add a baseline row.
 - The `gen constants` drift (A-20.9's channel reasons) resolves at the chain merge.
-- Migration `0199_listing_truth_moves.sql` is a placeholder number; the lead numbers it at merge.
+- Migration `0139_listing_truth_moves.sql` is a placeholder number; the lead numbers it at merge.

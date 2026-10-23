@@ -15,7 +15,7 @@
 --
 -- Core owns the table (TABLE_OWNERS). Expand-only: a Worker deployed before this migration never
 -- names it. Dropped in U-27b with the job. Rollback:
--- scripts/rollback/0130_provisioned_secret_moves.down.sql.
+-- scripts/rollback/0133_provisioned_secret_moves.down.sql.
 CREATE TABLE IF NOT EXISTS provisioned_secret_moves (
   product          TEXT NOT NULL,
   license_id       TEXT NOT NULL,

@@ -5,7 +5,7 @@
 -- reads the table yet (31.2 wires the principal), so this slice changes no behaviour.
 --
 -- The lead renumbers 0129 at merge. Expand-only: an old Worker never names the table and ignores
--- it. Rollback: scripts/rollback/0129_a_console_role_bindings.down.sql.
+-- it. Rollback: scripts/rollback/0130_a_console_role_bindings.down.sql.
 CREATE TABLE IF NOT EXISTS console_role_bindings (
   id          TEXT PRIMARY KEY,                                   -- crb_ + 22 base64url
   account_id  TEXT REFERENCES accounts(id) ON DELETE CASCADE,     -- a member

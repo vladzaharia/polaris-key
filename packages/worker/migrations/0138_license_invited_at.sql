@@ -7,7 +7,7 @@
 -- the table, so TABLE_OWNERS is unchanged.
 --
 -- Expand only: the Worker deployed before LX-27c never names it. Rollback:
--- scripts/rollback/0131_a_license_invited_at.down.sql. The lead renumbers this file at merge.
+-- scripts/rollback/0138_license_invited_at.down.sql. The lead renumbers this file at merge.
 --
 -- ONE statement per file (R11-04).
 ALTER TABLE licenses ADD COLUMN invited_at INTEGER;

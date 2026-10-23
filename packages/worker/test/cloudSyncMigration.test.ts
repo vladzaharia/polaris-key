@@ -1,5 +1,5 @@
 /**
- * U-05.3's `0130_cloud_sync_directory.sql` and `0131_cloud_sync_daily.sql` (numbers are the lead's
+ * U-05.3's `0131_cloud_sync_directory.sql` and `0132_cloud_sync_daily.sql` (numbers are the lead's
  * to assign), rehearsed on a scratch SQLite: every earlier migration, a populated fixture, then the
  * files statement by statement and in one transaction, a replay, and the down scripts. Also the
  * `sync.cloudSync` subject store over the directory row.
