@@ -6,8 +6,10 @@
  */
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
+import { qk } from "../../../data/queries.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
@@ -28,6 +30,7 @@ export function SendInviteDialog({
   open,
   onOpenChange,
   context,
+  first = false,
 }: {
   slug: string;
   licenseId: string;
@@ -35,7 +38,10 @@ export function SendInviteDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context?: "assigned";
+  /** No invitation has gone out yet: it says Send, not Resend. */
+  first?: boolean;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
   const [failed, setFailed] = React.useState<{
@@ -59,6 +65,18 @@ export function SendInviteDialog({
   }, [open, until]);
 
   const waitSeconds = Math.max(0, Math.ceil((until - clock) / 1000));
+  // When the wait ends the refusal goes with it: Send is live again and nothing says to wait.
+  React.useEffect(() => {
+    if (!open || until <= Date.now()) return;
+    const t = setTimeout(
+      () => {
+        setError(null);
+        setUntil(0);
+      },
+      until - Date.now() + 50,
+    );
+    return () => clearTimeout(t);
+  }, [open, until]);
 
   const send = async (): Promise<void> => {
     setBusy(true);
@@ -78,19 +96,30 @@ export function SendInviteDialog({
         setUntil(Date.now() + (err.retryAfter ?? 600) * 1000);
         setClock(Date.now());
       }
+      // They already have it: the record still says Waiting until it is read again.
+      if (err instanceof ApiError && err.reason === "in_account")
+        void queryClient.invalidateQueries({
+          queryKey: qk.license(slug, licenseId),
+        });
       setError(err);
     } finally {
       setBusy(false);
+      // Keep the operator on the button they pressed.
+      window.setTimeout(
+        () => document.getElementById("send-invite-submit")?.focus(),
+        0,
+      );
     }
   };
 
   const refusal = error
     ? inviteRefusal(error, email, waitSeconds || 600)
     : null;
+  const done = refusal?.kind === "in_account";
   return (
     <Dialog
       open={open}
-      title="Resend invitation"
+      title={first ? "Send invitation" : "Resend invitation"}
       description={`Emails ${email} a link to sign in. No key is sent.`}
       dismissible={!busy}
       onOpenChange={onOpenChange}
@@ -116,28 +145,35 @@ export function SendInviteDialog({
           ) : null}
         </DialogBody>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            loading={busy}
-            disabledReason={
-              refusal?.permanent
-                ? refusal.description
-                : waitSeconds > 0
-                  ? `Try again in ${minutesText(waitSeconds)}`
-                  : failed && !canRetryInvite(failed.reason)
-                    ? inviteFailureCopy(failed.reason, email)
-                    : undefined
-            }
-          >
-            {failed ? "Try again" : "Send invitation"}
-          </Button>
+          {done ? (
+            <Button onClick={() => onOpenChange(false)}>Done</Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                id="send-invite-submit"
+                type="submit"
+                loading={busy}
+                disabledReason={
+                  refusal?.permanent
+                    ? refusal.description
+                    : waitSeconds > 0
+                      ? `Try again in ${minutesText(waitSeconds)}`
+                      : failed && !canRetryInvite(failed.reason)
+                        ? inviteFailureCopy(failed.reason, email)
+                        : undefined
+                }
+              >
+                {failed ? "Try again" : "Send invitation"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </form>
     </Dialog>

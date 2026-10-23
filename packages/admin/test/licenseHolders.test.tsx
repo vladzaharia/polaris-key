@@ -542,7 +542,13 @@ describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
   });
   const record = (extra: Record<string, unknown> = {}) =>
     bootLicense("#/p/djdl/license/licenses/lic_wait", {
-      routes: { ...ROUTES, ...INVITING, ...extra },
+      routes: {
+        ...ROUTES,
+        ...INVITING,
+        // An invitation went out already: the record resends (N1: with none it says Send).
+        [`${API}/license/licenses/lic_wait`]: detail(INVITED),
+        ...extra,
+      },
     });
 
   it("the primary resends the invitation where invitations work, and the key elsewhere", async () => {
@@ -652,6 +658,72 @@ describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
     ).toBe("true");
   });
 
+  it("B1: when the 429 wait ends the refusal goes and Send is live again", async () => {
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(429, {
+        retryAfter: 1,
+      }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    expect(await within(dialog).findByText("Sent a moment ago")).toBeTruthy();
+    await waitFor(
+      () => expect(within(dialog).queryByText("Sent a moment ago")).toBeNull(),
+      { timeout: 3000 },
+    );
+    expect(within(dialog).queryByText(/You can send another/)).toBeNull();
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Send invitation" })
+        .getAttribute("aria-disabled"),
+    ).toBeNull();
+  });
+
+  it("N2/N3: in_account ends in one Done; a disabled license offers no Send invitation", async () => {
+    record({
+      [`POST ${API}/license/licenses/lic_wait/send-invite`]: refuse(409, {
+        reason: "in_account",
+      }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Resend invitation",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send invitation" }),
+    );
+    await within(dialog).findByText("Already in their account");
+    expect(within(dialog).getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: "Send invitation" }),
+    ).toBeNull();
+    cleanup();
+
+    record({
+      [`${API}/license/licenses/lic_wait`]: detail({
+        ...INVITED,
+        status: "disabled",
+      } as LicenseSummary),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
+    expect(
+      screen.queryByRole("button", {
+        name: /Send invitation|Resend invitation/,
+      }),
+    ).toBeNull();
+  });
+
   it("a failed send says why and offers Try again", async () => {
     record({
       [`POST ${API}/license/licenses/lic_wait/send-invite`]: {
@@ -690,12 +762,19 @@ describe("invitations on the record, Assign… and the list (LX-27c.5)", () => {
     ).toBeTruthy();
     cleanup();
 
-    record();
+    record({ [`${API}/license/licenses/lic_wait`]: detail(WAITING) });
     await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
     card = await screen.findByRole("region", { name: "Invitation" });
     expect(within(card).getByText("Not sent")).toBeTruthy();
+    // N1: one button for one action, and it says Send, not Resend; the card has none of its own.
     expect(
-      within(card).getByRole("button", { name: "Send invitation" }),
+      within(card).queryByRole("button", { name: /invitation/i }),
+    ).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send invitation" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Send invitation" }),
     ).toBeTruthy();
     cleanup();
 

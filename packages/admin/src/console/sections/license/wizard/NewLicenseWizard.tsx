@@ -521,7 +521,7 @@ export function NewLicenseWizard({
       );
     } else if (at === "delivery") {
       why = invitesPerson(draft)
-        ? "An invitation has no key. A key you ask for is shown here only once."
+        ? `How ${draft.name.trim() || draft.email.trim() || "they"} gets the license.`
         : "The key is shown here only once either way.";
       body = form(
         <DeliveryStep

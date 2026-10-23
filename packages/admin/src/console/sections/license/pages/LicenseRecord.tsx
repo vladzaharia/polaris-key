@@ -72,6 +72,7 @@ import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
 import {
   StatusTab,
   ToggleLicenseDialogs,
+  useFocusTitleAfterInvite,
   useFocusTitleAfterUndo,
   type RecordDialog,
 } from "../components/LicenseRecordParts.js";
@@ -190,6 +191,7 @@ function LicenseRecordBody({
     email: string;
   } | null>(null);
   const [dialog, setDialog] = React.useState<RecordDialog>(null);
+  useFocusTitleAfterInvite(dialog);
   // Config overrides keep their draft across tab switches once opened (the editor owns it).
   const [configOpened, setConfigOpened] = React.useState(tab === "config");
   React.useEffect(() => {
@@ -274,7 +276,9 @@ function LicenseRecordBody({
       iconStart={<Send />}
       onClick={() => setDialog(canInvite ? "invite" : "send")}
     >
-      Resend invitation
+      {canInvite && license.invitedAt == null
+        ? "Send invitation"
+        : "Resend invitation"}
     </Button>
   ) : (
     <Button
@@ -561,6 +565,7 @@ function LicenseRecordBody({
         slug={slug}
         licenseId={id}
         email={license.email?.trim() ?? ""}
+        first={license.invitedAt == null}
         open={dialog === "invite"}
         onOpenChange={(o) => setDialog(o ? "invite" : null)}
       />

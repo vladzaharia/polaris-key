@@ -197,7 +197,6 @@ export function InvitationCard({
   invitedAt,
   canInvite,
   onChangeEmail,
-  onSend,
 }: {
   email: string;
   /** When the last invitation email went out (LX-27c); null when none did. */
@@ -205,7 +204,6 @@ export function InvitationCard({
   /** The product can invite (Identity and auto-link on): the card says what was sent. */
   canInvite: boolean;
   onChangeEmail: () => void;
-  onSend: () => void;
 }): React.ReactElement {
   // Where invitations don't work the card is as before. Where they do, it says what went out;
   // there is no "opened" state: nothing tracks opens (privacy).
@@ -217,11 +215,6 @@ export function InvitationCard({
       variant="settings"
       actions={
         <div className="flex flex-wrap gap-2">
-          {canInvite && !sent ? (
-            <Button variant="outline" size="sm" onClick={onSend}>
-              Send invitation
-            </Button>
-          ) : null}
           <Button variant="outline" size="sm" onClick={onChangeEmail}>
             Change email…
           </Button>

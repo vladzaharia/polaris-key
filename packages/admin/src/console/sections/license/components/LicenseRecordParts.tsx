@@ -57,6 +57,22 @@ export function useFocusTitleAfterUndo(
   return focusAfterUndo;
 }
 
+/** Closing the invite dialog from a button that has unmounted must not drop focus to <body>. */
+export function useFocusTitleAfterInvite(dialog: RecordDialog): void {
+  const prev = React.useRef<RecordDialog>(null);
+  React.useEffect(() => {
+    const was = prev.current;
+    prev.current = dialog;
+    if (was !== "invite" || dialog !== null) return;
+    const t = window.setTimeout(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body) return;
+      document.querySelector<HTMLElement>("h1[data-page-title]")?.focus();
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [dialog]);
+}
+
 export type RecordDialog =
   | "holder"
   | "assign"
@@ -112,7 +128,6 @@ export function StatusTab({
             invitedAt={license.invitedAt ?? null}
             canInvite={canInvite}
             onChangeEmail={() => onDialog("reassign")}
-            onSend={() => onDialog("invite")}
           />
         ) : null}
         {floating ? <AnyoneWithKeyCard devices={license.devices} /> : null}
