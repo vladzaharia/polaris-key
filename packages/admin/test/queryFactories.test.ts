@@ -267,19 +267,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/config/components/RemovedValues.tsx",
     "sections/config/data.ts",
   ],
-  // P0-32.14 and 32.15
-  "sections/core": [
-    "sections/core/components/PresentationBaseRows.tsx",
-    "sections/core/components/ShipBuildsTile.tsx",
-    "sections/core/model/presentationSlots.ts",
-    "sections/core/pages/Activity.tsx",
-    "sections/core/pages/Devices.tsx",
-    "sections/core/pages/Integration.tsx",
-    "sections/core/pages/Overview.tsx",
-    "sections/core/pages/Presentation.tsx",
-    "sections/core/pages/UserRecord.tsx",
-    "sections/core/pages/Users.tsx",
-  ],
   // P0-32.16
   "sections/global": [
     "sections/global/pages/ApiTokens.tsx",
