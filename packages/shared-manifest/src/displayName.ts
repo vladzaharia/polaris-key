@@ -172,9 +172,18 @@ export function invalidDisplayText(text: string): boolean {
  */
 export function checkDisplayName(
   text: string,
-  opts: { slug?: string; extraTerms?: readonly string[] } = {},
+  opts: {
+    slug?: string;
+    extraTerms?: readonly string[];
+    /**
+     * The operator approved this product's name (`identity.displayNameApproved`): clears
+     * `reserved` for it, never `invalid`.
+     */
+    approved?: boolean;
+  } = {},
 ): null | "reserved" | "invalid" {
   if (invalidDisplayText(text)) return "invalid";
-  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
+  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG || opts.approved === true)
+    return null;
   return reservedDisplayTerm(text, opts.extraTerms) ? "reserved" : null;
 }

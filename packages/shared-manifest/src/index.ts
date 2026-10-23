@@ -1582,6 +1582,16 @@ export interface ValidationOptions {
    * its platform setting `identity.reservedDisplayNames`; anything else gets the default, `warn`.
    */
   reservedDisplayNames?: ReservedDisplayNamesMode;
+  /**
+   * PX-W13b: extra reserved terms (`identity.reservedDisplayTerms`), added to the code's floor
+   * (`RESERVED_DISPLAY_TERMS`), which stays. The CLI and editors pass none.
+   */
+  reservedDisplayTerms?: readonly string[];
+  /**
+   * PX-W13b: the operator approved this product's display names (`identity.displayNameApproved`).
+   * Clears `reserved_display_name` for this product only; `invalid_display_text` is never cleared.
+   */
+  displayNameApproved?: boolean;
 }
 
 export function validateManifestDocuments(
@@ -2841,7 +2851,11 @@ function validateDocuments(
       opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
     const verdict = (v: unknown): null | "reserved" | "invalid" =>
       typeof v === "string" && v !== ""
-        ? checkDisplayName(v, { slug: productSlug })
+        ? checkDisplayName(v, {
+            slug: productSlug,
+            extraTerms: opts.reservedDisplayTerms,
+            approved: opts.displayNameApproved,
+          })
         : null;
     const listing = isRecord(manifest.distribution)
       ? asRecord(manifest.distribution.listing)

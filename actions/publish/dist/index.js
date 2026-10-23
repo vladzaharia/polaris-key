@@ -20758,7 +20758,11 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   {
     const mode = opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
-    const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, { slug: productSlug }) : null;
+    const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, {
+      slug: productSlug,
+      extraTerms: opts.reservedDisplayTerms,
+      approved: opts.displayNameApproved
+    }) : null;
     const listing = isRecord6(manifest.distribution) ? asRecord(manifest.distribution.listing) : {};
     const name = verdict(productNode.name);
     if (name === "invalid")
