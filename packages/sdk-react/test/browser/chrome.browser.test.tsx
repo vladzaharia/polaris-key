@@ -24,19 +24,30 @@ import type { UiInput } from "@polaris-key/ui-core";
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
 import * as Kit from "@polaris-key/react/kit";
-import { SCENES, sceneInput, type Scene } from "../chromeScenes.js";
+import {
+  HOST_APP_HTML,
+  WINDOWS_PLATFORM,
+  WINDOWS_SCENES as SCENES,
+  sceneInput,
+  type Scene,
+} from "../chromeScenes.js";
 
 declare module "vitest/browser" {
   interface BrowserCommands {
     kitShot: (file: string) => Promise<void>;
     emulateForced: (forced: "active" | null) => Promise<void>;
+    emulateTouch: (on: boolean) => Promise<void>;
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_KIT_BASELINES__: string;
 
+/** The phone row, the board's two window sizes (the default Windows window and the narrow one) and
+ *  the desktop row. */
 const SIZES = [
   { label: "390", width: 390, height: 844 },
+  { label: "480x640", width: 480, height: 640 },
+  { label: "900x600", width: 900, height: 600 },
   { label: "1440", width: 1440, height: 900 },
 ] as const;
 const SCHEMES = ["dark", "light"] as const;
@@ -69,6 +80,7 @@ afterEach(async () => {
   document.body.style.background = "";
   document.documentElement.removeAttribute("dir");
   await commands.emulateForced(null);
+  await commands.emulateTouch(false);
 });
 const frame = (): Promise<void> =>
   new Promise((r) => requestAnimationFrame(() => r()));
@@ -80,7 +92,11 @@ const COMPONENTS = Kit as unknown as Record<
 async function mount(
   scene: Scene,
   scheme: Scheme,
-  o: { rtl?: boolean; platform?: string } = {},
+  o: {
+    rtl?: boolean;
+    platform?: string;
+    reported?: { os: string; formFactor: string };
+  } = {},
 ): Promise<HTMLElement> {
   document.body.style.margin = "0";
   document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
@@ -91,21 +107,30 @@ async function mount(
   const Component = COMPONENTS[scene.component];
   if (!Component) throw new Error(`no React kit component ${scene.component}`);
   root = createRoot(host);
+  const dialogScene = scene.sheet === true || scene.dialog === true;
   root.render(
-    <Component
-      input={sceneInput(scene)}
-      {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
-      fill={LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"}
-      theme={{
-        product: PRODUCT,
-        colorScheme: scheme,
-        platform: (o.platform ?? "windows") as "windows",
-      }}
-    >
-      <main data-host-content="">
-        <p>The app</p>
-      </main>
-    </Component>,
+    <>
+      {dialogScene ? (
+        <div dangerouslySetInnerHTML={{ __html: HOST_APP_HTML }} />
+      ) : null}
+      <Component
+        input={sceneInput(scene, o.reported ?? WINDOWS_PLATFORM)}
+        {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
+        fill={
+          !dialogScene &&
+          LAYOUTS[scene.component as keyof typeof LAYOUTS].kind === "screen"
+        }
+        theme={{
+          product: PRODUCT,
+          colorScheme: scheme,
+          platform: (o.platform ?? "windows") as "windows",
+        }}
+      >
+        <main data-host-content="">
+          <p>The app</p>
+        </main>
+      </Component>
+    </>,
   );
   for (let i = 0; i < 100 && !host.querySelector(".pk-root"); i++)
     await new Promise((r) => setTimeout(r, 20));
@@ -151,17 +176,80 @@ async function axeViolations(kit: HTMLElement): Promise<string[]> {
   );
 }
 
+/** True when a scrolling ancestor (the card's body, a long list) hides the element from view. */
+function scrolledAway(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  for (
+    let a = el.parentElement;
+    a && a !== document.body;
+    a = a.parentElement
+  ) {
+    if (getComputedStyle(a).overflowY === "visible") continue;
+    const box = a.getBoundingClientRect();
+    if (r.bottom <= box.top + 1 || r.top >= box.bottom - 1) return true;
+  }
+  return false;
+}
+
+/** Tab order is the visual order (WCAG 2.4.3): each stop is at or below the one before it, and in
+ *  the same row it is further along the reading direction. */
+function tabOrderProblems(root: ParentNode): string[] {
+  const stops = [
+    ...root.querySelectorAll<HTMLElement>(
+      "button, a[href], input, textarea, select, [tabindex='0']",
+    ),
+  ].filter(
+    (el) => visible(el) && !scrolledAway(el) && !el.hasAttribute("disabled"),
+  );
+  const rtl = getComputedStyle(stops[0] ?? document.body).direction === "rtl";
+  const out: string[] = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1]!.getBoundingClientRect();
+    const b = stops[i]!.getBoundingClientRect();
+    const sameRow = Math.abs(b.top - a.top) <= 2;
+    if (b.top < a.top - 2)
+      out.push(`${label(stops[i]!)} is above ${label(stops[i - 1]!)}`);
+    else if (sameRow && (rtl ? b.left > a.left + 2 : b.left < a.left - 2))
+      out.push(
+        `${label(stops[i]!)} is before ${label(stops[i - 1]!)} in its row`,
+      );
+  }
+  return out;
+}
+
 function chrome(kit: HTMLElement, scene: Scene, width: number) {
   expect(kit.getAttribute("data-pk-platform")).toBe("windows");
-  // Fine pointer: 32 px controls at radius 4 (a coarse one takes 44 px; not emulated here).
-  const primary = [
-    ...kit.querySelectorAll<HTMLElement>('.btn[data-variant="primary"]'),
-  ].find(visible);
-  if (primary && !matchMedia("(pointer: coarse)").matches) {
-    const cs = getComputedStyle(primary);
-    expect(parseFloat(cs.minHeight), "control height").toBe(32);
-    expect(parseFloat(cs.borderTopLeftRadius), "control radius").toBe(4);
-    expect(visible(primary)!.height).toBeGreaterThanOrEqual(32);
+  const fine = !matchMedia("(pointer: coarse)").matches;
+  // Fine pointer: every filled button is exactly 32 px at radius 4 (a coarse one takes 44 px).
+  for (const b of kit.querySelectorAll<HTMLElement>(
+    '.btn:is([data-variant="primary"], [data-variant="secondary"], [data-variant="danger"])',
+  )) {
+    const r = visible(b);
+    if (!r || !fine) continue;
+    expect(r.height, `${label(b)} height`).toBe(32);
+    expect(parseFloat(getComputedStyle(b).borderTopLeftRadius)).toBe(4);
+  }
+  // Links sit at the column's edge, not indented by the button padding, and look like links.
+  for (const l of kit.querySelectorAll<HTMLElement>(
+    '.btn[data-variant="link"]',
+  )) {
+    if (!visible(l)) continue;
+    expect(
+      parseFloat(getComputedStyle(l).paddingInlineStart),
+    ).toBeLessThanOrEqual(12); // never the filled buttons' 16
+    const c = getComputedStyle(l).color;
+    expect(c, "link colour").not.toBe(getComputedStyle(kit).color);
+  }
+  // Paste is a square inside the field.
+  const paste = kit.querySelector<HTMLElement>(".field-paste .paste");
+  if (paste && visible(paste)) {
+    const field = kit
+      .querySelector<HTMLElement>(".field-paste")!
+      .getBoundingClientRect();
+    const r = paste.getBoundingClientRect();
+    expect(r.bottom).toBeLessThanOrEqual(field.bottom + 0.5);
+    expect(r.top).toBeGreaterThanOrEqual(field.top - 0.5);
+    expect(r.width).toBeLessThanOrEqual(field.height + 0.5);
   }
   const dialog = kit.querySelector<HTMLDialogElement>("dialog[open]");
   if (scene.sheet || scene.dialog) {
@@ -175,22 +263,66 @@ function chrome(kit: HTMLElement, scene: Scene, width: number) {
     // A ContentDialog is centred, never docked to the bottom edge, 480 px at most.
     expect(box.width).toBeLessThanOrEqual(480 + 1);
     expect(box.bottom).toBeLessThan(innerHeight);
+    expect(box.top).toBeGreaterThanOrEqual(0);
     const dir = getComputedStyle(kit).direction;
-    const buttons = [...dialog!.querySelectorAll<HTMLElement>(".actions .btn")]
-      .filter(visible)
-      .filter((b) => b.dataset.variant !== "link");
-    if (buttons.length >= 2) {
-      const widths = buttons.map((b) =>
-        Math.round(b.getBoundingClientRect().width),
+    const footer = dialog!.querySelector<HTMLElement>(
+      ".card > .actions:not([data-group])",
+    );
+    if (footer) {
+      // The footer is pinned inside the window: the primary is never scrolled away.
+      expect(
+        footer.getBoundingClientRect().bottom,
+        "footer bottom",
+      ).toBeLessThanOrEqual(innerHeight + 0.5);
+      const buttons = [...footer.querySelectorAll<HTMLElement>(".btn")].filter(
+        visible,
       );
-      expect(new Set(widths).size, `equal width ${widths}`).toBe(1);
-      // The primary first: at the start edge.
-      const lefts = buttons.map((b) => b.getBoundingClientRect().left);
-      const p = buttons.findIndex((b) => b.dataset.variant === "primary");
-      expect(p, "primary is in the footer").toBeGreaterThanOrEqual(0);
-      const first = dir === "rtl" ? Math.max(...lefts) : Math.min(...lefts);
-      expect(lefts[p]).toBe(first);
+      // Labels never wrap: every footer button is one control tall.
+      if (fine)
+        for (const b of buttons)
+          expect(
+            b.getBoundingClientRect().height,
+            `${label(b)} is one line`,
+          ).toBe(32);
+      if (buttons.length >= 2) {
+        const widths = buttons.map((b) =>
+          Math.round(b.getBoundingClientRect().width),
+        );
+        expect(new Set(widths).size, `equal width ${widths}`).toBe(1);
+        const p = buttons.findIndex((b) => b.dataset.variant === "primary");
+        if (p >= 0) {
+          // The primary first: at the top of a stack, else at the start edge.
+          const tops = buttons.map((b) => b.getBoundingClientRect().top);
+          const lefts = buttons.map((b) => b.getBoundingClientRect().left);
+          if (Math.max(...tops) - Math.min(...tops) > 2)
+            expect(tops[p]).toBe(Math.min(...tops));
+          else
+            expect(lefts[p]).toBe(
+              dir === "rtl" ? Math.max(...lefts) : Math.min(...lefts),
+            );
+        }
+      }
+      // Three or more commands stack.
+      if (buttons.length >= 3) {
+        const tops = buttons.map((b) =>
+          Math.round(b.getBoundingClientRect().top),
+        );
+        expect(new Set(tops).size, "a stack").toBe(buttons.length);
+      }
     }
+    // Tab order is the visual order.
+    expect(tabOrderProblems(dialog!).join("\n")).toBe("");
+    // No round close duplicating a footer Cancel or Close.
+    const close = dialog!.querySelector<HTMLElement>(".sheet-close");
+    if (
+      close &&
+      footer?.querySelector(
+        '[data-key="common.cancel"], [data-key="common.close"]',
+      )
+    )
+      expect(visible(close), "no round X beside Cancel").toBeNull();
+  } else {
+    expect(tabOrderProblems(kit).join("\n")).toBe("");
   }
   expect(width).toBeGreaterThan(0);
 }
@@ -244,23 +376,16 @@ describe("the Windows chrome, behaviour", () => {
     root?.unmount();
     host?.remove();
     // `auto` with a reported platform: linux is the gnome variant (ui-core's one mapping).
-    const withHost = {
-      ...sheet,
-      row: {
-        ...sheet.row,
-        input: {
-          ...sheet.row.input,
-          platform: { os: "linux", formFactor: "computer" },
-        },
-      },
-    } as Scene;
-    kit = await mount(withHost, "dark", { platform: "auto" });
+    kit = await mount(sheet, "dark", {
+      platform: "auto",
+      reported: { os: "linux", formFactor: "computer" },
+    });
     expect(kit.getAttribute("data-pk-platform")).toBe("gnome");
     root?.unmount();
     host?.remove();
     kit = await mount(sheet, "dark", { platform: "auto" });
-    // The corpus default platform is macOS: auto takes the reported one.
-    expect(kit.getAttribute("data-pk-platform")).toBe("macos");
+    // The scene reports a Windows machine: auto takes it.
+    expect(kit.getAttribute("data-pk-platform")).toBe("windows");
   });
 
   it("draws the two-tone focus ring on the keyboard-focused primary", async () => {
@@ -304,5 +429,20 @@ describe("the Windows chrome, behaviour", () => {
     expect(getComputedStyle(kit.querySelector(".card")!).borderTopStyle).toBe(
       "solid",
     );
+  });
+
+  it("takes 44 px controls under a coarse pointer (touch)", async () => {
+    await page.viewport(900, 600);
+    await commands.emulateTouch(true);
+    const scene = SCENES.find((x) => x.id === "Activate.parsed")!;
+    const kit = await mount(scene, "light");
+    expect(matchMedia("(pointer: coarse)").matches, "touch emulation").toBe(
+      true,
+    );
+    const primary = kit.querySelector<HTMLElement>(
+      '.btn[data-variant="primary"]',
+    )!;
+    expect(primary.getBoundingClientRect().height).toBe(44);
+    expect(kit.querySelector("input")!.getBoundingClientRect().height).toBe(44);
   });
 });

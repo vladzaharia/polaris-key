@@ -35,6 +35,8 @@ export interface RenderCtx {
   fill?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
+  dialog?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */
@@ -776,6 +778,7 @@ export function actions(
   controls: string[],
   layoutRow = false,
   primaryLast = false,
+  group?: "choices",
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
@@ -792,6 +795,7 @@ export function actions(
     part="actions"
     data-part="actions"
     data-layout=${layoutRow ? "row" : "stack"}
+    data-group=${ifDefined(group)}
   >
     ${sorted.map((k) =>
       button(

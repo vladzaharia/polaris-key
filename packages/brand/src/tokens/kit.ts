@@ -265,8 +265,8 @@ export const KIT_TYPE_SCALE: Record<
     code: role(32, 40, 500, 0.06, "mono"),
   },
   windows: {
-    display: role(40, 52, 600),
-    title: role(28, 36, 600),
+    display: role(28, 36, 600),
+    title: role(20, 28, 600),
     body: role(14, 20, 400),
     label: role(14, 20, 500),
     button: role(14, 20, 500),
