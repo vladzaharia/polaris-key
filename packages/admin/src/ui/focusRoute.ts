@@ -1,5 +1,9 @@
 import { CLOSING_OVERLAYS, OPEN_OVERLAYS } from "../lib/router-core.js";
-import { announce } from "./LiveRegion.js";
+import {
+  announce,
+  beginPageAnnouncement,
+  markPageAnnounced,
+} from "./LiveRegion.js";
 
 /**
  * Route-change focus (WCAG 2.4.3, ADMIN.md §5.6): after a navigation settles, move focus to the
@@ -83,8 +87,13 @@ export function focusRoute(
   // performance.now(): monotonic, and not pinned by a test harness that freezes Date.
   const started = performance.now();
   const initial = doc.activeElement;
+  const end = beginPageAnnouncement();
 
-  return new Promise((resolve) => {
+  return new Promise((resolveRaw) => {
+    const resolve = (r: FocusRouteResult): void => {
+      end();
+      resolveRaw(r);
+    };
     const step = (): void => {
       if (alive && !alive()) return resolve("cancelled");
       if (doc.querySelector(OPEN_OVERLAYS)) return resolve("kept");
@@ -101,6 +110,7 @@ export function focusRoute(
         heading.focus({ preventScroll: true });
         const name = (headingName(heading) || (title ?? "")).trim();
         announce(name ? `${name}, page loaded` : "Page loaded");
+        markPageAnnounced();
         return resolve("focused");
       }
       if (expired && (!alive || elapsed >= deadline * MAX_WAIT_FACTOR))

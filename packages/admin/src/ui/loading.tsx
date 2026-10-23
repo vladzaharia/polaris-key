@@ -1,19 +1,36 @@
 import * as React from "react";
 import { cn } from "../lib/cn.js";
-import { announce } from "./LiveRegion.js";
+import {
+  announce,
+  pageAnnouncementCovers,
+  pageAnnouncementMark,
+} from "./LiveRegion.js";
 
 /**
  * Loading feedback beyond skeletons (components.md §5.3).
  *
  * `useLoadingAnnouncement("licenses", isLoading)` announces "Loading licenses…" when a load
  * starts and "Licenses loaded" when it finishes, through the shared polite announcer (UI-13).
+ * A load that overlaps the route's own "{title}, page loaded" (the initial load after a
+ * navigation) skips "loaded": the page announcement already spoke. Later loads the user triggers
+ * on the same page still announce.
  */
 export function useLoadingAnnouncement(noun: string, loading: boolean): void {
   const was = React.useRef(false);
+  const mark = React.useRef<ReturnType<typeof pageAnnouncementMark> | null>(
+    null,
+  );
   React.useEffect(() => {
-    if (loading && !was.current) announce(`Loading ${noun}…`);
+    if (loading && !was.current) {
+      mark.current = pageAnnouncementMark();
+      announce(`Loading ${noun}…`);
+    }
     if (!loading && was.current) {
-      announce(`${noun.charAt(0).toUpperCase()}${noun.slice(1)} loaded`);
+      const covered = mark.current
+        ? pageAnnouncementCovers(mark.current)
+        : false;
+      if (!covered)
+        announce(`${noun.charAt(0).toUpperCase()}${noun.slice(1)} loaded`);
     }
     was.current = loading;
   }, [noun, loading]);
