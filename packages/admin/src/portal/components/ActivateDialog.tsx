@@ -144,6 +144,9 @@ export function ActivateDialog({
   const [names, setNames] = React.useState<Record<string, string>>({});
   const claim = useClaimKey();
   const preview = usePreviewKey();
+  /** Single-flight: set at the press, cleared when the request settles. `isPending` only turns
+   *  true after a re-render, so a quick second press would otherwise send a second request. */
+  const inFlight = React.useRef(false);
   const licenses = useLicenses(open);
   const account = useSession().data?.account;
   const accountId = account?.id ?? null;
@@ -279,8 +282,13 @@ export function ActivateDialog({
     const before = new Set(
       (licenses.data ?? []).map((l) => `${l.product}:${l.id}`),
     );
+    if (inFlight.current) return;
+    inFlight.current = true;
     setAddError(null);
     claim.mutate(key, {
+      onSettled: () => {
+        inFlight.current = false;
+      },
       onSuccess: (res) => {
         const lic = res.license;
         finish({
@@ -326,9 +334,14 @@ export function ActivateDialog({
       focusField();
       return;
     }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setServerVerdict(null);
     const slugNow = check.slug;
     preview.mutate(key, {
+      onSettled: () => {
+        inFlight.current = false;
+      },
       onSuccess: (p) => {
         const named = p.product;
         if (named?.name)
@@ -360,8 +373,10 @@ export function ActivateDialog({
       },
       onError: (err) => {
         // A Worker without the preview: add directly, as before G22.
-        if (err instanceof PortalApiError && err.status === 404) add(slugNow);
-        else setServerVerdict(claimError(err, nameFor(slugNow)));
+        if (err instanceof PortalApiError && err.status === 404) {
+          inFlight.current = false;
+          add(slugNow);
+        } else setServerVerdict(claimError(err, nameFor(slugNow)));
       },
     });
   };
