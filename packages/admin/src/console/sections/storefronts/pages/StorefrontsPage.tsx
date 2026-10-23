@@ -61,6 +61,7 @@ import { useSlots, useStorefronts } from "../data.js";
 import { StoreTile } from "../components/StoreTiles.js";
 import { FlowSkeleton } from "../components/FlowSkeleton.js";
 import { useCan, useWriteGate } from "../../../access/useCan.js";
+import { EditListingLink } from "../components/EditListingLink.js";
 import { FitReport } from "../components/FitReport.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
@@ -176,6 +177,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
     >
       <PageHeader
         title={flow ? "Add to storefronts" : "Storefronts"}
+        toolbar={flow ? undefined : <EditListingLink slug={slug} />}
         primaryAction={
           flow ? undefined : (
             <Button asChild disabledReason={gate.disabledReason}>
@@ -277,7 +279,6 @@ function AddFlow({
   const current: FlowStep = chosen.length === 0 ? "choose" : step;
   const currentIndex = FLOW_STEPS.indexOf(current);
   const go = (s: FlowStep) => setStep(s);
-
   // A link to a later step with nothing chosen lands on Choose, and choosing never moves the step.
   React.useEffect(() => {
     if (chosen.length === 0 && step !== "choose")

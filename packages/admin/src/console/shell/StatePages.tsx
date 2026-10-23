@@ -18,6 +18,7 @@ import { EmptyState } from "../../ui/EmptyState.js";
 import { Spinner } from "../../ui/Spinner.js";
 import {
   SETTINGS_HUB_PAGES,
+  SETTINGS_TAB_OF,
   featureOfSection,
   pageOf,
   sectionOf,
@@ -151,9 +152,12 @@ export function MovedPage({
   const section = moved.page ? sectionOf(moved.page) : undefined;
   const record = moved.id !== undefined ? target?.record : undefined;
   // The hub's tabs are reached from Settings, whatever section the page sits in.
+  const tab = moved.page
+    ? SETTINGS_TAB_OF[moved.page as ProductPageId]
+    : undefined;
   const home =
     moved.page && SETTINGS_HUB_PAGES.includes(moved.page as ProductPageId)
-      ? "Settings\u00a0\u2192\u00a0"
+      ? `Settings\u00a0\u2192\u00a0${tab ? `${pageOf(tab).label}\u00a0\u2192\u00a0` : ""}`
       : section
         ? `${section.label}\u00a0\u2192\u00a0`
         : "";

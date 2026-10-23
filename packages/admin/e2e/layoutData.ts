@@ -1771,6 +1771,40 @@ const PLAY_STORE = {
 };
 
 const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  // A-27.11: the listing editor's model (Settings -> Presentation -> Listing); an override on Play.
+  [`${PROD}/distribution/listing`]: {
+    listing: {
+      app: { defaultLocale: "en-US", name: "DJDL", developerName: "DJDL Ltd" },
+      source: "admin",
+      provenance: {},
+      modifiedAt: 1,
+      modifiedBy: "u1",
+    },
+    locales: [
+      {
+        locale: "en-US",
+        name: "DJDL",
+        subtitle: "Mix anywhere, live or on air",
+        description: "Two-deck DJ mixer.",
+        source: "admin",
+        provenance: {},
+        modifiedAt: 1,
+        modifiedBy: "u1",
+      },
+    ],
+    overrides: [
+      {
+        store: "play",
+        locale: "en-US",
+        field: "subtitle",
+        value: "Two-deck DJ mixer",
+      },
+    ],
+    limits: { name: 30, subtitle: 30 },
+    stores: [{ store: "play", label: "Google Play Console" }],
+    overrideStores: ["play"],
+    modelFields: ["name", "subtitle", "description"],
+  },
   // The Listing step of the Add to storefronts flow: the fit report, one store with a warning.
   [`${PROD}/distribution/listing/fit`]: {
     exists: true,

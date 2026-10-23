@@ -116,7 +116,7 @@ export function PresentationPage({
             {slotRow(heroSlot!)}
           </SettingsSection>
           <PresentationBaseRows slug={slug} />
-          <SettingsSection id="presentation-listing" title="Listing">
+          <SettingsSection id="presentation-listing" title="Listing images">
             {listingRest.map(slotRow)}
           </SettingsSection>
           {other.length ? (

@@ -304,6 +304,11 @@ export interface NavSection {
  * The product settings hub's areas, in tab order (ST-08, `#/p/<slug>/settings/<area>`). Each is a
  * product page of Core; only `settings` (General) is a sidebar item, and the rest are its tabs.
  */
+/** The hub tab a hub page sits under, when it is not a tab itself (the trail "Settings → Presentation → Listing"). */
+export const SETTINGS_TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
+  "presentation-listing": "presentation",
+};
+
 export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings",
   "services",
@@ -405,6 +410,8 @@ export const SECTIONS: NavSection[] = [
         tile: "product",
         label: "Listing",
         path: "settings/presentation/listing",
+        keywords:
+          "store listing push listing fit report screenshots",
         icon: SquarePen,
         docs: "/docs/features/ship-builds/channels/polaris-key/",
         inNav: false,

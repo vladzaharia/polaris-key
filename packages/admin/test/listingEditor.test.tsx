@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import { resetConsole } from "./consoleHarness.js";
 import { P, bootWith } from "./distributionFixture.js";
 
@@ -81,7 +81,14 @@ const routes = () => ({
       modifiedBy: "u1",
     },
     locales: [],
-    overrides: [],
+    overrides: [
+      {
+        store: "play",
+        locale: "en-US",
+        field: "subtitle",
+        value: "Two-deck DJ mixer",
+      },
+    ],
     limits: {},
   },
   [P("/distribution/listing/fit")]: {
@@ -111,7 +118,7 @@ describe("ListingEditor (A-27.10)", () => {
     expect(screen.getByLabelText(/store/i)).toBeTruthy();
     expect(
       screen.getByText(
-        "Changes here show in Polaris Locker, on the download page and on every channel.",
+        "Changes here show in Polaris Locker, on the download page and on every storefront.",
       ),
     ).toBeTruthy();
   });
@@ -122,6 +129,16 @@ describe("ListingEditor (A-27.10)", () => {
     expect(document.querySelectorAll("[data-fit]")).toHaveLength(1);
     expect(document.querySelector('[data-fit="play"]')).not.toBeNull();
     expect(document.querySelector('[data-scope="google-play"]')).not.toBeNull();
+  });
+
+  it("scoped: the first tab is the storefront's overrides, with Edit and Remove", async () => {
+    bootWith(`${LISTING}?store=google-play`, routes());
+    await screen.findByRole("button", { name: "Edit override" });
+    expect(
+      screen.getByRole("button", { name: "Remove override" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Two-deck DJ mixer")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Release notes" })).toBeNull();
   });
 
   it("scoped: the slot board shows the masters and that store's group only", async () => {
@@ -135,16 +152,26 @@ describe("ListingEditor (A-27.10)", () => {
     expect(document.querySelector('[data-slot="masters:icon"]')).not.toBeNull();
   });
 
+  it("scoped to a storefront that takes no push, Push says so", async () => {
+    const r = routes() as Record<string, any>;
+    r[SF()].stores[1].pushListing = null;
+    r[SF()].stores[1].builtIn = true;
+    bootWith(`${LISTING}?tab=push&store=ms-store`, r);
+    expect(await screen.findByText(/reads the listing directly/)).toBeTruthy();
+    expect(screen.queryByText("No store takes a listing push")).toBeNull();
+  });
+
   it("unscoped Push lists both stores; scoped Push lists the one", async () => {
     bootWith(`${LISTING}?tab=push`, routes());
     const all = await screen.findAllByRole("button", { name: "Push listing" });
     expect(all).toHaveLength(2);
     cleanup();
     bootWith(`${LISTING}?tab=push&store=ms-store`, routes());
-    const one = await screen.findAllByRole("button", { name: "Push listing" });
-    expect(one).toHaveLength(1);
-    expect(
-      within(one[0]!.closest("[data-row], div")!).queryByText("Google Play"),
-    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Push listing" }),
+      ).toHaveLength(1),
+    );
+    expect(document.querySelector('[data-scope="ms-store"]')).not.toBeNull();
   });
 });
