@@ -695,6 +695,29 @@ describe("ingestReleaseDescriptor (CI)", () => {
     expect(await listReleaseMetadata(db, SLUG)).toHaveLength(1);
   });
 
+  it("keeps the sync's listedAssets, and a later resync rewrites it (P2-12 D3)", async () => {
+    const { db, ingest, fetchImpl } = await ciSetup();
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
+    const listedOf = async () =>
+      JSON.parse((await listReleaseMetadata(db, SLUG))[0]!.metadata_json!)
+        .listedAssets;
+    const before = await listedOf();
+    expect(Object.keys(before).sort()).toEqual(
+      FILES.map((_, i) => String(101 + i)).sort(),
+    );
+    expect(await ingest(descriptor())).toMatchObject({ ok: true });
+    expect(await listedOf()).toEqual(before);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 200,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
+    expect(await listedOf()).toEqual(before);
+  });
+
   it("re-ingesting the same descriptor changes no row", async () => {
     const { db, ingest } = await ciSetup();
     expect(await ingest(descriptor())).toMatchObject({ ok: true });

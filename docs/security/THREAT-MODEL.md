@@ -9655,6 +9655,132 @@ core (SP-55 to SP-57, SP-62).
   of its choosing. Without `backend.origins` the verb answers any renderer the bridge already
   trusts; hosts that call a backend should set it.
 
+### One update resolver (P2-12)
+
+The appcast, the channel appcast, `/update/version` and `/release/dl` resolve a release in two
+places today: the legacy step reads GitHub on a cache miss, and the store step
+(`services/release/resolve.ts`, `storeRelease.ts`) reads the truth store. The first release
+adds the store step's inputs, the freshness pass and three migration jobs, and routes nothing to
+the store step (`STORE_VIEW_HIDES_ABSENT` is false and no surface is switched). The next release
+switches the surfaces once the comparison job's switch rule holds. The rows below are what a
+reviewer checks in the first release; the second amends them.
+
+1. **Trust is unchanged.** For a product without release records, whoever can write its GitHub
+   releases decides what it serves, as before. A release-level `.sig` is honoured only by the
+   legacy renderer, and only after it verifies against `sparkle_ed25519_pub`. The extended
+   renderer's rule that only a descriptor's sidecar counts is untouched. The store step adds no
+   new writer: its rows are what a sync of the product's own repository wrote, or what a
+   described release's descriptor says.
+2. **Freshness and deletion.**
+   - **The store step makes no GitHub call while serving.** It reads the narrow D1 state and the
+     picked row and its artifacts. Resolution therefore stops spending the product's
+     `releaseUpstream` budget (4,000 calls an hour) after the switch, and an appcast flood no
+     longer reaches the installation quota. The 503 `upstream_rate_limited` answer stays on the
+     byte reads that still call GitHub.
+   - **A store that is behind serves the newest release it knows**, never one it does not know.
+   - **How fresh the store is.** A delivered `release` webhook syncs it at once. Without one,
+     the freshness pass (`services/release/freshness.ts`, on the 15-minute connector cron)
+     catches up within 15 minutes while the newest release is under 24 hours old, and within 75
+     minutes otherwise; the edge adds up to 300 s to either bound. Live reads took up to 90 s
+     plus the same 300 s. The cases without a webhook are an asset uploaded, replaced or
+     deleted after publication, a missed delivery, and a failed sync.
+   - **The pass is bounded and cannot starve.** At most 25 syncs run per tick across all
+     products and at most 8 per GitHub App installation (they share one quota); the rest report
+     `deferred` and stay due. Within the caps the due product with the oldest `checked_at` goes
+     first, never-checked first. A sync that fails or is rate limited writes nothing, so
+     `checked_at` stays old and the product stays due; it then backs off for the next 1, 3, 7,
+     ... ticks (at most 24, a KV marker that expires), so a repository that always fails cannot
+     hold a slot. Its GitHub calls are charged to the product's hourly `releaseUpstream` budget,
+     like serving. The pass never throws, and a quota refusal (a thrown
+     `UpstreamRateLimitedError` or an answered 429) ends that product's tick. It runs before
+     Release's other sweeps, so one that throws does not skip it. A release dated in the future
+     does not keep a product due: only the hour rule applies to it.
+   - **Edge entries.** Each sync bumps the product's release generation. That drops the KV
+     resolution cache at once. It does not purge the edge cache: edge entries live their own
+     TTL (120 s or 300 s), which is the 300 s in the bounds above. A sync costs up to 10 list
+     calls.
+   - **Deletion.** A release is withdrawn once a complete sync sees it gone. A repository with
+     more than 1,000 releases never gets a complete read, so nothing is withdrawn there. **A
+     yank is the supported way to withdraw a build** and applies at once on every surface.
+3. **The classifier and the comparison job (`update.resolver-compare`).** The job is report
+   only: it reads and writes nothing in D1, and its `apply` and `down` are delegated to the
+   switch rule. It runs both steps on one synthetic request per probe, bypassing the edge cache,
+   the access check and the rate limit, so a probe is a diagnostic the lead runs, not a request
+   an outsider can make.
+   - **Cost and isolation.** The legacy step's resolution cache is private to each product's run
+     (an in-memory map in place of KV), so a probe sees GitHub as it is, not a 90-s entry an
+     unrelated request left. Everything else, the Sparkle memo included, passes through, so a DMG
+     streams at most once per run. Probes are charged to the product's `releaseUpstream` budget.
+   - **Pause and checkpoint.** A 403 or 429 from GitHub, or `x-ratelimit-remaining` under 500,
+     writes a KV pause marker (expiring, at most an hour, platform-wide, under a key that is not a
+     `p:<product>:` key, so no product slug can share it) and the run stops;
+     an `UpstreamRateLimitedError` is an `upstream-error` row and pauses that product. A
+     checkpoint of the rows done (expiring after an hour) lets the next dry run resume. A lost
+     checkpoint only costs a re-run of its probes. The job holds no secret: the rows hold release
+     metadata and hashes of response bodies.
+   - **The classifier is a pure reading of the store and the two answers.** Six classes are
+     expected, because they are the deliberate move to one meaning per track, and two more name
+     where the legacy view's floor differed from the live route's; `stale-store` and
+     `unexpected` block the switch; `upstream-error` is retried. The one class that widens what a
+     caller may see is `beta-includes-stable`: the store's `beta` can answer a stable release the
+     legacy `beta` skipped. It is also assigned when the entitlement check refuses the stable
+     release the store's `beta` resolved (legacy 404, store 401 or 403), and only after the
+     store is asked and does resolve a stable release; a refusal for any other reason stays
+     `unexpected`. The widening may only add: where the legacy `beta` answered a release, the
+     store's must not be older, so a store that serves an older stable than the legacy
+     prerelease is `unexpected`, not `beta-includes-stable`.
+   - **Entitlement equivalence is not proved by the dry run.** The probes force public access, so
+     the dry run compares what is resolved, not who may have it. That is proved by the golden
+     suite (`updateResolverGolden`, `storeSteps`), which runs both steps behind the same grant
+     checks. The grant still refuses what it did not cover, so the widening gives a beta caller
+     the newest stable release only if their grant allows it.
+   - **Two classes absorb by design.** `workflow-channel` and `descriptor-channel` take any
+     difference on their selectors, because the two steps mean different things there. The
+     checks on them are the switch rule's condition 3 and the golden suite.
+   - **The `pr-<n>` lookup.** For a product with a channel workflow, one call lists the last 10
+     successful pull-request runs (`actions: read`) and the job probes `pr-<n>` for the pull
+     requests they name. The numbers are positive integers from the response, checked, at most
+     10, and held in the checkpoint so a resume probes the same list. A refusal leaves the list
+     empty.
+4. **Least privilege.** The installation token keeps `actions: read` and `pull_requests: read`
+   only while a product has a channel workflow. The store step needs neither; a later release
+   drops both once the workflow lookups are gone.
+5. **The jobs write only what a sync would, and `channel` on undescribed rows.** The lead runs
+   them from the console or `pkey migrate`; each is dry-run first, pinned to the report the lead
+   read, and audited.
+   - **`release.backfill-store`** runs the same sync as the freshness pass for a linked product
+     that has no `app` rows or whose listed rows lack `listedAssets`, with its GitHub calls
+     charged to the product's `releaseUpstream` budget. Its `down` does nothing: the rows are
+     exactly what any sync writes.
+   - **`release.materialise-workflow-beta`** sets `release_metadata.channel = 'beta'` on
+     undescribed `app` rows whose `channel` is NULL and whose id is in the tag set the product's
+     `beta` selector resolves among today. Guards: the apply uses the tag set, workflow and
+     branch the dry run recorded and never a fresh read, refuses (`config_changed`) when the
+     product's workflow or branch changed since, and sets only ids the dry run listed
+     (`wouldSet`). It never marks a release GitHub does not flag as a prerelease that has a semver
+     tag: that is a stable build the workflow's set happens to name. The write is one `UPDATE`
+     that names the product, the id list, `channel IS NULL` and "undescribed", so a described
+     release (its descriptor's `channel` wins), an already channelled row or another product's row
+     is never touched. It applies in full or not at all, and `RETURNING` gives exactly the ids it
+     set. The change moves those rows into `beta` on the store surfaces (the download page,
+     `builds/`, storefront feeds), which is their intended meaning.
+   - **`down`** resets exactly the ids the apply returned and the runner stored in its unit
+     detail, and only the rows whose `channel` is still `'beta'` and that are still undescribed,
+     so a row since described or re-channelled keeps its value. The one remaining window: the
+     rows are set between the write and the runner storing that detail. A process killed in that
+     gap leaves rows that are `beta`, are in no recorded list and are skipped by a later apply
+     (their `channel` is no longer NULL), so `down` cannot reset them. The effect is the
+     intended one (the row is a workflow beta). If the audit write fails after the update, the
+     apply still returns the ids, with the error in its detail, so `down` keeps its list.
+   - **The switch rule.** The second release merges when the latest comparison report has zero
+     blocking rows, the lead has acknowledged every expected row by class and count in the
+     migration ledger, and no `workflow-channel` row's old answer is a build published after the
+     latest materialise run. Until the product's workflow publishes beta as a prerelease or with
+     descriptor `channel: beta`, every new short-SHA build would belong to no channel and beta
+     and `pr-<n>` testers would silently stop getting builds.
+
+No personal data is added: the reports hold release metadata only.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every

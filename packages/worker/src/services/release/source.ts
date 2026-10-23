@@ -54,6 +54,7 @@ import type { FetchImpl } from "./githubApp.js";
 import {
   assetSha256,
   fetchTextAsset,
+  MAX_TEXT_ASSET_BYTES,
   NotFoundError,
   streamAsset,
   UpstreamRateLimitedError,
@@ -61,6 +62,8 @@ import {
   type ReleaseAsset,
 } from "./github.js";
 import { releaseMirrorEnabled } from "./mirrorSwitch.js";
+import { resolveStoreSelector } from "./storeRelease.js";
+import { storedTextAsset } from "./storeBytes.js";
 import {
   dropCachedSignedUrl,
   getCachedSignedUrl,
@@ -187,7 +190,7 @@ export async function openSource(
   if (ref.kind === "dl") {
     if (!cfg || !isResolved(cfg)) return notFound();
     try {
-      return await serveLegacyDownload(ctx, cfg, ref, req, fetchImpl);
+      return await serveDownload(ctx, cfg, ref, req, fetchImpl, "legacy");
     } catch (err) {
       if (err instanceof UpstreamRateLimitedError)
         return upstreamUnavailable(err);
@@ -291,13 +294,28 @@ async function serveGithubLocation(
   return headOnly(req, res);
 }
 
-/** The legacy download: resolve the selector live, match the asset by name, stream it. */
-async function serveLegacyDownload(
+/** What a download resolved to, reported to a comparison probe (P2-12.5). */
+export interface ResolvedDownload {
+  tag: string;
+  /** The matched asset; absent when nothing matched. */
+  asset?: { name: string; size: number };
+}
+
+/**
+ * The legacy download: resolve the selector, match the asset by name, serve it. `legacy` resolves
+ * the selector live against GitHub (what every route does today); `store` resolves it from the
+ * truth store in GitHub's shape (P2-12.5, not routed in PR 1) and reads the checksum sidecar from
+ * Polaris Key's copy first. Both stream a file with no copy from GitHub by asset id.
+ * `onResolved` is the comparison probe's window onto the release and asset each step chose.
+ */
+export async function serveDownload(
   { env, db, product, now }: SourceContext,
   cfg: ResolvedConfig,
   ref: Extract<CatalogSourceRef, { kind: "dl" }>,
   req: Request,
   fetchImpl: FetchImpl,
+  step: "legacy" | "store",
+  onResolved?: (resolved: ResolvedDownload) => void,
 ): Promise<Response> {
   // The download path accepts `aarch64` / `amd64` aliases; canonicalise them here so the arch
   // never reaches `ARCH_TOKENS[…]` as an unknown key (which used to be an unhandled
@@ -305,14 +323,11 @@ async function serveLegacyDownload(
   const arch = normalizeArch(ref.arch);
   if (!arch) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
-  const { release, sel } = await resolveSelector(
-    env,
-    db,
-    cfg,
-    ref.selector,
-    now,
-    fetchImpl,
-  );
+  const { release, sel } =
+    step === "store"
+      ? await resolveStoreSelector(db, cfg, ref.selector)
+      : await resolveSelector(env, db, cfg, ref.selector, now, fetchImpl);
+  onResolved?.({ tag: release.tag_name });
   // Before the first byte, and before the checksum sidecar (an out-of-window release's digest
   // is part of what the window withholds). `entitled` checked the window against a PINNED
   // selector before resolution; `latest`, `beta` and a channel name only name a release here, so
@@ -341,13 +356,40 @@ async function serveLegacyDownload(
           channelSuffix: suffix,
         });
   if (!asset) return notFound();
+  onResolved?.({
+    tag: release.tag_name,
+    asset: { name: asset.name, size: asset.size },
+  });
 
   // `?checksum=sha256` serves the artifact's published `<asset>.sha256` sidecar so the
   // installer can verify what it downloaded (R6-02). No sidecar -> 404, and the script
   // refuses to install rather than proceeding unverified.
   if (ref.checksum) {
+    if (step === "store")
+      return checksumSidecar(
+        release,
+        asset.name,
+        sel,
+        async (sidecar) =>
+          (await storedTextAsset(
+            env,
+            db,
+            product.slug,
+            sidecar,
+            MAX_TEXT_ASSET_BYTES,
+          )) ??
+          fetchTextAsset(
+            await installationToken(env, cfg, now, fetchImpl),
+            cfg.gh_owner,
+            cfg.gh_repo,
+            sidecar.id,
+            fetchImpl,
+          ),
+      );
     const tok = await installationToken(env, cfg, now, fetchImpl);
-    return checksumSidecar(tok, cfg, release, asset.name, sel, fetchImpl);
+    return checksumSidecar(release, asset.name, sel, (sidecar) =>
+      fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sidecar.id, fetchImpl),
+    );
   }
 
   // Never the repo-chosen upstream `content_type` (R6-04).
@@ -435,22 +477,14 @@ async function mirroredDownload(
 
 /** Serve the `<asset>.sha256` sidecar as a bare lowercase hex digest. */
 async function checksumSidecar(
-  tok: string,
-  cfg: ResolvedConfig,
   release: Release,
   assetName: string,
   sel: ChannelSelector,
-  fetchImpl: FetchImpl,
+  read: (sidecar: ReleaseAsset) => Promise<string>,
 ): Promise<Response> {
   const sidecar = release.assets.find((a) => a.name === `${assetName}.sha256`);
   if (!sidecar) return notFound();
-  const text = await fetchTextAsset(
-    tok,
-    cfg.gh_owner,
-    cfg.gh_repo,
-    sidecar.id,
-    fetchImpl,
-  );
+  const text = await read(sidecar);
   // `shasum`-style sidecars are `<digest>  <filename>`; take the digest and nothing else so
   // no repo-controlled bytes reach the installer.
   const digest = text.trim().split(/\s+/)[0] ?? "";

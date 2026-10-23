@@ -20,7 +20,7 @@ import {
   defaultIncludes,
 } from "../src/services/release/resolve.js";
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
-import { policyChannelOf } from "../src/services/release/gateway.js";
+import { policyChannelOf } from "../src/services/release/channels.js";
 import { withIncludedChannels } from "../src/core/channels.js";
 import { channelEntitled } from "../src/core/channels.js";
 import { parseChannels } from "../src/services/license/admin/licenses.js";

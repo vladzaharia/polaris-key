@@ -74,6 +74,13 @@ export interface MigrationJob {
     unit: string,
     reported?: unknown,
   ): Promise<number | UnitOutcome>;
-  /** Undo one unit. Answers rows changed, or an outcome with a detail line. */
-  down(ctx: MigrationContext, unit: string): Promise<number | UnitOutcome>;
+  /**
+   * Undo one unit. Answers rows changed, or an outcome with a detail line. `applied` is the
+   * apply run's detail for this unit, when it has one: the rows the apply changed.
+   */
+  down(
+    ctx: MigrationContext,
+    unit: string,
+    applied?: unknown,
+  ): Promise<number | UnitOutcome>;
 }

@@ -2138,6 +2138,51 @@ GitHub prerelease or with descriptor `channel: beta`, before the switch deploys.
 `channelWorkflow` and `betaBranch` from its `.pkey/` manifest right after the switch deploys, not
 earlier: a resync writes `channel_workflow` as NULL when the field is absent.
 
+### Resolver jobs
+
+Three jobs carry the resolver switch. Run each as a dry run first, then apply it from the console
+(Platform → Migrations), then dry-run again. Read a run with `pkey migrate report <run>`. An apply
+is pinned to the dry-run report you read; a unit whose product changed since is refused and needs
+a new dry run.
+
+| Job                                 | Dry run shows                                                                                                                                                           | Apply                                                                                                                | Down                                                                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `update.resolver-compare`           | Per product: class counts and the worst 50 rows. `changes` is the blocking rows, the retry rows and the probes a pause left unrun. Writes nothing to D1.                | Delegated to the switch rule below. There is no apply.                                                               | Delegated. There is no down.                                                                                                                 |
+| `release.backfill-store`            | Per linked product: `appRows` and `unlisted` (listed releases without `listedAssets`). `changes` is 1 for an empty store, else `unlisted`.                              | Syncs the store from GitHub, audited. A current store reports `skipped`.                                             | Does nothing: the rows are what any sync writes.                                                                                             |
+| `release.materialise-workflow-beta` | Per product with a `channel_workflow`: the workflow, the beta branch, the tags the `beta` selector resolves among today, and `wouldSet` (the ids it would mark `beta`). | Sets `channel = 'beta'` on those undescribed prerelease rows whose channel is unset, audited. Re-applying changes 0. | Clears `channel` on the ids the apply recorded, only where it is still `beta` and the row is still undescribed. Rows changed since are kept. |
+
+**The comparison run.** It probes the appcast (no `arch`, `arm64`, `x86_64`), `/version` on every
+selector, and `/dl` for each file kind, architecture and checksum, plus `pr-<n>` for the pull requests
+of a workflow product's last 10 successful runs. It costs GitHub calls against the product's hourly budget.
+When GitHub answers 403 or 429, or reports fewer than 500 calls left, the run stops and the report
+says `paused` with the time to resume. Run it again after that time: it resumes from a checkpoint
+kept for an hour. Rows are `{product, surface, probe, old, new, class}`.
+
+- **Blocking:** `stale-store` (run `release.backfill-store`, or wait for the 15-minute pass, and
+  dry-run again) and `unexpected` (send it to the lead).
+- **Retry:** `upstream-error`.
+- **Expected** (acknowledged by count in the entries below): `beta-includes-stable`,
+  `workflow-channel`, `beyond-page-cap`, `duplicate-version`, `descriptor-channel`,
+  `descriptor-files`, `beta-workflow-floor`, `beta-yanked-floor-fallback`.
+
+**The order for a workflow product.** Dry-run `release.materialise-workflow-beta`, read `wouldSet`,
+and apply. Change the product's workflow to publish beta as a prerelease or with descriptor
+`channel: beta`, re-run the apply, then dry-run `update.resolver-compare` until the switch rule
+holds.
+
+**The switch rule.** The resolver switches when the latest comparison report has:
+
+1. zero blocking rows;
+2. every expected row acknowledged in the entries below, by class and count;
+3. for every product the job lists with a `channel_workflow`, no `workflow-channel` row whose old
+   answer is a build published after the latest `release.materialise-workflow-beta` apply.
+
+**The 15-minute pass.** The connector cron keeps each linked product's store current without a
+webhook (see the GitHub sync page). Its cron report shows `freshness: synced | fresh | deferred`.
+`deferred` means the tick's cap was spent (25 syncs, 8 per GitHub App installation, oldest check
+first) or the product is backing off after a failed sync (`backoff`); it is synced on a later
+tick. `rateLimited` and `failed` mark a sync that GitHub refused or that wrote nothing.
+
 ### Entries
 
 | Date       | Row                | Fact                                                                                                                                                      | Recorded by |

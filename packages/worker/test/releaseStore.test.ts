@@ -63,13 +63,19 @@ import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "djdl";
 
-function asset(name: string, id: number, size = 1024): ReleaseAsset {
+function asset(
+  name: string,
+  id: number,
+  size = 1024,
+  digest?: string | null,
+): ReleaseAsset {
   return {
     id,
     name,
     size,
     content_type: "application/octet-stream",
     browser_download_url: `https://github.com/acme/djdl/releases/download/v1.2.3/${name}`,
+    ...(digest === undefined ? {} : { digest }),
   };
 }
 
@@ -317,6 +323,85 @@ describe("resync populates the release truth store", () => {
       ["nightly", "unknown"],
       ["stable", "healthy"],
     ]);
+  });
+
+  it("records which assets GitHub listed, with each digest as GitHub gave it or null (P2-12 D3)", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    const digest = `sha256:${"a".repeat(64)}`;
+    const { fetchImpl } = stubFetch([
+      release({
+        tag_name: "v1.2.3",
+        assets: [
+          asset("djdl-1.2.3-arm64.dmg", 21, 4096, digest),
+          asset("djdl-1.2.3-arm64.dmg.sig", 22, 96, null),
+          asset("djdl-x86_64", 23, 2048),
+        ],
+      }),
+    ]);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
+
+    const row = (await listReleaseMetadata(db, SLUG))[0]!;
+    // The member order is part of the stored bytes.
+    expect(Object.keys(JSON.parse(row.metadata_json!))).toEqual([
+      "tag",
+      "prerelease",
+      "assetCount",
+      "listedAssets",
+    ]);
+    expect(JSON.parse(row.metadata_json!).listedAssets).toEqual({
+      "21": digest,
+      "22": null,
+      "23": null,
+    });
+  });
+
+  it("a resync after a --clobber lists only the new asset id, and a deleted asset drops out", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    const listed = async (releases: Release[], at: number) => {
+      const { fetchImpl } = stubFetch(releases);
+      await resyncRepo(envFor(), db, SLUG, at, fetchImpl, ingestFor(SERVICES));
+      return JSON.parse(
+        (await listReleaseMetadata(db, SLUG))[0]!.metadata_json!,
+      ).listedAssets;
+    };
+    const d1 = `sha256:${"1".repeat(64)}`;
+    const d2 = `sha256:${"2".repeat(64)}`;
+    expect(
+      await listed(
+        [
+          release({
+            assets: [
+              asset("djdl-1.2.3-arm64.dmg", 21, 10, d1),
+              asset("djdl-x86_64", 23),
+            ],
+          }),
+        ],
+        NOW,
+      ),
+    ).toEqual({ "21": d1, "23": null });
+    // `gh release upload --clobber`: same name, new id and digest.
+    expect(
+      await listed(
+        [
+          release({
+            assets: [
+              asset("djdl-1.2.3-arm64.dmg", 99, 10, d2),
+              asset("djdl-x86_64", 23),
+            ],
+          }),
+        ],
+        NOW + 60,
+      ),
+    ).toEqual({ "99": d2, "23": null });
+    // The asset is deleted upstream.
+    expect(
+      await listed(
+        [release({ assets: [asset("djdl-x86_64", 23)] })],
+        NOW + 120,
+      ),
+    ).toEqual({ "23": null });
   });
 
   it("repopulates idempotently — a second resync converges, it does not duplicate", async () => {
@@ -675,6 +760,7 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     expect(JSON.parse(meta.metadata_json!)).toMatchObject({
       tag: "v1.0.0",
       descriptor: marker,
+      listedAssets: { "41": null, "42": null },
     });
     expect(await listBuilds(db, SLUG, "v1.0.0")).toHaveLength(1);
   });

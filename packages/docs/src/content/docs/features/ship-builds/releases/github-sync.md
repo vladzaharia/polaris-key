@@ -4,7 +4,7 @@ sidebar:
 title: "GitHub sync"
 description: "Linking a repository, the GitHub App installation, the .pkey/ manifest, the push-webhook resync pipeline, and release-event store refreshes."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-22"
 ---
 
 A Release-enabled product is never configured by filling in a form. It is configured by a
@@ -166,6 +166,28 @@ What a release delivery does **not** do matters as much:
 Each release delivery costs one installation-token read (normally a KV hit) plus the release
 list pages — one call for a repository with fewer than 100 releases. That is cheap at release
 cadence; bursts are not coalesced.
+
+## The 15-minute pass
+
+A webhook is the fast path, not the only one. A delivery can be missed, and an asset uploaded,
+replaced or deleted after publication sends no `release` event. So the connector cron (every 15
+minutes) re-syncs each linked product's truth store when it is due:
+
+- its newest release is under 24 hours old, so it syncs on every tick; or
+- its newest health check (`release_health.checked_at`, release or channel rows, which every sync
+  writes) is more than an hour old, or there is none.
+
+A repository with no releases still has channel rows, so it is not due on every tick. The pass
+runs the same sync as a webhook, at most 25 per tick across all products and 8 per GitHub App
+installation, the product checked longest ago first. A product over a cap reports
+`freshness: "deferred"` and stays due; one that is not due reports `fresh`. Its GitHub calls count
+against the product's hourly budget, like serving. A failed sync, or one GitHub rate limits,
+writes nothing, so the product stays due; it is skipped for the next few ticks (up to six hours)
+so it cannot hold a slot, and the pass never fails the tick.
+
+The store is therefore at most 15 minutes behind GitHub while a release is new and 75 minutes
+behind otherwise, plus up to 300 seconds at the edge. A store that is behind serves the newest
+release it knows, never one it does not.
 
 ## Pinned to the repo's own default branch, never to the webhook payload
 

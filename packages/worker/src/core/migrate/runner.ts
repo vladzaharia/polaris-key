@@ -423,10 +423,11 @@ async function drive(
   const pending = (await unitRows(ctx.db, runId)).filter(
     (u) => u.status !== "done",
   );
-  const sourceId =
-    step === "apply"
-      ? ((await runRow(ctx.db, runId))?.source_id ?? null)
-      : null;
+  // The unit detail of the run this one reads: the report an apply was pinned to, or the apply
+  // a down undoes.
+  const sourceId = ((await runRow(ctx.db, runId))?.source_id ?? null) as
+    | string
+    | null;
   const budget = opts.limit ?? pending.length;
   let done = 0;
   let changed = 0;
@@ -442,16 +443,17 @@ async function drive(
     let n: number;
     let detail: unknown;
     try {
-      const reported = sourceId
+      const source = sourceId
         ? await ctx.db.first<{ detail_json: string | null }>(
             "SELECT detail_json FROM data_migration_units WHERE run_id = ? AND unit = ?",
             sourceId,
             u.unit,
           )
         : null;
+      const carried = parseJsonColumn(source?.detail_json ?? null);
       const outcome = await (step === "apply"
-        ? job.apply(ctx, u.unit, parseJsonColumn(reported?.detail_json ?? null))
-        : job.down(ctx, u.unit));
+        ? job.apply(ctx, u.unit, carried)
+        : job.down(ctx, u.unit, carried));
       n = typeof outcome === "number" ? outcome : outcome.changes;
       detail = typeof outcome === "number" ? undefined : outcome.detail;
     } catch (e) {

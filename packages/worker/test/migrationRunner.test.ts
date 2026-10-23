@@ -229,6 +229,47 @@ describe("migration runner", () => {
   });
 });
 
+describe("migration runner: unit details across the run chain", () => {
+  it("hands the report's unit detail to apply and the apply's to down, and keeps number returns as before", async () => {
+    const { ctx } = await setup();
+    const seen: Array<[string, unknown]> = [];
+    const job: MigrationJob = {
+      id: "test.details",
+      summary: "details",
+      units: async () => ["a", "b"],
+      plan: async (_c, u) => ({ changes: 1, detail: { planned: u } }),
+      apply: async (_c, u, reported) => {
+        seen.push([`apply:${u}`, reported]);
+        return u === "a" ? { changes: 1, detail: { ids: [u] } } : 1;
+      },
+      down: async (_c, u, applied) => {
+        seen.push([`down:${u}`, applied]);
+        return u === "a" ? { changes: 1, detail: { reset: u } } : 1;
+      },
+    };
+    const report = await dryRun(ctx(), job, ACTOR);
+    const applied = await apply(ctx(NOW + 1), job, ACTOR, report.id);
+    if (!applied.ok) throw new Error("apply refused");
+    // An outcome's detail is stored on the unit; a number leaves it empty.
+    expect(applied.run.units.map((u) => u.detail)).toEqual([
+      { ids: ["a"] },
+      null,
+    ]);
+    const undone = await down(ctx(NOW + 2), job, ACTOR, applied.run.id);
+    expect(undone.ok && undone.run.changes).toBe(2);
+    expect(undone.ok && undone.run.units.map((u) => u.detail)).toEqual([
+      { reset: "a" },
+      null,
+    ]);
+    expect(seen).toEqual([
+      ["apply:a", { planned: "a" }],
+      ["apply:b", { planned: "b" }],
+      ["down:a", { ids: ["a"] }],
+      ["down:b", null],
+    ]);
+  });
+});
+
 describe("migration runner: races, leases and exclusion", () => {
   it("two parallel first applies make one run; the other is busy", async () => {
     const { db, ctx } = await setup();
@@ -613,7 +654,7 @@ describe("the admin route", () => {
     expect(undone.body.run.status).toBe("reverted");
   });
 
-  it("reports Core's delegated override migration but never applies or undoes it", async () => {
+  it("reports Update's delegated resolver comparison but never applies or undoes it", async () => {
     const w = await seededWorld();
     const env = Object.assign(w.env, {
       ADMIN_SESSION_SECRET: "test-admin-session-secret",
@@ -621,7 +662,7 @@ describe("the admin route", () => {
       PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
       PLATFORM_OIDC_CLIENT_ID: "platform-client",
     }) as Env;
-    const job = "core.licence-override-migration";
+    const job = "update.resolver-compare";
     const dry = await route(
       env,
       w.db,
