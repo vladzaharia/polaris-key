@@ -384,13 +384,16 @@ export const GENERATORS: Generator[] = [
   {
     id: "api",
     title:
-      "SDK API surface tests: every api.json row asserted in Node, React and Python",
+      "SDK API surface tests: every api.json row asserted in Node, React, Python, Swift, Kotlin and Godot",
     order: 121,
     inputs: ["tools/gen-api-surface.ts", "conformance/parity/api.json"],
     outputs: [
       "packages/sdk-node/test/apiSurface.generated.test.ts",
       "packages/sdk-react/test/apiSurface.generated.test.ts",
       "sdks/python/tests/test_api_surface.py",
+      "sdks/swift/Tests/PolarisKeyTests/APISurface.generated.swift",
+      "sdks/kotlin/sdk/src/test/kotlin/polaris/generated/ApiSurface.kt",
+      "sdks/godot/tests/suite_api_surface.gd",
     ],
     write: [tsx("tools/gen-api-surface.ts")],
   },

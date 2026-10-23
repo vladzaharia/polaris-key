@@ -210,14 +210,14 @@ Parity gate: every SDK's parity.json against the feature registry.
 
 ### api
 
-SDK API surface tests: every api.json row asserted in Node, React and Python.
+SDK API surface tests: every api.json row asserted in Node, React, Python, Swift, Kotlin and Godot.
 
 - Run: default.
 - Regenerate: `pnpm gen api`.
 - Check: `pnpm gen api --check`.
 - Underlying: `pnpm exec tsx tools/gen-api-surface.ts`.
 - Reads: `tools/gen-api-surface.ts`, `conformance/parity/api.json`.
-- Writes: `packages/sdk-node/test/apiSurface.generated.test.ts`, `packages/sdk-react/test/apiSurface.generated.test.ts`, `sdks/python/tests/test_api_surface.py`.
+- Writes: `packages/sdk-node/test/apiSurface.generated.test.ts`, `packages/sdk-react/test/apiSurface.generated.test.ts`, `sdks/python/tests/test_api_surface.py`, `sdks/swift/Tests/PolarisKeyTests/APISurface.generated.swift`, `sdks/kotlin/sdk/src/test/kotlin/polaris/generated/ApiSurface.kt`, `sdks/godot/tests/suite_api_surface.gd`.
 
 ### ux-rows
 

@@ -473,7 +473,11 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {},
+        "kotlin": {
+          "spelling": "bootHost",
+          "planned": "SP-35b",
+          "reason": "an extension function today: PolarisKeyClient.bootHost(...) in the sdk module"
+        },
         "godot": {},
         "react": {
           "spelling": "useBoot",

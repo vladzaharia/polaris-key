@@ -4,8 +4,11 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   NODE_OUT,
+  GODOT_OUT,
+  KOTLIN_OUT,
   PYTHON_OUT,
   REACT_OUT,
+  SWIFT_OUT,
   loadApi,
   renderAll,
   run,
@@ -21,9 +24,16 @@ describe("gen-api-surface", () => {
     const root = mkdtempSync(join(tmpdir(), "api-surface-"));
     const api = loadApi();
     expect((await run({ check: true, root, api })).sort()).toEqual(
-      [NODE_OUT, PYTHON_OUT, REACT_OUT].sort(),
+      [
+        NODE_OUT,
+        PYTHON_OUT,
+        REACT_OUT,
+        SWIFT_OUT,
+        KOTLIN_OUT,
+        GODOT_OUT,
+      ].sort(),
     );
-    expect(await run({ check: false, root, api })).toHaveLength(3);
+    expect(await run({ check: false, root, api })).toHaveLength(6);
     expect(await run({ check: true, root, api })).toEqual([]);
     const abs = join(root, NODE_OUT);
     mkdirSync(dirname(abs), { recursive: true });
@@ -54,5 +64,12 @@ describe("gen-api-surface", () => {
       '"getConfig" in ConfigClient.prototype).toBe(false)',
     );
     expect(files.get(PYTHON_OUT)).toContain("test_removed");
+  });
+
+  it("Swift, Kotlin and Godot assert today's spellings", async () => {
+    const files = await renderAll(loadApi());
+    expect(files.get(SWIFT_OUT)).toContain("ConfigClient.config(_:default:)");
+    expect(files.get(KOTLIN_OUT)).toContain("ConfigClient::configSource");
+    expect(files.get(GODOT_OUT)).toContain('"get_value"');
   });
 });
