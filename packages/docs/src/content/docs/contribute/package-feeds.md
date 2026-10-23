@@ -10,8 +10,7 @@ lastReviewed: "2026-10-22"
 The registry host (`pkg.plrs.im`) serves eight package feeds today: npm, PyPI, Swift, Maven, OCI,
 Godot, Cargo and Go. Each one is a **feed adapter**: one directory under
 `packages/worker/src/services/distribution/registry/<ecosystem>/` whose `index.ts` exports one
-`FeedAdapter` (`registry/adapter.ts`), built with `defineFeedAdapter`. The protocol's complexity stays inside that directory. The
-contract around it stays the same for every feed, and a test suite checks it.
+`FeedAdapter` (`registry/adapter.ts`), built with `defineFeedAdapter`. The protocol's complexity stays inside that directory; a test suite checks the shared contract.
 
 The operator side of the feeds is on [Package feeds](/docs/services/distribution/package-feeds/)
 and [Feeds in the console](/docs/admin/feeds/). This page is for the person adding the eighth
@@ -35,7 +34,7 @@ reason when no one namespace fits (then nothing is provisioned and the ingest an
 `feedProvisionSkipped`).
 
 `distribution.packageFeeds` is the owner's off switch, a registry setting over
-`dist_registry_owners` with an L1 confirm on off. Its version is the owner row's.
+`dist_registry_owners` with an L1 confirm on off.
 
 Feed writes accept only Public and Customers (`access_mode_unavailable`). The migration job `distribution.feed-access-customers`
 (`feedAccessJob.ts`) moves feeds written before that:
@@ -49,8 +48,7 @@ and a package's mode separately for 30 seconds, so apply writes the package rows
 the feed on a later call: the first answers the retryable `registry_cache_window`, and applying
 the same report again finishes it. `dist_registry_access_moves` (migration
 `00XX_registry_access_moves.sql`, owned by `distribution` in `TABLE_OWNERS`) is its ledger, and
-`down` restores from it. `test/feedAccessJob.test.ts` pins `authorizeFeedRead` identical before and
-after, for every principal.
+`down` restores from it. `test/feedAccessJob.test.ts` pins `authorizeFeedRead` across the move.
 
 ## What an adapter owns, and what it does not
 
@@ -79,9 +77,8 @@ An adapter never re-implements the shared pieces:
   to R2 under `registry/<ecosystem>/<owner>/`, stamps them, and keeps them fresh. Core reads
   the render queue (`core/registry/registryQueue.ts` `drainRenderQueue`) after every request that
   enqueued a render and on every cron tick, and hands the rows to Distribution's
-  `registryMaterialiser`, which runs the adapters' renderers. The cron then self-checks stale
-  stamps. Reads compare the stored stamp with D1 (`catalogSource.ts` `freshRegistryObject`), so a
-  feed is never stale between a publish and the drain.
+  `registryMaterialiser`, which runs the adapters' renderers. Reads compare the stored
+  stamp with D1 (`catalogSource.ts` `freshRegistryObject`), so a feed is never stale.
 - **Release's state.** Packages are read only through the `releaseCatalog` hook
   (`catalogSource.ts`). Distribution never imports Release (rule 6).
 - **The console's model.** `console/lib/feedModel.ts` reads labels, base URLs, namespace and
@@ -91,7 +88,7 @@ An adapter never re-implements the shared pieces:
 
 `FeedAdapter` extends `Adapter<Id, Op>` from `packages/worker/src/core/adapters/contract.ts`, the
 base the storefront adapters extend too (`packages/worker/src/core/storefront/adapter.ts`).
-Both families have the same pieces:
+Both have the same pieces:
 
 | Piece                    | Package feeds                                                                            | Storefronts                                                                                   |
 | ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -117,14 +114,11 @@ judged by the same ladder) is an `api` operation whose rules are the feed's cred
 `{ unsupported: "<reason>" }`. A new feed declares its native challenge as
 `capabilities.authChallenge`, gets token checks from the ladder without code of its own, and adds
 an authenticated setup for its clients to the console's snippets and to `--auth` runs of its
-harness clients. The
-admin API exposes the result (`feedCapabilityView`), so the console renders a feed tile and a
-storefront tile the same way.
+harness clients.
 
 ## The checklist
 
-`packages/worker/test/feedAdapters.test.ts` enforces every item it can. A new adapter that skips
-one fails CI.
+`packages/worker/test/feedAdapters.test.ts` enforces every item it can.
 
 1. **Ingest rules (rule 9).** Add the ecosystem to `PACKAGE_ECOSYSTEMS` and write
    `packages/shared-manifest/src/ecosystems/<ecosystem>.ts`, exporting one
@@ -145,7 +139,7 @@ one fails CI.
 5. **OpenAPI (rule 10).** Document every path in `packages/worker/openapi/polaris-key.v3.yaml`
    under a path-level `servers` override naming `https://pkg.plrs.im`, with tag `registry`. List
    the same paths in `openapi`. `routeCoverage` checks the spec against them in both directions.
-6. **Capabilities.** Declare them honestly. The suite checks them against the feed's routes,
+6. **Capabilities.** The suite checks them against the feed's routes,
    settings, renders and the access ladder:
    - `search` must be true exactly when a route is a search;
    - `yankPolicy` must be true exactly when `settings.ext` has `yankHidesFromIndex`;
@@ -171,7 +165,7 @@ one fails CI.
    `.github/workflows/registry-clients.yml`. List the clients in `harness.clients`. A client
    whose tool CI cannot run (a desktop editor) goes in `harness.local` instead: it keeps its
    script, has no matrix row, and its run is recorded on the PR. The harness runs against a
-   local Worker only: nothing is ever published to a public registry.
+   local Worker; nothing is published.
 10. **Conformance data.** Add a sample package to `SAMPLES` and the path-parameter samples to
     `PARAMS` in `test/feedAdapters.test.ts`. The suite fails without them.
 11. **Golden documents.** Write the feed's own tests under `packages/worker/test/registry/`,
@@ -182,4 +176,4 @@ one fails CI.
     [Package feeds](/docs/services/distribution/package-feeds/), and add the ecosystem to the
     registry section of `docs/security/THREAT-MODEL.md`: adding an adapter is a review trigger.
 
-Then run the full green gate from `AGENTS.md`.
+Then run the green gate in `AGENTS.md`.
