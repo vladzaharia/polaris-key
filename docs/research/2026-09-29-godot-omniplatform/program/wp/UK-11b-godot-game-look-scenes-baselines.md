@@ -76,12 +76,16 @@ Each is 90 minutes or less and ends with a BUILT UX review (`pkey-ux-reviewer`, 
 
 ## Acceptance criteria
 
-- [ ] Game look: glass sheet, glyphs, tweens, system scheme, sound/haptics, 60 px TV targets
-- [ ] Five standalone scenes
-- [ ] PNG baselines committed
-- [ ] The Godot 4.4.1 `sign_in / native28` 1170x2532 overflow is fixed
-- [ ] UK-59 leftovers closed; `pkey-ux-reviewer` passes the built screens (BUILT mode)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Game look: glass sheet, glyphs, tweens, system scheme, sound/haptics, 60 px TV targets (slices 1 and 2; BUILT UX reviewed and fixed, re-review passed for slice 1, slice 2 fixes not re-reviewed)
+- [x] Five standalone scenes: Paywall and DeviceLimit (slice 4), CloudSyncStatus, About and ReleaseNotes (slice 5). Not BUILT-UX reviewed yet.
+- [x] PNG baselines committed (58, recorded on macOS arm64 with 4.7.2; CI's Linux jobs are headless and do not compare, see "Slice 3")
+- [x] The Godot 4.4.1 `sign_in / native28` 1170x2532 overflow is fixed (0b5782771 on 4.4.1, and the 4.7.2 scrim-path case in slice 1)
+- [ ] UK-59 leftovers closed; `pkey-ux-reviewer` passes the built screens (BUILT mode): the kit-side Godot items are met (below), the BUILT UX pass of slices 3 to 5 is still to run
+- [ ] The green gate passes (`AGENTS.md`): the Godot suites, the full `ui_matrix` (4.4.1, and 4.7.2 on both paths), kit-lint and the brand and ui-core tests were run per slice; `pnpm test` and the rest of the JS gate were not run here (owner direction: scoped checks)
+
+## UK-59 leftovers, the Godot kit side (slice 6)
+
+The UK-59 Godot items are board redraws (two labelled tiers per frame, host-owns-pause note, DL7 loading, QR only on pad-only screens and offline request codes); the kit already behaves as they say: the QR code shows only on pad-only screens and the offline request (`PKeySignInDialog._qr_wanted`, the ui_matrix QR rules), the kit never pauses the tree (KX-GD-PLAY, `input_captured`), and loading is the 250 ms DL7 bar (`loading_bar`). The boards themselves are UK-59's.
 
 ## Verify
 
