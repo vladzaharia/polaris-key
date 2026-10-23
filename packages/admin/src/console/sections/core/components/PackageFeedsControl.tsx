@@ -12,6 +12,7 @@ import { qk } from "../../../data/queries.js";
 import { useFeedsOverview } from "../../feeds/data.js";
 import { TurnOffFeeds } from "../../feeds/pages/TurnOffFeeds.js";
 import { useProduct } from "../../../data/hooks.js";
+import { coreBReads } from "../data.js";
 
 export function PackageFeedsControl({
   slug,
@@ -27,8 +28,7 @@ export function PackageFeedsControl({
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
+    ...coreBReads.packageFeedsSwitch(slug),
     enabled: distributionOn,
   });
   const overview = useFeedsOverview(

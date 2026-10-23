@@ -10,6 +10,7 @@ import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { coreBReads } from "../data.js";
 
 export function CustomerPortalControl({
   slug,
@@ -23,10 +24,7 @@ export function CustomerPortalControl({
   locked?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const query = useQuery(coreBReads.portal(slug));
   const [pending, setPending] = React.useState<boolean | null>(null);
   const [confirming, setConfirming] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);

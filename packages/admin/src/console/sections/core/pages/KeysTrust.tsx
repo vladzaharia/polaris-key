@@ -41,6 +41,7 @@ import { toast } from "../../../../ui/toast.js";
 import { announce } from "../../../../ui/LiveRegion.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { coreBReads } from "../data.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import {
   DEFAULT_POLICY,
@@ -64,10 +65,6 @@ const ENVIRONMENTS = [
   { value: "production", label: "Production" },
   { value: "development", label: "Development" },
 ] as const;
-
-export function fetchTrustPolicy(slug: string): Promise<TrustPolicyResponse> {
-  return api.trustPolicy(slug);
-}
 
 export function isConflict(error: unknown): boolean {
   return (
@@ -102,10 +99,7 @@ export function TrustPolicySection({
   /** Cloud Sync is on: only then is "Cloud Sync writes" shown (U-05 L11). */
   syncOn?: boolean;
 }): React.ReactElement {
-  const query = useQuery({
-    queryKey: qk.trustPolicy(slug),
-    queryFn: () => fetchTrustPolicy(slug),
-  });
+  const query = useQuery(coreBReads.trustPolicy(slug));
   const [editing, setEditing] = React.useState(false);
   return (
     <SettingsSection id="keys-trust" title="Device trust">
