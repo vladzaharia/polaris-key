@@ -104,12 +104,12 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
         run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
-      # Rebuild from the stamped tree: @polaris-key/react compiles its version into dist.
+      # Rebuild from the stamped tree: the React SDK's version lives in @polaris-key/ui-core/browser (DL18).
       - run: pnpm build
       - name: The React SDK reports the stamped version
         env:
           VERSION: ${{ needs.version.outputs.version }}
-        run: grep -Fq "export const SDK_VERSION = \"$VERSION\";" packages/sdk-react/dist/version.js
+        run: grep -Fq "export const SDK_VERSION = \"$VERSION\";" packages/ui-core/dist/browser/sdk/version.js
       # `pnpm pack` rewrites each `workspace:*` range to the stamped version, so the packages
       # depend on each other at exactly this version.
       - name: Pack each package into dist-pkg/<name>/
