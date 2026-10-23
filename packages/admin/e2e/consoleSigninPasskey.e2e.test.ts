@@ -58,7 +58,11 @@ interface Member {
 let nextIp = 1;
 const b64 = (u: Uint8Array | Buffer) => Buffer.from(u).toString("base64");
 
-async function member(n: number, binding: boolean): Promise<Member> {
+async function member(
+  n: number,
+  binding: boolean,
+  enrol = true,
+): Promise<Member> {
   const t = now();
   const r = await consoleSignIn(
     env,
@@ -104,14 +108,16 @@ async function member(n: number, binding: boolean): Promise<Member> {
       path,
       { now: now() },
     );
-  const start = await call("/api/me/passkeys/options", {});
-  const { options } = (await start.json()) as {
-    options: Parameters<SoftAuthenticator["register"]>[0];
-  };
-  const added = await call("/api/me/passkeys", {
-    response: await auth.register(options, { origin }),
-  });
-  if (added.status !== 201) throw new Error(`enrol ${added.status}`);
+  if (enrol) {
+    const start = await call("/api/me/passkeys/options", {});
+    const { options } = (await start.json()) as {
+      options: Parameters<SoftAuthenticator["register"]>[0];
+    };
+    const added = await call("/api/me/passkeys", {
+      response: await auth.register(options, { origin }),
+    });
+    if (added.status !== 201) throw new Error(`enrol ${added.status}`);
+  }
   if (binding) {
     const s = stmtInsertBinding({
       id: newBindingId(),
@@ -132,6 +138,7 @@ async function member(n: number, binding: boolean): Promise<Member> {
 let ada: Member;
 let bob: Member;
 let nogrant: Member;
+let nopass: Member;
 
 beforeAll(async () => {
   resetConsoleSessionCache();
@@ -200,6 +207,7 @@ beforeAll(async () => {
   ada = await member(1, true);
   bob = await member(2, true);
   nogrant = await member(3, false);
+  nopass = await member(4, true, false);
   // No grant and no console-IdP link: the passkey is the only thing it has.
   await db.run(
     "DELETE FROM account_links WHERE account_id = ? AND kind = 'oidc'",
@@ -220,6 +228,7 @@ async function open(
   opts: Parameters<Browser["newContext"]>[0] = {},
   /** Chromium's virtual authenticator answers conditional UI at once; off, only the button signs in. */
   conditional = false,
+  verified = true,
 ): Promise<{
   context: BrowserContext;
   page: Page;
@@ -251,7 +260,7 @@ async function open(
         transport: "internal",
         hasResidentKey: true,
         hasUserVerification: true,
-        isUserVerified: true,
+        isUserVerified: verified,
         automaticPresenceSimulation: true,
       },
     },
@@ -283,11 +292,12 @@ const signedIn = async (context: BrowserContext, m: Member) =>
     },
   ]);
 
-const shot = async (page: Page, name: string, tag: string) => {
+const shot = async (page: Page, name: string, tag: string, full = false) => {
   if (!process.env.PK_SHOTS_DIR) return;
   mkdirSync(process.env.PK_SHOTS_DIR, { recursive: true });
   await page.screenshot({
     path: `${process.env.PK_SHOTS_DIR}/${name}-${tag}.png`,
+    fullPage: full,
   });
 };
 
@@ -327,6 +337,42 @@ describe("the passkey button (ST-30c.6)", () => {
     expect((await verify).status()).toBe(200);
     await page.waitForURL(`${origin}/manage/`);
     expect(violations).toEqual([]);
+    await closeContext(context);
+  });
+
+  it.each([
+    ["an empty authenticator", false],
+    ["a failing user verification", true],
+  ] as const)(
+    "conditional UI with %s makes at most 2 options requests in 3 s and shows no message",
+    async (_n, hasCredential) => {
+      const { context, page } = await open(
+        hasCredential ? ada : null,
+        {},
+        true,
+        false,
+      );
+      let optionsCalls = 0;
+      page.on("request", (r) => {
+        if (r.url().endsWith("/login/passkey/options")) optionsCalls++;
+      });
+      await page.goto(`${origin}/manage/login`);
+      await page.waitForTimeout(3000);
+      expect(optionsCalls).toBeLessThanOrEqual(2);
+      expect(await page.locator("#pk-msg").isVisible()).toBe(false);
+      expect(await page.locator("#pk-msg-t").textContent()).toBe("");
+      await closeContext(context);
+    },
+  );
+
+  it("a conditional options failure on load stays silent", async () => {
+    const { context, page } = await open(ada, {}, true);
+    await context.route("**/login/passkey/options", (route) =>
+      route.fulfill({ status: 500, body: "{}" }),
+    );
+    await page.goto(`${origin}/manage/login`);
+    await page.waitForTimeout(800);
+    expect(await page.locator("#pk-msg").isVisible()).toBe(false);
     await closeContext(context);
   });
 
@@ -373,9 +419,13 @@ describe("the passkey button (ST-30c.6)", () => {
     [
       "method",
       403,
-      "This passkey can’t open the console yet. Sign in with your account, then use it from Account → Sign-in methods.",
+      "This passkey doesn’t open the console yet. Use Continue, then choose Use for the console in Account → Sign-in methods.",
     ],
-    ["idp_first", 403, "Sign in with Pocket ID first."],
+    [
+      "idp_first",
+      403,
+      "Your access needs a recent company sign-in. Use Continue this time.",
+    ],
     [
       "account",
       403,
@@ -386,10 +436,150 @@ describe("the passkey button (ST-30c.6)", () => {
       403,
       "Use a passkey of the account you’re signed in with.",
     ],
-    ["invalid", 401, "That passkey didn’t work."],
+    ["invalid", 401, "That passkey didn’t work. Try again, or use Continue."],
     ["expired", 400, "This passkey request expired. Try again."],
-    ["rate", 429, "Too many tries."],
+    ["rate", 429, "Too many sign-in attempts. Wait a minute, then try again."],
   ];
+
+  it("a network failure says it can't reach Polaris Key", async () => {
+    const { context, page } = await open(ada);
+    await page.goto(`${origin}/manage/login`);
+    await context.route("**/login/passkey/options", (route) => route.abort());
+    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await page
+      .getByRole("alert")
+      .getByText(
+        "Can’t reach Polaris Key. Check your connection, then try again.",
+      )
+      .waitFor();
+    await closeContext(context);
+  });
+
+  it("the message carries a glyph and the button points at it", async () => {
+    const { context, page } = await open(nogrant);
+    await page.goto(`${origin}/manage/login`);
+    const button = page.getByRole("button", { name: "Sign in with a passkey" });
+    expect(await button.getAttribute("aria-describedby")).toBe("pk-err");
+    await button.click();
+    await page.locator("#pk-msg").waitFor();
+    expect(await page.locator("#pk-msg svg").count()).toBe(1);
+    expect(await page.locator("#pk-msg").isVisible()).toBe(true);
+    await closeContext(context);
+  });
+
+  it("after the sheet closes the button reads Signing in… and stays busy through the navigation", async () => {
+    const { context, page } = await open(ada);
+    await context.route("**/login/passkey/verify", async (route) => {
+      await new Promise((r) => setTimeout(r, 1200));
+      await route.continue();
+    });
+    await page.goto(`${origin}/manage/login`);
+    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await page.getByRole("button", { name: "Signing in…" }).waitFor();
+    expect(await page.locator("#pk-go").getAttribute("aria-busy")).toBe("true");
+    await page.waitForURL(`${origin}/manage/`);
+    await closeContext(context);
+  });
+
+  it("a step-up for an account with no passkey offers none, and no script", async () => {
+    const { context, page } = await open(null);
+    await signedIn(context, nopass);
+    const res = await page.goto(`${origin}/manage/login?stepUp=1`);
+    await page.getByRole("button", { name: "Sign in again" }).waitFor();
+    expect(await page.locator("#pk").count()).toBe(0);
+    expect(res!.headers()["content-security-policy"]).not.toContain(
+      "script-src",
+    );
+    await closeContext(context);
+  });
+
+  it("a step-up with a passkey leads with it: the primary, then or, then the ghost Sign in again", async () => {
+    const { context, page } = await open(ada);
+    await signedIn(context, ada);
+    await page.goto(`${origin}/manage/login?stepUp=1`);
+    const use = page.getByRole("button", { name: "Use your passkey" });
+    await use.waitFor();
+    const again = page.getByRole("button", { name: "Sign in again" });
+    const [u, a] = await Promise.all([use.boundingBox(), again.boundingBox()]);
+    expect(u!.y).toBeLessThan(a!.y);
+    const fill = (l: typeof use) =>
+      l.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await fill(again)).toBe("rgba(0, 0, 0, 0)");
+    expect(await fill(use)).not.toBe("rgba(0, 0, 0, 0)");
+    await closeContext(context);
+  });
+
+  it("conditional UI: one refused pick keeps its message and does not loop", async () => {
+    const context = await browser.newContext();
+    await context.setExtraHTTPHeaders({ "cf-connecting-ip": "203.0.113.200" });
+    // One pick from the field, answered by the real virtual authenticator; later conditional
+    // requests wait, as a field nobody touched does.
+    await context.addInitScript(() => {
+      const get = navigator.credentials.get.bind(navigator.credentials);
+      let picks = 0;
+      (window as unknown as { __gets: number }).__gets = 0;
+      navigator.credentials.get = (o?: CredentialRequestOptions) => {
+        (window as unknown as { __gets: number }).__gets++;
+        if (o?.mediation === "conditional") {
+          if (picks++ === 0) {
+            const { mediation: _m, ...rest } = o;
+            return get(rest);
+          }
+          return new Promise((_ok, no) =>
+            o.signal?.addEventListener("abort", () =>
+              no(new DOMException("aborted", "AbortError")),
+            ),
+          );
+        }
+        return get(o);
+      };
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    const { authenticatorId } = await cdp.send(
+      "WebAuthn.addVirtualAuthenticator",
+      {
+        options: {
+          protocol: "ctap2",
+          transport: "internal",
+          hasResidentKey: true,
+          hasUserVerification: true,
+          isUserVerified: true,
+          automaticPresenceSimulation: true,
+        },
+      },
+    );
+    await cdp.send("WebAuthn.addCredential", {
+      authenticatorId,
+      credential: {
+        credentialId: b64(nogrant.auth.credentialId),
+        isResidentCredential: true,
+        rpId: "localhost",
+        privateKey: b64(await nogrant.auth.pkcs8()),
+        userHandle: b64(Buffer.from(nogrant.auth.userHandle!, "base64url")),
+        signCount: (nogrant.uses += 10),
+      },
+    });
+    let optionsCalls = 0;
+    page.on("request", (r) => {
+      if (r.url().endsWith("/login/passkey/options")) optionsCalls++;
+    });
+    await page.goto(`${origin}/manage/login`);
+    const alert = page.getByRole("alert");
+    await alert.getByText("Ask a Superadmin to add you.").waitFor();
+    await page.waitForTimeout(1500);
+    expect(
+      await alert.getByText("Ask a Superadmin to add you.").isVisible(),
+    ).toBe(true);
+    expect(optionsCalls).toBeLessThanOrEqual(2);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __gets: number }).__gets,
+      ),
+    ).toBeLessThanOrEqual(2);
+    await closeContext(context);
+  });
 
   it.each(REASONS)(
     "the refusal %s is shown in place and announced",
@@ -551,6 +741,20 @@ describe("shots for the built UX review (PK_SHOTS_DIR)", () => {
       await page.getByRole("button", { name: "Use your passkey" }).waitFor();
       await fit();
       await shot(page, "stepup", tag);
+      await page.route("**/login/passkey/verify", (route) =>
+        route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: "forbidden",
+            reason: "step_up_account",
+          }),
+        }),
+      );
+      await page.getByRole("button", { name: "Use your passkey" }).click();
+      await page.getByRole("alert").getByText(/\S/).waitFor();
+      await fit();
+      await shot(page, "stepup-error-step_up_account", tag, true);
       for (const [reason, status] of [
         ["method", 403],
         ["idp_first", 403],
@@ -578,7 +782,7 @@ describe("shots for the built UX review (PK_SHOTS_DIR)", () => {
           .click();
         await page.getByRole("alert").getByText(/\S/).waitFor();
         await fit();
-        await shot(page, `error-${reason}`, tag);
+        await shot(page, `error-${reason}`, tag, true);
       }
       await closeContext(context);
       const plain = await browser.newContext({

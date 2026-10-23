@@ -1049,6 +1049,24 @@ function consoleCeremonyRp(env: Env, req: Request): RelyingParty | null {
 }
 
 /**
+ * Whether a console passkey ceremony can run for this request at all: the console origin is
+ * configured and the request arrived on it (the same test `consolePasskeyOptions` applies). The
+ * sign-in card shows its passkey button, and its script, only then.
+ */
+export function consolePasskeyAvailable(env: Env, req: Request): boolean {
+  return consoleCeremonyRp(env, req) !== null;
+}
+
+/** Whether the account holds a console-eligible (strong, console-RP) passkey: step-up's offer. */
+export async function accountHasConsolePasskey(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<boolean> {
+  return (await strongConsolePasskey(env, db, accountId)) !== null;
+}
+
+/**
  * `POST /manage/login/passkey/options`: a challenge for THIS browser. `secret` goes into the
  * ceremony cookie and is never stored; the record is addressed by its hash. `stepUpFor` is the
  * `aid` of the caller's current session when it asked for a step-up (the caller has verified it).

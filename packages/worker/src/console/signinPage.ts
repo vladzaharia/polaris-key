@@ -46,10 +46,6 @@ const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
   },
 };
 
-/** Whether the card carries the passkey button and its script: every state but the emergency one. */
-export const signinOffersPasskey = (state: SigninState): boolean =>
-  state !== "breakGlass";
-
 export function signinState(url: URL): SigninState {
   if (url.searchParams.get("breakGlass") === "1") return "breakGlass";
   if (url.searchParams.get("stepUp") === "1") return "stepUp";
@@ -70,11 +66,17 @@ function hidden(name: string, value: string | null | undefined): string {
  */
 function passkeyBlock(state: SigninState, returnTo: string | null): string {
   const stepUp = state === "stepUp";
+  const button =
+    `<button class="${stepUp ? "button" : "button secondary"}" type="button" id="pk-go" aria-describedby="pk-err">` +
+    `${icon("fingerprint")}<span id="pk-label">${stepUp ? "Use your passkey" : "Sign in with a passkey"}</span></button>`;
+  const err =
+    `<div class="pk-err" id="pk-err" role="alert"><p class="field-err" id="pk-msg" hidden>` +
+    `${icon("x-circle", true)}<span id="pk-msg-t"></span></p></div>`;
+  const or = `<div class="or" aria-hidden="true">or</div>`;
   return (
     `<div class="pk" id="pk" hidden${stepUp ? ` data-step-up="1"` : ""}${returnTo ? ` data-return-to="${escapeHtml(returnTo)}"` : ""}>` +
-    (stepUp ? "" : `<div class="or" aria-hidden="true">or</div>`) +
-    `<button class="button secondary" type="button" id="pk-go">${stepUp ? "Use your passkey" : "Sign in with a passkey"}</button>` +
-    `<p class="pk-err" id="pk-err" role="alert"></p>` +
+    // Sign-in: "or", then the ghost. Step-up: the primary, its message, then "or" before Sign in again.
+    (stepUp ? button + err + or : or + button + err) +
     `<script>${SIGNIN_SCRIPT}</script></div>`
   );
 }
@@ -93,6 +95,12 @@ export function renderConsoleSignin(opts: {
    * It shows as "email · Change" in place of the empty field, carried as the hidden `login_hint`.
    */
   chip?: string | null;
+  /**
+   * The passkey button and its script (ST-30c.6). The caller decides: the console RP resolves for
+   * this request and, on a step-up, the signed-in account holds a console passkey. Never on the
+   * emergency card.
+   */
+  passkey?: boolean;
   /** After Change: the empty field takes focus (the card is script-free, so `autofocus`). */
   focusEmail?: boolean;
 }): string {
@@ -109,12 +117,12 @@ export function renderConsoleSignin(opts: {
       : opts.state === "ended"
         ? { ended: "1" }
         : {};
-  const offerPasskey = signinOffersPasskey(opts.state);
+  const offerPasskey = opts.passkey === true && !bg;
   const chip = !bg && opts.state !== "stepUp" && opts.chip ? opts.chip : null;
   const identifier = bg
     ? ""
     : opts.knownEmail
-      ? `${hidden("login_hint", opts.knownEmail)}<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
+      ? hidden("login_hint", opts.knownEmail)
       : chip
         ? `${hidden("login_hint", chip)}<div class="field"><span class="field-label" id="email-label">Email</span>` +
           `<div class="chip" role="group" aria-labelledby="email-label"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(chip))}</span>` +
@@ -132,6 +140,14 @@ export function renderConsoleSignin(opts: {
           "Every use is recorded and every Superadmin is emailed.",
         )
       : "",
+    // A step-up names who is confirming, once, above both ways in.
+    opts.state === "stepUp" && opts.knownEmail
+      ? `<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
+      : "",
+    // On a step-up the passkey leads (the primary), so its block sits before the form; elsewhere it follows.
+    offerPasskey && opts.state === "stepUp"
+      ? passkeyBlock(opts.state, opts.returnTo)
+      : "",
     `<form method="post" action="/manage/login" novalidate>`,
     hidden("returnTo", opts.returnTo),
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
@@ -140,7 +156,9 @@ export function renderConsoleSignin(opts: {
     `<button class="button" type="submit">${escapeHtml(c.cta)}${icon("arrow-right")}</button>`,
     `</form>`,
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
-    offerPasskey ? passkeyBlock(opts.state, opts.returnTo) : "",
+    offerPasskey && opts.state !== "stepUp"
+      ? passkeyBlock(opts.state, opts.returnTo)
+      : "",
   ].join("");
   // The emergency link is quiet: one more item under the card, on the states that start a sign-in.
   const links =

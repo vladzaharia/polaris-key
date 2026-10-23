@@ -30,6 +30,8 @@ export {
   type MarkStrongResult,
   consoleTokenSubject,
   consolePasskeyOptions,
+  consolePasskeyAvailable,
+  accountHasConsolePasskey,
   consolePasskeySignIn,
   type ConsolePasskeyRefusal,
   type ConsolePasskeySignInResult,

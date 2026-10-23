@@ -447,6 +447,7 @@ describe("the console sign-in card (GET /manage/login)", () => {
     const e = makeEnv(new KvMock(), []);
     e.PLATFORM_OIDC_ISSUER = "https://id.example";
     e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    e.CONSOLE_ORIGIN = ORIGIN;
     return e;
   };
   const get = (query: string) =>
@@ -488,13 +489,16 @@ describe("the console sign-in card (GET /manage/login)", () => {
   });
 
   it.each([
-    ["?signedOut=1", "You’re signed out", "Continue"],
-    ["?ended=1", "Your session ended", "Continue"],
-    ["?stepUp=1", "Confirm it’s you", "Sign in again"],
-  ])("%s", async (query, heading, cta) => {
-    const html = await expectBrandedPage(await get(query), "console", {
-      pinnedScript: SIGNIN_SCRIPT_HASH,
-    });
+    ["?signedOut=1", "You’re signed out", "Continue", true],
+    ["?ended=1", "Your session ended", "Continue", true],
+    // No signed-in account on a step-up: no passkey to offer, so no script (consoleCardPasskey.test.ts).
+    ["?stepUp=1", "Confirm it’s you", "Sign in again", false],
+  ])("%s", async (query, heading, cta, script) => {
+    const html = await expectBrandedPage(
+      await get(query),
+      "console",
+      script ? { pinnedScript: SIGNIN_SCRIPT_HASH } : {},
+    );
     expect(html).toContain(heading);
     expect(html).toContain(`>${cta}<`);
   });

@@ -55,7 +55,14 @@ beforeAll(async () => {
       headers,
       ...(q.method === "POST" ? { body: Buffer.concat(chunks) } : {}),
     });
-    const res = secureResponse(await handleAdminLogin(req, env));
+    // The passkey endpoints are not under test here: an empty answer, so the card's script stays
+    // quiet and no shot shows an error nobody caused.
+    const res = url.pathname.startsWith("/manage/login/passkey/")
+      ? new Response(JSON.stringify({ error: "auth_method_disabled" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        })
+      : secureResponse(await handleAdminLogin(req, env));
     r.writeHead(res.status, Object.fromEntries(res.headers));
     r.end(Buffer.from(await res.arrayBuffer()));
   });

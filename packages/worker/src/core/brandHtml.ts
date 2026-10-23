@@ -385,10 +385,20 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.pk{display:grid;gap:1rem;min-width:0}`,
   `.pk[hidden]{display:none}`,
   `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.pk .or::before,.pk .or::after{content:"";flex:1;height:1px;background:var(--rule)}`,
+  // Borders, not fills: a fill vanishes under forced colours.
+  `.pk .or::before,.pk .or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
+  // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
+  `.pk .button{align-items:flex-start;padding-block:.75rem}`,
+  `.pk .button .ic{margin-top:.125rem}`,
+  `.pk .button span{text-align:start}`,
   `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
-  `.pk-err{margin:0;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
-  `.pk-err:empty{display:none}`,
+  `.pk-err{display:grid;min-width:0}`,
+  `.pk-err .field-err{margin:0}`,
+  `.pk-err .field-err[hidden]{display:none}`,
+  // With a passkey on step-up, the passkey is the primary and the IdP round trip the ghost.
+  `.pk:not([hidden])+form .button[type=submit]{border-color:var(--edge);background:transparent;color:var(--strong)}`,
+  `@media (forced-colors: active){.pk:not([hidden])+form .button[type=submit]{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}}`,
+  `@media (forced-colors: active){.pk .or::before,.pk .or::after{border-color:CanvasText}}`,
   // The links row has no separator dots here: a dot cannot be told from a link's name, and one
   // stranded at a wrap reads as a glitch. The gap separates them.
   `[data-brand=console] .ac-links a+a::before{content:none}`,
@@ -520,6 +530,9 @@ const ICON_PATHS = {
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
   devices:
     '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
+  // lucide "fingerprint-pattern": the glyph of ST-30c.4's Add a passkey.
+  fingerprint:
+    '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
   "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
 } as const;
 export type IconName = keyof typeof ICON_PATHS;
