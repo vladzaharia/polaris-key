@@ -101,3 +101,8 @@ What downstream work packages rely on from this one is named in their briefs (th
 ## Consolidation 2026-10-22 (triage)
 
 Two criteria arrive here. From P0-45: "`pkey doctor` reports the same Verified facts as ST-40" was circular (it needs `pkey login`, and this package depends on P0-45). From F-33: the member's own Personal tokens page. Both are in the acceptance list above.
+
+### ST-34.1 build note (2026-10-22)
+
+- Store only, no route. `admin` is in `PERSONAL_TOKEN_SCOPES` (7 days by default, 30 at most). A merge revokes the absorbed account's live admin rows (`access_removed`, by `merge`) in the same batch, before the move, and the move and the undo snapshot skip the admin scope.
+- Difference from the plan: the portal's `GET /api/me/tokens` (`listAccountTokens`) still lists every scope, so an admin token would show on the Packages page, and the portal's own revoke could revoke one. Narrowing that list to `packages:read` is D-9 (34.11); until then nothing mints an admin token.

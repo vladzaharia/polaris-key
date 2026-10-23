@@ -21,11 +21,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getDevice } from "../src/core/devices/store.js";
 import { setServices } from "../src/core/products/store.js";
 import {
@@ -55,6 +51,7 @@ import { getTokenRecord } from "../src/platform/kv.js";
 import { hashKey } from "../src/platform/crypto.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ORIGIN = "https://key.plrs.im";
 
@@ -79,8 +76,9 @@ async function world(): Promise<World> {
   const env = makeEnv(new KvMock(), []);
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = "platform-admins";
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "op", name: "Op", email: "op@x.io", groups: ["platform-admins"] },
     NOW,
   );

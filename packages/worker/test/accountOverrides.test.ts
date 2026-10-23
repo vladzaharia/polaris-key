@@ -57,11 +57,8 @@ import {
 } from "../src/services/identity/accounts/claim.js";
 import { handleAdmin } from "../src/console/index.js";
 import { deleteProduct } from "../src/core/products/store.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "platform-admins";
@@ -168,8 +165,9 @@ async function world(
   const product = (await loadProduct(env, db, SLUG))!;
   const call: World["call"] = async (method, path, body, o = {}) => {
     const now = o.now ?? NOW;
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "op-1",
         name: "Ada Operator",
@@ -661,7 +659,7 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
     });
     expect(ok.status).toBe(200);
     const stored = (await getAccountOverrides(w.db, SLUG, ada.subject))!;
-    expect(stored.updated_by).toBe("op-1");
+    expect(stored.updated_by).toBe(await consoleActor(w.env, w.db, "op-1"));
     expect(stored.payload_json).not.toContain("tok-EDITOR");
     expect(stored.payload_json).not.toContain("pw-EDITOR");
     const got = await w.call("GET", path);

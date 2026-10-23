@@ -18660,6 +18660,532 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/admins:
+    get:
+      operationId: listAccessAdminsAdmin
+      tags: [admin]
+      summary: Who can give the caller access to an area
+      description: >
+        ST-29, ST-31.5. Up to three people, narrowest first: the admins of `product:<slug>` who hold
+        the area and Members, then Superadmins (the root rule's holders and stored bindings). Each is
+        a `name`, a `role` (`product_admin` or `superadmin`) and an address to copy; never an account
+        id. Platform admins and `products:*` admins are never named. A product's own admins are named
+        only to a caller who already holds an area of that product; anyone else gets the Superadmins
+        alone, the same answer for a product that does not exist. The caller is never on the list.
+        `scope` is `platform` (the default) or `product:<slug>`; `area` defaults to `console`; any
+        other value is a 400 naming the bad `fields`. Open to every signed-in member; admin session
+        cookie.
+      security:
+        - adminSession: []
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, default: platform }
+        - name: area
+          in: query
+          required: false
+          schema: { type: string, default: console }
+      responses:
+        "200":
+          description: The people who can help.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scope, area, incomplete, admins]
+                properties:
+                  scope: { type: string }
+                  area: { type: string }
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  admins:
+                    type: array
+                    maxItems: 3
+                    items:
+                      type: object
+                      required: [name, email, role]
+                      properties:
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+        "400":
+          description: An invalid `scope` or `area`; `fields` names them.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods:
+    get:
+      operationId: listMyMethodsAdmin
+      tags: [admin]
+      summary: The signed-in operator's own sign-in methods
+      description: >
+        ST-30c.3 (SM-3). Each method of the caller's account: its `kind`, a `name` (the passkey's
+        name, or the address the provider asserted; `null` when none), when it was created and last
+        used, whether it is `strong` (it opens the console) and whether it is `consoleEligible` (a
+        passkey enrolled under the console's relying-party id that is not yet strong; "Use for the
+        console" may mark it). Never an id of the account, never a secret. A break-glass session has
+        no account and is refused (403, reason `break_glass_session`). Admin session cookie; a token
+        cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The methods.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [methods]
+                properties:
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        [
+                          id,
+                          kind,
+                          name,
+                          createdAt,
+                          lastUsedAt,
+                          strong,
+                          consoleEligible,
+                        ]
+                      properties:
+                        id: { type: string }
+                        kind: { type: string }
+                        name: { type: string, nullable: true }
+                        createdAt: { type: integer }
+                        lastUsedAt: { type: integer, nullable: true }
+                        strong: { type: boolean }
+                        consoleEligible: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys/options:
+    post:
+      operationId: startMyPasskeyAdmin
+      tags: [admin]
+      summary: Start adding a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). A WebAuthn registration challenge for this session, from the same
+        ceremony as the Locker account's (I-16): the relying-party id is the console host, the
+        account needs a verified email, and the account's passkey cap applies. Needs a console
+        step-up (403 `step_up_required` from the dispatcher; I-16's own check, 401, stands behind
+        it). A break-glass session is refused. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "200":
+          description: The creation options and how long the challenge lives.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, expiresIn]
+                properties:
+                  options: { type: object }
+                  expiresIn: { type: integer }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys:
+    post:
+      operationId: addMyPasskeyAdmin
+      tags: [admin]
+      summary: Add a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). The attestation for this session's challenge. Needs a console step-up.
+        The new passkey's sign-in method is marked strong in the same request (the one place a
+        passkey is born strong; a passkey added in the Locker account never is, SM-4), written to
+        the platform audit as `rbac.method_strong` and mailed to the account and every Superadmin.
+        Removing a passkey stays in the Locker account. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response: { type: object }
+      responses:
+        "201":
+          description: Added; the passkey now opens the console.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, passkey]
+                properties:
+                  ok: { type: boolean }
+                  passkey:
+                    type: object
+                    required: [id, methodId, createdAt]
+                    properties:
+                      id: { type: string }
+                      methodId: { type: string }
+                      createdAt: { type: integer }
+        "400": { description: "The passkey response was invalid." }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          { description: "That passkey is already in use (`link_conflict`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods/{id}/strong:
+    post:
+      operationId: useMyMethodForConsoleAdmin
+      tags: [admin]
+      summary: Use one of my passkeys for the console
+      description: >
+        ST-30c.3 (SM-3(d)). Marks the caller's own passkey strong. The method must be the caller's
+        (anything else is a 404), a passkey enrolled under the console's relying-party id
+        (otherwise 403, reason `not_eligible`) and not yet strong (otherwise 409, reason
+        `already_strong`). Needs a console step-up. Writes `rbac.method_strong` to the platform audit
+        and mails the account and every Superadmin. A break-glass session is refused. Admin session
+        cookie and the CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The method's id, from the methods list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Marked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id, strong]
+                properties:
+                  ok: { type: boolean }
+                  id: { type: string }
+                  strong: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: "Not one of the caller's methods." }
+        "409": { description: "Already strong (reason `already_strong`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members:
+    get:
+      operationId: listMembersAdmin
+      tags: [admin]
+      summary: List the console's members and pending invites
+      description: >
+        ST-31.4. The root rule's group, every member (an account that holds a stored role or
+        holds Superadmin through the root rule right now) with their roles and where each came from,
+        and the invites still open. A person is named by an opaque `memberId` (`mbr_…`), display name
+        and address, never by an account id. A root-rule role has `source: root` and no `bindingId`
+        (it cannot be revoked). `grantedBy.name` is `null` when the granter is no longer a member.
+        Needs the Members area at platform scope (Superadmin, Platform admin); admin session cookie.
+        A token cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The roster.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rootRule, truncated, incomplete, members, invites]
+                properties:
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  rootRule:
+                    type: object
+                    required: [group]
+                    properties:
+                      group: { type: [string, "null"] }
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleMember" }
+                  invites:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleInvite" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members/{memberId}:
+    get:
+      operationId: getMemberAdmin
+      tags: [admin]
+      summary: Read one console member
+      description: >
+        ST-31.4. The id is matched by computing each candidate's member id, never by decoding it; an
+        unknown, stale or forged id is a 404 that says nothing else. Same access as the list.
+      security:
+        - adminSession: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          description: The opaque member id (`mbr_…`), from the list.
+          schema: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The member.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [member, incomplete]
+                properties:
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  member: { $ref: "#/components/schemas/ConsoleMember" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "503":
+          description: >
+            The member was not found and the erasure ledger could not be read for some account
+            (`reason: erasure_ledger_unavailable`), so the answer would not be reliable. Try again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/bindings:
+    post:
+      operationId: createBindingAdmin
+      tags: [admin]
+      summary: Grant a console role to a member
+      description: >
+        ST-31.6. Body `{member, role, scope, areas, confirm?}`, or, to invite (ST-31.7), `{emails, role,
+        scope, areas, confirm?}` with exactly one of `member` and `emails` (at most 20 addresses; see
+        `ConsoleInvitesResult`). An invite is held to the same rules as a grant, never names the
+        invitee in the audit trail, and sends the address a Polaris Key mail whose link opens the
+        sign-in page; it grants nothing until that address signs in. An address that belongs to an
+        existing console member becomes an account binding instead. At most 100 invited addresses
+        per member per hour (`429`, `reason: invite_budget`). `areas` is required for a
+        `product_admin` (`null` = every area, otherwise a non-empty list of product areas) and
+        absent or `null` for the other roles. An L2 target (Superadmin, Platform admin, `products:*`)
+        needs `confirm: "L2"`. The product named by a product scope must exist and not be the system
+        product. An existing `(member, role, scope)` is a 409 with its `bindingId`.
+        Needs the Members area at platform scope and a console step-up (a sign-in in the last 5
+        minutes: `403 step_up_required`).
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, scope]
+              additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
+              properties:
+                member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
+                role:
+                  {
+                    type: string,
+                    enum:
+                      [
+                        superadmin,
+                        platform_admin,
+                        product_admin,
+                        console_access,
+                      ],
+                  }
+                scope:
+                  {
+                    type: string,
+                    description: "`platform`, `products:*` or `product:<slug>`.",
+                  }
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member, or no such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "That access exists (`reason: exists`, with `bindingId`), or the member's account is disabled."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "An invalid body (`fields`), or an L2 target without `confirm` (`reason: confirm_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/bindings/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/BindingId" }
+    patch:
+      operationId: updateBindingAdmin
+      tags: [admin]
+      summary: Change a Product admin's areas
+      description: >
+        ST-31.6. Body `{areas, confirm?}`; nothing else can change (another member, role or scope
+        is a new grant). Widening needs a console step-up, narrowing does not. The caller must be
+        able to take back what was there and, when widening, give what comes out (`mayChange`).
+        Widening your own binding is refused (`self_grant`). A concurrent change makes this a 409
+        (`reason: changed`) and writes nothing.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [areas]
+              additionalProperties: false
+              properties:
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such binding.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this edit, or cannot be edited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: revokeBindingAdmin
+      tags: [admin]
+      summary: Take a console role back
+      description: >
+        ST-31.6. Removes the binding. No step-up: taking access back only narrows. The root rule is
+        computed and has no binding, so it cannot be revoked here. An invitation (a row for an address, no member) is cancelled the same
+        way and answers `{ok, bindingId, invite: true}`; no one is mailed. PATCH does not take an
+        invitation (404): cancel it and invite again.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, bindingId]
+                properties:
+                  ok: { type: boolean }
+                  bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
+                  notified: { $ref: "#/components/schemas/ConsoleNotified" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such binding.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -20186,6 +20712,320 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404": { description: No such destination. }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/members:
+    get:
+      operationId: listProductMembersAdmin
+      tags: [admin]
+      summary: Who holds access to one product
+      description: >
+        ST-31.5. The product's role bindings, its open invites, and, read-only, the platform roles
+        that reach it from above: Superadmins (the root rule's holders and stored bindings) and
+        `products:*` admins, each with a `source`. Platform admins are not listed. A person is named by
+        an opaque `memberId` (`mbr_…`), display name and address, never by an account id.
+        Needs the Members area on this product (a Product admin of it, or a Superadmin); admin session
+        cookie. A token cannot call it. A caller without that area on an existing product gets 403.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: The product's members.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    product,
+                    truncated,
+                    incomplete,
+                    members,
+                    invites,
+                    platformRoles,
+                  ]
+                properties:
+                  product: { type: string }
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      description: A Product admin does not see a last sign-in.
+                      required: [memberId, name, email, you, roles]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        you: { type: boolean }
+                        roles:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              [
+                                role,
+                                areas,
+                                source,
+                                bindingId,
+                                grantedBy,
+                                grantedAt,
+                              ]
+                            properties:
+                              role: { type: string }
+                              areas:
+                                type: [array, "null"]
+                                items: { type: string }
+                              source:
+                                { type: string, enum: [grant, invite, creator] }
+                              bindingId: { type: string }
+                              grantedBy:
+                                type: [object, "null"]
+                                properties:
+                                  name: { type: [string, "null"] }
+                              grantedAt: { type: integer }
+                  invites:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          bindingId,
+                          email,
+                          role,
+                          areas,
+                          invitedBy,
+                          sentAt,
+                          expiresAt,
+                        ]
+                      properties:
+                        bindingId: { type: string }
+                        email: { type: string }
+                        role: { type: string }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        invitedBy:
+                          type: [object, "null"]
+                          properties:
+                            name: { type: [string, "null"] }
+                        sentAt: { type: integer }
+                        expiresAt: { type: integer }
+                  platformRoles:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [memberId, name, email, role, scope, areas, source]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+                        scope: { type: string, enum: [platform, "products:*"] }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        source: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such product. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: createProductMemberAdmin
+      tags: [admin]
+      summary: Give a member access to one product
+      description: >
+        ST-31.6 (D-d). The product twin of `POST /bindings`. Body `{member, role?, areas?, confirm?}`, or
+        `{emails, role?, areas?, confirm?}` to invite (ST-31.7; exactly one of `member` and `emails`);
+        `role` is `product_admin` (the default, scoped to this product, `areas` required) or
+        `console_access` (platform scope, `areas` absent). Needs the Members area on this product and
+        a console step-up.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
+              properties:
+                member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
+                role: { type: string, enum: [product_admin, console_access] }
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "That access exists (`reason: exists`, with `bindingId`), or the member's account is disabled."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body, or the system product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/members/{bindingId}:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+      - name: bindingId
+        in: path
+        required: true
+        description: The binding id (`crb_…`) from the product's members list.
+        schema: { type: string }
+    patch:
+      operationId: updateProductMemberAdmin
+      tags: [admin]
+      summary: Change a member's areas on one product
+      description: >
+        ST-31.6 (D-d). The product twin of `PATCH /bindings/{id}`, for a binding scoped to this
+        product only: another product's or a platform binding is a 404. Widening needs a console
+        step-up.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [areas]
+              additionalProperties: false
+              properties:
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such binding on it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this edit, or cannot be edited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: revokeProductMemberAdmin
+      tags: [admin]
+      summary: Take a member's access to one product back
+      description: >
+        ST-31.6 (D-d). The product twin of `DELETE /bindings/{id}`, for a binding scoped to this
+        product only. No step-up. An invitation to this product is cancelled the same way.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, bindingId]
+                properties:
+                  ok: { type: boolean }
+                  bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
+                  notified: { $ref: "#/components/schemas/ConsoleNotified" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such binding on it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/products/{product}/alerts:
     get:
       operationId: listProductAlertDestinations
@@ -20659,6 +21499,12 @@ components:
       required: true
       description: The product slug (tenant).
       schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    BindingId:
+      name: id
+      in: path
+      required: true
+      description: The binding id (`crb_…`), from the Members roster.
+      schema: { type: string }
     MintId:
       name: mintId
       in: path
@@ -20916,6 +21762,25 @@ components:
                   }
                 code: forbidden
                 message: token is not scoped for this route
+    ConsoleBindingWritten:
+      description: >
+        The binding as stored (no account id), with the confirm level the target needed, whether an
+        edit widened, and who was told.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ConsoleBindingResult" }
+    ConsoleInvitesWritten:
+      description: >
+        A POST with `emails`: one result per address, in request order. `invited` (an invite row
+        that lapses after 7 days; inviting again renews it), `updated` (the address belongs to an
+        existing console member, so an account binding was written), `exists` (that member already
+        holds the grant), `merged` (the address repeated an earlier one) and `invalid` (not an
+        address). `link` is present only when the invitation mail did not go out; it is the console
+        sign-in page with the address as a hint and carries no secret. `201` when anything was
+        written, `200` when nothing was.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ConsoleInvitesResult" }
     AdminRateLimited:
       description: >
         The admin surface's per-principal budget (600 requests per 60 s). Keyed by the VERIFIED
@@ -24355,6 +25220,139 @@ components:
           type: [string, "null"]
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
+    ConsoleGrantedBy:
+      type: [object, "null"]
+      description: >
+        Who granted it. `null` = the system or the root rule; `name: null` = someone who is no longer
+        a member.
+      required: [name]
+      properties:
+        name: { type: [string, "null"] }
+    ConsoleMember:
+      type: object
+      required: [memberId, name, email, lastSignInAt, disabled, you, roles]
+      properties:
+        memberId: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+        name: { type: string }
+        email: { type: string }
+        lastSignInAt: { type: [integer, "null"] }
+        disabled:
+          type: boolean
+          description: The account is disabled, so the member cannot sign in.
+        you: { type: boolean }
+        roles:
+          type: array
+          items:
+            type: object
+            required:
+              [role, scope, areas, source, bindingId, grantedBy, grantedAt]
+            properties:
+              role:
+                {
+                  type: string,
+                  enum:
+                    [superadmin, platform_admin, product_admin, console_access],
+                }
+              scope:
+                {
+                  type: string,
+                  description: "platform, products:*, or product:<slug>",
+                }
+              areas:
+                type: [array, "null"]
+                items: { type: string }
+              source: { type: string, enum: [root, grant, invite, creator] }
+              bindingId: { type: [string, "null"] }
+              grantedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+              grantedAt: { type: [integer, "null"] }
+    ConsoleBindingResult:
+      type: object
+      required: [ok, binding]
+      properties:
+        ok: { type: boolean }
+        unchanged:
+          type: boolean
+          description: An edit that changed nothing wrote nothing and told no one.
+        widened: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        binding:
+          type: object
+          required: [bindingId, memberId, role, scope, areas, source, grantedAt]
+          properties:
+            bindingId: { type: string }
+            memberId: { type: string }
+            role: { type: string }
+            scope: { type: string }
+            areas:
+              type: [array, "null"]
+              items: { type: string }
+            source: { type: string }
+            grantedAt: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
+    ConsoleInvitesResult:
+      type: object
+      required: [ok, results, counts, confirm, emailOff, notified]
+      properties:
+        ok: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        emailOff:
+          type: boolean
+          description: True when the deployment sends no email; the links are in `results`.
+        results:
+          type: array
+          items:
+            type: object
+            required: [email, status]
+            properties:
+              email: { type: string }
+              status:
+                type: string
+                enum: [invited, updated, exists, merged, invalid]
+              bindingId: { type: string }
+              expiresAt: { type: integer }
+              needsOperatorSignIn:
+                type: boolean
+                description: >
+                  An invite for a role that signs in through the operator identity provider
+                  (Superadmin, Platform admin, `products:*`). It is stored, and usable once that
+                  sign-in proves the address.
+              emailed: { type: boolean }
+              link: { type: string }
+        counts:
+          type: object
+          required: [invited, updated, exists, merged, invalid]
+          properties:
+            invited: { type: integer }
+            updated: { type: integer }
+            exists: { type: integer }
+            merged: { type: integer }
+            invalid: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
+    ConsoleNotified:
+      type: object
+      description: >
+        G5. How many of the people told (the member and every Superadmin) the notice reached.
+        `nobodyNotified` is true when email is off or every address failed or is suppressed.
+      required: [sent, of, nobodyNotified]
+      properties:
+        sent: { type: integer }
+        of: { type: integer }
+        nobodyNotified: { type: boolean }
+    ConsoleInvite:
+      type: object
+      required:
+        [bindingId, email, role, scope, areas, invitedBy, sentAt, expiresAt]
+      properties:
+        bindingId: { type: string }
+        email: { type: string }
+        role: { type: string }
+        scope: { type: string }
+        areas:
+          type: [array, "null"]
+          items: { type: string }
+        invitedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+        sentAt: { type: integer }
+        expiresAt: { type: integer }
     AccountTokenAdmin:
       type: object
       description: >

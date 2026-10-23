@@ -24,11 +24,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
 import { handleDocs } from "../src/docs.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   ADMIN_API_SCOPES,
   MAX_ADMIN_API_TOKENS,
@@ -49,6 +45,7 @@ import {
   mintAdminApiToken,
 } from "../src/platform/crypto.js";
 import { listAudit } from "../src/core/audit.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -103,10 +100,12 @@ interface Auth {
 /** An operator's console session. `stepUp` is a proven sign-in just now, which minting needs. */
 async function session(
   env: Env,
+  db: Db,
   opts: { groups?: string[]; stepUp?: boolean } = {},
 ): Promise<Auth> {
-  const { token, session: s } = await issueSession(
+  const { token, session: s } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -221,7 +220,7 @@ async function world(): Promise<{
   const env = adminEnv();
   await seedProduct(db, SLUG);
   const { licenseId } = await seedLicenseWithKey(db, SLUG);
-  return { db, env, auth: await session(env, { stepUp: true }), licenseId };
+  return { db, env, auth: await session(env, db, { stepUp: true }), licenseId };
 }
 
 const bundlePath = `/api/products/${SLUG}/bundles`;
@@ -541,7 +540,7 @@ describe("admin API token surface", () => {
         .status,
     ).toBe(401);
 
-    const outsider = await session(env, {
+    const outsider = await session(env, db, {
       groups: ["some-other-group"],
       stepUp: true,
     });
@@ -571,7 +570,7 @@ describe("admin API token surface", () => {
 
   it("needs a proven sign-in to mint, and nothing but a session to list or revoke", async () => {
     const { db, env } = await world();
-    const ordinary = await session(env);
+    const ordinary = await session(env, db);
     const refused = await mint(env, db, ordinary);
     expect(refused.status).toBe(403);
     expect(refused.body.code).toBe("step_up_required");
@@ -582,8 +581,9 @@ describe("admin API token surface", () => {
     expect(await db.all("SELECT id FROM admin_api_tokens")).toEqual([]);
 
     // A step-up from six minutes ago is past the window.
-    const { token, session: stale } = await issueSession(
+    const { token, session: stale } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -600,7 +600,7 @@ describe("admin API token surface", () => {
     });
     expect(lapsed.body.code).toBe("step_up_required");
 
-    const fresh = await mint(env, db, await session(env, { stepUp: true }));
+    const fresh = await mint(env, db, await session(env, db, { stepUp: true }));
     expect(fresh.status).toBe(201);
 
     // Listing and revoking narrow nothing and widen nothing: an ordinary sign-in is enough.
@@ -632,7 +632,7 @@ describe("admin API token surface", () => {
     const create = rows.find((r) => r.action === "api_token.create")!;
     const revoke = rows.find((r) => r.action === "api_token.revoke")!;
     for (const row of rows) {
-      expect(row.actor_sub).toBe("u1");
+      expect(row.actor_sub).toBe(await consoleActor(env, db, "u1"));
       expect(row.target_kind).toBe("api_token");
       expect(row.target_id).toBe(minted.id);
     }

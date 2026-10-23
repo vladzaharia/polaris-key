@@ -18,11 +18,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { setServices } from "../src/core/products/store.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import {
@@ -32,6 +28,7 @@ import {
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
 import { removeProductData } from "../src/services/identity/accounts/deletion.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ORIGIN = "https://key.plrs.im";
@@ -156,8 +153,9 @@ describe("the account id never reaches a developer (PX-W17)", () => {
     }
     expect(products.alpha!.subject).not.toBe(products.beta!.subject);
 
-    const { token: adminToken, session } = await issueSession(
+    const { token: adminToken, session } = await consoleTestSession(
       env,
+      db,
       { sub: "op", name: "Op", email: "op@x.io", groups: ["platform-admins"] },
       NOW,
     );
@@ -176,6 +174,10 @@ describe("the account id never reaches a developer (PX-W17)", () => {
         `/api/products/${slug}/license/licenses/${p.licenseId}/keys`,
         // ST-29: the signed-in member's permissions and NoAccessPage's "who can give you access".
         `/api/me`,
+        // ST-31.4: the Members roster names people by member id only.
+        `/api/members`,
+        // ST-31.5: the product's members.
+        `/api/products/${slug}/members`,
         `/api/access/admins?scope=product:${slug}&area=license`,
       ]) {
         const res = await handleAdmin(

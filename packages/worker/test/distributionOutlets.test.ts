@@ -21,11 +21,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { SERVICES } from "../src/mount.js";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { type ServiceRegistry } from "../src/core/registry.js";
@@ -49,6 +45,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "dice";
 const INGEST = ingestFor(SERVICES);
@@ -227,8 +224,9 @@ async function consoleCall(
 ): Promise<Response> {
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = "admins";
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
     NOW,
   );

@@ -24,11 +24,7 @@ import { R2Mock, asR2 } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   blobKey,
   putVerified,
@@ -80,6 +76,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BLOB = bytesOf(4096, 21);
@@ -150,8 +147,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -180,8 +178,9 @@ async function setting(
   key: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -559,8 +558,9 @@ async function enableDistributionInConsole(
   w: World,
   alsoRelease = false,
 ): Promise<void> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

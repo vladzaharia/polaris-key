@@ -27,13 +27,10 @@ import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";
@@ -92,8 +89,9 @@ describe("remote re-licensing", () => {
   }
 
   async function adminPatch(body: unknown): Promise<Response> {
-    const { token: cookieToken, session } = await issueSession(
+    const { token: cookieToken, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -331,8 +329,9 @@ describe("remote re-licensing", () => {
     });
 
     it("admin CREATE derives the expiry from the tier when none is given", async () => {
-      const { token: cookieToken, session } = await issueSession(
+      const { token: cookieToken, session } = await consoleTestSession(
         env,
+        db,
         { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
         NOW,
       );

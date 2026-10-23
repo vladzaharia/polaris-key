@@ -6,6 +6,7 @@ import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
 import { productDeletionStatements } from "../contributions.js";
 import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
+import { stmtDeleteProductBindings } from "../rbac/bindings.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type {
   ProductRow,
@@ -592,6 +593,9 @@ export async function deleteProduct(
     stmtRevokeProductCiTokens(slug, now),
     // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
     stmtRevokeProductRegistryTokens(slug, now),
+    // ST-28 G8: the product's `product:<slug>` role bindings go with it (members and invites).
+    // `products:*` and platform bindings stay. Removing the product's SSO rules is ST-32's.
+    stmtDeleteProductBindings(slug),
   ]);
 }
 

@@ -24,11 +24,7 @@ import { handlePortalApi } from "./portalHarness.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { listAudit } from "../src/core/audit.js";
 import {
   isFloatingLicense,
@@ -71,6 +67,7 @@ import { attachClaimedLicenses } from "../src/services/identity/accounts/platfor
 import { suppressEmail } from "../src/core/notify/emailDelivery.js";
 import { sendLibraryNotices } from "../src/services/identity/accounts/libraryNotice.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const PLATFORM_GROUP = "admins";
@@ -94,8 +91,9 @@ beforeEach(async () => {
   await seedProduct(db, SLUG);
   ctx = { db, env, now: NOW, origin: "https://key.plrs.im" };
   // A proven step-up: Reassign… is in the step-up table.
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Op",

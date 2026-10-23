@@ -16,13 +16,10 @@ import type { Env } from "../src/platform/env.js";
 import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { handleAdminApi } from "../src/console/api.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { SEARCH_KIND_CAP } from "../src/console/handlers/search.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SYNTHETIC = new Map<string, unknown>();
 vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
@@ -52,8 +49,9 @@ async function world() {
 type World = Awaited<ReturnType<typeof world>>;
 
 async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub: PRINCIPALS[as]!.memberId,
       name: as,
@@ -62,6 +60,8 @@ async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
     },
     NOW,
   );
+  // The console resolves the member id from the account; the seam is keyed by it.
+  SYNTHETIC.set(session.sub, PRINCIPALS[as]!);
   const res = await handleAdminApi(
     new Request("https://key.plrs.im/manage/api/search", {
       method: "POST",
@@ -159,8 +159,9 @@ describe("GET /manage/api/search", () => {
 
   it("no longer answers GET", async () => {
     const w = await world();
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       w.env,
+      w.db,
       {
         sub: PRINCIPALS.alphaAdmin.memberId,
         name: "a",

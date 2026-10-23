@@ -36,11 +36,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { handleActivate } from "../src/services/license/activation.js";
@@ -51,6 +47,7 @@ import { handleMintToken } from "../src/services/config/mint.js";
 import { flowKey, handleAuthCallback } from "../src/services/identity/oidc.js";
 import { getLicenseBySub } from "../src/core/licensing/store.js";
 import { artefacts } from "./singleUseMock.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 // The OIDC suite swaps only the IdP's remote key getter, as `oidcEdge` and `R8-oidc` do, so the
 // real `jwtVerify` still runs over the ID token.
@@ -156,8 +153,9 @@ async function adminWorld(): Promise<AdminWorld> {
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG, { catalog: CATALOG });
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

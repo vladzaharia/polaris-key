@@ -31,6 +31,7 @@
  * `platform_audit`. Narrative-only under rule 10 (`adminApi`), documented on `/docs/admin/feeds/`.
  */
 
+import { refuseBreakGlass } from "../lib/accountSession.js";
 import { SYSTEM_PRODUCT_SLUG, PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
@@ -663,6 +664,11 @@ export async function handleRegistryTokensAdmin(
   now: number,
 ): Promise<Response> {
   const notAllowed = () => err(405, "method_not_allowed", "method not allowed");
+  // N3 (ST-30c.2): minting is refused first, whatever the scope; revoking stays open.
+  if (req.method === "POST" && rest.length === 0) {
+    const bg = refuseBreakGlass(session);
+    if (bg) return bg;
+  }
   const owner = await ownerSlug(db, scope);
   if (!owner)
     return scope.kind === "platform"

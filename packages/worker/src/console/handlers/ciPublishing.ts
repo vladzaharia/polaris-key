@@ -24,6 +24,7 @@
  * static token found on the product.
  */
 
+import { refuseBreakGlass } from "../lib/accountSession.js";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
@@ -173,6 +174,10 @@ export async function handleCiPublisher(
     return adminJson({ ok: true, policy: await getPublisherPolicy(db, slug) });
   if (req.method !== "PUT")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  // A trusted-publisher policy lets a repository mint CI tokens with no end date: durable access a
+  // break-glass hour may not leave behind (ST-30c.2 review).
+  const bg = refuseBreakGlass(session);
+  if (bg) return bg;
   if (await isSystemProduct(db, slug))
     return refuseSystem(
       db,
@@ -215,6 +220,8 @@ export async function handleCiTokens(
       return adminJson({ ok: true, tokens: await listCiTokens(db, slug) });
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    const bg = refuseBreakGlass(session);
+    if (bg) return bg;
     if (await isSystemProduct(db, slug))
       return refuseSystem(
         db,

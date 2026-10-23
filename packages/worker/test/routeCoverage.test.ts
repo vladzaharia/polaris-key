@@ -49,6 +49,7 @@ const NARRATIVE_ONLY = new Set([
   "adminApi",
   "adminLogin",
   "adminCallback",
+  "adminPasskey",
   "portalSpa",
   "portalApi",
   "portalLogin",
@@ -205,6 +206,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/search", ["post"]],
     ["/manage/api/support-codes/{code}", ["get"]],
     ["/manage/api/platform/ready", ["get"]],
+    // ST-29, ST-31.5: who can give the caller access to an area.
+    ["/manage/api/access/admins", ["get"]],
+    // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
+    ["/manage/api/me/methods", ["get"]],
+    ["/manage/api/me/methods/{id}/strong", ["post"]],
+    ["/manage/api/me/passkeys", ["post"]],
+    ["/manage/api/me/passkeys/options", ["post"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],
@@ -224,6 +232,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
+    // ST-31.4: the Platform Members roster (platform scope, area `members`).
+    ["/manage/api/members", ["get"]],
+    ["/manage/api/members/{memberId}", ["get"]],
+    // ST-31.6: grant, edit and take back a console role (area `members`; Superadmin-only cases are
+    // the handler's, through the grant rules).
+    ["/manage/api/bindings", ["post"]],
+    ["/manage/api/bindings/{id}", ["patch", "delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -247,6 +262,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-31.5: who holds this product (Members area at product scope).
+    ["/manage/api/products/{product}/members", ["get", "post"]],
+    // ST-31.6 (D-d): the product twins of the grant writes.
+    ["/manage/api/products/{product}/members/{bindingId}", ["patch", "delete"]],
     // ST-27: a product's alert destinations (the override of the platform's).
     ["/manage/api/products/{product}/alerts", ["get", "post"]],
     ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
@@ -863,6 +882,8 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    memberId: "mbr_AAAAAAAAAAAAAAAAAAAAAA",
+    bindingId: "crb_AAAAAAAAAAAAAAAAAAAAAA",
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",

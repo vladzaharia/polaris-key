@@ -39,6 +39,12 @@ import { consoleMemberIdForIdpSub } from "../services/identity/public.js";
 import { buildClearCookie } from "../core/console/session.js";
 import type { Method, RouteDecl } from "./routeMatch.js";
 import { handleMe } from "./handlers/me.js";
+import {
+  handleMyMethods,
+  handleMyMethodStrong,
+  handleMyPasskeyAdd,
+  handleMyPasskeyOptions,
+} from "./handlers/myMethods.js";
 import { handleAttention } from "./handlers/attention.js";
 import { handleAccessAdmins } from "./handlers/access.js";
 import { handleSearch } from "./handlers/search.js";
@@ -59,6 +65,18 @@ import {
   handleAccountTokenList,
   handleAccountTokenRevoke,
 } from "./handlers/accountTokens.js";
+import {
+  handleProductMemberCreate,
+  handleProductMemberEdit,
+  handleProductMemberRevoke,
+  handleProductMembers,
+} from "./handlers/productMembers.js";
+import {
+  handleBindingCreate,
+  handleBindingEdit,
+  handleBindingRevoke,
+} from "./handlers/bindings.js";
+import { handleMemberGet, handleMembersList } from "./handlers/members.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -96,7 +114,10 @@ async function logout(c: AdminCtx): Promise<Response> {
     await revokeAdminSessions(c.env, c.session.sub, c.now);
     // A v2 session's `sub` is the member id; the operator's v1 cookies (signed before the deploy)
     // carry the IdP subject, so the mark goes there too.
-    if (c.session.idpSub)
+    if (c.session.breakGlass) {
+      // ST-30c.1: a break-glass session has no account; the mark under its IdP subject ends it,
+      // and the operator's ordinary sessions are not touched.
+    } else if (c.session.idpSub)
       await revokeAdminSessions(c.env, c.session.idpSub, c.now);
     else {
       // A v1 cookie: its `sub` is the IdP subject. The operator's v2 sessions read the mark under
@@ -165,6 +186,18 @@ function serviceRows(slug: ServiceSlug): AdminRoute[] {
 export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── Membership: what every console member may use ─────────────────────────────────────────
   ...rows(["GET"], "/me", "console", me),
+  // ST-30c.3 (SM-3(a), (d)): my own sign-in methods. Session only (break-glass refused in the
+  // handler); each write needs a step-up. No removal here: that stays in the Locker account.
+  ...rows(["GET"], "/me/methods", "console", handleMyMethods),
+  ...rows(["POST"], "/me/passkeys/options", "console", handleMyPasskeyOptions, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/me/passkeys", "console", handleMyPasskeyAdd, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/me/methods/:id/strong", "console", handleMyMethodStrong, {
+    stepUp: true,
+  }),
   ...rows(["POST"], "/logout", "console", logout),
   // Home's Needs attention: composed on the server, filtered by product and by fix area.
   ...rows(["GET"], "/attention", "console", attention),
@@ -330,6 +363,20 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     handleAccountTokenRevoke,
   ),
 
+  // ── Platform: the Members roster (ST-31.4) ────────────────────────────────────────────────
+  // Read-only here; `./handlers/members.ts`. Session only, like the rosters above.
+  ...rows(["GET"], "/members", "members", handleMembersList),
+  ...rows(["GET"], "/members/:memberId", "members", handleMemberGet),
+  // ST-31.6: the grant writes (`./handlers/bindings.ts`). A new grant is a step-up write; an edit
+  // checks it in the handler, only when the change widens (G4); taking access back needs none.
+  // The route table cannot tell a Platform admin from a Superadmin: the handler asks the grant
+  // rules (G1 to G3) before it writes anything.
+  ...rows(["POST"], "/bindings", "members", handleBindingCreate, {
+    stepUp: true,
+  }),
+  ...rows(["PATCH"], "/bindings/:id", "members", handleBindingEdit),
+  ...rows(["DELETE"], "/bindings/:id", "members", handleBindingRevoke),
+
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);
   // editing it is Core's.
@@ -337,6 +384,24 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["PATCH"], P, "core", registry),
   ...rows(["DELETE"], P, "settings", registry, { stepUp: true }),
 
+  // ST-31.5: who holds this product (bindings, invites) and, read-only, who reaches it from above.
+  ...rows(["GET"], `${P}/members`, "members", handleProductMembers),
+  // ST-31.6 (D-d): the product-scope twins of the grant writes.
+  ...rows(["POST"], `${P}/members`, "members", handleProductMemberCreate, {
+    stepUp: true,
+  }),
+  ...rows(
+    ["PATCH"],
+    `${P}/members/:bindingId`,
+    "members",
+    handleProductMemberEdit,
+  ),
+  ...rows(
+    ["DELETE"],
+    `${P}/members/:bindingId`,
+    "members",
+    handleProductMemberRevoke,
+  ),
   // ── One product: the services, by prefix ──────────────────────────────────────────────────
   // Approving a minted token's recipe lets the product's signing key mint for every device it
   // names (P0-12, U-31): a sign-in proven in the last five minutes, ahead of Config's prefix.

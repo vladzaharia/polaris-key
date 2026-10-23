@@ -9,10 +9,18 @@
  * ST-30 moves the subject onto accounts (the `consoleSubject` hook; `rootRuleHolds` is the
  * `strong_at` + `asserted_at` freshness rule a v2 session's `root` comes from), ST-31 adds stored bindings and ST-32 the SSO rules; each adds grants here. The
  * signature already takes the database so those packages change the body, not the callers.
+ *
+ * ST-31.2: a subject that carries an `accountId` (a v2 session only) also holds the stored
+ * bindings of that account (`console_role_bindings`, `source` grant / invite / creator), read from
+ * the database on every request and appended after the root grant, so a deleted binding stops
+ * granting on the next request. The two sources are summed; neither can remove the other. A v1
+ * cookie and a `pkeya_` token carry no account id and stay root-only. Email rows (unclaimed
+ * invites) never grant: only a row naming the account does.
  */
 
 import type { Db } from "../../db/types.js";
 import type { Grant, Principal } from "./can.js";
+import { listAccountGrants } from "./bindings.js";
 
 /** The verified identity a principal is resolved for (the console session's `sub` and groups). */
 export interface ConsoleSubject {
@@ -25,6 +33,12 @@ export interface ConsoleSubject {
    * sign-in gate) and for a v1 cookie, which carries its own 8 h bound.
    */
   root?: boolean;
+  /**
+   * The signed-in account (`AdminSession.aid`, v2 only). Selects the stored bindings. Never
+   * logged, never put in a response body (`accountIdBoundary.test.ts`). Absent for a v1 cookie,
+   * a token and the sign-in gate, which resolve the root rule alone.
+   */
+  accountId?: string;
 }
 
 /** The deploy-time root of console authority (AT-2, S-13 §8.2). */
@@ -80,6 +94,10 @@ export function rootRuleHolds(
   return holdsRoot(env, link.groups);
 }
 
+function grantKey(g: Grant): string {
+  return `${g.role}|${g.scope}|${g.areas === null ? "*" : g.areas.join(",")}|${g.source}`;
+}
+
 /**
  * The principal for a verified subject. A subject with no grant is still returned (with an empty
  * `grants`), so callers can tell "signed in but not a member" from "not signed in"; `can()`
@@ -91,11 +109,18 @@ export async function resolvePrincipal(
   subject: ConsoleSubject,
   now: number,
 ): Promise<Principal> {
-  void db;
-  void now;
   const grants: Grant[] = [];
   const root =
     subject.root !== undefined ? subject.root : holdsRoot(env, subject.groups);
   if (root) grants.push(ROOT_GRANT);
+  if (db && subject.accountId) {
+    const seen = new Set(grants.map(grantKey));
+    for (const g of await listAccountGrants(db, subject.accountId)) {
+      const key = grantKey(g);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      grants.push(g);
+    }
+  }
   return { memberId: subject.sub, grants };
 }

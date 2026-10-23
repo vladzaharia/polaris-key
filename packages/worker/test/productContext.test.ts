@@ -9,7 +9,8 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 let db: ReturnType<typeof makeTestDb>;
@@ -48,8 +49,9 @@ async function call(
   const env: Env = makeEnv(new KvMock(), []);
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

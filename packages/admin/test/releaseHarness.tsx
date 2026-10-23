@@ -8,6 +8,7 @@ import * as React from "react";
 import { render, type RenderResult } from "@testing-library/react";
 import { configureAxe } from "vitest-axe";
 import { expect } from "vitest";
+import type { QueryClient } from "@tanstack/react-query";
 import { ConsoleQueryProvider } from "../src/console/data/queryClient.js";
 import { resetRouterForTests } from "../src/console/router.js";
 import { Announcer } from "../src/ui/LiveRegion.js";
@@ -30,12 +31,16 @@ export function stubDom(): void {
 }
 
 /** Mount `ui` with the router at `hash` and a fresh query cache. */
-export function mountAt(hash: string, ui: React.ReactElement): RenderResult {
+export function mountAt(
+  hash: string,
+  ui: React.ReactElement,
+  client?: QueryClient,
+): RenderResult {
   window.location.hash = hash;
   resetRouterForTests();
   stubDom();
   return render(
-    <ConsoleQueryProvider>
+    <ConsoleQueryProvider client={client}>
       <TooltipProvider delayDuration={300}>
         {ui}
         <Announcer />

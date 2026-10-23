@@ -26,11 +26,7 @@ import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";
@@ -51,6 +47,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ROLLER = "pkeyci_roller";
 const PROMOTER = "pkeyci_promoter";
@@ -134,8 +131,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -483,7 +481,11 @@ describe("rollout controls in the console", () => {
     });
     expect(started.status).toBe(200);
     expect(await started.json()).toMatchObject({
-      rollout: { state: "active", source: "admin", updatedBy: "admin:u1" },
+      rollout: {
+        state: "active",
+        source: "admin",
+        updatedBy: `admin:${await consoleActor(w.env, w.db, "u1")}`,
+      },
     });
     expect((await admin(w, "POST", "/rollouts/direct/beta/halt")).status).toBe(
       200,
@@ -507,13 +509,14 @@ describe("rollout controls in the console", () => {
     // No implementation-status caveat rides along: the signed feed carries halts (P3-03).
     expect(body).not.toHaveProperty("effect");
 
+    const actor = await consoleActor(w.env, w.db, "u1");
     const actions = (await auditRows(w.db))
       .filter((r) => r.action.startsWith("distribution.rollout"))
       .map((r) => [r.action, r.actor_sub]);
     expect(actions).toEqual([
-      ["distribution.rollout.set", "u1"],
-      ["distribution.rollout.halt", "u1"],
-      ["distribution.rollout.resume", "u1"],
+      ["distribution.rollout.set", actor],
+      ["distribution.rollout.halt", actor],
+      ["distribution.rollout.resume", actor],
     ]);
   });
 

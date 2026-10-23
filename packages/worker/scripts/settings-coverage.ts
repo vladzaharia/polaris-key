@@ -425,6 +425,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:portal_license_links.source"] },
   },
   {
+    thing: "Console role binding provenance (ST-31)",
+    reason:
+      "Records how a binding came to exist (an operator's grant, an invite, or the creator of a product): a fact about an access grant, not Polaris behaviour.",
+    shows: "Platform → Access",
+    covers: { ids: ["column:console_role_bindings.source"] },
+  },
+  {
     thing: "An account's birth date and where it came from (I-33)",
     reason:
       "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",

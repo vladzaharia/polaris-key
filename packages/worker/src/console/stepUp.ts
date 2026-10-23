@@ -28,6 +28,21 @@ export interface StepUpRoute {
 export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   {
     method: "POST",
+    path: "/me/passkeys/options",
+    why: "starts adding a passkey that will open the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/passkeys",
+    why: "adds a passkey that opens the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/methods/:id/strong",
+    why: "sets a passkey to open the console (SM-3(d))",
+  },
+  {
+    method: "POST",
     path: "/platform/alerts",
     why: "aims the platform's alerts at a new address or URL",
   },
@@ -152,6 +167,26 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     method: "DELETE",
     path: "/platform/connections/:id/domains/:domain",
     why: "releases a domain from a provider",
+  },
+  {
+    method: "POST",
+    path: "/bindings",
+    why: "gives someone console access, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/members",
+    why: "gives someone console access to a product, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "PATCH",
+    path: "/bindings/:id (body)",
+    why: "widens a Product admin's areas (narrowing skips it)",
+  },
+  {
+    method: "PATCH",
+    path: "/products/:slug/members/:bindingId (body)",
+    why: "widens a Product admin's areas on a product (narrowing skips it)",
   },
   {
     method: "POST",

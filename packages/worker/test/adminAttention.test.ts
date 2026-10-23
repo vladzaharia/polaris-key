@@ -15,7 +15,8 @@ import { attentionAcross } from "../src/console/lib/attention.js";
 import { canSeeProduct } from "../src/console/authz.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const DAY = 86_400;
@@ -42,8 +43,9 @@ async function get(
   method = "GET",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const env = adminEnv();
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -381,7 +383,11 @@ describe("GET /manage/api/platform/ready", () => {
     async function steamOn(...slugs: string[]): Promise<void> {
       for (const slug of slugs) {
         await seedProduct(db, slug);
-        await db.run(`UPDATE products SET name = ? WHERE slug = ?`, `Name ${slug}`, slug);
+        await db.run(
+          `UPDATE products SET name = ? WHERE slug = ?`,
+          `Name ${slug}`,
+          slug,
+        );
         await db.run(
           `INSERT INTO dist_outlets (product, outlet_id, kind, created_at, modified_at)
             VALUES (?, 'o1', 'steam', ?, ?)`,
@@ -400,7 +406,12 @@ describe("GET /manage/api/platform/ready", () => {
 
     it("a Platform admin with no product grant gets counts only: no name or slug anywhere", async () => {
       await steamOn("dice", "roll");
-      const ready = await platformReady(adminEnv(), db, NOW, PRINCIPALS.platformAdmin);
+      const ready = await platformReady(
+        adminEnv(),
+        db,
+        NOW,
+        PRINCIPALS.platformAdmin,
+      );
       const text = JSON.stringify(ready);
       for (const x of ["dice", "roll", "Name ", "djdl", "acme"])
         expect(text).not.toContain(x);
@@ -421,8 +432,18 @@ describe("GET /manage/api/platform/ready", () => {
       const diceAdmin = {
         memberId: "m-dice",
         grants: [
-          { role: "platform_admin", scope: "platform", areas: null, source: "grant" },
-          { role: "product_admin", scope: "product:dice", areas: null, source: "grant" },
+          {
+            role: "platform_admin",
+            scope: "platform",
+            areas: null,
+            source: "grant",
+          },
+          {
+            role: "product_admin",
+            scope: "product:dice",
+            areas: null,
+            source: "grant",
+          },
         ],
       } as const;
       const text = await detail(diceAdmin);

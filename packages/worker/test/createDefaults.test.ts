@@ -15,11 +15,8 @@ import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
@@ -36,8 +33,9 @@ async function post(
   path: string,
   body: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
     NOW,
   );

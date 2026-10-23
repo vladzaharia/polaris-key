@@ -847,3 +847,263 @@ export function licenseAssignedToYouNotice(input: {
     origin: input.origin,
   });
 }
+
+// ── Operator notices (Polaris Key, the console side) ─────────────────────────────────────────
+
+/**
+ * Writer-controlled text (an inviter's display name, a product name) in a mail from the Polaris
+ * Key sender to an address the writer chose (ST-31.7 N3). {@link displayValue}, then: a URL scheme
+ * is dropped and the dot of a domain-like token is defanged (`example[.]com`), so a mail client
+ * does not auto-link it and the sender's reputation does not carry a phishing line.
+ */
+export function operatorText(
+  raw: string | null | undefined,
+  fallback: string,
+): string {
+  return displayValue(raw, fallback)
+    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\/*/gi, "")
+    .replace(/(?<=[\p{L}\p{N}-])\.(?=\p{L}{2,})/gu, "[.]");
+}
+
+/**
+ * ST-31.6 (ST-28 G5): a console role was granted, changed or taken back. Sent as Polaris Key
+ * (`sender.audience: "operator"`) to the person it concerns and to every Superadmin, so a stolen
+ * session that hands out access cannot do it silently. It names the role, the scope, the areas
+ * and who did it, and carries no link and no token: the reader opens the console themselves.
+ */
+export function accessChangedNotice(input: {
+  change: "granted" | "changed" | "revoked";
+  /** The person whose access changed (a display name or address). */
+  member: string | null | undefined;
+  actor: string | null | undefined;
+  /** `Product admin`, `Console access`, …: the role's name. */
+  roleLabel: string;
+  /** `all products`, `the platform` or a product's name. */
+  scopeLabel: string | null | undefined;
+  /** `null` = every area (or an area-less role). */
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const member = operatorText(input.member, "A member");
+  const actor = operatorText(input.actor, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
+  const verb =
+    input.change === "granted"
+      ? "was given"
+      : input.change === "changed"
+        ? "now has changed access as"
+        : "no longer has";
+  const subject = `Access changed: ${member}`;
+  const line =
+    input.change === "changed"
+      ? `${actor} changed ${member}'s access: ${member} is ${input.roleLabel} on ${scope}${
+          input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+        }.`
+      : `${actor} changed who can use the Polaris Key console: ${member} ${verb} ${input.roleLabel} on ${scope}${
+          input.areas && input.change === "granted"
+            ? `, limited to ${input.areas.join(", ")}`
+            : ""
+        }.`;
+  const footer =
+    "You get this because you are a Superadmin, or because the change is to your own access. " +
+    "If you did not expect it, open Members in the console and take the access back.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/** The invite's link: the console sign-in page with the address as a hint. No secret, no token. */
+export function consoleInviteLink(
+  origin: string | null | undefined,
+  email: string,
+): string {
+  const base = (origin ?? "").replace(/\/+$/, "");
+  return `${base}/manage/login?login_hint=${encodeURIComponent(email)}`;
+}
+
+/**
+ * ST-31.7: an invite to the console, sent as Polaris Key to the invited address only. The link is
+ * the sign-in page with the address as a hint and carries nothing that lets anyone in: access
+ * follows a sign-in that proves this address, so a forwarded mail grants nothing. It says who
+ * invited, the role, the scope and the areas, and that it lapses.
+ */
+export function accessInviteNotice(input: {
+  inviter: string | null | undefined;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  link: string;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const inviter = operatorText(input.inviter, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
+  const subject = "You are invited to the Polaris Key console";
+  const line = `${inviter} invited you to the Polaris Key console as ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const how =
+    "Sign in with this email address to accept. The invitation lapses after 7 days.";
+  const footer =
+    "The link only opens the sign-in page. It does not give access by itself. " +
+    "If you did not expect this, ignore this email.";
+  return {
+    subject,
+    text: [subject, line, how, `Sign in: ${input.link}`, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line, how],
+      action: { label: "Sign in", url: input.link },
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
+ * ST-31.8: an invitation was accepted (the invitee signed in and the invite became their access).
+ * Sent as Polaris Key to the inviter and to every Superadmin. Names the role, the scope, the areas
+ * and who invited; carries no link and no token.
+ */
+export function accessInviteAcceptedNotice(input: {
+  /** The person who signed in (a display name or address). */
+  member: string | null | undefined;
+  inviter: string | null | undefined;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const member = operatorText(input.member, "A member");
+  const inviter = operatorText(input.inviter, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
+  const subject = `Console invitation accepted: ${member}`;
+  const line = `${member} signed in to the Polaris Key console with the invitation from ${inviter} and is now ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const footer =
+    "You get this because you sent the invitation or you are a Superadmin. " +
+    "If you did not expect it, open Members in the console and take the access back.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
+ * ST-31.7 (G5 for invites): one notice per request to every Superadmin, so a session that hands
+ * out invites is loud. Counts only; it names no invited address.
+ */
+export function accessInvitesSentNotice(input: {
+  actor: string | null | undefined;
+  count: number;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const actor = operatorText(input.actor, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
+  const subject = `Console invitations sent: ${input.count}`;
+  const line = `${actor} invited ${input.count} ${input.count === 1 ? "person" : "people"} to the Polaris Key console as ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const footer =
+    "You get this because you are a Superadmin. If you did not expect it, open Members in the console and cancel the invitations.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
+ * ST-30c.1: the break-glass (emergency sign-in) console sign-in was used. Sent as Polaris Key to every Superadmin on
+ * every use. Names who, when and from which network; carries no link and no token.
+ */
+export function breakGlassUsedNotice(input: {
+  /** The identity that signed in (an address or the IdP subject). */
+  who: string | null | undefined;
+  /** When, epoch seconds. */
+  at: number;
+  /** The caller's network as the limiter sees it, when known. */
+  network: string | null | undefined;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const who = operatorText(input.who, "An operator");
+  const when = new Date(input.at * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const from = input.network ? ` from ${displayValue(input.network, "")}` : "";
+  const subject = "Emergency sign-in used";
+  const line = `${who} used emergency sign-in to the Polaris Key console at ${when}${from}.`;
+  const footer =
+    "You get this because you are a Superadmin. If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the audit.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
+ * ST-30c.3 (SM-3): a passkey now opens the console; sent to the account that did it and to every
+ * Superadmin. Names who and when; carries no link and no credential detail.
+ */
+export function consoleMethodStrongNotice(input: {
+  /** Who did it (name or address). */
+  actor: string | null | undefined;
+  /** Epoch seconds. */
+  at: number;
+  /** The account's own copy ("you") or the Superadmins'. */
+  audience: "self" | "superadmin";
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const actor = operatorText(input.actor, "An operator");
+  const when = new Date(input.at * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const subject = "A passkey can now open the Polaris Key console";
+  const line =
+    input.audience === "self"
+      ? `A passkey on your account was set to open the Polaris Key console at ${when}.`
+      : `${actor} set a passkey to open the Polaris Key console at ${when}.`;
+  const footer =
+    input.audience === "self"
+      ? "If this wasn't you, sign in to your Polaris Locker account and remove that passkey, then tell a Superadmin."
+      : "You get this because you are a Superadmin. If this wasn't expected, check the audit for rbac.method_strong.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}

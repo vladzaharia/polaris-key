@@ -15,11 +15,7 @@ import { makeEnv, NOW, seedProduct, TEST_KEK } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { listAudit } from "../src/core/audit.js";
 import { open } from "../src/platform/keyvault.js";
 import {
@@ -32,6 +28,7 @@ import {
   validateOutletCredential,
   type OutletCredentialKind,
 } from "../src/core/outletCredentials.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const pem = (k: { export(o: object): string | Buffer }, type: string) =>
   (k.export({ type, format: "pem" }) as string).trim();
@@ -117,8 +114,9 @@ async function call(
   groups: string[] = [PLATFORM_GROUP],
 ): Promise<{ status: number; body: Record<string, unknown>; raw: string }> {
   // A proven step-up: product delete and the KEK sweep are in the step-up table.
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "admin-1",
       email: "admin@example.com",
@@ -267,7 +265,7 @@ describe("outlet credentials: the admin API", () => {
       meta: { keyId: "ABC123DEFG" },
       status: "active",
       createdAt: NOW,
-      createdBy: "admin-1",
+      createdBy: await consoleActor(env, db, "admin-1"),
       lastUsedAt: null,
       lastOkAt: null,
       lastError: null,
@@ -385,7 +383,7 @@ describe("outlet credentials: the admin API", () => {
     expect(info).toMatchObject({
       rotatedAt: NOW,
       lastError: null,
-      createdBy: "admin-1",
+      createdBy: await consoleActor(env, db, "admin-1"),
     });
     const other = await call(env, db, "PUT", `${BASE}/asc`, {
       kind: "asc-webhook-secret",
@@ -411,8 +409,12 @@ describe("outlet credentials: the admin API", () => {
     expect(
       mine.map((a) => [a.action, a.actor_sub, a.target_id]).sort(),
     ).toEqual([
-      ["outlet_credential.delete", "admin-1", "asc"],
-      ["outlet_credential.set", "admin-1", "asc"],
+      [
+        "outlet_credential.delete",
+        await consoleActor(env, db, "admin-1"),
+        "asc",
+      ],
+      ["outlet_credential.set", await consoleActor(env, db, "admin-1"), "asc"],
     ]);
     for (const a of mine)
       expect(a.summary ?? "").not.toContain(SECRET_PARTS["asc-api-key"][0]);

@@ -15,6 +15,11 @@ import {
   LIVE_CHECK_SECONDS,
 } from "./core/console/session.js";
 import { MAX_ADMIN_API_TOKENS, MAX_TOKEN_DAYS } from "./console/apiTokens.js";
+import { OPERATOR_NOTICE_PER_RECIPIENT_HOUR } from "./console/handlers/accessShared.js";
+import {
+  INVITE_PURGE_GRACE_SECONDS,
+  INVITE_TTL_SECONDS,
+} from "./core/rbac/bindings.js";
 import { MAX_LIVE_PERSONAL_TOKENS } from "./core/accounts/personalTokens.js";
 import {
   OIDC_CI_TOKEN_TTL_SECONDS,
@@ -137,6 +142,33 @@ export const LIMITS: readonly Limit[] = [
     "The latest expiry an admin API token can be given.",
     "days",
     MAX_TOKEN_DAYS,
+  ),
+  row(
+    "INVITE_TTL_SECONDS",
+    "core/rbac/bindings.ts",
+    "Access",
+    "Console invitation lifetime",
+    "An invitation to the console that nobody accepts ends after this.",
+    "seconds",
+    INVITE_TTL_SECONDS,
+  ),
+  row(
+    "INVITE_PURGE_GRACE_SECONDS",
+    "core/rbac/bindings.ts",
+    "Access",
+    "Expired invitations kept",
+    "An expired invitation is deleted this long after it ends.",
+    "seconds",
+    INVITE_PURGE_GRACE_SECONDS,
+  ),
+  row(
+    "OPERATOR_NOTICE_PER_RECIPIENT_HOUR",
+    "console/handlers/accessShared.ts",
+    "Access",
+    "Access emails per person",
+    "Emails about console access one address gets in an hour. A change to Superadmin, Platform admin or All products admin is always sent.",
+    "per hour",
+    OPERATOR_NOTICE_PER_RECIPIENT_HOUR,
   ),
   row(
     "MAX_ADMIN_API_TOKENS",

@@ -24,11 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   putPlatformCredential,
   setPlatformPin,
@@ -48,6 +44,7 @@ import { makeTestDb } from "./helpers.js";
 import { CONSOLE, envFor, seedReleaseProduct } from "./releaseRoutesFixture.js";
 import { addOutlet, ascP8 } from "./ascWorld.js";
 import { NOW, seedProduct } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 type Fixture = {
@@ -145,12 +142,14 @@ async function call(
   body?: unknown,
   opts: { groups?: string[]; sub?: string } = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub: opts.sub ?? "u1",
       name: "Ada",
-      email: "ada@x.io",
+      // One address per operator: a shared verified address joins one account (SM-3).
+      email: opts.sub ? `${opts.sub}@x.io` : "ada@x.io",
       groups: opts.groups ?? ["platform-admins"],
     },
     NOW,

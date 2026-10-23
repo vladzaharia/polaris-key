@@ -30,6 +30,7 @@ import {
 import { readinessReader } from "../src/services/distribution/readiness.js";
 import { HOLDABLE_OUTLET_KINDS } from "../src/services/distribution/readiness.js";
 import { DERIVED_OUTLET_KINDS } from "../src/services/distribution/availability.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 afterEach(() => vi.useRealTimers());
 
@@ -274,7 +275,7 @@ describe("readiness per transport (CONTENT §6.4)", () => {
         SLUG,
       ),
     ).toEqual({
-      actor_sub: "u1",
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
       summary: `Overrode the readiness hold of ${id} on web: packs ship in the web build this time`,
     });
     // A refresh keeps the operator's row.

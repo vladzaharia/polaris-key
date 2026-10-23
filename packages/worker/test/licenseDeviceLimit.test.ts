@@ -33,17 +33,14 @@ import {
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   claimEnrolledLicense,
   getLicense,
 } from "../src/core/licensing/store.js";
 import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";
@@ -110,8 +107,9 @@ describe("per-licence device limit (LX-14a)", () => {
     path: string,
     body?: unknown,
   ): Promise<Response> {
-    const { token: cookieToken, session } = await issueSession(
+    const { token: cookieToken, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -319,7 +317,7 @@ describe("per-licence device limit (LX-14a)", () => {
     expect(entries[0]).toMatchObject({
       target_kind: "license",
       target_id: licenseId,
-      actor_sub: "u1",
+      actor_sub: await consoleActor(env, db, "u1"),
     });
   });
 

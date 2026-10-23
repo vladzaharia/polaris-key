@@ -44,6 +44,9 @@ import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
 import { PersonalTokens } from "../sections/global/pages/PersonalTokens.js";
 import { Announcer, LiveRegion } from "../../ui/LiveRegion.js";
+import { Button } from "../../ui/Button.js";
+import { Callout } from "../../ui/Callout.js";
+import { formatSessionEnd } from "./UserMenu.js";
 import type { ProductLike } from "./bits.js";
 import { OPEN_PALETTE_EVENT } from "../shortcuts.js";
 import { CommandPalette } from "./CommandPalette.js";
@@ -518,6 +521,31 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                   data-service={accent}
                   className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
                 >
+                  {me.breakGlass ? (
+                    // ST-30c.2 (D-S7): an emergency session names no account and lasts an hour.
+                    <div
+                      role="region"
+                      aria-label="Emergency sign-in"
+                      className="mb-4"
+                    >
+                      <Callout
+                        tone="warning"
+                        action={
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={signOut}
+                          >
+                            Sign out
+                          </Button>
+                        }
+                      >
+                        {me.sessionExpiresAt
+                          ? `You're using emergency sign-in until ${formatSessionEnd(me.sessionExpiresAt)}. Sign out when you're done.`
+                          : "You're using emergency sign-in. Sign out when you're done."}
+                      </Callout>
+                    </div>
+                  ) : null}
                   <MastheadContext.Provider value={masthead}>
                     <PageContent
                       key={key}

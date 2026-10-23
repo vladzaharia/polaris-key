@@ -1,28 +1,31 @@
 /**
- * Admin-portal session: a signed, HttpOnly cookie that proves an interactive OIDC sign-in
- * whose `groups` carried the platform-admin group. That is the only grant there is — product
- * admin groups do not exist as a privilege level (see ./authz.ts), so a session either
- * carries full platform authority or it was never issued.
+ * The console's signed session cookie: how a browser that signed in through the console IdP is
+ * recognised on the next request. It is HttpOnly, HMAC-signed and carries a per-session CSRF
+ * token, which every state-changing `/manage/api/*` call must echo in `X-PKey-CSRF` (a value an
+ * attacker page cannot read; `SameSite=Strict` is the primary defense, the header is
+ * defense-in-depth). The cookie is a compact HMAC-SHA-256 token, NOT a licence JWS: a different
+ * trust domain, never Ed25519-signable by anything but the Worker.
  *
- * The license hot path uses a bearer *token*; the admin SPA is a BROWSER, so it uses a
- * cookie instead. The cookie is a compact HMAC-SHA-256 token (NOT a license JWS — a
- * different trust domain, never Ed25519-signable by anything but the Worker) carrying
- * the verified `sub`/`name`/`email`, the granting `groups`, an expiry, and a per-session
- * **CSRF token**. Cookie auth is vulnerable to cross-site POSTs, so every state-changing
- * `/manage/api/*` call must echo that CSRF token in the `X-PKey-CSRF` header — a value an
- * attacker page cannot read (it's not in a readable cookie, and the API is same-origin
- * only). `SameSite=Strict` is the primary defense; the header is defense-in-depth
- * (double-submit by way of an unreadable secret).
+ * The cookie grants nothing by itself. Authority is the principal resolved for each request
+ * (`./authz.ts`, `../rbac/principal.ts`): the root rule plus the account's stored bindings.
  *
- * ST-30 slice 2a: cookie v2 (`pkey.admin.v2|`) carries the account id and a session id instead of
- * the IdP's `sub` and `groups`. It is only a pointer: every request resolves it, at most every 30
- * seconds, to a live `account_sessions` row of an active account (`console/consoleSession.ts`, the
- * `consoleSubject` read in Identity), so a revoked session, a disabled or deleted account ends
- * access within 30 s instead of at the 8 h expiry. A v1 cookie (the IdP `sub` and `groups`, signed
- * before this deploy) is still read until it expires and is never minted by the sign-in again.
+ * Three cookie shapes exist, tried in this order by `sessionFromRequest`:
+ *
+ *  - v2 (`pkey.admin.v2|`, ST-30): a POINTER. It names an account (`aid`) and a session row (`sid`)
+ *    and carries no groups. Every request resolves it, at most every 30 seconds, to a live
+ *    `account_sessions` row of an active account (`console/consoleSession.ts`, the `consoleSubject`
+ *    read in Identity), so a revoked session, or a disabled or deleted account, ends access within
+ *    30 s instead of at the 8 h expiry. This is the only shape the sign-in mints.
+ *  - break-glass (`pkey.admin.bg1|`, ST-30c.1): a REALM with no account. It is minted only by the
+ *    explicit `/manage/login?breakGlass=1` flow, for an identity whose IdP groups carry the root
+ *    group, and lives one hour (`BREAK_GLASS_TTL_SECONDS`). It names no `aid` or `sid`, so no
+ *    stored binding is read for it and it cannot reach account self-service routes.
+ *  - v1 (`pkey.admin.v1|`): the IdP `sub` and `groups`, signed before the v2 deploy. It is still
+ *    read until it expires and is never minted by the sign-in; the reader goes in ST-30c.8.
  *
  * Why HMAC for the cookie itself: it is server-verifiable and tamper-proof with no lookup for a
- * request that carries none; the live check above is the revocable part.
+ * request that carries none; the live check above is the revocable part. Each shape has its own
+ * realm tag, so a token of one never verifies as another's.
  */
 
 import type { Env } from "../../platform/env.js";
@@ -31,6 +34,7 @@ import { signHmacToken, verifyHmacToken } from "../../platform/hmacToken.js";
 import { randomToken } from "../../platform/random.js";
 import { isAdminSessionRevoked } from "./sessionRevocation.js";
 import type { Principal } from "../rbac/can.js";
+import { holdsRoot } from "../rbac/principal.js";
 
 /**
  * Cookie name for the admin session.
@@ -88,6 +92,12 @@ export interface AdminSession {
   /** Cookie v2 only: the account and the `account_sessions` row this request resolved through. */
   aid?: string;
   sid?: string;
+  /**
+   * ST-30c.1: a break-glass session (`issueBreakGlassSession`): the root rule from the IdP's
+   * groups at sign-in, no account, no stored bindings, an hour long. Account self-service refuses
+   * it (`console/lib/accountSession.ts`).
+   */
+  breakGlass?: boolean;
   /** Epoch-seconds expiry. */
   exp: number;
   /**
@@ -155,6 +165,11 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
 const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
 /** The v2 realm tag (ST-28 §2.6): a v1 token's signature is over a different message. */
 const ADMIN_SESSION_DOMAIN_V2 = "pkey.admin.v2|";
+/** The break-glass realm tag (ST-30c.1). */
+const ADMIN_SESSION_DOMAIN_BG = "pkey.admin.bg1|";
+
+/** A break-glass session's lifetime (seconds). Code, never a setting: it is the emergency path. */
+export const BREAK_GLASS_TTL_SECONDS = 60 * 60;
 
 // ---------------------------------------------------------------------------
 // Issue / verify
@@ -225,6 +240,13 @@ export async function verifySession(
   if (!session.sub || !Array.isArray(session.groups)) return null;
   // The principal is resolved per request, never carried: a cookie body naming one is ignored.
   delete session.principal;
+  // A v1 cookie names no account: stored bindings (ST-31.2) are read for a v2 session only.
+  delete session.aid;
+  delete session.sid;
+  // `root` is the v2 computed rule, set per request from the account link; a v1 body cannot claim it.
+  delete session.root;
+  // Only the break-glass realm may claim to be one.
+  delete session.breakGlass;
   return session;
 }
 
@@ -336,6 +358,126 @@ async function verifyClaimsV2(
 }
 
 // ---------------------------------------------------------------------------
+// Break-glass (ST-30c.1): a realm with no account
+// ---------------------------------------------------------------------------
+
+/** The body of a break-glass cookie. Strict: no field beyond these is accepted. */
+interface BreakGlassClaims {
+  sub: string;
+  name: string;
+  email: string;
+  groups: string[];
+  csrf: string;
+  exp: number;
+  authAt: number;
+  stepUpAt?: number;
+  bg: true;
+}
+
+const BG_KEYS: ReadonlySet<string> = new Set([
+  "sub",
+  "name",
+  "email",
+  "groups",
+  "csrf",
+  "exp",
+  "authAt",
+  "stepUpAt",
+  "bg",
+]);
+
+/**
+ * Mint a break-glass cookie for an identity whose groups the caller has already checked for the
+ * root group. `stepUpAt` is set only when the IdP proved a fresh `auth_time`.
+ */
+export async function issueBreakGlassSession(
+  env: Env,
+  identity: SessionIdentity,
+  now: number,
+): Promise<{ token: string; session: AdminSession }> {
+  const proved =
+    typeof identity.authTime === "number" && identity.authTime <= now;
+  const authAt = proved ? (identity.authTime as number) : now;
+  const claims: BreakGlassClaims = {
+    sub: identity.sub,
+    name: identity.name ?? identity.email ?? identity.sub,
+    email: identity.email ?? "",
+    // N2 (ST-30c.2): only the group `holdsRoot` reads, never the IdP's whole list, so the cookie
+    // stays small in an emergency and carries no more than it must. `holdsRoot` is re-checked
+    // against the env on every request.
+    groups: env.PLATFORM_ADMIN_GROUP
+      ? identity.groups.filter((g) => g === env.PLATFORM_ADMIN_GROUP)
+      : [],
+    csrf: randomToken(16),
+    exp: now + BREAK_GLASS_TTL_SECONDS,
+    authAt,
+    ...(proved ? { stepUpAt: authAt } : {}),
+    bg: true,
+  };
+  const token = await signHmacToken(
+    await sessionKey(env),
+    ADMIN_SESSION_DOMAIN_BG,
+    claims,
+  );
+  return {
+    token,
+    session: {
+      sub: claims.sub,
+      name: claims.name,
+      email: claims.email,
+      groups: claims.groups,
+      csrf: claims.csrf,
+      exp: claims.exp,
+      authAt,
+      ...(proved ? { stepUpAt: authAt } : {}),
+      breakGlass: true,
+    },
+  };
+}
+
+/** Verify a break-glass token's signature and exact shape; no lookup. `null` on anything else. */
+async function verifyBreakGlass(
+  env: Env,
+  token: string | null,
+  now: number,
+): Promise<BreakGlassClaims | null> {
+  const payload = await verifyHmacToken(token, ADMIN_SESSION_DOMAIN_BG, () =>
+    sessionKey(env),
+  );
+  if (
+    payload === undefined ||
+    payload === null ||
+    typeof payload !== "object" ||
+    Array.isArray(payload)
+  )
+    return null;
+  if (Object.keys(payload).some((k) => !BG_KEYS.has(k))) return null;
+  const c = payload as Partial<BreakGlassClaims>;
+  if (
+    c.bg !== true ||
+    typeof c.sub !== "string" ||
+    !c.sub ||
+    typeof c.name !== "string" ||
+    typeof c.email !== "string" ||
+    !Array.isArray(c.groups) ||
+    c.groups.some((g) => typeof g !== "string") ||
+    typeof c.csrf !== "string" ||
+    !c.csrf ||
+    typeof c.exp !== "number" ||
+    !Number.isFinite(c.exp) ||
+    c.exp <= now ||
+    // A body that outlives the realm's lifetime was not minted by this code.
+    c.exp > now + BREAK_GLASS_TTL_SECONDS ||
+    typeof c.authAt !== "number" ||
+    !Number.isFinite(c.authAt) ||
+    (c.stepUpAt !== undefined &&
+      (typeof c.stepUpAt !== "number" || !Number.isFinite(c.stepUpAt)))
+  )
+    return null;
+  return c as BreakGlassClaims;
+}
+
+// ---------------------------------------------------------------------------
 // Cookie (de)serialization
 // ---------------------------------------------------------------------------
 
@@ -371,6 +513,15 @@ export function buildSessionCookie(token: string): string {
   ].join("; ");
 }
 
+/** The cookie of a break-glass session: the same attributes, an hour long. */
+export function buildBreakGlassCookie(token: string): string {
+  return [
+    `${ADMIN_COOKIE}=${token}`,
+    ...ADMIN_COOKIE_ATTRS,
+    `Max-Age=${BREAK_GLASS_TTL_SECONDS}`,
+  ].join("; ");
+}
+
 /** Build a clearing cookie for sign-out. Attributes must match, or the browser keeps it. */
 export function buildClearCookie(): string {
   return [`${ADMIN_COOKIE}=`, ...ADMIN_COOKIE_ATTRS, "Max-Age=0"].join("; ");
@@ -382,7 +533,8 @@ export function buildClearCookie(): string {
  * A v2 cookie is a pointer: `live` (the console layer's cached `consoleSubject` read) says whether
  * it still holds and who it is today. Without `live` a v2 cookie is refused, so a caller that
  * cannot ask (no database) fails closed. A v1 cookie is read as before, for the 8 h it can still
- * live after the deploy, and checked against the sign-out mark.
+ * live after the deploy, and checked against the sign-out mark. A break-glass cookie (ST-30c.1)
+ * is tried between the two and also checked against the mark.
  */
 export async function sessionFromRequest(
   env: Env,
@@ -410,6 +562,26 @@ export async function sessionFromRequest(
       aid: claims.aid,
       sid: claims.sid,
     };
+  }
+  const bg = await verifyBreakGlass(env, token, now);
+  if (bg) {
+    const session: AdminSession = {
+      sub: bg.sub,
+      name: bg.name,
+      email: bg.email,
+      groups: bg.groups,
+      // The root rule from the groups the IdP asserted at this sign-in, which the one-hour realm
+      // bounds; the group removed from the env roots no one on the next request.
+      root: holdsRoot(env, bg.groups),
+      csrf: bg.csrf,
+      exp: bg.exp,
+      authAt: bg.authAt,
+      ...(bg.stepUpAt !== undefined ? { stepUpAt: bg.stepUpAt } : {}),
+      breakGlass: true,
+    };
+    return (await isAdminSessionRevoked(env, session, BREAK_GLASS_TTL_SECONDS))
+      ? null
+      : session;
   }
   const session = await verifySession(env, token, now);
   if (!session) return null;

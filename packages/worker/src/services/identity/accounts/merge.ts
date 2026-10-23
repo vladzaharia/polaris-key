@@ -34,7 +34,10 @@
 
 import type { DbStatement } from "../../../db/types.js";
 import { stmtMoveAccountLicenses } from "../../../core/accounts/accountSubjects.js";
-import { stmtMoveAccountTokens } from "../../../core/accounts/personalTokens.js";
+import {
+  stmtMoveAccountTokens,
+  stmtRevokeAccountAdminTokens,
+} from "../../../core/accounts/personalTokens.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
@@ -275,7 +278,11 @@ export async function mergeAccounts(
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
     },
-    // F-33: the absorbed account's personal tokens become the survivor's.
+    // ST-34 D-12: an admin token resolves to the roles of the account that holds it, so it must
+    // never take on the survivor's. It is revoked here, BEFORE the move, and stays on A (the move
+    // skips the admin scope). A restored backup cannot revive it: the row is revoked.
+    stmtRevokeAccountAdminTokens(A, now, "merge"),
+    // F-33: the absorbed account's packages tokens become the survivor's.
     stmtMoveAccountTokens(A, S),
     // I-12: a relink's undo moves the licence back to the account it came from, which is now S.
     {

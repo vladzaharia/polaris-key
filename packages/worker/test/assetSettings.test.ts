@@ -41,13 +41,10 @@ import {
 } from "../src/core/assets/assetSettings.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import type { AssetUsageDto } from "../src/console/handlers/hostedAssets.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 let db: SqliteDb;
 let env: Env;
@@ -245,8 +242,9 @@ describe("a product's settings", () => {
 
 describe("the console: usage and the settings writes", () => {
   async function admin() {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -373,7 +371,7 @@ describe("the console: usage and the settings writes", () => {
       setting_key: "assets.releases.mirror",
       origin: "console",
       reason: "GitHub serves this product's files",
-      actor_sub: "u1",
+      actor_sub: await consoleActor(env, db, "u1"),
     });
     // A stale version writes nothing.
     res = await call("PATCH", "settings/assets.releases.mirror", {

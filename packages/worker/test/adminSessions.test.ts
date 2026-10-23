@@ -7,7 +7,7 @@
  *     group;
  *   - the console's ID-token verification carries the same freshness options.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { bindAdminFlow } from "./flowBinderHelper.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -24,9 +24,16 @@ import {
   CSRF_HEADER,
   isSteppedUp,
   issueSession,
+  buildSessionCookie,
   sessionFromRequest,
+  verifySession,
 } from "../src/core/console/session.js";
-import { liveSubjectFor } from "../src/console/consoleSession.js";
+import { revokeAdminSessions } from "../src/core/console/sessionRevocation.js";
+import {
+  liveSubjectFor,
+  resetConsoleSessionCache,
+} from "../src/console/consoleSession.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 import { STEP_UP_ROUTES } from "../src/console/stepUp.js";
 import { handleDocs } from "../src/docs.js";
 
@@ -252,5 +259,125 @@ describe("server-side sign-out", () => {
         )
       ).status,
     ).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v1 cookies. The reader still honours cookies signed before the v2 deploy, until they expire.
+// These are the cases that need a v1 minter; every other worker test signs in through
+// `consoleTestSession` (ST-30c.7). ST-30c.8 deletes the v1 reader, and with it this block (the
+// replacement asserts that a v1-signed cookie is refused).
+// ---------------------------------------------------------------------------
+
+describe("v1 cookies", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("a v1 cookie signed before the v2 deploy is still read until it expires", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const { token, session } = await issueSession(
+      env,
+      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
+      NOW,
+    );
+    const at = async (now: number) =>
+      (
+        await handleAdmin(
+          new Request("https://key.plrs.im/manage/api/me", {
+            headers: { cookie: `${ADMIN_COOKIE}=${token}` },
+          }) as unknown as Request,
+          env,
+          db,
+          "/api/me",
+          { now },
+        )
+      ).status;
+    expect(session.csrf).toBeTruthy();
+    expect(await at(NOW + 1)).toBe(200);
+    // Past its own 8 h it is gone.
+    expect(await at(NOW + 8 * 3600 + 1)).toBe(401);
+  });
+
+  it("a v1 cookie honours the sign-out mark", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v1 = await issueSession(env, { sub: "op-1", groups: [GROUP] }, NOW);
+    await revokeAdminSessions(env, "op-1", NOW + 1);
+    const res = await api(env, db, v1.token, v1.session.csrf, "GET", "/api/me");
+    expect(res.status).toBe(401);
+  });
+
+  it("a v1 logout also ends the operator's v2 sessions (member-id mark)", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v2 = await consoleTestSession(
+      env,
+      db,
+      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
+      NOW,
+    );
+    expect(
+      (await api(env, db, v2.token, v2.csrf, "GET", "/api/me")).status,
+    ).toBe(200);
+    const v1 = await issueSession(
+      env,
+      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
+      NOW + 2,
+    );
+    const out = await api(
+      env,
+      db,
+      v1.token,
+      v1.session.csrf,
+      "POST",
+      "/api/logout",
+    );
+    expect(out.status).toBe(200);
+    resetConsoleSessionCache();
+    expect(
+      (await api(env, db, v2.token, v2.csrf, "GET", "/api/me")).status,
+    ).toBe(401);
+  });
+
+  it("R1-02e: lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
+    const env = adminEnv();
+    const { token } = await issueSession(
+      env,
+      { sub: "u1", name: "Ada", email: "a@x.io", groups: [GROUP] },
+      NOW,
+    );
+    // Appending a fake segment makes `body` = "<real body>.<real sig>", whose HMAC the
+    // attacker cannot produce.
+    expect(await verifySession(env, `${token}.zzzz`, NOW)).toBeNull();
+    // A leading segment likewise changes the signed input.
+    expect(await verifySession(env, `zzzz.${token}`, NOW)).toBeNull();
+  });
+
+  it("mints the identical v1 token and cookie from the same inputs (the P0-15 pin)", async () => {
+    vi.spyOn(crypto, "getRandomValues").mockImplementation(
+      <T extends ArrayBufferView | null>(a: T): T => {
+        const bytes = a as unknown as Uint8Array;
+        for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 7 + 3) & 0xff;
+        return a;
+      },
+    );
+    const pinNow = 1_800_000_000;
+    const { token } = await issueSession(
+      { ADMIN_SESSION_SECRET: "pin-admin-secret-0123456789" } as unknown as Env,
+      {
+        sub: "op-sub-1",
+        name: "Ada Op",
+        email: "ada@example.com",
+        groups: ["polaris-admins"],
+        authTime: pinNow - 30,
+      },
+      pinNow,
+    );
+    const pinned =
+      "eyJzdWIiOiJvcC1zdWItMSIsIm5hbWUiOiJBZGEgT3AiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImdyb3VwcyI6WyJwb2xhcmlzLWFkbWlucyJdLCJjc3JmIjoiQXdvUkdCOG1MVFE3UWtsUVYxNWxiQSIsImV4cCI6MTgwMDAyODgwMCwiYXV0aEF0IjoxNzk5OTk5OTcwfQ.DwEnh2CmprxeDBR8RN87_ZrORb9J9XR34l4x_spJLhk";
+    expect(token).toBe(pinned);
+    expect(buildSessionCookie(token)).toBe(
+      `__Host-pkey_admin=${pinned}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=28800`,
+    );
   });
 });

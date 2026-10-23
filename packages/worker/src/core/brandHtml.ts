@@ -372,6 +372,32 @@ const CONSOLE_PAGE_CSS_TAIL = [
   ),
   // The brand row: the compact lockup, a hairline and "Console" (SIGN-IN.md §3.1).
   `.ac-brand>div{display:flex;align-items:center}`,
+  // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
+  // to its own line under large text, and the address breaks at "@" and ".".
+  `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:600}`,
+  `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--strong)}`,
+  `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
+  `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
+  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `.chip-change:focus-visible{outline-offset:-2px}`,
+  // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
+  // above it; its refusal sits under it as text. No motion anywhere on the card.
+  `.pk{display:grid;gap:1rem;min-width:0}`,
+  `.pk[hidden]{display:none}`,
+  `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.pk .or::before,.pk .or::after{content:"";flex:1;height:1px;background:var(--rule)}`,
+  `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
+  `.pk-err{margin:0;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
+  `.pk-err:empty{display:none}`,
+  // The links row has no separator dots here: a dot cannot be told from a link's name, and one
+  // stranded at a wrap reads as a glitch. The gap separates them.
+  `[data-brand=console] .ac-links a+a::before{content:none}`,
+  // The lockup at frame 13's size: native 64 px (222 x 64) from 30 rem, in rem so it grows with
+  // the text. On phones both stay in px (and capped by the width) so a scaled root font cannot clip
+  // the row or make "Console" larger than the wordmark.
+  `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
+  `[data-brand=console] .ac-brand .ac-surface{font-size:1.25rem;line-height:1.75rem;font-weight:500}`,
+  `@media (max-width: 30rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px;font-weight:400}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
@@ -445,6 +471,8 @@ export interface BrandPageOptions {
    * pass their own; `[]` shows none.
    */
   links?: readonly { label: string; href: string }[];
+  /** The links landmark's name; "Help and privacy" unless the row holds more than that. */
+  linksLabel?: string;
   /**
    * Locker only: the hosted passport (identity.device-confirm). At 960 px and wider in landscape
    * the app's art, icon, developer and device sit beside the step; narrower, `header` is the
@@ -779,7 +807,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
       : "",
     `</main>`,
     cardLinks.length
-      ? `<nav class="ac-links" aria-label="Help and privacy">${cardLinks
+      ? `<nav class="ac-links" aria-label="${escapeHtml(opts.linksLabel ?? "Help and privacy")}">${cardLinks
           .map(
             (l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`,
           )

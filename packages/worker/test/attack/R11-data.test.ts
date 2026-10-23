@@ -137,6 +137,10 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       // HA-08: a release file's mirror job is meaningless without the file; a new table, so it
       // declares the cascade from the start (no rebuild, no triggers to reconstruct).
       "release_mirrors",
+      // ST-31.1 (0129_a): a role binding cannot outlive its account, or a deleted person's grant
+      // would stay readable by id. The audit trail is `platform_audit`, a separate table that the
+      // cascade does not touch, so removing the account leaves the record of who granted what.
+      "console_role_bindings",
       // I-30: a domain proof is meaningless without its connection; a new table, so it declares
       // the cascade from the start.
       "identity_connection_domains",
@@ -668,6 +672,10 @@ describe("R11-05 product scoping", () => {
       // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
       // data). Written and read only by the platform-admin settings endpoint and the resolver.
       "platform_settings",
+      // ST-31.1 (0129_a) — console role bindings are PLATFORM-scoped: `scope` holds `platform`,
+      // `products:*` or `product:<slug>` (a CHECK pins the three shapes) and the key is `id`, so there
+      // is no `product` column to put first. Every reader names the scope it asks for.
+      "console_role_bindings",
       // I-30 — connections and their domain proofs carry `scope` (`platform`, or
       // `product:<slug>` from I-32) instead of a `product` column: a platform connection belongs
       // to no product, and every reader filters by scope (`core/oidc/connections.ts`).

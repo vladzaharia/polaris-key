@@ -112,17 +112,20 @@ export function UserMenu({
             Docs home
           </a>
         </DropdownMenuItem>
-        {/* The person's own Polaris Locker library, on the customer host when there is one. */}
-        <DropdownMenuItem asChild>
-          <a
-            href={`${me.customerOrigin ?? ""}/`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Library aria-hidden />
-            My library
-          </a>
-        </DropdownMenuItem>
+        {/* The person's own Polaris Locker library, on the customer host when there is one.
+            A break-glass session has no account behind it, so there is no library to open. */}
+        {me.breakGlass ? null : (
+          <DropdownMenuItem asChild>
+            <a
+              href={`${me.customerOrigin ?? ""}/`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Library aria-hidden />
+              My library
+            </a>
+          </DropdownMenuItem>
+        )}
         {narrow ? (
           <>
             <DropdownMenuSeparator />

@@ -1222,6 +1222,38 @@ describe("the top bar", () => {
     ).toBe("/");
   });
 
+  it("an emergency sign-in shows a labelled banner with the end time, a top-bar pill and no My library; a normal one shows none", async () => {
+    const ends = Math.floor(new Date(2026, 9, 3, 18, 40).getTime() / 1000);
+    boot("#/", { me: { breakGlass: true, sessionExpiresAt: ends } });
+    const region = await screen.findByRole("region", {
+      name: "Emergency sign-in",
+    });
+    expect(region.textContent).toMatch(
+      /You're using emergency sign-in until .+\. Sign out when you're done\./,
+    );
+    expect(
+      within(region).getByRole("button", { name: "Sign out" }),
+    ).toBeTruthy();
+    expect(
+      document.querySelector("[data-emergency] .sr-only")?.textContent,
+    ).toMatch(/^Emergency sign-in until /);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Account menu" }),
+    );
+    expect(
+      within(await screen.findByRole("menu")).queryByRole("menuitem", {
+        name: "My library",
+      }),
+    ).toBeNull();
+    cleanup();
+    boot("#/");
+    await screen.findByRole("button", { name: "Account menu" });
+    expect(
+      screen.queryByRole("region", { name: "Emergency sign-in" }),
+    ).toBeNull();
+    expect(document.querySelector("[data-emergency]")).toBeNull();
+  });
+
   it("omits the session end when the worker does not send it", async () => {
     boot("#/");
     await userEvent.click(

@@ -7341,6 +7341,582 @@ empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions
 (the overlay, axe), `packages/admin/e2e/consoleSignin.e2e.test.ts` and `consoleSessionEnded.e2e.test.ts`
 (Chromium under the Worker's CSP).
 
+### Console role bindings: the principal (ST-31.2)
+
+**What arrived.** `console_role_bindings` (ST-31.1: `account_id` or `email_norm`, `role`, `scope`,
+`areas_json`, `source`; `account_id` is `REFERENCES accounts(id) ON DELETE CASCADE`, so deleting or
+merging an account removes its bindings) existed but nothing read it. The principal was the
+root rule alone.
+
+**Control.**
+
+- **The principal is the root rule plus the stored bindings of the session's account**
+  (`core/rbac/principal.ts`). `callerFor` (`console/api.ts`) passes `session.aid`; `resolvePrincipal`
+  appends `listAccountGrants` after the root grant and drops exact duplicates. Roles still sum and
+  there are no deny rules, so a binding can add reach and never remove the root rule's.
+- **Per request, no cache.** The bindings are one indexed D1 read on each request, so a deleted
+  binding stops granting on the next request. The only cached part is the 30 s live check of the
+  session (`LIVE_CHECK_SECONDS`), which bounds a disabled account, a revoked session and a merge,
+  all of which still answer 401 whatever the account's bindings. A cache on the bindings that
+  outlived 30 s would be a trigger under ST-28 section 5.3 "New section 9 triggers" (listed in section 9).
+- **`aid` points, it does not grant.** `aid` comes from a v2 cookie whose session row the live check
+  resolved to this account (`row.account_id === cookie.aid`). A v1 cookie and a `pkeya_` token session
+  carry none (`verifySession` now deletes `aid`, `sid` and `root` from a v1 body as well), so they stay
+  root-only: a token never gains a stored grant. The sign-in gate in `console/auth.ts` still resolves
+  the root rule alone and is unchanged, so until ST-31.8 no non-root person can mint a cookie.
+- **Fail closed on a row it cannot read.** `rowToGrant` drops an unknown area (checked against
+  `PRODUCT_AREAS`), a malformed list, an unknown role, scope or source, a scope that is not exactly
+  `platform`, `products:*` or lower-case `product:<slug>`, a role that does not fit its scope (only
+  `product_admin` takes a product scope) and areas on any role but `product_admin`; NULL
+  `areas_json` means every area, `[]` means none and is dropped. `stmtInsertBinding` refuses to
+  write any of these, and an email row without an expiry, as a second line of defence.
+  `listPendingInvites` treats a NULL `expires_at` as expired.
+- **A missing table narrows, never locks out.** If `console_role_bindings` does not exist (code
+  deployed before its migration), `listAccountGrants` answers no stored grants, so root operators
+  keep working; a binding-only member is simply a stranger until the migration lands.
+- **Finding 1 (review): a Platform admin binding could mint a root token.** `tokenSession` gives
+  every `pkeya_` token the root group, and `POST /tokens` was a `platform` row with step-up, which
+  Platform admin holds, so a stepped-up `platform_admin` binding could mint a token that then acted
+  as Superadmin on any product. Fix: `handleApiTokenMint` answers 403 `forbidden` with reason
+  `superadmin_only` unless `isSuperadmin(principal)`. Listing and revoking tokens stay `platform`
+  rows (a token row carries no owner, labels and times only, and revoking only narrows). Pinned by
+  `test/rbacStoredPrincipal.test.ts` (refused with a binding, 201 for root, the bundle write
+  through the minted token unreachable). While `tokenSession` carries the root group, this check is
+  the only thing between a Platform admin and root.
+- **`products:*` never covers the system product** (`can()` rule 4 is unchanged: a system product is
+  evaluated as the platform). A Product admin sees only its products and areas in the dispatcher,
+  `/products`, `/attention`, `/search` and `/me.permissions`; `/me.platformAdmin` stays
+  `can(platform, "platform")`, true only for Superadmin and Platform admin.
+- **Email rows never grant.** An invite row names an address, not an account, so a row whose
+  `email_norm` equals the account's email grants nothing; claiming it is ST-31.8's conversion.
+- **Tests:** `test/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
+  `products:*` and the system product, Platform admin, Console access, a stranger, root plus a
+  binding, deletion on the next request and at 30 s, a disabled account, email rows, another
+  account's binding, a malformed row, a v1 cookie and a token, a forged signed v1 body naming `aid` / `sid` / `root`, the
+  token-mint refusal, a missing bindings table).
+
+**Residual.** A binding for an account that is later disabled stays in the table; it is inert
+because the disabled account cannot hold a session (401 within 30 s), but it grants again if the
+account is re-enabled. An account's `sub` (member id) is not its key here: bindings are keyed by the
+account id, which the subject receives (the principal does not) and which is never logged or
+returned (`accountIdBoundary`). The binding read adds one D1 read to each console request, and
+runs before the rate limiter (ST-31.6). Nothing writes bindings yet (ST-31.6 on).
+
+### Console Members: the read API (ST-31.4)
+
+**What arrived.** `GET /manage/api/members` and `GET /manage/api/members/:memberId` (platform scope, area
+`members`: Superadmin and Platform admin; a Product admin holds `members` at product scope only and is refused
+here). Session only (no `tokenScope`). Read-only.
+
+**Control.**
+
+- **No account id in a body.** A person is a `memberId` (`mbr_`, one-way), a display name and an address. The
+  handler joins on account ids internally and serialises none (`consoleMembers.test.ts` scans both routes,
+  the list also joins `accountIdBoundary.test.ts`; the OpenAPI schemas declare no account id property).
+- **The path id is never decoded.** The handler computes the id of each candidate member and compares; a
+  malformed, forged, stale or non-member id is the same 404.
+- **The directory answers only for the ids it is handed.** `consoleDirectory(accountIds)` reads accounts and
+  console links for exactly the accounts that hold a binding or the root rule, so a non-member is never read,
+  counted or named. A person with a role is listed; a signed-in person with none is not.
+- **Root holders use the principal's own rule.** `consoleRootHolders` applies `rootRuleHolds` with
+  `ADMIN_SESSION_TTL_SECONDS` (the constant the principal uses), on active accounts, and only on the account's
+  most recently used strong link (as `consoleSubject` does). Each holder also passes `erasureVerdict` (cached
+  30 s), and `consoleDirectory` skips accounts on the erasure ledger, so the roster cannot show a Superadmin
+  the principal would not treat as one (ST-31.4 fix round; tested in `consoleMembers.test.ts`).
+- **An unreadable ledger is said, not hidden.** When `erasureVerdict` answers `unavailable` for an account (R2
+  failure or no bucket), the roster leaves that account out and sets `incomplete: true`, so a list that looks
+  whole never silently drops a Superadmin; `GET /members/:memberId` answers 503, not 404, for an id it did not
+  find while `incomplete` (`consoleMembers.test.ts`).
+- **Granter names.** `grantedBy` / `invitedBy` name a granter only while they are a member; a former member is
+  `{ name: null }`, so the roster does not become a lookup of departed people.
+- **Last sign-in** is the newest `admin.signin` under the member id or any console IdP subject of the account
+  (the `consoleActorAliases` set), through `idx_platform_audit_action`; chunked under D1's bound-parameter
+  limit.
+- **Bounds.** At most 500 members' worth of root holders, 2000 binding rows and 500 invites are read.
+- **Disclosure, deliberately.** A Platform admin or Superadmin sees every member's name, address, roles and
+  last sign-in, and every open invite's address (`docs/PRIVACY.md`, "What an admin can see"). Product-scoped
+  members appear here too; the page is the platform's roster.
+
+### Console Members: the product read and `/access/admins` from bindings (ST-31.5)
+
+**What arrived.** `GET /manage/api/products/:slug/members` (product scope, area `members`; session only) and
+`GET /access/admins` now answers from stored bindings and the root rule, no longer from the audit trail.
+
+**Control.**
+
+- **Area gate.** The dispatcher loads the product (404) and checks `members` on it (403), so a narrowed admin
+  without `members` is refused (`consoleProductMembers.test.ts`).
+- **No account id.** Both bodies name a person by member id, display name and address only; the account id is
+  a join key inside the handler (`accountIdBoundary.test.ts` reads the product route).
+- **Platform admins are never named**, by either route: they hold no product area, and naming them would
+  disclose nothing the asker can use. `products:*` admins appear only in the product route's read-only
+  `platformRoles`, not in `/access/admins`.
+- **No slug oracle in `/access/admins`.** The product is never looked up. A product's admins are read only when
+  the caller already holds an area of `product:<slug>` (`can()`); every other caller, for a real or a
+  nonexistent slug, gets the Superadmins alone. Equal answers are tested. (The dispatcher's own 404-before-403
+  on `/products/:slug/*` is the older behaviour and unchanged.)
+- **Real Superadmins.** The source is `consoleRootHolders` (the principal's own rule) plus stored platform
+  Superadmin bindings, both on active accounts. The old rule counted every recent `admin.signin` actor, which
+  could name a person the principal no longer treats as a Superadmin.
+- **An unreadable ledger is said, not hidden.** Both bodies carry `incomplete: true` when the erasure ledger
+  could not be read for an account (an uncached root-only holder included: `consoleRootHolders` keeps every
+  account the ledger has not said is erased, and the directory read drops and flags the unreadable ones).
+- **Bounded.** At most three people are named; the product route reads at most 500 bindings, 500 invites and
+  the 200 stored Superadmin rows.
+
+**`/account-tokens` (ST-31.2 re-review item; closed in the ST-31.4 fix round).** It stays a `platform` row, but the
+holder's address is returned to a Superadmin only, in the list and in the DELETE response (`email: null` for a
+Platform admin). Most holders are product customers, not console members, and the Platform admin has no consent
+to see them. Revoking works by token id; the label, last four characters and times identify the token. Tested in
+`consoleMembers.test.ts`. No account id, token or hash is returned.
+
+**Residual.** The rosters are capped (500 members, 500 invites, 2000 bindings) and answer `truncated: true` when a cap
+cuts them; `GET /members/<id>` reads up to 20000 bindings so a real member past the cap is still found. A binding for
+a disabled account is listed with `disabled: true` (inert; the account cannot sign in).
+
+### Console grant rules (ST-31.3)
+
+**What arrived.** `core/rbac/grantRules.ts`: pure functions that answer who may hand out, take back
+or edit a console role binding (ST-28 §2.3, §2.5). They are written out apart from `can()`, which
+answers "may this member act" and not "may this member give that away".
+
+**Control.**
+
+- **G1 to G4 as built.** G1: a Product admin grant needs `members` edit at the scope and Product
+  admin there with areas covering every area asked for; NULL (every area) needs a granter whose
+  own coverage there is every area. G2: Superadmin, Platform admin and anything at `products:*`
+  only a Superadmin grants (a Platform admin granting Superadmin to itself is this rule). G3:
+  Console access by anyone with `members` edit at platform scope or on a product other than the
+  system product. G4: `isWidening` marks a new binding, a different role or scope, a wider list
+  and a list turned into NULL as widening (the step-up trigger); `confirmLevel` is L2 for
+  Superadmin, Platform admin and `products:*`.
+- **Every function fails closed.** A `null` granter, a target that `validateGrant` refuses (shape,
+  role, scope, role/scope mismatch, missing `areas`, `product:<system>`, upper case, a slug over
+  the P0-14 rule), or a scope the function does not know is refused. The one exception is a
+  Superadmin revoking a stored row that no longer validates. An unreadable `after` counts as
+  widening and an unreadable `before` as nothing held.
+- **Coverage is a union.** The areas of every product admin grant that reaches a scope (its own
+  `product:<slug>` and `products:*`) add up; NULL comes only from a grant whose `areas` is NULL,
+  never from the sum of lists. The system product's scope is skipped for the `members` check.
+- **D-c rulings.** Revoking or narrowing needs `members` edit at the scope with areas covering the
+  binding's, with three departures. (1) A `products:*` binding is revoked or narrowed by a
+  Superadmin alone (review B1: a `products:*` holder could otherwise strip a peer holder). (2)
+  Console access is revoked only with platform `members`, so a Product admin cannot remove a person
+  from the console. (3) Only a Superadmin removes a row that does not validate. Revoking
+  `product:<slug>` bindings follows the cover rule.
+- **G2's "edit console.access"** is the SSO-rules setting, not the Console access role.
+- **Edits.** `mayChange(granter, before, after)` is `mayRevoke(before)` and, when `isWidening`,
+  `mayGrant(after)`. Checking the grant alone lets `alpha [members, ship]` rewrite
+  `alpha [core, keys]` to `alpha [ship]`, dropping areas it does not hold; `mayChange` refuses it.
+- **Tests:** `test/rbacGrantRules.test.ts` (a hand-written oracle, 8 granters by every target, a
+  soundness cross-check against `can()`, the named cases above); reviewer probes over 1.4M granter
+  and target combinations found no widening beyond `can()`.
+
+**Residual.**
+
+- The grant handlers (ST-31.6, below) call the engine.
+- A handler must combine the checks: `mayChange` for an edit, `mayRevoke` for a delete,
+  `mayGrant` for a create, plus the step-up from `isWidening` and `confirmLevel`. Calling one
+  alone is the gap.
+- The checks never see the grantee or the expiry. They cannot tell who receives a grant or how
+  long it lasts; the handler owns that.
+- **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
+  the grantee, so the handlers enforce it (ST-31.6, below).
+
+### Console role bindings: writes (ST-31.6)
+
+**What arrived.** The first writes of `console_role_bindings`: `POST /manage/api/bindings`,
+`PATCH|DELETE /manage/api/bindings/:id` (platform scope, area `members`) and their product twins
+`POST /manage/api/products/:slug/members` and `PATCH|DELETE .../members/:bindingId` (product scope,
+area `members`, D-d). Session only: no row names a `tokenScope`, so a `pkeya_` token is refused
+before a handler runs. `handlers/bindings.ts` holds every check; the twins are thin callers.
+
+**Control, in the order the handler applies it.**
+
+1. **Identity of the writer.** A signed-in account with a member id (`aid` and an `mbr_` sub). A
+   v1 cookie has neither and cannot be told apart from its grantee, so it writes nothing. The
+   member id is the audit actor and `granted_by`.
+2. **Write budget.** `adminGrantWrite`, 30 writes per 5 minutes per member, **failing closed**: a
+   limiter outage refuses, it does not leave grants unmetered.
+3. **Shape.** Only the fields named; an unknown field (a `member` or `role` on a PATCH, a `scope`
+   on a twin) is a 422, so a change of grantee, role or scope is never an edit: it is a new grant.
+   `validateGrant` fixes role, scope and areas.
+4. **The engine, never `can()`.** `mayGrant` for a POST (G1, G2, G3), `mayChange` for a PATCH,
+   `mayRevoke` for a DELETE (D-c; a `products:*` binding and any Superadmin or Platform admin
+   binding are a Superadmin's alone). The route table cannot tell a Platform admin from a
+   Superadmin, so a Platform admin that reaches `/bindings` is refused every target but Console
+   access (`reason: grant_refused`, a 403 that is not `no_access`). An unreadable stored row is
+   cleared by a Superadmin only.
+5. **The target exists.** A product scope names a real product that is not the system product
+   (no bindings for future slugs, so a later product with that slug inherits nothing). The
+   engine runs first, so a caller who may not grant learns nothing about which slugs exist.
+6. **L2.** `confirmLevel` L2 targets (Superadmin, Platform admin, `products:*`) need
+   `confirm: "L2"` in the body (422 `confirm_required`). A UI confirm alone is not a control.
+7. **The grantee.** Found by computing each candidate's member id over accounts that hold a
+   binding or the root rule (the id is one-way, as `GET /members/:id`), so the endpoint cannot be
+   used to look up anyone else. The erasure ledger is read first (`erasureVerdict`: erased is a
+   404, unavailable is a 503), then a disabled account is refused (409). **D-g:** the writer is
+   never the grantee of a grant or of a widening, a Superadmin included (`reason: self_grant`).
+   Taking your own access back is allowed, with one limit: `mayRevoke` still decides, so a Platform
+   admin cannot remove its own `platform_admin` binding (D-c: that binding is a Superadmin's to
+   remove). Narrowing your own Product admin binding is allowed.
+8. **Step-up (G4).** POST rows carry `stepUp` in the route table (so it runs before the handler).
+   A PATCH checks it in the handler, after authorization, and only when `isWidening`; narrowing
+   and DELETE need none. `STEP_UP_ROUTES` lists the two `(body)` rows and `rbacRouteMatrix`
+   keeps the list and the table in step.
+9. **CSRF** is the dispatcher's, before the match, for every session mutation.
+
+**Commit and audit.** The change and its audit rows are one batch: `rbac.grant` or `rbac.revoke`
+(a widening edit is a grant, a narrowing one a revoke) to `platform_audit`, and to the product's
+`audit` for a product scope or a product route, through `core/audit.ts`. PATCH and DELETE carry a
+guard on the `areas_json` the caller authorised against, on both the change and its audit rows: a
+concurrent edit makes the second a 409 (`changed`) that writes neither. A duplicate
+`(account, role, scope)` is a 409 with the existing binding's id (also when the unique index
+catches a race). Rows name the grantee by member id only.
+
+**G5 notice.** After the commit, the grantee and every Superadmin (root holders and stored
+bindings, active accounts) are emailed through `core/notify` as Polaris Key
+(`sender.audience: "operator"`): the change, the role, the scope, the areas and who did it; no link
+and no token. At most 25 addresses. Best effort: a failed or suppressed address never undoes the
+change, and the response counts (`notified: {sent, of, nobodyNotified}`), never lists, recipients.
+With email off the change stands and the response says nobody was notified. The writer is mailed
+when it is a Superadmin, which is the point against a stolen session.
+
+**Revocation.** A deleted binding stops granting on the next request (the principal reads bindings
+on every request, ST-31.2); a disabled account and a cookie's 30 s live check are unchanged.
+
+**Tests:** `test/consoleBindingWrites.test.ts`; `rbacRouteMatrix` (the two new step-up rows and the
+six rows against the eight principals), `rbacRouteAreas`, `routeCoverage`, `accountIdBoundary`.
+
+**Residual.**
+
+- **Notice, not approval.** A stolen Superadmin session that completes a step-up can still grant
+  and revoke; G5 makes it loud, not impossible. The step-up needs a sign-in the IdP proved.
+- **A grantee must already hold a role or the root rule.** A person with no binding is reached by
+  an invite (ST-31.7), not here.
+- **Invites** are not edited or revoked by the 31.6 handlers (email rows answered 404 there);
+  31.7 adds cancellation (below). An invite is still not editable: cancel and invite again.
+- **Grant/revoke asymmetry.** A Product admin can grant Console access through the product twin
+  (G3) but cannot take it back (D-c: platform-scope Console access is removed with platform
+  `members`). The Members UI (31.14) must not offer that revoke to a Product admin.
+- **The L2 `confirm` field** is a server-side acknowledgement, not an interactive challenge. The
+  UI slices decide what the person types.
+- **Mail volume.** One change mails up to 25 addresses and the write budget allows 30 changes per
+  5 minutes per member, which alone would be about 9,000 mails an hour. ST-31.7 closes it with a
+  per-recipient budget on every operator notice (`emailOperatorNoticeHour`, 10 notices per address
+  per hour, sharded, failing closed): a notice over budget counts as not sent in `notified`, and
+  the change stands. The G5 notice of an L2 change (a grant, widening or revocation of Superadmin,
+  Platform admin or `products:*`) is sent with `priority` and skips that budget, so cheap invitations
+  cannot silence it; those writes are Superadmin-only, step-up and bounded by the write budget. The
+  residual is L1: a Superadmin's inbox receives at most 10 L1 notices an hour (member grants,
+  invitations and their digests) plus the L2 notices, whoever causes them.
+
+### Console invitations (ST-31.7)
+
+**What arrived.** `POST /manage/api/bindings` and `POST /manage/api/products/:slug/members` also take
+`emails` (exactly one of `member` and `emails`), and `DELETE` takes an invitation back. An invitation is
+a `console_role_bindings` row with `email_norm` and no account, which expires 7 days after it is
+made (inviting again renews it). **It grants nothing**: the principal reads account rows only, and
+turning an invitation into a binding at sign-in is ST-31.8 (verified email, strong sign-in).
+
+**Control.** The 31.6 order applies once to the one grant the addresses share (writer, write budget,
+shape, `mayGrant`, target, L2 `confirm`), so an invitation is held to exactly what a member grant is
+(G1, G2, G3; an SM-7-class role, i.e. a platform role or `products:*`, is stored and flagged
+`needsOperatorSignIn`). Then per address:
+
+1. **Shape.** At most 20 addresses; each one `strictEmail` (trimmed, lower-cased); a repeat is
+   `merged`, a non-address `invalid`; a non-string is a 422 for the whole request.
+2. **D-g.** The writer's session address, or any address on the writer's account (every link email
+   and the primary email, verified or not, read through Identity's `public.ts`), refuses the whole
+   request (`self_grant`): an invitation to yourself is a grant to yourself. A D-e match on the
+   writer's own account is refused the same way. D-g at creation is partial (an address linked
+   later is not seen); conversion re-checks it (31.8).
+3. **D-e.** An address that is the verified primary email of exactly one active, ledger-clear account that already holds a
+   binding or the root rule gets an account binding (`updated`, or `exists`). Anything else is
+   `invited`, including an address that matches two members (not guessed at), an unverified
+   address, a disabled account and an erased one. An erasure-ledger outage is a 503 and writes
+   nothing.
+4. **Invitation budget.** `adminInviteAddress`: 100 addresses per member per hour, counted per
+   distinct valid address whether or not it is a member (so the 429 does not reveal membership),
+   failing closed; a request that would exceed it is refused whole (429 `invite_budget`) and
+   writes nothing.
+5. **Re-invite.** Inviting an address that already has an invite renews it only for a writer who
+   could cancel it (D-c, `mayRevoke`); otherwise the answer is `exists` and nothing is written or
+   mailed. A renewal audits the `before`.
+
+**Commit and audit.** One batch: the rows and one `rbac.invite` (invite) or `rbac.grant` (update)
+audit row each, to `platform_audit` and, for a product scope or route, the product's `audit`. An
+invitee is named in the audit trail by an opaque reference (`invitee:` and the first 12 hex digits of
+the peppered recipient hash), never by address; the address lives only in the invite row, which the
+nightly job deletes 7 days after it expired (`purgeExpiredInvites`, a step of `scheduled.ts`), and an
+account erasure deletes the invites for that account's addresses (`deletion.ts`).
+Cancelling is `DELETE` (D-c / B1 apply; the product twin reaches only its own product's rows) and
+writes `rbac.revoke`.
+
+**What the email is.** A Polaris Key operator notice (`sender.audience: "operator"`) to the invited
+address only, naming the inviter, role, scope and areas. The link is the console sign-in page with
+`login_hint=<address>`: no token, code or id. It cannot sign anyone in or accept anything; a
+forwarded mail grants nothing, because conversion (31.8) needs the sign-in to prove that address.
+The same link is returned in the response when the mail did not go out (email off, suppressed,
+over budget), so it is not a secret either. The Superadmins get one count-only digest per request
+(no address). Every operator mail is within the per-recipient hourly budget.
+
+**Abuse controls.** (a) 20 addresses a request; (b) 100 addresses per member per hour;
+(c) the 30-writes-per-5-minutes write budget; (d) 10 operator notices per recipient per hour, so an
+invitee cannot be mail-bombed by repeated invitations and an inbox cannot be flooded by many
+inviters; (e) the platform sender's own suppression list and Apple relay rules; (f) a Superadmin
+digest per request, so a hijacked session is loud; (g) L2 confirm, step-up and D-g as for grants.
+
+**Enumeration.** The per-address status (`updated`/`exists` versus `invited`) tells the caller
+whether an address belongs to an existing console member. The caller is a signed-in operator who
+passed `mayGrant` for this very grant, the step-up and the budgets, and a Platform admin or
+Superadmin can read the full roster anyway. A Product admin could learn that a given address is a
+console member elsewhere; it can already invite it, and the answer reveals no role, scope or id
+(no member id or account id is in the response). The budget of 100 addresses an hour bounds a probe
+to that rate. Accepted residual; a stricter variant would answer `invited` for both and write the
+binding anyway.
+
+**Residual.**
+
+- **Invite hijack.** Whoever controls the invited mailbox and can sign in with that verified
+  address converts the invitation (31.8). That is the intended model; an SM-7 role additionally
+  needs the operator sign-in. Cancel an invitation sent to a wrong address.
+- **Mail from the Polaris Key sender is attacker-steerable text** (the inviter's display name is
+  sanitised by `displayValue`; the role, scope and areas are enumerated values). Capped as above.
+- A forwarded invitation mail reveals that a Polaris Key console invitation exists for that
+  address, nothing more.
+- The invitation budget is per member, not platform-wide.
+- **Sub-addressing** (`a+1@`, `a+2@`) gets past the per-recipient cap for one mailbox; it is bounded
+  by the per-member invitation budget.
+- **Writer-controlled text in mail** (the inviter's name, a product name) is neutralised by
+  `operatorText`: URL schemes are dropped and domain-like tokens are defanged (`example[.]com`) so
+  mail clients do not auto-link them. Residual: plain prose can still mislead.
+- **Erasure** deletes invites only for the erased account's verified addresses; an address the
+  account merely claimed leaves the invitee's invite alone.
+
+**Tests:** `test/consoleInvites.test.ts`; `test/consoleBindingWrites.test.ts` (the per-recipient
+budget on G5 notices, fail-closed guarded writes); `routeCoverage`, `accountIdBoundary`, `scheduled`.
+
+### Sign-in gate and invite conversion (ST-31.8)
+
+**What arrived.** Console membership is "holds a grant". The callback's **pre-gate** runs before
+anything is written and admits three people: the root rule (the platform admin group), a known
+console link whose account holds a stored account binding, and an identity the IdP vouched an
+address for at this sign-in (`email` and `email_verified`, from a provider that may vouch) that has
+an unexpired invite. The last is admitted to the sign-in only. After `consoleSignIn` (the SM rules
+unchanged) `convertInvites` runs, then the **post-gate** re-resolves the principal: no grant ends the
+new session row and refuses with the same card, before any cookie exists. A repeat sign-in has no
+invite left and converts nothing. Also in this slice: a `/products/:slug/*` route answers an unknown
+slug with the same 403 (scope, area) as a real product the caller cannot reach, unless the caller
+holds a product scope that reaches every product (Superadmin, `products:*`), so a member of one
+product no longer learns which other slugs exist. Residuals: the body is the same, but a real
+unreachable product also costs a context load and a budgeted `access.denied` audit write, a
+timing difference of a few queries; and a slug the caller once held a binding for (a since-deleted
+product) still answers 404, which reveals only the caller's own history. The asserted address
+must be plain ASCII before it is lower-cased, as I-30 requires of platform connections.
+
+**Conversion rules** (REV-ST31-7, one test each in `test/consoleInviteConversion.test.ts`). An invite
+converts only when all hold; a failed check leaves the invite and says nothing:
+
+1. D-g again: `granted_by` is not the converting account's member id.
+2. The inviter is re-checked now: resolves to an active, ledger-clear account that still holds a
+   console grant and `mayGrant`s what the invite grants (an unresolved, erased, disabled, removed or
+   narrowed inviter converts nothing).
+3. `email_norm` equals the account's **verified primary email** (Identity's public API) and the IdP
+   asserted that address at this sign-in.
+4. The address is verified on exactly one active account.
+5. An SM-7-class invite (platform role, `products:*`) converts only through the operator connection;
+   `via: "passkey"` converts only `inviteBootstrapAllowed` invites (SM-6).
+6. `erasureVerdict` is `clear` (an unreadable ledger refuses) and the account is active.
+7. The row re-validates: `rowToGrant` reads it, a product scope names a real non-system product,
+   and `expires_at > now`.
+8. One batch: the binding (inserted, or unioned into the held `(role, scope)` row, NULL winning),
+   `rbac.grant` audit rows (source invite), and the invite's delete, every statement carrying the
+   invite's guard (same address, role, scope, areas, inviter, unexpired) and the binding-in-place
+   guard. A concurrent edit, expiry or racing sign-in makes it a no-op; mail goes out only when the
+   delete applied, to the inviter and every Superadmin, on the priority path for an L2 grant.
+9. A repeat sign-in converts nothing; the post-gate ends a session with no grant.
+10. D-e bindings are immediate (31.7), so the gate never sees them.
+
+**Residual.** Whoever controls the invited mailbox and can sign in to the console IdP with that
+verified address converts the invite (intended). At most 20 invites convert per sign-in. Conversion
+failures are silent to the caller, by design (no oracle on why).
+
+**Tests:** `test/consoleInviteConversion.test.ts`; `identityErasureFence`.
+
+### Break-glass (ST-30c.1)
+
+**What it is.** The emergency path in to the console when the account layer cannot be used (ST-28
+plan §2.6): `/manage/login?breakGlass=1` (or the card's POST field). It is an explicit link, never
+a fallback: no error page offers it and no ordinary sign-in turns into it.
+
+- **The path.** The flow is the ordinary OIDC flow at the console IdP with `breakGlass` on the flow
+  record, `prompt=login` and `max_age=0` forced (`other=1` cannot weaken it). The callback branches
+  after the ID token verifies and before anything else: no `consoleSignIn`, no ST-31.8 pre-gate,
+  conversion or post-gate.
+- **The gate is the group.** `holdsRoot(env, identity.groups)` on the groups the IdP asserted at
+  this sign-in. A stored binding, an invite or a known link admits no one: otherwise 403 and
+  `admin.signin.refused`. The authentication must be fresh: an `auth_time` no older than
+  `STEP_UP_MAX_AGE_SECONDS`, and an ID token with no `auth_time` is refused (401), so an IdP that
+  ignored `prompt=login` cannot open the path from an old sign-in.
+- **Browser binding.** As every console flow: the flow record names the hash of the
+  `ADMIN_FLOW_COOKIE` of the browser that started it, checked before the single-use consume, so
+  another browser cannot finish it or burn it. A missing or foreign cookie is refused.
+- **No account.** It writes no `accounts`, `account_links` or `account_sessions` row and converts
+  no invite (`test/consoleBreakGlass.test.ts` pins all three at zero). The session names no `aid`
+  or `sid`, so `resolvePrincipal` reads no stored binding: its only grant is the root rule,
+  computed per request from the cookie's IdP groups, so removing the group from the environment
+  ends the authority at the next request. Account self-service (`requireAccountSession`,
+  `console/lib/accountSession.ts`, used by the binding writes) refuses it with 403 reason
+  `break_glass_session`; `/me` returns `breakGlass: true`.
+- **The realm.** Cookie `pkey.admin.bg1|`, exact field set (`sub`, `name`, `email`, `groups`,
+  `csrf`, `exp`, `authAt`, `stepUpAt?`, `bg: true`; an extra or mistyped field fails), a lifetime of
+  `BREAK_GLASS_TTL_SECONDS` = 3600 s in code and never a setting, and an `exp` that outlives the
+  realm is refused. A v1, v2 or portal token with the same body fails to verify in it, and a
+  break-glass body signed under the v1 tag reads as a v1 session that cannot claim `breakGlass`.
+  Sign-out writes the operator-subject mark and the reader refuses a session minted at or before it;
+  logout of a break-glass session leaves the operator's ordinary sessions alone.
+- **Audit and notice.** Every use writes `rbac.breakglass` to `platform_audit` (actor: the IdP
+  `sub`; a fixed summary with no secret) and emails every Superadmin (`breakGlassUsedNotice`: who,
+  when, from which network, "If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the
+  audit"), at most 25 addresses and exempt from the per-recipient budget so it cannot be silenced.
+- **No durable credential (ST-30c.2, N3).** A break-glass session cannot mint a credential that
+  outlives the emergency hour: admin API tokens, service (CI) tokens, registry tokens and a
+  trusted-publisher policy (which lets a repository mint CI tokens later) are refused with 403
+  `forbidden`, reason `break_glass_session` (`refuseBreakGlass`, `console/lib/accountSession.ts`);
+  role grants and invites need an account session (`requireAccountSession`);
+  personal tokens are minted in the portal, which a break-glass cookie cannot reach. Revocation stays
+  allowed.
+- **A small cookie (ST-30c.2, N2).** The cookie carries only the group `holdsRoot` reads
+  (`PLATFORM_ADMIN_GROUP`), never the IdP's full list, so it stays far under 4 KB in an emergency and
+  exposes nothing else. `holdsRoot` is still re-checked against the environment on every request.
+- **The record may be the notice alone (N1).** `recordPlatformSecurityEvent` swallows its write
+  errors, so in an emergency (for instance a database outage) the Superadmin email may be the only
+  record of a use. That is deliberate: the path must open when the database is the thing that broke.
+- **The remembered address never authorises (ST-30c.2, D-S5).** `__Host-pkey_console_hint` holds the
+  last account sign-in's email so the card can show "email · Change". It is HttpOnly, Secure,
+  SameSite=Strict, host-bound, 30 days, set only by an account sign-in and never by break-glass.
+  It is validated (`loginHint`) and escaped on read, a duplicate or malformed value is ignored, and
+  it is only ever offered to the IdP as `login_hint`: no route reads it to admit anyone. The card
+  stays script-free and its CSP is unchanged (`test/consoleCard.test.ts`).
+- **Residual.** Whoever holds the IdP login of a group member can open an hour of Superadmin
+  authority with a fresh login. The group is deploy-time and the realm, the audit row and the
+  notice are what bound and expose it.
+- **Exit facts.** `docs/RUNBOOK.md` (Windows table, "Break-glass"): at least 30 days from the deploy
+  that added it, 14 consecutive days with no `rbac.breakglass` row, and two accounts with a
+  Superadmin binding and a strong passkey. The clock starts at the release that carries this.
+- **Review trigger (§9).** The break-glass branch gains a caller: any new route, link, error page
+  or code path that sends someone to `breakGlass=1`, or that mints `issueBreakGlassSession`
+  outside `breakGlassCallback`.
+
+**Tests:** `test/consoleBreakGlass.test.ts`, `test/consoleCard.test.ts`; `consoleSessionV2`, `adminSessions`,
+`consoleSessionReader`, `rbacStoredPrincipal`, `rbacInvites`, `consoleInviteConversion`.
+
+### Console passkeys: SM-3(a)/(d) and SM-4 (ST-30c.3)
+
+**What it is.** Two ways a passkey becomes a strong console method (ST-28 SM-3), both from a console
+session: (a) enrol a passkey from the console, which is strong at once; (d) "Use for the console" on
+a passkey already in the account. A passkey added in the Locker account is never strong (SM-4).
+
+- **Routes.** `GET /manage/api/me/methods`, `POST /me/passkeys/options`, `POST /me/passkeys`,
+  `POST /me/methods/:id/strong` (area `console`, `console/handlers/myMethods.ts`). The three writes are
+  `stepUp: true` rows, so the dispatcher refuses a session without a step-up in the last
+  `STEP_UP_MAX_AGE_SECONDS` before any handler runs. There is no remove route: removal stays in the
+  Locker account (SM-5 needs no strong session).
+- **Item 12: the step-up is the session's, never `now`.** Enrolment delegates to I-16
+  (`handleAccountPasskeys` through `consolePasskeyCeremony`). The caller's `authenticatedAt` is
+  `session.stepUpAt` only when it is inside the window, else the epoch, which I-16 refuses as stale
+  (`step_up_required`). Nothing passes the current time, so an ordinary fresh sign-in (which sets no
+  `stepUpAt`) cannot enrol. I-16's verified-email rule, passkey cap, per-account rate limit and
+  session-bound single-use ceremony apply unchanged; the ceremony is bound to the console session row.
+- **Session only.** `requireAccountSession` refuses a break-glass session (no account, reason
+  `break_glass_session`) and a v1 cookie (`account_session_required`); the rows name no `tokenScope`,
+  so an admin API token is refused before the handler.
+- **Eligibility (the lead's RP-ID decision).** The console's RP id is the host of `CONSOLE_ORIGIN`
+  (`key.plrs.im`) whatever the customer RP becomes. A passkey is `consoleEligible` only when its stored
+  `account_passkeys.rp_id` equals it and it is not yet strong; an email-code link, any non-passkey link,
+  or a passkey of another RP is refused 403 `not_eligible`. A link of another account is 404 and the
+  list names only the caller's own links, so a link id is no oracle.
+- **Loud.** Each strong-marking writes `rbac.method_strong` to `platform_audit` (actor: the member id;
+  target: the link id) and mails the account and every Superadmin (`consoleMethodStrongNotice`, at
+  most 25 addresses, exempt from the per-recipient budget). The marking is a conditional
+  `UPDATE ... WHERE strong_at IS NULL`, so two racing calls write one audit row.
+- **The strong mark is account-scoped.** `markLinkStrong` updates `WHERE id = ? AND account_id = ?` and reports whether a row changed, so a wrong or raced link id cannot mark another account's link and a caller that matched nothing refuses instead of reporting success.
+- **SM-4.** `handleAccountPasskeys` and the portal never set a link strong; only `consoleSignIn`
+  (an IdP sign-in, ST-30c.1), `consolePasskeyCeremony` (after a successful add) and
+  `markConsoleMethodStrong` (its own account-scoped `UPDATE`) do. A stolen portal
+  session can add a passkey but cannot make it open the console without a console step-up.
+- **Residual.** An operator whose console session holds a fresh step-up can enrol a passkey for
+  themselves: the step-up, the audit row and the Superadmin mail are what bound and expose it. A
+  Superadmin who does it receives both the account copy and the Superadmin copy.
+
+**Tests:** `test/consolePasskeys.test.ts`; `routeCoverage`, `rbacRouteAreas`, `rbacRouteMatrix`,
+`accountIdBoundary`, `consoleBreakGlass`, `identityPasskeys`.
+
+### Console passkey sign-in and step-up: SM-1, SM-5 and login CSRF (ST-30c.5)
+
+**What it is.** `POST /manage/login/passkey/options {stepUp?, returnTo?}` and `/verify {response}`
+(router kind `adminPasskey`, `console/passkeySignin.ts`; narrative-only in `routeCoverage`). A strong
+console passkey opens a v2 session (`amr: ["passkey"]`, the 8 h console TTL); with `stepUp` it also
+re-proves the person already signed in. This is the chain's highest-risk slice: it mints a console
+session from a credential that is not the console IdP.
+
+- **SM-1 at this door** (`consolePasskeySignIn`, `services/identity/consoleAccount.ts`). Order, every
+  step before the first write: the ceremony is taken (single use) and is for the console RP id; the
+  credential exists, its stored `rp_id` is the console's, the user handle is the one it was created
+  under and its link is the same account's; `verifyAssertion` (I-16, unchanged: challenge, the exact
+  console origin only, RP id hash, user verification, signature, then the counter); only then the link
+  must have `strong_at`, else `method`; the account is `active` and the erasure verdict is `clear`; a
+  step-up is answered by the account that asked. A passkey nobody marked strong (SM-4: one added in the
+  Locker account) is refused `method` with nothing written: no counter update, no session row, no audit
+  row. The `method` answer follows the signature check, so only the key's holder learns it. Every other
+  failure (unknown credential, another RP, wrong handle, bad signature, regressed counter, spent
+  ceremony) answers one shape, 401 or, for an absent ceremony, 400 `signin_expired`. A regressed counter
+  from a proven signature writes `account.passkey.counter_regressed` to the account's audit trail.
+- **SM-5, per request** (`subjectForAccount`, shared by `consoleSubject` and `consoleTokenSubject`, so a
+  cookie and a `pkeya_` token cannot disagree). An account is a member while it holds ANY strong method:
+  a strong link through the console IdP (as before), or a strong passkey link twinned with an
+  `account_passkeys` row of the same account whose `rp_id` equals the host of `CONSOLE_ORIGIN`. The
+  root rule is still computed ONLY from the console-IdP link (`rootRuleHolds`); a passkey carries no
+  groups, so a passkey-only member is root-less and is a member through stored bindings alone. Removing
+  the passkey deletes its link, so entry ends at the next 30 s check; a passkey re-enrolled under
+  another RP id, or whose strong mark is cleared, admits nobody. An unset `CONSOLE_ORIGIN` admits no
+  passkey (fail closed). Tests cover the removal, the RP and strength cases and the token subject.
+- **The gate on top** (`handleConsolePasskey` verify). A grant is required: `convertInvites(…, via:
+"passkey")` runs first (the account's verified primary email is the address; SM-6/SM-7 stop a passkey
+  bootstrapping a platform role or `products:*`), then the principal is resolved from the SAME subject
+  and `can(console, view)` is checked; a session row that ends with no grant is ended before any cookie
+  exists. A root-only operator whose console-IdP assertion is older than the root window has no grant
+  and is refused with "Sign in with Pocket ID first" (reason `idp_first`): a passkey never extends a
+  stale root group. `admin.signin` (summary `passkey`, actor the member id) and the hint cookie are
+  written only on success; every refusal writes `admin.signin.refused`.
+- **Login CSRF (checklist item 14).** (1) Before anything is read or spent, the shared house guard
+  (`readGuardedJsonObject`) refuses a request that is not same-origin (`Sec-Fetch-Site` must be
+  `same-origin`; with none, `Origin` must be ours) or not JSON, so a cross-site page can neither mint a
+  challenge nor burn the victim's. (2) The ceremony is bound to the browser by
+  `__Host-pkey_console_passkey` (`HttpOnly`, `Secure`, `SameSite=Strict`, 5 min), a cookie of its own:
+  the record's address is `hash("console-passkey-signin:" + secret)` under `KEY_HASH_PEPPER`, a
+  namespace the portal's `passkey-signin:` ceremony does not share, so neither door can finish the
+  other's challenge. (3) Verify consumes only the challenge issued to the cookie it carries, so an
+  attacker's own valid assertion presented in a victim's browser fails the challenge, and with no cookie
+  finishes nothing. The ceremony is taken before the response is parsed, so a failed try is spent.
+- **A step-up never crosses accounts.** `stepUp: true` needs a live account session (`resolveConsoleCaller`,
+  the sanctioned cookie reader; a break-glass session has no account and cannot). Its `aid` is stored in
+  the ceremony. At verify the ceremony's account, the browser's current session account and the
+  asserting passkey's account must all be equal, else `step_up_account` before any write. `stepUpAt`
+  is set only on that path (`issueSessionV2` with `authTime` = now); a plain passkey sign-in sets
+  `authAt` alone, so it can never satisfy a step-up. Only a passkey enrolled under the console RP id
+  with `strong_at` can answer either.
+- **Rate limit.** One budget for options and verify, 30 a minute per client network, bucket
+  `adminPasskey`, fail closed (`FAIL_MODE`).
+- **Residual.** A synced passkey's counter stays 0, so cloning is undetectable there; the strong mark,
+  the step-up that earned it, the audit row and the Superadmin mail (ST-30c.3) are the bound. A
+  passkey-only member is exactly as strong as its authenticator: an admin who wants IdP-grade assurance
+  keeps the console IdP as their only strong method.
+
+**Tests:** `test/consolePasskeySignin.test.ts`; `consoleSessionV2`, `consoleStrongMethod`,
+`consoleTokenSubject`, `identityErasureFence`, `routeCoverage`, `boundaries`, `rateLimit`.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product
@@ -10591,6 +11167,7 @@ Obtain admin authority
 ├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
+├── Use the break-glass link ─────────────► needs the root group at a fresh IdP login in the browser that started the flow; one hour, no account, audited and mailed to every Superadmin (Break-glass, ST-30c.1)
 ├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)
 ├── Reach an unguarded route ─────────────► deny-by-default route table; route × principal matrix test (ST-29)
 ├── Write a key outside your area ────────► writeSettings() checks can() on the key's rbacArea (ST-29)
@@ -10873,6 +11450,11 @@ security-widening key's `rbacArea` leaves `keys` or `settings`; `writeSettings()
 console write without a principal; a docs path under `operate/` or `contribute/`, or the search
 index, becomes public; `GET /access/admins` names a Platform admin, an account id or a product's
 admins to someone without an area of that product.
+
+For stored role bindings (ST-31, ST-28 section 5.3 "New section 9 triggers"): the bindings or the
+principal are cached beyond `LIVE_CHECK_SECONDS`; an account id is taken from anything but a
+live-checked v2 session; an email row grants; a token or a v1 cookie reads stored grants; an admin
+API token is minted by anyone but a Superadmin while `tokenSession` carries the root group.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)
 

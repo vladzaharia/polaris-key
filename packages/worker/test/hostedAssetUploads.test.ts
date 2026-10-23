@@ -61,12 +61,13 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { enableServices } from "./releaseRoutesFixture.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -190,8 +191,9 @@ async function admin(
   body?: Uint8Array,
   headers: Record<string, string> = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [ADMIN_GROUP] },
     NOW,
   );
@@ -343,8 +345,9 @@ describe("an uploaded icon survives a resync, and Revert restores the manifest's
         SLUG,
       )
     ).map((a) => `${a.action}:${a.actor_sub ?? "system"}`);
-    expect(actions).toContain("assets.ingest:u1");
-    expect(actions).toContain("assets.revert:u1");
+    const actor = await consoleActor(env, db, "u1");
+    expect(actions).toContain(`assets.ingest:${actor}`);
+    expect(actions).toContain(`assets.revert:${actor}`);
   });
 
   it("a pull whose ingest races a console upload never overwrites it (the in-batch guard)", async () => {
@@ -996,8 +999,9 @@ describe("the slot routes' gate", () => {
     method: string,
     opts: { csrf: boolean; groups: string[] },
   ): Promise<Response> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u9", name: "Eve", email: "eve@x.io", groups: opts.groups },
       NOW,
     );
@@ -1037,14 +1041,20 @@ describe("the slot routes' gate", () => {
     await syncAndPull(iconManifest(URL_A), upstream({ [URL_A]: ICON_A }));
     await upload("presentation.icon", ICON_C);
     await release("presentation.icon");
+    const actor = await consoleActor(env, db, "u1");
     expect(
       await db.all(
-        "SELECT action, actor_sub, actor_email FROM audit WHERE product = ? AND actor_sub = 'u1' AND action LIKE 'assets.%' ORDER BY at, rowid",
+        "SELECT action, actor_sub, actor_email FROM audit WHERE product = ? AND actor_sub = ? AND action LIKE 'assets.%' ORDER BY at, rowid",
         SLUG,
+        actor,
       ),
     ).toEqual([
-      { action: "assets.ingest", actor_sub: "u1", actor_email: "ada@x.io" },
-      { action: "assets.revert", actor_sub: "u1", actor_email: "ada@x.io" },
+      {
+        action: "assets.ingest",
+        actor_sub: actor,
+        actor_email: "ada@x.io",
+      },
+      { action: "assets.revert", actor_sub: actor, actor_email: "ada@x.io" },
     ]);
   });
 });

@@ -21,11 +21,7 @@ import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { createDestination } from "../src/core/notify/alertDestinations.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProduct } from "../src/core/products.js";
@@ -61,6 +57,7 @@ import {
   type UpdateHealthNamespaceMock,
 } from "./updateHealthMock.js";
 import { NOW } from "./seed.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -101,8 +98,9 @@ async function admin(
   body?: unknown,
   opts: { session?: boolean } = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -274,7 +272,7 @@ describe("auto-halt settings", () => {
       SLUG,
       AUTO_HALT_CONNECTOR,
     );
-    expect(row?.updated_by).toBe("u1");
+    expect(row?.updated_by).toBe(await consoleActor(w.env, w.db, "u1"));
     expect(JSON.parse(row!.settings_json)).toMatchObject({
       enabled: true,
       minSample: 50,
@@ -286,7 +284,7 @@ describe("auto-halt settings", () => {
     expect(audits).toEqual([
       {
         action: "distribution.auto_halt.settings",
-        actor_sub: "u1",
+        actor_sub: await consoleActor(w.env, w.db, "u1"),
         target_id: "settings",
       },
     ]);
@@ -488,7 +486,9 @@ describe("the auto-halt tick", () => {
     const resumes = (await auditRows(w.db)).filter(
       (r) => r.action === "distribution.rollout.resume",
     );
-    expect(resumes.map((r) => r.actor_sub)).toEqual(["u1"]);
+    expect(resumes.map((r) => r.actor_sub)).toEqual([
+      await consoleActor(w.env, w.db, "u1"),
+    ]);
   });
 
   it("tells the product's alert destinations when it halts (ST-27), once", async () => {

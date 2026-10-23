@@ -43,12 +43,14 @@ export async function revokeAdminSessions(
 export async function isAdminSessionRevoked(
   env: Env,
   session: Pick<AdminSession, "sub" | "exp">,
+  /** The lifetime the session was issued with (a break-glass session is shorter). */
+  ttlSeconds = ADMIN_SESSION_TTL_SECONDS,
 ): Promise<boolean> {
   const raw = await getArtefact(env, await revocationRef(env, session.sub));
   if (raw === null) return false;
   const mark = Number(raw);
   if (!Number.isFinite(mark)) return true;
   // Every session is issued with the same TTL, so its mint time is exact (as the portal's).
-  const iat = session.exp - ADMIN_SESSION_TTL_SECONDS;
+  const iat = session.exp - ttlSeconds;
   return iat <= mark;
 }

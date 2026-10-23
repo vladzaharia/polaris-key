@@ -97,6 +97,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   identityAttach: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
+  // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The
+  // assertion opens a console session, so an outage refuses.
+  adminPasskey: "closed",
   portalLogin: "closed",
   // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
   // user codes, so an outage must not make it unlimited.
@@ -194,6 +197,17 @@ const FAIL_MODE: Record<string, FailMode> = {
   // seen to a store API and spends that store's quota, so an outage refuses (a 429 the form shows
   // as "check again") rather than letting a loop through.
   credentialCheck: "closed",
+
+  // ST-31.6: console grant, edit and revoke, per member. Each one hands out (or takes back) standing
+  // access to the console, so an outage refuses rather than leaving a stolen session unmetered.
+  adminGrantWrite: "closed",
+  // ST-31.7: operator notices (access changes, invitations) per recipient per hour. A send, so an
+  // outage refuses it; a refused notice counts as not sent and never undoes the change. The
+  // `email` prefix shards it like the other mail limits.
+  emailOperatorNoticeHour: "closed",
+  // ST-31.7: console invitations per member, counted per invited address (mail abuse from the
+  // shared sender). An outage refuses the request.
+  adminInviteAddress: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

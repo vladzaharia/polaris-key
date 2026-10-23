@@ -37,11 +37,8 @@ import {
   setServices,
 } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
@@ -860,8 +857,9 @@ describe("POST …/release/link (the console route)", () => {
   ): Promise<Response> {
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "admins";
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
       NOW,
     );

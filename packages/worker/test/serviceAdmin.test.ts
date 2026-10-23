@@ -31,16 +31,13 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { listTiers } from "../src/core/licensing/store.js";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getReleaseConfig } from "../src/services/release/index.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -53,9 +50,13 @@ function adminEnv(): Env {
   return env;
 }
 
-async function session(env: Env): Promise<{ cookie: string; csrf: string }> {
-  const { token, session: s } = await issueSession(
+async function session(
+  env: Env,
+  db: Db,
+): Promise<{ cookie: string; csrf: string }> {
+  const { token, session: s } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -118,7 +119,7 @@ async function fixture(withReleaseConfig = true) {
   const env = adminEnv();
   await seedProduct(db, SLUG);
   if (withReleaseConfig) await seedReleaseConfig(db);
-  const auth = await session(env);
+  const auth = await session(env, db);
   return { db, env, auth };
 }
 

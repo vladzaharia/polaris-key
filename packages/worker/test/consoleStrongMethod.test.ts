@@ -31,7 +31,10 @@ import {
   consoleSubject,
 } from "../src/services/identity/public.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
-import { insertLink } from "../src/services/identity/accounts/repo.js";
+import {
+  insertLink,
+  markLinkStrong,
+} from "../src/services/identity/accounts/repo.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import {
   deleteAccount,
@@ -43,6 +46,7 @@ import {
   recordLinkGroups,
 } from "../src/services/identity/portal/repo.js";
 import { portalIdentityIssuerKey } from "../src/services/identity/portal/repo.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";
@@ -380,6 +384,31 @@ describe("SM-1 and SM-3: the console needs a strong method", () => {
     expect(r).toEqual({ status: "refused", reason: "method" });
   });
 
+  it("markLinkStrong is account-scoped: another account's link changes nothing and is refused; the owner's marks once", async () => {
+    const db = makeTestDb();
+    await getOrCreateAccountByIdentity(
+      db,
+      { provider: ISSUER_KEY, subject: "op-a", groups: [] },
+      NOW,
+    );
+    await getOrCreateAccountByIdentity(
+      db,
+      { provider: ISSUER_KEY, subject: "op-b", groups: [] },
+      NOW,
+    );
+    const a = (await consoleLink(db, "op-a"))!;
+    const b = (await consoleLink(db, "op-b"))!;
+    expect(a.account_id).not.toBe(b.account_id);
+    expect(await markLinkStrong(db, a.account_id, b.id, NOW + 1)).toBe(false);
+    expect((await consoleLink(db, "op-b"))!.strong_at).toBeNull();
+    expect(await markLinkStrong(db, a.account_id, "missing", NOW + 1)).toBe(
+      false,
+    );
+    expect(await markLinkStrong(db, a.account_id, a.id, NOW + 2)).toBe(true);
+    expect(await markLinkStrong(db, a.account_id, a.id, NOW + 9)).toBe(true);
+    expect((await consoleLink(db, "op-a"))!.strong_at).toBe(NOW + 2);
+  });
+
   it("SM-5: removing the strong method ends entry, not the account; a re-added method is not strong", async () => {
     const env = adminEnv();
     const db = makeTestDb();
@@ -658,36 +687,6 @@ describe("the audit actor is the member id", () => {
 });
 
 describe("hardening round", () => {
-  it("b: a v1 logout also ends the operator's v2 sessions (member-id mark)", async () => {
-    const env = adminEnv();
-    const db = makeTestDb();
-    const v2 = await signInThrough(env, db);
-    expect((await me(env, db, v2.token!, NOW + 1)).status).toBe(200);
-    const { issueSession } = await import("../src/core/console/session.js");
-    const v1 = await issueSession(
-      env,
-      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
-      NOW + 2,
-    );
-    const csrf = v1.session.csrf;
-    const out = await handleAdmin(
-      new Request("https://key.plrs.im/manage/api/logout", {
-        method: "POST",
-        headers: {
-          cookie: `${ADMIN_COOKIE}=${v1.token}`,
-          "X-PKey-CSRF": csrf,
-        },
-      }) as unknown as Request,
-      env,
-      db,
-      "/api/logout",
-      { now: NOW + 3 },
-    );
-    expect(out.status).toBe(200);
-    resetConsoleSessionCache();
-    expect((await me(env, db, v2.token!, NOW + 5)).status).toBe(401);
-  });
-
   it("c: the member id resolves with indexed reads regardless of how many links exist", async () => {
     const env = adminEnv();
     const db = makeTestDb();

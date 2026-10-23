@@ -31,8 +31,9 @@ import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { listProductUsers } from "../src/services/identity/accounts/productUsers.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { handleAdminApi } from "../src/console/api.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { SUPPORT_CODE_LOOKUPS_PER_MINUTE } from "../src/console/handlers/supportCodes.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SYNTHETIC = new Map<string, unknown>();
 vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
@@ -201,8 +202,9 @@ async function get(
   now = NOW,
 ) {
   const sub = as === "root" ? "u-root" : PRINCIPALS[as]!.memberId;
-  const { token } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub,
       name: as,
@@ -211,6 +213,9 @@ async function get(
     },
     now,
   );
+  // The console resolves the member id from the account; the seam is keyed by it.
+  const synthetic = SYNTHETIC.get(sub);
+  if (synthetic) SYNTHETIC.set(session.sub, synthetic);
   const res = await handleAdminApi(
     new Request(`https://key.plrs.im/manage/api${path}`, {
       headers: { cookie: `${ADMIN_COOKIE}=${token}` },

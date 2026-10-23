@@ -58,6 +58,7 @@ export type Route =
   | { kind: "adminApi" }
   | { kind: "adminLogin" }
   | { kind: "adminCallback" }
+  | { kind: "adminPasskey" }
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
@@ -172,6 +173,11 @@ export function matchRoute(pathname: string): Route {
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
   if (path === "/manage/callback") return { kind: "adminCallback" };
+  if (
+    path === "/manage/login/passkey/options" ||
+    path === "/manage/login/passkey/verify"
+  )
+    return { kind: "adminPasskey" };
   if (path === "/manage/api" || path.startsWith("/manage/api/"))
     return { kind: "adminApi" };
   if (path === "/manage" || path.startsWith("/manage/"))

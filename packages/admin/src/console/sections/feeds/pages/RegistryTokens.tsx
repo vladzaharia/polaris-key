@@ -32,7 +32,7 @@ import { OneTimeSecretDialog } from "../../../../ui/OneTimeSecretPanel.js";
 import { toast } from "../../../../ui/toast.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
-import { useWriteGate } from "../../../access/useCan.js";
+import { useBreakGlassReason, useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { r } from "../../../routes.js";
@@ -76,18 +76,21 @@ function useTokenGates(
   const slug = scope.kind === "product" ? scope.slug : null;
   const ship = useWriteGate(slug === null ? "platform" : "ship", slug);
   const keys = useWriteGate("keys", slug);
+  const noMint = useBreakGlassReason();
   const publishable = (data?.limits.publishEcosystems ?? []).length > 0;
   return {
     revokeReason: ship.disabledReason,
-    mintReason: !data
-      ? failed
-        ? "Couldn't load tokens"
-        : "Loading"
-      : !ship.allowed
-        ? ship.disabledReason
-        : keys.allowed || publishable
-          ? undefined
-          : keys.disabledReason,
+    mintReason:
+      noMint ??
+      (!data
+        ? failed
+          ? "Couldn't load tokens"
+          : "Loading"
+        : !ship.allowed
+          ? ship.disabledReason
+          : keys.allowed || publishable
+            ? undefined
+            : keys.disabledReason),
   };
 }
 

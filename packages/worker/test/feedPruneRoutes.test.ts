@@ -28,11 +28,8 @@ import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -194,8 +191,9 @@ async function admin(
   body?: unknown,
   groups = ["platform-admins"],
 ) {
-  const { token: t, session } = await issueSession(
+  const { token: t, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -358,7 +356,10 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
         "SELECT actor_sub, parent_id FROM audit WHERE product = ? AND action = 'package.version.prune'",
         SLUG,
       ),
-    ).toEqual({ actor_sub: "admin:u1", parent_id: "npm.sdk@1.1.0" });
+    ).toEqual({
+      actor_sub: `admin:${await consoleActor(env, db, "u1")}`,
+      parent_id: "npm.sdk@1.1.0",
+    });
 
     // Opting in, then a stale write refused.
     const put = await admin("PUT", retention, {

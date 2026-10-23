@@ -10,11 +10,8 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const GROUP = "admins";
@@ -53,8 +50,9 @@ beforeEach(async () => {
   env.KEY_HASH_PEPPER = "p029-pepper";
   await seedProduct(db, SLUG);
   await seedTier(db, SLUG, "pro", { deviceLimit: 3, expiryDays: 30 });
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "op-1", name: "Op", email: "op@x.io", groups: [GROUP] },
     NOW,
   );

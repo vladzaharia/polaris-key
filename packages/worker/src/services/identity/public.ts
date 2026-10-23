@@ -8,15 +8,41 @@ export type { AccountContext } from "./accounts/links.js";
 // ST-30: the console's door into accounts (cookie v2, `consoleSubject`).
 export {
   accountMayOpenConsole,
+  consoleAccountForMember,
+  consoleAssertedEmail,
+  consoleLinkedAccount,
+  consoleVerifiedPrimaryEmail,
   consoleActorAliases,
+  consoleDirectory,
+  consoleDirectoryPeople,
+  consoleDirectoryRead,
+  type ConsoleDirectoryPerson,
+  consoleRootHolders,
+  type ConsoleDirectoryEntry,
   consoleMemberIdForIdpSub,
   consoleSignIn,
   consoleSubject,
+  consolePasskeyCeremony,
+  consoleRpId,
+  listConsoleMethods,
+  markConsoleMethodStrong,
+  type ConsoleMethod,
+  type MarkStrongResult,
+  consoleTokenSubject,
+  consolePasskeyOptions,
+  consolePasskeySignIn,
+  type ConsolePasskeyRefusal,
+  type ConsolePasskeySignInResult,
   endConsoleSession,
   type ConsoleIdentity,
   type ConsoleRefusal,
   type ConsoleSignInResult,
 } from "./consoleAccount.js";
+export {
+  accountAddresses,
+  accountsVerifyingEmail,
+  accountsWithVerifiedPrimaryEmail,
+} from "./accounts/repo.js";
 export { platformMigrationReport } from "./accounts/platformMigration.js";
 export {
   countListedUsersByProduct,

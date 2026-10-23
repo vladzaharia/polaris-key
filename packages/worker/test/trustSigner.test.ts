@@ -30,11 +30,8 @@ import {
   verifyPullToken,
 } from "../src/core/registry/registryTokens.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 
@@ -173,8 +170,9 @@ describe("bundle mint signer choice", () => {
     const body = { licenseId, ...body0 };
     const pub = await addKey(db, env, "kid-staged", "staged");
     await addKey(db, env, "kid-revoked", "revoked", NOW - 10);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: ["platform-admins"] },
       NOW,
     );

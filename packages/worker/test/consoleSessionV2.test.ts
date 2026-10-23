@@ -18,11 +18,9 @@ import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   issueSessionV2,
   LIVE_CHECK_SECONDS,
 } from "../src/core/console/session.js";
-import { revokeAdminSessions } from "../src/core/console/sessionRevocation.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
 import { operatorIssuerAllowed } from "../src/core/rbac/operatorIssuer.js";
 import {
@@ -434,27 +432,6 @@ describe("the live check: revocation takes effect within 30 seconds", () => {
 });
 
 describe("cookie versions", () => {
-  it("a v1 cookie signed before this deploy is still read until it expires", async () => {
-    const env = adminEnv();
-    const db = makeTestDb();
-    const { token } = await issueSession(
-      env,
-      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
-      NOW,
-    );
-    expect((await call(env, db, token, NOW + 1)).status).toBe(200);
-    // Past its own 8 h it is gone.
-    expect((await call(env, db, token, NOW + 8 * 3600 + 1)).status).toBe(401);
-  });
-
-  it("a v1 cookie honours the sign-out mark; a v2 cookie does too", async () => {
-    const env = adminEnv();
-    const db = makeTestDb();
-    const v1 = await issueSession(env, { sub: "op-1", groups: [GROUP] }, NOW);
-    await revokeAdminSessions(env, "op-1", NOW + 1);
-    expect((await call(env, db, v1.token, NOW + 2)).status).toBe(401);
-  });
-
   it("a v2 payload signed under the v1 tag, and a v1 payload under the v2 tag, never verify", async () => {
     const env = adminEnv();
     const db = makeTestDb();

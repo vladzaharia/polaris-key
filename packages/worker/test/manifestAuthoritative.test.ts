@@ -21,11 +21,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncNotes, resyncRepo } from "../src/services/release/resync.js";
 import { planResync } from "../src/services/release/linkExisting.js";
@@ -42,6 +38,7 @@ import {
 } from "../src/core/settingsClaims.js";
 import { getManifestSnapshot } from "../src/core/manifestSnapshot.js";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -159,8 +156,9 @@ async function linked(d: Decl = {}) {
     ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -395,7 +393,7 @@ describe("a break-glass claim (ST-20)", () => {
     expect((await productJson(ctx)).claims).toEqual([
       expect.objectContaining({
         key: KEY,
-        claimedBy: "u1",
+        claimedBy: await consoleActor(ctx.env, ctx.db, "u1"),
         breakGlass: { reason: REASON, expiresAt: EXPIRES },
       }),
     ]);
@@ -417,7 +415,7 @@ describe("a break-glass claim (ST-20)", () => {
     expect(res.breakGlass).toEqual([
       {
         key: KEY,
-        claimedBy: "u1",
+        claimedBy: await consoleActor(ctx.env, ctx.db, "u1"),
         claimedAt: NOW + 1,
         reason: REASON,
         expiresAt: EXPIRES,

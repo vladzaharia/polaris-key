@@ -98,6 +98,11 @@ export interface Me {
    * Absent from a worker older than ST-29: the console then treats `platformAdmin` as every area.
    */
   permissions?: MePermissions;
+  /**
+   * ST-30c.1: a break-glass session (`/manage/login?breakGlass=1`): an hour, no account behind it.
+   * The shell warns, and the account-bound screens stay out of reach (the server refuses them).
+   */
+  breakGlass?: boolean;
 }
 
 /** The console's authorization areas (worker `core/rbac/areas.ts`; append-only). */

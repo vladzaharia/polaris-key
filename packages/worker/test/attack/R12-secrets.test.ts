@@ -34,7 +34,6 @@ import { handleAdmin } from "../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   type SessionIdentity,
 } from "../../src/core/console/session.js";
 import { redactPayload, parsePayload } from "../../src/core/console/redact.js";
@@ -93,6 +92,7 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "../../src/services/identity/browserSession.js";
+import { consoleTestSession } from "../consoleSessionHelper.js";
 
 // Swap ONLY jose's remote key getter (the R12-04 sign-in flows below need a test IdP); the
 // REAL jwtVerify still checks iss/aud/alg/signature/nonce. Nothing else in this file reaches a
@@ -138,9 +138,10 @@ function adminEnv(kv: KvMock, slugs: string[]): Env {
 
 async function sessionCookie(
   env: Env,
+  db: Db,
   identity: SessionIdentity = PLATFORM_ADMIN,
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session } = await issueSession(env, identity, NOW);
+  const { token, session } = await consoleTestSession(env, db, identity, NOW);
   return { cookie: `${ADMIN_COOKIE}=${token}`, csrf: session.csrf };
 }
 
@@ -252,7 +253,7 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme", { catalog: catalogWithSecrets(true) });
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
 
     const created = await handleAdmin(
       mkReq("POST", "/api/products/acme/config/profiles", {
@@ -325,7 +326,7 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme", { catalog: catalogWithSecrets(true) });
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
 
     await handleAdmin(
       mkReq("POST", "/api/products/acme/config/profiles", {
@@ -554,7 +555,7 @@ describe("R12-02 managed secret values are SEALED at rest in D1", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme", { catalog: catalogWithSecrets(true) });
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
 
     await handleAdmin(
       mkReq("POST", "/api/products/acme/config/profiles", {
@@ -785,7 +786,7 @@ describe("a catalog that shadows a secret or seals an entitlement is refused at 
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme", { catalog: DELIVERY_CATALOG });
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
     const path = "/api/products/acme/config/catalog";
     const res = await handleAdmin(
       mkReq("PUT", path, {
@@ -1853,7 +1854,7 @@ describe("R12 refuted hypotheses", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme");
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
     const res = await handleAdmin(
       mkReq("PUT", "/api/products/acme/secrets/UPSTREAM_TOKEN", {
         cookie,
@@ -1880,7 +1881,7 @@ describe("R12 refuted hypotheses", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme");
-    const { cookie, csrf } = await sessionCookie(env);
+    const { cookie, csrf } = await sessionCookie(env, db);
     const res = await handleAdmin(
       mkReq("POST", "/api/products/acme/keys/prepare", {
         cookie,
@@ -1902,7 +1903,7 @@ describe("R12 refuted hypotheses", () => {
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     await seedProduct(db, "acme");
-    const { cookie } = await sessionCookie(env);
+    const { cookie } = await sessionCookie(env, db);
     const res = await handleAdmin(
       mkReq("GET", "/api/products/acme", { cookie }),
       env,

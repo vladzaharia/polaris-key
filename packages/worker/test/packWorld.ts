@@ -43,11 +43,8 @@ import { loadProduct } from "../src/core/products.js";
 import { buildHooks, type ServiceHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -486,8 +483,9 @@ export async function packWorld(
 
   async function admin(method: string, path: string, body?: unknown) {
     const now = Math.floor(Date.now() / 1000);
-    const { token: cookie, session } = await issueSession(
+    const { token: cookie, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

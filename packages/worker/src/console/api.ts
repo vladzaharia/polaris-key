@@ -60,6 +60,7 @@ import {
 } from "../core/console/respond.js";
 import {
   can,
+  canSeeProduct,
   PLATFORM,
   PRODUCT_AREAS,
   productScope,
@@ -114,6 +115,8 @@ async function callerFor(
       // A v2 session's root is the computed rule (strong link, fresh assertion); a v1 session has
       // none and falls back to its groups.
       ...(session.root !== undefined ? { root: session.root } : {}),
+      // ST-31.2: only a v2 session has an account id; a v1 cookie and a token stay root-only.
+      ...(session.aid ? { accountId: session.aid } : {}),
     },
     now,
   );
@@ -362,7 +365,17 @@ export async function handleAdminApi(
   let productCtx: ProductContext | null = null;
   if (isProductRoute(route)) {
     product = await getProduct(db, match.params.slug ?? "");
-    if (!product) return notFound();
+    if (!product) {
+      // ST-31.8: an unknown slug answers like a real product the caller cannot reach (a 403 that
+      // names the same scope and area), unless the caller holds a product scope that would reach
+      // it (Superadmin, `products:*`), who can list every product anyway. A 404 here for everyone
+      // else would tell a member of one product which other slugs exist.
+      const slug = match.params.slug ?? "";
+      const ghost = { slug, system: 0 };
+      if (!canSeeProduct(principal, ghost))
+        return forbiddenArea(productScope(ghost), areaFor(route, match.params));
+      return notFound();
+    }
     scope = productScope(product);
     productCtx = loadProductContext(env, db, product);
   }

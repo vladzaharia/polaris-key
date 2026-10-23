@@ -52,12 +52,9 @@ import { resyncRepo } from "../src/services/release/resync.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { recordRef } from "../src/core/assets/blobs.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -1188,8 +1185,9 @@ async function adminCall(
   body?: unknown,
   opts: { csrf?: boolean } = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -1236,7 +1234,12 @@ describe("operator path: policy claim and static tokens", () => {
     const audit = await db.all<{ action: string; actor_sub: string }>(
       "SELECT action, actor_sub FROM audit WHERE action = 'ci.publisher.claim'",
     );
-    expect(audit).toEqual([{ action: "ci.publisher.claim", actor_sub: "u1" }]);
+    expect(audit).toEqual([
+      {
+        action: "ci.publisher.claim",
+        actor_sub: await consoleActor(env, db, "u1"),
+      },
+    ]);
     // The repo's OIDC token for the old environment no longer satisfies it.
     const { res: tok, body } = await exchange();
     expect(tok.status).toBe(403);
