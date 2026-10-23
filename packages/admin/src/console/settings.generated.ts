@@ -1871,7 +1871,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Approved display name",
     description:
-      "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
+      "Lets this product use a name that matches a reserved term. Covers every name the product uses. Only platform admins can set it.",
     keywords: ["reserved", "display name", "reserved_display_name"],
     docs: "/docs/build/manifest/product/",
     ownership: "operator",
