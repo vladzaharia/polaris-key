@@ -9826,7 +9826,18 @@ as any licence write.
   the send, so the window holds across isolates and a crash mid-send, and a
   `license.invite.send.failed` child row frees it. The audit rows carry the licence id and the
   outcome, never the address. `invited_at` is stamped only after an accepted send. Because the two
-  routes share one window, mixing them cannot double the mail a licence receives.
+  routes share one window, alternating them cannot double the mail a licence receives.
+- **Known race, accepted.** The window is a read of the audit trail before the attempt row is
+  written, so two concurrent requests for one licence can both pass it and both send (the same
+  as send-key, noted above). Each is audited and bounded by suppression and the daily cap. A create
+  with `delivery.invite` is one email per new licence and is outside the window.
+- **What the console learns.** The licence list's first page carries `holders: {invitations,
+invitationsOff}` (`identity_off`, `auto_link_off`, `no_mail`, or `null`). It is per product
+  configuration, not per address, so it is no oracle; `no_mail` keeps the wizard from offering an
+  invitation that cannot go out.
+- **The address in the email** is shown in full (control, line-break, bidi and space characters
+  removed, never truncated) and may wrap anywhere (`overflow-wrap:anywhere`), so a long address
+  stays readable and cannot widen the message. It is escaped as any display value.
 
 ### Licence holders: the library notice at first verification (LX-27c.3)
 

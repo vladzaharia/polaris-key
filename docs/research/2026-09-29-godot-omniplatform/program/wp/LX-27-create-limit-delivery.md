@@ -186,6 +186,9 @@ Built on wp/LX-27-create-licence. Verified against the code (the code wins):
 - Console: **Send a new key…** (record overflow, assigned licences only), `sendLicenseKey` mutation entry,
   **Email them the key** on Assign…. Evidence: `licenseHolders.e2e.test.ts` shots at 360/390/1440, both themes.
 
+**Superseded by LX-27c** (invitation delivery, built in LX-27c.1 to .6): the invitation, the resend route
+and the library notice are done there. The paragraph below is the state at LX-27's close.
+
 Not done (follow-ups): the Identity-default **invitation** (sign-in link, no key; "Also create a key"
 optional) from the 2026-10-07 consolidation section, and the "From <developer>" library notice for an
 association at first email verification (LX-26 N1). Both belong with the wizard (LX-29) and
