@@ -254,7 +254,8 @@ export class DesktopAdapter implements PolarisAdapter {
     // UK-06: the host's OS facts; an older host sends none and the kit keeps its web chrome.
     if (
       s.host &&
-      (this.host_ === null || JSON.stringify(this.host_) !== JSON.stringify(s.host))
+      (this.host_ === null ||
+        JSON.stringify(this.host_) !== JSON.stringify(s.host))
     )
       this.host_ = { ...s.host };
     this.store.set(

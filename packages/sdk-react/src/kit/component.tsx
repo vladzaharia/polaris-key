@@ -295,7 +295,7 @@ export function useKit(
     let live = true;
     // The icon is fetched again whenever the member changes: a desktop host's member arrives with
     // its first state push, after this kit has mounted.
-    let loaded: string | null = null;
+    let loaded: string | null | undefined;
     const load = () => {
       if (!source) return;
       const sha = source.current()?.icon?.sha256 ?? null;
