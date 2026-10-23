@@ -873,6 +873,32 @@ const LICENSE_STATUS_VALUES := ["ok", "grace", "expired", "revoked", "needs-acti
 const ACTIVATION_RESULT_VALUES := ["ok", "device-limit", "fingerprint-required", "hardware-mismatch", "enroll-claimed", "license-disabled", "license-expired", "attestation-required", "rate-limited", "unauthorized", "enroll-disabled", "key-entry-limit", "refused", "error"]
 
 
+## How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it.
+class SettingVisibility:
+	const EDITABLE := "editable"
+	const READONLY := "readonly"
+	const HIDDEN := "hidden"
+
+
+## Every `SettingVisibility` value, in source order.
+const SETTING_VISIBILITY_VALUES := ["editable", "readonly", "hidden"]
+
+
+## The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21.
+class EventKind:
+	const LICENSE := "license"
+	const ENTITLEMENT := "entitlement"
+	const CONFIG := "config"
+	const UPDATEAVAILABLE := "updateAvailable"
+	const PACKS := "packs"
+	const STORE := "store"
+	const CLOUDSYNC := "cloudSync"
+
+
+## Every `EventKind` value, in source order.
+const EVENT_KIND_VALUES := ["license", "entitlement", "config", "updateAvailable", "packs", "store", "cloudSync"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"

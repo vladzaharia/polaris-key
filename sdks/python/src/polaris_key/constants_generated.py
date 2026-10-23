@@ -70,6 +70,10 @@ __all__ = [
     "DATA_ONLY_EXTENSION_VALUES",
     "LICENSE_STATUS_VALUES",
     "ACTIVATION_RESULT_VALUES",
+    "SettingVisibility",
+    "SETTING_VISIBILITY_VALUES",
+    "EventKind",
+    "EVENT_KIND_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -1564,6 +1568,46 @@ ACTIVATION_RESULT_VALUES: Tuple[str, ...] = (
     "key-entry-limit",
     "refused",
     "error",
+)
+
+
+class SettingVisibility:
+    """How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it."""
+
+    EDITABLE: Final = "editable"
+    READONLY: Final = "readonly"
+    HIDDEN: Final = "hidden"
+
+
+#: Every ``SettingVisibility`` value, in source order.
+SETTING_VISIBILITY_VALUES: Tuple[str, ...] = (
+    "editable",
+    "readonly",
+    "hidden",
+)
+
+
+class EventKind:
+    """The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21."""
+
+    LICENSE: Final = "license"
+    ENTITLEMENT: Final = "entitlement"
+    CONFIG: Final = "config"
+    UPDATEAVAILABLE: Final = "updateAvailable"
+    PACKS: Final = "packs"
+    STORE: Final = "store"
+    CLOUDSYNC: Final = "cloudSync"
+
+
+#: Every ``EventKind`` value, in source order.
+EVENT_KIND_VALUES: Tuple[str, ...] = (
+    "license",
+    "entitlement",
+    "config",
+    "updateAvailable",
+    "packs",
+    "store",
+    "cloudSync",
 )
 
 

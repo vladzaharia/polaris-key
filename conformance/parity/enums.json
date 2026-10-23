@@ -273,6 +273,24 @@
         "refused",
         "error"
       ]
+    },
+    {
+      "name": "settingVisibility",
+      "description": "How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it.",
+      "values": ["editable", "readonly", "hidden"]
+    },
+    {
+      "name": "eventKind",
+      "description": "The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21.",
+      "values": [
+        "license",
+        "entitlement",
+        "config",
+        "updateAvailable",
+        "packs",
+        "store",
+        "cloudSync"
+      ]
     }
   ]
 }
