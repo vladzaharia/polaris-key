@@ -36,7 +36,7 @@ import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
 import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 import type { InstallOptions, InstallOutcome } from "./install.js";
-import type { KitView } from "../desktop/bridge.js";
+import type { BridgeHost, KitView } from "../desktop/bridge.js";
 import type {
   FetchTarget,
   ReleaseFetchOptions,
@@ -654,6 +654,12 @@ export interface PolarisAdapter {
    * older host never asks.
    */
   onOpen?(cb: (view: KitView) => void): () => void;
+  /**
+   * The OS facts the desktop host reports (UK-06): the chrome (`os`), the system accent, high
+   * contrast and reduced transparency. `null` until a v4 host sends them, and always on an adapter
+   * with no host. The value is replaced only when a fact changes, so it can back a store snapshot.
+   */
+  hostFacts?(): BridgeHost | null;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

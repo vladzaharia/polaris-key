@@ -244,6 +244,9 @@ export function resolveFor(
   identity: ResolvedIdentity,
   iconUrl: string | null,
   platform?: Platform,
+  /** The desktop host's system accent (`#rrggbb`): under `native` with no accent of its own, the
+   *  host's accent, resolved for contrast on the page's grounds (UK-06). */
+  hostAccent?: string,
 ): Resolved {
   const native = options.preset === "native";
   const scheme = resolveTheme(options, {
@@ -255,10 +258,17 @@ export function resolveFor(
     reducedMotion: osReducedMotion(),
   });
   const accent = accentFor(identity, scheme.scheme as Scheme);
+  const hostColor =
+    native &&
+    accent === null &&
+    hostAccent &&
+    /^#[0-9a-f]{6}$/i.test(hostAccent)
+      ? hostAccent
+      : null;
   const colors =
-    native && accent === null
+    native && accent === null && hostColor === null
       ? null
-      : resolveKitColors(accent, scheme.scheme as Scheme);
+      : resolveKitColors(hostColor ?? accent, scheme.scheme as Scheme);
   const docLang =
     typeof document !== "undefined" ? document.documentElement.lang : "";
   const nav = typeof navigator !== "undefined" ? navigator.language : undefined;

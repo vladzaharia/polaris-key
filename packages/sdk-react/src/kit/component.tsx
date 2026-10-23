@@ -9,6 +9,7 @@
 import { flushSync } from "react-dom";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useInsertionEffect,
@@ -292,12 +293,20 @@ export function useKit(
     );
     let url: string | null = null;
     let live = true;
-    if (source)
+    // The icon is fetched again whenever the member changes: a desktop host's member arrives with
+    // its first state push, after this kit has mounted.
+    let loaded: string | null | undefined;
+    const load = () => {
+      if (!source) return;
+      const sha = source.current()?.icon?.sha256 ?? null;
+      if (sha === loaded) return;
+      loaded = sha;
       void source
         .icon(96, typeof devicePixelRatio === "number" ? devicePixelRatio : 2)
         .then((bytes) => {
           if (!bytes || !live) return;
           const made = URL.createObjectURL(new Blob([bytes as BlobPart]));
+          if (url) URL.revokeObjectURL(url);
           url = made;
           // Bytes that do not decode as an image leave the monogram, not a broken picture.
           const probe = new Image();
@@ -310,9 +319,13 @@ export function useKit(
         .catch(() => {
           // A failed icon leaves the monogram: never an error state.
         });
+    };
+    load();
+    const unwatch = source?.subscribe(load);
     return () => {
       live = false;
       stop();
+      unwatch?.();
       if (url) URL.revokeObjectURL(url);
       setIconUrl(null);
     };
@@ -348,6 +361,16 @@ export function useKit(
     };
   }, []);
 
+  // UK-06: the desktop host's OS facts (the chrome, the system accent, contrast, transparency).
+  const watchHost = useCallback(
+    (cb: () => void) => adapter?.subscribe?.(cb) ?? (() => undefined),
+    [adapter],
+  );
+  const hostFacts = useSyncExternalStore(
+    watchHost,
+    () => adapter?.hostFacts?.() ?? null,
+    () => null,
+  );
   const resolved = resolveFor(
     rootRef.current,
     options,
@@ -358,7 +381,14 @@ export function useKit(
         preset: options.preset,
       }),
     options.iconSrc ?? iconUrl,
-    props.input?.platform,
+    props.input?.platform ??
+      (hostFacts
+        ? {
+            os: hostFacts.os,
+            formFactor: hostFacts.os === "macos" ? "mac" : "computer",
+          }
+        : undefined),
+    hostFacts?.accentColor,
   );
 
   // The input: the host's over what the person did here (a typed key, a picked row), with the
@@ -607,20 +637,34 @@ export function useKit(
     tight,
     kb,
     fontless,
+    hostFacts,
   };
 }
 
 export type Kit = ReturnType<typeof useKit>;
 
+/** The platform's UI face per chrome (UI-KITS.md §3.4): Segoe UI Variable on Windows, Adwaita Sans
+ *  (Cantarell before it) on GNOME, the San Francisco system face on a Mac. */
+const NATIVE_FONT_STACKS: Record<string, string> = {
+  windows: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+  gnome:
+    '"Adwaita Sans", Cantarell, "Noto Sans", "Helvetica Neue", system-ui, sans-serif',
+  macos:
+    '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+};
+
 /** The platform's UI face for every type role, for `native` on a page that sets no font. */
-const SYSTEM_FONT_VARS: Record<string, string> = {
-  fontFamily: SYSTEM_FONT_STACK,
-  ...Object.fromEntries(
-    ["body", "title", "display", "label", "button", "meta"].map((role) => [
-      `--pk-kit-type-${role}-family`,
-      SYSTEM_FONT_STACK,
-    ]),
-  ),
+const systemFontVars = (variant: string): Record<string, string> => {
+  const stack = NATIVE_FONT_STACKS[variant] ?? SYSTEM_FONT_STACK;
+  return {
+    fontFamily: stack,
+    ...Object.fromEntries(
+      ["body", "title", "display", "label", "button", "meta"].map((role) => [
+        `--pk-kit-type-${role}-family`,
+        stack,
+      ]),
+    ),
+  };
 };
 
 /** The `.pk-root` every component draws in: the elements' attributes, the theme's variables. */
@@ -643,6 +687,7 @@ export function KitRoot(props: {
     tight,
     kb,
     fontless,
+    hostFacts,
   } = props.kit;
   return (
     <div
@@ -658,13 +703,15 @@ export function KitRoot(props: {
       data-shape={shape}
       data-tight={tight ? "" : undefined}
       data-pk-platform={platformVariant(r.theme)}
+      data-contrast={hostFacts?.highContrast ? "more" : undefined}
+      data-transparency={hostFacts?.reducedTransparency ? "reduce" : undefined}
       data-keyboard={kb ? "" : undefined}
       data-bare={props.bare ? "" : undefined}
       data-fill={props.fill ? "" : undefined}
       lang={copy.locale}
       style={
         (fontless
-          ? { ...themeVars(r), ...SYSTEM_FONT_VARS }
+          ? { ...themeVars(r), ...systemFontVars(platformVariant(r.theme)) }
           : themeVars(r)) as CSSProperties
       }
       onKeyDown={
