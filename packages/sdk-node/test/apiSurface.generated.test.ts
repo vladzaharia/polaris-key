@@ -140,3 +140,7 @@ it("identity.pollSignIn", () =>
   expect("pollSignIn" in IdentityClient.prototype).toBe(true));
 it("identity.waitForSignIn", () =>
   expect("waitForSignIn" in IdentityClient.prototype).toBe(true));
+it("license.status", () =>
+  expect("status" in LicenseClient.prototype).toBe(true));
+it("license.isLicensed", () =>
+  expect("isLicensed" in LicenseClient.prototype).toBe(true));
