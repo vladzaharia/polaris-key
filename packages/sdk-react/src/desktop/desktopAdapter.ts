@@ -1113,8 +1113,10 @@ export class DesktopAdapter implements PolarisAdapter {
    * crossing the bridge, as Node answers it. A `restartRequired` answer carries no function over
    * IPC: its `restart()` is `invoke("update", "restart")`, which the host answers by applying
    * the install it just staged. An older host answers the typed `version` N/A, as a result.
-   * Progress callbacks and the abort signal do not cross the bridge; an aborted signal stops the
-   * install before it starts.
+   * `opts.onProgress(done, total)` is fed by the host's pushed progress (`bridge.onUpdateProgress`,
+   * UK-06.3) for this install only; `total` is `null` when the driver does not know the size. A
+   * host without the push never calls it. The abort signal does not cross the bridge; an aborted
+   * signal stops the install before it starts.
    */
   async installUpdate(
     decision: UpdateDecision,
@@ -1129,7 +1131,22 @@ export class DesktopAdapter implements PolarisAdapter {
         reason: "version",
         detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose the host's install driver; bridge protocol v4 adds it.`,
       };
-    const r = await this.invoke<unknown>("update", "install", { decision });
+    const off = opts.onProgress
+      ? this.bridge.onUpdateProgress?.((p) => {
+          if (typeof p?.done !== "number") return;
+          const t = p.total;
+          opts.onProgress!(
+            p.done,
+            typeof t === "number" && Number.isFinite(t) && t > 0 ? t : null,
+          );
+        })
+      : undefined;
+    let r: unknown;
+    try {
+      r = await this.invoke<unknown>("update", "install", { decision });
+    } finally {
+      off?.();
+    }
     if (!isWireInstallOutcome(r))
       throw new PolarisError(
         "unknown",

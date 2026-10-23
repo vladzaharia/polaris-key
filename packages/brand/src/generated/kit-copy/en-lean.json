@@ -378,7 +378,7 @@
   "signin.choice.portalOff": "{developer} manages devices for this license.",
   "signin.choice.keyInstead": "Use a license key instead",
   "signin.choice.freeDevice": "Free a device",
-  "signin.choice.continue": "Use this license and continue",
+  "signin.choice.continue": "Use this license",
   "signin.choice.raced": "That device was just replaced. Choose again.",
   "signin.choice.codeExpired": "The code on {device} expired. Get a new code there and scan it again.",
   "signin.none.title": "No {product} license in this account",

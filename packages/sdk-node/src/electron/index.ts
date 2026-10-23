@@ -8,6 +8,7 @@ export {
   bridgeState,
   exposePolarisBridge,
   type ExposePolarisBridgeOptions,
+  type HostElectronLike,
   type IpcMainInvokeEventLike,
   type IpcMainLike,
   type PolarisBridgeHandle,

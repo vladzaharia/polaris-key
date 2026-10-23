@@ -2382,12 +2382,12 @@ msgctxt "macos"
 msgid "signin.choice.freeDevice"
 msgstr ""
 
-#. Use this license and continue
+#. Use this license
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.continue"
 msgstr ""
 
-#. macos: Use This License and Continue
+#. macos: Use This License
 msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr ""

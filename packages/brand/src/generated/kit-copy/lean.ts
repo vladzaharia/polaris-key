@@ -104,7 +104,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.choice.create": { macos: "Create a New Free License" },
   "signin.choice.keyInstead": { macos: "Use a License Key Instead" },
   "signin.choice.freeDevice": { macos: "Free a Device" },
-  "signin.choice.continue": { macos: "Use This License and Continue" },
+  "signin.choice.continue": { macos: "Use This License" },
   "signin.none.otherAccount": { macos: "Use Another Account" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },

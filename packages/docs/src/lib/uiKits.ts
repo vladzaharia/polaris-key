@@ -64,7 +64,7 @@ export const UI_KITS: readonly UiKit[] = [
     framework: "Electron (main and preload)",
     sdk: "JS / TS",
     tier: "must",
-    package: "@polaris-key/electron",
+    package: "@polaris-key/node/electron",
     status: { planned: "UK-06" },
   },
   {

@@ -15,7 +15,13 @@ import type {
 } from "@polaris-key/protocol/license";
 import type { BlockedState } from "@polaris-key/client-core";
 import { BRIDGE_VERSION, resolveBridge } from "../src/desktop/bridge.js";
-import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
+import type {
+  BridgeHost,
+  BridgeState,
+  BridgeUpdateProgress,
+  KitView,
+  PolarisBridge,
+} from "../src/desktop/bridge.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import {
   emptyBridgeState,
@@ -331,5 +337,40 @@ describe("resolveBridge", () => {
 
   it("returns null when neither explicit nor global is present", () => {
     expect(resolveBridge()).toBeNull();
+  });
+});
+
+describe("the optional v4 members of UK-06 (host, onUpdateProgress, onOpen)", () => {
+  it("a v4 state and bridge without them still type-check, and with them too", () => {
+    const host: BridgeHost = {
+      os: "linux",
+      accentColor: "#3584e4",
+      highContrast: false,
+      reducedTransparency: true,
+    };
+    const withHost: BridgeState = { ...emptyBridgeState(), host };
+    const without: BridgeState = emptyBridgeState();
+    expect(withHost.host?.os).toBe("linux");
+    expect(without.host).toBeUndefined();
+
+    const progress: BridgeUpdateProgress = { done: 10, total: 100 };
+    const view: KitView = "update";
+    const seen: Array<BridgeUpdateProgress | KitView> = [];
+    const bridge: PolarisBridge = {
+      ...makeFakeBridge(emptyBridgeState()),
+      onUpdateProgress: (cb) => {
+        cb(progress);
+        return () => {};
+      },
+      onOpen: (cb) => {
+        cb(view);
+        return () => {};
+      },
+    };
+    bridge.onUpdateProgress?.((p) => seen.push(p));
+    bridge.onOpen?.((v) => seen.push(v));
+    expect(seen).toEqual([progress, "update"]);
+    // The unchanged fake has neither: an older host.
+    expect(makeFakeBridge(emptyBridgeState()).onOpen).toBeUndefined();
   });
 });

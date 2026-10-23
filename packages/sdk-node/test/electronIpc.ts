@@ -48,6 +48,7 @@ export function ipcPair() {
     ipcMain,
     ipcRenderer,
     handlers,
+    sender,
     deny: () => {
       allowed = false;
     },

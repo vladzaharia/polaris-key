@@ -1074,6 +1074,19 @@ bdi {
   transition: inline-size var(--pk-duration-base) var(--pk-ease-standard);
 }
 
+/* Unknown size (a desktop install whose driver reports no total): a sweep, never a percentage.
+   Standing still, centred, under reduced motion. */
+.progress[data-indeterminate] > span {
+  position: relative;
+  inline-size: 40%;
+  transition: none;
+  animation: pk-sweep var(--pk-duration-shimmer) var(--pk-ease-standard) infinite;
+}
+.pk-root[data-motion="reduced"] .progress[data-indeterminate] > span {
+  animation: none;
+  inset-inline-start: 30%;
+}
+
 /* §1.5 rule 4: the indeterminate 2 px shimmer along the container's top edge. */
 .shimmer {
   position: absolute;
@@ -1348,6 +1361,133 @@ dialog.sheet .card,
   transition: none;
 }
 
+/* ── Windows (Fluent 2, UK-06.6): 32 px controls at radius 4, overlays at radius 8, the sheet as a
+   ContentDialog (a centred 30 rem dialog with its own shadow, the body scrolling above a pinned
+   footer), the two-tone focus ring. The measures are the variant's tokens (tokens.ts writes them
+   from brand); this block is structure. There is no accent rule: the primary's fill is the only
+   accent on a control, and links are accent text. ────────────────────────────────────────── */
+.pk-root[data-pk-platform="windows"] {
+  --pk-kit-radius-card: var(--pk-kit-radius-overlay);
+  --pk-kit-radius-group: var(--pk-kit-radius-control);
+  --pk-gap: var(--pk-space-2);
+}
+/* 32 px: a 1 px border, 5 px, the 20 px line, 5 px. Only the filled buttons take side padding. */
+.pk-root[data-pk-platform="windows"] .btn {
+  padding-block: 0.3125rem;
+}
+.pk-root[data-pk-platform="windows"] .btn:is([data-variant="primary"], [data-variant="secondary"], [data-variant="danger"]) {
+  padding-inline: var(--pk-space-4);
+}
+.pk-root[data-pk-platform="windows"] .btn[data-variant="secondary"] {
+  border-color: var(--pk-border-subtle);
+  background: color-mix(in oklab, var(--pk-text-strong) 6%, var(--pk-surface-raised));
+}
+.pk-root[data-pk-platform="windows"] .btn[data-variant="link"] {
+  color: var(--pk-accent-fg, var(--pk-text-strong));
+}
+/* Fluent presses in place: no scale. */
+.pk-root[data-pk-platform="windows"] .btn:active:not([aria-disabled="true"]) {
+  transform: none;
+}
+/* Paste is a square inside the field, as tall as the field. */
+.pk-root[data-pk-platform="windows"] .field-paste .paste {
+  padding: 0;
+  min-block-size: 0;
+  block-size: 100%;
+  inline-size: var(--pk-kit-control-height);
+}
+/* The ring: 2 px in the strongest text colour with a 1 px gap in the surface inside it, so it
+   holds against the accent fill and the page alike (an accent ring on an accent button vanishes). */
+.pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
+  outline: var(--pk-kit-focus-width) solid var(--pk-text-strong);
+  outline-offset: var(--pk-kit-focus-inner);
+  box-shadow: 0 0 0 var(--pk-kit-focus-inner) var(--pk-surface-raised);
+}
+.pk-root[data-pk-platform="windows"][data-keyboard] .field input:focus-visible,
+.pk-root[data-pk-platform="windows"][data-keyboard] .field textarea:focus-visible {
+  outline-offset: 0;
+  box-shadow: none;
+}
+/* In page content a choice between actions is content-sized, primary first (Fluent buttons are at
+   least 120 px wide); equal widths are the dialog footer's convention. */
+.pk-root[data-pk-platform="windows"] .actions[data-layout="row"] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.pk-root[data-pk-platform="windows"] .actions[data-layout="row"] .btn {
+  flex: 0 0 auto;
+  inline-size: auto;
+  min-inline-size: 7.5rem;
+}
+/* The sheet is a ContentDialog: centred (never docked to the bottom), 30 rem, radius 8 and its
+   own shadow. The card scrolls its body; the footer is pinned to the card's bottom edge. */
+.pk-root[data-pk-platform="windows"] dialog.sheet {
+  margin: auto;
+  inline-size: min(30rem, 100% - 2 * var(--pk-space-4));
+  max-inline-size: none;
+  max-block-size: none;
+  overflow: visible;
+  border-radius: var(--pk-kit-radius-overlay);
+  box-shadow:
+    0 0 0 1px var(--pk-border-subtle),
+    0 2px 21px color-mix(in srgb, black 37%, transparent),
+    0 32px 64px color-mix(in srgb, black 37%, transparent);
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card {
+  container: pkdlg / inline-size;
+  gap: var(--pk-space-4);
+  padding: var(--pk-kit-card-pad) var(--pk-kit-card-pad) 0;
+  border-radius: var(--pk-kit-radius-overlay);
+  overflow: hidden auto;
+  max-block-size: calc(100dvh - 3rem);
+  box-shadow: none;
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: stretch;
+  margin: 0 calc(-1 * var(--pk-kit-card-pad));
+  padding: var(--pk-kit-card-pad);
+  background: color-mix(in oklab, var(--pk-text-strong) 4%, var(--pk-surface-raised));
+  border-block-start: 1px solid var(--pk-border-subtle);
+  box-shadow: none;
+}
+.pk-root[data-pk-platform="windows"][data-theme="dark"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+  background: color-mix(in oklab, black 14%, var(--pk-surface-raised));
+}
+/* A footer label never wraps: the buttons share the footer's width equally, and stack (primary on
+   top) when there are three or more or the dialog is narrower than 22 rem. */
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) .btn {
+  flex: 1 1 0;
+  inline-size: auto;
+  min-inline-size: 0;
+  white-space: nowrap;
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]):has(> :nth-child(3)) {
+  flex-direction: column;
+}
+@container pkdlg (max-width: 22rem) {
+  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+    flex-direction: column;
+  }
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]):has(> :nth-child(3)) .btn,
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) .btn:only-child {
+  flex: none;
+  inline-size: 100%;
+}
+/* No round close beside a footer that already has Cancel or Close (Escape still closes). */
+.pk-root[data-pk-platform="windows"] dialog.sheet:has(.card > .actions .btn:is([data-key="common.cancel"], [data-key="common.close"])) .sheet-close {
+  display: none;
+}
+.pk-root[data-pk-platform="windows"] dialog::backdrop {
+  backdrop-filter: none;
+}
+
 /* ── Controls of the panes: switch, segmented choice, steps, notes ───────────────────────── */
 .switch-wrap {
   display: inline-flex;
@@ -1600,6 +1740,96 @@ dialog.sheet .identity {
   animation: none;
 }
 
+/* ── macOS (UK-06.8): Mac scale (13 pt body, 22 pt titles, 26 pt on Welcome, 28 pt capsule controls),
+   grouped sections at radius 10 and the sheet a floating glass panel inset below the title-bar
+   row, rounded on every side and not dimming the parent. The measures are the variant's tokens
+   (tokens.ts); this block is structure. Button wording is the catalog's macos variants. ───── */
+.pk-root[data-pk-platform="macos"] {
+  --pk-kit-radius-group: var(--pk-kit-radius-form);
+  --pk-kit-radius-card: var(--pk-kit-radius-sheet);
+  --pk-gap: var(--pk-space-2);
+}
+.pk-root[data-pk-platform="macos"] .btn {
+  min-inline-size: 4.5rem;
+  padding-block: 0;
+  padding-inline: 0.875rem;
+  line-height: 1;
+}
+/* The Welcome hero's push button is the one 36 pt control. */
+.pk-root[data-pk-platform="macos"][data-component="Welcome"] .btn[data-variant="primary"] {
+  min-block-size: var(--pk-kit-control-height-hero);
+}
+.pk-root[data-pk-platform="macos"] .btn[data-variant="secondary"] {
+  background: color-mix(in oklab, var(--pk-text-strong) 12%, var(--pk-surface-raised));
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in oklab, var(--pk-text-strong) 14%, transparent),
+    0 0 0 0.5px color-mix(in oklab, var(--pk-text-strong) 14%, transparent);
+}
+.pk-root[data-pk-platform="macos"] .btn:active:not([aria-disabled="true"]) {
+  transform: none;
+}
+/* The system focus ring: a soft 3 pt halo in the accent, on keyboard focus only. */
+.pk-root[data-pk-platform="macos"][data-keyboard] :focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pk-ring) 55%, transparent);
+  outline-offset: 0;
+}
+/* The sheet floats below the title-bar row, 440 pt wide, radius 24 on every side, on a glass
+   ground; the parent stays lit (no scrim) and never docks to the bottom edge. */
+.pk-root[data-pk-platform="macos"] dialog.sheet {
+  margin-block: 3.25rem auto;
+  margin-inline: auto;
+  inline-size: min(27.5rem, 100% - 2 * var(--pk-space-4));
+  max-inline-size: none;
+  max-block-size: calc(100% - 4.25rem);
+}
+.pk-root[data-pk-platform="macos"] dialog::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card {
+  padding: 1.375rem 1.375rem 1.125rem;
+  border-radius: 1.5rem;
+  background: color-mix(in oklab, var(--pk-surface-raised) 86%, transparent);
+  backdrop-filter: blur(40px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 0.5px var(--pk-border-subtle),
+    0 18px 40px -8px color-mix(in srgb, black 45%, transparent);
+}
+/* Cancel then the default, the default at the trailing edge (the DOM puts it first). */
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"],
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"] .btn,
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions .btn {
+  inline-size: auto;
+}
+/* The update prompt's web layout gives the primary a line of its own; on the Mac the buttons sit
+   in one trailing row, each as wide as its label. */
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+  justify-content: flex-start;
+}
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn,
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn[data-variant="primary"] {
+  flex: 0 0 auto;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+/* Increase Contrast: every hairline at full contrast. */
+@media (prefers-contrast: more) {
+  .pk-root[data-pk-platform="macos"] {
+    --pk-border-subtle: var(--pk-text-strong);
+    --pk-border-strong: var(--pk-text-strong);
+  }
+}
+
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
   .card,
@@ -1621,6 +1851,16 @@ dialog.sheet .identity {
   .pk-root[data-keyboard] :focus-visible,
   .field input:focus-visible {
     outline-color: Highlight;
+  }
+  .pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
+    outline-color: Highlight;
+    box-shadow: none;
+  }
+  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+    border-block-start-color: CanvasText;
+  }
+  .pk-root[data-pk-platform="windows"] .btn[data-variant="link"] {
+    color: LinkText;
   }
   .seat-bar span[data-used],
   .progress > span {

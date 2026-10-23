@@ -31,6 +31,7 @@ import {
   POLARIS_BRIDGE_VERSION,
   channelOf,
   stateChannel,
+  updateProgressChannel,
   type BridgeEnvelope,
   type BridgeMethod,
 } from "./protocol.js";
@@ -58,8 +59,31 @@ export interface IpcMainLike {
   removeHandler(channel: string): void;
 }
 
+/** The parts of Electron's `systemPreferences` and `nativeTheme` the host facts read. Passed in
+ *  (`electron: { systemPreferences, nativeTheme }`) so this module imports no `electron`. Every
+ *  member is optional: a fact the runtime cannot answer is left out of `host`. */
+export interface HostElectronLike {
+  systemPreferences?: { getAccentColor?(): string };
+  nativeTheme?: {
+    shouldUseHighContrastColors?: boolean;
+    prefersReducedTransparency?: boolean;
+  };
+}
+
+/** The OS facts a state carries (`BridgeState.host`, UK-06.3): the kit picks its desktop chrome
+ *  from them. */
+export interface BridgeHostFacts {
+  os: "macos" | "windows" | "linux";
+  accentColor?: string;
+  highContrast?: boolean;
+  reducedTransparency?: boolean;
+}
+
 export interface ExposePolarisBridgeOptions {
   ipcMain: IpcMainLike;
+  /** Electron's `systemPreferences` and `nativeTheme`, for the accent colour, high contrast and
+   *  reduced transparency in `state.host`. Without it `host` carries the OS only. */
+  electron?: HostElectronLike;
   /** Renderers that get `stateChanged` pushes without subscribing (the preload subscribes on
    *  its own, so this is only for a custom preload). */
   webContents?: WebContentsLike | WebContentsLike[];
@@ -125,6 +149,9 @@ function defaultAllowSender(
   };
 }
 
+/** At most this often (10 per second) an install pushes progress to its window. */
+const PROGRESS_INTERVAL_MS = 100;
+
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */
 export type PolarisBridgeHandle = {
   close(): void;
@@ -137,9 +164,51 @@ interface FlowEntry {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/** `process.platform` as the kit's `os`. */
+function hostOs(platform: string): BridgeHostFacts["os"] {
+  return platform === "darwin"
+    ? "macos"
+    : platform === "win32"
+      ? "windows"
+      : "linux";
+}
+
+/** The host facts for a state. Each Electron read is guarded: a throwing or missing accessor
+ *  leaves its fact out rather than failing the state. The accent is Electron's `rrggbbaa` as
+ *  `#rrggbb`; anything else is dropped. */
+export function hostFacts(electron?: HostElectronLike): BridgeHostFacts {
+  const host: BridgeHostFacts = { os: hostOs(process.platform) };
+  try {
+    const raw = electron?.systemPreferences?.getAccentColor?.();
+    if (typeof raw === "string") {
+      const m = /^#?([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(raw);
+      if (m) host.accentColor = `#${m[1]!.toLowerCase()}`;
+    }
+  } catch {
+    // No accent on this OS.
+  }
+  try {
+    const hc = electron?.nativeTheme?.shouldUseHighContrastColors;
+    if (typeof hc === "boolean") host.highContrast = hc;
+  } catch {
+    // Unknown.
+  }
+  try {
+    const rt = electron?.nativeTheme?.prefersReducedTransparency;
+    if (typeof rt === "boolean") host.reducedTransparency = rt;
+  } catch {
+    // Unknown.
+  }
+  return host;
+}
+
 /** A BridgeState: the client's SyncState plus the capability map, the config entries, the
- *  device-local overrides (v4 `config.local`) and the presentation member. */
-export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
+ *  device-local overrides (v4 `config.local`), the presentation member and, when the caller
+ *  passes them, the host facts (UK-06.3). */
+export function bridgeState(
+  client: PolarisKeyClient,
+  host?: BridgeHostFacts,
+): Record<string, unknown> {
   const state: Record<string, unknown> = {
     ...client.getSyncState(),
     capabilities: client.capabilities(),
@@ -151,6 +220,7 @@ export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   // Discovery's `core.presentation` (HA-13): the member rides every state, null for none.
   state.presentation =
     typeof client.presentation === "function" ? client.presentation() : null;
+  if (host) state.host = host;
   return state;
 }
 
@@ -399,9 +469,12 @@ export function exposePolarisBridge(
   const flows = new Map<string, FlowEntry>();
   for (const wc of [opts.webContents ?? []].flat()) subscribers.set(wc.id, wc);
 
+  const currentState = (): Record<string, unknown> =>
+    bridgeState(client, hostFacts(opts.electron));
+
   const pushState = (): void => {
     if (subscribers.size === 0) return;
-    const state = bridgeState(client);
+    const state = currentState();
     for (const [id, wc] of subscribers) {
       if (wc.isDestroyed?.()) {
         subscribers.delete(id);
@@ -437,7 +510,71 @@ export function exposePolarisBridge(
   // (the adapter names the decision only, so a non-default channel is kept here, not re-sent).
   let lastDecide: Parameters<PolarisKeyClient["update"]["decide"]>[0] = {};
 
-  const invokeVerbs: Record<string, (args: unknown) => Promise<unknown>> = {
+  const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
+
+  /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
+   *  (never `subscribers`), at most 10 per second, and never after the install settled or its
+   *  window went away. The sender is re-checked against `allowSender` on every push: a frame
+   *  that navigated off the app's origin mid-install stops receiving. */
+  const installProgress = (
+    event: IpcMainInvokeEventLike,
+    decision: UpdateDecision,
+  ): {
+    onProgress: (done: number, total: number) => void;
+    signal: AbortSignal;
+    end: () => void;
+  } => {
+    const wc = event.sender;
+    const ctl = new AbortController();
+    let ended = false;
+    let last = -Infinity;
+    // The window closing cancels the install: nobody is left to restart into.
+    wc.once?.("destroyed", () => {
+      ended = true;
+      ctl.abort();
+    });
+    const version =
+      decision.action === "binary" || decision.action === "store"
+        ? decision.release.version
+        : undefined;
+    return {
+      signal: ctl.signal,
+      end: () => {
+        ended = true;
+      },
+      onProgress: (done, total) => {
+        if (ended || wc.isDestroyed?.()) return;
+        if (typeof done !== "number" || !Number.isFinite(done) || done < 0)
+          return;
+        const now = Date.now();
+        if (now - last < PROGRESS_INTERVAL_MS) return;
+        // A total is a count only when it is a positive number no smaller than what arrived;
+        // anything else is "unknown", never a guessed percentage.
+        const known =
+          typeof total === "number" &&
+          Number.isFinite(total) &&
+          total > 0 &&
+          total >= done;
+        try {
+          if (!senderAllowed(event)) return;
+          last = now;
+          wc.send(updateProgressChannel(prefix), {
+            ...(version ? { version } : {}),
+            done,
+            total: known ? total : null,
+            phase: "download",
+          });
+        } catch {
+          // A window that cannot receive is not the install's problem.
+        }
+      },
+    };
+  };
+
+  const invokeVerbs: Record<
+    string,
+    (args: unknown, event: IpcMainInvokeEventLike) => Promise<unknown>
+  > = {
     "devices.list": async () => client.listDevices(),
     "devices.rename": async (a) => {
       const b = bag(a);
@@ -472,7 +609,7 @@ export function exposePolarisBridge(
       lastDecide = o;
       return client.update.decide(o);
     },
-    "update.install": async (a) => {
+    "update.install": async (a, event) => {
       const b = bag(a);
       const offered = b.decision;
       if (typeof offered !== "object" || offered === null)
@@ -488,7 +625,17 @@ export function exposePolarisBridge(
           "invalid-argument",
           "that update is no longer offered; check for updates again.",
         );
-      const outcome = await client.update.install(current);
+      const progress = installProgress(event, current);
+      let outcome: Awaited<ReturnType<PolarisKeyClient["update"]["install"]>>;
+      try {
+        outcome = await client.update.install(current, {
+          onProgress: progress.onProgress,
+          signal: progress.signal,
+        });
+      } finally {
+        // Success, failure or cancel: nothing is pushed after the install has settled.
+        progress.end();
+      }
       // Any install clears a restart left pending from an earlier one.
       pendingRestart = null;
       if (outcome.kind === "restartRequired") {
@@ -748,10 +895,10 @@ export function exposePolarisBridge(
     BridgeMethod,
     (event: IpcMainInvokeEventLike, ...args: unknown[]) => Promise<unknown>
   > = {
-    getSyncState: async () => bridgeState(client),
+    getSyncState: async () => currentState(),
     refresh: async () => {
       await client.sync({ force: true });
-      return bridgeState(client);
+      return currentState();
     },
     beginSignIn: async (_e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
@@ -817,7 +964,7 @@ export function exposePolarisBridge(
       pushState();
       return null;
     },
-    invoke: async (_e, service, method, args) => {
+    invoke: async (event, service, method, args) => {
       const name = `${str(service, "service")}.${str(method, "method")}`;
       const fn = Object.hasOwn(invokeVerbs, name) ? invokeVerbs[name] : null;
       if (!fn)
@@ -825,7 +972,7 @@ export function exposePolarisBridge(
           "invoke-not-allowed",
           `This desktop host does not expose ${name} to the renderer.`,
         );
-      const value = await fn(args);
+      const value = await fn(args, event);
       if (name === "devices.deauthorize") pushState();
       return value ?? null;
     },
@@ -848,8 +995,6 @@ export function exposePolarisBridge(
       return null;
     },
   };
-
-  const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
 
   for (const method of BRIDGE_METHODS) {
     const handler = handlers[method];

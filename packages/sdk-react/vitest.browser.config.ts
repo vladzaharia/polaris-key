@@ -5,12 +5,18 @@ import { defineConfig } from "vitest/config";
 
 /** The slice of Playwright's `Page` the commands use. */
 interface PlaywrightPage {
+  context(): {
+    newCDPSession(page: PlaywrightPage): Promise<{
+      send(method: string, params?: object): Promise<unknown>;
+    }>;
+  };
   locator(selector: string): {
     screenshot(options: { path: string }): Promise<unknown>;
   };
   emulateMedia(options: {
     colorScheme?: "dark" | "light" | null;
     forcedColors?: "active" | "none" | null;
+    contrast?: "more" | "no-preference" | null;
     reducedMotion?: "reduce" | "no-preference" | null;
   }): Promise<void>;
 }
@@ -57,9 +63,23 @@ export default defineConfig({
         },
         // The OS colour scheme (`prefers-color-scheme`), for colorScheme "system"; null resets.
         // Forced colours (`forced-colors: active`), the OS high-contrast mode; null resets.
+        // A coarse pointer (`pointer: coarse`): touch emulation through the DevTools protocol.
+        async emulateTouch(ctx, on: boolean) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          const cdp = await page.context().newCDPSession(page);
+          await cdp.send("Emulation.setTouchEmulationEnabled", {
+            enabled: on,
+            maxTouchPoints: on ? 5 : 1,
+          });
+        },
         async emulateForced(ctx, forced: "active" | null) {
           const page = (ctx as unknown as { page: PlaywrightPage }).page;
           await page.emulateMedia({ forcedColors: forced });
+        },
+        // Increase Contrast (`prefers-contrast: more`); null resets.
+        async emulateContrast(ctx, contrast: "more" | null) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          await page.emulateMedia({ contrast });
         },
         // Reduced motion (`prefers-reduced-motion: reduce`); null resets.
         async emulateMotion(ctx, motion: "reduce" | null) {

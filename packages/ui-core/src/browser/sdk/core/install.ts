@@ -31,6 +31,10 @@ export interface InstallOptions {
    *  (the default). `false` answers `restartRequired` instead and leaves the reload to the
    *  caller's `restart()`. A desktop host decides on its own. */
   reload?: boolean;
+  /** Desktop only: bytes as the host's install driver reports them. `total` is `null` when the
+   *  driver does not know it: draw an indeterminate bar, never a percentage. A host that does
+   *  not push progress (older bridge, a driver that reports none) never calls it. */
+  onProgress?: (done: number, total: number | null) => void;
 }
 
 export type UnsupportedOutcome = Extract<
