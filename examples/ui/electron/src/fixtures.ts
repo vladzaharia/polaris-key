@@ -10,6 +10,7 @@
 // TIDEWATER_STATE pins the gate for one run: ok, grace, expired, revoked, version-too-old,
 // version-too-new or channel-not-entitled. Without it the first screen is Activate.
 
+import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import type { PolarisKeyClient } from "@polaris-key/node";
 
@@ -18,6 +19,21 @@ const TIDEWATER = {
   name: "Tidewater Studio",
   developerName: "Harbor Audio",
   accent: "#369186",
+};
+import { ICON_PNG_BASE64 } from "./icon";
+
+const ICON = new Uint8Array(Buffer.from(ICON_PNG_BASE64, "base64"));
+// The kit verifies the bytes against this hash before it draws them.
+const PRESENTATION = {
+  ...TIDEWATER,
+  icon: {
+    sha256: createHash("sha256").update(ICON).digest("hex"),
+    contentType: "image/png",
+    width: 128,
+    height: 128,
+    original: "https://dl.plrs.im/tidewater/icon.png",
+    sizes: [],
+  },
 };
 const SERVICES = ["license", "config", "identity", "release", "update"];
 const MANAGE =
@@ -173,9 +189,9 @@ export function createFixtureClient(
     events,
     capabilities: () =>
       Object.fromEntries(SERVICES.map((s) => [s, { enabled: true }])),
-    presentation: () => TIDEWATER,
+    presentation: () => PRESENTATION,
     presentationSource: () => ({ subscribe: () => () => undefined }),
-    presentationIcon: async () => null,
+    presentationIcon: async () => ICON,
     getSyncState: () => ({
       activation: state.licensed ? "token" : null,
       doc: state.licensed ? doc() : null,

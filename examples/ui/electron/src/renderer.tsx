@@ -1,6 +1,6 @@
 // The renderer: the React kit over the bridge the preload exposed. No credential, keyring or
-// network code runs here. The window's chrome and the host's accent come over the bridge
-// (`platform: "auto"`), so there is no theme code either.
+// network code runs here. The one theme line, `platform: "auto"`, turns on the desktop chrome
+// (Windows, macOS, GNOME) from the host's OS, which comes over the bridge with its accent.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { PolarisKeyProvider } from "@polaris-key/react";
@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")!).render(
         version: __APP_VERSION__,
       }}
     >
-      <PolarisKeyGate>
+      <PolarisKeyGate theme={{ platform: "auto" }}>
         <App />
       </PolarisKeyGate>
     </PolarisKeyProvider>

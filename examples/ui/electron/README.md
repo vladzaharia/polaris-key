@@ -7,16 +7,21 @@ plugin). Two lines wire it:
   The app menu (macOS) or the Help menu gets `bridge.menuItems()`.
 - **preload** (`src/preload.ts`): `import "@polaris-key/node/electron/preload"`.
 - **renderer** (`src/renderer.tsx`): `<PolarisKeyProvider><PolarisKeyGate><App/></PolarisKeyGate></PolarisKeyProvider>`
-  and `@polaris-key/react/styles.css`. The chrome (Windows, macOS, GNOME) and the host accent come
-  over the bridge; there is no theme code.
+  and `@polaris-key/react/styles.css`. `<PolarisKeyGate theme={{ platform: "auto" }}>` picks the
+  chrome (Windows, macOS, GNOME) and the host accent from the OS the bridge reports.
 
 The window uses `contextIsolation: true` and `sandbox: true`, refuses popups and navigation, and
-the bridge answers only the top frame of `appOrigin` (the dev server, or `app://main` in a build).
+the bridge answers only the top frame of `appOrigin` (the dev server's origin, or `app://main`
+in a build, pinned by scheme and host).
 
 ## Run it against the fixture
 
 `src/fixtures.ts` stands in for the client: no Worker, no network, no keys. The bridge, preload
 and kit are the real ones.
+
+The `@polaris-key/node` and `@polaris-key/react` entries in `package.json` are the repo's workspace
+versions (`^0.0.0`). Outside the repo, install the released versions from the registry that
+publishes them (set `@polaris-key:registry` in an `.npmrc`) and change the two ranges to match.
 
 ```sh
 npm install

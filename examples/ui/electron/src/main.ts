@@ -15,7 +15,7 @@ import {
 } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { exposePolarisBridge } from "@polaris-key/node/electron";
 import { createFixtureClient } from "./fixtures";
@@ -43,7 +43,7 @@ void (async () => {
       const path = decodeURIComponent(new URL(req.url).pathname);
       const file = join(root, path === "/" ? "index.html" : path);
       // Nothing outside the renderer build is served.
-      if (!file.startsWith(root))
+      if (file !== root && !file.startsWith(root + sep))
         return new Response("Not found", { status: 404 });
       return net.fetch(pathToFileURL(file).toString());
     });
@@ -109,9 +109,15 @@ void (async () => {
 
   // The window shows the app and nothing else: no popups, no navigation away.
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  win.webContents.on("will-navigate", (e, url) => {
-    if (new URL(url).origin !== new URL(pageUrl).origin) e.preventDefault();
-  });
+  // Compare scheme and host: `.origin` is the opaque "null" for app: and file: URLs.
+  const page = new URL(pageUrl);
+  const stay = (e: { preventDefault(): void }, url: string) => {
+    const u = new URL(url);
+    if (u.protocol !== page.protocol || u.host !== page.host)
+      e.preventDefault();
+  };
+  win.webContents.on("will-navigate", (e, url) => stay(e, url));
+  win.webContents.on("will-redirect", (e, url) => stay(e, url));
   win.once("ready-to-show", () => win.show());
 
   const scheme = arg("scheme");
