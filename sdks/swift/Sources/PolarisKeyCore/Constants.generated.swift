@@ -1301,6 +1301,42 @@ public let ACTIVATION_RESULT_VALUES: [String] = [
     "error",
 ]
 
+/// How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it.
+public enum SettingVisibility {
+    public static let editable = "editable"
+    public static let readonly = "readonly"
+    public static let hidden = "hidden"
+}
+
+/// Every `SettingVisibility` value, in source order.
+public let SETTING_VISIBILITY_VALUES: [String] = [
+    "editable",
+    "readonly",
+    "hidden",
+]
+
+/// The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21.
+public enum EventKind {
+    public static let license = "license"
+    public static let entitlement = "entitlement"
+    public static let config = "config"
+    public static let updateavailable = "updateAvailable"
+    public static let packs = "packs"
+    public static let store = "store"
+    public static let cloudsync = "cloudSync"
+}
+
+/// Every `EventKind` value, in source order.
+public let EVENT_KIND_VALUES: [String] = [
+    "license",
+    "entitlement",
+    "config",
+    "updateAvailable",
+    "packs",
+    "store",
+    "cloudSync",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"

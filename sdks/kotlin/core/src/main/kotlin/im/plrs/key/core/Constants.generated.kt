@@ -1341,6 +1341,42 @@ public val ACTIVATION_RESULT_VALUES: List<String> = listOf(
     "error",
 )
 
+/** How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it. */
+public object SettingVisibility {
+    public const val editable: String = "editable"
+    public const val readonly: String = "readonly"
+    public const val hidden: String = "hidden"
+}
+
+/** Every `SettingVisibility` value, in source order. */
+public val SETTING_VISIBILITY_VALUES: List<String> = listOf(
+    "editable",
+    "readonly",
+    "hidden",
+)
+
+/** The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21. */
+public object EventKind {
+    public const val license: String = "license"
+    public const val entitlement: String = "entitlement"
+    public const val config: String = "config"
+    public const val updateavailable: String = "updateAvailable"
+    public const val packs: String = "packs"
+    public const val store: String = "store"
+    public const val cloudsync: String = "cloudSync"
+}
+
+/** Every `EventKind` value, in source order. */
+public val EVENT_KIND_VALUES: List<String> = listOf(
+    "license",
+    "entitlement",
+    "config",
+    "updateAvailable",
+    "packs",
+    "store",
+    "cloudSync",
+)
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 public object HeaderName {
     public const val arch: String = "X-PKey-Arch"

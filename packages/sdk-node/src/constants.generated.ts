@@ -1366,6 +1366,45 @@ export const ACTIVATION_RESULT_VALUES: readonly string[] = [
   "error",
 ];
 
+/** How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it. */
+export const SettingVisibility = {
+  editable: "editable",
+  readonly: "readonly",
+  hidden: "hidden",
+} as const;
+export type SettingVisibility =
+  (typeof SettingVisibility)[keyof typeof SettingVisibility];
+
+/** Every `SettingVisibility` value, in source order. */
+export const SETTING_VISIBILITY_VALUES: readonly SettingVisibility[] = [
+  "editable",
+  "readonly",
+  "hidden",
+];
+
+/** The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21. */
+export const EventKind = {
+  license: "license",
+  entitlement: "entitlement",
+  config: "config",
+  updateavailable: "updateAvailable",
+  packs: "packs",
+  store: "store",
+  cloudsync: "cloudSync",
+} as const;
+export type EventKind = (typeof EventKind)[keyof typeof EventKind];
+
+/** Every `EventKind` value, in source order. */
+export const EVENT_KIND_VALUES: readonly EventKind[] = [
+  "license",
+  "entitlement",
+  "config",
+  "updateAvailable",
+  "packs",
+  "store",
+  "cloudSync",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",
