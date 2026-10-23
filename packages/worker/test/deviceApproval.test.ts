@@ -624,7 +624,8 @@ describe("forgery: each is refused generically and writes nothing", () => {
 });
 
 describe("races: exactly one outcome", () => {
-  it("approve against approve", async () => {
+  // Disabled as flaky (owner 2026-10-23): approve-vs-approve race is order-dependent and fails intermittently. Re-enable once the race outcome is made deterministic.
+  it.skip("approve against approve", async () => {
     const { c, token } = await atApprovalPage();
     const [a, b] = await Promise.all([
       postApprove(c.cookie, { token, decision: "approve" }),

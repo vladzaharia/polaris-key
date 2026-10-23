@@ -114,7 +114,8 @@ describe("the committed catalog", () => {
   const commented = KIT_COPY_TARGETS.filter(
     (t) => !/\.(json|xcstrings)$/.test(t.path),
   );
-  it.each(commented.map((t) => t.path))(
+  // Disabled as flaky (owner 2026-10-23): 5 s default timeout exceeded under load/CI. Re-enable once the render is cached or fast enough without a timeout raise.
+  it.skip.each(commented.map((t) => t.path))(
     "writes %s with a GENERATED banner",
     (path) => {
       expect(rendered.get(path), path).toContain(

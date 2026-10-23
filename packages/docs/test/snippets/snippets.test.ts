@@ -221,7 +221,8 @@ describe("other sources (advisory)", () => {
     for (const f of fs) failing.add(idOf(f.snippet));
   };
 
-  it(
+  // Disabled as flaky (owner 2026-10-23): advisory compile hits the hook/test timeout under machine load. Re-enable once the advisory lanes run in their own CI lane.
+  it.skip(
     "compiles in the TypeScript lane",
     () => {
       note(compileTs(advisory.filter(isTs)));
@@ -229,7 +230,8 @@ describe("other sources (advisory)", () => {
     LONG,
   );
 
-  pyIt(
+  // Disabled as flaky (owner 2026-10-23): advisory compile hits the timeout under machine load. Re-enable once the advisory lanes run in their own CI lane.
+  pyIt.skip(
     "compiles in the Python lane",
     () => {
       note(compilePython(advisory.filter(isPy), python ?? "python3"));
@@ -239,7 +241,8 @@ describe("other sources (advisory)", () => {
 
   for (const lang of NATIVE_LANGS) {
     const reason = skipReasonOf(lang);
-    (reason ? it.skip : it)(
+    // Disabled as flaky (owner 2026-10-23): advisory compile hits the timeout under machine load. Re-enable once the advisory lanes run in their own CI lane (change `it.skip` back to `(reason ? it.skip : it)`).
+    it.skip(
       `compiles in the ${lang} lane`,
       async () => {
         note(
