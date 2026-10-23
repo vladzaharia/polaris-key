@@ -13,7 +13,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
-import { api, type Member, type MemberInvite } from "../../../../api.js";
+import { type MemberInvite } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import {
@@ -30,7 +30,8 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { roleLabel } from "../../../access/can.js";
 import { RoleTags } from "../../../access/RoleTag.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
 import { useMe } from "../../../data/hooks.js";
 import { navigate, useRoute } from "../../../router.js";
 import { PageTabs } from "../../../components/PageTabs.js";
@@ -76,10 +77,7 @@ const SOURCE_OPTIONS = [
 ];
 
 export function PlatformMembers(): React.ReactElement {
-  const view = useQuery({
-    queryKey: qk.members(),
-    queryFn: () => api.members(),
-  });
+  const view = useQuery(platformReads.members());
   const meQ = useMe();
   const me = meQ.data;
   useLoadingAnnouncement("members", view.isPending);

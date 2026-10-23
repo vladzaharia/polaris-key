@@ -26,7 +26,6 @@ import {
 } from "./platformDeepLink.js";
 import { History } from "lucide-react";
 import {
-  api,
   type PlatformDeployValue,
   type PlatformSetting,
   type PlatformSettingsView,
@@ -39,9 +38,9 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { LiveRegion } from "../../../../ui/LiveRegion.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { qk } from "../../../data/queries.js";
+
+import { reads } from "../../../data/reads.js";
 import {
-  SettingsRow,
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
@@ -62,8 +61,7 @@ import { LicensingSection } from "./platformLicensing.js";
 import { PlatformReadyOnHomeRow } from "./platformHomeRow.js";
 import { EditableRow } from "./platformSettingRow.js";
 
-export { fetchPlatformKek } from "./platformKeyring.js";
-export { fetchPlatformReservedNames } from "./platformLicensing.js";
+export { fetchPlatformKek, fetchPlatformReservedNames } from "../data.js";
 
 type SectionId =
   | "platform-ready"
@@ -236,10 +234,7 @@ function ViewOnlyNotice(): React.ReactElement | null {
 }
 
 export function PlatformSettingsPage(): React.ReactElement {
-  const query = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
-  });
+  const query = useQuery(reads.platformSettings());
   const view = query.data;
   useSettingTarget(view !== undefined, platformRowId);
   useOpenAdvancedFor(view);

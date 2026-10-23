@@ -1,10 +1,9 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../api.js";
 import { formatCount } from "../../../lib/format.js";
-import { qk } from "../../data/queries.js";
 import { r } from "../../routes.js";
 import { FeatureCard } from "../core/components/TileFrame.js";
+import { reads } from "../../data/reads.js";
 
 /** Commerce's card on the Overview (CM-29): its storefronts and the store purchases they brought. */
 export function CommerceTile({
@@ -14,10 +13,7 @@ export function CommerceTile({
   slug: string;
   attention?: number;
 }): React.ReactElement {
-  const services = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
+  const services = useQuery(reads.services(slug));
   const facts = services.data?.facts.commerce;
   const grants = facts?.storeGrants ?? 0;
   return (

@@ -34,7 +34,6 @@ import {
 import { KeyRound, RefreshCw, Upload } from "lucide-react";
 import {
   ApiError,
-  api,
   type CredentialCheck,
   type PlatformStore,
   type PlatformStoreApp,
@@ -75,6 +74,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProducts } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { markStoreRefresh, platformReads } from "../data.js";
 import { Link, navigate, useSearchParam } from "../../../router.js";
 import { setUpHref } from "../../storefronts/pages/StorefrontsPage.js";
 import { codecs, r } from "../../../routes.js";
@@ -83,25 +83,6 @@ import { Panel } from "../../../templates/Dashboard.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────────
-
-export function fetchPlatformStores(): Promise<PlatformStoreConnection[]> {
-  return api.platformStoreConnections().then((r) => r.stores);
-}
-
-/**
- * One store's apps. A Re-check marks the next fetch of that store as a refresh (`?refresh=1`),
- * so the store is read again and the result lands in the same cache entry and states.
- */
-const refreshNext = new Set<string>();
-
-export function fetchPlatformStoreApps(
-  store: PlatformStore,
-  tracks: boolean,
-): Promise<PlatformStoreApps> {
-  const key = `${store}:${tracks ? "tracks" : "plain"}`;
-  const refresh = refreshNext.delete(key);
-  return api.platformStoreApps(store, { refresh, tracks });
-}
 
 const STORES: readonly PlatformStore[] = [
   "app-store",
@@ -307,10 +288,7 @@ export function appStatusLines(
 // ── page ─────────────────────────────────────────────────────────────────────────────────────
 
 export function StoreConnections(): React.ReactElement {
-  const stores = useQuery({
-    queryKey: qk.platformStores(),
-    queryFn: fetchPlatformStores,
-  });
+  const stores = useQuery(platformReads.stores());
   const [selected, setSelected] = useSearchParam("store", storeCodec);
   const list = stores.data ?? [];
   const current = list.find((s) => s.store === selected) ?? null;
@@ -453,8 +431,7 @@ function StoreDetail({
   const tracks = s.store === "google-play" && tracksRaw === "1";
   const configured = s.configured;
   const apps = useQuery({
-    queryKey: qk.platformStoreApps(s.store, tracks),
-    queryFn: () => fetchPlatformStoreApps(s.store, tracks),
+    ...platformReads.storeApps(s.store, tracks),
     enabled: configured && s.appsListing,
     retry: false,
   });
@@ -463,7 +440,7 @@ function StoreDetail({
 
   const recheck = async () => {
     setChecking(true);
-    refreshNext.add(`${s.store}:${tracks ? "tracks" : "plain"}`);
+    markStoreRefresh(s.store, tracks);
     try {
       const res = await apps.refetch();
       if (res.isSuccess)
