@@ -326,6 +326,7 @@ export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
       const out: Record<string, unknown> = { kind: "device-limit" };
       if (r.limit !== undefined) out.limit = r.limit;
       if (r.deviceCount !== undefined) out.deviceCount = r.deviceCount;
+      if (r.manageUrl !== undefined) out.manageUrl = r.manageUrl;
       return out;
     }
     case "unauthorized":

@@ -340,12 +340,8 @@ describe("Library on today's data (PX-02)", () => {
     });
     // The title and the button only (portal.library): no line between them.
     expect(within(tile).queryByText(/Activate it to add/)).toBeNull();
-    // Three products: it fills the rest of the last row: one cell at two columns and at four,
-    // the whole row at three, two cells at five.
-    expect(tile.className).toMatch(/(^| )col-span-1/);
-    expect(tile.className).toMatch(/desk:col-span-3/);
-    expect(tile.className).toMatch(/wide:col-span-1/);
-    expect(tile.className).toMatch(/xxl:col-span-2/);
+    // One grid cell, the size of a product tile, at every width (it no longer spans the row).
+    expect(tile.className).not.toMatch(/col-span-/);
     expect(tile.firstElementChild!.className).toContain("border-dashed");
     expect(
       within(tile).getByRole("heading", {

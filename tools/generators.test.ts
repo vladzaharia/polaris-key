@@ -183,6 +183,7 @@ describe("pnpm gen selection", () => {
       "corpus",
       "services",
       "channels",
+      "roles-matrix",
       "registry-docs",
       "readme-work",
       "ux-rows",
