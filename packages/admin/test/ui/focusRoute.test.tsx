@@ -43,10 +43,27 @@ describe("focusRoute", () => {
     expect(announced).toEqual(["Licenses, page loaded"]);
   });
 
-  it("uses title over the heading text, and [aria-level=1]", async () => {
-    html("<div role='heading' aria-level='1'>x</div>");
-    expect(await focusRoute({ title: "Devices" })).toBe("focused");
-    expect(lastAnnouncement()).toBe("Devices, page loaded");
+  it("announces the heading's accessible name, not the passed title; [aria-level=1] counts", async () => {
+    html("<div role='heading' aria-level='1'>Ada Lovelace</div>");
+    expect(await focusRoute({ title: "License lic_1" })).toBe("focused");
+    expect(lastAnnouncement()).toBe("Ada Lovelace, page loaded");
+  });
+
+  it("leaves decorative parts out of the name, and honours aria-label", async () => {
+    html(
+      "<h1>DJDL <span aria-hidden='true'>live</span> <span hidden>x</span><span class='sr-only'>product</span></h1>",
+    );
+    await focusRoute({ title: "Overview" });
+    expect(lastAnnouncement()).toBe("DJDL product, page loaded");
+    html("<h1 aria-label='Licence not found'>Not <b>found</b> 404</h1>");
+    await focusRoute();
+    expect(lastAnnouncement()).toBe("Licence not found, page loaded");
+  });
+
+  it("falls back to the title when the heading has no name", async () => {
+    html("<h1><span aria-hidden='true'>x</span></h1>");
+    await focusRoute({ title: "No access · Tiers" });
+    expect(lastAnnouncement()).toBe("No access · Tiers, page loaded");
   });
 
   it("leaves focus alone while a dialog is open", async () => {
@@ -128,10 +145,9 @@ describe("focusRoute", () => {
   it("announces once per call", async () => {
     html("<h1>Page</h1>");
     await focusRoute({ title: "A" });
-    expect(lastAnnouncement()).toBe("A, page loaded");
+    expect(lastAnnouncement()).toBe("Page, page loaded");
     await vi.advanceTimersByTimeAsync(5000);
-    expect(lastAnnouncement()).toBe("A, page loaded");
-    expect(announced).toEqual(["A, page loaded"]);
+    expect(announced).toEqual(["Page, page loaded"]);
   });
 
   it("never focuses or announces a placeholder; it keeps waiting while alive, then ends silently", async () => {
