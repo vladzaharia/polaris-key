@@ -1094,7 +1094,7 @@ describe("account commands: refusals and bounds", () => {
     }
   });
 
-  it("unknown flags and extra words are ignored, as every other command does", async () => {
+  it("unknown flags and extra words are ignored by whoami (validate and doctor are strict since P0-45-fix)", async () => {
     const { f } = fakeFetch(() => json(200, ME));
     const r = await run(["whoami", "--bogus", "extra", ...BASE], {
       store: async () => signedIn(FAR, LABELLED),
@@ -1102,7 +1102,7 @@ describe("account commands: refusals and bounds", () => {
     });
     expect(r.code).toBe(0);
     const v = await run(["validate", "--bogus", "extra"]);
-    expect(v.err).not.toContain("Unknown option");
+    expect(v.err).toContain("Unknown option --bogus");
   });
 
   it("N1: a body past 64 KiB is read as nothing, not buffered", async () => {

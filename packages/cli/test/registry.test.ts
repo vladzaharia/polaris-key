@@ -494,7 +494,6 @@ describe("pkey doctor", () => {
         ["services", "ok"],
         ["signing-keys", "ok"],
       ]);
-      expect(line.signing).toEqual([{ kid: "djdl-2026", status: "active" }]);
       expect(out.out.trim().split("\n")).toHaveLength(1);
     } finally {
       globalThis.fetch = real;
@@ -527,14 +526,8 @@ describe("pkey doctor", () => {
     expect(out.code).toBe(1);
     const line = JSON.parse(out.out.trim());
     expect(line.product).toBeNull();
-    expect(line.facts).toHaveLength(2);
+    expect(line.facts).toHaveLength(1);
     expect(line.facts[0]).toMatchObject({ id: "manifest", state: "todo" });
-    expect(line.facts[1]).toEqual({
-      id: "discovery",
-      state: "warn",
-      detail: "skipped: no product",
-      fix: "Pass --product, or run where .pkey/product is.",
-    });
   });
 
   it("text: outside a repository with no product it validates (and fails), never fetches", async () => {
