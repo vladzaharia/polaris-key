@@ -122,12 +122,12 @@ export function Table({
               key={h || "actions"}
               role="columnheader"
               scope="col"
-              className="px-5 py-2.5 text-start font-medium"
+              className="px-5 py-2 text-start font-medium"
             >
               {h || <span className="sr-only">Actions</span>}
             </th>
           ))}
-          {pad ? <th aria-hidden="true" className="px-5 py-2.5" /> : null}
+          {pad ? <th aria-hidden="true" className="px-5 py-2" /> : null}
         </tr>
       </thead>
       <tbody

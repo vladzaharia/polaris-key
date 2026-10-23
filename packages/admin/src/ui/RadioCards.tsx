@@ -102,7 +102,7 @@ export function RadioCards<V extends string = string>({
         const itemId = `${id ?? name ?? "rc"}-${o.value}`;
         const withFooter = o.footer && value === o.value;
         return (
-          <div key={o.value} className="min-w-0">
+          <div key={o.value} className="relative flex min-w-0 flex-col">
             <RadioGroup.Item
               value={o.value}
               id={itemId}

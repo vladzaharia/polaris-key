@@ -262,7 +262,13 @@ export function ProductCard({
                         {inner}
                       </Link>
                     ) : (
-                      <span role="img" {...common}>
+                      // Not a control: no tab stop, so nothing for the interactive-states lint to ask of.
+                      <span
+                        role="img"
+                        {...common}
+                        tabIndex={undefined}
+                        onFocus={undefined}
+                      >
                         {inner}
                       </span>
                     )}
