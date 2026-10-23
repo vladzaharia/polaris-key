@@ -17,6 +17,7 @@
  * read-only with the reason when the product has no usable App Store Connect connector.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -73,7 +74,7 @@ const STEPS: WizardStep[] = [
   { id: "build", label: "Build" },
   { id: "compliance", label: "Export compliance" },
   { id: "notes", label: "Release notes" },
-  { id: "testflight", label: "TestFlight" },
+  { id: "testflight", label: channelLabel("testflight") },
   { id: "version", label: "Version" },
   { id: "preflight", label: "Preflight" },
   { id: "submit", label: "Submit" },
@@ -136,7 +137,7 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
   return (
     <div className="space-y-6" data-template="flow">
       <PageHeader
-        title="App Store"
+        title={channelLabel("app-store")}
         titleAside={
           asc && !blocked ? (
             <StatusPill tone="success">Connected</StatusPill>

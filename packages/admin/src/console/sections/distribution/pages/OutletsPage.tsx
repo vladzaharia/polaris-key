@@ -680,7 +680,7 @@ const PURPOSE_LABEL: Record<string, string> = {
   "android-app-signing": "Android app signing",
   "android-upload": "Android upload",
   "android-sideload": "Android sideload",
-  "fdroid-repo": "F-Droid repository",
+  "fdroid-repo": outletKindLabel("fdroid"),
   "sparkle-ed25519": "Sparkle EdDSA",
   release: "Release signing",
   "msix-publisher": "MSIX publisher",

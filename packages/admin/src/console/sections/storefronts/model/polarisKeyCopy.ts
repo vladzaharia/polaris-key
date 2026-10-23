@@ -8,6 +8,7 @@
  * product that is not configured is absent from every list here, never "unavailable".
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type {
   ObtainPathKind,
   PolarisKeyAudience,
@@ -108,7 +109,7 @@ export function kindLabel(kind: ObtainPathKind | "link"): string {
 /** A store id as people know it ("Steam"). */
 function storeName(id: string | null): string {
   if (!id) return "a store";
-  if (id === "steam") return "Steam";
+  if (id === "steam") return channelLabel("steam");
   return id;
 }
 

@@ -6,6 +6,7 @@
  * it. The list only shrinks: a flow back within five steps loses its entry.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { FlowDef } from "../../ui/wizard/index.js";
 
 /** Distribution → Storefronts → Add to storefronts (A-18j), moved onto the kit by ST-39. */
@@ -31,7 +32,7 @@ export const APPSTORE_FLOW: FlowDef = {
     { id: "build", label: "Build", kind: "custom" },
     { id: "compliance", label: "Export compliance", kind: "form" },
     { id: "notes", label: "Release notes", kind: "form" },
-    { id: "testflight", label: "TestFlight", kind: "custom" },
+    { id: "testflight", label: channelLabel("testflight"), kind: "custom" },
     { id: "version", label: "Version", kind: "custom" },
     { id: "preflight", label: "Preflight", kind: "prereq" },
     { id: "submit", label: "Submit", kind: "confirm" },
