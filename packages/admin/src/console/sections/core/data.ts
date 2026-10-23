@@ -7,6 +7,8 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import {
   api,
+  type CiTokenDto,
+  type PublisherPolicyDto,
   type ActivityFilters,
   type ActivityPage,
   type ProductDevicePage,
@@ -29,13 +31,6 @@ export const licensesQuery = (slug: string) =>
   queryOptions({
     queryKey: qk.licenses(slug),
     queryFn: () => api.licenses(slug),
-  });
-
-/** The product's portal settings, as the Overview tile reads them. */
-export const portalSettingsQuery = (slug: string) =>
-  queryOptions({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
   });
 
 export const deviceSummaryQuery = (slug: string) =>
@@ -107,3 +102,68 @@ export const assetUsageQuery = (slug: string) =>
     queryKey: qk.assetUsage(slug),
     queryFn: () => api.assetUsage(slug),
   });
+
+// core B
+
+export function fetchCiPublisher(
+  slug: string,
+): Promise<PublisherPolicyDto | null> {
+  return api.ciPublisher(slug).then((r) => r.policy);
+}
+
+export function fetchCiTokens(slug: string): Promise<CiTokenDto[]> {
+  return api.ciTokens(slug).then((r) => r.tokens);
+}
+
+export const coreBReads = {
+  keys: (slug: string) =>
+    queryOptions({
+      queryKey: qk.keys(slug),
+      queryFn: () => api.productKeys(slug),
+    }),
+  trustPolicy: (slug: string) =>
+    queryOptions({
+      queryKey: qk.trustPolicy(slug),
+      queryFn: () => api.trustPolicy(slug),
+    }),
+  ciPublisher: (slug: string) =>
+    queryOptions({
+      queryKey: qk.ciPublisher(slug),
+      queryFn: () => fetchCiPublisher(slug),
+    }),
+  ciTokens: (slug: string) =>
+    queryOptions({
+      queryKey: qk.ciTokens(slug),
+      queryFn: () => fetchCiTokens(slug),
+    }),
+  blobGc: (slug: string) =>
+    queryOptions({
+      queryKey: qk.blobGc(slug),
+      queryFn: () => api.blobGc(slug),
+    }),
+  userOverrides: (slug: string, subject: string) =>
+    queryOptions({
+      queryKey: qk.userOverrides(slug, subject),
+      queryFn: () => api.productUserOverrides(slug, subject),
+    }),
+  portal: (slug: string) =>
+    queryOptions({
+      queryKey: qk.portal(slug),
+      queryFn: () => api.portalSettings(slug).then((r) => r.settings),
+    }),
+  services: (slug: string) =>
+    queryOptions({
+      queryKey: qk.services(slug),
+      queryFn: () => api.services(slug),
+    }),
+  productSettingsEvery: (slug: string) =>
+    queryOptions({
+      queryKey: qk.productSettingsEvery(slug),
+      queryFn: () => api.productSettings(slug),
+    }),
+  productMembers: (slug: string) =>
+    queryOptions({
+      queryKey: qk.productMembers(slug),
+      queryFn: () => api.productMembers(slug),
+    }),
+};

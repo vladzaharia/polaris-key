@@ -174,7 +174,7 @@ Docs reference pages generated from the validators, routes, migrations and corpu
 - Check: `pnpm gen docs-reference --check`.
 - Underlying: `pnpm --filter @polaris-key/docs gen`.
 - Reads: `packages/docs/scripts/gen-reference.mjs`, `packages/docs/scripts/console-nav.mjs`, `packages/admin/src/console/nav.ts`, `packages/worker/src/**`, `packages/worker/migrations/**`, `packages/shared-*/src/**`, `conformance/corpus/v2/**`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `packages/worker/openapi/**`, `conformance/transcripts/**`.
-- Writes: `packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`, `packages/docs/src/content/docs/operate/console/tour.mdx`.
+- Writes: `packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`, `packages/docs/src/content/docs/operate/console/tour.mdx`.
 
 ### registry-docs
 
@@ -207,6 +207,17 @@ Parity gate: every SDK's parity.json against the feature registry.
 - Underlying: `pnpm exec tsx tools/parity-check.ts`.
 - Reads: `tools/parity-check.ts`, `tools/api-check.ts`, `tools/capabilities.ts`, `conformance/parity/**`, `packages/sdk-node/src/**`, `packages/sdk-react/src/**`, `sdks/python/src/**`, `sdks/swift/Sources/**`, `sdks/kotlin/*/src/main/**`, `sdks/godot/addons/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `sdks/**/tests/**`, `{sdks,packages}/*/test/**`.
 - Writes: none (a checker).
+
+### api
+
+SDK API surface tests: every api.json row asserted in Node, React and Python.
+
+- Run: default.
+- Regenerate: `pnpm gen api`.
+- Check: `pnpm gen api --check`.
+- Underlying: `pnpm exec tsx tools/gen-api-surface.ts`.
+- Reads: `tools/gen-api-surface.ts`, `conformance/parity/api.json`.
+- Writes: `packages/sdk-node/test/apiSurface.generated.test.ts`, `packages/sdk-react/test/apiSurface.generated.test.ts`, `sdks/python/tests/test_api_surface.py`.
 
 ### ux-rows
 

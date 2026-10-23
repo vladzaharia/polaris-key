@@ -313,7 +313,7 @@ export const GENERATORS: Generator[] = [
       "conformance/transcripts/**",
     ],
     outputs: [
-      "packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx",
+      "packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,parity,routes,validation-codes}.mdx",
       "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
       "packages/docs/src/content/docs/contribute/data-model.mdx",
       "packages/docs/src/content/docs/operate/console/tour.mdx",
@@ -380,6 +380,19 @@ export const GENERATORS: Generator[] = [
     ],
     outputs: [],
     write: [tsx("tools/parity-check.ts")],
+  },
+  {
+    id: "api",
+    title:
+      "SDK API surface tests: every api.json row asserted in Node, React and Python",
+    order: 121,
+    inputs: ["tools/gen-api-surface.ts", "conformance/parity/api.json"],
+    outputs: [
+      "packages/sdk-node/test/apiSurface.generated.test.ts",
+      "packages/sdk-react/test/apiSurface.generated.test.ts",
+      "sdks/python/tests/test_api_surface.py",
+    ],
+    write: [tsx("tools/gen-api-surface.ts")],
   },
   {
     id: "ux-rows",

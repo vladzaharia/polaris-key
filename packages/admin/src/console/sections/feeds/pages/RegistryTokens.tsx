@@ -19,7 +19,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, Plus } from "lucide-react";
-import { api, type RegistryTokensDto } from "../../../../api.js";
+import { type RegistryTokensDto } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -34,7 +34,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
 import { useBreakGlassReason, useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
+import { registryTokensQuery } from "../data.js";
 import { r } from "../../../routes.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
@@ -50,18 +50,8 @@ import {
 } from "./registryTokenRows.js";
 import { type FeedScope } from "../model/model.js";
 
-export function fetchRegistryTokens(
-  scope: FeedScope,
-  licenseId?: string,
-): Promise<RegistryTokensDto> {
-  return api.registryTokens(scope, licenseId);
-}
-
 export function useRegistryTokens(scope: FeedScope, licenseId?: string) {
-  return useQuery({
-    queryKey: qk.pkgFeedTokens(scope, licenseId ?? ""),
-    queryFn: () => fetchRegistryTokens(scope, licenseId),
-  });
+  return useQuery(registryTokensQuery(scope, licenseId));
 }
 
 /**

@@ -1,0 +1,118 @@
+---
+title: "SDK API names"
+description: "The canonical name of every SDK concept in each SDK, and the names removed in 0.9."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Every SDK exposes the same concepts under the same names, up to casing. The tables list each
+concept's spelling per SDK, from `conformance/parity/api.json`. A dash means the SDK does
+not ship the concept. `planned` marks a name that changes, or a symbol that does not exist
+yet, in the named work package; the spelling shown is the SDK's current one.
+
+## Naming policy
+
+During 0.9 a release may rename or remove an SDK name without an alias. Every removal is listed
+here and in that release's notes, and a removed option fails with `invalid-options` naming
+its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver against
+`api.json`.
+
+## client
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `client.create` | `client.create` | `PolarisKeyProvider` | `client.create` | `client.create` | `client.create` | `PolarisKey.configure` | — |
+| `client.fromConfig` | reserved for SP-32a | | | | | | — |
+| `client.doctor` | reserved for SP-32b | | | | | | — |
+| `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `client.boot` | `client.boot` | `ui.boot` |
+
+## options
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `product` (planned: SP-35b) | — |
+| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `trust` (planned: SP-35) | `core.pinnedKeys` | `core.pinnedKeys` | `pinned_trust_keys` (planned: SP-35b) | — |
+| `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
+| `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
+| `options.expectedServices` | `options.expectedServices` | `expectServices` (planned: SP-35) | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
+
+## config
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `config.get` | `getConfig` (planned: SP-35) | `useManagedConfig().get` | `get_config` (planned: SP-35) | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
+| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
+| `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
+| `config.mintToken` | `config.mintToken` | — | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
+| `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
+| `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
+| `config.clearAll` | planned (SP-35) | `config.clearAll` | planned (SP-35) | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
+| `config.onConfigChange` | `config.onConfigChange` | — | `on_change` (planned: SP-35) | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
+| `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
+| `config.setting.value` | `get` (planned: SP-35) | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
+| `config.setting.source` | `source` (planned: SP-35) | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
+| `config.setting.locked` | `locked` (planned: SP-35) | `config.setting.locked` | `enforced` (planned: SP-35) | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
+| `config.setting.visibility` | planned (SP-35) | planned (SP-35) | planned (SP-35) | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
+| `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
+| `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
+
+## license
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
+| `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
+
+## entitlements
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `entitlements.has` | `license.isEntitled` (planned: SP-35) | `useEntitlement` | `license.is_entitled` (planned: SP-35) | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `license.entitlementValue` (planned: SP-35) | — | `license.entitlement_value` (planned: SP-35) | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `license.getEntitlements` (planned: SP-35) | — | `license.get_entitlements` (planned: SP-35) | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
+| `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
+| `entitlements.acknowledge` | reserved for LX-42 | | | | | | `license.entitlements` |
+
+## identity
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `identity.signIn` | reserved for I-10a | | | | | | `identity.oidc` |
+| `identity.subject` | reserved for I-10a | | | | | | `identity.account` |
+| `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | planned (I-10b) | `identity.sign_out` | `identity.account` |
+
+## events
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `licenseChanges` (planned: SP-35b) | planned (SP-35b) | — |
+
+## cloudSync
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `cloudSync.saves` | reserved for U-22 | | | | | | `sync.saves` |
+| `cloudSync.collection` | reserved for U-23 | | | | | | `sync.saves` |
+
+## auth
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `auth` | — | `auth` | — | — | — | — | — |
+
+## server
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `server.isEntitled` | — | — | — | — | — | — | `server.license` |
+| `server.entitlementValue` | — | — | — | — | — | — | `server.license` |
+| `server.requireLicense` | — | — | — | — | — | — | `server.license` |
+
+## Removed in 0.9
+
+Nothing is removed yet. Each rename lists its old name here when it ships.

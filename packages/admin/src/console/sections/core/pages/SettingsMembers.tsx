@@ -56,6 +56,7 @@ import {
   rolesOf,
   rowLabel,
 } from "./SettingsMembersParts.js";
+import { coreBReads } from "../data.js";
 
 export function SettingsMembersPage({
   slug,
@@ -67,8 +68,7 @@ export function SettingsMembersPage({
   const canView = useCan("members", slug);
   const write = useWriteGate("members", slug, "Members");
   const q = useQuery({
-    queryKey: qk.productMembers(slug),
-    queryFn: () => api.productMembers(slug),
+    ...coreBReads.productMembers(slug),
     enabled: canView,
   });
   // A failed load announces nothing here: its alert speaks for it.

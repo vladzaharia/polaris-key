@@ -20,7 +20,7 @@ import {
   deviceSummaryQuery,
   integrationQuery,
   licensesQuery,
-  portalSettingsQuery,
+  coreBReads,
 } from "../data.js";
 import { catalogQuery, profilesQuery } from "../../config/data.js";
 import { releaseStoreQuery } from "../../release/data.js";
@@ -719,7 +719,7 @@ function IdentityTile({
   slug: string;
   attention: number;
 }): React.ReactElement {
-  const portal = useQuery(portalSettingsQuery(slug));
+  const portal = useQuery(coreBReads.portal(slug));
   const s = portal.data;
   return (
     <FeatureCard

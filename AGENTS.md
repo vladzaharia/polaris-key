@@ -230,6 +230,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `registry-docs`      | `pnpm gen registry-docs`      | This registry as a docs page and the AGENTS.md generated-files table               |
 | `readme-work`        | `pnpm gen readme-work`        | The Work on it block of each internal README                                       |
 | `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                  |
+| `api`                | `pnpm gen api`                | SDK API surface tests: every api.json row asserted in Node, React and Python       |
 | `ux-rows`            | `pnpm gen ux-rows`            | UX-row gate: every UX-\* id in the design specs is mapped and marked from uxRows   |
 | `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                               |
 | `route-ledger`       | `pnpm gen route-ledger`       | Console route ledger table in docs/design/ADMIN.md §2.8                            |

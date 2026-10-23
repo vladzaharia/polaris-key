@@ -9,7 +9,7 @@ import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
-import { useFeedsOverview } from "../../feeds/data.js";
+import { packageFeedsSwitchQuery, useFeedsOverview } from "../../feeds/data.js";
 import { TurnOffFeeds } from "../../feeds/pages/TurnOffFeeds.js";
 import { useProduct } from "../../../data/hooks.js";
 
@@ -27,8 +27,7 @@ export function PackageFeedsControl({
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
+    ...packageFeedsSwitchQuery(slug),
     enabled: distributionOn,
   });
   const overview = useFeedsOverview(

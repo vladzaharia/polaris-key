@@ -12,7 +12,6 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CirclePause, KeyRound } from "lucide-react";
-import { api } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatCount } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
@@ -25,7 +24,7 @@ import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { navigate } from "../../../router.js";
 import { SwitchReadError } from "./SwitchReadError.js";
-import { useFeedsOverview } from "../data.js";
+import { packageFeedsSwitchQuery, useFeedsOverview } from "../data.js";
 import {
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
@@ -45,10 +44,7 @@ export function PackageFeedsOff({
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const gate = useWriteGate("ship", slug);
-  const sw = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
-  });
+  const sw = useQuery(packageFeedsSwitchQuery(slug));
   const overview = useFeedsOverview({ kind: "product", slug });
   const product = useProduct(slug);
   // Only feeds that were set up: what the registry refuses now and keeps for later.

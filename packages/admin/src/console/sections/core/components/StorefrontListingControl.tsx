@@ -11,6 +11,7 @@ import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { FeatureSubRow } from "./FeatureSubRow.js";
+import { coreBReads } from "../data.js";
 
 type Reach = "unlisted" | "eligible" | "everyone";
 
@@ -42,10 +43,7 @@ export function StorefrontListingControl({
   blocked?: boolean;
 }): React.ReactElement | null {
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const query = useQuery(coreBReads.portal(slug));
   const [confirming, setConfirming] = React.useState<Reach | null>(null);
   const [pending, setPending] = React.useState(false);
   const [failure, setFailure] = React.useState<{
