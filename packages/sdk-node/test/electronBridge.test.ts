@@ -30,6 +30,7 @@ import {
 } from "../src/client.js";
 import {
   DEFAULT_INVOKE_VERBS,
+  bridgeActivation,
   exposePolarisBridge,
   POLARIS_BRIDGE_VERSION,
   SafeStorageStore,
@@ -124,6 +125,32 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
     expect(s.capabilities).toMatchObject({ license: { enabled: true } });
     expect(typeof s.highWaterMark).toBe("number");
+  });
+
+  it("passes the device-limit manageUrl through", async () => {
+    const manageUrl = "https://key.plrs.im/activate?next=free-device";
+    const { bridge } = await setup(
+      {
+        "POST /djdl/license/activate": () =>
+          json(
+            { error: { code: "device_limit", limit: 2, deviceCount: 2 } },
+            403,
+          ),
+      },
+      null,
+    );
+    const r = await bridge.submitKey("KEY-1");
+    expect(r.kind).toBe("device-limit");
+    // The renderer's "Replace a device" link needs it: without it the refusal is a dead end.
+    expect(
+      bridgeActivation({
+        kind: "device-limit",
+        code: "device_limit",
+        limit: 2,
+        deviceCount: 2,
+        manageUrl,
+      }),
+    ).toMatchObject({ manageUrl });
   });
 
   it("maps activation refusals by code, never inferring device-limit", async () => {
