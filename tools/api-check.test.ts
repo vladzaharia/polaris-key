@@ -94,3 +94,121 @@ describe("api-check rule 4", () => {
     ).toEqual([]);
   });
 });
+
+describe("api-check rule 1 (surface scanners)", () => {
+  const TS = "tools/fixtures/api/surface.ts";
+  const PY = "tools/fixtures/api/surface.py";
+  const withSurface = (
+    sdk: string,
+    file: string,
+    type: string | undefined,
+    mutate: (api: any) => void = () => {},
+  ): string[] =>
+    run((a) => {
+      a.surfaces = { [sdk]: [{ ns: "config", type, file }] };
+      a.concepts = a.concepts.filter(
+        (c: any) => !c.id.startsWith("config.") || c.id === "config.get",
+      );
+      mutate(a);
+    });
+
+  it("scans nothing while surfaces is empty", () => {
+    expect(real().surfaces).toEqual({});
+  });
+
+  it("fails an unknown TypeScript verb; skips private, protected and _names", () => {
+    const v = withSurface("node", TS, "FixtureClient");
+    expect(v.sort()).toEqual(
+      ["helper", "extra", "status"]
+        .sort()
+        .map(
+          (n) =>
+            `[rule 8] ${TS}: config.${n} is not a registry row, an sdks entry or an ignore entry`,
+        ),
+    );
+  });
+
+  it("accepts a row spelling, an ignore entry and an sdkOnly entry (TypeScript)", () => {
+    const v = withSurface("node", TS, "FixtureClient", (a) => {
+      a.ignore.push({ sdk: "node", path: "FixtureClient.helper", reason: "x" });
+      a.concepts.push({
+        id: "config.extra",
+        kind: "method",
+        sdks: { node: { sdkOnly: true, reason: "x" } },
+      });
+      a.concepts.push({
+        id: "config.status",
+        kind: "property",
+        sdks: { node: {} },
+      });
+    });
+    expect(v).toEqual([]);
+  });
+
+  it("an ignore entry for another SDK does not cover", () => {
+    const v = withSurface("node", TS, "FixtureClient", (a) => {
+      a.ignore.push({ sdk: "python", path: "config.helper", reason: "x" });
+    });
+    expect(v.some((l) => l.includes("config.helper"))).toBe(true);
+  });
+
+  it("scans a file's exported functions and consts when no type is given (React)", () => {
+    const v = withSurface("react", TS, undefined);
+    expect(v.sort()).toEqual(
+      ["useOther", "useThing"].map(
+        (n) =>
+          `[rule 8] ${TS}: config.${n} is not a registry row, an sdks entry or an ignore entry`,
+      ),
+    );
+    const ok = withSurface("react", TS, undefined, (a) => {
+      a.concepts.push({
+        id: "config.thing",
+        kind: "hook",
+        sdks: { react: { spelling: "useThing", shape: "hook" } },
+      });
+      a.ignore.push({ sdk: "react", path: "useOther", reason: "x" });
+    });
+    expect(ok).toEqual([]);
+  });
+
+  it("fails an unknown Python verb at class depth; skips _names, nested defs and other classes", () => {
+    const v = withSurface("python", PY, "FixtureClient");
+    expect(v.sort()).toEqual(
+      ["get_value", "helper", "status", "sync_now"]
+        .sort()
+        .map(
+          (n) =>
+            `[rule 8] ${PY}: config.${n} is not a registry row, an sdks entry or an ignore entry`,
+        ),
+    );
+  });
+
+  it("accepts snake-cased rows, ignore and sdkOnly entries (Python)", () => {
+    const v = withSurface("python", PY, "FixtureClient", (a) => {
+      a.concepts.push({
+        id: "config.getValue",
+        kind: "method",
+        sdks: { python: {} },
+      });
+      a.ignore.push({ path: "config.get_value", reason: "x" });
+      a.ignore.push({ path: "FixtureClient.helper", reason: "x" });
+      a.concepts.push({
+        id: "config.syncNow",
+        kind: "method",
+        sdks: { python: { sdkOnly: true, reason: "x" } },
+      });
+      a.concepts.push({
+        id: "config.status",
+        kind: "property",
+        sdks: { python: {} },
+      });
+    });
+    expect(v).toEqual([]);
+  });
+
+  it("fails a surface file that does not exist", () => {
+    expect(withSurface("node", "tools/fixtures/api/nope.ts", "X")).toEqual([
+      "[rule 8] tools/fixtures/api/nope.ts: surface file not found",
+    ]);
+  });
+});
