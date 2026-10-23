@@ -4,7 +4,7 @@
 //   pnpm gen api --check    # regenerate in memory; exit 1 if any differs
 //
 // Input: conformance/parity/api.json. Every concept row an SDK lists becomes an assertion in that
-// SDK's own test (Node, React, Python here; Swift, Kotlin and Godot follow in SP-35.3), and every
+// SDK's own test (Node, React, Python, Swift, Kotlin and Godot), and every
 // `removed` row becomes an assertion that the name is absent. A symbol that does not exist today
 // (`planned` with no `spelling`) and a `reserved` concept are skipped: the spelling is not yet
 // fixed by any code. A `planned` entry with a `spelling` asserts the SDK's CURRENT name.
@@ -20,14 +20,20 @@ const API_PATH = "conformance/parity/api.json";
 export const NODE_OUT = "packages/sdk-node/test/apiSurface.generated.test.ts";
 export const REACT_OUT = "packages/sdk-react/test/apiSurface.generated.test.ts";
 export const PYTHON_OUT = "sdks/python/tests/test_api_surface.py";
+export const SWIFT_OUT =
+  "sdks/swift/Tests/PolarisKeyTests/APISurface.generated.swift";
+export const KOTLIN_OUT =
+  "sdks/kotlin/sdk/src/test/kotlin/polaris/generated/ApiSurface.kt";
+export const GODOT_OUT = "sdks/godot/tests/suite_api_surface.gd";
 
-type Sdk = "node" | "react" | "python";
+type Sdk = "node" | "react" | "python" | "swift" | "kotlin" | "godot";
 
 interface SdkEntry {
   spelling?: string;
   path?: string;
   reason?: string;
   shape?: string;
+  labels?: string[];
   sdkOnly?: boolean;
   planned?: string;
 }
@@ -80,7 +86,7 @@ function rowsFor(api: Api, sdk: Sdk): Row[] {
         ns = dot[1]!;
         leaf = dot[2]!;
       } else leaf = sp;
-    } else if (sdk === "python") leaf = camelToSnake(leaf);
+    } else if (sdk === "python" || sdk === "godot") leaf = camelToSnake(leaf);
     out.push({
       id: c.id,
       kind: c.kind,
@@ -297,6 +303,204 @@ def test_removed(concept, cls, name):
 }`;
 }
 
+// ── Swift ───────────────────────────────────────────────────────────────────────────────────────
+
+const SWIFT_TYPE: Record<string, string> = {
+  client: "PolarisKeyClient",
+  config: "ConfigClient",
+  license: "LicenseClient",
+  identity: "IdentityClient",
+  events: "PolarisKeyClient",
+};
+const SWIFT_OPTION_HOLDER: Record<string, string> = {
+  core: "CoreOptions",
+  pinnedReleaseKeys: "PolarisKeyClientOptions",
+};
+
+/** An argument-label suffix the way Swift writes an unapplied reference: `(_:default:)`. */
+function swiftLabels(labels: string[] | undefined): string {
+  return labels ? `(${labels.map((l) => `${l}:`).join("")})` : "";
+}
+
+function renderSwift(api: Api): string {
+  const lines: string[] = [];
+  for (const r of rowsFor(api, "swift")) {
+    const ref = `${r.name}${swiftLabels(r.entry.labels)}`;
+    if (r.kind === "option") {
+      const holder =
+        r.path !== undefined
+          ? (SWIFT_OPTION_HOLDER[r.path.split(".")[0]!] ?? "CoreOptions")
+          : (SWIFT_OPTION_HOLDER[r.name] ?? "CoreOptions");
+      lines.push(`_ = \\${holder}.${r.name}  // ${r.id}`);
+    } else if (r.handle) {
+      lines.push(`_ = ConfigSetting.${ref}  // ${r.id}`);
+    } else if (r.kind === "stream") {
+      lines.push(
+        `_ = \\${SWIFT_TYPE[r.ns] ?? "PolarisKeyClient"}.${r.name}  // ${r.id}`,
+      );
+    } else if (SWIFT_TYPE[r.ns]) {
+      lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
+    }
+  }
+  return [
+    BANNER("//"),
+    `import PolarisKey`,
+    ``,
+    `/// Compile-only and never called: a renamed or removed symbol fails the test target's build.`,
+    `func apiSurface() async {`,
+    ...lines.map((l) => `    ${l}`),
+    `}`,
+    ``,
+  ].join("\n");
+}
+
+// ── Kotlin ──────────────────────────────────────────────────────────────────────────────────────
+
+const KOTLIN_TYPE: Record<string, string> = {
+  client: "PolarisKeyClient",
+  config: "ConfigClient",
+  license: "LicenseClient",
+  identity: "IdentityClient",
+  events: "PolarisKeyClient",
+};
+const KOTLIN_OPTION_HOLDER: Record<string, string> = {
+  core: "CoreOptions",
+  update: "UpdateClientOptions",
+};
+
+function renderKotlin(api: Api): string {
+  const lines: string[] = [];
+  for (const r of rowsFor(api, "kotlin")) {
+    if (r.kind === "option") {
+      const holder =
+        r.path !== undefined
+          ? (KOTLIN_OPTION_HOLDER[r.path.split(".")[0]!] ?? "CoreOptions")
+          : "CoreOptions";
+      lines.push(`${holder}::${r.name}  // ${r.id}`);
+    } else if (r.id === "client.create") {
+      lines.push(`PolarisKeyClient.Companion::${r.name}  // ${r.id}`);
+    } else if (r.id === "client.boot") {
+      lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
+    } else if (r.handle) {
+      continue; // Kotlin has no setting handle until U-07 (a StateFlow today)
+    } else if (KOTLIN_TYPE[r.ns]) {
+      lines.push(`${KOTLIN_TYPE[r.ns]}::${r.name}  // ${r.id}`);
+    }
+  }
+  return [
+    BANNER("//"),
+    `@file:Suppress("unused", "UNUSED_EXPRESSION")`,
+    ``,
+    `package polaris.generated`,
+    ``,
+    `import im.plrs.key.config.ConfigClient`,
+    `import im.plrs.key.core.CoreOptions`,
+    `import im.plrs.key.identity.IdentityClient`,
+    `import im.plrs.key.license.LicenseClient`,
+    `import im.plrs.key.sdk.PolarisKeyClient`,
+    ...(api.concepts.some(
+      (c) => c.id === "client.boot" && c.sdks?.kotlin?.spelling === "bootHost",
+    )
+      ? [`import im.plrs.key.sdk.bootHost`]
+      : []),
+    `import im.plrs.key.update.UpdateClientOptions`,
+    ``,
+    `/** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */`,
+    `internal suspend fun apiSurface() {`,
+    ...lines.map((l) => `    ${l}`),
+    `}`,
+    ``,
+  ].join("\n");
+}
+
+// ── Godot ───────────────────────────────────────────────────────────────────────────────────────
+
+const GODOT_SCRIPT: Record<string, string> = {
+  client: `SDK`,
+  PolarisKey: `SDK`,
+  config: `"res://addons/polaris_key/services/config.gd"`,
+  license: `"res://addons/polaris_key/services/license.gd"`,
+  identity: `"res://addons/polaris_key/services/identity.gd"`,
+};
+const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
+const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;
+
+function renderGodot(api: Api): string {
+  const rows: string[] = [];
+  for (const r of rowsFor(api, "godot")) {
+    let script: string | undefined;
+    let how: string;
+    if (r.kind === "option") {
+      script = GODOT_OPTIONS;
+      how = "property";
+    } else if (r.handle) {
+      script = GODOT_HANDLE;
+      how =
+        r.entry.shape === "signal"
+          ? "signal"
+          : r.kind === "property"
+            ? "property"
+            : "method";
+    } else {
+      script = GODOT_SCRIPT[r.ns];
+      how = r.entry.shape === "signal" ? "signal" : "method";
+    }
+    if (script === undefined) continue;
+    rows.push(`\t[${q(r.id)}, ${script}, ${q(how)}, ${q(r.name)}],`);
+  }
+  const gone: string[] = [];
+  for (const rm of api.removed.filter((x) => x.sdk === "godot")) {
+    const m = /^([A-Za-z]+)\.([a-z_]+)$/.exec(rm.from);
+    const script = m && GODOT_SCRIPT[m[1]!];
+    if (script) gone.push(`\t[${q(rm.from)}, ${script}, ${q(m![2]!)}],`);
+  }
+  return `extends RefCounted
+${BANNER("#")}
+# The api_surface suite (SP-35.3): every api.json row the Godot SDK ships exists under its own name,
+# checked on the scripts (methods, properties, signals), and every \`removed\` name is gone.
+
+const SDK := preload("res://addons/polaris_key/polaris_key.gd")
+
+## [concept, script, kind, name]
+const ROWS := [
+${rows.join("\n")}
+]
+
+## [concept, script, name]
+const REMOVED := [
+${gone.join("\n")}
+]
+
+
+func _names(script: Script, kind: String) -> PackedStringArray:
+	var list: Array[Dictionary]
+	match kind:
+		"method":
+			list = script.get_script_method_list()
+		"signal":
+			list = script.get_script_signal_list()
+		_:
+			list = script.get_script_property_list()
+	var out := PackedStringArray()
+	for d in list:
+		out.append(String(d["name"]))
+	return out
+
+
+func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
+	for row in ROWS:
+		var script: Script = load(row[1]) if row[1] is String else row[1]
+		t.check("%s: %s %s" % [row[0], row[2], row[3]], script != null and _names(script, row[2]).has(row[3]), str(row[1]))
+	for row in REMOVED:
+		var script: Script = load(row[1]) if row[1] is String else row[1]
+		var present := false
+		for kind in ["method", "signal", "property"]:
+			present = present or _names(script, kind).has(row[2])
+		t.check("removed: %s" % row[0], not present, str(row[1]))
+	return true
+`;
+}
+
 // ── driver ──────────────────────────────────────────────────────────────────────────────────────
 
 export function loadApi(root = ROOT): Api {
@@ -309,6 +513,9 @@ export async function renderAll(api: Api): Promise<Map<string, string>> {
     [NODE_OUT, await fmt(renderNode(api))],
     [REACT_OUT, await fmt(renderReact(api))],
     [PYTHON_OUT, renderPython(api)],
+    [SWIFT_OUT, renderSwift(api)],
+    [KOTLIN_OUT, renderKotlin(api)],
+    [GODOT_OUT, renderGodot(api)],
   ]);
 }
 
