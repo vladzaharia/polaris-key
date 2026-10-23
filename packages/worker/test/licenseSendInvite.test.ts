@@ -120,6 +120,33 @@ describe("send-invite (LX-27c.2)", () => {
     });
   });
 
+  it("two concurrent sends claim the window atomically: one sends, one is refused (SEND-CLAIM)", async () => {
+    const id = await waiting();
+    const keys = (await listKeysByLicense(db, "djdl", id)).length;
+    const [a, b] = await Promise.all([
+      invite(id),
+      admin("POST", `/${id}/send-key`, {}),
+    ]);
+    const statuses = [a.status, b.status].sort();
+    expect(statuses).toEqual([200 === a.status ? 200 : 201, 429].sort());
+    expect(sent).toHaveLength(1);
+    const loser = a.status === 429 ? a : b;
+    expect(((await loser.json()) as { code?: string }).code).toBe(
+      "rate_limited",
+    );
+    // A refused send-key mints nothing.
+    const minted = (await listKeysByLicense(db, "djdl", id)).length - keys;
+    expect(minted).toBe(b.status === 201 ? 1 : 0);
+  });
+
+  it("many concurrent invitations send exactly one", async () => {
+    const id = await waiting();
+    const all = await Promise.all([1, 2, 3, 4, 5].map(() => invite(id)));
+    expect(all.filter((r) => r.status === 200)).toHaveLength(1);
+    expect(all.filter((r) => r.status === 429)).toHaveLength(4);
+    expect(sent).toHaveLength(1);
+  });
+
   it("allows one a window per licence, 429 with retryAfter, shared with send-key", async () => {
     const id = await waiting();
     expect((await invite(id)).status).toBe(200);

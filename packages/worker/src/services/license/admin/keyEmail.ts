@@ -8,7 +8,13 @@
  * anything back: the answer says `failed` and the operator tries again through send-key.
  */
 
-import { actorColumns, actorOf, appendAudit } from "../../../core/audit.js";
+import {
+  actorColumns,
+  actorOf,
+  appendAudit,
+  auditStatement,
+  type AuditInsert,
+} from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import {
   firstHostedImage,
@@ -236,6 +242,54 @@ export async function sendKeyRetryAfter(
 }
 
 /**
+ * Claim the licence's send window atomically: write the attempt's audit row only while no live
+ * attempt (one without a `.failed` child) sits inside the window, in ONE conditional INSERT, and
+ * answer whether this request won (`changes === 1`). The read in `sendKeyRetryAfter` is the
+ * friendly early refusal; this is the gate, so N concurrent requests cannot all pass a check and
+ * all send. Callers claim BEFORE minting or sending anything.
+ */
+export async function claimSendWindow(
+  ctx: LicenseAdminContext,
+  licenseId: string,
+  row: Omit<AuditInsert, "product" | "at" | "target_kind" | "target_id">,
+): Promise<boolean> {
+  const stmt = auditStatement(
+    {
+      ...row,
+      product: ctx.product.slug,
+      at: ctx.now,
+      target_kind: "license",
+      target_id: licenseId,
+    },
+    {
+      sql: `WHERE NOT EXISTS (SELECT 1 FROM audit a WHERE a.product = ? AND a.action IN (?, ?) AND a.target_id = ?
+         AND a.at > ?
+         AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action IN (?, ?)))`,
+      params: [
+        ctx.product.slug,
+        SEND_KEY_ACTION,
+        SEND_INVITE_ACTION,
+        licenseId,
+        ctx.now - SEND_KEY_WINDOW_SECONDS,
+        SEND_KEY_FAILED_ACTION,
+        SEND_INVITE_FAILED_ACTION,
+      ],
+    },
+  );
+  return (await ctx.db.runChanges(stmt.sql, ...stmt.params)) === 1;
+}
+
+/** The 429 both routes answer when the window is taken. */
+export function sendWindowRefusal(
+  retryAfter: number,
+  message: string,
+): Response {
+  const res = err(429, "rate_limited", message, { retryAfter });
+  res.headers.set("retry-after", String(retryAfter));
+  return res;
+}
+
+/**
  * `POST …/licenses/<id>/send-key {revokeOthers?}`: mint a new key (labelled "Sent by email"),
  * email it to the licence's address and, with `revokeOthers`, revoke the licence's other active
  * keys in the same batch as the insert. Once per 10 minutes per licence (429 `rate_limited`
@@ -285,22 +339,36 @@ export async function handleSendKey(
       { reason: "license_expired", expiresAt: license.expires_at },
     );
   const retryAfter = await sendKeyRetryAfter(ctx, license.id);
-  if (retryAfter > 0) {
-    const res = err(
-      429,
-      "rate_limited",
+  if (retryAfter > 0)
+    return sendWindowRefusal(
+      retryAfter,
       "a key was sent for this license in the last 10 minutes",
-      { retryAfter },
     );
-    res.headers.set("retry-after", String(retryAfter));
-    return res;
-  }
   // What no retry can fix is refused before a key exists, so failures never pile up valid keys.
   const blocked = await keyEmailBlocked(ctx, license.email.trim());
   if (blocked)
     return err(409, ErrorCode.BadRequest, "the key email cannot be sent", {
       reason: blocked,
     });
+  // The attempt is recorded BEFORE the mint and the send, by an atomic claim of the window, so
+  // the limit holds under concurrency and even if the send never returns. The label only; never
+  // the key, its hash or the address.
+  const attemptId = randomId("aud");
+  const actor = actorColumns(actorOf(session));
+  const claimed = await claimSendWindow(ctx, license.id, {
+    id: attemptId,
+    ...actor,
+    action: SEND_KEY_ACTION,
+    summary:
+      `Sent key "${SENT_KEY_LABEL}" for ${license.id}` +
+      (revokeOthers ? ", revoking other keys" : ""),
+    after_json: JSON.stringify({ label: SENT_KEY_LABEL }),
+  });
+  if (!claimed)
+    return sendWindowRefusal(
+      Math.max(1, await sendKeyRetryAfter(ctx, license.id)),
+      "a key was sent for this license in the last 10 minutes",
+    );
   const key = mintLicenseKey(product.slug);
   const hash = await hashKey(key, env.KEY_HASH_PEPPER);
   const row = {
@@ -314,27 +382,23 @@ export async function handleSendKey(
     last_used_at: null,
   };
   let revoked = 0;
-  if (revokeOthers) revoked = await replaceLicenseKeys(db, row);
-  else await insertKey(db, row);
-  // The attempt is recorded BEFORE the send, so the limit holds even if the send never returns.
-  // The label and the revoked count; never the key, its hash or the address.
-  const attemptId = randomId("aud");
-  const actor = actorColumns(actorOf(session));
-  await appendAudit(db, {
-    product: product.slug,
-    id: attemptId,
-    at: now,
-    ...actor,
-    action: SEND_KEY_ACTION,
-    target_kind: "license",
-    target_id: license.id,
-    summary:
-      `Sent key "${SENT_KEY_LABEL}" for ${license.id}` +
-      (revokeOthers
-        ? `, revoked ${revoked} other key${revoked === 1 ? "" : "s"}`
-        : ""),
-    after_json: JSON.stringify({ label: SENT_KEY_LABEL, revoked }),
-  });
+  try {
+    if (revokeOthers) revoked = await replaceLicenseKeys(db, row);
+    else await insertKey(db, row);
+  } catch (e) {
+    // Nothing was minted: free the window, then surface the failure.
+    await appendAudit(db, {
+      product: product.slug,
+      at: now,
+      ...actor,
+      action: SEND_KEY_FAILED_ACTION,
+      target_kind: "license",
+      target_id: license.id,
+      parent_id: attemptId,
+      summary: `Key for ${license.id} was not minted`,
+    });
+    throw e;
+  }
   const result = await emailLicenseKey(ctx, license, key, context);
   if (result.email === "failed")
     await appendAudit(db, {
