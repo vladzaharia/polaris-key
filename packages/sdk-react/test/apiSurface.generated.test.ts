@@ -3,10 +3,20 @@ import { expect, it } from "vitest";
 import {
   PolarisKeyProvider,
   useBoot,
+  useCapabilities,
+  useChangelog,
   useConfigSetting,
   useEntitlement,
+  useImportBundle,
+  useLatestVersion,
+  useLicense,
+  useLicenseGate,
   useManagedConfig,
   usePolarisAuth,
+  usePolarisFetch,
+  usePolarisKey,
+  usePresentation,
+  useUpdateDecision,
   type PolarisKeyConfig,
 } from "../src/index.js";
 
@@ -27,9 +37,33 @@ export type Surface = [
   ReturnType<typeof useConfigSetting>["clear"],
   ReturnType<typeof usePolarisAuth>["signOut"],
   PolarisKeyConfig["auth"],
+  PolarisKeyConfig["mode"],
+  PolarisKeyConfig["bridge"],
+  PolarisKeyConfig["localOverrides"],
+  PolarisKeyConfig["version"],
+  PolarisKeyConfig["refreshIntervalSeconds"],
+  PolarisKeyConfig["store"],
+  PolarisKeyConfig["backend"],
 ];
 
 it("client.create", () => expect(typeof PolarisKeyProvider).toBe("function"));
 it("client.boot", () => expect(typeof useBoot).toBe("function"));
 it("config.setting", () => expect(typeof useConfigSetting).toBe("function"));
 it("entitlements.has", () => expect(typeof useEntitlement).toBe("function"));
+it("client.presentation", () =>
+  expect(typeof usePresentation).toBe("function"));
+it("client.capabilities", () =>
+  expect(typeof useCapabilities).toBe("function"));
+it("client.importBundle", () =>
+  expect(typeof useImportBundle).toBe("function"));
+it("release.changelog", () => expect(typeof useChangelog).toBe("function"));
+it("update.check", () => expect(typeof useLatestVersion).toBe("function"));
+it("update.decide", () => expect(typeof useUpdateDecision).toBe("function"));
+it("license.status", () => expect(typeof useLicense).toBe("function"));
+it("hooks.usePolarisKey", () => expect(typeof usePolarisKey).toBe("function"));
+it("hooks.usePolarisAuth", () =>
+  expect(typeof usePolarisAuth).toBe("function"));
+it("hooks.useLicenseGate", () =>
+  expect(typeof useLicenseGate).toBe("function"));
+it("hooks.usePolarisFetch", () =>
+  expect(typeof usePolarisFetch).toBe("function"));

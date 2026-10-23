@@ -86,6 +86,45 @@
         "file": "packages/sdk-node/src/boot.ts"
       }
     ],
+    "react": [
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/hooks.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/Provider.tsx"
+      },
+      {
+        "ns": "options",
+        "type": "PolarisKeyConfig",
+        "file": "packages/sdk-react/src/react/Provider.tsx"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/useBoot.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/usePresentation.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/usePolarisFetch.ts"
+      },
+      {
+        "ns": "update",
+        "file": "packages/sdk-react/src/update/useLatestVersion.ts"
+      },
+      {
+        "ns": "update",
+        "file": "packages/sdk-react/src/update/useUpdateDecision.ts"
+      },
+      {
+        "ns": "release",
+        "file": "packages/sdk-react/src/release/useChangelog.ts"
+      }
+    ],
     "python": [
       {
         "ns": "client",
@@ -744,6 +783,71 @@
       "sdk": "python",
       "path": "client.server_client",
       "reason": "server helper in server_client.py (L4/L8: its trust option renames to pinned_keys with options.pinnedKeys); not a client verb"
+    },
+    {
+      "sdk": "react",
+      "path": "useEntitlement",
+      "reason": "the hook spelling of entitlements.has: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useManagedConfig",
+      "reason": "the hook spelling of the config.* rows (shape: hook): rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useConfigSetting",
+      "reason": "the hook spelling of config.setting: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useLicense",
+      "reason": "the hook spelling of license.status: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useCtx",
+      "reason": "wiring: reads the Provider context; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "useAdapterState",
+      "reason": "wiring: subscribes a hook to an adapter; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "usePresentationOf",
+      "reason": "internal helper behind usePresentation; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "contentReason",
+      "reason": "helper on the @polaris-key/react/update subpath, not a root verb"
+    },
+    {
+      "sdk": "react",
+      "path": "options.trust",
+      "reason": "container for options.pinnedKeys (path trust.pinnedKeys)"
+    },
+    {
+      "sdk": "react",
+      "path": "options.adapter",
+      "reason": "test seam: an injected adapter bypasses mode resolution"
+    },
+    {
+      "sdk": "react",
+      "path": "options.fetchImpl",
+      "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "react",
+      "path": "options.navigate",
+      "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "react",
+      "path": "options.now",
+      "reason": "test seam forwarded to the constructed adapter"
     }
   ],
   "concepts": [
@@ -1637,7 +1741,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "usePresentation",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -1706,7 +1815,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useCapabilities",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -1751,7 +1865,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useImportBundle",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -2056,7 +2175,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useChangelog",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -2114,7 +2238,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useLatestVersion",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -2141,7 +2270,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useUpdateDecision",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -2551,7 +2685,12 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "react": {
+          "spelling": "useLicense",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
       },
       "layer": "client"
     },
@@ -2579,6 +2718,146 @@
       "sdks": {
         "node": {},
         "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisKey",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisKey",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (deprecated aggregate hook; D10/L6 keep it until its removal row)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisAuth",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisAuth",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.useLicenseGate",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "useLicenseGate",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisFetch",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisFetch",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (the hook over client.backend, SP-58)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.screenFor",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (maps a PolarisState to the gate screen the kit shows)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.mode",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.bridge",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.localOverrides",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.version",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.refreshIntervalSeconds",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.store",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.backend",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
       },
       "layer": "client"
     }
