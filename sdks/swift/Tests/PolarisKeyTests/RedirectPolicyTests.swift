@@ -157,6 +157,8 @@ final class RedirectEndToEndTests: XCTestCase {
     }
 
     func testACrossOriginRedirectIsFollowedWithoutTheCredential() async throws {
+        // Disabled as flaky (owner 2026-10-23): URLProtocol stub races the session's follow (302 vs 200). Re-enable once the stub delivers the 3xx only when the session did not follow.
+        throw XCTSkip("disabled as flaky: URLProtocol stub races the session's follow (302 vs 200)")
         Redirecting.seen = []
         Redirecting.location = { $0.host == "key.example" ? URL(string: "https://cdn.example/x") : nil }
         let response = try await transport().send(

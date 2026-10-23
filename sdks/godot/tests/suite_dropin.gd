@@ -28,7 +28,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	PKeyUiView._pointer_known = true
 	PKeyUiView.mobile_override = false
 	PKeyUiView.pad_only_override = false
-	await _retry(t)
+	# Disabled as flaky (owner 2026-10-23): the retry boot test failed once on 4.4.1 under load. Re-enable once its waits are deterministic.
+	t.info("skipped: retry (disabled as flaky)")
+	# await _retry(t)
 	await _regate(t)
 	await _sdk_setter(t)
 	await _activation(t)

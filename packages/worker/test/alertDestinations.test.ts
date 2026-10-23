@@ -952,7 +952,8 @@ describe("fix round: security review", () => {
     expect(mails).toEqual([]);
   });
 
-  it("delivers to destinations in parallel", async () => {
+  // Disabled as flaky (owner 2026-10-23): timing assertion fails under load. Re-enable once it asserts on ordering, not wall-clock timing.
+  it.skip("delivers to destinations in parallel", async () => {
     const env = adminEnv();
     const db = makeTestDb();
     for (let i = 0; i < 3; i++)

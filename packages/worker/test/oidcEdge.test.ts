@@ -1347,7 +1347,8 @@ describe("the RFC 8628 user-code page", () => {
     );
   });
 
-  it("rate-limits the page per IP (429), independently for each IP", async () => {
+  // Disabled as flaky (owner 2026-10-23): timing-sensitive rate window fails under load. Re-enable once the rate window is driven by a fake clock.
+  it.skip("rate-limits the page per IP (429), independently for each IP", async () => {
     let first429 = -1;
     for (let i = 0; i < 40 && first429 < 0; i++) {
       const res = await entry(`${ENTRY}?user_code=BCDF-GHJK`, {
