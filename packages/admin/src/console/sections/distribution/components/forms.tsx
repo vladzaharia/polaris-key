@@ -9,6 +9,7 @@ import * as React from "react";
 import { ApiError } from "../../../../api.js";
 import { errorCopy, type ErrorContext } from "../../../../lib/errorCopy.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 import type { FieldErrorMap } from "../../../../ui/form.js";
 
 /** Thrown by an `onSubmit` the operator cancelled at a confirmation: not an error to show. */
@@ -43,6 +44,17 @@ export function SubmitError({
     <div className="px-5 py-3">
       <Callout tone="danger" title={copy.title} live>
         {copy.description}
+        {copy.action === "copy-details" ? (
+          <div className="mt-2">
+            <CopyButton
+              value={JSON.stringify(copy.details, null, 2)}
+              label="Copy details"
+              showLabel
+              size="xs"
+              text="Copy details"
+            />
+          </div>
+        ) : null}
       </Callout>
     </div>
   );

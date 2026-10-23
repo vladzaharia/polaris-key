@@ -467,8 +467,12 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], `${P}/keys/:action`, "keys", product),
   ...rows(["GET"], `${P}/outlet-credentials`, "keys", product),
   ...rows(["PUT", "DELETE"], `${P}/outlet-credentials/:id`, "keys", product),
-  ...rows(["GET", "PUT"], `${P}/ci-publisher`, "keys", product),
-  ...rows(["GET", "POST"], `${P}/ci-tokens`, "keys", product),
+  // Claiming or editing the trusted publisher and issuing a static CI token mint a durable
+  // credential's authority: a fresh step-up (F-33b.7). Revoking stays without one.
+  ...rows(["GET"], `${P}/ci-publisher`, "keys", product),
+  ...rows(["PUT"], `${P}/ci-publisher`, "keys", product, { stepUp: true }),
+  ...rows(["GET"], `${P}/ci-tokens`, "keys", product),
+  ...rows(["POST"], `${P}/ci-tokens`, "keys", product, { stepUp: true }),
   ...rows(["DELETE"], `${P}/ci-tokens/:id`, "keys", product),
 ];
 

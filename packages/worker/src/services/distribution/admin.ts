@@ -92,6 +92,7 @@ import {
   notFound as adminNotFound,
   err,
   readBody,
+  settingRefused,
 } from "../../core/console/respond.js";
 import { audit } from "../../core/audit.js";
 import {
@@ -133,15 +134,13 @@ import {
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
 import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
+import { packageFeedsOf } from "./registryFeeds.js";
 import {
-  packageFeedsOf,
-  stmtSetPackageFeeds,
-  stmtUpdatePackageFeeds,
-} from "./registryFeeds.js";
-import {
-  RENDER_ALL,
-  stmtEnqueuePackageRender,
-} from "../../core/registry/registryQueue.js";
+  packageFeedsAudit,
+  packageFeedsStatements,
+} from "./settingsAdapters.js";
+import { forgetRegistrySettings } from "./registry/settings.js";
+import { writeSetting } from "../../core/settings/write.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 import {
   READINESS_STATES,
@@ -720,39 +719,45 @@ async function handlePackageFeedsAdmin(
     );
   const enabled = body.enabled as boolean;
   const expected = body.expectedVersion as number;
-  const statements = [
-    stmtSetPackageFeeds(slug, enabled, expected, session.sub, now),
-    stmtUpdatePackageFeeds(slug, enabled, expected, session.sub, now),
-    ...(enabled
-      ? [stmtEnqueuePackageRender(slug, RENDER_ALL, "package-feeds", now)]
-      : []),
-  ];
-  let changed: number;
-  if (db.batchChanges) {
-    const counts = await db.batchChanges(statements);
-    changed = (counts[0] ?? 0) + (counts[1] ?? 0);
-  } else {
-    const before = await packageFeedsOf(db, slug);
-    await db.batch(statements);
-    const after = await packageFeedsOf(db, slug);
-    changed = after.version !== before.version ? 1 : 0;
-  }
-  const current = await packageFeedsOf(db, slug);
-  if (changed === 0)
-    return err(
+  // The version the operator saw is the owner row's (0 for never written); the write itself is
+  // the registry's `distribution.packageFeeds` (F-34.3), so the audit row, the L1 on off and the
+  // area check are the same as the generic settings route's.
+  const before = await packageFeedsOf(db, slug);
+  const stale = () =>
+    err(
       409,
       ErrorCode.BadRequest,
       "the package-feeds setting changed since you read it",
-      { reason: "version_conflict", packageFeeds: current },
+      { reason: "version_conflict", packageFeeds: before },
     );
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "distribution.package_feeds.update",
-    { kind: "package-feeds", id: slug },
-    `${enabled ? "Turned on" : "Turned off"} package feeds for ${slug}`,
+  if (before.version !== expected) return stale();
+  if (!ctx.settings)
+    throw new Error("the package-feeds route needs ServiceContext.settings");
+  const written = await writeSetting(
+    { env: ctx.env, db, registry: ctx.settings },
+    {
+      key: "distribution.packageFeeds",
+      value: enabled,
+      audit: packageFeedsAudit(slug, enabled),
+      statements: (guard) =>
+        packageFeedsStatements(slug, enabled, session.sub, now, guard),
+    },
+    {
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      origin: "console",
+      principal: session.principal,
+      now,
+      product,
+      // This route's contract: the owner row's version, no typed confirmation, no reason.
+      strict: false,
+    },
   );
+  if (!written.ok) return settingRefused(written);
+  forgetRegistrySettings(slug);
+  const current = await packageFeedsOf(db, slug);
   return adminJson({ ok: true, packageFeeds: current });
 }

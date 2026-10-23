@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 98 entries (24 platform, 74 product, 0 entity), 9 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 99 entries (24 platform, 75 product, 0 entity), 9 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -133,7 +133,8 @@ One value per product. A service's settings are product settings whose key start
 | `distribution.capabilities` | [What each channel allows](/docs/features/ship-builds/channels/): What an install that arrived through each channel may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the channel's kind; an operator may only narrow it. | structured (CapabilitySet per outlet (capabilities.ts)) | unset | cascade | operator | — | L1 on change | — |
 | `distribution.outlets` | [Channels](/docs/features/ship-builds/channels/): The channels the product is distributed through (direct, App Store, Play, Steam, …) with each store's identity for it. | structured (outlets (distribution.schema.json)) | unset | cascade | manifest | `distribution:outlets` | L0 on change | — |
 | `distribution.transports` | [Transports](/docs/features/ship-builds/channels/delivery/): Which transport carries each deliverable on each channel: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset). | structured (transports (distribution.schema.json)) | unset | cascade | manifest | `distribution:transports` | L1 on change | devices see it (document) |
-| `distribution.feeds` | [Package feeds](/docs/features/ship-builds/channels/): Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it. | structured (dist_registry_feeds rows (registry/settings.ts)) | unset | cascade | operator | — | L1 on change | — |
+| `distribution.packageFeeds` | [Serve package feeds](/docs/features/ship-builds/channels/): Whether the product's package feeds answer at all. Off stops every read and publish of every feed at once; nothing is deleted, and turning it on serves them again. | true or false | `false` | cascade | operator | — | L0 on, L3 off | — |
+| `distribution.feeds` | [Package feeds](/docs/features/ship-builds/channels/): Per ecosystem: whether the product's feed answers, who may read it (Public or Customers), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Customers feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off. | structured (dist_registry_feeds rows (registry/settings.ts)) | unset | cascade | operator | — | L1 on change | — |
 
 ### Update
 
@@ -200,6 +201,7 @@ Things that look configurable but are not settings, and why. The coverage test (
 | Release yanks, deprecations, rollouts, readiness overrides and submissions | Operational actions on records, not configuration. | Ship builds → Releases, Rollouts and Matrix |
 | Sync and link records (how a product was linked and last synced) | Records of what happened: release_source says whether a product is linked to a repository (changed by Link and Unlink), product_sync_state.source says whether a sync was manual or a webhook. | Core → Settings; Core → Overview |
 | Old lazy-delta and sign-in mail cap tables | ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them. | Product → Settings |
+| Feed access migration records (what the F-34.4 job overwrote) | A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it. | Ship builds → Package feeds |
 | Connection records (where a connection row came from) | A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting. | Platform → Connections |
 | Customer license links | Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour. | License → Licenses |
 | An account's birth date and where it came from (I-33) | Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it. | Polaris Locker's Account → Profile, to that person only |

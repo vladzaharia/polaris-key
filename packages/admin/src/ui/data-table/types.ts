@@ -192,6 +192,11 @@ export interface DataTableProps<T> {
   mobileCard?: (row: T, primary: React.ReactNode) => React.ReactNode;
   /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
+  /**
+   * The media query under which `mobile="cards"` applies. Default `(max-width: 1023px)`; a page
+   * whose rows hold unbreakable text passes an em query so a larger text size gets cards sooner.
+   */
+  cardBreakpoint?: string;
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
   /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */

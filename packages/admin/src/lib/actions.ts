@@ -162,6 +162,8 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+  // F-33b.4 (UX review): every token of a product at once, CI installs included; the slug is typed.
+  "registryToken.revokeAll": 3,
   // PS-06 (notes/S-21 owner decision 5): showing a product to everyone signed in is the one
   // deliberate exception to "only what you can obtain", behind a typed confirmation (the slug).
   "storefront.audienceEveryone": 3,
@@ -208,7 +210,7 @@ export const ACTION_LEVELS = {
   "feed.rebuild": 0,
   "feed.disable": 1,
   "feed.bootstrap": 1,
-  "packageFeeds.disable": 1,
+  "packageFeeds.disable": 3,
   "package.unyank": 1,
   "package.deprecate": 1,
   "package.undeprecate": 1,
@@ -217,8 +219,9 @@ export const ACTION_LEVELS = {
   // F-21: leaving `public` refuses every anonymous client within 30 seconds and can be undone
   // (L1); a registry token revocation cannot be undone, and revoking all is broad (both L2).
   "feed.tighten": 1,
+  // F-34: moving Customers to Public opens the feed to everyone; it can be undone (L1).
+  "feed.widen": 1,
   "registryToken.revoke": 2,
-  "registryToken.revokeAll": 2,
   // The admin API tokens (`pkeya_…`): a revoked token cannot be restored, only replaced.
   "apiToken.revoke": 2,
 } as const satisfies Record<string, ActionLevel>;
@@ -228,10 +231,12 @@ export type ActionId = keyof typeof ACTION_LEVELS;
 /** What an L3 action asks the operator to type. */
 const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "product.delete": "slug",
+  "packageFeeds.disable": "slug",
   "signing.revoke": "kid",
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
+  "registryToken.revokeAll": "slug",
   "storefront.audienceEveryone": "slug",
   "user.deleteData": "delete",
   "license.delete": "deleteId",

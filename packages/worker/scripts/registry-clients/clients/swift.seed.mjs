@@ -42,7 +42,9 @@ if (!STATE || !OWNER) {
 }
 
 const SWIFT = process.env.SWIFT ?? "swift";
-const SCOPE = "smoke";
+// `--person` (F-33b.6) seeds one package per owner: SCOPE is the owner's scope, SWIFT_DIR names the
+// scratch directory under STATE, and SWIFT_VERSIONS=1.0.0 keeps only the stable release.
+const SCOPE = process.env.SCOPE ?? "smoke";
 const ID = `${SCOPE}.SmokeKit`;
 const DELIVERABLE = "swift.smokekit";
 const REPOSITORY = "https://github.com/example/SmokeKit";
@@ -50,9 +52,13 @@ const VERSIONS = [
   { version: "1.0.0", channel: "stable", state: "live" },
   { version: "1.1.0", channel: "stable", state: "yanked" },
   { version: "2.0.0-beta.1", channel: "beta", state: "live" },
-];
+].filter(
+  (v) =>
+    !process.env.SWIFT_VERSIONS ||
+    process.env.SWIFT_VERSIONS.split(",").includes(v.version),
+);
 
-const work = join(STATE, "swift");
+const work = join(STATE, process.env.SWIFT_DIR ?? "swift");
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 const run = (cmd, args, cwd = work) =>

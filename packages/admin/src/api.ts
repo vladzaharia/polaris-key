@@ -1558,6 +1558,15 @@ export interface ProductDetail {
   /** The operator-owned `packageFeeds` sub-capability (F-11): Distribution → Package feeds shows
    *  only while it is on. */
   packageFeeds?: boolean;
+  /** F-34.3: the product's package feeds at a glance (the one-product read only). `declared`
+   *  counts the package deliverables in `.pkey/release`; `offBy` and `offAt` say who turned the
+   *  feeds off and when (`manifest`: a row the ingest provisioned). */
+  packages?: {
+    declared: number;
+    feedsOn: boolean;
+    offBy: string | null;
+    offAt: number | null;
+  };
   /** A-20.4: what the product can ship to. One-product read only (not the list). */
   platforms?: ProductPlatformFact[];
   /** A-20.4: the channels it can use, compact. One-product read only. */
@@ -2445,6 +2454,8 @@ export interface CiTokenDto {
   expiresAt: number;
   revokedAt: number | null;
   createdBy: string;
+  /** Last accepted on the registry host, at hourly resolution; null if never (F-33b.2). */
+  lastUsedAt: number | null;
 }
 
 export interface IssueCiTokenBody {
@@ -4587,6 +4598,8 @@ export interface FeedSummary {
   configured: boolean;
   enabled: boolean;
   accessMode: string;
+  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  accessDisplay?: string;
   status: "enabled" | "off" | "unavailable";
   reason: FeedOffReason | null;
   packages: number;
@@ -4601,6 +4614,8 @@ export interface PackageFeedsSwitch {
   /** 0 = never written. */
   version: number;
   updatedAt: number | null;
+  /** Who last wrote it: an admin subject, or `manifest` for a row the ingest provisioned. */
+  updatedBy: string | null;
 }
 
 interface FeedsHead {
@@ -4639,7 +4654,11 @@ export interface FeedsOverviewDto extends FeedsHead {
 export interface FeedSettings {
   enabled: boolean;
   accessMode: string;
+  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  accessDisplay?: string;
   namespace: Record<string, unknown>;
+  /** Where the namespace came from: provisioned from `.pkey/release`, or set in the console. */
+  namespaceSource?: "manifest" | "console";
   maxPackageBytes: number;
   upstream: "none";
   ext: Record<string, unknown>;
@@ -4689,7 +4708,7 @@ export interface FeedDetailDto extends FeedsHead {
   capabilities: FeedCapabilities;
   /**
    * The extension settings (`settings.ext` keys) the feed's adapter accepts, which the ecosystem
-   * panel renders (F-12); `yankHidesFromIndex` is the Yank policy section's and never listed.
+   * panel renders (F-12).
    */
   extensions: string[];
   accessModes: { mode: string; available: boolean }[];
@@ -4720,6 +4739,28 @@ export interface RegistryTokenDto {
   revokedBy: string | null;
   revokeReason: string | null;
   status: "active" | "expired" | "revoked";
+  /** F-33b.3: an owner-wide read token, retired; it works until it expires. */
+  legacy?: boolean;
+}
+
+/** A read service token (a `pkeyci_` holding only `packages:read`): never the token or its hash. */
+export interface ServiceTokenDto {
+  /** `cit_…`: revoke it with `POST …/tokens/<tokenId>/revoke`. */
+  tokenId: string;
+  label: string;
+  scopes: string[];
+  createdBy: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  /** The token's last four characters; `null` for a token made before F-33b.4. */
+  hint: string | null;
+  revokedAt: number | null;
+  /** From the audit trail: `admin:<who>`, or `null` when it is not there. */
+  revokedBy: string | null;
+  /** `manual` (this token) or `revoke_all` (the product-wide revoke); `null` with `revokedBy`. */
+  revokeReason: string | null;
+  status: "active" | "expired" | "revoked";
 }
 
 export interface RegistryTokenFeed {
@@ -4728,6 +4769,8 @@ export interface RegistryTokenFeed {
   enabled: boolean;
   accessMode: string;
   baseUrl: string | null;
+  /** The feed's namespace (npm `scope`, Maven `groupPrefixes`, …): the setup snippets name it. */
+  namespace?: Record<string, unknown>;
 }
 
 export interface RegistryTokensDto {
@@ -4736,6 +4779,8 @@ export interface RegistryTokensDto {
   /** The username clients send beside the token (`__token__`). */
   username: string;
   tokens: RegistryTokenDto[];
+  /** F-33b.3: the product's read service tokens (none for a licence filter). */
+  serviceTokens?: ServiceTokenDto[];
   feeds: RegistryTokenFeed[];
   limits: {
     minDays: number;
@@ -4745,6 +4790,8 @@ export interface RegistryTokensDto {
     perOwner: number;
     perLicense: number;
     /** F-22: a publish token's default and longest expiry, and the ecosystems it may name. */
+    serviceDefaultDays?: number;
+    serviceMaxDays?: number;
     publishDefaultDays?: number;
     publishMaxDays?: number;
     publishEcosystems?: FeedEcosystem[];
@@ -4755,12 +4802,22 @@ export interface MintRegistryTokenBody {
   label: string;
   ecosystems?: FeedEcosystem[] | null;
   expiresInDays?: number;
-  binding: "owner" | "license";
+  /** `"service"` (F-33b.3) mints a `pkeyci_` read service token: only `label` and
+   *  `expiresInDays` (1 to 365, default 90) apply. `"owner"` is for publish tokens only. */
+  binding: "owner" | "license" | "service";
   licenseId?: string;
   presentation?: "header" | "url";
   /** `["publish"]` for a publish token (owner-bound, named ecosystems): F-22's native clients and
    *  F-23's `docker push`. */
   scopes?: ("read" | "publish")[];
+}
+
+/** The answer to a `binding: "service"` mint. */
+export interface MintedServiceToken {
+  ok: true;
+  /** The `pkeyci_` plaintext: in this answer only. */
+  token: string;
+  view: ServiceTokenDto;
 }
 
 export interface MintedRegistryToken {
@@ -5001,6 +5058,8 @@ export class ApiError extends Error {
   retryAfter?: number;
   /** The area a `no_access` 403 names (worker `forbiddenArea`): `settings`, `license`, … */
   area?: string;
+  /** F-34.8: a `version_conflict` 409 from `PUT …/package-feeds` carries the switch as it stands. */
+  packageFeeds?: PackageFeedsSwitch;
 }
 
 async function call<T>(
@@ -5069,6 +5128,7 @@ async function send(
     let reason: string | undefined;
     let retryAfter: number | undefined;
     let area: string | undefined;
+    let packageFeeds: PackageFeedsSwitch | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -5088,8 +5148,11 @@ async function send(
         reason?: string;
         area?: string;
         retryAfter?: number;
+        packageFeeds?: PackageFeedsSwitch;
       };
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
+      if (body.packageFeeds && typeof body.packageFeeds === "object")
+        packageFeeds = body.packageFeeds;
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
         errors = body.error.errors ?? body.errors;
@@ -5111,6 +5174,7 @@ async function send(
     if (message) error.message = message;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (area) error.area = area;
+    if (res.status === 409 && packageFeeds) error.packageFeeds = packageFeeds;
     if (
       res.status === 403 &&
       code === "step_up_required" &&
@@ -6866,6 +6930,12 @@ const rawApi = {
     ),
   mintRegistryToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
     call<MintedRegistryToken>(`${feedsBase(scope)}/tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** F-33b.4: a read service token (`binding: "service"`), answered once with the `pkeyci_` value. */
+  mintServiceToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
+    call<MintedServiceToken>(`${feedsBase(scope)}/tokens`, {
       method: "POST",
       body: JSON.stringify(body),
     }),

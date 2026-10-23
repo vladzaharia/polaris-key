@@ -188,6 +188,14 @@ export interface FeedRouteDef<S = undefined> {
   readonly name: string;
   readonly ecosystem: RegistryEcosystem;
   readonly inertDocument?: true;
+  /**
+   * An owner-level LIST document: it runs the ladder with `deliverableId: () => null` (only the
+   * feed's mode decides) and so MUST filter what it names to the packages the presenting
+   * principal may read (F-33b.5). `test/feedAdapters.test.ts` runs every marked route over the
+   * principal matrix and fails a null-deliverable route that is neither marked nor named there as
+   * carrying no package names.
+   */
+  readonly listDocument?: true;
   match(pathname: string): RegistryRouteMatch | null;
   /** Before the ladder: what the request names, read from D1 (never an answer). */
   resolve?(req: Request, ctx: RegistryRouteContext): Promise<S>;
@@ -230,6 +238,7 @@ export function feedRoute<S = undefined>(def: FeedRouteDef<S>): RegistryRoute {
     service: "distribution",
     ecosystem: def.ecosystem,
     ...(def.inertDocument ? { inertDocument: true as const } : {}),
+    ...(def.listDocument ? { listDocument: true as const } : {}),
     match: (p) => def.match(p),
     handle: async (req, ctx) => {
       const state = (

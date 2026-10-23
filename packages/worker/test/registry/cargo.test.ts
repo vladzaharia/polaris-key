@@ -11,6 +11,7 @@
  * `cargo/golden/` (`vitest -u` rewrites them).
  */
 
+import { mintCompat } from "../helpers/legacyOwnerToken.js";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -26,10 +27,7 @@ import {
 import { ingestPackageDescriptor } from "../../src/services/release/packages/ingest.js";
 import { packageStateStatements } from "../../src/services/release/packages/state.js";
 import { forgetRegistrySettings } from "../../src/services/distribution/registry/settings.js";
-import {
-  forgetRegistryTokens,
-  mintRegistryToken,
-} from "../../src/core/registry/registryTokens.js";
+import { forgetRegistryTokens } from "../../src/core/registry/registryTokens.js";
 import { registryCounters } from "../../src/services/distribution/registry/materialise.js";
 import {
   CRATES_IO_INDEX,
@@ -456,7 +454,7 @@ describe("authenticated feeds (F-21)", () => {
   });
 
   async function token(): Promise<string> {
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       {

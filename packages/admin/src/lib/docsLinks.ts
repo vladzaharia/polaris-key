@@ -48,6 +48,10 @@ export const DOCS_LINKS = {
   storefrontListing: "/docs/features/ship-builds/channels/polaris-key/",
   packageFeeds: "/docs/features/ship-builds/packages/",
   packageFeedsHost: "/docs/features/ship-builds/packages/",
+  // F-34.7: the Packages page's empty panel names the task, so it opens that section.
+  declarePackage:
+    "/docs/features/ship-builds/packages/publish/#declare-the-package",
+  publishFromCi: "/docs/features/ship-builds/packages/publish/#publish-from-ci",
   platformSecrets: "/docs/operate/platform/deploy/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",

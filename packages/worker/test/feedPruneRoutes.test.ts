@@ -96,6 +96,13 @@ beforeEach(async () => {
       rel.packageDeliverables,
     ),
   );
+  // F-34.3: publishes need the owner's `packageFeeds` switch on as well.
+  await db.run(
+    `INSERT OR IGNORE INTO dist_registry_owners (product, enabled, version, updated_at, updated_by)
+     VALUES (?, 1, 1, ?, 'test')`,
+    SLUG,
+    NOW,
+  );
   await db.run(
     `INSERT INTO dist_registry_feeds (product, ecosystem, enabled, namespace_json,
        max_package_bytes, ext_json, updated_at)

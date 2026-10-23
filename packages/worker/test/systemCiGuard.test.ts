@@ -38,7 +38,14 @@ async function admin(
 ): Promise<Response> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: ["platform-admins"],
+      authTime: NOW,
+      stepUp: true,
+    },
     NOW,
   );
   const full = `/api${path}`;

@@ -201,6 +201,30 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
+    {
+      name: "waiting:package-feeds",
+      hash: "#/p/waiting/distribution/feeds",
+    },
+    // F-34.7: a deep link to an ecosystem the product does not declare (the guided panel).
+    {
+      name: "djdl:package-feeds?undeclared",
+      hash: "#/p/djdl/distribution/feeds/swift",
+    },
+    // F-33b.4: Service tokens (product) and Registry tokens (platform, no Create), and the mint dialog.
+    {
+      name: "djdl:feeds/tokens",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+    },
+    { name: "global:platform-feeds/tokens", hash: "#/platform/feeds/tokens" },
+    {
+      name: "dialog:new-service-token",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+      act: async (page) => {
+        await page.getByRole("button", { name: "New token…" }).click();
+        await page.getByRole("dialog", { name: "New service token" }).waitFor();
+      },
+    },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
@@ -247,6 +271,42 @@ function cases(): Case[] {
       act: async (page) => {
         await page.getByRole("button", { name: "New license" }).click();
         await page.getByRole("dialog").first().waitFor();
+      },
+    },
+    // F-34.8: the off page, and the Turn off package feeds dialog over the Packages cards.
+    { name: "feedsoff:package-feeds", hash: "#/p/feedsoff/distribution/feeds" },
+    {
+      name: "dialog:turn-off-feeds",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    // M6: the Services switch opens the same typed dialog.
+    {
+      name: "dialog:turn-off-feeds-services",
+      hash: "#/p/djdl/settings/features",
+      act: async (page) => {
+        await page.getByRole("switch", { name: /Packages/ }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      name: "dialog:turn-off-feeds-409",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByRole("textbox").fill("djdl");
+        await dialog
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await dialog.getByText(/changed since you opened this/).waitFor();
       },
     },
     {
@@ -329,6 +389,12 @@ const TEXT200_CASES = [
   "djdl:activity",
   "global:platform-status",
   "djdl:settings-members",
+  // F-34.7: the Packages cards (the access chip beside a long title) at 200 % text.
+  "djdl:package-feeds",
+  "empty:package-feeds",
+  "feedsoff:package-feeds",
+  "djdl:package-feeds?undeclared",
+  "waiting:package-feeds",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -388,7 +454,16 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
+        only: [
+          ...ZOOM_CASES,
+          "djdl:health",
+          "djdl:rollouts",
+          // F-34.7: the URL breaks at separators and the publish command scrolls, not splits.
+          "djdl:package-feeds",
+          "empty:package-feeds",
+          "djdl:package-feeds?undeclared",
+          "waiting:package-feeds",
+        ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
@@ -604,6 +679,24 @@ async function open(
         },
       });
     if (url.pathname.startsWith("/manage/api/")) {
+      // F-34.8: the switch's PUT meets a newer owner row (the 409 `version_conflict` case).
+      if (
+        route.request().method() === "PUT" &&
+        url.pathname.endsWith("/distribution/package-feeds")
+      )
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "bad_request",
+            reason: "version_conflict",
+            packageFeeds: {
+              enabled: true,
+              version: 4,
+              updatedAt: Math.floor(Date.now() / 1000) - 60,
+              updatedBy: "mbr_01J9ZANALIMA",
+            },
+          },
+        });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
       const body = resolve(url.pathname);
@@ -729,6 +822,9 @@ for (const vp of VIEWPORTS) {
             if (SHOTS)
               await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
             expect(csp, "CSP violations").toEqual([]);
+            // F-34.7: the Packages page passes axe (contrast included) in both themes.
+            if (c.name.includes("package-feeds"))
+              expect(await axeWithin(page, "#content"), "axe").toEqual([]);
             expect(
               await page.evaluate(
                 () => document.documentElement.scrollWidth - window.innerWidth,

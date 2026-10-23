@@ -404,6 +404,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing: "Feed access migration records (what the F-34.4 job overwrote)",
+    reason:
+      "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",
+    shows: "Ship builds → Package feeds",
+    covers: { ids: ["column:dist_registry_access_moves.prior_source"] },
+  },
+  {
     thing: "Connection records (where a connection row came from)",
     reason:
       "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",

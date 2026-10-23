@@ -76,7 +76,8 @@ export type PackageRefusalReason =
   | "seq_not_increasing"
   | "r2_object_missing"
   | "r2_ref_not_owned"
-  | "distribution_disabled";
+  | "distribution_disabled"
+  | "package-feed-off";
 
 export type PackageIngestResult =
   | {
@@ -274,6 +275,14 @@ export async function ingestPackageDescriptor(
     return refuse(
       "package-namespace",
       `no ${pkg.ecosystem} package feed is configured for ${product}; its operator sets the feed's namespace first.`,
+    );
+  // F-34.3: the feed's off switches (its own, the owner's `packageFeeds`, the platform's
+  // per-ecosystem kill switch) stop a CI publish as they stop a native one and an OCI push.
+  if (!opts.feed.enabled || !opts.feed.ownerEnabled || !opts.feed.policyEnabled)
+    return refuse(
+      "package-feed-off",
+      `the ${pkg.ecosystem} package feed of ${product} is turned off, so it takes no publishes.`,
+      { status: 409 },
     );
   const nsProblem = packageNamespaceProblem(
     pkg.ecosystem,

@@ -134,6 +134,7 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_readiness",
     "dist_registry_owners",
     "dist_registry_feeds",
+    "dist_registry_access_moves",
     "dist_registry_policy",
     "dist_listings",
     "dist_listing_locales",

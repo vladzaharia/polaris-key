@@ -222,6 +222,15 @@ async function productionShaped(): Promise<{
     NOW - 50,
     NOW + 86400,
   );
+  // F-33b.1: an operator-minted token on lic-1, which the winner (acct_1) keeps.
+  run(
+    `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json, binding,
+       license_id, created_by, portal_account_id, created_at, expires_at)
+     VALUES ('acme', 'rtok_op', 'ho', 'wxyz', 'ops', '["read"]', 'license', 'lic-1',
+       'admin:op', NULL, ?, ?)`,
+    NOW - 50,
+    NOW + 86400,
+  );
   return { raw, db };
 }
 
@@ -518,6 +527,14 @@ describe("migrations 0068 on a production-shaped copy", () => {
         )
         .get(),
     ).toEqual({ revoked_at: NOW, revoke_reason: "link_removed" });
+    // F-33b.1: the winner still owns lic-1, so a loser's settlement leaves the operator's token.
+    expect(
+      raw
+        .prepare(
+          "SELECT revoked_at FROM registry_tokens WHERE token_id = 'rtok_op'",
+        )
+        .get(),
+    ).toEqual({ revoked_at: null });
     const report = raw
       .prepare(
         "SELECT action, target_id FROM platform_audit WHERE action = 'account.license.superseded' ORDER BY target_id",

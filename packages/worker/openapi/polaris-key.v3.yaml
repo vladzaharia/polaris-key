@@ -22673,6 +22673,18 @@ components:
         install: { type: string }
         remainingSecrets: { type: array, items: { type: string } }
         defaults: { $ref: "#/components/schemas/AdminCreatedDefaults" }
+        feedProvisionSkipped:
+          type: array
+          description: >
+            Package ecosystems the manifest declares whose feed was not provisioned (several npm
+            or Swift scopes, a one-segment Maven groupId, a Go host-only module), each with the
+            reason. Absent when every declared ecosystem got a feed.
+          items:
+            type: object
+            required: [ecosystem, reason]
+            properties:
+              ecosystem: { type: string }
+              reason: { type: string }
         product:
           type: [object, "null"]
           description: The created product as `GET /manage/api/products/{slug}` shows it (its `name` included).

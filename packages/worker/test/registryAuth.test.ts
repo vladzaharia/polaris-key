@@ -5,6 +5,7 @@
  * `test/registry/godot.test.ts`, beside that feed's fixture.
  */
 
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
@@ -118,9 +119,9 @@ async function seedOwner(slug: string): Promise<void> {
 }
 
 async function mint(
-  over: Partial<Parameters<typeof mintRegistryToken>[2]> = {},
+  over: Partial<Parameters<typeof mintCompat>[2]> = {},
 ): Promise<string> {
-  const res = await mintRegistryToken(
+  const res = await mintCompat(
     env,
     db,
     {
@@ -170,7 +171,7 @@ describe("registry tokens: the store (§6.1)", () => {
   const now = NOW;
 
   it("mints pkeyr_ + 256 bits, stores only the peppered hash and a hint, and shows the token once", async () => {
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       {
@@ -199,7 +200,8 @@ describe("registry tokens: the store (§6.1)", () => {
     ).not.toContain(res.token);
   });
 
-  it("enforces the mint rules: expiry 1..365 days, URL tokens godot-only for 30 days, licence tokens read-only", async () => {
+  it("enforces the mint rules: expiry 1..365 days, URL tokens godot-only for 30 days, licence tokens read-only, no owner read", async () => {
+    const { licenseId } = await seedLicenseWithKey(db, OWNER);
     const m = (over: Record<string, unknown>) =>
       mintRegistryToken(
         env,
@@ -207,7 +209,8 @@ describe("registry tokens: the store (§6.1)", () => {
         {
           product: OWNER,
           label: "x",
-          binding: "owner",
+          binding: "license",
+          licenseId,
           createdBy: "admin:a",
           ...over,
         } as Parameters<typeof mintRegistryToken>[2],
@@ -220,19 +223,34 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
     expect((await m({ ecosystems: ["nuget"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
-    // F-22: `publish` must name its publish ecosystems (registryPublish.test.ts has the rest);
-    // it implies `read` (F-23's push tokens are the same scope, naming OCI).
-    expect((await m({ scopes: ["publish"] })).ok).toBe(false);
-    const pub = await m({ scopes: ["publish"], ecosystems: ["npm"] });
-    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
-    expect((await m({ scopes: ["publish"], ecosystems: ["oci"] })).ok).toBe(
-      true,
-    );
     expect((await m({ scopes: ["delete"] })).ok).toBe(false);
     expect((await m({ scopes: ["write"] })).ok).toBe(false);
     const url = await m({ presentation: "url", ecosystems: ["npm"] });
     expect(url.ok && url.view.ecosystems).toEqual(["godot"]);
     expect(url.ok && url.view.expiresAt).toBe(now + 30 * 86_400);
+    // F-22: `publish` is owner-bound only, names its publish ecosystems (registryPublish.test.ts
+    // has the rest) and implies `read` (F-23's push tokens are the same scope, naming OCI).
+    const o = (over: Record<string, unknown>) =>
+      m({ binding: "owner", licenseId: undefined, ...over });
+    expect((await o({ scopes: ["publish"] })).ok).toBe(false);
+    const pub = await o({ scopes: ["publish"], ecosystems: ["npm"] });
+    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
+    expect((await o({ scopes: ["publish"], ecosystems: ["oci"] })).ok).toBe(
+      true,
+    );
+    expect(await m({ scopes: ["publish"], ecosystems: ["npm"] })).toMatchObject(
+      {
+        ok: false,
+        reason: "license_tokens_read_only",
+      },
+    );
+    // F-33b.3: an owner-wide READ token is retired, whatever else it asks for.
+    for (const over of [{}, { scopes: ["read"] }, { ecosystems: ["npm"] }])
+      expect(await o(over)).toMatchObject({
+        ok: false,
+        status: 422,
+        reason: "owner_read_retired",
+      });
     // A licence-bound token names an existing licence of the owner.
     expect(
       await m({ binding: "license", licenseId: "lic_nope" }),
@@ -240,7 +258,7 @@ describe("registry tokens: the store (§6.1)", () => {
       ok: false,
       status: 404,
     });
-    expect((await m({ binding: "license" })).ok).toBe(false);
+    expect((await m({ licenseId: undefined })).ok).toBe(false);
   });
 
   it("caps live tokens per licence at 10", async () => {
@@ -248,7 +266,7 @@ describe("registry tokens: the store (§6.1)", () => {
     for (let i = 0; i < 10; i++)
       expect(
         (
-          await mintRegistryToken(
+          await mintCompat(
             env,
             db,
             {
@@ -263,7 +281,7 @@ describe("registry tokens: the store (§6.1)", () => {
         ).ok,
       ).toBe(true);
     expect(
-      await mintRegistryToken(
+      await mintCompat(
         env,
         db,
         {
@@ -475,7 +493,7 @@ describe("the credential ladder (§6.2), through the registry host", () => {
 
   it("another owner's token, a token narrowed away from OCI and a URL token are no credential here", async () => {
     await setMode("authenticated");
-    const other = await mintRegistryToken(
+    const other = await mintCompat(
       env,
       db,
       { product: OTHER, label: "x", binding: "owner", createdBy: "admin:a" },
@@ -658,5 +676,116 @@ describe("SwiftPM login (§6.3)", () => {
     });
     // No package claims that URL: the ladder admitted the read, the route found nothing.
     expect(authed.status).toBe(404);
+  });
+});
+
+describe("the packages:read CI token (F-33b.2)", () => {
+  const manifest = `/v2/${NAME}/tags/list`;
+
+  async function readToken(product = OWNER, scopes = ["packages:read"]) {
+    return (
+      await issueStaticCiToken(env, db, {
+        product,
+        label: "service",
+        scopes,
+        expiresAt: NOW + 86_400,
+        createdBy: "admin:a",
+        now: NOW,
+      })
+    ).token;
+  }
+
+  const q = (scope: string) =>
+    `/v2/token?service=${HOST}&scope=${encodeURIComponent(scope)}`;
+
+  beforeEach(() => {
+    env.REGISTRY_TOKEN_KEY = KEY;
+  });
+
+  it("pulls the private, licensed and entitled feeds of its own product", async () => {
+    const t = await readToken();
+    for (const mode of ["authenticated", "licensed", "entitled"]) {
+      await setMode(mode);
+      await db.run(
+        "UPDATE dist_access SET mode = ? WHERE product = ? AND deliverable_id = ?",
+        mode,
+        OWNER,
+        OCI_ID,
+      );
+      forgetRegistrySettings();
+      const res = await get(q(`repository:${NAME}:pull`), {
+        headers: { authorization: basic(t) },
+      });
+      expect(res.status, mode).toBe(200);
+      const pull = ((await res.json()) as { token: string }).token;
+      const read = await get(manifest, {
+        headers: { authorization: `Bearer ${pull}` },
+      });
+      expect(read.status, mode).toBe(200);
+    }
+  });
+
+  it("gets 403 on another owner's repository and 401 on its Swift login", async () => {
+    const t = await readToken(OTHER);
+    await setMode("authenticated");
+    const denied = await get(q(`repository:${NAME}:pull`), {
+      headers: { authorization: basic(t) },
+    });
+    expect(denied.status).toBe(403);
+    expect(await ociCode(denied)).toBe("DENIED");
+    const login = await get(`/swift/${OWNER}/login`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${t}` },
+    });
+    expect(login.status).toBe(401);
+  });
+
+  it("never pushes: a push scope is refused, though the same token pulls", async () => {
+    const t = await readToken();
+    await setMode("authenticated");
+    const auth = { headers: { authorization: basic(t) } };
+    expect((await get(q(`repository:${NAME}:pull`), auth)).status).toBe(200);
+    expect((await get(q(`repository:${NAME}:pull,push`), auth)).status).toBe(
+      403,
+    );
+    expect((await get(q(`repository:${NAME}:push`), auth)).status).toBe(403);
+  });
+
+  it("logs in to SwiftPM, and a token with no read scope does not", async () => {
+    const t = await readToken();
+    const login = (token: string) =>
+      get(`/swift/${OWNER}/login`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      });
+    expect((await login(t)).status).toBe(200);
+    expect(
+      (await login(await readToken(OWNER, ["distribution:report"]))).status,
+    ).toBe(401);
+  });
+
+  it("writes last_used_at once an hour, on the registry lookup only", async () => {
+    const t = await readToken();
+    const lastUsed = async () =>
+      (
+        await db.first<{ last_used_at: number | null }>(
+          "SELECT last_used_at FROM ci_tokens WHERE product = ?",
+          OWNER,
+        )
+      )?.last_used_at;
+    expect(await lastUsed()).toBeNull();
+    const look = async (at: number) => {
+      forgetRegistryTokens();
+      await lookupRegistryCredential(env, db, t, { nowMs: at * 1000 });
+    };
+    await look(NOW);
+    expect(await lastUsed()).toBe(NOW);
+    await look(NOW + 3599);
+    expect(await lastUsed()).toBe(NOW);
+    await look(NOW + 3601);
+    expect(await lastUsed()).toBe(NOW + 3601);
+    // The listing returns it.
+    const { listCiTokens } = await import("../src/core/publisher.js");
+    expect((await listCiTokens(db, OWNER))[0]!.lastUsedAt).toBe(NOW + 3601);
   });
 });

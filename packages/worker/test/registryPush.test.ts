@@ -12,6 +12,7 @@
  * Golden file: `test/fixtures/registry/oci/push-2.0.0.json` (`UPDATE_REGISTRY_GOLDENS=1`).
  */
 
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -32,7 +33,6 @@ import { forgetLicenceHolds } from "../src/services/distribution/registry/author
 import {
   REGISTRY_TOKEN_TTL_SECONDS,
   forgetRegistryTokens,
-  mintRegistryToken,
   revokeRegistryToken,
   signPullToken,
   verifyPullToken,
@@ -175,9 +175,9 @@ async function seedOwner(slug: string): Promise<void> {
 }
 
 async function mint(
-  over: Partial<Parameters<typeof mintRegistryToken>[2]> = {},
+  over: Partial<Parameters<typeof mintCompat>[2]> = {},
 ): Promise<string> {
-  const res = await mintRegistryToken(
+  const res = await mintCompat(
     env,
     db,
     {
@@ -485,7 +485,7 @@ describe("who may push: the token service and the mint", () => {
   });
 
   it("the mint: publish implies read; licence and Godot URL tokens can only read", async () => {
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       {
@@ -500,7 +500,7 @@ describe("who may push: the token service and the mint", () => {
     );
     expect(res.ok && res.view.scopes).toEqual(["publish", "read"]);
     const { licenseId } = await seedLicenseWithKey(db, OWNER);
-    const lic = await mintRegistryToken(
+    const lic = await mintCompat(
       env,
       db,
       {
@@ -515,7 +515,7 @@ describe("who may push: the token service and the mint", () => {
       NOW,
     );
     expect(!lic.ok && lic.reason).toBe("license_tokens_read_only");
-    const url = await mintRegistryToken(
+    const url = await mintCompat(
       env,
       db,
       {

@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { FeatureSubRow } from "./FeatureSubRow.js";
 import { Switch } from "../../../../ui/Switch.js";
@@ -11,6 +10,8 @@ import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { useFeedsOverview } from "../../feeds/data.js";
+import { TurnOffFeeds } from "../../feeds/pages/TurnOffFeeds.js";
+import { useProduct } from "../../../data/hooks.js";
 
 export function PackageFeedsControl({
   slug,
@@ -33,6 +34,10 @@ export function PackageFeedsControl({
   const overview = useFeedsOverview(
     { kind: "product", slug },
     distributionOn && featureOn,
+  );
+  const product = useProduct(slug);
+  const configuredFeeds = (overview.data?.feeds ?? []).filter(
+    (f) => f.configured,
   );
   const registryHost = overview.data?.registryOrigin
     ? new URL(overview.data.registryOrigin).host
@@ -58,12 +63,8 @@ export function PackageFeedsControl({
         packageFeeds: result.packageFeeds,
       });
       latest.current = result.packageFeeds;
-      toast.success(`Packages turned ${next ? "on" : "off"}`, {
-        action: {
-          label: "Undo",
-          onClick: () => void save(!next).catch(() => undefined),
-        },
-      });
+      // No Undo: turning off asks for the typed confirmation, so a toast must not skip it.
+      toast.success(`Package feeds turned ${next ? "on" : "off"}`);
     } catch (failure) {
       setFailure({ error: failure, requested: next });
       throw failure;
@@ -148,18 +149,13 @@ export function PackageFeedsControl({
           />
         }
       />
-      <ConfirmDialog
+      <TurnOffFeeds
         open={confirming}
         onOpenChange={setConfirming}
-        intent="caution"
-        title="Turn off Packages?"
-        consequences={[
-          "Every package feed answers not-found within 30 seconds: installs and updates from it fail.",
-          "Packages and their settings are kept and answer again when turned on.",
-        ]}
-        confirmLabel="Turn off Packages"
-        describeError={errorCopy}
-        onConfirm={() => save(false)}
+        slug={slug}
+        name={product.data?.name ?? slug}
+        feedCount={configuredFeeds.length}
+        packageCount={configuredFeeds.reduce((n, f) => n + f.packages, 0)}
       />
     </>
   );

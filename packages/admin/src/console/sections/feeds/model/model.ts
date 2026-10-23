@@ -26,7 +26,6 @@ import {
   type FeedSetupCredential,
   type FeedSnippet,
 } from "@polaris-key/manifest";
-import type { CapabilityItem } from "../../../../ui/CapabilityBadge.js";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -79,41 +78,42 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
 };
 
 /**
- * The stored modes the Feeds pages offer as one choice (P0-47). `authenticated` and `licensed`
- * are one strictness for a feed (the Worker's `access.ts`; `admin/feeds.md`), so both read as
- * **Customers** over the value already stored. Collapsing the stored values is F-34's migration.
+ * Two access options: Public and Customers (F-34). Customers is the stored `licensed`; the stored
+ * `authenticated` is the same strictness and an old `entitled` feed (packages gated one by one)
+ * also reads as Customers. The server writes only `public` and `licensed`.
  */
-const CUSTOMER_MODES: readonly string[] = ["authenticated", "licensed"];
+const CUSTOMER_MODES: readonly string[] = [
+  "authenticated",
+  "licensed",
+  "entitled",
+];
 
-/** The choice a stored mode is shown as: `customers` for Token and Licensed, else the mode. */
+/** The choice a stored mode is shown as: `public`, else `customers`. */
 export function feedAccessChoice(mode: string): string {
   return CUSTOMER_MODES.includes(mode) ? "customers" : mode;
 }
 
-/**
- * The mode to store for a choice: the stored mode when it already means that choice (an
- * `authenticated` feed stays `authenticated`), `licensed` for a feed newly opened to customers.
- */
-export function feedAccessMode(choice: string, stored: string): string {
-  if (choice !== "customers") return choice;
-  return CUSTOMER_MODES.includes(stored) ? stored : "licensed";
+/** The mode a save writes for a choice: `public` or `licensed`. */
+export function feedAccessMode(choice: string): string {
+  return choice === "customers" ? "licensed" : choice;
 }
 
-/** Access modes and choices as the Feeds pages name them (a registry client presents a token). */
+/** Access choices as the Feeds pages name them (a registry client presents a token). */
 export const FEED_ACCESS_LABELS: Record<string, string> = {
   public: "Public",
   customers: "Customers",
-  authenticated: "Customers",
-  licensed: "Customers",
-  entitled: "Entitled",
 };
 
 export const FEED_ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Any client can install, with no credentials.",
   customers:
     "Clients with a registry token: yours, your CI's, or a customer's while their license is active.",
-  entitled: "Clients whose license includes the package's entitlement flag.",
 };
+
+/** The server's `accessDisplay` as a sentence start: "customers, packages gated individually". */
+export function accessDisplayLabel(display: string): string {
+  return display.charAt(0).toUpperCase() + display.slice(1);
+}
 
 /** Why a feed does not answer, in words. */
 export const OFF_REASONS: Record<FeedOffReason, string> = {
@@ -244,8 +244,6 @@ export type FeedExtensionInput =
       kind: "select";
       options: readonly { value: string; label: string }[];
       default: string;
-      /** The stored value is a number (`categoryId`). */
-      numeric?: boolean;
     }
   | { kind: "text"; placeholder: string; maxLength: number; pattern?: RegExp }
   | { kind: "repositoryMap"; placeholder: string };
@@ -275,57 +273,6 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
       placeholder: "acme.Kit https://github.com/acme/kit",
     },
   },
-  retainUntaggedDays: {
-    label: "Untagged manifests",
-    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed, except by feed retention's prune of builds of main.",
-    input: { kind: "number", min: 0, max: 3650, unit: "days" },
-  },
-  categoryId: {
-    label: "Category",
-    help: "The asset library category every addon of this feed is listed under.",
-    input: {
-      kind: "select",
-      numeric: true,
-      default: "5",
-      options: [
-        { value: "1", label: "2D Tools" },
-        { value: "2", label: "3D Tools" },
-        { value: "3", label: "Shaders" },
-        { value: "4", label: "Materials" },
-        { value: "5", label: "Tools" },
-        { value: "6", label: "Scripts" },
-        { value: "7", label: "Misc" },
-      ],
-    },
-  },
-  supportLevel: {
-    label: "Support level",
-    help: "The support level the editor shows for every addon of this feed.",
-    input: {
-      kind: "select",
-      default: "community",
-      options: [
-        { value: "official", label: "Official" },
-        { value: "community", label: "Community" },
-        { value: "testing", label: "Testing" },
-      ],
-    },
-  },
-  license: {
-    label: "License",
-    help: "Shown as each addon's license. Empty shows Unspecified.",
-    input: { kind: "text", placeholder: "MIT", maxLength: 64 },
-  },
-  minGodotVersion: {
-    label: "Oldest editor",
-    help: "Editors older than this, or of another major version, see no addons. Empty lists them to every editor.",
-    input: {
-      kind: "text",
-      placeholder: "4.4",
-      maxLength: 8,
-      pattern: /^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?$/,
-    },
-  },
 };
 
 /** The ecosystem panel's section title, per protocol. */
@@ -341,20 +288,74 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
 };
 
 /**
- * A feed's version-state operations as capability items (A-18j: the same badge the storefront
- * tiles use), from the adapter's declared `ops` when the server sends them, else from its booleans.
+ * F-34.8: the switch as a `version_conflict` 409 from `PUT …/package-feeds` reports it, or `null`
+ * for any other failure. The refusal carries the owner row (its `version`, not the generic
+ * settings counter), so a retry sends a counter that matches.
  */
-export function feedVersionCapabilities(caps: {
-  yank: boolean;
-  deprecate: boolean;
-  ops?: Record<string, { mode: string; reason?: string }>;
-}): CapabilityItem[] {
-  const op = (id: "yank" | "deprecate", label: string): CapabilityItem => ({
-    op: id,
-    label,
-    support: caps.ops?.[id] ?? {
-      mode: caps[id] ? "api" : "unsupported",
-    },
-  });
-  return [op("yank", "Yank"), op("deprecate", "Deprecate")];
+export function packageFeedsConflict(
+  error: unknown,
+): import("../../../../api.js").PackageFeedsSwitch | null {
+  const e = error as { status?: unknown; packageFeeds?: unknown } | null;
+  return e?.status === 409 &&
+    e.packageFeeds &&
+    typeof e.packageFeeds === "object"
+    ? (e.packageFeeds as import("../../../../api.js").PackageFeedsSwitch)
+    : null;
+}
+
+/**
+ * Where focus goes after a write moved the page to its other state (the old control unmounted):
+ * the off card's title after Turn off, the page title after Turn on. Read once by the page that
+ * mounts next.
+ */
+/** Focus the next page is owed: set by a write on the Packages page, consumed once for that slug. */
+export const afterWrite: {
+  focus: "off-card" | "page" | null;
+  slug: string | null;
+  at: number;
+} = { focus: null, slug: null, at: 0 };
+
+export function markAfterWrite(focus: "off-card" | "page", slug: string): void {
+  afterWrite.focus = focus;
+  afterWrite.slug = slug;
+  afterWrite.at = Date.now();
+}
+
+/** The owed focus for this slug, once, and only within a few seconds of the write. */
+export function takeAfterWrite(
+  want: "off-card" | "page",
+  slug: string,
+): boolean {
+  const ok =
+    afterWrite.focus === want &&
+    afterWrite.slug === slug &&
+    Date.now() - afterWrite.at < 5000;
+  if (afterWrite.focus === want) afterWrite.focus = null;
+  return ok;
+}
+
+/** The house short absolute form: "Oct 7, 2:05 PM", with the year only when it is not this one. */
+export function shortWhen(ms: number): string {
+  const sameYear = new Date(ms).getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(ms);
+}
+
+/**
+ * "Turned off by Ana Lima on Oct 7, 2:05 PM". A person is named; an unnamed actor, the manifest
+ * or the system (which only ever provision a row) reads "Off since …".
+ */
+export function offWhen(
+  by: string | null | undefined,
+  at: number | null | undefined,
+): string | null {
+  if (!at) return null;
+  const when = shortWhen(at * 1000);
+  const person = by && by !== "manifest" && by !== "system" ? by : null;
+  return person ? `Turned off by ${person} on ${when}` : `Off since ${when}`;
 }

@@ -423,6 +423,10 @@ async function drive(
   const pending = (await unitRows(ctx.db, runId)).filter(
     (u) => u.status !== "done",
   );
+  const sourceId =
+    step === "apply"
+      ? ((await runRow(ctx.db, runId))?.source_id ?? null)
+      : null;
   const budget = opts.limit ?? pending.length;
   let done = 0;
   let changed = 0;
@@ -436,10 +440,20 @@ async function drive(
     );
     if (renewed === 0) return null;
     let n: number;
+    let detail: unknown;
     try {
-      n = await (step === "apply"
-        ? job.apply(ctx, u.unit)
+      const reported = sourceId
+        ? await ctx.db.first<{ detail_json: string | null }>(
+            "SELECT detail_json FROM data_migration_units WHERE run_id = ? AND unit = ?",
+            sourceId,
+            u.unit,
+          )
+        : null;
+      const outcome = await (step === "apply"
+        ? job.apply(ctx, u.unit, parseJsonColumn(reported?.detail_json ?? null))
         : job.down(ctx, u.unit));
+      n = typeof outcome === "number" ? outcome : outcome.changes;
+      detail = typeof outcome === "number" ? undefined : outcome.detail;
     } catch (e) {
       const marked = await ctx.db.runChanges(
         `UPDATE data_migration_units SET status = 'failed', error = ?, at = ?
@@ -456,9 +470,17 @@ async function drive(
     }
     const stmts: DbStatement[] = [
       {
-        sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?
+        sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?,
+                     detail_json = ?
                WHERE run_id = ? AND unit = ? AND ${guard.sql}`,
-        params: [n, ctx.now, runId, u.unit, ...guard.params],
+        params: [
+          n,
+          ctx.now,
+          detail === undefined ? null : JSON.stringify(detail),
+          runId,
+          u.unit,
+          ...guard.params,
+        ],
       },
       {
         sql: `UPDATE data_migration_runs SET changes = changes + ? WHERE id = ? AND lease_token = ?`,

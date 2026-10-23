@@ -4,6 +4,7 @@
  * `core/activeCatalog.ts`), because services' admin handlers use them too.
  */
 
+import { listAudit } from "../../core/audit.js";
 import { claimsView } from "../../core/settingsClaims.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
@@ -68,6 +69,15 @@ function syncStateView(
   };
 }
 
+/** The package deliverables the product declares (`.pkey/release`), of any ecosystem. */
+async function declaredPackages(db: Db, slug: string): Promise<number> {
+  const row = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM release_deliverables WHERE product = ? AND kind = 'package'",
+    slug,
+  );
+  return row?.n ?? 0;
+}
+
 /** The registry projection of a product row. */
 export async function productView(
   env: Env,
@@ -99,6 +109,7 @@ export async function productView(
   // already loads is what keeps the nav from popping in after its own content; a second
   // round-trip to `…/services` would be a strictly slower way to render the same tree.
   const services = serviceStateOf(p);
+  const feeds = await packageFeedsOf(db, p.slug);
   const portalSettings = await getPortalProductSettings(db, p.slug);
   const icon =
     (icons ?? (await productIcons(env, db, p.slug))).get(p.slug) ?? null;
@@ -113,7 +124,18 @@ export async function productView(
     system: p.system === 1,
     // F-11: the operator-owned `packageFeeds` sub-capability (`dist_registry_owners`). The shell
     // shows Distribution → Package feeds only while it is on, so it rides the row the shell loads.
-    packageFeeds: (await packageFeedsOf(db, p.slug)).enabled,
+    packageFeeds: feeds.enabled,
+    // F-34.3 (decision F13): what the Packages nav and card need in one read. `declared` counts the
+    // package deliverables in `.pkey/release`; `offBy` and `offAt` say who turned the feeds off
+    // and when (`manifest` is a row the ingest provisioned), null while they are on or never set.
+    packages: {
+      declared: await declaredPackages(db, p.slug),
+      feedsOn: feeds.enabled,
+      offBy: !feeds.enabled
+        ? await offByName(db, p.slug, feeds.updatedBy)
+        : null,
+      offAt: !feeds.enabled ? feeds.updatedAt : null,
+    },
     releaseSource: p.release_source ?? "manual",
     signingKid,
     jwksUrl,
@@ -375,4 +397,26 @@ export async function attentionFactsFor(
       .filter((row) => row.approval !== "approved")
       .map((row) => row.id),
   };
+}
+
+/**
+ * Who turned a product's package feeds off, as a display name: the actor of the latest
+ * `package_feeds.update` audit row, resolved as the activity feed does. Never the raw IdP `sub`
+ * the owner row records, and never an email (the product record is readable from any area, Activity
+ * is not); `manifest` stays as is, and a write with no named actor reads as "an operator".
+ */
+async function offByName(
+  db: Db,
+  slug: string,
+  updatedBy: string | null,
+): Promise<string | null> {
+  if (updatedBy === null) return null;
+  if (updatedBy === "manifest" || updatedBy === "system") return updatedBy;
+  const [row] = await listAudit(db, slug, {
+    action: "distribution.package_feeds.update",
+    targetKind: "package-feeds",
+    targetId: slug,
+    limit: 1,
+  });
+  return row?.actor_name || "an operator";
 }

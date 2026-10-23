@@ -196,10 +196,11 @@ export interface NavChildRecord {
 }
 
 /**
- * What a nav item needs beyond its section's service: a Distribution sub-capability (F-11) or a
- * channel in the product's scope (A-20.7: its platforms and deliverables fit the channel).
+ * What a nav item needs beyond its section's service: a channel in the product's scope (A-20.7:
+ * its platforms and deliverables fit the channel). Packages needs nothing beyond Distribution
+ * (F-34.7): the package-feeds switch is a state of its page, not a reason to hide it.
  */
-export type NavRequirement = "packageFeeds" | `channel:${ChannelId}`;
+export type NavRequirement = `channel:${ChannelId}`;
 
 /** The product facts a `requires` reads; `null` while the product is loading. */
 export type NavFeatures = Partial<Record<NavRequirement, boolean>> | null;
@@ -216,15 +217,10 @@ export const channelRequirement = (id: string): NavRequirement =>
  * which shows every page as before.
  */
 export function navFeaturesOf(
-  product:
-    | Pick<ProductDetail, "packageFeeds" | "channels" | "platforms">
-    | null
-    | undefined,
+  product: Pick<ProductDetail, "channels" | "platforms"> | null | undefined,
 ): NavFeatures {
   if (!product) return null;
-  const features: Partial<Record<NavRequirement, boolean>> = {
-    packageFeeds: product.packageFeeds === true,
-  };
+  const features: Partial<Record<NavRequirement, boolean>> = {};
   if (product.channels && (product.platforms?.length ?? 0) > 0) {
     const listed = new Set(product.channels.map((c) => c.id));
     for (const id of CHANNEL_IDS)
@@ -719,15 +715,15 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
       },
       {
-        // F-11: the product's package feeds on pkg.plrs.im, shown while `packageFeeds` is on.
-        // "Package feeds", so it does not collide with "Outlets & feeds" (storefront feeds).
+        // F-11: the product's package feeds on pkg.plrs.im. F-34.7: listed whenever Distribution
+        // is on (the empty and off states live on the page); "Packages" is the mockup's name.
         page: "package-feeds",
-        label: "Package feeds",
+        label: "Packages",
+        keywords: "package feeds npm pypi swift maven oci godot registry",
         path: "distribution/feeds",
         icon: Archive,
         docs: "/docs/features/ship-builds/packages/",
         inNav: true,
-        requires: "packageFeeds",
         record: {
           noun: "Feed",
           tabs: FEED_TABS,
@@ -1112,9 +1108,7 @@ export function meetsRequirement(
   features: NavFeatures,
 ): boolean {
   if (!page.requires || features === null) return true;
-  if (page.requires.startsWith("channel:"))
-    return features[page.requires] !== false;
-  return features[page.requires] === true;
+  return features[page.requires] !== false;
 }
 
 /**

@@ -163,6 +163,26 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     path: "/tokens",
     why: "mints an admin API credential that outlives the session",
   },
+  {
+    method: "PUT",
+    path: "/products/:slug/ci-publisher",
+    why: "claims or edits the trusted publisher, which decides who may publish",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/ci-tokens",
+    why: "issues a static CI token that outlives the session",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/distribution/feeds/tokens (body)",
+    why: "mints a registry credential: a service token, a publish token or a license-bound token (every binding)",
+  },
+  {
+    method: "POST",
+    path: "/platform/feeds/tokens (body)",
+    why: "mints a registry credential on the platform's feeds",
+  },
 ];
 
 /** A 403 `step_up_required` when the session has no recent proven re-authentication, else null. */

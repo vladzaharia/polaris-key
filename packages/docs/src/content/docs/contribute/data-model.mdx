@@ -41,7 +41,7 @@ this page or fails the freshness gate.
 | `blob_gc_log` | 0048_a_dist_readiness_blob_gc.sql | `id`, `at`, `action`, `storage_key`, `product`, `ref_kind`, `ref_id`, `size`, `detail` |
 | `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `checked_at`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
-| `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
+| `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by`, `last_used_at (0129)`, `hint (0130)` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
 | `lazy_delta_settings` | 0051_lazy_deltas.sql | `product`, `enabled`, `hot_devices`, `daily_cap`, `updated_at` |
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
@@ -140,7 +140,8 @@ this page or fails the freshness gate.
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
 | `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
-| `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
+| `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by`, `namespace_source (0130)` |
+| `dist_registry_access_moves` | 0129_registry_access_moves.sql | `product`, `ecosystem`, `deliverable_id`, `from_feed_mode`, `had_row`, `prior_mode`, `prior_entitlement`, `prior_source`, `moved_at`, `feed_moved_at`, `feed_restored_at` |
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
 | `dist_listings` | 0065_dist_listing_model.sql | `product`, `default_locale`, `name`, `developer_name`, `category`, `content_descriptors_json`, `iarc_certificate_id`, `urls_json`, `contact_email`, `copyright`, `tint`, `tint_dark`, `precedence_json`, `source`, `created_at`, `modified_at`, `modified_by`, `provenance_json (0069)` |
 | `dist_listing_locales` | 0065_dist_listing_model.sql | `product`, `locale`, `name`, `subtitle`, `short_description`, `description`, `keywords_json`, `features_json`, `promotional_text`, `source`, `modified_at`, `modified_by`, `provenance_json (0069)` |

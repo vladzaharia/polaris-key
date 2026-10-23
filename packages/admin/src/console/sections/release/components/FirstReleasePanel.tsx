@@ -352,6 +352,7 @@ export function FirstReleasePanel({
         open={editingPublisher}
         policy={policy}
         onClose={() => setEditingPublisher(false)}
+        onOpen={() => setEditingPublisher(true)}
       />
       <IssueCiTokenFlow slug={slug} open={issuing} onOpenChange={setIssuing} />
       {!linked ? (

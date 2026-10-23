@@ -150,7 +150,11 @@ export interface FeedAdapter<
   readonly hostPrefix: string;
   /** The feed's base path for one (already URL-encoded) owner, under `hostPrefix`. */
   feedPath(owner: string): string;
-  /** Every read route, each built by `feedRoute`. */
+  /**
+   * Every read route, each built by `feedRoute`. An owner-level list document (one that runs the
+   * ladder with `deliverableId: () => null`) is marked `listDocument: true` and filters what it
+   * names to what the presenting principal may read (F-33b.5).
+   */
   readonly routes: readonly RegistryRoute[];
   /** The feed's credential routes (F-21: Swift's `POST …/login`), each built by `feedAuthRoute`. */
   readonly authRoutes?: readonly RegistryRoute[];

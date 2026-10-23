@@ -1176,6 +1176,12 @@ describe("publisher policy ingest", () => {
 
 // ── The operator path (admin API, narrative-only) ──────────────────────────────────────────
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function adminCall(
   method: string,
   resource: string,
@@ -1184,7 +1190,13 @@ async function adminCall(
 ): Promise<Response> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: ["platform-admins"],
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const full = `/api/products/${SLUG}/${resource}`;
@@ -1304,5 +1316,50 @@ describe("operator path: policy claim and static tokens", () => {
       { csrf: false },
     );
     expect(res.status).toBe(403);
+  });
+});
+
+describe("step-up on durable credentials (F-33b.7)", () => {
+  it("claiming the publisher and issuing a static token refuse without a fresh step-up", async () => {
+    stale = true;
+    const claim = await adminCall("PUT", "ci-publisher", {
+      environment: "prod",
+      scopes: ["release:publish"],
+    });
+    expect(claim.status).toBe(403);
+    expect(await claim.json()).toMatchObject({
+      error: { code: "step_up_required" },
+    });
+    const issue = await adminCall("POST", "ci-tokens", {
+      scopes: ["release:publish"],
+      expiresInDays: 30,
+    });
+    expect(issue.status).toBe(403);
+    expect(await issue.json()).toMatchObject({
+      error: { code: "step_up_required" },
+    });
+    expect(await db.all("SELECT 1 FROM ci_tokens")).toEqual([]);
+    stale = false;
+    expect(
+      (
+        await adminCall("POST", "ci-tokens", {
+          scopes: ["release:publish"],
+          expiresInDays: 30,
+        })
+      ).status,
+    ).toBe(201);
+  });
+
+  it("revoking a static token needs none", async () => {
+    const issued = (await (
+      await adminCall("POST", "ci-tokens", {
+        scopes: ["release:publish"],
+        expiresInDays: 30,
+      })
+    ).json()) as { tokenId: string };
+    stale = true;
+    expect(
+      (await adminCall("DELETE", `ci-tokens/${issued.tokenId}`)).status,
+    ).toBe(200);
   });
 });

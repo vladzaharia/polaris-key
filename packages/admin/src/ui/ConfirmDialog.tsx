@@ -5,7 +5,12 @@ import {
   Fingerprint,
   OctagonAlert,
 } from "lucide-react";
-import { startStepUp } from "../lib/stepUp.js";
+import {
+  hasSavedStepUp,
+  readStash,
+  stashStepUp,
+  startStepUp,
+} from "../lib/stepUp.js";
 import { cn } from "../lib/cn.js";
 import { formatRelative } from "../lib/format.js";
 import { Button, type ButtonVariant } from "./Button.js";
@@ -92,6 +97,8 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Legacy: keeps confirm disabled (an input in `children` is not valid yet). */
   confirmDisabled?: boolean;
+  /** Why `confirmDisabled` holds (a soft-disabled button names it: "Loading"). */
+  confirmDisabledReason?: string;
 }
 
 /**
@@ -112,67 +119,7 @@ export function isStepUpRequired(error: unknown): boolean {
   return !!e && e.status === 403 && e.code === "step_up_required";
 }
 
-const STEP_UP_TTL_MS = 15 * 60 * 1000;
-const stepUpStorageKey = (key: string): string => `pkey:step-up:${key}`;
-
-interface Stash {
-  typed: string;
-  fields: Record<string, string>;
-}
-
-function stashStepUp(
-  key: string | undefined,
-  typed: string,
-  fields: Record<string, string> = {},
-): void {
-  if (!key) return;
-  try {
-    sessionStorage.setItem(
-      stepUpStorageKey(key),
-      JSON.stringify({
-        typed,
-        fields,
-        page: window.location.hash,
-        at: Date.now(),
-      }),
-    );
-  } catch {
-    // No storage: the word is typed again.
-  }
-}
-
-function readStash(key: string | undefined, remove: boolean): Stash | null {
-  if (!key) return null;
-  try {
-    const raw = sessionStorage.getItem(stepUpStorageKey(key));
-    if (raw === null) return null;
-    if (remove) sessionStorage.removeItem(stepUpStorageKey(key));
-    const v = JSON.parse(raw) as {
-      typed?: unknown;
-      fields?: unknown;
-      page?: unknown;
-      at?: unknown;
-    };
-    if (
-      typeof v.at !== "number" ||
-      Date.now() - v.at >= STEP_UP_TTL_MS ||
-      (typeof v.page === "string" && v.page !== window.location.hash)
-    )
-      return null;
-    const fields: Record<string, string> = {};
-    if (v.fields && typeof v.fields === "object")
-      for (const [k, x] of Object.entries(v.fields))
-        if (typeof x === "string") fields[k] = x;
-    return { typed: typeof v.typed === "string" ? v.typed : "", fields };
-  } catch {
-    return null;
-  }
-}
-
-/** Whether a step-up sign-in left a saved dialog for `key` on this page (it reopens). */
-export function hasSavedStepUp(key: string): boolean {
-  return readStash(key, false) !== null;
-}
+export { hasSavedStepUp };
 
 const ICON: Record<ConfirmIntent, React.ReactNode> = {
   neutral: null,
@@ -206,6 +153,7 @@ export function ConfirmDialog({
   focusTyped = false,
   loading = false,
   confirmDisabled = false,
+  confirmDisabledReason,
 }: ConfirmDialogProps): React.ReactElement {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
@@ -405,7 +353,9 @@ export function ConfirmDialog({
           disabledReason={
             !stepUp && !typedOk && typedConfirmation
               ? `Type ${typedConfirmation.value} to confirm`
-              : undefined
+              : !stepUp && confirmDisabled
+                ? confirmDisabledReason
+                : undefined
           }
           aria-describedby={err || stepUp ? errorId : undefined}
           onClick={() => void confirm()}

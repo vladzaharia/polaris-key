@@ -286,6 +286,7 @@ function route<S = undefined>(
   def: {
     resolve?: (req: Request, ctx: RegistryRouteContext) => Promise<S>;
     deliverableId: (p: Record<string, string>, state: S) => string | null;
+    listDocument?: true;
     queryNames?: readonly string[];
     cacheRequest?: (req: Request) => Request;
     serve: (
@@ -300,6 +301,7 @@ function route<S = undefined>(
   return feedRoute<S>({
     name,
     ecosystem: ECO,
+    ...(def.listDocument ? { listDocument: true as const } : {}),
     match(pathname) {
       const { path, token } = untokenised(pathname);
       const m = pattern.exec(path);
@@ -336,6 +338,7 @@ function listRoute(
 ): RegistryRoute {
   return route(name, pattern, [], {
     deliverableId: () => null,
+    listDocument: true,
     queryNames,
     ...(key ? { cacheRequest: key } : {}),
     async serve(req, ctx, cache) {

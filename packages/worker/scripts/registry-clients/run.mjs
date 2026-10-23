@@ -30,6 +30,18 @@
  * CURL_HOME). Both modes set REGISTRY_TOKEN_KEY, as production does, so `GET /v2/` answers the
  * Bearer challenge and OCI clients always run the token dance.
  *
+ * SERVICE TOKENS IN `--auth` (F-33b.6): the header token is a `pkeyci_` service token
+ * (`packages:read`, a static `ci_tokens` row, what the console's Keys area mints), not an owner
+ * `pkeyr_`: no console can mint one any more. One legacy owner `pkeyr_` read row is seeded too, and
+ * `proveLegacy` checks it still reads until it expires. The Godot editor's URL token stays a
+ * `pkeyr_` (a CI token cannot ride a URL).
+ *
+ * PERSONAL TOKEN (`--person`, F-33b.6): one `pkeyp_` over two owners. Seeds owners `acme` and
+ * `bolt` (OCI and Swift feeds, `licensed`) and `cove`, an account with a usable licence in acme and
+ * bolt and none in cove, and mints one `packages:read` personal token for it through
+ * `core/accounts/personalTokens.ts` (`person/seed.ts`). Runs `clients/person-*.sh` (default: both;
+ * `--client docker` and `--client swift` name them) with PKEY_PERSON_TOKEN. Excludes `--auth`.
+ *
  * NATIVE PUBLISH (F-22): every run also declares four package deliverables to publish
  * (`seedPublish`: `@<owner>/published` on npm, `polaris-smoke-published` on PyPI,
  * `smoke.PublishedKit` on Swift, `im.plrs.fixture:published` and `:published-gradle` on Maven) and
@@ -54,6 +66,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  readFileSync,
   mkdtempSync,
   readdirSync,
   rmSync,
@@ -72,10 +85,11 @@ import {
   wrangler,
 } from "./lib.mjs";
 import { seedFixtures } from "./fixtures.mjs";
-import { FIXTURE_OWNER, seed } from "./seed.mjs";
+import { FIXTURE_OWNER, seed, seedOwner } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
 const SEEDS = join(WORKER, "scripts", "registry-clients", "seeds");
+const PERSON_DIR = join(WORKER, "scripts", "registry-clients", "person");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -103,11 +117,22 @@ async function waitFor(url, ms) {
 }
 
 const auth = process.argv.includes("--auth");
+const person = process.argv.includes("--person");
+if (auth && person) {
+  console.error("--auth and --person are separate runs");
+  process.exit(2);
+}
+/** F-33b.6: the owners of a `--person` run. The account holds a licence in the first two. */
+const PERSON_OWNERS = ["acme", "bolt", "cove"];
+const PERSON_HOLDS = ["acme", "bolt"];
 /** F-21: the pull-token key and the pepper the tokens below are hashed under (local only). */
 const REGISTRY_TOKEN_KEY = randomBytes(32).toString("base64");
 const KEY_HASH_PEPPER = randomBytes(16).toString("hex");
 const b64url = (b) => b.toString("base64url");
-const HEADER_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+/** F-33b.6: the service token (`pkeyci_`, `packages:read`) every `--auth` client sends. */
+const HEADER_TOKEN = `pkeyci_${b64url(randomBytes(32))}`;
+/** F-33b.6: a legacy owner `pkeyr_` read token, kept to prove it works until it expires. */
+const LEGACY_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
 const URL_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
 const PUBLISH_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
 
@@ -199,7 +224,11 @@ function seedPush(persistTo) {
   ]);
 }
 
-/** Switch the owner's feeds to `authenticated` and mint the two tokens into the local D1. */
+/**
+ * Switch the owner's feeds to `authenticated` and mint the tokens into the local D1: the service
+ * token (a static `ci_tokens` row with `packages:read`, as `issueStaticCiToken` writes it), a legacy
+ * owner `pkeyr_` read row and the Godot editor's URL token.
+ */
 function seedAuth(persistTo) {
   const now = Math.floor(Date.now() / 1000);
   const hash = (t) =>
@@ -212,7 +241,12 @@ function seedAuth(persistTo) {
        ${now + 86_400});`;
   const sql = [
     `UPDATE dist_registry_feeds SET access_mode = 'authenticated' WHERE product = '${FIXTURE_OWNER}';`,
-    row("rtok_harness", HEADER_TOKEN, "NULL", "header"),
+    `INSERT INTO ci_tokens (token_hash, token_id, product, kind, scopes_json, subject, label, jti,
+       issued_at, expires_at, revoked_at, created_by)
+     VALUES ('${hash(HEADER_TOKEN)}', 'cit_harness_service', '${FIXTURE_OWNER}', 'static',
+       '["packages:read"]', 'static:cit_harness_service', 'harness service token', NULL, ${now},
+       ${now + 86_400}, NULL, 'admin:harness');`,
+    row("rtok_harness_legacy", LEGACY_TOKEN, "NULL", "header"),
     row("rtok_harness_url", URL_TOKEN, `'["godot"]'`, "url"),
   ].join("\n");
   const file = join(persistTo, "registry-clients-auth.sql");
@@ -229,6 +263,78 @@ function seedAuth(persistTo) {
     "--file",
     file,
   ]);
+}
+
+/**
+ * The `--person` seed (F-33b.6): the three owners' product rows, their OCI and Swift packages
+ * (for the selected clients), every feed of the three switched to `licensed`, then the account,
+ * its licences and its personal token (`person/seed.ts`), written to `<state>/person.token`.
+ */
+function seedPerson(persistTo, selected) {
+  const sh = (cmd, args, env = {}) => {
+    const r = spawnSync(cmd, args, {
+      cwd: WORKER,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        CI: "true",
+        WRANGLER_SEND_METRICS: "false",
+        ...env,
+      },
+    });
+    if (r.status !== 0)
+      throw new Error(`${cmd} ${args[0]} failed (exit ${r.status})`);
+  };
+  for (const o of PERSON_OWNERS) seedOwner(persistTo, o, o);
+  if (selected.includes("person-docker"))
+    for (const o of PERSON_OWNERS)
+      sh(TSX, [
+        join(SEEDS, "oci.ts"),
+        "--persist-to",
+        persistTo,
+        "--owner",
+        o,
+        "--light",
+      ]);
+  if (selected.includes("person-swift"))
+    for (const o of PERSON_OWNERS)
+      sh(process.execPath, [join(CLIENTS, "swift.seed.mjs")], {
+        STATE: persistTo,
+        OWNER: o,
+        SCOPE: o,
+        SWIFT_DIR: `swift-${o}`,
+        SWIFT_VERSIONS: "1.0.0",
+      });
+  const file = join(persistTo, "registry-clients-person.sql");
+  writeFileSync(
+    file,
+    `UPDATE dist_registry_feeds SET access_mode = 'licensed' WHERE product IN (${PERSON_OWNERS.map((o) => `'${o}'`).join(", ")});`,
+  );
+  wrangler([
+    "d1",
+    "execute",
+    "DB",
+    "--local",
+    "--env",
+    "test",
+    "--persist-to",
+    persistTo,
+    "--file",
+    file,
+  ]);
+  sh(
+    TSX,
+    [
+      join(PERSON_DIR, "seed.ts"),
+      "--persist-to",
+      persistTo,
+      "--out",
+      join(persistTo, "person.token"),
+      "--holds",
+      PERSON_HOLDS.join(","),
+    ],
+    { KEY_HASH_PEPPER },
+  );
 }
 
 /** One path per ecosystem that a non-public feed must refuse without a token. */
@@ -275,14 +381,59 @@ async function probeRefusals(selected) {
   return bad;
 }
 
+/**
+ * F-33b.6: owner `pkeyr_` read tokens are retired at mint, and a row minted before keeps working
+ * until it expires. Both credentials read one non-public path per selected ecosystem; the legacy
+ * one is checked once, with the service token beside it, so a break names which side broke.
+ */
+async function proveLegacy(selected) {
+  let bad = 0;
+  const ecosystems = new Set(selected.map(ecosystemOf).filter(Boolean));
+  const probe = ["npm", "pypi", "maven", "godot", "cargo", "go"].find((e) =>
+    ecosystems.has(e),
+  );
+  if (!probe) return 0;
+  for (const [label, token] of [
+    ["service token (pkeyci_)", HEADER_TOKEN],
+    ["legacy owner token (pkeyr_)", LEGACY_TOKEN],
+  ]) {
+    const res = await fetch(`${origin}${PROBES[probe](FIXTURE_OWNER)}`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (res.status === 200 || res.status === 404)
+      console.log(`ok   ${probe}: ${label} is accepted (${res.status})`);
+    else {
+      console.error(`FAIL ${probe}: ${label} answered ${res.status}`);
+      bad++;
+    }
+  }
+  return bad;
+}
+
 const port = Number(argValue("--port") ?? (await freePort()));
 const origin = `http://127.0.0.1:${port}`;
 const available = readdirSync(CLIENTS)
   .filter((f) => f.endsWith(".sh"))
   .map((f) => f.slice(0, -3))
   .sort();
-const wanted = argValues("--client");
-const clients = wanted.length ? wanted : available;
+// F-33b.6: `person-*` clients run only under `--person`, and nothing else does; `--client docker`
+// and `--client swift` name them there.
+const isPersonClient = (c) => c.startsWith("person-");
+const wanted = argValues("--client").map((c) =>
+  person && available.includes(`person-${c}`) ? `person-${c}` : c,
+);
+const clients = wanted.length
+  ? wanted
+  : available.filter((c) => isPersonClient(c) === person);
+for (const c of clients)
+  if (isPersonClient(c) !== person) {
+    console.error(
+      isPersonClient(c)
+        ? `${c} needs --person`
+        : `${c} does not run under --person (use person-docker or person-swift)`,
+    );
+    process.exit(2);
+  }
 for (const c of clients)
   if (!available.includes(c)) {
     console.error(`unknown client "${c}" (have: ${available.join(", ")})`);
@@ -339,6 +490,7 @@ try {
   }
   seedPublish(state);
   if (auth) seedAuth(state);
+  if (person) seedPerson(state, clients);
   if (clients.some((c) => c.startsWith("oci-push"))) seedPush(state);
   dev = spawn(
     WRANGLER,
@@ -377,6 +529,8 @@ try {
   if (auth) {
     console.log("\n── authenticated feeds: refusals without a token ──");
     failed += await probeRefusals(clients);
+    console.log("\n── the legacy owner token still reads ──");
+    failed += await proveLegacy(clients);
     mkdirSync(curlHome);
     writeFileSync(
       join(curlHome, ".curlrc"),
@@ -402,6 +556,14 @@ try {
               REGISTRY_AUTH: "1",
             }
           : {}),
+        ...(person
+          ? {
+              PKEY_PERSON_TOKEN: readFileSync(
+                join(state, "person.token"),
+                "utf8",
+              ).trim(),
+            }
+          : {}),
       },
     });
     if (r.status !== 0) {
@@ -421,5 +583,5 @@ try {
 }
 if (failed) process.exit(1);
 console.log(
-  `\nregistry clients green${auth ? " (authenticated feeds)" : ""}: ${clients.join(", ")}`,
+  `\nregistry clients green${auth ? " (authenticated feeds)" : person ? " (personal token, two owners)" : ""}: ${clients.join(", ")}`,
 );

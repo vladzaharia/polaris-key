@@ -4,7 +4,7 @@ description: "The FeedAdapter contract every package feed on the registry host i
 sidebar:
   order: 7
 type: "how-to"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-22"
 ---
 
 The registry host (`pkg.plrs.im`) serves eight package feeds today: npm, PyPI, Swift, Maven, OCI,
@@ -16,6 +16,41 @@ contract around it stays the same for every feed, and a test suite checks it.
 The operator side of the feeds is on [Package feeds](/docs/services/distribution/package-feeds/)
 and [Feeds in the console](/docs/admin/feeds/). This page is for the person adding the eighth
 feed.
+
+## Provisioning and the access move
+
+A feed is created by the manifest, not by hand. Distribution's ingest contribution
+(`services/distribution/registryFeeds.ts`, called from `ingest.ts`) inserts, for each ecosystem a
+manifest declares a package in:
+
+- a `dist_registry_feeds` row, enabled, `access_mode = 'licensed'` (Customers), with the
+  namespace from `deriveFeedNamespace(ecosystem, names, owner)` in `@polaris-key/manifest`;
+- a `dist_registry_owners` row, only when the product has neither an owner row nor a feed row;
+- one `distribution.feed.provision` audit row per created feed.
+
+Every statement is `ON CONFLICT DO NOTHING`: a manifest never updates, re-enables or widens a
+row. The system product is skipped. Provisioning runs whether Distribution is on or off. A new adapter's namespace rule is its `namespace.derive` in
+`PackageEcosystemRules`: the narrowest namespace its fields express, `{}` with an `ambiguous`
+reason when no one namespace fits (then nothing is provisioned and the ingest answer carries
+`feedProvisionSkipped`).
+
+`distribution.packageFeeds` is the owner's off switch, a registry setting over
+`dist_registry_owners` with an L1 confirm on off. Its version is the owner row's.
+
+Feed writes accept only Public and Customers (`access_mode_unavailable`). The migration job `distribution.feed-access-customers`
+(`feedAccessJob.ts`) moves feeds written before that:
+
+- `authenticated` becomes `licensed`: the same strictness on the ladder, so no answer changes.
+- `entitled` becomes `licensed` only after each package deliverable of that ecosystem has its own
+  `entitled` `dist_access` row (its own gate flag kept), so no license gains access.
+
+It runs from the migration runner after a dry run. The ladder caches a feed row
+and a package's mode separately for 30 seconds, so apply writes the package rows first and moves
+the feed on a later call: the first answers the retryable `registry_cache_window`, and applying
+the same report again finishes it. `dist_registry_access_moves` (migration
+`00XX_registry_access_moves.sql`, owned by `distribution` in `TABLE_OWNERS`) is its ledger, and
+`down` restores from it. `test/feedAccessJob.test.ts` pins `authorizeFeedRead` identical before and
+after, for every principal.
 
 ## What an adapter owns, and what it does not
 

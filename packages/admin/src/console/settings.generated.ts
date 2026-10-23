@@ -1615,6 +1615,25 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
+    key: "distribution.packageFeeds",
+    aliases: [],
+    scope: "product",
+    entity: null,
+    service: "distribution",
+    area: "distribution.feeds",
+    rbacArea: "ship",
+    label: "Serve package feeds",
+    description:
+      "Whether the product's package feeds answer at all. Off stops every read and publish of every feed at once; nothing is deleted, and turning it on serves them again.",
+    keywords: ["feeds", "packages", "registry", "off switch", "kill switch"],
+    docs: "/docs/features/ship-builds/channels/",
+    ownership: "operator",
+    critical: false,
+    secret: false,
+    pending: null,
+    deprecated: null,
+  },
+  {
     key: "distribution.feeds",
     aliases: [],
     scope: "product",
@@ -1624,7 +1643,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Package feeds",
     description:
-      "Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it.",
+      "Per ecosystem: whether the product's feed answers, who may read it (Public or Customers), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Customers feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off.",
     keywords: ["npm", "pypi", "registry", "packages"],
     docs: "/docs/features/ship-builds/channels/",
     ownership: "operator",
@@ -2044,6 +2063,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     reason:
       "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
     shows: "Product → Settings",
+  },
+  {
+    thing: "Feed access migration records (what the F-34.4 job overwrote)",
+    reason:
+      "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",
+    shows: "Ship builds → Package feeds",
   },
   {
     thing: "Connection records (where a connection row came from)",

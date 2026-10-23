@@ -497,7 +497,7 @@ const identifiers: SwiftEndpoint = {
       );
       // Only what the answer's own cache class may show: a public answer (a public feed) is
       // shared by every reader, so a package only a credential may read stays out of it, as
-      // pypi's index and godot's lists do.
+      // pypi's index and godot's lists do (F-33b.5).
       if (decision.ok && decision.cache === cache) found.push(d.name);
     }
     if (found.length === 0) return registryNotFound("swift");
@@ -541,6 +541,7 @@ export const SWIFT_ROUTES: readonly RegistryRoute[] = [
   feedRoute<SwiftState>({
     name: "swift.identifiers",
     ecosystem: "swift",
+    listDocument: true,
     match: matcher(new RegExp(`^/swift/(${OWNER})/identifiers$`), []),
     ...identifiers,
   }),

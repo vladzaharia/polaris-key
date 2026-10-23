@@ -197,6 +197,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Distribution ───────────────────────────────────────────────────────────────────────────
   "distribution.access": at("access"),
   "distribution.feeds": at("package-feeds"),
+  "distribution.packageFeeds": at("package-feeds"),
   // Operator-owned and written by the Worker's commerce routes; the Commerce page only drives
   // App Store Connect.
   "commerce.stores": API,

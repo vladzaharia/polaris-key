@@ -307,6 +307,25 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       cause: "",
     });
 
+  // The console scrolls inside #content, so the document can stay still while the page itself
+  // scrolls sideways (a child wider than its column): measure the scroll container too.
+  if (mainEl && mainEl.scrollWidth > mainEl.clientWidth + 1)
+    out.push({
+      rule: "overflow",
+      kind: "content-x",
+      where: "#content",
+      detail: `#content scrolls ${mainEl.scrollWidth - mainEl.clientWidth}px sideways`,
+      cause: Array.from(mainEl.querySelectorAll<HTMLElement>("*"))
+        .filter(
+          (e) =>
+            e.getBoundingClientRect().right >
+            mainEl.getBoundingClientRect().right + 1,
+        )
+        .slice(0, 3)
+        .map((e) => short(e))
+        .join(" | "),
+    });
+
   const scrollers = new Set<Element>();
   for (const root of roots) {
     if (isScroller(root, "y")) scrollers.add(root);

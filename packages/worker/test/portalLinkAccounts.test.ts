@@ -746,6 +746,53 @@ describe("undo within 72 hours", () => {
     ]);
   });
 
+  it("revokes the operator-minted tokens of each licence handed back, pre-join and during the window", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    await seedLicense(w, "acme", "lic-a", a.accountId);
+    await seedLicense(w, "acme", "lic-other", b.accountId);
+    const opToken = (id: string, lic: string) =>
+      w.db.run(
+        `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+           binding, license_id, created_by, portal_account_id, created_at, expires_at)
+         VALUES ('acme', ?, ?, 'abcd', ?, '["read"]', 'license', ?, 'admin:op', NULL, ?, ?)`,
+        id,
+        `h-${id}`,
+        id,
+        lic,
+        NOW,
+        NOW + 86400,
+      );
+    await opToken("rtok_op_before", "lic-a"); // minted for A before the join
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    await opToken("rtok_op_window", "lic-a"); // minted during the window
+    await opToken("rtok_op_kept", "lic-other"); // a licence the survivor keeps
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    const rows = await w.db.all(
+      "SELECT token_id, revoked_by, revoke_reason FROM registry_tokens ORDER BY token_id",
+    );
+    // The over-revoke of the pre-join token is deliberate: it fails closed, the operator re-mints.
+    expect(rows).toEqual([
+      {
+        token_id: "rtok_op_before",
+        revoked_by: "system",
+        revoke_reason: "link_removed",
+      },
+      { token_id: "rtok_op_kept", revoked_by: null, revoke_reason: null },
+      {
+        token_id: "rtok_op_window",
+        revoked_by: "system",
+        revoke_reason: "link_removed",
+      },
+    ]);
+  });
+
   it("keeps the survivor's passkey user handle while it holds a passkey created under it", async () => {
     for (const enrolled of [true, false]) {
       const w = await seededWorld();

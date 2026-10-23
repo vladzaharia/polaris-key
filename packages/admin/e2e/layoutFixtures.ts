@@ -116,15 +116,21 @@ const PRODUCTS = [
     packageFeeds: true,
     presentation: { icon: null },
   }),
+  // F-34.7: two declared packages, none published yet (see `waitingFeeds`).
+  product("waiting", "Waiting product", { presentation: { icon: null } }),
 ];
 
 const ME = {
   ...(CORE_ROUTES["/manage/api/me"] as Record<string, unknown>),
-  products: PRODUCTS.map((p, i) => ({
-    slug: p.slug,
-    name: p.name,
-    schemaVersion: i + 1,
-  })),
+  products: [
+    ...PRODUCTS.map((p, i) => ({
+      slug: p.slug,
+      name: p.name,
+      schemaVersion: i + 1,
+    })),
+    // F-34.8: reachable by address and in the member's scope, left out of the products list.
+    { slug: "feedsoff", name: "Feeds off", schemaVersion: 9 },
+  ],
 };
 
 type Row = Record<string, unknown>;
@@ -160,6 +166,15 @@ const ROUTES: Record<string, unknown> = {
   ...DISTRIBUTION_ROUTES,
   ...DATA_ROUTES,
   ...SETTINGS_ROUTES,
+  // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.
+  [`${P}/distribution/package-feeds`]: {
+    packageFeeds: {
+      enabled: true,
+      version: 3,
+      updatedAt: NOW - DAY * 9,
+      updatedBy: null,
+    },
+  },
   [`${P}/devices`]: { devices, nextCursor: null },
   [`${P}/devices/summary`]: { ...core("/devices/summary"), total: 40 },
   [`${P}/activity`]: { items: activity, nextCursor: null },
@@ -306,7 +321,86 @@ function emptied(v: unknown, key = ""): unknown {
   return v;
 }
 
+/** F-34.8: a product (not in the sidebar list) whose package feeds an operator turned off. */
+const FEEDS_OFF = "/manage/api/products/feedsoff";
+const FEEDS_OFF_AT = NOW - DAY * 2;
+/**
+ * F-34.7: the `waiting` product has declared an npm and a Swift package and published neither,
+ * with a package deliverable each: the Packages cards draw "Waiting…" and the publish command.
+ */
+function waitingFeeds(pathname: string): unknown {
+  const base = "/manage/api/products/waiting";
+  if (pathname === `${base}/distribution/feeds`) {
+    const src = ROUTES[`${P}/distribution/feeds`] as {
+      feeds: Record<string, unknown>[];
+    };
+    return {
+      ...src,
+      feeds: src.feeds.map((f) =>
+        f.ecosystem === "npm" || f.ecosystem === "swift"
+          ? {
+              ...f,
+              configured: true,
+              enabled: true,
+              status: "enabled",
+              reason: null,
+              packages: 0,
+              versions: 0,
+              lastPublishedAt: null,
+            }
+          : { ...f, configured: false },
+      ),
+    };
+  }
+  if (pathname === `${base}/release/deliverables`)
+    return {
+      gateKnown: true,
+      deliverables: [
+        {
+          id: "npm.sourcekit",
+          kind: "package",
+          type: "npm",
+        },
+        {
+          id: "swift.sourcekit",
+          kind: "package",
+          type: "swift",
+        },
+      ],
+    };
+  return undefined;
+}
+
 export function resolve(pathname: string): unknown {
+  if (pathname === FEEDS_OFF)
+    return {
+      product: {
+        ...PRODUCTS[0],
+        slug: "feedsoff",
+        name: "Feeds off",
+        verified: false,
+        packageFeeds: false,
+        packages: {
+          declared: 3,
+          feedsOn: false,
+          offBy: "Ana Lima",
+          offAt: FEEDS_OFF_AT,
+        },
+      },
+    };
+  if (pathname === `${FEEDS_OFF}/distribution/package-feeds`)
+    return {
+      packageFeeds: {
+        enabled: false,
+        version: 4,
+        updatedAt: FEEDS_OFF_AT,
+        updatedBy: "mbr_01J9ZANALIMA",
+      },
+    };
+  if (pathname.startsWith(`${FEEDS_OFF}/`))
+    return ROUTES[`${P}${pathname.slice(FEEDS_OFF.length)}`];
+  const waiting = waitingFeeds(pathname);
+  if (waiting !== undefined) return waiting;
   const empty = "/manage/api/products/empty";
   if (pathname === empty) return { product: PRODUCTS[4] };
   if (pathname.startsWith(`${empty}/`)) {

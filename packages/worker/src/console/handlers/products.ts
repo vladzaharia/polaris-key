@@ -283,6 +283,9 @@ export async function handleProducts(
         install: result.install,
         remainingSecrets: result.remainingSecrets,
         defaults: result.defaults,
+        ...(result.feedProvisionSkipped
+          ? { feedProvisionSkipped: result.feedProvisionSkipped }
+          : {}),
         // C-2: the created product (its name), which the console's `LinkRepoResult` already
         // promises, so "<Name> is ready" never has to fall back to the slug.
         product: await (async () => {
