@@ -206,6 +206,87 @@ describe("api-check rule 1 (surface scanners)", () => {
     expect(v).toEqual([]);
   });
 
+  const camel = (n: string): string =>
+    n.replace(/_(\w)/g, (_, c: string) => c.toUpperCase());
+  const msg = (file: string, n: string): string =>
+    `[rule 8] ${file}: config.${n} is not a registry row, an sdks entry or an ignore entry`;
+  const native: [string, string, string | undefined, string[], string[]][] = [
+    [
+      "swift",
+      "tools/fixtures/api/surface.swift",
+      "FixtureClient",
+      ["getConfig", "helper", "extra", "status", "kind", "withBody"],
+      [
+        "internalByDefault",
+        "explicitInternal",
+        "secret",
+        "hidden",
+        "_underscore",
+        "init",
+        "nested",
+        "notScanned",
+      ],
+    ],
+    [
+      "kotlin",
+      "tools/fixtures/api/surface.kt",
+      "FixtureClient",
+      ["getConfig", "helper", "extra", "status", "withBody"],
+      ["secret", "inner", "guarded", "_underscore", "nested", "notScanned"],
+    ],
+    [
+      "godot",
+      "tools/fixtures/api/surface.gd",
+      undefined,
+      ["status", "get_config", "helper", "extra"],
+      ["_private_signal", "_ready"],
+    ],
+  ];
+  for (const [sdk, file, type, unknown, skipped] of native) {
+    it(`fails an unknown ${sdk} verb; skips private and underscore names`, () => {
+      const v = withSurface(sdk, file, type);
+      expect(v.sort()).toEqual(unknown.map((n) => msg(file, n)).sort());
+      for (const n of skipped) expect(v.join()).not.toContain(`config.${n} `);
+    });
+
+    it(`accepts a row, an ignore entry and an sdkOnly entry (${sdk})`, () => {
+      const v = withSurface(sdk, file, type, (a) => {
+        const [first, second, ...rest] = unknown;
+        a.ignore.push({ sdk, path: `config.${first}`, reason: "x" });
+        a.concepts.push({
+          id: `config.${camel(second!)}`,
+          kind: "method",
+          sdks: { [sdk]: {} },
+        });
+        for (const n of rest)
+          a.concepts.push({
+            id: `config.${camel(n)}`,
+            kind: "method",
+            sdks: { [sdk]: { sdkOnly: true, reason: "x" } },
+          });
+      });
+      expect(v).toEqual([]);
+    });
+
+    it(`an ignore entry for another SDK does not cover (${sdk})`, () => {
+      const other = sdk === "swift" ? "kotlin" : "swift";
+      const v = withSurface(sdk, file, type, (a) => {
+        a.ignore.push({
+          sdk: other,
+          path: `config.${unknown[0]}`,
+          reason: "x",
+        });
+      });
+      expect(v).toContain(msg(file, unknown[0]!));
+    });
+
+    it(`fails a missing ${sdk} surface file`, () => {
+      expect(withSurface(sdk, "tools/fixtures/api/nope.x", type)).toEqual([
+        "[rule 8] tools/fixtures/api/nope.x: surface file not found",
+      ]);
+    });
+  }
+
   it("fails a surface file that does not exist", () => {
     expect(withSurface("node", "tools/fixtures/api/nope.ts", "X")).toEqual([
       "[rule 8] tools/fixtures/api/nope.ts: surface file not found",
