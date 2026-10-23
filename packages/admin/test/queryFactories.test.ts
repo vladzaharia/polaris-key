@@ -293,8 +293,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/core/pages/accountOverrides.tsx",
     "sections/core/pages/ciData.ts",
   ],
-  // P0-32.18
-  "sections/distribution": ["sections/distribution/data.ts"],
   // P0-32.19
   "sections/feeds": [
     "sections/feeds/data.ts",
@@ -345,8 +343,6 @@ const KNOWN: Record<string, string[]> = {
     "sections/platform/pages/platformStores.tsx",
     "sections/platform/pages/useConnectionTest.ts",
   ],
-  // P0-32.18
-  "sections/release": ["sections/release/data.ts"],
   // P0-32.19
   "sections/storefronts": ["sections/storefronts/data.ts"],
   // P0-32.19
