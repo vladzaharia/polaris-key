@@ -127,6 +127,8 @@ export interface HttpClientConfig<Extra extends object = object> {
     retry: () => Promise<Response>,
     opts: HttpOptions & Extra,
   ) => Promise<Response | void> | Response | void;
+  /** Builds the thrown error from the parsed refusal (an app's subclass); default: the refusal itself. */
+  createError?: (refusal: HttpError) => HttpError;
   /** Runs with the refusal, before it is thrown (the step-up redirect). */
   onRefusal?: (error: HttpError, opts: HttpOptions & Extra) => void;
 }
@@ -190,7 +192,8 @@ export function createHttpClient<Extra extends object = object>(
     } catch {
       // not JSON
     }
-    const error = parseRefusal(res.status, body);
+    const parsed = parseRefusal(res.status, body);
+    const error = config.createError?.(parsed) ?? parsed;
     config.onRefusal?.(error, opts);
     throw error;
   }

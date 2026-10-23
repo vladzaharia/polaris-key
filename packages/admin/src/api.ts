@@ -52,6 +52,7 @@ import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 import type { ArtifactRole } from "@polaris-key/manifest";
 import type { LicenseTerms } from "../../worker/src/core/licensing/terms.js";
 import type { ServiceSlug } from "./services.generated.js";
+import { createHttpClient, HttpError } from "./lib/http.js";
 import { startStepUp } from "./lib/stepUp.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./lib/releasePolicyMessages.js";
 
@@ -5024,153 +5025,88 @@ export function setLoginRedirectForTests(
     });
 }
 
-export class ApiError extends Error {
+export class ApiError extends HttpError {
   constructor(
-    public readonly status: number,
-    public readonly fields?: string[],
-    public readonly code?: string,
+    status: number,
+    fields?: string[],
+    code?: string,
     /**
      * Stable COHERENCE codes, distinct from `fields`. A field name says "this input was
      * malformed"; an `errors` entry says "these inputs are individually fine and jointly
      * impossible" — `update_requires_distribution` names no single toggle, it names a relationship.
      * Only the endpoints that validate a whole object against rules (services, so far) send it.
      */
-    public readonly errors?: string[],
+    errors?: string[],
     /**
      * A machine-readable refusal reason (`unknown_channel`, `release_yanked`, …). The release
      * policy routes send it beside the generic `code` (worker `release/admin.ts`).
      */
-    public readonly reason?: string,
+    reason?: string,
   ) {
-    super(`api ${status}`);
+    super(status, { fields, code, errors, reason });
+    this.message = `api ${status}`;
     this.name = "ApiError";
   }
-  /** Seconds until a 429 clears, when the route says (`retryAfter`). */
-  retryAfter?: number;
-  /** The area a `no_access` 403 names (worker `forbiddenArea`): `settings`, `license`, … */
-  area?: string;
   /** F-34.8: a `version_conflict` 409 from `PUT …/package-feeds` carries the switch as it stands. */
   packageFeeds?: PackageFeedsSwitch;
 }
 
-async function call<T>(
-  path: string,
-  init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
-): Promise<T> {
-  const res = await send(path, init, opts);
-  // 204/empty bodies are tolerated (returns undefined cast to T).
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+/** The refusal as the console's error class, keeping the Worker's message when it sent one. */
+function toApiError(r: HttpError): ApiError {
+  const e = new ApiError(r.status, r.fields, r.code, r.errors, r.reason);
+  if (r.message && r.message !== `http ${r.status}`) e.message = r.message;
+  e.retryAfter = r.retryAfter;
+  e.area = r.area;
+  e.triesLeft = r.triesLeft;
+  e.stale = r.stale;
+  e.body = r.body;
+  const feeds = (r.body as { packageFeeds?: unknown } | undefined)
+    ?.packageFeeds;
+  if (r.status === 409 && feeds && typeof feeds === "object")
+    e.packageFeeds = feeds as PackageFeedsSwitch;
+  return e;
 }
 
-/** One request: the CSRF header on a write, the sign-in redirect on 401, an `ApiError` on a refusal. */
-async function send(
-  path: string,
-  init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
-): Promise<Response> {
-  const headers = new Headers(init.headers);
-  const mutating = init.method != null && init.method !== "GET";
-  if (mutating) {
-    headers.set(CSRF_HEADER, csrf);
-    // A JSON body unless the caller sent its own type (HA-06's raw file upload).
-    if (init.body && !headers.has("Content-Type"))
-      headers.set("Content-Type", "application/json");
-  }
-  let res: Response;
-  try {
-    res = await fetch(path, {
-      ...init,
-      headers,
-      credentials: "same-origin",
-    });
-  } catch (e) {
-    // Tag fetch's own failure, so the error copy can tell it from a render crash (also a
-    // TypeError). A caller's abort is not a network failure.
-    if (e instanceof Error && e.name !== "AbortError")
-      Object.defineProperty(e, "isFetchFailure", { value: true });
-    throw e;
-  }
-  if (res.status === 401) {
+interface ConsoleOptions {
+  stepUpRedirect?: boolean;
+  hold?: boolean;
+}
+
+const http = createHttpClient<ConsoleOptions>({
+  csrfHeader: CSRF_HEADER,
+  csrf: () => csrf,
+  createError: toApiError,
+  // The 401 sign-in. A page that had a session stays where it is under the overlay (`csrf` is set
+  // once `/me` loaded), and the request waits for the sign-in and goes again, once. `/me` itself
+  // is the probe that learns the session is back, so it never waits on itself (`hold: false`).
+  onUnauthorized: async (res, retry, opts) => {
     const expired = res.headers.get("X-PKey-Session") === "expired";
-    // A page that had a session stays where it is under the overlay (`csrf` is set once `/me`
-    // loaded), and the request waits for the sign-in and goes again. `/me` itself is the probe
-    // that learns the session is back, so it never waits on itself.
     if (expired && csrf !== "") {
       markSessionEnded();
-      if (opts.hold !== false && (await waitForSessionBack()))
-        return send(path, init, { ...opts, hold: false });
+      if (opts.hold !== false && (await waitForSessionBack())) {
+        try {
+          return await retry();
+        } catch (e) {
+          // Refused again after the sign-in: the session is gone once more.
+          if (e instanceof HttpError && e.status === 401) markSessionEnded();
+          throw e;
+        }
+      }
     } else {
       redirectToLogin(expired);
     }
-    throw new ApiError(401);
-  }
-  if (!res.ok) {
-    let fields: string[] | undefined;
-    let errors: string[] | undefined;
-    let code: string | undefined;
-    let message: string | undefined;
-    let reason: string | undefined;
-    let retryAfter: number | undefined;
-    let area: string | undefined;
-    let packageFeeds: PackageFeedsSwitch | undefined;
-    try {
-      const body = (await res.json()) as {
-        error?:
-          | string
-          | {
-              code?: string;
-              message?: string;
-              fields?: string[];
-              errors?: string[];
-              reason?: string;
-              area?: string;
-            };
-        message?: string;
-        fields?: string[];
-        errors?: string[];
-        code?: string;
-        reason?: string;
-        area?: string;
-        retryAfter?: number;
-        packageFeeds?: PackageFeedsSwitch;
-      };
-      if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
-      if (body.packageFeeds && typeof body.packageFeeds === "object")
-        packageFeeds = body.packageFeeds;
-      if (typeof body.error === "object" && body.error) {
-        fields = body.error.fields ?? body.fields;
-        errors = body.error.errors ?? body.errors;
-        code = body.error.code ?? body.code;
-        message = body.error.message ?? body.message;
-        reason = body.error.reason ?? body.reason;
-        if (typeof body.error.area === "string") area = body.error.area;
-      } else {
-        fields = body.fields;
-        errors = body.errors;
-        code = body.error ?? body.code;
-        message = body.message;
-        reason = body.reason;
-      }
-    } catch {
-      // non-JSON error body
-    }
-    const error = new ApiError(res.status, fields, code, errors, reason);
-    if (message) error.message = message;
-    if (retryAfter !== undefined) error.retryAfter = retryAfter;
-    if (area) error.area = area;
-    if (res.status === 409 && packageFeeds) error.packageFeeds = packageFeeds;
+  },
+  onRefusal: (error, opts) => {
     if (
-      res.status === 403 &&
-      code === "step_up_required" &&
+      error.status === 403 &&
+      error.code === "step_up_required" &&
       opts.stepUpRedirect
     )
       startStepUp();
-    throw error;
-  }
-  return res;
-}
+  },
+});
+
+const call = http.call;
 
 const enc = encodeURIComponent;
 

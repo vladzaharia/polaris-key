@@ -3,8 +3,7 @@
  * CSRF header, the refusal parser and the network-failure rule exist once (P0-32).
  *
  * The scan is on the AST, so `window.fetch(...)`, `globalThis["fetch"](...)` and line breaks cannot
- * hide a call. `KNOWN` lists the files that still call it, each with the slice that removes it. The
- * list only shrinks: a new call fails the suite, and so does a listed file with no call left.
+ * hide a call.
  */
 
 import {
@@ -21,11 +20,6 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 const ALLOWED = "lib/http.ts";
-
-/** Files that still call `fetch`, as paths under `src/`, each with the slice that removes it. */
-const KNOWN: Record<string, string> = {
-  "api.ts": "P0-32.10",
-};
 
 const GLOBALS = new Set(["window", "globalThis", "self"]);
 
@@ -76,16 +70,11 @@ function callsByFile(): Map<string, number[]> {
 describe("no direct fetch", () => {
   const found = callsByFile();
 
-  it("fetch is called only in lib/http.ts, bar the listed files", () => {
+  it("fetch is called only in lib/http.ts", () => {
     const offenders = [...found]
-      .filter(([file]) => file !== ALLOWED && !(file in KNOWN))
+      .filter(([file]) => file !== ALLOWED)
       .map(([file, lines]) => `${file}:${lines.join(",")}`);
     expect(offenders, "send the request through lib/http.ts").toEqual([]);
-  });
-
-  it("every listed file still calls fetch (delete its entry when it stops)", () => {
-    const stale = Object.keys(KNOWN).filter((file) => !found.has(file));
-    expect(stale).toEqual([]);
   });
 
   it("the check catches the shapes a regex would miss", () => {
@@ -101,13 +90,12 @@ describe("no direct fetch", () => {
     expect(hits("// fetch(1)\nconst s = 'fetch(2)';")).toBe(0);
   });
 
-  it("a new call in a file outside the list fails the scan", () => {
+  it("a new call in another file fails the scan", () => {
     const probe = join(SRC, "lib", "__fetchProbe__.ts");
     writeFileSync(probe, 'export const x = () => fetch("/x");\n');
     try {
       const probed = callsByFile();
       expect(probed.has("lib/__fetchProbe__.ts")).toBe(true);
-      expect("lib/__fetchProbe__.ts" in KNOWN).toBe(false);
     } finally {
       rmSync(probe, { force: true });
     }
