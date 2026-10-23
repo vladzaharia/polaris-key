@@ -208,6 +208,17 @@ Parity gate: every SDK's parity.json against the feature registry.
 - Reads: `tools/parity-check.ts`, `tools/api-check.ts`, `tools/capabilities.ts`, `conformance/parity/**`, `packages/sdk-node/src/**`, `packages/sdk-react/src/**`, `sdks/python/src/**`, `sdks/swift/Sources/**`, `sdks/kotlin/*/src/main/**`, `sdks/godot/addons/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `sdks/**/tests/**`, `{sdks,packages}/*/test/**`.
 - Writes: none (a checker).
 
+### api
+
+SDK API surface tests: every api.json row asserted in Node, React and Python.
+
+- Run: default.
+- Regenerate: `pnpm gen api`.
+- Check: `pnpm gen api --check`.
+- Underlying: `pnpm exec tsx tools/gen-api-surface.ts`.
+- Reads: `tools/gen-api-surface.ts`, `conformance/parity/api.json`.
+- Writes: `packages/sdk-node/test/apiSurface.generated.test.ts`, `packages/sdk-react/test/apiSurface.generated.test.ts`, `sdks/python/tests/test_api_surface.py`.
+
 ### ux-rows
 
 UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows.

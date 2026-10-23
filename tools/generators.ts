@@ -382,6 +382,19 @@ export const GENERATORS: Generator[] = [
     write: [tsx("tools/parity-check.ts")],
   },
   {
+    id: "api",
+    title:
+      "SDK API surface tests: every api.json row asserted in Node, React and Python",
+    order: 121,
+    inputs: ["tools/gen-api-surface.ts", "conformance/parity/api.json"],
+    outputs: [
+      "packages/sdk-node/test/apiSurface.generated.test.ts",
+      "packages/sdk-react/test/apiSurface.generated.test.ts",
+      "sdks/python/tests/test_api_surface.py",
+    ],
+    write: [tsx("tools/gen-api-surface.ts")],
+  },
+  {
     id: "ux-rows",
     title:
       "UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows",
