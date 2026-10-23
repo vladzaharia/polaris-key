@@ -1,3 +1,4 @@
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
@@ -1118,9 +1119,7 @@ describe("page heading, title and focus", () => {
     await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
-    expect(document.getElementById("route-announcer")!.textContent).toBe(
-      "Tiers, page loaded",
-    );
+    expect(lastAnnouncement()).toBe("Tiers, page loaded");
   });
 
   it("scrolls back to the top on every page change, but not when only the query changes (owner, 2026-10-03)", async () => {

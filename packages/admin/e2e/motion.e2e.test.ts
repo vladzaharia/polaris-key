@@ -690,7 +690,7 @@ async function focusedHeading(
     heading,
   );
   expect(
-    await page.locator("#route-announcer").textContent(),
+    (await page.locator("#pk-announcer").textContent())?.replace(/\u200b/g, ""),
     "the live region announces the page",
   ).toBe(`${announced}, page loaded`);
 }
