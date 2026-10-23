@@ -168,6 +168,32 @@ describe("listing field sources", () => {
     );
   });
 
+  it("with unsaved edits both actions are disabled with the reason; an inherited name shows as the placeholder", async () => {
+    bootWith(
+      LISTING,
+      base({
+        [P("/distribution/listing")]: listing({
+          inherited: { name: "presentation" },
+        }),
+      }),
+    );
+    const name = await screen.findByRole("textbox", { name: "Name" });
+    expect((name as HTMLInputElement).placeholder).toMatch(
+      /\(from Presentation\)$/,
+    );
+    const use = await screen.findAllByRole("button", {
+      name: "Use Presentation",
+    });
+    expect(use[0]!.getAttribute("aria-disabled")).not.toBe("true");
+    await userEvent.type(name, "x");
+    const after = screen.getAllByRole("button", { name: "Use Presentation" });
+    for (const b of after) expect(b.getAttribute("aria-disabled")).toBe("true");
+    for (const b of screen.queryAllByRole("button", {
+      name: "Revert to manifest",
+    }))
+      expect(b.getAttribute("aria-disabled")).toBe("true");
+  });
+
   const preview = (digest = "d1") => ({
     ...listing(),
     import: {

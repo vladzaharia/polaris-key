@@ -65,10 +65,12 @@ function RevertToManifest({
   slug,
   label,
   path,
+  disabledReason,
 }: {
   slug: string;
   label: string;
   path: string;
+  disabledReason?: string | undefined;
 }): React.ReactElement {
   const [busy, setBusy] = React.useState(false);
   const [preview, setPreview] = React.useState<Preview | null>(null);
@@ -105,8 +107,9 @@ function RevertToManifest({
       <Button
         type="button"
         size="sm"
-        variant="ghost"
+        variant="link"
         loading={busy}
+        disabledReason={disabledReason}
         onClick={() => void load()}
       >
         Revert to manifest
@@ -130,8 +133,11 @@ function RevertToManifest({
             : []
         }
         confirmLabel="Revert"
+        // A 409 is the Reload notice below, not a second message.
         describeError={(e) =>
-          errorCopy(e, { area: "distribution", thing: "Import" })
+          e instanceof ApiError && e.status === 409
+            ? null
+            : errorCopy(e, { area: "distribution", thing: "Import" })
         }
         onConfirm={async () => {
           try {
@@ -171,18 +177,21 @@ function UsePresentation({
   slug,
   label,
   body,
+  disabledReason,
 }: {
   slug: string;
   label: string;
   body: Record<string, unknown>;
+  disabledReason?: string | undefined;
 }): React.ReactElement {
   const [busy, setBusy] = React.useState(false);
   return (
     <Button
       type="button"
       size="sm"
-      variant="ghost"
+      variant="link"
       loading={busy}
+      disabledReason={disabledReason}
       onClick={async () => {
         setBusy(true);
         try {
@@ -215,6 +224,7 @@ export function FieldSource({
   inherited,
   revertPath,
   presentationBody,
+  disabledReason,
 }: {
   slug: string;
   label: string;
@@ -222,6 +232,8 @@ export function FieldSource({
   inherited: boolean;
   revertPath?: string;
   presentationBody?: Record<string, unknown>;
+  /** Set while the form holds unsaved changes: both actions would disagree with the text. */
+  disabledReason?: string | undefined;
 }): React.ReactElement | null {
   if (source === null && !inherited) return null;
   const words = source !== null ? sourceLabel(source) : "From Presentation";
@@ -234,10 +246,20 @@ export function FieldSource({
         {words}
       </StatusPill>
       {source !== null && source !== "manifest" && revertPath ? (
-        <RevertToManifest slug={slug} label={label} path={revertPath} />
+        <RevertToManifest
+          slug={slug}
+          label={label}
+          path={revertPath}
+          disabledReason={disabledReason}
+        />
       ) : null}
       {source !== null && presentationBody ? (
-        <UsePresentation slug={slug} label={label} body={presentationBody} />
+        <UsePresentation
+          slug={slug}
+          label={label}
+          body={presentationBody}
+          disabledReason={disabledReason}
+        />
       ) : null}
     </div>
   );
