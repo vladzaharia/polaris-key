@@ -233,22 +233,28 @@ export async function packWorld(
   await db.batch(
     manifestDeliverableStatements(SLUG, rel.app, NOW, rel.packDeliverables),
   );
-  const token = (
-    await issueStaticCiToken(env, db, {
-      product: SLUG,
-      scopes: [
-        "release:publish",
-        "release:promote",
-        "release:yank",
-        "distribution:report",
-        "distribution:rollout",
-      ],
-      expiresAt: NOW + 10 * 365 * 86400,
-      label: null,
-      createdBy: "u1",
-      now: NOW,
-    })
-  ).token;
+  const issued = await issueStaticCiToken(env, db, {
+    product: SLUG,
+    scopes: [
+      "release:publish",
+      "release:promote",
+      "release:yank",
+      "distribution:report",
+      "distribution:rollout",
+    ],
+    expiresAt: NOW + 90 * 86400,
+    label: null,
+    createdBy: "u1",
+    now: NOW,
+  });
+  const token = issued.token;
+  // The issuer caps a static token at 90 days (F-33b.2); the GC suites run past the 180-day lock
+  // age, so the fixture's token outlives them.
+  await db.run(
+    "UPDATE ci_tokens SET expires_at = ? WHERE token_id = ?",
+    NOW + 10 * 365 * 86400,
+    issued.tokenId,
+  );
   const seqs = new Map<string, number>();
 
   const post = (path: string, body: unknown) =>

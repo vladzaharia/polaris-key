@@ -30,9 +30,7 @@ import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../feeds/pages/RegistryTokens.js";
-import { confirmFor } from "../../../../lib/actions.js";
 import { fromSeconds } from "../../../../lib/format.js";
-import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -77,10 +75,7 @@ import {
 } from "../components/LicenseRecordParts.js";
 import {
   actorName,
-  daysUntil,
-  expiryText,
   seatLimitOf,
-  seatLimitText,
   useInvitations,
   useTiers,
 } from "../components/shared.js";
@@ -208,19 +203,16 @@ function LicenseRecordBody({
   const moves = useLicenseHolderMoves(slug, id).data?.relinks;
   const undoable = undoableMove(moves);
   const [undoing, setUndoing] = React.useState<typeof undoable>(null);
-  // ADMIN.md §5.6: an undo removes the callout whose button opened it (see the hook).
   const focusAfterUndo = useFocusTitleAfterUndo(
     undoable?.id ?? null,
     undoing !== null,
   );
   // PX-W9: a licence with no account counts the devices that entered its key (Identity on).
   const keyEntries = inAccount ? null : (license.keyEntries ?? null);
-  // LX-14a: the limit the Worker enforces and where it comes from.
   const seats = seatLimitOf(license, tiers, product?.defaultDeviceLimit);
-  const limit = seats.limit;
+  const { limit } = seats;
   const activeKeys = license.keys.filter((k) => k.status === "active").length;
   const configOn = product?.services?.config?.enabled ?? true;
-
   const toggle = async (enable: boolean): Promise<void> => {
     await mutate("setLicenseEnabled", slug, id, enable);
     toast.success(enable ? "License enabled" : "License disabled");

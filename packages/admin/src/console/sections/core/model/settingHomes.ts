@@ -210,6 +210,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "distribution.transports": manifest("distribution"),
 
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
+  // Operator-owned (PX-W13b): the platform operator sets it through the API; no console page yet.
+  "identity.displayNameApproved": API,
   "identity.keyEntry.limit": manifest("product"),
   // App sign-in, License keys.
   "identity.keyEntry.claimByKey": at("portal", "Polaris Locker"),

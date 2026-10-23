@@ -669,6 +669,8 @@ describe("the admin regroup (§R1)", () => {
           nextCursor: null,
           total: 0,
           counts: { active: 0, expiring: 0, expired: 0, disabled: 0 },
+          // LX-27c: whether the product can email an invitation (Identity is off here).
+          holders: { invitations: false, invitationsOff: "identity_off" },
         },
       ],
       ["license/tiers", "tiers", {}],

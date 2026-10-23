@@ -74,7 +74,7 @@ export const PORTAL_MUTATIONS = {
     why: "A code is sent; no cached fact changes until it is verified.",
   },
   verifySignInCode: {
-    label: "Sign in with an emailed code",
+    label: "Verify the emailed sign-in code",
     invalidates: () => [],
     why: "The status decides (a new address finishes first, signed out): the sign-in card invalidates the session, awaited, once the sign-in is complete.",
   },
@@ -134,9 +134,9 @@ export const PORTAL_MUTATIONS = {
     why: "Acts on another device's session; this session's data is unaffected.",
   },
   signinContinue: {
-    label: "Continue an app's sign-in with a licence choice",
+    label: "Continue an app's sign-in with a license choice",
     invalidates: () => [],
-    why: "The app card ends in a redirect to the app; a raced choice re-reads its own licence list.",
+    why: "The app card ends in a redirect to the app; a raced choice re-reads its own license list.",
   },
   signinCancel: {
     label: "Cancel an app's sign-in",
@@ -165,7 +165,7 @@ export const PORTAL_MUTATIONS = {
 
   // Licences, library, products
   claimKey: {
-    label: "Add a licence key",
+    label: "Add a license key",
     // The arguments do not name the product, so its view and downloads refresh by family.
     invalidates: () => [
       exact(qk.licenses()),
@@ -183,7 +183,7 @@ export const PORTAL_MUTATIONS = {
     why: "Read-only; it is a POST only to keep the key out of the URL.",
   },
   removeLicense: {
-    label: "Remove a licence from the library",
+    label: "Remove a license from the library",
     invalidates: (product: string) => [
       ...licenceViews(product),
       exact(qk.releases()),
@@ -254,14 +254,14 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [exact(qk.personalTokens())],
   },
   mintRegistryToken: {
-    label: "Mint a licence-bound package token",
+    label: "Mint a license-bound package token",
     invalidates: (product: string, licenseId: string) => [
       exact(qk.registryTokens(product, licenseId)),
       exact(qk.personalTokens()),
     ],
   },
   revokeRegistryToken: {
-    label: "Revoke a licence-bound package token",
+    label: "Revoke a license-bound package token",
     invalidates: (product: string, licenseId: string) => [
       exact(qk.registryTokens(product, licenseId)),
       exact(qk.personalTokens()),
@@ -309,7 +309,7 @@ export const PORTAL_MUTATIONS = {
     why: "A challenge only; the passkey exists once addPasskey succeeds.",
   },
   addPasskey: {
-    label: "Add a passkey",
+    label: "Save a new passkey",
     invalidates: methodChange,
   },
   removeMethod: {

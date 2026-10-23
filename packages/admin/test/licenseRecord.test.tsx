@@ -585,7 +585,7 @@ describe("license record: Status (Limits, Duration, Change tier)", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Change Ada Lovelace's tier",
     });
-    const box = within(dialog).getByLabelText(/^Move to/);
+    const box = within(dialog).getByLabelText(/^Tier/);
     expect(box.textContent).toContain("Default");
     // Nothing to move to yet.
     expect(

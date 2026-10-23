@@ -10,10 +10,8 @@
 
 import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
 import {
-  api,
   type CiTokenDto,
   type IssuedCiToken,
   type PublisherClaimBody,
@@ -41,38 +39,18 @@ import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
 import { ScopeList, ScopePicker } from "./ciScopes.js";
+import {
+  fetchCiPublisher,
+  fetchCiTokens,
+  num,
+  useCiPublisher,
+  useCiTokens,
+} from "./ciData.js";
 
-export function fetchCiPublisher(
-  slug: string,
-): Promise<PublisherPolicyDto | null> {
-  return api.ciPublisher(slug).then((r) => r.policy);
-}
-
-export function fetchCiTokens(slug: string): Promise<CiTokenDto[]> {
-  return api.ciTokens(slug).then((r) => r.tokens);
-}
-
-/** The trusted-publisher policy: one reader for this page and Release's guided panel. */
-export function useCiPublisher(
-  slug: string,
-): UseQueryResult<PublisherPolicyDto | null> {
-  return useQuery({
-    queryKey: qk.ciPublisher(slug),
-    queryFn: () => fetchCiPublisher(slug),
-  });
-}
-
-/** The product's CI tokens: one reader for this page and Release's guided panel. */
-export function useCiTokens(slug: string): UseQueryResult<CiTokenDto[]> {
-  return useQuery({
-    queryKey: qk.ciTokens(slug),
-    queryFn: () => fetchCiTokens(slug),
-  });
-}
+export { fetchCiPublisher, fetchCiTokens, useCiPublisher, useCiTokens };
 
 export function CiPublishingSection({
   slug,
@@ -85,12 +63,6 @@ export function CiPublishingSection({
       <TokensRow slug={slug} />
     </SettingsSection>
   );
-}
-
-/** A saved numeric entry back, or null. */
-function num(v: string | undefined): number | null {
-  const n = v ? Number(v) : NaN;
-  return Number.isInteger(n) ? n : null;
 }
 
 function PublisherRow({ slug }: { slug: string }): React.ReactElement {

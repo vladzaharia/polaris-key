@@ -259,7 +259,15 @@ beforeEach(async () => {
   const owner = await mintRegistryToken(
     env,
     db,
-    { product: OWNER, label: "o", binding: "owner", createdBy: "admin:test" },
+    {
+      product: OWNER,
+      label: "o",
+      binding: "owner",
+      // F-33b.3: an owner-wide READ token is retired; an owner-bound credential is a publish one.
+      scopes: ["publish"],
+      ecosystems: ["npm"],
+      createdBy: "admin:test",
+    },
     NOW,
   );
   if (!owner.ok) throw new Error(JSON.stringify(owner));

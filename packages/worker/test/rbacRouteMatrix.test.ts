@@ -237,11 +237,12 @@ const PRODUCT_ROWS = ADMIN_ROUTES.filter((r) => isProductRoute(r));
 
 /** The only rows a session that resolves to no grant may call. */
 const STRANGER_OPEN = new Set(["GET /me", "POST /logout"]);
-/** Open to a no-grant session too (34.4 review), but the matrix's stranger holds a v1 cookie, which
- *  names no account: past the grant gate the answer is the rows' own 409 reauth. */
-const STRANGER_OWN_TOKENS = new Set([
-  "GET /me/personal-tokens",
-  "DELETE /me/personal-tokens/:id",
+/** Open to a no-grant session too (34.4 review). The matrix's stranger is a v2 session of a real
+ *  account (ST-30c.7), so past the grant gate the rows answer for that account: its own (empty) list,
+ *  and a 404 for a token id it does not hold. */
+const STRANGER_OWN_TOKENS = new Map<string, number>([
+  ["GET /me/personal-tokens", 200],
+  ["DELETE /me/personal-tokens/:id", 404],
 ]);
 
 /** A no-grant row since the 34.7 review, but personal-token only: a cookie stranger is past the grant
@@ -276,7 +277,8 @@ describe("the route × principal matrix", () => {
           if (STRANGER_OPEN.has(routeKey(r))) {
             if (o.status !== 200) wrong.push(what);
           } else if (STRANGER_OWN_TOKENS.has(routeKey(r))) {
-            if (o.status !== 409 || o.code !== "reauth") wrong.push(what);
+            if (o.status !== STRANGER_OWN_TOKENS.get(routeKey(r)))
+              wrong.push(what);
           } else if (STRANGER_PERSONAL_ONLY.has(routeKey(r))) {
             if (o.status !== 403 || isNoAccess(o)) wrong.push(what);
           } else if (!isNoAccess(o) || o.area !== "console") wrong.push(what);

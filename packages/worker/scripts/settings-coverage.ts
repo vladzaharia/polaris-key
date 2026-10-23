@@ -427,7 +427,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "Console role binding provenance (ST-31)",
     reason:
-      "Records how a binding came to exist (an operator's grant, an invite, or the creator of a product): a fact about an access grant, not Polaris behaviour.",
+      "Records how a binding came to exist (an operator gave it, an invite, or the creator of a product): a fact about who has access, not Polaris behaviour.",
     shows: "Platform → Access",
     covers: { ids: ["column:console_role_bindings.source"] },
   },

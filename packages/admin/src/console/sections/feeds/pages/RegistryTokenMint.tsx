@@ -27,6 +27,7 @@ import { mutate } from "../../../data/mutations.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import { serviceRow, type MintedRow } from "./registryTokenRows.js";
+import { TOKEN_ENV } from "../../../../lib/vocab/ecosystems.js";
 import {
   ECOSYSTEMS,
   ECOSYSTEM_ICONS,
@@ -36,7 +37,7 @@ import {
 } from "../model/model.js";
 
 /** The environment variable CI keeps the token in (the name the docs and `pkey feeds setup` use). */
-export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
+export { TOKEN_ENV };
 
 /** Does this ecosystem's setup need the feed's namespace (an npm scope, Maven prefixes…)? */
 function needsNamespace(eco: FeedEcosystem): boolean {

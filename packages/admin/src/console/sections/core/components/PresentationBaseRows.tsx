@@ -61,9 +61,10 @@ export function PresentationBaseRows({
   const services = useProductServices(slug);
   const listingOn = !services || services.distribution?.enabled !== false;
   const listing = useListing(slug);
+  const area = "general";
   const settings = useQuery({
-    queryKey: qk.productSettings(slug, "general"),
-    queryFn: () => api.productSettings(slug, "general"),
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
   });
   const presentation = settings.data?.settings.find(
     (s) => s.key === "core.presentation",

@@ -237,7 +237,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-/** "Windows", "Windows and macOS", "Windows, macOS and Linux". */
+/** Windows; Windows and macOS; Windows, macOS and Linux. */
 function listNames(names: readonly string[]): string {
   if (names.length < 2) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
