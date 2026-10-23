@@ -22,7 +22,7 @@ import {
   type CatalogCloudSync,
   type SyncConflict,
 } from "@polaris-key/catalog";
-import { api, type ProductCatalog } from "../../../../api.js";
+import { type ProductCatalog } from "../../../../api.js";
 import { formatCount } from "../../../../lib/format.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
@@ -31,7 +31,7 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
+import { catalogQuery } from "../../config/data.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
@@ -80,8 +80,7 @@ const mono = (text: string): React.ReactElement => (
 export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     retry: false,
   });
 

@@ -147,7 +147,8 @@ function inlineReads(text: string): string[] {
       const factory =
         ts.isCallExpression(parent) &&
         ts.isIdentifier(parent.expression) &&
-        parent.expression.text === "queryOptions";
+        (parent.expression.text === "queryOptions" ||
+          parent.expression.text === "infiniteQueryOptions");
       if (!factory) {
         const line = sf.getLineAndCharacterOfPosition(node.getStart()).line + 1;
         found.push(`${line} inline query (wrap it in queryOptions)`);
@@ -295,14 +296,6 @@ const KNOWN: Record<string, string[]> = {
   ],
   // P0-32.18
   "sections/distribution": ["sections/distribution/data.ts"],
-  // P0-32.19
-  "sections/feeds": [
-    "sections/feeds/data.ts",
-    "sections/feeds/pages/PackageFeedsOff.tsx",
-    "sections/feeds/pages/PackagesOverview.tsx",
-    "sections/feeds/pages/RegistryTokens.tsx",
-    "sections/feeds/pages/TurnOffFeeds.tsx",
-  ],
   // P0-32.16
   "sections/global": [
     "sections/global/pages/ApiTokens.tsx",
@@ -347,16 +340,6 @@ const KNOWN: Record<string, string[]> = {
   ],
   // P0-32.18
   "sections/release": ["sections/release/data.ts"],
-  // P0-32.19
-  "sections/storefronts": ["sections/storefronts/data.ts"],
-  // P0-32.19
-  "sections/sync": [
-    "sections/sync/CloudSyncSetup.tsx",
-    "sections/sync/PauseWritesDialog.tsx",
-    "sections/sync/data.ts",
-    "sections/sync/pages/SyncData.tsx",
-    "sections/sync/pages/SyncUsage.tsx",
-  ],
 };
 
 describe("console reads are factories", () => {

@@ -14,13 +14,13 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { SwitchReadError } from "./SwitchReadError.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { packageFeedsSwitchQuery } from "../data.js";
 import { markAfterWrite, packageFeedsConflict } from "../model/model.js";
 
 function plural(n: number, one: string, many: string): string {
@@ -48,8 +48,7 @@ export function TurnOffFeeds({
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const sw = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
+    ...packageFeedsSwitchQuery(slug),
     enabled: open,
   });
   const latest = React.useRef(sw.data?.packageFeeds);
