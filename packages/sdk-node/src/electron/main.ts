@@ -132,7 +132,9 @@ export interface ExposePolarisBridgeOptions {
    *  predicate replaces the default. */
   allowSender?: (event: IpcMainInvokeEventLike) => boolean;
   /** The origin(s) the app's window loads from, for the default `allowSender`. Set it when the
-   *  app loads a remote `https:` page; the bridge then answers that origin's top frame only. */
+   *  app loads a remote `https:` page; the bridge then answers that origin's top frame only.
+   *  A custom scheme (`app://main`) has an opaque origin, so it is pinned by scheme and host.
+   *  A `file:` pin is refused (no host to pin): serve the app from a custom scheme. */
   appOrigin?: string | string[];
   /** `invoke` verbs beyond the default allowlist, as `service.method`, each with its handler. */
   invoke?: {
@@ -150,6 +152,13 @@ export interface ExposePolarisBridgeOptions {
   flowGraceSeconds?: number;
 }
 
+/** The key a URL is pinned and compared by: `.origin` for http(s), `scheme//host` for a custom
+ *  scheme (its `.origin` is the opaque "null", shared by every such URL). */
+function originKey(url: URL): string {
+  if (url.origin !== "null") return url.origin;
+  return `${url.protocol}//${url.host}`.toLowerCase();
+}
+
 /** The default sender rule: the top frame, on the app's origin (no `data:`, `blob:` or `about:` document). A frame the app did
  *  not load itself (an iframe, a navigated-away window, remote content) cannot drive the
  *  bridge. */
@@ -160,11 +169,17 @@ function defaultAllowSender(
     appOrigin === undefined
       ? null
       : (Array.isArray(appOrigin) ? appOrigin : [appOrigin]).map((o) => {
+          let u: URL;
           try {
-            return new URL(o).origin;
+            u = new URL(o);
           } catch {
             return o;
           }
+          if (u.protocol === "file:")
+            throw new Error(
+              "appOrigin cannot pin a file: page (every file: URL shares one origin); serve the app from a custom scheme such as app://main",
+            );
+          return originKey(u);
         });
   return (event) => {
     const frame = event.senderFrame;
@@ -175,7 +190,7 @@ function defaultAllowSender(
     } catch {
       return false;
     }
-    if (pinned) return pinned.includes(url.origin);
+    if (pinned) return pinned.includes(originKey(url));
     if (url.protocol === "http:" || url.protocol === "https:")
       return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     // Without a pinned origin only the app's own content may drive the bridge: a file or a custom
