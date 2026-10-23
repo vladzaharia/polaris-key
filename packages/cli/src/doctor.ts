@@ -7,6 +7,7 @@
  *   discovery     `<base-url>/<product>/.well-known/polaris.json` answers
  *   services      the services discovery says are enabled
  *   signing-keys  the signing keys discovery exposes
+ *   in-sync       the manifest's features match the live product's (a ▲ with the fix when not)
  *
  * Two more answers need a sign-in (ST-34.10), both from the console API with the credential
  * `pkey login` saved (`adminCredential()`):
@@ -53,10 +54,18 @@ export const DOCTOR_TIMEOUT_MS = 15_000;
 export type DoctorState = "ok" | "warn" | "todo";
 
 export interface DoctorFact {
-  id: "manifest" | "discovery" | "services" | "signing-keys" | "config-file";
+  id:
+    | "manifest"
+    | "discovery"
+    | "services"
+    | "signing-keys"
+    | "config-file"
+    | "in-sync";
   state: DoctorState;
   /** One plain sentence; for a remote fact it quotes the server, so it is cleaned on output. */
   detail: string;
+  /** The one fix for a ▲ or ✗ fact: a bare command, or a short instruction. */
+  fix?: string;
   /** A machine code for a failure with a name: `network` when the server could not be reached. */
   code?: string;
 }
@@ -126,6 +135,34 @@ export function manifestFact(
     id: "manifest",
     state: warnings ? "warn" : "ok",
     detail: warnings ? plural(warnings, "warning") : "valid",
+    ...(hasFixable(result) ? { fix: VALIDATE_FIX } : {}),
+  };
+}
+
+export const VALIDATE_FIX = "pkey validate --fix";
+
+/** True when `pkey validate --fix` can repair a warning (a deprecated spelling). */
+export const hasFixable = (result: ValidationResult): boolean =>
+  result.warnings.some((w) => w.code === "deprecated_spelling");
+
+/** Whether the manifest's features match the live product's; a ▲ naming the difference if not. */
+export function syncFact(
+  manifest: readonly string[],
+  live: readonly string[],
+): DoctorFact {
+  const onlyManifest = manifest.filter((s) => !live.includes(s));
+  const onlyLive = live.filter((s) => !manifest.includes(s));
+  if (!onlyManifest.length && !onlyLive.length)
+    return { id: "in-sync", state: "ok", detail: "matches" };
+  const parts = [
+    onlyManifest.length ? `only in .pkey/: ${onlyManifest.join(", ")}` : "",
+    onlyLive.length ? `only live: ${onlyLive.join(", ")}` : "",
+  ].filter(Boolean);
+  return {
+    id: "in-sync",
+    state: "warn",
+    detail: parts.join("; "),
+    fix: "Resync the product from .pkey/ in the console.",
   };
 }
 
@@ -776,6 +813,7 @@ export function buildReport(input: ReportInput): DoctorReport {
         lead: "warn",
         name: u(`${w.file}${w.path}`),
         parts: [dim(u(w.message))],
+        ...(w.code === "deprecated_spelling" ? { fix: VALIDATE_FIX } : {}),
       });
     for (const e of r.errors)
       manifest.push({
@@ -863,6 +901,16 @@ export function buildReport(input: ReportInput): DoctorReport {
       });
     } else {
       const svc = remote.facts.find((f) => f.id === "services")!;
+      if (m.state === "read" && m.result.ok) {
+        const sync = syncFact(m.result.enabledModules, remote.services);
+        facts.push(sync);
+        manifest.splice(1, 0, {
+          lead: sync.state === "ok" ? "ok" : "warn",
+          name: "In sync",
+          parts: [dim(sync.state === "ok" ? "Features match" : u(sync.detail))],
+          ...(sync.fix ? { fix: sync.fix } : {}),
+        });
+      }
       manifest.splice(1, 0, {
         lead: svc.state === "ok" ? "ok" : "warn",
         name: "Services",

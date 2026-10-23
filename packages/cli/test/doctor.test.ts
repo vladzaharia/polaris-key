@@ -151,6 +151,15 @@ const DISCOVERY = (
     pinnedKeys: Record<string, string>;
   };
 };
+// The fixture manifest enables only the licence service, so the default live product does too
+// and the two are in sync.
+const SERVICES = (DISCOVERY as unknown as { services: Record<string, unknown> })
+  .services;
+for (const slug of Object.keys(SERVICES))
+  SERVICES[slug] = {
+    ...(SERVICES[slug] as object),
+    enabled: slug === "license",
+  };
 const KID = "pkey-test-prod-2026";
 
 interface Call {
@@ -286,7 +295,8 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/                    valid · license
-        ✓ Services                  config
+        ✓ Services                  license
+        ✓ In sync                   Features match
         ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
         ○ polaris-key.json          Not found here
 
@@ -336,7 +346,8 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/            valid · license
-        ✓ Services          config
+        ✓ Services          license
+        ✓ In sync           Features match
         ✓ Signed in
           Ada Lindqvist (ada@example.com)
           ends 2026-10-26
@@ -394,7 +405,8 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/     valid · license
-        ✓ Services   config
+        ✓ Services   license
+        ✓ In sync    Features match
         ✓ Signed in
           Ada Lindqvist
           (ada@example.com)
@@ -467,7 +479,9 @@ describe("pkey doctor: one report, one count", () => {
         ✓ .pkey/
           valid · license
         ✓ Services
-          config
+          license
+        ✓ In sync
+          Features match
         ✓ Signed in
           Ada Lindqvist
           (ada@example.com)
@@ -570,7 +584,7 @@ describe("pkey doctor: one report, one count", () => {
         ✗ product/product/name
           Add product.name.
             → pkey validate
-        ✓ Services              config
+        ✓ Services              license
         ✓ Signed in
           Ada (ada@example.com)
           ends 2096-10-02
@@ -1070,6 +1084,7 @@ describe("pkey doctor: one report, one count", () => {
         "discovery",
         "services",
         "signing-keys",
+        "in-sync",
         "config-file",
       ].filter((id) => id !== "config-file"),
     );
@@ -1131,6 +1146,71 @@ describe("pkey doctor: one report, one count", () => {
     const r = await run([], { fetchImpl: s.f, columns: 80 });
     expect(r.out).not.toContain("\u001b]52");
     expect(r.out).not.toContain("\u001b[2J");
+  });
+});
+
+describe("pkey doctor: in sync and the fix hint", () => {
+  const live = (on: string[]) => {
+    const body = structuredClone(DISCOVERY) as unknown as {
+      services: Record<string, { enabled?: boolean }>;
+    };
+    for (const k of Object.keys(body.services))
+      body.services[k]!.enabled = on.includes(k);
+    return (url: string) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(200, body)
+        : json(404, {});
+  };
+  const doctor = async (dir: string, on: string[], extra: string[] = []) => {
+    const o = { cwd: dir, fetchImpl: server(live(on)).f, columns: 80 };
+    return [
+      await run(extra, o),
+      JSON.parse((await run([...extra, "--json"], o)).out),
+    ] as const;
+  };
+
+  it("in sync: a row and a fact that agree", async () => {
+    const [t, j] = await doctor(await repo(), ["license"]);
+    expect(plain(t.out)).toContain(
+      "✓ In sync                   Features match",
+    );
+    expect(j.facts.find((f: { id: string }) => f.id === "in-sync")).toEqual({
+      id: "in-sync",
+      state: "ok",
+      detail: "matches",
+    });
+  });
+
+  it("out of sync: a warning with the fix, in text and --json", async () => {
+    const [t, j] = await doctor(await repo(), ["license", "release"]);
+    expect(plain(t.out)).toContain(
+      "▲ In sync                   only live: release",
+    );
+    expect(plain(t.out)).toContain(
+      "→ Resync the product from .pkey/ in the console.",
+    );
+    const f = j.facts.find((x: { id: string }) => x.id === "in-sync");
+    expect(f).toMatchObject({
+      state: "warn",
+      detail: "only live: release",
+      fix: "Resync the product from .pkey/ in the console.",
+    });
+    expect(t.code).toBe(0);
+    const [, ok] = await doctor(await repo(), ["license"]);
+    expect(j.summary.warnings).toBe(ok.summary.warnings + 1);
+  });
+
+  it("a deprecated spelling names pkey validate --fix, in text and --json", async () => {
+    const dir = await repo();
+    await writeFile(
+      path.join(dir, ".pkey", "product.yaml"),
+      "apiVersion: pkey.dev/v1\nproduct:\n  slug: djdl\n  name: DJDL\nadminGroup: ops\nmodules:\n  license:\n    enabled: true\n",
+    );
+    const [t, j] = await doctor(dir, ["license"]);
+    expect(plain(t.out)).toContain("→ pkey validate --fix");
+    expect(j.facts.find((f: { id: string }) => f.id === "manifest").fix).toBe(
+      "pkey validate --fix",
+    );
   });
 });
 

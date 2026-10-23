@@ -27727,7 +27727,26 @@ function manifestFact(result, problem, fileWarnings = []) {
   return {
     id: "manifest",
     state: warnings ? "warn" : "ok",
-    detail: warnings ? plural(warnings, "warning") : "valid"
+    detail: warnings ? plural(warnings, "warning") : "valid",
+    ...hasFixable(result) ? { fix: VALIDATE_FIX } : {}
+  };
+}
+var VALIDATE_FIX = "pkey validate --fix";
+var hasFixable = (result) => result.warnings.some((w) => w.code === "deprecated_spelling");
+function syncFact(manifest, live) {
+  const onlyManifest = manifest.filter((s) => !live.includes(s));
+  const onlyLive = live.filter((s) => !manifest.includes(s));
+  if (!onlyManifest.length && !onlyLive.length)
+    return { id: "in-sync", state: "ok", detail: "matches" };
+  const parts = [
+    onlyManifest.length ? `only in .pkey/: ${onlyManifest.join(", ")}` : "",
+    onlyLive.length ? `only live: ${onlyLive.join(", ")}` : ""
+  ].filter(Boolean);
+  return {
+    id: "in-sync",
+    state: "warn",
+    detail: parts.join("; "),
+    fix: "Resync the product from .pkey/ in the console."
   };
 }
 function hostOf3(url) {
@@ -28132,7 +28151,8 @@ function buildReport(input) {
       manifest.push({
         lead: "warn",
         name: u(`${w.file}${w.path}`),
-        parts: [dim(u(w.message))]
+        parts: [dim(u(w.message))],
+        ...w.code === "deprecated_spelling" ? { fix: VALIDATE_FIX } : {}
       });
     for (const e of r.errors)
       manifest.push({
@@ -28197,6 +28217,16 @@ function buildReport(input) {
       });
     } else {
       const svc = remote.facts.find((f) => f.id === "services");
+      if (m.state === "read" && m.result.ok) {
+        const sync = syncFact(m.result.enabledModules, remote.services);
+        facts.push(sync);
+        manifest.splice(1, 0, {
+          lead: sync.state === "ok" ? "ok" : "warn",
+          name: "In sync",
+          parts: [dim(sync.state === "ok" ? "Features match" : u(sync.detail))],
+          ...sync.fix ? { fix: sync.fix } : {}
+        });
+      }
       manifest.splice(1, 0, {
         lead: svc.state === "ok" ? "ok" : "warn",
         name: "Services",
