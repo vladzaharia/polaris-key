@@ -94,8 +94,8 @@ func _build() -> void:
 	loading_bar(text)
 	_actions = actions_row(_right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_primary = button(_actions, "Primary", _on_primary, "PKeyPrimary")
-	_back = button(_actions, "Back", func() -> void: back_requested.emit())
-	_hint_bar = hint_bar(_right, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": "hint_select"}, {"action": PKeyInputGlyphs.BACK, "copy": "hint_back"}])
+	_back = button(_actions, "Back", _on_back)
+	_hint_bar = hint_bar(_right, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "common.back"}])
 
 
 func _bleeds() -> bool:
@@ -206,7 +206,7 @@ func _render() -> void:
 
 
 func _arrange(m: Dictionary) -> void:
-	_hint_bar.enabled = visible and (m["screen"] as Vector2).y >= PKeyHintBar.MIN_SCREEN_HEIGHT
+	_hint_bar.enabled = visible
 	set_columns(_card, _side_by_side())
 	_right.size_flags_vertical = Control.SIZE_EXPAND_FILL if phone_screen() else Control.SIZE_SHRINK_CENTER
 	_actions.size_flags_horizontal = Control.SIZE_FILL
@@ -226,6 +226,12 @@ func _focus_chain() -> Array:
 	return [_primary, _back]
 
 
+func _on_back() -> void:
+	close_then(func() -> void:
+		back_requested.emit()
+		restore_opener())
+
+
 func _on_primary() -> void:
 	match PKeyDeviceLimitController.primary_of(model):
 		"deviceLimit.primary":
@@ -240,7 +246,6 @@ func _on_primary() -> void:
 
 func _cancel() -> bool:
 	if visible and model.get("state") in ["default", "browser-mode", "failed"]:
-		back_requested.emit()
-		restore_opener()
+		_on_back()
 		return true
 	return false

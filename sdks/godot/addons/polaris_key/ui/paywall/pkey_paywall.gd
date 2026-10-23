@@ -81,7 +81,7 @@ func _build() -> void:
 	_primary = button(_actions, "Primary", _on_primary, "PKeyPrimary")
 	_redeem = button(_actions, "Redeem", func() -> void: redeem_requested.emit(), "PKeyLink")
 	_restore = button(_actions, "Restore", func() -> void: restore_requested.emit(), "PKeyLink")
-	_hint_bar = hint_bar(_right, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": "hint_select"}, {"action": PKeyInputGlyphs.BACK, "copy": "hint_back"}])
+	_hint_bar = hint_bar(_right, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "common.back"}])
 
 
 func _bleeds() -> bool:
@@ -167,7 +167,7 @@ func _render() -> void:
 
 
 func _arrange(m: Dictionary) -> void:
-	_hint_bar.enabled = visible and (m["screen"] as Vector2).y >= PKeyHintBar.MIN_SCREEN_HEIGHT
+	_hint_bar.enabled = visible
 	set_columns(_card, _side_by_side())
 	_right.size_flags_vertical = Control.SIZE_EXPAND_FILL if phone_screen() else Control.SIZE_SHRINK_CENTER
 	_actions.size_flags_horizontal = Control.SIZE_FILL
@@ -195,7 +195,8 @@ func _on_primary() -> void:
 
 func _cancel() -> bool:
 	if visible and model.get("state") in ["offers", "not-available", "purchased"]:
-		dismissed.emit()
-		restore_opener()
+		close_then(func() -> void:
+			dismissed.emit()
+			restore_opener())
 		return true
 	return false

@@ -1088,19 +1088,9 @@ msgstr ""
 msgid "update.whatsNew"
 msgstr ""
 
-#. to select
+#. Select
 #. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
 msgid "part.hint.select"
-msgstr ""
-
-#. to activate
-#. Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field.
-msgid "part.hint.activate"
-msgstr ""
-
-#. to go back
-#. Input hint bar (Godot kit): the verb after the glyph of the back button.
-msgid "part.hint.back"
 msgstr ""
 
 #. All changes in {version}

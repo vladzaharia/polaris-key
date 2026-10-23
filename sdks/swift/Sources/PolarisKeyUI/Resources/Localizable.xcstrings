@@ -42349,126 +42349,6 @@
         }
       }
     },
-    "part.hint.activate": {
-      "comment": "Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "to activate"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "zum Aktivieren"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "pour activer"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "para activar"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "para ativar"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "per attivare"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "有効化"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "활성화"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "激活"
-          }
-        }
-      }
-    },
-    "part.hint.back": {
-      "comment": "Input hint bar (Godot kit): the verb after the glyph of the back button.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "to go back"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "zum Zurückgehen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "pour revenir"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "para volver"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "para voltar"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "per tornare indietro"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "戻る"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "뒤로"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "返回"
-          }
-        }
-      }
-    },
     "part.hint.select": {
       "comment": "Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.",
       "extractionState": "manual",
@@ -42476,37 +42356,37 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "to select"
+            "value": "Select"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "zum Auswählen"
+            "value": "Auswählen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "pour choisir"
+            "value": "Sélectionner"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "para seleccionar"
+            "value": "Seleccionar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "para selecionar"
+            "value": "Selecionar"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "per selezionare"
+            "value": "Seleziona"
           }
         },
         "ja": {

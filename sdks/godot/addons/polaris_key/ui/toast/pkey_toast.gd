@@ -390,12 +390,14 @@ func _time_text(t: PKeyUiCopy) -> String:
 
 # ── Arrange ──────────────────────────────────────────────────────────────────────────────────
 
-## Title-safe: 5 % of the screen from every edge, the page margin at least, past the device's safe area,
-## as the view's own padding (so the base measures the room the card has).
+## Title-safe: 5 % of the screen's width from the sides and 5 % of its height from the top and bottom,
+## the page margin at least, past the device's safe area, as the view's own padding (so the base
+## measures the room the card has).
 func _title_safe(m: Dictionary) -> void:
 	var screen: Vector2 = m["screen"]
-	var ts := roundf(maxf(role("page_margin"), 0.05 * minf(screen.x, screen.y)))
-	var want := [ts + _safe_applied[0], ts + _safe_applied[1], ts + _safe_applied[2], ts + _safe_applied[3]]
+	var tx := roundf(maxf(role("page_margin"), 0.05 * screen.x))
+	var ty := roundf(maxf(role("page_margin"), 0.05 * screen.y))
+	var want := [tx + _safe_applied[0], ty + _safe_applied[1], tx + _safe_applied[2], ty + _safe_applied[3]]
 	var box := get_theme_stylebox("panel") as StyleBoxEmpty
 	var have := [box.content_margin_left, box.content_margin_top, box.content_margin_right, box.content_margin_bottom] if box != null else []
 	if have != want:

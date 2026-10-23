@@ -336,6 +336,10 @@ static func ensure_pad_bindings() -> void:
 
 ## The last kind of input, for `pointer_last`; and a modal's input guard.
 func _input(event: InputEvent) -> void:
+	if _closing and (event is InputEventKey or event is InputEventJoypadButton or event is InputEventMouseButton or event is InputEventScreenTouch):
+		# Fading out: the dialog answers nothing more (a second Esc or B must not close it twice).
+		get_viewport().set_input_as_handled()
+		return
 	PKeyUiFeedback.note_input(event)
 	if event is InputEventKey or event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
 		pointer_last = false
@@ -386,6 +390,7 @@ func c() -> PKeyUiCopy:
 func refresh_view() -> void:
 	if not _built:
 		return
+	_note_step()
 	# A deferred refresh (PKeyUiTheme.refresh_views()) can outlive the SDK node it was given.
 	if not is_instance_valid(sdk):
 		sdk = null
@@ -425,6 +430,56 @@ func refresh_view() -> void:
 		# outermost view owns the focus, and asks for it again when the screen it shows differs
 		# (a device limit replaced the key field the focus was on).
 		outer_view()._manage_focus.call_deferred()
+
+
+var _closing := false
+
+
+## Whether the dialog is fading out.
+func is_closing() -> bool:
+	return _closing
+
+
+## The one way a dialog over the game goes away (UI-KITS §4.8): the outermost view fades out over
+## MOTION_SHEET_OUT_MS, then `done` runs (emit `closed`, restore the opener, free or hide). A second
+## request during the fade is ignored, so `closed` is emitted once however often B or Esc is pressed.
+## A nested view, a hidden one and reduced motion run `done` at once.
+func close_then(done: Callable) -> void:
+	if _closing:
+		return
+	if outer_view() != self or not _scrim_wanted() or not is_inside_tree() or not is_visible_in_tree() or PKeyUiTheme.reduce_motion():
+		done.call()
+		return
+	_closing = true
+	PKeyUiMotion.exit(self, func() -> void:
+		_closing = false
+		done.call())
+
+
+var _step_key := ""
+var _step_seen := false
+
+
+## A new screen of this view (its `_screen_key()` changed after one was shown): the card's inner
+## content crossfades. Run by whichever view changed, nested or not; never on the first screen, while
+## the dialog is still entering, or on a view that draws no card of its own.
+func _note_step() -> void:
+	var key := _screen_key()
+	var changed := _step_seen and key != _step_key and key != ""
+	var was_key := _step_key
+	_step_key = key
+	if not changed or was_key == "" or not is_inside_tree() or not is_visible_in_tree() or PKeyUiMotion.entering(outer_view()):
+		_step_seen = true
+		return
+	_step_seen = true
+	PKeyUiMotion.step.call_deferred(step_target())
+
+
+## What a step fades: the child of this view's card (its scroll area or content), or null.
+func step_target() -> Control:
+	if _card_box == null or not is_instance_valid(_card_box) or _card_box.get_child_count() == 0:
+		return null
+	return _card_box.get_child(0) as Control
 
 
 ## Hide every container under `n` marked AUTO_HIDE_META whose children are all hidden, innermost
@@ -564,9 +619,6 @@ func _manage_focus() -> void:
 	var visible_now := is_visible_in_tree()
 	var key := _screen_key()
 	var changed := key != _focus_key or (visible_now and not _was_visible)
-	# A step of the same dialog (a code arrived, a result replaced the form): its content crossfades.
-	if outer_view() == self and visible_now and _was_visible and _focus_key != "" and key != _focus_key and not PKeyUiMotion.entering(self):
-		PKeyUiMotion.step(_content())
 	_focus_key = key
 	_was_visible = visible_now
 	if not visible_now:
@@ -1277,6 +1329,7 @@ func _arrange(_m: Dictionary) -> void:
 	_nest_panel()
 	_style_card()
 	_apply_glass()
+	_place_hints(_m)
 	_size_controls(self)
 	auto_hide(self)
 	_apply_width(content_width())
@@ -1877,9 +1930,84 @@ func hint_bar(parent: Node, node_name: String, items: Array) -> PKeyHintBar:
 	var b := PKeyHintBar.new()
 	b.name = node_name
 	b.view = self
+	b.home = parent
 	parent.add_child(b)
 	b.items = items
+	_hint_bars.append(b)
 	return b
+
+
+var _hint_bars: Array = []
+
+
+## One place for every hint bar (UI-KITS §1.5 rule 5): a footer at the bottom right of the title-safe
+## area, outside the panel. On a phone, or where the footer would sit on the panel, the bar is the
+## last row of the panel it was built in; with no room for that either (a short screen) it is left
+## out. Called from `_arrange()`.
+func _place_hints(m: Dictionary) -> void:
+	for b in _hint_bars:
+		var bar := b as PKeyHintBar
+		if not is_instance_valid(bar) or not is_instance_valid(bar.home):
+			continue
+		var outer := outer_view()
+		var wanted: bool = bar._wanted and bar.home.is_visible_in_tree()
+		var screen: Vector2 = m["screen"]
+		if not wanted:
+			_dock_hint(bar, false)
+			bar.visible = false
+			continue
+		var footer := not phone_screen() and not outer._no_footer()
+		if footer:
+			_dock_hint(bar, true)
+			var sa: Array = outer._safe_applied
+			var ts := Vector2(roundf(maxf(role("page_margin"), 0.05 * screen.x)), roundf(maxf(role("page_margin"), 0.05 * screen.y)))
+			var room := maxf(0.0, screen.x - 2.0 * ts.x - sa[0] - sa[2])
+			var want := bar.natural_size()
+			bar.custom_minimum_size = Vector2.ZERO
+			bar.size = Vector2(minf(want.x, room), want.y)
+			var origin := outer.get_viewport().get_visible_rect().end
+			bar.global_position = origin - Vector2(ts.x + sa[2], ts.y + sa[3]) - bar.size
+			if _hint_clear(bar):
+				bar.visible = true
+				continue
+			# The footer would sit on a card that fills the screen: nothing to show it beside.
+			_dock_hint(bar, false)
+			bar.visible = false
+			continue
+		# A phone: the panel's own last row.
+		_dock_hint(bar, false)
+		bar.visible = screen.y >= PKeyHintBar.MIN_SCREEN_HEIGHT
+		if bar.home.get_child_count() > 0 and bar.get_index() != bar.home.get_child_count() - 1:
+			bar.home.move_child(bar, -1)
+
+
+## Whether the footer clears the panel: its rect meets no visible card.
+func _hint_clear(bar: PKeyHintBar) -> bool:
+	var r := Rect2(bar.global_position, bar.size)
+	for card in outer_view().find_children("Card", "PanelContainer", true, false):
+		var c := card as Control
+		if c.is_visible_in_tree() and c.get_global_rect().intersects(r):
+			return false
+	return true
+
+
+## A scene with no footer of its own (a strip) turns it off.
+func _no_footer() -> bool:
+	return false
+
+
+func _dock_hint(bar: PKeyHintBar, footer: bool) -> void:
+	if footer:
+		if not bar.top_level or bar.get_parent() != outer_view():
+			if bar.get_parent() != null:
+				bar.get_parent().remove_child(bar)
+			bar.top_level = true
+			outer_view().add_child(bar)
+	elif bar.top_level or bar.get_parent() != bar.home:
+		if bar.get_parent() != null:
+			bar.get_parent().remove_child(bar)
+		bar.top_level = false
+		bar.home.add_child(bar)
 
 
 ## A column whose gap is the theme's: `variation` is PKeyStack (related items, the default),

@@ -58,6 +58,13 @@ Each is 90 minutes or less and ends with a BUILT UX review (`pkey-ux-reviewer`, 
 5. **Standalone scenes, B:** CloudSyncStatus, About and a standalone ReleaseNotes, same shape; BUILT UX review.
 6. **UK-59 leftovers** (the Godot targets on the UK-59 boards, listed against the built screens), then the final BUILT UX pass, the full `ui_matrix` on 4.4.1 and on 4.7.2 (both paths) and `set UK-11b in-review`.
 
+## Notes from the slice 2 review
+
+- Pre-existing, not fixed here: a pad-only gate with Identity off has no primary button, because `pkey_activation_panel.gd` demotes Activate whenever a pad is in use, even when Sign in is hidden.
+- The toast's default anchor is `bottom_right`; UI-KITS §4.3 says bottom centre above the hints.
+- Settings has no hint bar yet (a pad player cannot see "B Close"); worth the next slice. The scheme-follow test on a real OS change needs a window and is not in the suite.
+- The `part.hint.select` key is the only new catalog key; "Activate" is core copy (`core.gate.needs-activation.title`) and Back is `common.back`. `part` is a shared namespace, so the key is listed under no component.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

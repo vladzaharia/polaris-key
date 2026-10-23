@@ -818,19 +818,9 @@
       "note": "UpdatePrompt: an app update. Label over the release notes."
     },
     "part.hint.select": {
-      "value": "to select",
+      "value": "Select",
       "role": "label",
       "note": "Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control."
-    },
-    "part.hint.activate": {
-      "value": "to activate",
-      "role": "label",
-      "note": "Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field."
-    },
-    "part.hint.back": {
-      "value": "to go back",
-      "role": "label",
-      "note": "Input hint bar (Godot kit): the verb after the glyph of the back button."
     },
     "update.allChanges": {
       "value": "All changes in {version}",

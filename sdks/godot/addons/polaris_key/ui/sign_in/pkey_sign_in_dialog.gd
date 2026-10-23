@@ -172,7 +172,7 @@ func _build() -> void:
 	_try_again = button(_actions, "TryAgain", begin, "PKeyPrimary")
 	_copy = button(_actions, "CopyLink", _on_copy)
 	_cancel_btn = button(_actions, "Cancel", _on_cancel)
-	_hint_bar = hint_bar(_info, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": "hint_select"}, {"action": PKeyInputGlyphs.BACK, "copy": "hint_back"}])
+	_hint_bar = hint_bar(_info, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "common.cancel"}])
 
 
 var _hint_bar: PKeyHintBar
@@ -285,8 +285,7 @@ func _column_mode() -> bool:
 
 
 func _arrange(m: Dictionary) -> void:
-	# The bar costs a line: a short screen (a 360 px canvas) keeps the room for the code.
-	_hint_bar.enabled = state in ["pending", "confirm"] and (m["screen"] as Vector2).y >= PKeyHintBar.MIN_SCREEN_HEIGHT
+	_hint_bar.enabled = state in ["pending", "confirm"]
 	super(m)
 	var phone := phone_bleed()
 	# Squeezed, the header sits a tight gap above the title (DL3: spacing gives way before the code).
@@ -584,16 +583,17 @@ func _on_continue() -> void:
 
 
 func _on_cancel() -> void:
-	if state == "ended":
-		closed.emit()
-		restore_opener()
+	if is_closing():
 		return
-	if sdk != null and sdk.get("identity") != null:
+	var ended := state == "ended"
+	if not ended and sdk != null and sdk.get("identity") != null:
 		sdk.identity.cancel()
-	# Cancelling closes the dialog at once; the flow's own cancelled result changes nothing more.
-	state = "cancelled"
-	closed.emit()
-	restore_opener()
+	# Cancelling closes the dialog (it fades out first); the flow's own cancelled result changes nothing more.
+	close_then(func() -> void:
+		if not ended:
+			state = "cancelled"
+		closed.emit()
+		restore_opener())
 
 
 func _cancel() -> bool:

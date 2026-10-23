@@ -176,8 +176,6 @@ export type KitCopyKey =
   | "common.updateCurrentNoSize"
   | "update.whatsNew"
   | "part.hint.select"
-  | "part.hint.activate"
-  | "part.hint.back"
   | "update.allChanges"
   | "update.later"
   | "update.restartWhenReady"

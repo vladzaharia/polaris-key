@@ -1004,13 +1004,13 @@ func _focus_chain() -> Array:
 ## Close a `closable` panel: `closed`, the focus back to the game's control that had it, and the
 ## panel freed when `open()` made it.
 func close() -> void:
-	if not closable:
+	if not closable or is_closing():
 		return
-	closed.emit()
-	restore_opener()
-	PKeyUiMotion.exit(self, func() -> void:
+	close_then(func() -> void:
 		if not is_instance_valid(self):
 			return
+		closed.emit()
+		restore_opener()
 		if has_meta(FREE_ON_CLOSE_META):
 			queue_free()
 		else:

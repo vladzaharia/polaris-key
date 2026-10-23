@@ -133,8 +133,9 @@ func _settings_open(t: PKeyTestContext) -> void:
 	t.check("DL18: open() covers its parent, closable, with Close", p.get_parent() == holder and p.closable and close != null and close.is_visible_in_tree() and close.text == "Close", "close %s" % close)
 	var closed := [false]
 	p.closed.connect(func() -> void: closed[0] = true)
-	t.check("DL18: Escape (ui_cancel) closes it", p._cancel() and closed[0])
+	var handled := p._cancel()
 	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("DL18: Escape (ui_cancel) closes it (after its fade)", handled and closed[0])
 	t.check("DL18: closed, it is freed and the game's control has the focus back", not is_instance_valid(p) and game_button.has_focus())
 	var embedded: Control = await _sc.settings(false, {})
 	await _tree().process_frame
@@ -235,6 +236,7 @@ func _game_look(t: PKeyTestContext) -> void:
 	await _lead_fixes(t)
 	await _slice2(t)
 	await _standalone_a(t)
+	await _fix1(t)
 	PKeyUiTheme.reset()
 
 
@@ -428,13 +430,17 @@ func _slice2(t: PKeyTestContext) -> void:
 	for i in 30:
 		await _tree().process_frame
 	var bar := d.find_child("HintBar", true, false) as PKeyHintBar
-	t.check("hint bar: a pad-only sign-in shows 'to select' and 'to go back' beside their glyphs", bar != null and bar.visible and _bar_words(bar) == ["to select", "to go back"], str(_bar_words(bar)) if bar != null else "no bar")
+	t.check("hint bar: a pad-only sign-in shows Select and its own Cancel beside their glyphs", bar != null and bar.visible and _bar_words(bar) == ["Select", "Cancel"], str(_bar_words(bar)) if bar != null else "no bar")
 	var touch := InputEventScreenTouch.new()
 	bar._input(touch)
 	t.check("hint bar: touch hides it", not bar.visible)
 	var key := InputEventKey.new()
 	bar._input(key)
-	t.check("hint bar: the keyboard shows Enter and Esc", bar.visible and bar.get_child_count() == 2)
+	t.check("hint bar: a key on a pad-only device does not switch to keycaps", bar.kind() != &"keyboard")
+	PKeyUiView.pad_only_override = false
+	bar._input(key)
+	t.check("hint bar: the keyboard shows Enter and Esc", bar.get_child_count() == 2 and bar.parts().size() == 2)
+	PKeyUiView.pad_only_override = true
 	PKeyInputGlyphs.family_override = "xbox"
 	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
 	var shoulder := InputEventJoypadButton.new()
@@ -444,7 +450,7 @@ func _slice2(t: PKeyTestContext) -> void:
 			InputMap.action_erase_event(&"ui_accept", e)
 	InputMap.action_add_event(&"ui_accept", shoulder)
 	bar._input(InputEventJoypadButton.new())
-	t.check("hint bar: an item whose button has no glyph is left out (Start), the rest stay", _bar_words(bar) == ["to go back"], str(_bar_words(bar)))
+	t.check("hint bar: an item whose button has no glyph is left out (Start), the rest stay", _bar_words(bar) == ["Cancel"], str(_bar_words(bar)))
 	InputMap.action_erase_event(&"ui_accept", shoulder)
 	for e in accept:
 		if e is InputEventJoypadButton:
@@ -455,8 +461,8 @@ func _slice2(t: PKeyTestContext) -> void:
 	await _tree().create_timer(0.4, true, false, true).timeout
 	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 	await _tree().process_frame
-	var content: Control = d._content()
-	t.check("step: a new screen of a dialog crossfades its content", content != null and content.has_meta(PKeyUiMotion.STEP_META) and content.modulate.a < 1.0, str(content.modulate.a) if content != null else "")
+	var content: Control = d.step_target()
+	t.check("step: a new screen of a dialog crossfades the card's inner content, never the card", content != null and content != d._card_box and content.has_meta(PKeyUiMotion.STEP_META) and content.modulate.a < 1.0 and is_equal_approx(d._card_box.modulate.a, 1.0), str(content.modulate.a) if content != null else "")
 	await _tree().create_timer(0.4, true, false, true).timeout
 	t.check("step: and ends at full alpha", is_equal_approx(content.modulate.a, 1.0))
 	_free(d)
@@ -501,8 +507,9 @@ func _slice2(t: PKeyTestContext) -> void:
 		for i in 4:
 			await _tree().process_frame
 		var r: Rect2 = tv._card_box.get_global_rect()
-		var m := 0.05 * 1080.0
-		t.check("toast: title-safe at 1920x1080 (%s)" % anchor, r.position.x >= m - 1.0 and r.position.y >= m - 1.0 and r.end.x <= 1920.0 - m + 1.0 and r.end.y <= 1080.0 - m + 1.0, str(r))
+		var mx := 0.05 * 1920.0
+		var my := 0.05 * 1080.0
+		t.check("toast: title-safe at 1920x1080, 5 %% of the width and of the height (%s)" % anchor, r.position.x >= mx - 1.0 and r.position.y >= my - 1.0 and r.end.x <= 1920.0 - mx + 1.0 and r.end.y <= 1080.0 - my + 1.0, str(r))
 		vp.queue_free()
 	PKeyUiTheme.reduce_motion_mode = "auto"
 
@@ -587,6 +594,154 @@ func _standalone_a(t: PKeyTestContext) -> void:
 	PKeyUiTheme.reduce_motion_mode = "auto"
 
 
+## Slice 2's review fixes: the step fades the card's content in every host, the hint bar is one
+## footer and reads the catalog, and a dialog closes once however often B is pressed.
+func _fix1(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var before_size := _tree().root.size
+	_tree().root.size = Vector2i(1280, 720)
+	PKeyUiView.pad_only_override = true
+	# B1: the step fades the card's inner content in a gate host (sign-in inside a gate) and never
+	# a card panel.
+	var gate: PKeyGateView = _sc.gate_flow("sign-in")
+	PKeyUiTheme.reduce_motion_mode = "off"
+	await _tree().create_timer(0.5, true, false, true).timeout
+	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
+	var cards := gate.find_children("Card", "PanelContainer", true, false)
+	var min_card := 1.0
+	var dipped := false
+	dialog.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	for i in 30:
+		await _tree().process_frame
+		for c in cards:
+			min_card = minf(min_card, (c as Control).modulate.a)
+		var target := dialog.step_target()
+		if target != null and (target.modulate.a < 0.99 or target.has_meta(PKeyUiMotion.STEP_META)):
+			dipped = true
+	t.check("step: in a gate host the dialog's inner content dips and no card panel ever does", dipped and is_equal_approx(min_card, 1.0), "dipped %s card %s" % [dipped, min_card])
+	_free(gate)
+	# B1: a boot never fades its art.
+	var boot: Control = _sc.boot("syncing")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var art := boot.find_child("Art", true, false) as Control
+	boot.refresh_view()
+	var min_art := 1.0
+	for i in 12:
+		await _tree().process_frame
+		if art != null:
+			min_art = minf(min_art, art.modulate.a)
+	t.check("step: the boot's key art is never animated", is_equal_approx(min_art, 1.0) and boot.step_target() != art, str(min_art))
+	_free(boot)
+	# B2: one footer at the bottom right of the title-safe area, off the panel.
+	var d: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.5, true, false, true).timeout
+	var bar := d.find_child("HintBar", true, false) as PKeyHintBar
+	if bar == null:
+		bar = d._hint_bar
+	d.queue_layout()
+	await _tree().process_frame
+	await _tree().process_frame
+	var r := Rect2(bar.global_position, bar.size)
+	var vp := d.get_viewport().get_visible_rect()
+	var card := d.find_child("Card", true, false) as Control
+	t.check("hint bar: a footer, top level, outside the card", bar.top_level and bar.get_parent() == d and bar.visible and not r.intersects(card.get_global_rect()), "%s card %s" % [r, card.get_global_rect()])
+	t.check("hint bar: at the bottom right of the title-safe area (5 %)", r.end.x <= vp.end.x - 0.05 * vp.size.x + 1.5 and r.end.y <= vp.end.y - 0.05 * vp.size.y + 1.5 and r.end.x >= vp.end.x - 0.05 * vp.size.x - 12.0, "%s in %s" % [r, vp])
+	_free(d)
+	# B5: the words read from the catalog in the running locale.
+	TranslationServer.set_locale("de")
+	var dd: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.3, true, false, true).timeout
+	var de_bar := dd._hint_bar
+	de_bar.refresh()
+	var de_words := _bar_words(de_bar)
+	TranslationServer.set_locale("en")
+	t.check("hint bar: German reads the catalog (Auswählen), not English", de_words.size() == 2 and de_words[0] == "Auswählen", str(de_words))
+	_free(dd)
+	# B5: the keycaps follow the bound keys.
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	for e in accept:
+		if e is InputEventKey:
+			InputMap.action_erase_event(&"ui_accept", e)
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	InputMap.action_add_event(&"ui_accept", space)
+	t.check("glyphs: the keycap follows the bound key (Space)", PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.KEYBOARD) == "Space", PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.KEYBOARD))
+	InputMap.action_erase_event(&"ui_accept", space)
+	for e in accept:
+		if e is InputEventKey:
+			InputMap.action_add_event(&"ui_accept", e)
+	# B5: a mouse that moves switches the bar to the keyboard's hints; a key on a pad-only device does not.
+	var probe := PKeyHintBar.new()
+	probe._kind = &"pad"
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(8, 0)
+	PKeyUiView.pad_only_override = false
+	probe._input(motion)
+	t.check("hint bar: moving the mouse switches to the keyboard hints", probe._kind == &"keyboard")
+	probe.free()
+	PKeyUiView.pad_only_override = true
+	# B7: a dialog closes once, however often B is pressed during its fade; each scrim dialog fades.
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tree().root.add_child(holder)
+	var p := PKeySettingsPanel.open(holder)
+	p.auto_sdk = false
+	p.sdk = await _sc.settings_sdk({})
+	for i in 20:
+		await _tree().process_frame
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var closes := [0]
+	p.closed.connect(func(): closes[0] += 1)
+	p._cancel()
+	p._cancel()
+	await _tree().create_timer(0.05, true, false, true).timeout
+	p._cancel()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: a second B or Esc during the fade emits closed once (settings)", closes[0] == 1 and not is_instance_valid(p), str(closes[0]))
+	holder.queue_free()
+	var so: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var so_closes := [0]
+	so.closed.connect(func(): so_closes[0] += 1)
+	so._cancel()
+	so._cancel()
+	await _tree().create_timer(0.08, true, false, true).timeout
+	t.check("close: sign-in fades out part way before it closes", so_closes[0] == 0 and so.modulate.a < 1.0, "%s %s" % [so_closes[0], so.modulate.a])
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("close: sign-in emits closed once", so_closes[0] == 1, str(so_closes[0]))
+	_free(so)
+	var up: PKeyUpdatePrompt = _sc.update_prompt_notes()
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var uc := [0]
+	up.dismissed.connect(func(): uc[0] += 1)
+	up._on_dismiss()
+	up._on_dismiss()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: the update modal fades out on Later and dismisses once", uc[0] == 1, str(uc[0]))
+	var offd: PKeyOfflineDialog = _sc.offline(false, "")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var oc := [0]
+	offd.closed.connect(func(): oc[0] += 1)
+	offd._close_dialog()
+	offd._close_dialog()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: the offline dialog fades out and closes once", oc[0] == 1, str(oc[0]))
+	_free(offd)
+	up.queue_free()
+	# Reduced motion closes at once.
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var rm: PKeyOfflineDialog = _sc.offline(false, "")
+	await _tree().process_frame
+	var rc := [0]
+	rm.closed.connect(func(): rc[0] += 1)
+	rm._close_dialog()
+	t.check("close: reduced motion closes at once", rc[0] == 1)
+	_free(rm)
+	_tree().root.size = before_size
+	PKeyUiView.pad_only_override = null
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
 func _bar_words(bar: PKeyHintBar) -> Array:
 	var out := []
 	for row in bar.get_children():
@@ -644,7 +799,7 @@ func _lead_fixes(t: PKeyTestContext) -> void:
 	panel._input_kind = &"pad"
 	panel.refresh_view()
 	await _tree().process_frame
-	t.check("n5: accept on east shows B with 'to select', never '[B] A to select'", panel._hint_bar.visible and _bar_words(panel._hint_bar) == ["to select"] and PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.PAD) == "B")
+	t.check("n5: accept on east shows B with Select, never '[B] A to select'", _bar_words(panel._hint_bar) == ["Select"] and PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.PAD) == "B")
 	_free(panel)
 	InputMap.action_erase_event(&"ui_accept", east)
 	for e in accept:
@@ -1075,8 +1230,7 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		await _tree().process_frame
 		t.check("dialog focus: %s, a pad's A never presses the game's button" % name, pressed[0] == 0, str(pressed[0]))
 		_joy_button(JOY_BUTTON_B)
-		await _tree().process_frame
-		await _tree().process_frame
+		await _tree().create_timer(0.5, true, false, true).timeout
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)
@@ -1302,6 +1456,7 @@ func _play(t: PKeyTestContext) -> void:
 	t.check("play: the modal focuses Later and ignores input for 250 ms", focus != null and focus.name == "Dismiss" and p._guard_until > Time.get_ticks_msec(), str(focus))
 	t.check("play: the modal says the kit holds the input", caught == [true] and sdk.is_input_captured(), str(caught))
 	p._on_dismiss()
+	await _tree().create_timer(0.5, true, false, true).timeout
 	t.check("play: dismissing gives the input back", caught == [true, false] and not sdk.is_input_captured(), str(caught))
 	# What's new, You have, All changes.
 	p.is_dismissed = false
@@ -1838,7 +1993,7 @@ func _kx_identity(t: PKeyTestContext) -> void:
 	var cut := PKeyActivationController.key_verdict("pkey_tidewater_" + "A".repeat(10), true)
 	t.check("verdict: a cut-short key on submit counts its characters", cut.get("copy") == "key_cut_short" and cut["danger"] and cut["args"] == ["pkey_tidewater_", 10, 22], str(cut))
 	t.check("verdict: the tier is unknown before the server answers", PKeyActivationController.done_verdict(null).is_empty())
-	t.check("hints: keyboard activates, a pad selects, touch has none", PKeyActivationController.input_hint(&"keyboard") == "hint_activate" and PKeyActivationController.input_hint(&"pad") == "hint_select" and PKeyActivationController.input_hint(&"touch") == "")
+	t.check("hints: keyboard activates, a pad selects, touch has none", PKeyActivationController.input_hint(&"keyboard") == "core.gate.needs-activation.title" and PKeyActivationController.input_hint(&"pad") == "part.hint.select" and PKeyActivationController.input_hint(&"touch") == "")
 	PKeyUiTheme.reset()
 	PKeyUiTheme.product_name = "Tidewater"
 	var panel := PKeyActivationPanel.new()
@@ -1859,11 +2014,11 @@ func _kx_identity(t: PKeyTestContext) -> void:
 	ev.button_index = JOY_BUTTON_A
 	panel._input(ev)
 	await _tree().process_frame
-	t.check("hints: a pad shows the A glyph and 'to select'", panel._hint_bar.visible and _bar_words(panel._hint_bar) == ["to select"], str(_bar_words(panel._hint_bar)))
+	t.check("hints: a pad shows the A glyph and Select", _bar_words(panel._hint_bar) == ["Select"], str(_bar_words(panel._hint_bar)))
 	var key_ev := InputEventKey.new()
 	panel._input(key_ev)
 	await _tree().process_frame
-	t.check("hints: the keyboard shows the Enter glyph and 'to activate'", _bar_words(panel._hint_bar) == ["to activate"], str(_bar_words(panel._hint_bar)))
+	t.check("hints: the keyboard shows the Enter glyph and Activate", _bar_words(panel._hint_bar) == ["Activate"], str(_bar_words(panel._hint_bar)))
 	var touch := InputEventScreenTouch.new()
 	panel._input(touch)
 	await _tree().process_frame

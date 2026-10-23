@@ -403,11 +403,7 @@
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Nouveautés</string>
     <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
-    <string name="part_hint_select">pour choisir</string>
-    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field. -->
-    <string name="part_hint_activate">pour activer</string>
-    <!-- Input hint bar (Godot kit): the verb after the glyph of the back button. -->
-    <string name="part_hint_back">pour revenir</string>
+    <string name="part_hint_select">Sélectionner</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">Toutes les modifications de la version %1$s</string>
     <string name="update_allChanges__macos">Toutes les modifications de la version %1$s</string>

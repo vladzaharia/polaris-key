@@ -1093,20 +1093,10 @@ msgstr "Você tem a {version}"
 msgid "update.whatsNew"
 msgstr "Novidades"
 
-#. to select
+#. Select
 #. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
 msgid "part.hint.select"
-msgstr "para selecionar"
-
-#. to activate
-#. Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field.
-msgid "part.hint.activate"
-msgstr "para ativar"
-
-#. to go back
-#. Input hint bar (Godot kit): the verb after the glyph of the back button.
-msgid "part.hint.back"
-msgstr "para voltar"
+msgstr "Selecionar"
 
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.

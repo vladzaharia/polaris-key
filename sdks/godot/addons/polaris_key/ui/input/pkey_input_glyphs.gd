@@ -66,10 +66,10 @@ static func pad_family() -> String:
 	return "xbox"
 
 
-## The text the glyph carries: "Enter", "Esc", a letter, or "" for a PlayStation shape.
+## The text the glyph carries: a key's text ("Enter", "Esc"…), a pad letter, or "" for a PlayStation shape.
 static func label_for(act: StringName, k: StringName) -> String:
 	if k != PAD:
-		return "Enter" if act == CONFIRM else "Esc"
+		return key_label(act)
 	var b := pad_button(act)
 	match pad_family():
 		"playstation":
@@ -85,6 +85,24 @@ static func shape_for(act: StringName, k: StringName) -> String:
 	if k != PAD or pad_family() != "playstation":
 		return ""
 	return {JOY_BUTTON_A: "cross", JOY_BUTTON_B: "circle", JOY_BUTTON_X: "square", JOY_BUTTON_Y: "triangle"}.get(pad_button(act), "")
+
+
+## The keycap text of the keyboard key bound to `ui_accept` or `ui_cancel` ("Enter", "Esc", "Space",
+## "E"…): the first InputEventKey of the action, else Enter and Esc.
+static func key_label(act: StringName) -> String:
+	var action_name := &"ui_accept" if act == CONFIRM else &"ui_cancel"
+	if InputMap.has_action(action_name):
+		for e in InputMap.action_get_events(action_name):
+			if e is InputEventKey:
+				var k := e as InputEventKey
+				var code := k.keycode if k.keycode != KEY_NONE else k.physical_keycode
+				if code == KEY_ESCAPE:
+					return "Esc"
+				if code != KEY_NONE:
+					var t := OS.get_keycode_string(code)
+					if t != "":
+						return t
+	return "Enter" if act == CONFIRM else "Esc"
 
 
 ## Whether there is a glyph to draw: a keyboard always, a pad only when the bound button is one of
@@ -137,35 +155,35 @@ func _draw() -> void:
 	_name_it()
 	if not has_glyph(action, kind):
 		return
-	var fill := get_theme_color("font_color", "Label")
-	var ink := Color.BLACK if fill.get_luminance() > 0.5 else Color.WHITE
+	# A raised neutral disc (or keycap) in the text colour at a low alpha, the letter and shape in the
+	# text colour: quiet beside the buttons, readable on dark and light.
+	var fg := get_theme_color("font_color", "Label")
 	var sz := size
 	var s := minf(sz.x, sz.y)
 	var f := get_theme_font("font", "Label")
 	var fs := _letter()
 	var text := label_for(action, kind)
-	if kind == KEYBOARD:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = fill
-		sb.set_corner_radius_all(int(s * 0.28))
-		draw_style_box(sb, Rect2(Vector2.ZERO, sz))
-	else:
-		draw_circle(sz / 2.0, s / 2.0, fill)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(fg, 0.16)
+	sb.border_color = Color(fg, 0.34)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(int(s * 0.28) if kind == KEYBOARD else int(s))
+	draw_style_box(sb, Rect2(Vector2.ZERO, sz))
 	if text != "":
 		var ts := f.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-		draw_string(f, Vector2(0.0, (sz.y - ts.y) / 2.0 + f.get_ascent(fs)), text, HORIZONTAL_ALIGNMENT_CENTER, sz.x, fs, ink)
+		draw_string(f, Vector2(0.0, (sz.y - ts.y) / 2.0 + f.get_ascent(fs)), text, HORIZONTAL_ALIGNMENT_CENTER, sz.x, fs, fg)
 		return
 	var c := sz / 2.0
 	var d := s * 0.2
 	var w := maxf(2.0, s * 0.08)
 	match shape_for(action, kind):
 		"circle":
-			draw_arc(c, d, 0.0, TAU, 32, ink, w, true)
+			draw_arc(c, d, 0.0, TAU, 32, fg, w, true)
 		"square":
-			draw_rect(Rect2(c - Vector2(d, d), Vector2(d, d) * 2.0), ink, false, w)
+			draw_rect(Rect2(c - Vector2(d, d), Vector2(d, d) * 2.0), fg, false, w)
 		"triangle":
 			var pts := PackedVector2Array([c + Vector2(0, -d), c + Vector2(d, d * 0.8), c + Vector2(-d, d * 0.8), c + Vector2(0, -d)])
-			draw_polyline(pts, ink, w, true)
+			draw_polyline(pts, fg, w, true)
 		_:
-			draw_line(c + Vector2(-d, -d), c + Vector2(d, d), ink, w, true)
-			draw_line(c + Vector2(-d, d), c + Vector2(d, -d), ink, w, true)
+			draw_line(c + Vector2(-d, -d), c + Vector2(d, d), fg, w, true)
+			draw_line(c + Vector2(-d, d), c + Vector2(d, -d), fg, w, true)

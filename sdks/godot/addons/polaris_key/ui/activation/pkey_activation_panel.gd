@@ -198,7 +198,7 @@ func _build() -> void:
 	_msg_key = label(_key_field, "Message")
 	_verdict = label(_key_field, "Verdict", "PKeyMuted")
 	# The hint: the glyph of the confirm control of the last input device, then its words.
-	_hint_bar = hint_bar(_key_field, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": {"keyboard": "hint_activate", "pad": "hint_select"}}])
+	_hint_bar = hint_bar(_key_field, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": {"keyboard": "core.gate.needs-activation.title", "pad": "part.hint.select"}}])
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")

@@ -958,10 +958,7 @@
             "about.licenses",
             "about.copyDiagnostics",
             "about.diagnosticsCopied",
-            "part.poweredBy",
-            "part.hint.select",
-            "part.hint.activate",
-            "part.hint.back"
+            "part.poweredBy"
           ]
         }
       }
@@ -971,12 +968,7 @@
       "family": null,
       "states": {
         "default": {
-          "copy": [
-            "channel.title",
-            "part.hint.select",
-            "part.hint.activate",
-            "part.hint.back"
-          ]
+          "copy": ["channel.title"]
         },
         "locked": {
           "copy": ["channel.locked", "channel.lockedLicense", "a11y.locked"]

@@ -74,10 +74,10 @@ static func exit(view: Control, done: Callable) -> void:
 	tw.set_ignore_time_scale(true)
 	tw.set_parallel(true)
 	var s := PKeyKitTokens.MOTION_SHEET_OUT_MS / 1000.0
-	tw.tween_property(view, "modulate:a", 0.0, s).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(view, "modulate:a", 0.0, s).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if card != null:
 		card.pivot_offset = card.size / 2.0
-		tw.tween_property(card, "scale", Vector2.ONE * ENTER_SCALE, s).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.tween_property(card, "scale", Vector2.ONE * ENTER_SCALE, s).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		view.set_meta(&"pkey_scaled_card", card)
 	tw.set_parallel(false)
 	tw.tween_callback(func() -> void:
@@ -86,13 +86,22 @@ static func exit(view: Control, done: Callable) -> void:
 	view.set_meta(ENTER_META, tw)
 
 
-## A short crossfade for a step change inside a dialog: `content` dips to 0 and back over
-## MOTION_STEP_MS. Call it right after the new step's content is in place.
+## A crossfade for a step change inside a dialog: `content` (the card's inner content, never the
+## card panel, a page, the scrim or art) drops to STEP_FROM and eases back to full over MOTION_STEP_MS,
+## starting after the frame that rebuilt it was drawn. Call it right after the new step is in place.
+const STEP_FROM := 0.4
+
+
 static func step(content: Control) -> void:
 	if content == null or not content.is_inside_tree() or PKeyUiTheme.reduce_motion():
 		return
 	_kill(content, STEP_META)
-	content.modulate.a = 0.0
+	content.modulate.a = STEP_FROM
+	var token := Time.get_ticks_usec()
+	content.set_meta(STEP_META, token)
+	await content.get_tree().process_frame
+	if not is_instance_valid(content) or not content.is_inside_tree() or not content.has_meta(STEP_META) or content.get_meta(STEP_META) != token:
+		return
 	var tw := content.create_tween()
 	tw.set_ignore_time_scale(true)
 	tw.tween_property(content, "modulate:a", 1.0, PKeyKitTokens.MOTION_STEP_MS / 1000.0).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

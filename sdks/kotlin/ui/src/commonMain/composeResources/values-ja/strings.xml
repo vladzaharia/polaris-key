@@ -396,10 +396,6 @@
     <string name="update_whatsNew">新機能</string>
     <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
     <string name="part_hint_select">選択</string>
-    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field. -->
-    <string name="part_hint_activate">有効化</string>
-    <!-- Input hint bar (Godot kit): the verb after the glyph of the back button. -->
-    <string name="part_hint_back">戻る</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">%1$sのすべての変更点</string>
     <string name="update_allChanges__macos">%1$sのすべての変更点</string>
