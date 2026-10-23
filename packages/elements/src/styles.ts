@@ -2163,6 +2163,28 @@ dialog.sheet .identity {
     background: var(--pk-surface-page);
   }
 }
+/* The desktop host's own report (the bridge host facts, UK-06) draws what the media features draw:
+   Increase Contrast, and Reduce Transparency, which makes the glass sheet and the scrim opaque. */
+.pk-root[data-contrast="more"] {
+  --pk-border-subtle: var(--pk-border-strong);
+  --pk-text-muted: var(--pk-text-default);
+  --pk-text-subtle: var(--pk-text-default);
+}
+.pk-root[data-contrast="more"][data-pk-platform="macos"] {
+  --pk-border-subtle: var(--pk-text-strong);
+  --pk-border-strong: var(--pk-text-strong);
+}
+.pk-root[data-transparency="reduce"] :is(.ambient img, .passport-ambient) {
+  display: none !important;
+}
+.pk-root[data-transparency="reduce"] dialog::backdrop {
+  backdrop-filter: none;
+  background: var(--pk-surface-page);
+}
+.pk-root[data-transparency="reduce"] dialog.sheet {
+  backdrop-filter: none;
+  background: var(--pk-surface-raised);
+}
 .visually-hidden {
   position: absolute;
   inline-size: 1px;

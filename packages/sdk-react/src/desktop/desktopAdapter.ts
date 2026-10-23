@@ -116,6 +116,7 @@ import {
   BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
+  type BridgeHost,
   type KitView,
   type BridgeOidcBegin,
   type BridgeState,
@@ -176,6 +177,8 @@ export class DesktopAdapter implements PolarisAdapter {
   private offBridge: (() => void) | null = null;
   /** The host's presentation member and icon, over the bridge (HA-13). */
   private readonly presentation_: BridgePresentationSource;
+  /** The host's OS facts (UK-06), kept by value so an unchanged push keeps the same object. */
+  private host_: BridgeHost | null = null;
 
   constructor(opts: DesktopAdapterOptions = {}) {
     const bridge = resolveBridge(opts.bridge);
@@ -248,6 +251,12 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     // core.presentation (HA-13): the host's member rides every state.
     if (s.presentation !== undefined) this.presentation_.adopt(s.presentation);
+    // UK-06: the host's OS facts; an older host sends none and the kit keeps its web chrome.
+    if (
+      s.host &&
+      (this.host_ === null || JSON.stringify(this.host_) !== JSON.stringify(s.host))
+    )
+      this.host_ = { ...s.host };
     this.store.set(
       projectState(
         "desktop",
@@ -1215,6 +1224,11 @@ export class DesktopAdapter implements PolarisAdapter {
       },
       "unsupported",
     );
+  }
+
+  /** The host's OS facts (UK-06), or `null` from a host that sends none. */
+  hostFacts(): BridgeHost | null {
+    return this.host_;
   }
 
   /**
