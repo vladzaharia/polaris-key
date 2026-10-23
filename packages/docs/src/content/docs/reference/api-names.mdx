@@ -26,32 +26,38 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.fromConfig` | reserved for SP-32a | | | | | | — |
 | `client.doctor` | reserved for SP-32b | | | | | | — |
 | `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `client.boot` | `client.boot` | `ui.boot` |
-| `client.discover` | `client.discover` | — | — | — | — | — | — |
-| `client.init` | `client.init` | — | — | — | — | — | — |
-| `client.portal` | `client.portal` | — | — | — | — | — | — |
-| `client.presentation` | `client.presentation` | — | — | — | — | — | — |
-| `client.presentationIcon` | `client.presentationIcon` | — | — | — | — | — | — |
+| `client.discover` | `client.discover` | — | `client.discover` | — | — | — | — |
+| `client.init` | `client.init` | — | `client.init` | — | — | — | — |
+| `client.portal` | `client.portal` | — | `client.portal` | — | — | — | — |
+| `client.presentation` | `client.presentation` | — | `client.presentation` | — | — | — | — |
+| `client.presentationIcon` | `client.presentationIcon` | — | `client.presentation_icon` | — | — | — | — |
 | `client.presentationSource` | `client.presentationSource` | — | — | — | — | — | — |
-| `client.discovery` | `client.discovery` | — | — | — | — | — | — |
+| `client.discovery` | `client.discovery` | — | `client.discovery` | — | — | — | — |
 | `client.servicesPinned` | `client.servicesPinned` | — | — | — | — | — | — |
 | `client.hasToken` | `client.hasToken` | — | — | — | — | — | — |
-| `client.ensureActivated` | `client.ensureActivated` | — | — | — | — | — | — |
-| `client.capabilities` | `client.capabilities` | — | — | — | — | — | — |
-| `client.supports` | `client.supports` | — | — | — | — | — | — |
-| `client.caps` | `client.caps` | — | — | — | — | — | — |
-| `client.sync` | `client.sync` | — | — | — | — | — | — |
-| `client.getSyncState` | `client.getSyncState` | — | — | — | — | — | — |
-| `client.importBundle` | `client.importBundle` | — | — | — | — | — | — |
-| `client.crashTags` | `client.crashTags` | — | — | — | — | — | — |
-| `client.status` | `client.status` | — | — | — | — | — | — |
-| `client.storeStatus` | `client.storeStatus` | — | — | — | — | — | — |
-| `client.isLicensed` | `client.isLicensed` | — | — | — | — | — | — |
+| `client.ensureActivated` | `client.ensureActivated` | — | `client.ensure_activated` | — | — | — | — |
+| `client.capabilities` | `client.capabilities` | — | `client.capabilities` | — | — | — | — |
+| `client.supports` | `client.supports` | — | `client.supports` | — | — | — | — |
+| `client.caps` | `client.caps` | — | `client.caps` | — | — | — | — |
+| `client.sync` | `client.sync` | — | `client.sync` | — | — | — | — |
+| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | — | — | — | — |
+| `client.importBundle` | `client.importBundle` | — | `client.import_bundle` | — | — | — | — |
+| `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | — | — | — | — |
+| `client.status` | `client.status` | — | `client.status` | — | — | — | — |
+| `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | — | — | — | — |
+| `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | — | — | — | — |
 | `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
-| `client.listDevices` | `client.listDevices` | — | — | — | — | — | — |
-| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — | — | — | — | — |
-| `client.renameDevice` | `client.renameDevice` | — | — | — | — | — | — |
+| `client.listDevices` | `client.listDevices` | — | `client.list_devices` | — | — | — | — |
+| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | — | — | — | — |
+| `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | — | — | — | — |
 | `client.startRefresh` | `client.startRefresh` | — | — | — | — | — | — |
-| `client.close` | `client.close` | — | — | — | — | — | — |
+| `client.close` | `client.close` | — | `client.close` | — | — | — | — |
+| `client.tryDiscover` | — | — | `client.try_discover` | — | — | — | — |
+| `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
+| `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
+| `client.register` | — | — | `client.register` | — | — | — | — |
+| `client.currentDevice` | — | — | `client.current_device` | — | — | — | — |
+| `client.deactivate` | — | — | `client.deactivate` | — | — | — | — |
 
 ## options
 
@@ -84,9 +90,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
-| `config.listUserConfig` | `config.listUserConfig` | — | — | — | — | — | — |
-| `config.schemaVersion` | `config.schemaVersion` | — | — | — | — | — | — |
-| `config.fetchSchema` | `config.fetchSchema` | — | — | — | — | — | — |
+| `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | — | — | — | — |
+| `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | — | — | — | — |
+| `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | — | — | — | — |
 | `config.isLocked` | `config.isLocked` | — | — | — | — | — | — |
 
 ## license
@@ -95,13 +101,16 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
-| `license.activation` | `license.activation` | — | — | — | — | — | — |
-| `license.licenseInfo` | `license.licenseInfo` | — | — | — | — | — | — |
-| `license.entitledChannels` | `license.entitledChannels` | — | — | — | — | — | — |
-| `license.getProfile` | `license.getProfile` | — | — | — | — | — | — |
-| `license.getLicenseId` | `license.getLicenseId` | — | — | — | — | — | — |
-| `license.enroll` | `license.enroll` | — | — | — | — | — | — |
-| `license.deactivate` | `license.deactivate` | — | — | — | — | — | — |
+| `license.activation` | `license.activation` | — | `license.activation` | — | — | — | — |
+| `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | — | — | — | — |
+| `license.entitledChannels` | `license.entitledChannels` | — | `license.entitled_channels` | — | — | — | — |
+| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | — | — | — | — |
+| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | — | — | — | — |
+| `license.enroll` | `license.enroll` | — | `license.enroll` | — | — | — | — |
+| `license.deactivate` | `license.deactivate` | — | `license.deactivate` | — | — | — | — |
+| `license.getLicenseUser` | — | — | `license.get_license_user` | — | — | — | — |
+| `license.status` | `license.status` | — | `license.status` | — | — | — | — |
+| `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | — | — | — | — |
 
 ## entitlements
 
@@ -122,12 +131,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.signIn` | reserved for I-10a | | | | | | `identity.oidc` |
 | `identity.subject` | reserved for I-10a | | | | | | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | planned (I-10b) | `identity.sign_out` | `identity.account` |
-| `identity.current` | `identity.current` | — | — | — | — | — | — |
+| `identity.current` | `identity.current` | — | `identity.current` | — | — | — | — |
 | `identity.forget` | `identity.forget` | — | — | — | — | — | — |
-| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | — | — | — | — | — |
-| `identity.beginSignIn` | `identity.beginSignIn` | — | — | — | — | — | — |
-| `identity.pollSignIn` | `identity.pollSignIn` | — | — | — | — | — | — |
-| `identity.waitForSignIn` | `identity.waitForSignIn` | — | — | — | — | — | — |
+| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | — | — | — | — |
+| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | — | — | — | — |
+| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | — | — | — | — |
+| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | — | — | — | — |
+| `identity.acceptSignIn` | — | — | `identity.accept_sign_in` | — | — | — | — |
 
 ## events
 
@@ -160,19 +170,19 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `devices.register` | `devices.register` | — | — | — | — | — | — |
-| `devices.list` | `devices.list` | — | — | — | — | — | — |
-| `devices.rename` | `devices.rename` | — | — | — | — | — | — |
-| `devices.deauthorize` | `devices.deauthorize` | — | — | — | — | — | — |
+| `devices.register` | `devices.register` | — | `devices.register` | — | — | — | — |
+| `devices.list` | `devices.list` | — | `devices.list` | — | — | — | — |
+| `devices.rename` | `devices.rename` | — | `devices.rename` | — | — | — | — |
+| `devices.deauthorize` | `devices.deauthorize` | — | `devices.deauthorize` | — | — | — | — |
 
 ## release
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `release.fetch` | `release.fetch` | — | — | — | — | — | — |
-| `release.changelog` | `release.changelog` | — | — | — | — | — | — |
-| `release.installUrl` | `release.installUrl` | — | — | — | — | — | — |
-| `release.downloadUrl` | `release.downloadUrl` | — | — | — | — | — | — |
+| `release.fetch` | `release.fetch` | — | `release.fetch` | — | — | — | — |
+| `release.changelog` | `release.changelog` | — | `release.changelog` | — | — | — | — |
+| `release.installUrl` | `release.installUrl` | — | `release.install_url` | — | — | — | — |
+| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | — | — | — | — |
 
 ## update
 
@@ -180,65 +190,71 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | — | — | — |
 | `update.decidable` | `update.decidable` | — | — | — | — | — | — |
-| `update.install` | `update.install` | — | — | — | — | — | — |
-| `update.check` | `update.check` | — | — | — | — | — | — |
-| `update.appcastUrl` | `update.appcastUrl` | — | — | — | — | — | — |
-| `update.feedUrl` | `update.feedUrl` | — | — | — | — | — | — |
-| `update.decide` | `update.decide` | — | — | — | — | — | — |
-| `update.feed` | `update.feed` | — | — | — | — | — | — |
-| `update.releaseRecord` | `update.releaseRecord` | — | — | — | — | — | — |
-| `update.buildUrl` | `update.buildUrl` | — | — | — | — | — | — |
+| `update.install` | `update.install` | — | `update.install` | — | — | — | — |
+| `update.check` | `update.check` | — | `update.check` | — | — | — | — |
+| `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | — | — | — |
+| `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | — | — | — | — |
+| `update.decide` | `update.decide` | — | `update.decide` | — | — | — | — |
+| `update.feed` | `update.feed` | — | `update.feed` | — | — | — | — |
+| `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | — | — | — | — |
+| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | — | — | — | — |
 | `update.ensureDiscovery` | `update.ensureDiscovery` | — | — | — | — | — | — |
-| `update.reload` | `update.reload` | — | — | — | — | — | — |
-| `update.useDriver` | `update.useDriver` | — | — | — | — | — | — |
-| `update.confirmBoot` | `update.confirmBoot` | — | — | — | — | — | — |
-| `update.markBootAttempt` | `update.markBootAttempt` | — | — | — | — | — | — |
+| `update.reload` | `update.reload` | — | `update.reload` | — | — | — | — |
+| `update.useDriver` | `update.useDriver` | — | `set_driver` | — | — | — | — |
+| `update.confirmBoot` | `update.confirmBoot` | — | `update.confirm_boot` | — | — | — | — |
+| `update.markBootAttempt` | `update.markBootAttempt` | — | `update.mark_boot_attempt` | — | — | — | — |
 
 ## distribution
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `distribution.downloadModel` | `distribution.downloadModel` | — | — | — | — | — | — |
-| `distribution.thisPlatform` | `distribution.thisPlatform` | — | — | — | — | — | — |
+| `distribution.downloadModel` | `distribution.downloadModel` | — | `distribution.download_model` | — | — | — | — |
+| `distribution.thisPlatform` | `distribution.thisPlatform` | — | `distribution.this_platform` | — | — | — | — |
 
 ## commerce
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `commerce.binding` | `commerce.binding` | — | — | — | — | — | — |
-| `commerce.claim` | `commerce.claim` | — | — | — | — | — | — |
-| `commerce.claimSteam` | `commerce.claimSteam` | — | — | — | — | — | — |
-| `commerce.claimAppStore` | `commerce.claimAppStore` | — | — | — | — | — | — |
-| `commerce.claimPlay` | `commerce.claimPlay` | — | — | — | — | — | — |
+| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | — | — | — | — |
+| `commerce.claim` | `commerce.claim` | — | `commerce.claim` | — | — | — | — |
+| `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | — | — | — | — |
+| `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | — | — | — | — |
+| `commerce.claimPlay` | `commerce.claimPlay` | — | `commerce.claim_play` | — | — | — | — |
+| `commerce.hiddenHere` | — | — | `commerce.hidden_here` | — | — | — | — |
+| `commerce.isUnlocked` | — | — | `commerce.is_unlocked` | — | — | — | — |
 
 ## packs
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `packs.ensure` | `packs.ensure` | — | — | — | — | — | — |
-| `packs.state` | `packs.state` | — | — | — | — | — | — |
-| `packs.path` | `packs.path` | — | — | — | — | — | — |
-| `packs.registerHandler` | `packs.registerHandler` | — | — | — | — | — | — |
-| `packs.on` | `packs.on` | — | — | — | — | — | — |
-| `packs.isAvailable` | `packs.isAvailable` | — | — | — | — | — | — |
-| `packs.packFor` | `packs.packFor` | — | — | — | — | — | — |
-| `packs.rollback` | `packs.rollback` | — | — | — | — | — | — |
-| `packs.confirm` | `packs.confirm` | — | — | — | — | — | — |
+| `packs.ensure` | `packs.ensure` | — | `packs.ensure` | — | — | — | — |
+| `packs.state` | `packs.state` | — | `packs.state` | — | — | — | — |
+| `packs.path` | `packs.path` | — | `packs.path` | — | — | — | — |
+| `packs.registerHandler` | `packs.registerHandler` | — | `packs.register_handler` | — | — | — | — |
+| `packs.on` | `packs.on` | — | `packs.on` | — | — | — | — |
+| `packs.isAvailable` | `packs.isAvailable` | — | `packs.is_available` | — | — | — | — |
+| `packs.packFor` | `packs.packFor` | — | `packs.pack_for` | — | — | — | — |
+| `packs.rollback` | `packs.rollback` | — | `packs.rollback` | — | — | — | — |
+| `packs.confirm` | `packs.confirm` | — | `packs.confirm` | — | — | — | — |
 
 ## presentation
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `presentation.subscribe` | `presentation.subscribe` | — | — | — | — | — | — |
+| `presentation.subscribe` | `presentation.subscribe` | — | `presentation.subscribe` | — | — | — | — |
 | `presentation.load` | `presentation.load` | — | — | — | — | — | — |
-| `presentation.icon` | `presentation.icon` | — | — | — | — | — | — |
+| `presentation.icon` | `presentation.icon` | — | `presentation.icon` | — | — | — | — |
 | `presentation.iconFor` | `presentation.iconFor` | — | — | — | — | — | — |
+| `presentation.loadCached` | — | — | `presentation.load_cached` | — | — | — | — |
+| `presentation.current` | `presentation.current` | — | `presentation.current` | — | — | — | — |
 
 ## boot
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `boot.runBoot` | `boot.runBoot` | — | — | — | — | — | — |
+| `boot.runBoot` | `boot.runBoot` | — | `boot.run_boot` | — | — | — | — |
+| `boot.registrationOpen` | — | — | `boot.registration_open` | — | — | — | — |
+| `boot.ensureActivated` | `boot.ensureActivated` | — | `boot.ensure_activated` | — | — | — | — |
 
 ## Removed in 0.9
 
