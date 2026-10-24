@@ -1448,7 +1448,7 @@ state without the fixture; a fixture without a kit render fails visual QA (§7).
   (about 220 keys: today's React copy bag, PolarisCopy in Swift and Kotlin, PKeyUiCopy in Godot,
   plus the strings each audit found hard-coded outside them: error descriptions, accessibility hints,
   "Something went wrong", "Working", "(allowed: x – y)", the busy glyph).
-- Generated per platform: JSON for web kits, `Localizable.xcstrings` (String Catalog) for Swift,
+- Generated per platform: JSON for web kits, `kit-copy.json` (ICU tables) for Swift,
   Compose Resources `strings.xml` with plurals for Kotlin, gettext `.po`/`.pot` for Godot and Python,
   ANSI-safe tables for the terminal. Plurals and selects use ICU (`{count, plural, one {# device}
 other {# devices}}`), never string concatenation (SW, KO).
