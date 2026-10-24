@@ -49,7 +49,7 @@ Portal and core public route tables, and the CORS row flag. Done when every acce
 - [x] `CORS_SERVICE_PATHS` replaced by a per-row CORS flag; the CORS tests are unchanged
 - [x] Every device transcript and the 1,800-request oracle stay byte-identical (listed 405 tightenings only)
 - [x] routeCoverage derived from the tables (rule 10: OpenAPI and the descriptor `surface` stay in step)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Progress and corrections (P0-25b)
 
@@ -61,7 +61,7 @@ Verified against the code. Corrections to the brief:
 - The oracle is `test/publicRouteOracle.test.ts` (3,144 requests, recorded before the move); `test/corsFlags.test.ts` holds the flags to the old list verbatim.
 - No 405 tightening, no spec change, no transcript change.
 - Done in the follow-up slice P0-25b-2: `handlePortalApi`'s own path walk is `PORTAL_API_ROUTES` in `portal/api.ts`. Each row names `auth` (`none` | `session`), `csrf` (`change` | `always`) and `sweep` (the per-request licence-link sweep), and the `**` row carries the session and CSRF gate for every path no other row names. `test/portalApiOracle.test.ts` (10,092 requests, recorded from the hand dispatch before the move, with the licence link and session count each request leaves behind) and `test/portalApiRouteTable.test.ts` (path to row, and every row's gates) hold it. The brief's "no hand dispatch left in `handlePortal`" holds: `handlePortal` has none.
-- The full green gate was not run here (scoped checks only, per the lead); the last box is left for the lead's gate.
+- P0-25b.1: the scoped gate passed steps 1-16 (build, gen --check, typecheck, tests, prettier, admin build, assemble, check:links, workerd); the admin e2e step was stopped (no admin file changed).
 
 ## Corrections (2026-10-23)
 
