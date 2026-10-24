@@ -1529,6 +1529,16 @@ dialog.sheet .card,
 .pk-root[data-pk-platform="gnome"][data-component="UpdatePrompt"] dialog.sheet {
   inline-size: min(25rem, 100% - 2 * var(--pk-space-4));
 }
+/* A dialog shorter than its content scrolls its body above a pinned response row, as AdwDialog
+   does: the suggested action stays in the window (a 390 px tall window with three lines of notes). */
+.pk-root[data-pk-platform="gnome"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-block-end: calc(-1 * var(--pk-kit-card-pad));
+  padding-block-end: var(--pk-kit-card-pad);
+  background: var(--pk-surface-raised);
+}
 @media (max-width: 35rem) {
   .pk-root[data-pk-platform="gnome"] dialog.sheet {
     inline-size: 100%;
