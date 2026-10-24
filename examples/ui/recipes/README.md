@@ -3,9 +3,11 @@
 The Polaris Locker gate in other front ends, each on the Tidewater fixtures (no Worker, no
 network, no keys). A standalone pnpm workspace: not part of the repo's workspace or lockfile.
 
-| Recipe  | Shows                                                           |
-| ------- | --------------------------------------------------------------- |
-| `htmx/` | `<pk-gate>` around an `hx-get` region; the gate survives a swap |
+| Recipe    | Shows                                                                      |
+| --------- | -------------------------------------------------------------------------- |
+| `htmx/`   | `<pk-gate>` around an `hx-get` region; the gate survives a swap            |
+| `solid/`  | `prop:input` and `on:pk-action`; your own UI over `headless`               |
+| `preact/` | native properties (`input`) and `onpk-action`; your own UI over `headless` |
 
 ## Run
 
