@@ -2,7 +2,7 @@
 title: "Package feeds"
 description: "Publish libraries and tools to the package managers your users run, from pkg.plrs.im: URL layout, who may read, per-ecosystem behavior and the console pages."
 type: "concept"
-lastReviewed: "2026-10-22"
+lastReviewed: "2026-10-24"
 sidebar:
   order: 1
 ---
@@ -125,6 +125,36 @@ Every feed routes only its own names to itself, so no other name can resolve the
 | Godot     | serves both editor shapes: Godot 4.4 to 4.6 at `/godot/<owner>/asset-library/api`, 4.7 and later at `/godot/<owner>/store/api/v1`, and a `index.json` for GodotEnv. Godot 4.6 and earlier check the zip's SHA-256. Godot 4.7 and later verify no hash and rely on TLS.                                                            |
 | Cargo     | is a read-only sparse index (Cargo 1.68 or later, 1.74 or later for a non-public feed) with `registry =` per dependency. A non-public feed needs `credential-provider = "cargo:token"`.                                                                                                                                           |
 | Go        | answers only for modules it holds and `404`s the rest, so the go command moves on to the public proxy. Use `GONOSUMDB` for your prefixes, never `GOPRIVATE`, which would skip this feed too. Release `1.4.0` is module version `v1.4.0`.                                                                                          |
+
+## Set up a machine
+
+`pkey feeds setup --write` sets up the package tools on a computer, for a person at a terminal:
+
+```sh title="Terminal"
+pkey feeds setup --write
+```
+
+It prints a code and opens Polaris Locker, where you approve pkey's request. It always asks for a fresh sign-in. It then makes a personal token (`packages:read`, 90 days) labelled with the host name, replaces the previous token with that label, emails a notice, and sets up each tool it finds on `PATH`. `--owner <slug>` limits it to one product's feeds, `--no-browser` prints the link instead of opening it, `--json` reports the result as JSON. Run it again to refresh.
+
+| Tool           | Written under your home directory                   |
+| -------------- | --------------------------------------------------- |
+| npm            | `.npmrc`                                            |
+| Yarn           | `.yarnrc.yml`                                       |
+| Bun            | `.bunfig.toml`                                      |
+| pip, uv, Go    | `.netrc`                                            |
+| Maven (Gradle) | `.gradle/gradle.properties`                         |
+| Cargo          | `.cargo/config.toml`, then `cargo login --registry` |
+| Docker         | `docker login --password-stdin`                     |
+| Swift          | `swift package-registry login --token-file`         |
+| Godot          | Skipped: its editor URL is made in Polaris Locker   |
+
+pkey changes only the lines it owns. Files stay at `0600`, and the first version of a changed file is kept as `<file>.pkey-backup`. The token reaches `docker`, `cargo` and `swift` without appearing in a command line. A file that is a symlink is followed when it stays inside your home directory, and named; one that leads outside is refused. A home directory inside a git work tree gets a warning.
+
+In CI, or without a terminal, `--write` refuses (exit 4). Print the setup instead, with a service token from the product's **Packages → Tokens**:
+
+```sh title="Terminal"
+pkey feeds setup --ecosystem npm --owner <slug> --token-env PKEY_REGISTRY_TOKEN
+```
 
 ## Manage feeds in the console
 

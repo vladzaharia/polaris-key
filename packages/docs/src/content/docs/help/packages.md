@@ -14,7 +14,13 @@ Some apps publish packages for people whose license includes them: a library, a 
 
 Open **Account → Packages** at polaris.locker. It shows the setup for each app whose license includes packages.
 
-## Create a personal token
+## Set up with pkey
+
+In a terminal, run `pkey feeds setup --write`. It shows a code and opens Polaris Locker. Check that the code matches, then approve the request. pkey sets up your package tools, and you copy nothing.
+
+Its personal token is listed under the computer's name. Running it again replaces that one. The tools it sets up are [listed here](/docs/features/ship-builds/packages/#set-up-a-machine).
+
+## Or create a personal token
 
 Make one per computer.
 
@@ -39,7 +45,7 @@ Choose **Revoke** next to it, then confirm. Anything using it stops within 30 se
 
 ## Which versions stay available
 
-When the developer publishes a release of a package, such as `1.4.0`, Polaris Locker's cleanup removes that package's development builds up to that version. Development builds are versions published ahead of a release. Their names end in `-main.` or `-dev.` and a number, such as `1.4.0-main.7`. Python names them like `1.4.0.dev7`.
+When the developer publishes a release of a package, such as `1.4.0`, Polaris Locker's cleanup removes that package's development builds up to that version. Development builds are published ahead of a release. Their names end in `-main.` or `-dev.` and a number, such as `1.4.0-main.7`. Python names them like `1.4.0.dev7`.
 
 | Version                               | Example                       | After `1.4.0` is released |
 | ------------------------------------- | ----------------------------- | ------------------------- |
@@ -48,30 +54,30 @@ When the developer publishes a release of a package, such as `1.4.0`, Polaris Lo
 | Development build of `1.4.0` or older | `1.4.0-main.7`, `1.3.2-dev.2` | Removed                   |
 | Development build of a newer version  | `1.4.1-main.2`                | Stays                     |
 
-Cleanup works on the package that was released, and only on the app's own packages on Locker (`pkg.plrs.im`), open or licensed, container images included. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
+Cleanup works on the released package, and only on the app's own packages on Locker (`pkg.plrs.im`), open or licensed, container images included. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
 
 ## When cleanup runs
 
-Cleanup runs automatically right after the developer publishes a release. A beta version removes nothing.
+Cleanup runs right after the developer publishes a release. A beta removes nothing.
 
-Cleanup is on by default. Before it first runs for an app, Locker records a one-time notice in the app's activity log. The notice comes from a dry run: Locker counts the development builds cleanup would remove and deletes nothing. It also gives a start day, 7 days after the notice. Until that day nothing is removed, unless the developer turns cleanup on or runs it by hand. The first release after that day starts cleanup.
+Cleanup is on by default. Before it first runs for an app, Locker records a one-time notice in the app's activity log, from a dry run that deletes nothing. The notice gives a start day, 7 days later. Until then nothing is removed, unless the developer turns cleanup on or runs it by hand. The first release after that day starts cleanup.
 
-A developer can turn cleanup on or off for an app, and the choice applies at once. Turning it on starts cleanup at the next release. Turning it off stops automatic cleanup.
+A developer can turn cleanup on or off for an app, at once.
 
 ## If a version you use is gone
 
-When you ask for a development build that was removed, your package manager reports a missing version.
+A removed development build shows as a missing version in your package manager.
 
 :::caution[Important]
-A removed development build is gone, and its version number can't be published again. Only the app's developer can publish a new version.
+A removed development build is gone for good, and its version number can't be published again.
 :::
 
-1. Open your lockfile or dependency list and find the development build.
+1. Find the development build in your lockfile or dependency list.
 2. Change it to a release or a beta version.
 3. Install again.
 
 **Check it worked.** The install finishes with no error about a missing version.
 
-If you install an npm package by the `main` tag, the tag points to the newest development build that is left. When none is left, the tag is gone.
+The npm `main` tag points to the newest development build left, and is gone when none is.
 
 To ask about an app's packages, contact the app's developer. See [Get help with an app](/docs/help/contact/).
