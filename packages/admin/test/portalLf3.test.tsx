@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { Keep } from "../src/portal/components/Keep.js";
 import { LibraryToolbar } from "../src/portal/components/LibraryToolbar.js";
 import { portalErrorCopy } from "../src/portal/errors.js";
-import { PortalApiError } from "../src/portal/api.js";
+import { HttpError } from "../src/portal/api.js";
 
 afterEach(cleanup);
 
@@ -82,10 +82,10 @@ describe("Library toolbar: sort and the view toggle share a row (LF3, minor 8)",
 
 describe("load errors say what happened (LF3, minor 3)", () => {
   it("a server error is the catch-all, not a connection problem; a dropped connection is", () => {
-    const server = portalErrorCopy(new PortalApiError(500, "internal"));
+    const server = portalErrorCopy(new HttpError(500, { code: "internal" }));
     expect(server.generic).toBe(true);
     expect(server.line).not.toMatch(/connection/i);
-    const offline = portalErrorCopy(new PortalApiError(0, "network"));
+    const offline = portalErrorCopy(new HttpError(0, { code: "network" }));
     expect(offline.generic).toBeUndefined();
     expect(offline.line).toMatch(/Check your connection/);
   });

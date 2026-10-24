@@ -6,7 +6,7 @@ import { AuthNotice, AuthTitle, useStepFocus } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   type PortalDeviceLoginStart,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -69,7 +69,7 @@ export function DeviceStep({
             poll(start, endsAt);
           } catch (err) {
             if (!alive) return;
-            if (err instanceof PortalApiError) {
+            if (err instanceof HttpError) {
               if (err.status === 410) return setState({ kind: "expired" });
               if (err.status === 403) return setState({ kind: "disabled" });
               // Slow down, never stop: a 429 is the network's, not the request's.
@@ -168,7 +168,7 @@ export function DeviceStep({
       ) : (
         <AuthNotice>
           {state.kind === "error"
-            ? state.error instanceof PortalApiError &&
+            ? state.error instanceof HttpError &&
               (state.error.status === 429 ||
                 state.error.code === "rate_limited")
               ? t("signin.rateLimitedFew")

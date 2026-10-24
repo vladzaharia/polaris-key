@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError, type PlatformSwitchSetting } from "../../../api.js";
+import { HttpError, type PlatformSwitchSetting } from "../../../api.js";
 import { qk } from "../../data/queries.js";
 import { reads } from "../../data/reads.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
@@ -177,7 +177,7 @@ export function PauseWritesDialog({
         setReason(saved.reason ?? "");
       }}
       describeError={(e) =>
-        e instanceof ApiError && e.status === 409
+        e instanceof HttpError && e.status === 409
           ? {
               title: "Another admin changed this first.",
               description: "Close this and check the current state.",
@@ -193,7 +193,7 @@ export function PauseWritesDialog({
             ...(LEVEL_RANK[level] >= 2 ? { confirm: setting.key } : {}),
           });
         } catch (e) {
-          if (!(e instanceof ApiError) || e.status !== 409) throw e;
+          if (!(e instanceof HttpError) || e.status !== 409) throw e;
           // The switch moved under us: ask again. If it already is where this write was going,
           // the other admin did the work; say so and close.
           const fresh = await qc

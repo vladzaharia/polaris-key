@@ -8,7 +8,7 @@ import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalObtainPath,
   type PortalStorefrontProduct,
 } from "../api.js";
@@ -615,7 +615,7 @@ function siteOf(product: PortalStorefrontProduct): string | null {
 /** An Add that didn't go through, in the person's words (§6.4). */
 function addError(product: PortalStorefrontProduct, err: unknown): AddError {
   if (
-    err instanceof PortalApiError &&
+    err instanceof HttpError &&
     err.status === 409 &&
     err.code === "not_eligible"
   )
@@ -627,7 +627,7 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
       ended: true,
     };
   // The words PX-34 settled on Discover's tile.
-  const offline = err instanceof PortalApiError && err.status === 0;
+  const offline = err instanceof HttpError && err.status === 0;
   const copy = portalErrorCopy(err);
   return {
     text: `${t("locker.discover.addFailed", { product: product.name })} ${offline ? t("core.codes.transport.message") : copy.description}`,

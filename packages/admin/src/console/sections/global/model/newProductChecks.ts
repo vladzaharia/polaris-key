@@ -4,7 +4,7 @@
  */
 
 import {
-  ApiError,
+  HttpError,
   type GithubRepositories,
   type SlugCheck,
 } from "../../../../api.js";
@@ -29,7 +29,7 @@ export function checkFailure(
     (i) => i.account.toLowerCase() === owner.toLowerCase(),
   );
   const copy = errorCopy(error, { thing: "Product", repo });
-  if (!(error instanceof ApiError))
+  if (!(error instanceof HttpError))
     return {
       kind: "network",
       title: copy.title,

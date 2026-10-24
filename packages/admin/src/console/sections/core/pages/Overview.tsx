@@ -16,11 +16,7 @@
  * - The columns follow the grid's own width (4 from 1488 px, 3 from 976, 2 from 680, else 1).
  */
 
-import {
-  deviceSummaryQuery,
-  integrationQuery,
-  coreBReads,
-} from "../data.js";
+import { deviceSummaryQuery, integrationQuery, coreBReads } from "../data.js";
 import { licensesQuery } from "../../license/data.js";
 import { catalogQuery, profilesQuery } from "../../config/data.js";
 import { releaseStoreQuery } from "../../release/data.js";
@@ -34,7 +30,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type LicenseSummary,
   type ProductDetail,
   type ReleaseDto,
@@ -399,7 +395,7 @@ export function catalogMoment(
 ): MomentObservation {
   if (!enabled) return UNKNOWN;
   if (catalog.isError)
-    return catalog.error instanceof ApiError && catalog.error.status === 404
+    return catalog.error instanceof HttpError && catalog.error.status === 404
       ? BEFORE
       : UNKNOWN;
   if (!catalog.data) return UNKNOWN;
@@ -677,7 +673,7 @@ function ConfigTile({
   });
   const profiles = useQuery(profilesQuery(slug));
   const missing =
-    catalog.error instanceof ApiError && catalog.error.status === 404;
+    catalog.error instanceof HttpError && catalog.error.status === 404;
   const entries = catalog.data?.entries ?? [];
   const secrets = entries.filter(
     (e) => (e as { kind?: string }).kind === "secret",

@@ -10,7 +10,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { CheckCircle2, TriangleAlert } from "lucide-react";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { announce } from "../../../../ui/LiveRegion.js";
@@ -96,7 +96,7 @@ export function NewLicenseWizard({
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   // A 404 means the service has nothing to give: not a failure.
   const tiersError =
-    tiersQ.error instanceof ApiError && tiersQ.error.status === 404
+    tiersQ.error instanceof HttpError && tiersQ.error.status === 404
       ? null
       : tiersQ.error;
 
@@ -282,12 +282,12 @@ export function NewLicenseWizard({
       go("done", { replace: true });
     } catch (err) {
       const fields =
-        err instanceof ApiError && err.status === 422 ? err.fields : undefined;
+        err instanceof HttpError && err.status === 422 ? err.fields : undefined;
       const field = fields?.find((f) => f in FIELD_STEP);
       if (field) {
         // A refused value goes back to its own step, in words.
         const reason =
-          err instanceof ApiError && field === "delivery" ? err.reason : null;
+          err instanceof HttpError && field === "delivery" ? err.reason : null;
         const words = refusedWords(field, reason);
         // The product can't invite after all: stop offering it.
         if (reason === "identity_off" || reason === "auto_link_off") {

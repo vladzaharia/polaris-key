@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../src/lib/http.js";
-import { PortalApiError, portalApi, setPortalCsrf } from "../src/portal/api.js";
+import { HttpError, portalApi, setPortalCsrf } from "../src/portal/api.js";
 
 const CSRF = "X-PKey-Portal-CSRF";
 
@@ -76,7 +76,7 @@ describe("the portal's transport (security-relevant behaviour)", () => {
   it("/logout accepts any status but reports a network failure", async () => {
     stub(new TypeError("offline"));
     const e = await portalApi.signOutHere().catch((x) => x);
-    expect(e).toBeInstanceOf(PortalApiError);
+    expect(e).toBeInstanceOf(HttpError);
     expect(e).toMatchObject({ status: 0, code: "network" });
   });
 });
@@ -103,7 +103,7 @@ describe("PortalApiError on the core", () => {
       ),
     );
     const e = await portalApi.cancelDeletion().catch((x) => x);
-    expect(e).toBeInstanceOf(PortalApiError);
+    expect(e).toBeInstanceOf(HttpError);
     expect(e).toBeInstanceOf(HttpError);
     expect(e).toMatchObject({
       status: 403,
@@ -156,7 +156,7 @@ describe("PortalApiError on the core", () => {
     );
     for (const next of bad) {
       const e = await portalApi.cancelDeletion().catch((x) => x);
-      expect(e, JSON.stringify(next)).toBeInstanceOf(PortalApiError);
+      expect(e, JSON.stringify(next)).toBeInstanceOf(HttpError);
       expect(e.next, JSON.stringify(next)).toBeUndefined();
     }
   });

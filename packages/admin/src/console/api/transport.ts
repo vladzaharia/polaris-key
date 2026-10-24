@@ -68,8 +68,13 @@ export class ApiError extends HttpError {
 }
 
 /** The refusal as the console's error class, keeping the Worker's message when it sent one. */
-function toApiError(r: HttpError): ApiError {
-  const e = new ApiError(r.status, r.fields, r.code, r.errors, r.reason);
+function toApiError(r: HttpError): HttpError {
+  const e = new HttpError(r.status, {
+    fields: r.fields,
+    code: r.code,
+    errors: r.errors,
+    reason: r.reason,
+  });
   if (r.message && r.message !== `http ${r.status}`) e.message = r.message;
   e.retryAfter = r.retryAfter;
   e.area = r.area;

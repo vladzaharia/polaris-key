@@ -11,7 +11,7 @@ import {
 } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalAccount,
   type SignInContinueRequest,
 } from "../../api.js";
@@ -192,7 +192,7 @@ export function RequestFlow({
     } catch (err) {
       setBusy(null);
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.code === "license_choice_required" ||
           err.code === "device_limit" ||
           err.status === 404)
@@ -240,7 +240,7 @@ export function RequestFlow({
           : lic?.state === "none"
             ? t("signin.none.title", { product: view?.client.appName ?? "" })
             : req.error
-              ? req.error instanceof PortalApiError && req.error.status === 404
+              ? req.error instanceof HttpError && req.error.status === 404
                 ? t("signin.request.goneTitle")
                 : portalErrorCopy(req.error, { account: true }).title
               : licenses.error
@@ -269,7 +269,7 @@ export function RequestFlow({
   } else if (req.error || !view) {
     key = "gone";
     body =
-      req.error instanceof PortalApiError && req.error.status !== 404 ? (
+      req.error instanceof HttpError && req.error.status !== 404 ? (
         <Unreachable error={req.error} onRetry={() => void req.refetch()} />
       ) : (
         <>
@@ -443,7 +443,7 @@ export function RequestFlow({
 
 /** A refusal in the catalog's words. */
 function refusalText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.status === 429 || err.code === "rate_limited")
       return typeof err.retryAfter === "number"
         ? waitText(err.retryAfter)

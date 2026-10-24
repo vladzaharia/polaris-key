@@ -29,7 +29,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { TrustPolicySection } =
   await import("../src/console/sections/core/pages/KeysTrust.js");
 const { relaxesTrustPolicy, DEFAULT_POLICY } =
@@ -157,7 +157,7 @@ describe("Keys and secrets → Device trust", () => {
 
   it("a missing step-up keeps the dialog, says why and offers the sign-in", async () => {
     fns.putTrustPolicy.mockRejectedValue(
-      new ApiError(403, undefined, "step_up_required"),
+      new HttpError(403, { code: "step_up_required" }),
     );
     mount();
     const { user, drawer } = await openEditor();
@@ -214,13 +214,7 @@ describe("Keys and secrets → Device trust", () => {
 
   it("a policy changed since opening names the conflict, keeps the edits and offers Reload", async () => {
     fns.putTrustPolicy.mockRejectedValue(
-      new ApiError(
-        409,
-        undefined,
-        "bad_request",
-        undefined,
-        "version_conflict",
-      ),
+      new HttpError(409, { code: "bad_request", reason: "version_conflict" }),
     );
     mount();
     const { user, drawer } = await openEditor();
@@ -266,7 +260,7 @@ describe("Keys and secrets → Device trust", () => {
   });
 
   it("shows the error state with Retry when the policy cannot load", async () => {
-    fns.trustPolicy.mockRejectedValue(new ApiError(500));
+    fns.trustPolicy.mockRejectedValue(new HttpError(500));
     mount();
     expect(
       await screen.findByRole("button", { name: "Try again" }),

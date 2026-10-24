@@ -8,7 +8,7 @@ import type {
   UpdatePortalSettingsBody,
   UpdateServicesBody,
 } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { renderAt, resetCore } from "./coreTestUtils.js";
 import { ServicesPage } from "../src/console/sections/core/pages/Services.js";
 
@@ -245,7 +245,10 @@ describe("Services feature groups", () => {
   it("announces a 422 refusal, describes the requested switch with it, and clears on the next try", async () => {
     const user = userEvent.setup();
     updateServices.mockRejectedValueOnce(
-      new ApiError(422, undefined, "bad_request", ["sync_requires_identity"]),
+      new HttpError(422, {
+        code: "bad_request",
+        errors: ["sync_requires_identity"],
+      }),
     );
     services.mockResolvedValue(
       state({ services: { ...state().services, identity: { enabled: true } } }),
@@ -491,7 +494,7 @@ describe("Services feature groups", () => {
       }),
     );
     savePackageFeeds.mockRejectedValueOnce(
-      new ApiError(409, undefined, "version_conflict"),
+      new HttpError(409, { code: "version_conflict" }),
     );
     mount();
     const packages = await screen.findByRole("switch", { name: /Packages/i });

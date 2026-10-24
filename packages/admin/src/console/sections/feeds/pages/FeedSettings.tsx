@@ -27,7 +27,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type FeedDetailDto,
   type FeedEcosystem,
   type FeedSettingsWrite,
@@ -124,7 +124,7 @@ export function FeedSettingsTab({
       } catch (e) {
         // Someone saved first: fetch their version, so each form offers to review it and the next
         // save carries the fresh version (a stale one would be refused again).
-        if (e instanceof ApiError && e.reason === "version_conflict")
+        if (e instanceof HttpError && e.reason === "version_conflict")
           invalidateAfter("saveFeedSettings", [scope, eco, body]);
         throw e;
       }
@@ -184,7 +184,7 @@ function GeneralSection({
     values: { enabled: detail.settings.enabled, accessMode: storedChoice },
     resetOn: [detail.settings.version],
     mapServerErrors: (e) => {
-      if (e instanceof ApiError && e.reason === "access_mode_unavailable")
+      if (e instanceof HttpError && e.reason === "access_mode_unavailable")
         return {
           accessMode: "This page is out of date. Reload it, then choose again.",
         };

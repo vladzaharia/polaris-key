@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../lib/copy.js";
-import { portalApi, PortalApiError } from "../../api.js";
+import { portalApi, HttpError } from "../../api.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import {
@@ -20,7 +20,7 @@ function passkeyText(err: unknown): string {
     ? t("signin.passkey.cancelled")
     : err instanceof PasskeyError && err.reason === "unsupported"
       ? t("signin.passkey.unsupported")
-      : err instanceof PortalApiError && err.status === 403
+      : err instanceof HttpError && err.status === 403
         ? t("signin.approve.disabled")
         : t("signin.passkey.failed");
 }
@@ -66,7 +66,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       try {
         out = await mutate("passkeySignInVerify", response);
       } catch (err) {
-        if (err instanceof PortalApiError && err.unknownCredential)
+        if (err instanceof HttpError && err.unknownCredential)
           signalUnknownPasskey(options, response.id);
         throw err;
       }

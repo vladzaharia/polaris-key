@@ -6,7 +6,7 @@ import { t, tParts } from "../../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   type PortalMethods,
   type PortalProvider,
 } from "../../api.js";
@@ -165,10 +165,10 @@ export function StepUp({
       setCode("");
       requestAnimationFrame(() => document.getElementById(codeId)?.focus());
     } catch (err) {
-      if (err instanceof PortalApiError && err.code === "turnstile_failed")
+      if (err instanceof HttpError && err.code === "turnstile_failed")
         setTurnstileFailed(true);
       // The sign-in itself expired: the next send starts a new one.
-      if (err instanceof PortalApiError && err.code === "signin_expired")
+      if (err instanceof HttpError && err.code === "signin_expired")
         setSent(false);
       setError(sendErrorText(err));
     } finally {
@@ -413,11 +413,11 @@ async function afterStepUp(
   replaced: string | null,
 ): Promise<void> {
   const me = await refreshSession(qc);
-  if (!me) throw new PortalApiError(401, "unauthorized");
+  if (!me) throw new HttpError(401, { code: "unauthorized" });
   if (me.account.id !== accountId) {
     // Signed in to another account after all: everything on the page belongs to it now.
     await refreshAfterAccountChange(qc);
-    throw new PortalApiError(409, "other_account");
+    throw new HttpError(409, { code: "other_account" });
   }
   if (replaced) {
     try {
@@ -441,7 +441,7 @@ function passkeyErrorText(err: unknown): string {
 }
 
 function sendErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "turnstile_failed") return t("locker.stepUp.noCheck");
     if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 && err.retryAfter !== undefined)
@@ -457,7 +457,7 @@ function sendErrorText(err: unknown): string {
 }
 
 function codeErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "invalid_code") {
       return wrongCodeText(err.triesLeft);
     }
@@ -467,7 +467,7 @@ function codeErrorText(err: unknown): string {
 }
 
 function commonErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "other_account") return t("locker.stepUp.otherAccount");
     if (err.status === 401 && err.code === "unauthorized")
       return t("locker.stepUp.notYou");

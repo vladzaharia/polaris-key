@@ -1,4 +1,4 @@
-import { PortalApiError } from "./api.js";
+import { HttpError } from "./api.js";
 import { t } from "../lib/copy.js";
 import { focusAfterRetry } from "./focus.js";
 import { helpForRefusal } from "./helpLinks.js";
@@ -13,7 +13,7 @@ export type PortalErrorCopy = PortalVoiceCopy;
 
 export function isSignedOut(err: unknown): boolean {
   return (
-    err instanceof PortalApiError &&
+    err instanceof HttpError &&
     err.status === 401 &&
     // Still signed in, only not recently enough for an account change (PX-W12).
     err.code !== "step_up_required"
@@ -25,11 +25,11 @@ export function isSignedOut(err: unknown): boolean {
  * person to confirm it's them, then tries again.
  */
 export function isStepUpRequired(err: unknown): boolean {
-  return err instanceof PortalApiError && err.code === "step_up_required";
+  return err instanceof HttpError && err.code === "step_up_required";
 }
 
 export function isNotFound(err: unknown): boolean {
-  return err instanceof PortalApiError && err.status === 404;
+  return err instanceof HttpError && err.status === 404;
 }
 
 /**
@@ -110,7 +110,7 @@ export function portalErrorCopy(
   err: unknown,
   _opts: { account?: boolean } = {},
 ): PortalErrorCopy {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.
     if (isStepUpRequired(err)) return fromCode("step_up_required", false);
@@ -137,7 +137,7 @@ export function portalErrorCopy(
 
 /** What a bug report needs from a failed load: the refusal's code and status, or the error's name and message. */
 function errorDetails(error: unknown): Record<string, unknown> {
-  if (error instanceof PortalApiError)
+  if (error instanceof HttpError)
     return { code: error.code, status: error.status, message: error.message };
   if (error instanceof Error)
     return { name: error.name, message: error.message };

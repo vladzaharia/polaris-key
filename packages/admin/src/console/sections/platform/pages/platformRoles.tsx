@@ -12,7 +12,7 @@
 
 import * as React from "react";
 import { Check } from "lucide-react";
-import { ApiError, type MembersView } from "../../../../api.js";
+import { HttpError, type MembersView } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { ROLE_GLYPHS } from "../../../access/RoleTag.js";
@@ -51,7 +51,7 @@ export function PlatformRoles({
   const phone = useMedia("(max-width: 639px)");
   const counts = React.useMemo(() => holdersOf(view), [view]);
   const failed = !view && error !== null && error !== undefined;
-  const refused = failed && error instanceof ApiError && error.status === 403;
+  const refused = failed && error instanceof HttpError && error.status === 403;
   const state: CountState = {
     loading,
     failed,

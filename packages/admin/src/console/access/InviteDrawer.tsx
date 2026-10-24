@@ -18,7 +18,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Fingerprint } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type AreaId,
   type InviteResult,
   type Me,
@@ -182,7 +182,7 @@ async function takeBack(
       await revoke(it.id);
     } catch (e) {
       // Already gone is the outcome we want.
-      if (!(e instanceof ApiError && e.status === 404)) left.push(it);
+      if (!(e instanceof HttpError && e.status === 404)) left.push(it);
     }
   }
   if (left.length === 0) {
@@ -601,7 +601,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     try {
       await revoke(id);
     } catch (e) {
-      if (!(e instanceof ApiError && e.status === 404)) {
+      if (!(e instanceof HttpError && e.status === 404)) {
         setNotice({
           text: `Couldn't take the role back from ${name}.`,
           retry: () => void undoInline(id),
@@ -1176,7 +1176,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           try {
             await revoke(removing!.bindingId!);
           } catch (e) {
-            if (!(e instanceof ApiError && e.status === 404)) throw e;
+            if (!(e instanceof HttpError && e.status === 404)) throw e;
           }
           // The drawer is open behind this dialog: say it there, not in a toast.
           setNotice({ text: lastRole ? `Removed ${name}` : "Role removed" });

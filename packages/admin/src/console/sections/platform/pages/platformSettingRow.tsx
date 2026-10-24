@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetchSettingsHistory } from "../data.js";
 import { Lock } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type PlatformCursor,
   type PlatformSetting,
 } from "../../../../api.js";
@@ -89,7 +89,7 @@ export function formatPlatformValue(
 /** A 409 from a version-guarded write. */
 export function isConflict(error: unknown): boolean {
   return (
-    error instanceof ApiError &&
+    error instanceof HttpError &&
     error.status === 409 &&
     (error.reason === undefined || error.reason === "version_conflict")
   );
@@ -157,7 +157,9 @@ function consequencesOf(
           {added.length > 0 ? <>Adds {names(added)}</> : null}
           {added.length > 0 && removed.length > 0 ? " · " : null}
           {removed.length > 0 ? (
-            <>{added.length > 0 ? "removes" : "Removes"} {names(removed)}</>
+            <>
+              {added.length > 0 ? "removes" : "Removes"} {names(removed)}
+            </>
           ) : null}
         </>,
         "Products whose name uses a listed term show their slug on the sign-in card unless approved.",

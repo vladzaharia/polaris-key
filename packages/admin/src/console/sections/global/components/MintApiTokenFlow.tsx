@@ -24,7 +24,7 @@
 import * as React from "react";
 import {
   ADMIN_API_SCOPES,
-  ApiError,
+  HttpError,
   MAX_TOKEN_DAYS,
   type AdminApiScope,
 } from "../../../../api.js";
@@ -98,9 +98,9 @@ export function MintApiTokenFlow({
       });
       setSecret(res.secret);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "step_up_required")
+      if (err instanceof HttpError && err.code === "step_up_required")
         markStale();
-      else if (err instanceof ApiError && err.fields?.length)
+      else if (err instanceof HttpError && err.fields?.length)
         setServerFields(
           Object.fromEntries(
             err.fields.map((f) => [

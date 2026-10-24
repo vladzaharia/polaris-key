@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type Me,
   type Member,
   type MemberInvite,
@@ -127,7 +127,7 @@ export function RemoveMemberDialog({
               await mutate("revokeBinding", r.bindingId!);
             } catch (e) {
               // Already removed (a retry, or someone else): that is the outcome we want.
-              if (!(e instanceof ApiError && e.status === 404)) throw e;
+              if (!(e instanceof HttpError && e.status === 404)) throw e;
             }
             gone.current.add(r.bindingId!);
             done += 1;

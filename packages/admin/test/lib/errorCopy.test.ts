@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../../src/lib/http.js";
 import {
-  ApiError,
+  HttpError,
   RELEASE_POLICY_ERROR_MESSAGES,
   SERVICE_ERROR_MESSAGES,
 } from "../../src/api.js";
@@ -21,7 +21,12 @@ const api = (
     message?: string;
   } = {},
 ) => {
-  const e = new ApiError(status, o.fields, o.code, o.errors, o.reason);
+  const e = new HttpError(status, {
+    fields: o.fields,
+    code: o.code,
+    errors: o.errors,
+    reason: o.reason,
+  });
   if (o.message) e.message = o.message;
   return e;
 };

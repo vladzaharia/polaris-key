@@ -14,7 +14,7 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError, type ProductSetting } from "../../../api.js";
+import { HttpError, type ProductSetting } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatCount } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
@@ -187,7 +187,7 @@ export function CeilingDialog({
         setUseDefault(saved.useDefault === "1");
       }}
       describeError={(e) =>
-        e instanceof ApiError && e.status === 409
+        e instanceof HttpError && e.status === 409
           ? {
               title: "The ceiling changed since you opened this",
               description:
@@ -212,7 +212,7 @@ export function CeilingDialog({
             });
         } catch (e) {
           // A conflict: read the setting again so the next confirm names the version in force.
-          if (e instanceof ApiError && e.status === 409)
+          if (e instanceof HttpError && e.status === 409)
             await client.invalidateQueries({
               queryKey: qk.productSettingsAll(slug),
             });

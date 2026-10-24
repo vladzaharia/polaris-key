@@ -9,7 +9,7 @@ import { PORTAL_FMT } from "../date.js";
 import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalLinkAccount,
   type PortalLinkReason,
   type PortalLinkView,
@@ -84,8 +84,7 @@ export function LinkAccountsDialog({
   const flow = view.data?.flow ?? null;
   const undoable = view.data?.undoable ?? [];
   const expired =
-    view.error instanceof PortalApiError &&
-    view.error.code === "signin_expired";
+    view.error instanceof HttpError && view.error.code === "signin_expired";
 
   // A flow that expired between visits reads as a fresh start, with the reason once.
   React.useEffect(() => {
@@ -107,7 +106,7 @@ export function LinkAccountsDialog({
   };
 
   const fail = (err: unknown): void => {
-    if (err instanceof PortalApiError && err.code === "signin_expired") {
+    if (err instanceof HttpError && err.code === "signin_expired") {
       // The flow was used up by the attempt: back to the start view, keeping the undo list.
       const reset: PortalLinkView = {
         flow: null,
@@ -116,15 +115,15 @@ export function LinkAccountsDialog({
       qc.setQueryData(qk.link(), reset);
       return setAction({ kind: "idle", error: t("signin.join.expired") });
     }
-    if (err instanceof PortalApiError && err.reason === "same_account")
+    if (err instanceof HttpError && err.reason === "same_account")
       return setAction({ kind: "idle", error: t("signin.join.sameAccount") });
-    if (err instanceof PortalApiError && err.reason === "merge_pending")
+    if (err instanceof HttpError && err.reason === "merge_pending")
       return setAction({ kind: "idle", error: REASON_COPY.merge_pending() });
-    if (err instanceof PortalApiError && err.reason === "unavailable")
+    if (err instanceof HttpError && err.reason === "unavailable")
       return setAction({ kind: "idle", error: REASON_COPY.unavailable() });
     if (isStepUpRequired(err)) {
       const roles =
-        err instanceof PortalApiError && err.stale?.length
+        err instanceof HttpError && err.stale?.length
           ? err.stale
           : ["started", "other"];
       return setAction({
@@ -133,7 +132,7 @@ export function LinkAccountsDialog({
         stale: roles,
       });
     }
-    if (err instanceof PortalApiError && err.status === 409)
+    if (err instanceof HttpError && err.status === 409)
       // `last_link`: the Worker's own sentence, and where to add a way.
       return setAction({
         kind: "idle",
@@ -142,7 +141,7 @@ export function LinkAccountsDialog({
           : err.message,
         withMethods: true,
       });
-    if (err instanceof PortalApiError && err.status === 0)
+    if (err instanceof HttpError && err.status === 0)
       return setAction({ kind: "idle", error: portalErrorCopy(err).title });
     setAction({ kind: "idle", error: t("signin.join.failed") });
   };
@@ -202,12 +201,12 @@ export function LinkAccountsDialog({
       if (isStepUpRequired(err))
         return setAction({ kind: "stepup", then: "undo", merge });
       const msg =
-        err instanceof PortalApiError && err.status === 404
+        err instanceof HttpError && err.status === 404
           ? t("signin.join.noUndo")
-          : err instanceof PortalApiError && err.status === 0
+          : err instanceof HttpError && err.status === 0
             ? portalErrorCopy(err).title
             : t("signin.join.undoFailed");
-      if (err instanceof PortalApiError && err.status === 404)
+      if (err instanceof HttpError && err.status === 404)
         void qc.invalidateQueries({ queryKey: qk.link() });
       // Back where the person was, with the reason: the Undo they pressed stays in reach.
       if (before.kind === "joined") setAction({ ...before, error: msg });

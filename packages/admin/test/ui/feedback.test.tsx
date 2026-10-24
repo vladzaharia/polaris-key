@@ -8,7 +8,7 @@ import {
   screen,
 } from "@testing-library/react";
 import * as React from "react";
-import { ApiError } from "../../src/api.js";
+import { HttpError } from "../../src/api.js";
 import { Callout } from "../../src/ui/Callout.js";
 import { EmptyState } from "../../src/ui/EmptyState.js";
 import { ErrorState } from "../../src/ui/ErrorState.js";
@@ -109,7 +109,7 @@ describe("ErrorState", () => {
     const retry = vi.fn();
     render(
       <ErrorState
-        error={new ApiError(429, undefined, "rate_limited")}
+        error={new HttpError(429, { code: "rate_limited" })}
         onRetry={retry}
       />,
     );
@@ -121,7 +121,7 @@ describe("ErrorState", () => {
   });
 
   it("offers Copy details for an unknown refusal", () => {
-    render(<ErrorState error={new ApiError(418, undefined, "teapot")} />);
+    render(<ErrorState error={new HttpError(418, { code: "teapot" })} />);
     expect(screen.getByText("The server refused this")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Copy details/ })).toBeTruthy();
   });
@@ -130,9 +130,10 @@ describe("ErrorState", () => {
     render(
       <ErrorState
         error={
-          new ApiError(422, undefined, "bad_request", [
-            "update_requires_distribution",
-          ])
+          new HttpError(422, {
+            code: "bad_request",
+            errors: ["update_requires_distribution"],
+          })
         }
       />,
     );
@@ -144,7 +145,7 @@ describe("ErrorState", () => {
   it("links back to the collection on not-found", () => {
     render(
       <ErrorState
-        error={new ApiError(404)}
+        error={new HttpError(404)}
         context={{
           thing: "License",
           collectionHref: "#/p/djdl/license/licenses",

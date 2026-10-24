@@ -1,6 +1,6 @@
 import { HttpError } from "../../lib/http.js";
 import {
-  PortalApiError,
+  HttpError,
   call,
   enc,
   http,
@@ -129,7 +129,7 @@ export const sessionApi = {
         { raw: true, csrf: false },
       );
     } catch (e) {
-      throw e instanceof HttpError ? PortalApiError.from(e) : e;
+      throw e instanceof HttpError ? HttpError.from(e) : e;
     }
   },
 

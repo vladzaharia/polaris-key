@@ -18,7 +18,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   api,
   type TrustPolicyDto,
   type TrustPolicyResponse,
@@ -68,14 +68,14 @@ const ENVIRONMENTS = [
 
 export function isConflict(error: unknown): boolean {
   return (
-    error instanceof ApiError &&
+    error instanceof HttpError &&
     error.status === 409 &&
     (error.reason === undefined || error.reason === "version_conflict")
   );
 }
 
 function needsStepUp(error: unknown): boolean {
-  return error instanceof ApiError && error.code === "step_up_required";
+  return error instanceof HttpError && error.code === "step_up_required";
 }
 
 function describeError(error: unknown): {

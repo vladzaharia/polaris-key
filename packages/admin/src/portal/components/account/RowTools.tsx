@@ -5,7 +5,7 @@ import { Input } from "../../../ui/Input.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
-import { PortalApiError, type PortalMethods } from "../../api.js";
+import { HttpError, type PortalMethods } from "../../api.js";
 import { useMakePrimary, useRenamePasskey } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { passkeyName, stepUpFresh } from "../../model/methods.js";
@@ -36,7 +36,7 @@ interface ToolProps {
 }
 
 function errorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.status === 422)
       return err.message && err.message !== `portal api ${err.status}`
         ? err.message
@@ -279,7 +279,7 @@ export function RenamePasskeyTool({
   const error =
     mutation.error && !stepUpFailed ? errorText(mutation.error) : null;
   const invalid =
-    mutation.error instanceof PortalApiError && mutation.error.status === 422;
+    mutation.error instanceof HttpError && mutation.error.status === 422;
 
   const action = open ? null : (
     <Button

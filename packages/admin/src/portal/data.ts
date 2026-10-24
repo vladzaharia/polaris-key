@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-query";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   setPortalCsrf,
   type PortalCapabilities,
   type PortalDiscoverOffer,
@@ -359,7 +359,7 @@ export function useUpdateProfile() {
       // The profile changed under the editor (a method removed, an upload collected): re-read it
       // so the chips and tiles offer what is there now.
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         err.reason &&
         STALE_PROFILE_REASONS.has(err.reason)
       )
@@ -396,7 +396,7 @@ export function useRemoveLicense(product: string) {
     // A refusal (`409 not_removable`) means the licence is not removable: the views re-read, so
     // the page stops offering Remove.
     onError: (err, licenseId) => {
-      if (err instanceof PortalApiError && err.status === 409) {
+      if (err instanceof HttpError && err.status === 409) {
         qc.removeQueries({ queryKey: qk.license(product, licenseId) });
         void qc.invalidateQueries({ queryKey: qk.licenses() });
         void qc.invalidateQueries({ queryKey: qk.library() });
@@ -510,7 +510,7 @@ export function useRemoveMethod() {
       // Refused for the account's state (`last_link`, `only_email`) or gone already: re-read it,
       // so the page stops offering what the Worker refuses.
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.status === 409 || err.status === 403 || err.status === 404)
       )
         void qc.invalidateQueries({ queryKey: qk.methods() });
@@ -527,7 +527,7 @@ export function useMakePrimary() {
       qc.setQueryData(qk.methods(), view);
     },
     onError: (err) => {
-      if (err instanceof PortalApiError && err.status === 404)
+      if (err instanceof HttpError && err.status === 404)
         void qc.invalidateQueries({ queryKey: qk.methods() });
     },
   });
@@ -542,7 +542,7 @@ export function useRenamePasskey() {
       name: string | null;
     }): [string, string | null] => [v.id, v.name],
     onError: (err) => {
-      if (err instanceof PortalApiError && err.status === 404)
+      if (err instanceof HttpError && err.status === 404)
         void qc.invalidateQueries({ queryKey: qk.methods() });
     },
   });

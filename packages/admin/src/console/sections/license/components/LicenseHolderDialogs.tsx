@@ -18,7 +18,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type LicenseDetail,
   type LicenseHolderMove,
 } from "../../../../api.js";
@@ -79,7 +79,7 @@ function RecordStepUp({
 /** Mark the step-up stale on a 403 `step_up_required`, then rethrow for the dialog's message. */
 function stepUpAware(markStale: () => void) {
   return (e: unknown): never => {
-    if (e instanceof ApiError && e.code === "step_up_required") markStale();
+    if (e instanceof HttpError && e.code === "step_up_required") markStale();
     throw e;
   };
 }
@@ -177,7 +177,7 @@ function AssignForm({
           const r = inviteRefusal(
             e,
             to,
-            e instanceof ApiError ? (e.retryAfter ?? 600) : 600,
+            e instanceof HttpError ? (e.retryAfter ?? 600) : 600,
           );
           toast.warning(`License assigned. ${r.title}. ${r.description}`);
         }
@@ -201,7 +201,7 @@ function AssignForm({
           const r = sendKeyRefusal(
             e,
             to,
-            e instanceof ApiError ? (e.retryAfter ?? 600) : 600,
+            e instanceof HttpError ? (e.retryAfter ?? 600) : 600,
           );
           toast.warning(
             r.noKey

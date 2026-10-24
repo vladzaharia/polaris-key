@@ -7,7 +7,7 @@ import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
 import { PORTAL_FMT } from "../date.js";
 import { t } from "../../lib/copy.js";
-import { PortalApiError, type PortalDeviceLoginRequest } from "../api.js";
+import { HttpError, type PortalDeviceLoginRequest } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { StepUpInline } from "./account/StepUpInline.js";
 import { mutate } from "../mutations.js";
@@ -82,14 +82,14 @@ export function ApproveDeviceDialog({
       setPhase({
         kind: "enter",
         error:
-          err instanceof PortalApiError && err.status === 410
+          err instanceof HttpError && err.status === 410
             ? t("signin.approve.expiredCode")
-            : err instanceof PortalApiError &&
+            : err instanceof HttpError &&
                 (err.status === 404 || err.status === 422)
               ? t("signin.approve.notFound")
-              : err instanceof PortalApiError && err.status === 429
+              : err instanceof HttpError && err.status === 429
                 ? t("signin.approve.tooMany")
-                : err instanceof PortalApiError && err.status === 0
+                : err instanceof HttpError && err.status === 0
                   ? portalErrorCopy(err).title
                   : t("signin.approve.failed"),
       });
@@ -114,13 +114,13 @@ export function ApproveDeviceDialog({
     } catch (err) {
       if (isStepUpRequired(err))
         return setPhase({ kind: "stepup", request, decision });
-      if (err instanceof PortalApiError && err.status === 410)
+      if (err instanceof HttpError && err.status === 410)
         return setPhase({
           kind: "enter",
           error: t("signin.approve.expiredCode"),
         });
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.status === 404 || err.status === 422)
       )
         return setPhase({ kind: "enter", error: t("signin.approve.notFound") });

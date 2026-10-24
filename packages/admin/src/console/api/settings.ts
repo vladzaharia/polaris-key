@@ -15,7 +15,7 @@ import type {
 } from "./license.js";
 import type { AreaId } from "./platform.js";
 import type { ManifestPlan } from "./products.js";
-import { ApiError, call, p } from "./transport.js";
+import { HttpError, call, p } from "./transport.js";
 import type {
   ReleaseAccess,
   SettingsSource,
@@ -157,7 +157,7 @@ export async function getSettings(
   const out = new Map<string, ProductSetting>();
   got.forEach((r, i) => {
     if (r.status === "fulfilled") out.set(keys[i]!, r.value);
-    else if (!(r.reason instanceof ApiError && r.reason.status === 403))
+    else if (!(r.reason instanceof HttpError && r.reason.status === 403))
       throw r.reason;
   });
   return out;

@@ -48,8 +48,8 @@ export class PortalApiError extends HttpError {
   }
 
   /** A transport refusal as the portal's error: the core's fields plus what only the portal reads. */
-  static from(e: HttpError): PortalApiError {
-    const out = new PortalApiError(e.status, e.code);
+  static from(e: HttpError): HttpError {
+    const out = new HttpError(e.status, { code: e.code });
     const serverMessage =
       e.message !== `http ${e.status}` &&
       !(e.status === 0 && e.code === "network");
@@ -102,8 +102,8 @@ async function send(
   try {
     return await http.send(path, init, { csrf: withCsrf });
   } catch (e) {
-    throw e instanceof HttpError && !(e instanceof PortalApiError)
-      ? PortalApiError.from(e)
+    throw e instanceof HttpError && !(e instanceof HttpError)
+      ? HttpError.from(e)
       : e;
   }
 }

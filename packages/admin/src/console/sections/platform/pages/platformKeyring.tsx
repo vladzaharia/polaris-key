@@ -7,7 +7,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type PlatformDeployValue,
   type PlatformSettingsView,
 } from "../../../../api.js";
@@ -100,7 +100,7 @@ export function KeyringSection({
         </div>
       ) : !k ? (
         <div className="px-5 py-4">
-          {kek.error instanceof ApiError && kek.error.status === 503 ? (
+          {kek.error instanceof HttpError && kek.error.status === 503 ? (
             <Callout tone="danger" title="The platform keyring is unusable">
               {kek.error.message}. Every product&apos;s sealed values fail to
               open until it is fixed: start at Troubleshooting in the keyring

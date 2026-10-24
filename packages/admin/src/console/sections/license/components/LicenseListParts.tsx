@@ -15,7 +15,7 @@ import {
 import { r } from "../../../routes.js";
 import { Link, navigate } from "../../../router.js";
 import { Button } from "../../../../ui/Button.js";
-import { ApiError, type LicenseSummary } from "../../../../api.js";
+import { HttpError, type LicenseSummary } from "../../../../api.js";
 import { mutateEach } from "../../../data/mutations.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -79,7 +79,7 @@ export function serverFacetIds(filter: Record<string, string>): string[] {
 }
 
 export function isForbidden(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403;
+  return error instanceof HttpError && error.status === 403;
 }
 
 /** Permission refused: the console's no-access page, for the Licensing area. */

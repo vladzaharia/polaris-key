@@ -13,7 +13,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type PortalProductSettings } from "../../../../api.js";
+import { api, HttpError, type PortalProductSettings } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import {
   Form,
@@ -183,7 +183,7 @@ function PortalForm({
     },
     // The Worker names `branding.<field>`; the form's field is `<field>`.
     mapServerErrors: (e) =>
-      e instanceof ApiError && e.fields?.length
+      e instanceof HttpError && e.fields?.length
         ? Object.fromEntries(
             e.fields.map((f) => [
               f.replace(/^branding\./, ""),

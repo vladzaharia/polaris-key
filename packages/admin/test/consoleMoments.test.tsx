@@ -67,7 +67,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { OverviewPage } =
   await import("../src/console/sections/core/pages/Overview.js");
 const { KeysPage, forgetFilledRefreshLines } =
@@ -386,7 +386,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
-    fns.schema.mockRejectedValue(new ApiError(404));
+    fns.schema.mockRejectedValue(new HttpError(404));
     overview();
     await screen.findByText("No catalog yet");
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -408,7 +408,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
-    fns.schema.mockRejectedValue(new ApiError(404));
+    fns.schema.mockRejectedValue(new HttpError(404));
     const key = "pk-moment-before:first-catalog:djdl";
     window.localStorage.setItem(key, String(NOW - 2 * DAY));
     overview();
@@ -444,7 +444,7 @@ describe("moments with no time of their own count when the console saw the produ
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
-    fns.schema.mockRejectedValue(new ApiError(404));
+    fns.schema.mockRejectedValue(new HttpError(404));
     overview();
     await screen.findByText("No catalog yet");
     await waitFor(() =>
@@ -489,7 +489,7 @@ describe("moments with no time of their own count when the console saw the produ
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
-    fns.schema.mockRejectedValue(new ApiError(500));
+    fns.schema.mockRejectedValue(new HttpError(500));
     overview();
     await screen.findByRole("heading", { level: 3, name: "Managed config" });
     await waitFor(() => expect(fns.schema).toHaveBeenCalled());

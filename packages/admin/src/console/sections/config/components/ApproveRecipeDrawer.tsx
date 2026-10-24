@@ -2,7 +2,7 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ChevronRight, XCircle } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type EdgeMintIdentity,
   type EdgeMintRecipe,
   type EdgeMintRecipesResponse,
@@ -197,14 +197,14 @@ export function ApproveRecipeDrawer({
       });
       onClose();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
+      if (err instanceof HttpError && err.status === 409) {
         // The recipe, its sign-in trust or License moved while the operator was reading: stay
         // open and reload, so they approve only what they have seen.
         setStale(true);
         setAck(false);
         void queryClient.invalidateQueries({ queryKey: qk.mint(slug) });
       } else if (
-        err instanceof ApiError &&
+        err instanceof HttpError &&
         err.status === 403 &&
         err.code === "step_up_required"
       ) {

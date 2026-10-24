@@ -5,7 +5,7 @@
  */
 
 import * as React from "react";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { announce } from "../../../../ui/LiveRegion.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
@@ -95,7 +95,7 @@ export function useRetrySend({
         focusHeading();
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429)
+      if (err instanceof HttpError && err.status === 429)
         setRetryUntil(Date.now() + (err.retryAfter ?? 600) * 1000);
       setRetryError(err);
     } finally {

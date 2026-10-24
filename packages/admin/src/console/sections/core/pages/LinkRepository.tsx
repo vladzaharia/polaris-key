@@ -17,7 +17,7 @@ import { PlanWarnings } from "../../../components/ResyncDialog.js";
 import * as React from "react";
 import { GitBranch } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type LinkCheckResult,
   type LinkExistingResult,
   type ManifestPlanItem,
@@ -48,7 +48,7 @@ export function linkRefusal(
   error: unknown,
   ctx: { slug: string; repository: string },
 ): Refusal {
-  const api = error instanceof ApiError ? error : null;
+  const api = error instanceof HttpError ? error : null;
   const message =
     api?.message && api.message !== `api ${api.status}` ? api.message : "";
   const problems = api?.errors ?? [];

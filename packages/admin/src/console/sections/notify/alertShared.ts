@@ -1,7 +1,7 @@
 /** Copy and checks the alert destinations UI shares (ST-27). */
 
 import {
-  ApiError,
+  HttpError,
   type AlertDestination,
   type AlertDestinationsView,
 } from "../../../api.js";
@@ -38,7 +38,7 @@ export const REASONS: Record<string, { text: string; field?: Field }> = {
 };
 
 export function failureText(err: unknown): string {
-  const reason = err instanceof ApiError ? err.reason : undefined;
+  const reason = err instanceof HttpError ? err.reason : undefined;
   return (reason && REASONS[reason]?.text) || errorCopy(err).title;
 }
 
@@ -62,7 +62,7 @@ export function targetProblem(
 export const nameOf = (d: AlertDestination): string => d.label ?? d.target;
 
 export const isStepUp = (e: unknown): boolean =>
-  e instanceof ApiError && e.code === "step_up_required";
+  e instanceof HttpError && e.code === "step_up_required";
 
 /** A wait in words: seconds up to 90, then minutes ("28 s", "57 min"). */
 export function formatWait(seconds: number): string {

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { confirmFor } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -37,9 +37,9 @@ export function deleteBlockedReason(usedBy?: {
  * goes through the console's error copy.
  */
 export function createProfileError(err: unknown): string {
-  if (err instanceof ApiError && err.reason === "profile_exists")
+  if (err instanceof HttpError && err.reason === "profile_exists")
     return "That id is already in use.";
-  if (err instanceof ApiError && err.reason === "no_active_catalog")
+  if (err instanceof HttpError && err.reason === "no_active_catalog")
     return "Publish a catalog first: a profile's values are checked against it.";
   const copy = errorCopy(err, { thing: "Profile" });
   return copy.description || copy.title;
@@ -47,7 +47,7 @@ export function createProfileError(err: unknown): string {
 
 /** Whether a create refusal belongs on the Id field (a taken id) rather than to the form. */
 export function isIdError(err: unknown): boolean {
-  return err instanceof ApiError && err.reason === "profile_exists";
+  return err instanceof HttpError && err.reason === "profile_exists";
 }
 
 /**

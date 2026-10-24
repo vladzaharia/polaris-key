@@ -15,7 +15,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
-import { api, ApiError } from "../../../../api.js";
+import { api, HttpError } from "../../../../api.js";
 import { ActionMenu, type ActionMenuEntry } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -145,7 +145,7 @@ export function SettingsMembersPage({
   if (q.isError || !view)
     return (
       <SettingsSection id="members-admins" title="Admins">
-        {q.error instanceof ApiError && q.error.status === 403 ? (
+        {q.error instanceof HttpError && q.error.status === 403 ? (
           <EmptyState
             kind="not-found"
             variant="inline"
