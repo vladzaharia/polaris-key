@@ -322,6 +322,12 @@
     {
       "kit": "swiftui",
       "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitQRCode.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
       "count": 1
     },

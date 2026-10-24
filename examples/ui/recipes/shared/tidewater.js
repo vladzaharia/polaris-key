@@ -17,5 +17,5 @@ export const STATES = ["needs-activation", "ok", "grace", "expired", "revoked"];
 
 export const gateInput = (state) => ({
   ...TIDEWATER,
-  gate: { status: state, graceDaysLeft: 5 },
+  gate: { status: state, graceDaysLeft: 5, graceDate: "Oct 29, 2026" },
 });

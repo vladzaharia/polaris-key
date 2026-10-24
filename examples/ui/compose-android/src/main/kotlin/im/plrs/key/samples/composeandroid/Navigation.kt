@@ -59,6 +59,8 @@ import im.plrs.key.ui.settingsActions
 import im.plrs.key.ui.updateActions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** The return URI this app declares: the manifest's intent filter and [PolarisKeyLinks] agree on it. */
 internal const val RETURN_URI = "tidewater://polaris"
@@ -110,7 +112,8 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
         val route = links.handle(uri)
         val opened = when (route) {
             PolarisKeyRoute.Account, PolarisKeyRoute.Devices, PolarisKeyRoute.Settings -> {
-                nav.go(route)
+                // handle() suspends on the client's sync; the NavController's lifecycle needs the main thread.
+                withContext(Dispatchers.Main.immediate) { nav.go(route) }
                 true
             }
             // Fixtures only: the live kit offers the real update by itself.

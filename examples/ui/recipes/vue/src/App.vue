@@ -22,7 +22,7 @@ function onAction(e) {
     <main>
       <h1>Tidewater Studio</h1>
       <p>The license holds. This is the app.</p>
-      <OwnUi />
     </main>
   </pk-gate>
+  <OwnUi @action="onAction" />
 </template>

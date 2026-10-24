@@ -24,7 +24,7 @@ h1 {
 /* 1. Tokens: the host's values onto the kit's --pk-* names, on the provider. Only the shape
    tokens the kit leaves open are mapped. Not mapped, on purpose: the spacing scale
    (--pk-space-*) and the three type weights (--pk-kit-type-*-weight), which keep the kit's
-   rhythm; and the colours, which come from the scheme and theme.accent. */
+   rhythm; and the colors, which come from the scheme and theme.accent. */
 pk-provider {
   --pk-font-sans: var(--hds-font);
   --pk-kit-radius-control: var(--hds-radius-control);
@@ -45,14 +45,7 @@ pk-provider :is(pk-gate, pk-sign-in) {
   --pk-kit-focus-width: inherit;
 }
 
-/* 2. Structure: parts only. */
-pk-gate::part(primary) {
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+/* 2. Structure: parts only. Harbor DS outlines its secondary buttons. */
 pk-gate::part(secondary) {
-  border-style: dashed;
-}
-pk-gate::part(card) {
-  border-inline-start: 4px solid var(--pk-accent);
+  border-color: currentColor;
 }
