@@ -336,6 +336,92 @@
         "type": "PresentationSource",
         "file": "sdks/swift/Sources/PolarisKeyCore/Presentation.swift"
       }
+    ],
+    "kotlin": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "client",
+        "type": "Companion",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "client",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Boot.kt"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyAndroid",
+        "file": "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyAndroid.kt"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyDesktop",
+        "file": "sdks/kotlin/desktop/src/main/kotlin/im/plrs/key/desktop/PolarisKeyDesktop.kt"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/ConfigClient.kt"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseClient.kt"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesFacet",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/ReleaseClient.kt"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/DistributionClient.kt"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/UpdateClient.kt"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Commerce.kt"
+      },
+      {
+        "ns": "backend",
+        "type": "BackendClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Backend.kt"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/PacksClient.kt"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Store.kt"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationSource",
+        "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Presentation.kt"
+      }
     ]
   },
   "ignore": [
@@ -1325,6 +1411,306 @@
       "sdk": "swift",
       "path": "store.writeRecord",
       "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.packs",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.bootGuard",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.activate",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.enroll",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.defaultUpdateSlots",
+      "reason": "wiring the boot flow calls; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.dataDirectory",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.store",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.slots",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "MAX_PER_MINUTE",
+      "reason": "a constant in a private nested class's companion; the scanner merges companions"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.isEnabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.publish",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "devices.current",
+      "reason": "the namespace form of client.currentDevice"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.installDriver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.desktopDriver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.noteFeedDeltas",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.getToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.setToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.clearToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.getDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.readCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.writeCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.clearCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.anchoredDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.replaceDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.stateDirectory",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.blocking",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "PolarisKeyFutures",
+      "reason": "a java.util.concurrent.CompletableFuture facade over the same verbs for Java callers; not a separate surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.server",
+      "reason": "server layer (:server, :server-ktor, :spring-boot-starter): verdict objects keep isEntitled and entitlementValue (L4)"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.ui",
+      "reason": "Compose UI kit (:ui, :ui-core); the kits belong to UK-41"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.billing",
+      "reason": "Play Billing adapter (:billing) behind the commerce rows; not the client surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.platform",
+      "reason": "platform backends (:platform: secure store, install source); not the client surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.events",
+      "reason": "row events (the all-kinds SharedFlow of PolarisEvent, present today); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.report",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.updateEvents",
+      "reason": "the update event journal the update flows write; not an app verb"
     }
   ],
   "concepts": [
@@ -1374,11 +1760,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "bootHost",
-          "planned": "SP-35b",
-          "reason": "an extension function today: PolarisKeyClient.bootHost(...) in the sdk module"
-        },
+        "kotlin": {},
         "godot": {},
         "react": {
           "spelling": "useBoot",
@@ -1817,7 +2199,10 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {},
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
         "godot": {
           "spelling": "set_value",
           "reason": "Object.set is a native method"
@@ -1834,7 +2219,10 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {},
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
         "godot": {}
       },
       "layer": "client"
@@ -2070,10 +2458,7 @@
           "spelling": "changes",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "licenseChanges",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "SP-35b",
           "reason": "gains signal event(kind, data)"
@@ -2144,7 +2529,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2180,7 +2566,8 @@
         "swift": {
           "shape": "property",
           "reason": "a stored property in Swift"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2190,7 +2577,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2202,7 +2590,8 @@
         "swift": {
           "shape": "property",
           "reason": "a stored property in Swift"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2222,7 +2611,8 @@
         "node": {
           "sdkOnly": true,
           "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2258,7 +2648,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2268,7 +2659,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2278,7 +2670,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2288,7 +2681,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2299,6 +2693,10 @@
         "node": {},
         "python": {},
         "swift": {
+          "spelling": "syncState",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
           "spelling": "syncState",
           "planned": "SP-35b"
         }
@@ -2316,7 +2714,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2326,7 +2725,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2336,7 +2736,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2346,7 +2747,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2356,7 +2758,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2377,7 +2780,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2387,7 +2791,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2397,7 +2802,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2407,6 +2813,10 @@
       "sdks": {
         "node": {},
         "swift": {
+          "spelling": "startRefreshLoop",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
           "spelling": "startRefreshLoop",
           "planned": "SP-35b"
         }
@@ -2419,7 +2829,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2429,7 +2840,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2439,7 +2851,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2449,7 +2862,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2468,7 +2882,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2478,7 +2893,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2488,7 +2904,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2499,6 +2916,10 @@
         "node": {},
         "python": {},
         "swift": {
+          "spelling": "profile",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
           "spelling": "profile",
           "planned": "SP-35b"
         }
@@ -2514,6 +2935,10 @@
         "swift": {
           "spelling": "licenseId",
           "planned": "SP-35b"
+        },
+        "kotlin": {
+          "spelling": "licenseId",
+          "planned": "SP-35b"
         }
       },
       "layer": "client"
@@ -2524,7 +2949,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2534,7 +2960,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2575,7 +3002,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2585,7 +3013,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2595,7 +3024,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2604,7 +3034,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2614,7 +3045,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2624,7 +3056,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2634,7 +3067,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2647,7 +3081,8 @@
         "swift": {
           "spelling": "update.fetch",
           "reason": "the verified build download lives on UpdateClient in Swift"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2662,7 +3097,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2675,7 +3111,8 @@
         "swift": {
           "spelling": "installURL",
           "planned": "SP-35b"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2688,7 +3125,8 @@
         "swift": {
           "spelling": "downloadURL",
           "planned": "SP-35b"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2699,6 +3137,11 @@
         "node": {
           "sdkOnly": true,
           "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        },
+        "kotlin": {
+          "spelling": "offers",
+          "shape": "flow",
+          "reason": "Kotlin observes a SharedFlow"
         }
       },
       "layer": "client"
@@ -2720,7 +3163,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2735,7 +3179,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2744,7 +3189,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2754,7 +3200,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2769,7 +3216,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2789,7 +3237,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2802,7 +3251,8 @@
         "swift": {
           "spelling": "buildURL",
           "planned": "SP-35b"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2869,7 +3319,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2879,7 +3330,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2889,7 +3341,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2899,7 +3352,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2909,7 +3363,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2919,7 +3374,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2929,7 +3385,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2939,7 +3396,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2949,7 +3407,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2959,7 +3418,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2969,7 +3429,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2979,7 +3440,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2989,7 +3451,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2999,7 +3462,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3009,7 +3473,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3019,7 +3484,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3029,7 +3495,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3050,7 +3517,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3112,7 +3580,8 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3121,7 +3590,8 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3130,7 +3600,8 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3140,6 +3611,10 @@
       "sdks": {
         "python": {},
         "swift": {
+          "spelling": "licenseUser",
+          "planned": "SP-35b"
+        },
+        "kotlin": {
           "spelling": "licenseUser",
           "planned": "SP-35b"
         }
@@ -3162,7 +3637,8 @@
         "python": {
           "sdkOnly": true,
           "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3173,7 +3649,8 @@
         "python": {
           "sdkOnly": true,
           "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3210,7 +3687,8 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3220,7 +3698,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3230,7 +3709,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3398,10 +3878,8 @@
       "id": "client.start",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3420,10 +3898,8 @@
       "id": "client.createLocal",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3431,10 +3907,8 @@
       "id": "client.createFromBundle",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3585,10 +4059,8 @@
       "id": "config.fetchCatalog",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3607,10 +4079,8 @@
       "id": "devices.attest",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3618,9 +4088,10 @@
       "id": "devices.attestSupport",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        "swift": {},
+        "kotlin": {
+          "spelling": "attestUnavailable",
+          "planned": "SP-35b"
         }
       },
       "layer": "client"
@@ -3629,10 +4100,8 @@
       "id": "update.channelFeed",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3751,9 +4220,205 @@
       "id": "commerce.products",
       "kind": "property",
       "sdks": {
-        "swift": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.licenseChanges",
+      "kind": "stream",
+      "sdks": {
+        "kotlin": {
           "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.channelChoices",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.setChannel",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.startInBackground",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.licenseState",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.client",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.playPacks",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.flavor",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.catalog",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.origins",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.headers",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.install",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.interceptor",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.networkInterceptor",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.verifyRecord",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.reportedOutlet",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.estimate",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bootHost",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only host bootstrap (SP-35.12 inventory); another SDK that ships it promotes the row"
         }
       },
       "layer": "client"

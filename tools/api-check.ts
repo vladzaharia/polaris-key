@@ -189,23 +189,43 @@ function memberLines(
   decl: RegExp,
 ): { text: string; declLine: string }[] {
   const lines = braceLines(source);
-  if (type === undefined)
-    return lines
-      .filter((l) => l.depth === 0)
-      .map((l) => ({ text: l.text, declLine: "" }));
+  if (type === undefined) {
+    // Top level only, and not inside a multi-line parameter list (a data class's `val`s).
+    let paren = 0;
+    const top: { text: string; declLine: string }[] = [];
+    for (const l of lines) {
+      if (l.depth === 0 && paren === 0)
+        top.push({ text: l.text, declLine: "" });
+      paren +=
+        (l.text.match(/\(/g)?.length ?? 0) - (l.text.match(/\)/g)?.length ?? 0);
+    }
+    return top;
+  }
   const out: { text: string; declLine: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
     const m = decl.exec(lines[i]!.text);
     if (!m || m[1] !== type) continue;
     const bodyDepth = lines[i]!.depth + 1;
     let opened = lines[i]!.text.includes("{");
+    // A declaration whose parameter list spans lines (`class A(` ... `) : B {`) has not opened yet.
+    const parens = (t: string): number =>
+      (t.match(/\(/g)?.length ?? 0) - (t.match(/\)/g)?.length ?? 0);
+    let bal = parens(lines[i]!.text);
     for (let j = i + 1; j < lines.length; j++) {
       const l = lines[j]!;
       if (l.depth >= bodyDepth) {
         opened = true;
         if (l.depth === bodyDepth)
           out.push({ text: l.text, declLine: lines[i]!.text });
-      } else if (opened || l.text.trim() !== "{") break;
+      } else if (opened) break;
+      else if (bal > 0 || l.text.trim() === "{" || /^\s*[):{]/.test(l.text)) {
+        bal += parens(l.text);
+        if (
+          (l.text.match(/\{/g)?.length ?? 0) >
+          (l.text.match(/\}/g)?.length ?? 0)
+        )
+          opened = true;
+      } else break;
     }
   }
   return out;
@@ -242,16 +262,24 @@ export function scanSwift(source: string, type?: string): string[] {
   return [...names];
 }
 
+const KOTLIN_DECL =
+  /\bcompanion\s+object(?:\s+(\w+))?|\b(?:class|object|interface)\s+(\w+)/;
+/** A class, object or interface declaration; an unnamed `companion object` is `Companion`. */
+const kotlinDecl = {
+  exec: (t: string): RegExpExecArray | null => {
+    const m = KOTLIN_DECL.exec(t);
+    if (!m) return null;
+    const name = m[0].startsWith("companion") ? (m[1] ?? "Companion") : m[2];
+    return [m[0], name] as unknown as RegExpExecArray;
+  },
+} as RegExp;
+
 /** Public `fun`, `val` and `var` names of `type` (class, object or interface) in Kotlin source; with no `type`, top-level ones. `private`, `internal` and `protected` members are skipped; no modifier means public. */
 export function scanKotlin(source: string, type?: string): string[] {
   const names = new Set<string>();
   const re =
     /^\s*((?:(?:@\w+(?:\([^)]*\))?|public|private|internal|protected|open|abstract|override|suspend|inline|operator|infix|final|const|lateinit|actual|expect|external|tailrec)\s+)*)(?:fun|val|var)\s+(?:<[^>]*>\s*)?(?:[\w<>?,. ]+\.)?(\w+)/;
-  for (const { text } of memberLines(
-    source,
-    type,
-    /\b(?:class|object|interface)\s+(\w+)/,
-  )) {
+  for (const { text } of memberLines(source, type, kotlinDecl)) {
     const m = re.exec(text);
     if (!m || /\b(?:private|internal|protected)\b/.test(m[1] ?? "")) continue;
     if (!m[2]!.startsWith("_")) names.add(m[2]!);

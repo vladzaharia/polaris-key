@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { API_PATH, checkApi, renderNotes } from "./api-check.js";
+import { API_PATH, checkApi, renderNotes, scanKotlin } from "./api-check.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const real = (): any => JSON.parse(readFileSync(join(root, API_PATH), "utf8"));
@@ -122,13 +122,35 @@ describe("api-check rule 1 (surface scanners)", () => {
       mutate(a);
     });
 
-  it("the real registry records the Node, React, Python and Swift surfaces and the rest are still empty (SP-35.8, .9, .10, .11)", () => {
+  it("the real registry records the Node, React, Python, Swift and Kotlin surfaces and the rest are still empty (SP-35.8, .9, .10, .11, .12)", () => {
     expect(Object.keys(real().surfaces)).toEqual([
       "node",
       "react",
       "python",
       "swift",
+      "kotlin",
     ]);
+  });
+
+  it("scans a Kotlin class whose constructor spans lines, a companion, and top-level extensions (SP-35.12)", () => {
+    const src = [
+      "public class A internal constructor(",
+      "    private val f: () -> Double = { 1.0 },",
+      "    val p: Int,",
+      ") {",
+      "    public fun one() {}",
+      "    public companion object {",
+      "        public fun make() {}",
+      "    }",
+      "}",
+      "public data class Opts(",
+      "    val leaked: Int,",
+      ")",
+      "public fun A.ext() {}",
+    ].join("\n");
+    expect(scanKotlin(src, "A")).toEqual(["one"]);
+    expect(scanKotlin(src, "Companion")).toEqual(["make"]);
+    expect(scanKotlin(src)).toEqual(["ext"]);
   });
 
   it("fails an unknown TypeScript verb; skips private, protected and _names", () => {
