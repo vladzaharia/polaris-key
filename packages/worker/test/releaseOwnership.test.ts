@@ -500,6 +500,43 @@ describe("the operator-only artifact policy survives a resync", () => {
     );
   });
 
+  it("answers the same appcast whatever the legacy release_config.artifacts_access holds (ST-25.2)", async () => {
+    const ctx = await linked(
+      productJson("1.0.0"),
+      releaseJson({ metadata: "public", artifacts: "licensed" }),
+    );
+    await put(ctx, POLICY, { requireSparkleSignature: false });
+    const fetchImpl = pkey(
+      productJson("1.0.0"),
+      releaseJson({ metadata: "public", artifacts: "licensed" }),
+    );
+    const product = (await loadProduct(ctx.env, ctx.db, SLUG))!;
+    const ask = async () => {
+      const res = await handleUpdate(
+        new Request(
+          `https://key.plrs.im/${SLUG}/update/appcast.xml`,
+        ) as unknown as Request,
+        ctx.env,
+        ctx.db,
+        product,
+        "appcast",
+        { arch: "arm64" },
+        fetchImpl,
+      );
+      return { status: res.status, body: await res.text() };
+    };
+    const answers = [];
+    for (const legacy of ["public", "authenticated", "licensed", "entitled"]) {
+      await ctx.db.run(
+        "UPDATE release_config SET artifacts_access = ? WHERE product = ?",
+        legacy,
+        SLUG,
+      );
+      answers.push(await ask());
+    }
+    for (const a of answers) expect(a).toEqual(answers[0]);
+  });
+
   it("audits the policy change as its own event, naming a disabled signature requirement", async () => {
     const ctx = await linked();
     await put(ctx, POLICY, { requireSparkleSignature: false });
@@ -568,7 +605,23 @@ describe("a product no operator has touched", () => {
     expect(row?.compat_min).toBe("3.0.0");
     expect(row?.compat_max).toBe("4.0.0");
     expect(cfg?.metadata_access).toBe("authenticated");
-    expect(cfg?.artifacts_access).toBe("licensed");
+    expect(
+      (
+        await ctx.db.first<{ mode: string }>(
+          "SELECT mode FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+          SLUG,
+        )
+      )?.mode,
+    ).toBe("licensed");
+    // ST-25.2: the legacy column is no longer written, so it keeps its link-time default.
+    expect(
+      (
+        await ctx.db.first<{ artifacts_access: string }>(
+          "SELECT artifacts_access FROM release_config WHERE product = ?",
+          SLUG,
+        )
+      )?.artifacts_access,
+    ).toBe("public");
     expect(JSON.parse(cfg?.artifact_policy_json ?? "{}")).toMatchObject({
       requireDmg: false,
     });

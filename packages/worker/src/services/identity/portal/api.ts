@@ -369,7 +369,7 @@ export async function hasLinkedProductLicense(
 // Who may download a release is Distribution's delivery access (`dist_access`, per deliverable),
 // read through the `delivery` hook — the SAME answer the byte routes and the appcast read, so the
 // portal can no longer offer what the download refuses or refuse what it serves. Before P2b-04
-// the portal read a per-artifact snapshot of `release_config.artifacts_access` taken at sync
+// the portal read a per-artifact snapshot of Release's old per-product artifacts mode taken at sync
 // time (`release_artifacts.access`), which could not even hold `entitled`.
 //
 // The portal authenticates a PERSON with linked licences, not a device, so each mode is asked of

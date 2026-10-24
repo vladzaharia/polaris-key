@@ -338,7 +338,6 @@ export async function linkExistingProduct(
     sparkleEd25519Pub: rel?.sparkleEd25519Pub || null,
     summaryMarker: rel?.summaryMarker || "pkey:summary",
     metadataAccess: rel?.access.metadata ?? "public",
-    artifactsAccess: rel?.access.artifacts ?? "public",
     accessSource: "manifest",
   });
   // The coordinates only. Everything else in the row (and the rest of the product) is the

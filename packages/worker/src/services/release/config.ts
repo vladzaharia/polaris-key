@@ -31,11 +31,6 @@ export interface ReleaseConfigRow {
    *  allowAmbiguousAssets. A resync rewrites it on every push. */
   artifact_policy_json: string | null;
   metadata_access?: string | null;
-  /** NOT READ for any access decision since P2b-04: the artifacts mode is Distribution's
-   *  `dist_access` (backfilled from this column by 0038). Kept because dropping a column needs a
-   *  table rebuild; resync still writes the manifest's value here, and the truth-store snapshot
-   *  (`artifactsAccessSnapshot`) copies it into rows nothing reads for access either. */
-  artifacts_access?: string | null;
   /** Owner of BOTH access modes (0022_b): NULL/'manifest' ⇒ resync writes them, 'admin' ⇒ skips. */
   access_source?: string | null;
   /** OPERATOR-owned artifact policy (0022_c): requireSparkleSignature, minimumSystemVersion.
@@ -186,7 +181,7 @@ export function operatorPolicy(
  * `access_source` (the `update.metadataAccess` column adapter). The ARTIFACTS mode is not Release's any more
  * (P2b-04): it is Distribution's delivery access (`dist_access`), which a caller reads through
  * `delivery.accessMode()` and passes as `artifactsAccess`. Without one it fails CLOSED to
- * `entitled`, the strictest mode — never back to `release_config.artifacts_access`.
+ * `entitled`, the strictest mode — never back to Release's old per-product column.
  */
 export function artifactPolicy(
   cfg: ReleaseConfigRow,
@@ -199,16 +194,6 @@ export function artifactPolicy(
       artifacts: artifactsAccess ?? "entitled",
     },
   };
-}
-
-/**
- * The value the truth store's per-row `access` columns (`release_metadata.artifacts_access`,
- * `release_artifacts.access`, 0007) are written with. A SNAPSHOT, and nothing reads it for an
- * access decision since P2b-04 — the portal, its one consumer, now asks Distribution. Kept so
- * those NOT NULL columns keep carrying the value they always carried.
- */
-export function artifactsAccessSnapshot(cfg: ReleaseConfigRow): ReleaseAccess {
-  return readAccessMode(cfg.artifacts_access);
 }
 
 /** Who owns the access modes right now. NULL and anything unrecognised read as `manifest`. */

@@ -36,6 +36,7 @@ import {
   listReleaseHealth,
   listReleaseMetadata,
   releaseStoreStatements,
+  storeAccess,
 } from "../src/services/release/store.js";
 import {
   getChannelPolicy,
@@ -240,6 +241,22 @@ describe("resync populates the release truth store", () => {
   it("writes metadata, artifacts, channels and health in the resync pass", async () => {
     const db = makeTestDb();
     await seedLinkedProduct(db);
+    // The snapshot comes from Distribution's `dist_access` (ST-25.2, D6), not release_config.
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        release: { enabled: true },
+        distribution: { enabled: true },
+      }),
+      SLUG,
+    );
+    await db.run(
+      `INSERT OR REPLACE INTO dist_access (product, deliverable_id, mode, source, modified_at)
+       VALUES (?, 'app', 'public', 'manifest', ?)`,
+      SLUG,
+      NOW,
+    );
     const { fetchImpl } = stubFetch(RELEASES);
 
     const result = await resyncRepo(
@@ -505,9 +522,13 @@ describe("resync populates the release truth store", () => {
     // tightening, never a downgrade.
     const stmts = releaseStoreStatements(
       SLUG,
-      { ...CFG, metadata_access: "entitled", artifacts_access: "entitled" },
+      { ...CFG, metadata_access: "entitled" },
       [release({ assets: [asset("djdl-arm64.dmg", 1)] })],
       NOW,
+      [],
+      [],
+      null,
+      { artifactsAccess: storeAccess("entitled") },
     );
     const artifactStmt = stmts.find((s) =>
       s.sql.includes("INSERT INTO release_artifacts"),
