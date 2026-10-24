@@ -500,9 +500,12 @@ it lists; they consume MO-01's tokens and MO-02's layer.
 
 ## 11. Limits
 
-- **Firefox was not measured.** Playwright's Firefox build exits at launch on macOS 27.0 here
-  ("Could not find profile folder"), also outside the sandbox. Its View Transitions support is
-  from the vendor's release notes [S]; the fallback covers a miss.
+- **Firefox was not measured locally; measured in CI on <first run>; pending.** Playwright's
+  Firefox build exits at launch on macOS 27.0 here ("Could not find profile folder"), also
+  outside the sandbox. The `console` CI job runs `motion.e2e.test.ts` with
+  `PK_MOTION_BROWSER=firefox` (MO-13.6; non-blocking until it has passed once on main). Its View
+  Transitions support is from the vendor's release notes [S]; the fallback covers a miss, and a
+  case that needs `document.startViewTransition` skips with that reason where it is absent.
 - **One machine.** CPU throttling stands in for a low-end device; GPU-bound cases (a weak
   integrated GPU compositing many snapshots) are not covered. MO-13 should repeat §3.5 on a real
   low-end laptop if one is available [U].
