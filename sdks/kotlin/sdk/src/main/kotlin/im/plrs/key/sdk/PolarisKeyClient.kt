@@ -418,15 +418,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
     public val identity: IdentityClient = IdentityClient(core, onAcquired = { syncAfterAcquisition() })
 
-    private val changes = MutableSharedFlow<LicenseState>(extraBufferCapacity = 16)
-
-    /**
-     * The licence state after every transition (SP-51): an activation, a sync that moved the
-     * documents OR the gate (a 401 that revoked this device, a block, grace and expiry as the floor
-     * moves), a deactivation or wipe. A state equal to the last one emitted is not emitted again.
-     */
-    public val licenseChanges: SharedFlow<LicenseState> = changes.asSharedFlow()
-
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
 
     /** The licence state now: null until the first read, then every transition (a hot StateFlow). */
@@ -453,7 +444,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             stateFlow.value = read
             changed
         }
-        if (emit) changes.tryEmit(state!!)
+        if (emit) eventFlow.tryEmit(PolarisEvent.License(state!!))
     }
 
     private fun sha256Hex(text: String): String =
@@ -464,11 +455,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     private val eventFlow = MutableSharedFlow<PolarisEvent>(extraBufferCapacity = 64)
 
-    /** Licence, config, update-offer and pack events, for every subscriber (§3.11). */
+    /**
+     * Licence, config, update-offer and pack events, for every subscriber (§3.11). A
+     * [PolarisEvent.License] follows every licence transition (SP-51): an activation, a sync that
+     * moved the documents OR the gate (a 401 that revoked this device, a block, grace and expiry as
+     * the floor moves), a deactivation or wipe. A state equal to the last one is not emitted again.
+     */
     public val events: SharedFlow<PolarisEvent> = eventFlow.asSharedFlow()
 
     init {
-        scope.launch { changes.collect { eventFlow.emit(PolarisEvent.License(it)) } }
         scope.launch { config.changes.collect { eventFlow.emit(PolarisEvent.Config(it)) } }
         scope.launch { update.offers.collect { eventFlow.emit(PolarisEvent.UpdateAvailable(it)) } }
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }

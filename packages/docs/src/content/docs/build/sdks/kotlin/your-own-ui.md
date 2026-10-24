@@ -152,7 +152,7 @@ asks the server to stop counting it.
 
 ## Status, offline and refresh
 
-`start()` and `status()` need no network. `licenseChanges` emits the gate after each transition that
+`start()` and `status()` need no network. `events` carries a `PolarisEvent.License` with the gate after each transition that
 goes through the client: an activation, a deactivation, a bundle import, and a sync that moved the
 documents or the gate (a revoke it saw, a block, grace or expiry as the clock moved). An unchanged
 state is not emitted again, and nothing ticks between syncs, so read `status()` for the present.
@@ -200,16 +200,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import im.plrs.key.core.Copy
 import im.plrs.key.core.isUsable
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun MyGate(client: PolarisKeyClient, content: @Composable () -> Unit) {
     val state by remember(client) {
         flow {
             emit(client.status()) // the gate now
-            emitAll(client.licenseChanges) // then every transition
+            emitAll(client.events.filterIsInstance<PolarisEvent.License>().map { it.state }) // then every transition
         }
     }.collectAsState(null) // null until status() answers
     val current = state
@@ -332,7 +335,9 @@ import im.plrs.key.core.isUsable
 import im.plrs.key.desktop.PolarisKeyDesktop
 import im.plrs.key.identity.SignInResult
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import java.awt.Desktop
 import java.net.URI
@@ -352,7 +357,7 @@ fun main() = application {
 fun PolarisGate(client: PolarisKeyClient, content: @Composable () -> Unit) {
     val state by produceState<LicenseState?>(null, client) {
         value = client.status()
-        client.licenseChanges.collect { value = it }
+        client.events.filterIsInstance<PolarisEvent.License>().collect { value = it.state }
     }
     // A desktop app has no foreground event: sync when the window regains focus.
     val focused = LocalWindowInfo.current.isWindowFocused

@@ -127,7 +127,6 @@ internal suspend fun apiSurface() {
     PolarisKeyClient.DevicesFacet::attestUnavailable  // devices.attestSupport
     UpdateClient::channelFeed  // update.channelFeed
     CommerceClient::products  // commerce.products
-    PolarisKeyClient::licenseChanges  // client.licenseChanges
     PolarisKeyClient::channelChoices  // client.channelChoices
     PolarisKeyClient::setChannel  // client.setChannel
     PolarisKeyClient::startInBackground  // client.startInBackground

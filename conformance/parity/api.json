@@ -4741,17 +4741,6 @@
       "layer": "client"
     },
     {
-      "id": "client.licenseChanges",
-      "kind": "stream",
-      "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
       "id": "client.channelChoices",
       "kind": "method",
       "sdks": {
@@ -5839,6 +5828,16 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\b(?:client|license|futures)\\.activate\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "client.licenseChanges",
+      "package": "SP-35b",
+      "note": "collect `events` filtered to `PolarisEvent.License`, or `licenseState`",
+      "scan": {
+        "pattern": "\\.licenseChanges\\b",
         "files": ["*.kt", "*.kts", "fence:kotlin"]
       }
     }

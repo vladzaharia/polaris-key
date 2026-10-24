@@ -138,8 +138,8 @@ Maven, the coordinate table and the other SDKs:
 ## The services and PolarisKeyClient
 
 `polaris-key-sdk` is the one-line dependency: `PolarisKeyClient` composes `:core` with one
-sub-client per service, and every public call is `suspend` (license changes stream as a `Flow`,
-`licenseChanges`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
+sub-client per service, and every public call is `suspend` (licence changes stream as `events`, a
+`SharedFlow<PolarisEvent>`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
 service the product does not run throws `service-unavailable` before any request.
 
 ```kotlin
@@ -197,7 +197,7 @@ suspend fun start(key: String) {
   (so the trailing lambda still binds `onAcquired`); a caller passing the listener positionally must
   now pass it by name or swap the order. `OkHttpTransport` has two constructors, `()` (owns its client,
   `close()` shuts it down) and `(client)` (shares the host's, `close()` leaves it alone).
-- **Live license state**: `licenseChanges`, `events` and the `licenseState` StateFlow emit on
+- **Live license state**: `events` (as `PolarisEvent.License`) and the `licenseState` StateFlow emit on
   every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
   expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not
   repeated. `entitlements.value()` answers nothing while the gate is not usable

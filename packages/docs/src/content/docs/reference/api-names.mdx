@@ -70,7 +70,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.syncIfStale` | — | — | — | `client.syncIfStale` | — | — | — |
 | `client.installUpdateBootHooks` | — | — | — | `client.installUpdateBootHooks` | — | — | — |
 | `client.configureUpdate` | — | — | — | `client.configureUpdate` | — | — | — |
-| `client.licenseChanges` | — | — | — | — | `client.licenseChanges` | — | — |
 | `client.channelChoices` | — | — | — | — | `client.channelChoices` | — | — |
 | `client.setChannel` | — | — | — | — | `client.setChannel` | `update.set_channel` | — |
 | `client.startInBackground` | — | — | — | — | `client.startInBackground` | — | — |
@@ -421,3 +420,4 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Python | `trust` | `options.pinnedKeys` | SP-35 |
 | Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |
 | Kotlin | `license.activate` | `license.activateWithKey` | SP-35b |
+| Kotlin | `client.licenseChanges` | collect `events` filtered to `PolarisEvent.License`, or `licenseState` | SP-35b |

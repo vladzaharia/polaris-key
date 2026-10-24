@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **`licenseChanges` is removed; the licence stream is `events` (SP-35b).** `PolarisKeyClient.licenseChanges` (a `SharedFlow<LicenseState>`) is gone. `events: SharedFlow<PolarisEvent>` carries a `PolarisEvent.License(state)` on each licence transition, emitted only when the state changes. `:ui` and ui-core read `events`. No aliases.
+  Migrating: `client.licenseChanges` becomes `client.events.filterIsInstance<PolarisEvent.License>().map { it.state }`; for the present value use `client.licenseState`.
 - **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key)` is renamed `activateWithKey(key)`, the `PolarisKeyClient.activate(key)` facade is removed, and `PolarisKeyFutures.activate` is now `activateWithKey`. The kit's own `PolarisGateActions.activate` is unchanged. No aliases.
   Migrating: `client.activate(k)` and `client.license.activate(k)` become `client.license.activateWithKey(k)`; `futures.activate(k)` becomes `futures.activateWithKey(k)`.
 

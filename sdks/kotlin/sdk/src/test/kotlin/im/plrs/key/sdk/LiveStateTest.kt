@@ -22,6 +22,7 @@ import im.plrs.key.license.LicenseClientOptions
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -80,7 +81,7 @@ class LiveStateTest {
         val server = Server(signer, now)
         val c = client(server)
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
-        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
+        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.events.filterIsInstance<PolarisEvent.License>().collect { seen += it.state } }
         assertTrue(c.license.activateWithKey("pkey_djdl_x") is ActivationResult.Ok)
         assertEquals(LicenseStatus.ok, seen.last().status)
 
@@ -184,7 +185,7 @@ class LiveStateTest {
         val c = client(server)
         c.license.activateWithKey("pkey_djdl_x")
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
-        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
+        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.events.filterIsInstance<PolarisEvent.License>().collect { seen += it.state } }
         // Hold the publish lock, as a slow concurrent pass would.
         val field = PolarisKeyClient::class.java.getDeclaredField("publishLock").apply { isAccessible = true }
         val lock = field.get(c) as kotlinx.coroutines.sync.Mutex
@@ -216,7 +217,7 @@ class LiveStateTest {
         val server = Server(signer, now)
         val c = client(server)
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
-        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
+        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.events.filterIsInstance<PolarisEvent.License>().collect { seen += it.state } }
         c.license.activateWithKey("pkey_djdl_x")
         assertEquals(LicenseStatus.ok, c.licenseState.value?.status)
         c.license.deactivate()

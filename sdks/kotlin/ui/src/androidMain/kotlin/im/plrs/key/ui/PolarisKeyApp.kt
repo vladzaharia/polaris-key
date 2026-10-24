@@ -32,10 +32,13 @@ import androidx.compose.ui.platform.LocalContext
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
 import im.plrs.key.sdk.bootHost
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
@@ -59,13 +62,13 @@ public fun polarisKey(): PolarisKeyClient =
 // change. (Not produceState: the Compose lint run by AGP 8.6 reports ProduceStateDoesNotAssignValue
 // on these producer lambdas even though they assign `value`.)
 
-/** The licence state now and after every change (`client.licenseChanges`); null until first read. */
+/** The licence state now and after every change (`client.events`); null until first read. */
 @Composable
 public fun rememberPolarisLicense(client: PolarisKeyClient = polarisKey()): State<LicenseState?> =
     remember(client) {
         flow {
             emit(client.status())
-            emitAll(client.licenseChanges)
+            emitAll(client.events.filterIsInstance<PolarisEvent.License>().map { it.state })
         }
     }.collectAsState(null)
 
@@ -75,7 +78,7 @@ public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = pola
     remember(client, name) {
         flow {
             emit(client.entitlements.has(name))
-            client.licenseChanges.collect { emit(client.entitlements.has(name)) }
+            client.events.filterIsInstance<PolarisEvent.License>().collect { emit(client.entitlements.has(name)) }
         }
     }.collectAsState(false)
 
