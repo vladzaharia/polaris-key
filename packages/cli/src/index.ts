@@ -51,6 +51,7 @@ import {
 } from "./account.js";
 import { withAdminCredential, type AdminIo } from "./adminAuth.js";
 import { cmdLogin, type LoginSeams } from "./login.js";
+import { cmdFeedsWrite, type FeedWriteSeams } from "./feedWrite.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
@@ -550,6 +551,8 @@ export interface CliIo {
   credentialStore?: () => Promise<CredentialStore>;
   /** The browser, clipboard, keys and clock behind `pkey login` (tests pass fakes). */
   login?: LoginSeams;
+  /** The commands, PATH probe and temp dir behind `pkey feeds setup --write` (tests pass fakes). */
+  feedWrite?: FeedWriteSeams;
 }
 
 interface ParsedArgs {
@@ -685,6 +688,7 @@ async function runCommand(
       term,
       store: io.credentialStore ?? defaultStore,
       login: io.login,
+      feedWrite: io.feedWrite,
     });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
@@ -715,6 +719,7 @@ interface Runtime {
   term: (out: TermOut) => Term;
   store: () => Promise<CredentialStore>;
   login?: LoginSeams;
+  feedWrite?: FeedWriteSeams;
 }
 
 type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
@@ -775,7 +780,7 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   auth: (p, rt) => cmdAuth(p, rt.stdout, rt.stderr, rt.ci),
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
   manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
-  feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
+  feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt),
   listing: (p, rt) =>
     cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g, adminIo(p, rt)),
   assets: (p, rt) => cmdAssets(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
@@ -2364,7 +2369,23 @@ async function cmdFeeds(
   stdout: Pick<NodeJS.WriteStream, "write">,
   stderr: Pick<NodeJS.WriteStream, "write">,
   ci: CiIo,
+  rt: Runtime,
 ): Promise<number> {
+  if (parsed.positional[0] === "setup" && flagBool(parsed, "write"))
+    return cmdFeedsWrite(
+      {
+        ...accountIo(parsed, rt),
+        noBrowser: flagBool(parsed, "no-browser"),
+        flags: rt.g,
+        seams: { sleep: rt.ci.sleep, ...rt.login },
+      },
+      {
+        cwd,
+        owner: flagString(parsed, "owner"),
+        dryRun: flagBool(parsed, "dry-run"),
+        seams: rt.feedWrite ?? {},
+      },
+    );
   if (parsed.positional[0] === "setup") {
     stdout.write(
       feedsSetup({

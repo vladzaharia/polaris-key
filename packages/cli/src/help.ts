@@ -829,6 +829,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     summary: "Package-feed setup and feed pruning",
     rows: [
       ["feeds setup", "Print the setup for one package feed"],
+      ["feeds setup --write", "Sign in and set up your package tools"],
       ["feeds prune", "Delete main builds below the newest stable"],
     ],
     tree: { setup: [], prune: [] },
@@ -836,6 +837,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
+      "pkey feeds setup --write [--owner slug] [--dry-run] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
     ],
     about: [
@@ -861,6 +863,22 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, " +
           "reading the registry token from that environment variable. Offline: nothing is sent " +
           "anywhere.",
+      },
+      {
+        subs: ["setup"],
+        text:
+          "pkey feeds setup --write signs in with a code, as pkey login does, but for a " +
+          "read-only packages token that you approve in Polaris Locker, then sets up the " +
+          "tools it finds on PATH: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc " +
+          "(pip, uv, Poetry, go), ~/.gradle/gradle.properties, ~/.cargo/config.toml, " +
+          "docker, cargo and swift. It changes only the lines it owns, writes files at 0600, " +
+          "keeps the first version of a changed file as <file>.pkey-backup, and never puts " +
+          "the token in a command line or on screen. It does not touch the sign-in pkey login " +
+          "saved. --owner limits it to one product's feeds; --dry-run signs in and shows what " +
+          "would change without writing. It refuses (exit 4) in CI and without a terminal; " +
+          "print the setup there. Godot feeds are skipped: their token is in the editor's URL, " +
+          "which the console shows. A file it cannot merge safely, or that leaves your home " +
+          "directory by a symbolic link, is left alone and exits 4; a command that fails exits 1.",
       },
       { subs: ["prune"], text: CI_PARA },
     ],
