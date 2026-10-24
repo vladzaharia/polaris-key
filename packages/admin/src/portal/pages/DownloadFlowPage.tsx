@@ -156,14 +156,21 @@ export function DownloadFlowPage({
       ) : product.error && isNotFound(product.error) ? (
         <NotFoundProduct email={account.email} />
       ) : error || !p ? (
-        <ErrorState
-          error={error}
-          onRetry={() => {
-            void product.refetch();
-            void downloads.refetch();
-          }}
-          asPage
-        />
+        <div className="mx-auto w-full max-w-[40rem]">
+          <ErrorState
+            error={error}
+            onRetry={() => {
+              void product.refetch();
+              void downloads.refetch();
+            }}
+            asPage
+            page={p?.name ?? t("locker.error.productFallback")}
+            message={t("locker.error.loadFailedName", {
+              name: p?.name ?? t("locker.error.thisProduct"),
+            })}
+            backTo={p ? { href: href.product(slug), label: p.name } : undefined}
+          />
+        </div>
       ) : (
         <DownloadBody
           product={p}

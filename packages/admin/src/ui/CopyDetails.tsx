@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CopyButton } from "./CopyButton.js";
+import { CopyButton, type CopyButtonProps } from "./CopyButton.js";
 
 /**
  * The "Copy details" button a refusal's words promise ("Copy the details for a report"), for a
@@ -9,9 +9,11 @@ import { CopyButton } from "./CopyButton.js";
 export function CopyDetails({
   copy,
   always = false,
+  variant,
 }: {
   copy: { action?: string; details?: Record<string, unknown> };
   always?: boolean;
+  variant?: CopyButtonProps["variant"];
 }): React.ReactElement | null {
   if (!always && copy.action !== "copy-details") return null;
   return (
@@ -20,6 +22,7 @@ export function CopyDetails({
       label="Copy details"
       showLabel
       text="Copy details"
+      variant={variant}
     />
   );
 }

@@ -36,6 +36,8 @@ export interface PortalVoice {
   /** What a bug report needs: the refusal's code and status, or the error's name and message. */
   details: (error: unknown) => Record<string, unknown>;
   retryLabel: string;
+  /** Where focus goes after Try again is pressed in `panel` (the nearest heading). */
+  afterRetry: (panel: Element | null) => void;
   /** The label of the Help link a refusal may carry. */
   helpLabel: string;
   /** The app's Help link (quiet, underlined, 44 px). */

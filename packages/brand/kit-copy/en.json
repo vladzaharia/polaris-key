@@ -5155,6 +5155,31 @@
       "role": "body",
       "note": "Account, Sign-in methods failed to load; the Try again button is separate."
     },
+    "locker.error.loadFailedSessions": {
+      "value": "Couldn't load where you're signed in.",
+      "role": "body",
+      "note": "Account, Sessions card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedPackages": {
+      "value": "Couldn't load your packages.",
+      "role": "body",
+      "note": "Account, Packages card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedLicense": {
+      "value": "Couldn't load your license.",
+      "role": "body",
+      "note": "A product page's License card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedDevices": {
+      "value": "Couldn't load your devices.",
+      "role": "body",
+      "note": "A product page's Devices card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedName": {
+      "value": "Couldn't load {name}.",
+      "role": "body",
+      "note": "A page or card named by {name} failed to load (storefront, download, free device); the Try again button is separate. Arguments: {name} = the product's name, or locker.error.thisProduct when unknown."
+    },
     "locker.error.page.title": {
       "value": "Something didn't load",
       "role": "title",

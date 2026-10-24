@@ -160,6 +160,7 @@ export function PackagesCard(): React.ReactElement | null {
           error={q.error}
           account
           onRetry={() => void q.refetch()}
+          message={t("locker.error.loadFailedPackages")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import { Button, type ButtonSize } from "./Button.js";
+import { Button, type ButtonProps, type ButtonSize } from "./Button.js";
 import { IconButton } from "./IconButton.js";
 import { Unlocked } from "./WriteLock.js";
 import { announce } from "./LiveRegion.js";
@@ -61,6 +61,8 @@ export interface CopyButtonProps {
   showLabel?: boolean;
   /** The visible words with `showLabel`, when "Copy" is too little ("Copy all"). */
   text?: string;
+  /** The labelled button's look (default outline); a quiet second action says `ghost`. */
+  variant?: ButtonProps["variant"];
   /** Called after each attempt with whether the clipboard accepted the value. */
   onCopy?: (ok: boolean) => void;
   className?: string;
@@ -77,6 +79,7 @@ export function CopyButton({
   showLabel = false,
   text = "Copy",
   onCopy,
+  variant = "outline",
   className,
 }: CopyButtonProps): React.ReactElement {
   const { copy, state } = useCopy();
@@ -102,7 +105,7 @@ export function CopyButton({
       <span className={cn("inline-flex items-center gap-2", className)}>
         {showLabel ? (
           <Button
-            variant="outline"
+            variant={variant}
             size={size}
             iconStart={icon}
             aria-label={label}

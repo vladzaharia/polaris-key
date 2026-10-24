@@ -1,5 +1,6 @@
 import { PortalApiError } from "./api.js";
 import { t } from "../lib/copy.js";
+import { focusAfterRetry } from "./focus.js";
 import { helpForRefusal } from "./helpLinks.js";
 import { HelpLink } from "./components/HelpLink.js";
 import type { PortalVoice, PortalVoiceCopy } from "../ui/errorVoice.js";
@@ -149,6 +150,7 @@ export const portalVoice: PortalVoice = {
   copy: (error, opts) => portalErrorCopy(error, opts),
   details: errorDetails,
   retryLabel: t("signin.retry"),
+  afterRetry: focusAfterRetry,
   helpLabel: t("locker.help.whatToDo"),
   HelpLink,
 };

@@ -141,11 +141,9 @@ export function LicenseCard({
       ) : error || !detail ? (
         <ErrorState
           error={error}
-          // Try again keeps the person here: focus goes to the card's heading.
-          onRetry={() => {
-            onRetry();
-            document.getElementById("section-license-h")?.focus();
-          }}
+          // Try again keeps the person here: ErrorState moves focus to the card's heading.
+          onRetry={onRetry}
+          message={t("locker.error.loadFailedLicense")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

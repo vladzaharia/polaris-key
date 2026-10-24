@@ -183,12 +183,20 @@ function PortalErrorState({
 }): React.ReactElement {
   const copy = voice.copy(error, { account });
   const Title = asPage ? "h1" : "h2";
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const retry = onRetry
+    ? () => {
+        voice.afterRetry(panelRef.current);
+        onRetry();
+      }
+    : undefined;
   const named = message !== undefined || page !== undefined;
   const panel = (
     <div
+      ref={panelRef}
       role="alert"
       className={cn(
-        "flex flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6",
+        "flex w-full max-w-xl flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6",
         className,
       )}
     >
@@ -208,18 +216,22 @@ function PortalErrorState({
       {copy.help ? (
         <voice.HelpLink href={copy.help}>{voice.helpLabel}</voice.HelpLink>
       ) : null}
-      {onRetry && copy.retry ? (
-        <Button
-          variant="outline"
-          iconStart={<RefreshCw aria-hidden />}
-          onClick={onRetry}
-        >
-          {voice.retryLabel}
-        </Button>
-      ) : null}
-      <CopyDetails
-        copy={{ action: "copy-details", details: voice.details(error) }}
-      />
+      {/* Try again leads; Copy details is the quiet second action. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {retry && copy.retry ? (
+          <Button
+            variant="outline"
+            iconStart={<RefreshCw aria-hidden />}
+            onClick={retry}
+          >
+            {voice.retryLabel}
+          </Button>
+        ) : null}
+        <CopyDetails
+          variant="ghost"
+          copy={{ action: "copy-details", details: voice.details(error) }}
+        />
+      </div>
       {backTo ? (
         <a
           href={backTo.href}
