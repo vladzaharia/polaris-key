@@ -8,6 +8,8 @@ import PolarisKey
 /// Polaris Key configuration for acme:
 ///
 ///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
+///
+/// Config reads use the 0.9 names: `client.config.get(_:default:)`, `getConfigSource(_:)`, `getSecret(_:)`.
 public enum PolarisConfig {
     public static let productSlug = "acme"
     public static let baseUrl = "https://key.plrs.im"

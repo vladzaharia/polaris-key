@@ -225,7 +225,7 @@ public actor PolarisKeyClient {
             observe: {
                 await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
             },
-            source: { await config.configSource($0) },
+            source: { await config.getConfigSource($0) },
             deliver: { config.deliver($0) })
         self.publisher = publisher
         // A local `config.set` / `clear` is observed by the same publisher, so `events` and
@@ -640,10 +640,6 @@ public actor PolarisKeyClient {
         await license.isLicensed(now: now)
     }
 
-    public func config(_ key: String, default fallback: JSONValue) async -> JSONValue {
-        await config.config(key, default: fallback)
-    }
-
     /// Whether a catalog `flag` is on for this install. Flags are entitlements and ride the
     /// licence document only, so this is `license.isEntitled(flag)`: false whenever the gate is
     /// not usable (S-19 G11).
@@ -771,7 +767,7 @@ private struct SnapshotContent: Encodable {
 extension PolarisKeyClient {
     /// A client that never touches the network.
     ///
-    /// Everything offline still works: `config(_:default:)` resolves over a cached or imported
+    /// Everything offline still works: `config.get(_:default:)` resolves over a cached or imported
     /// config document, `status()` gates on a cached or imported licence, and `importBundle`
     /// provisions one. Anything that would dial — activation, enrolment, registration, `sync()`,
     /// discovery, the update check — rejects with `PolarisError` code `local-only`.

@@ -202,6 +202,8 @@ import PolarisKey
 /// Polaris Key configuration for ${facts.product}:
 ///
 ///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
+///
+/// Config reads use the 0.9 names: \`client.config.get(_:default:)\`, \`getConfigSource(_:)\`, \`getSecret(_:)\`.
 public enum PolarisConfig {
     public static let productSlug = ${q(facts.product)}
     public static let baseUrl = ${q(facts.baseUrl)}

@@ -12,9 +12,9 @@ func apiSurface() async {
     _ = \PolarisKeyClientOptions.pinnedReleaseKeys  // options.pinnedReleaseKeys
     _ = \CoreOptions.baseUrl  // options.baseUrl
     _ = \CoreOptions.expectedServices  // options.expectedServices
-    _ = ConfigClient.config(_:default:)  // config.get
-    _ = ConfigClient.configSource  // config.getConfigSource
-    _ = ConfigClient.secret  // config.getSecret
+    _ = ConfigClient.get(_:default:)  // config.get
+    _ = ConfigClient.getConfigSource  // config.getConfigSource
+    _ = ConfigClient.getSecret  // config.getSecret
     _ = ConfigClient.mintToken  // config.mintToken
     _ = ConfigClient.set  // config.set
     _ = ConfigClient.clear  // config.clear

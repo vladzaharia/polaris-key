@@ -142,8 +142,8 @@ let client = try await PolarisKeyClient.create(options: .init(
 
 // Offline-first: status comes from the cached signed documents with no network.
 if await client.isLicensed() {
-    let concurrency = await client.config.config("run.concurrency", default: .int(4))
-    let vpnUrl = await client.config.secret("proxy.subscriptionUrl")
+    let concurrency = await client.config.get("run.concurrency", default: .int(4))
+    let vpnUrl = await client.config.getSecret("proxy.subscriptionUrl")
     let hasVpn = await client.license.isEntitled("polarisVpn")
 }
 
@@ -163,10 +163,10 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{config,
-configSource,secret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
+isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{get,
+getConfigSource,getSecret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
 `client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
-installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,config,
+installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
 activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
 passthroughs for the calls a host makes before it knows which service it is talking to.
 
@@ -228,8 +228,8 @@ runtime fetch; routine key rotation is handled by the signed trust manifest at
 
 ### Layered config
 
-`client.config.config(_:default:)` resolves a value through the **same precedence** as every
-Polaris Key SDK; `configSource(_:)` returns which layer won:
+`client.config.get(_:default:)` resolves a value through the **same precedence** as every
+Polaris Key SDK; `getConfigSource(_:)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
@@ -237,7 +237,7 @@ enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default
 
 `enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env vars
 are ignored for those keys; `hidden` keys are additionally withheld from `listUserConfig()` (but
-still applied by `config(_:default:)`).
+still applied by `get(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
 `PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The value is the decoded

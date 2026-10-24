@@ -2340,8 +2340,6 @@
         },
         "python": {},
         "swift": {
-          "spelling": "config",
-          "planned": "SP-35b",
           "labels": ["_", "default"]
         },
         "kotlin": {
@@ -2370,10 +2368,7 @@
         "node": {},
         "react": {},
         "python": {},
-        "swift": {
-          "spelling": "configSource",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "configSource",
           "planned": "SP-35b"
@@ -2399,10 +2394,7 @@
         "node": {},
         "python": {},
         "godot": {},
-        "swift": {
-          "spelling": "secret",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "secret",
           "planned": "SP-35b"
@@ -5547,6 +5539,46 @@
     }
   ],
   "removed": [
+    {
+      "sdk": "swift",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.config(_:default:)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
     {
       "sdk": "node",
       "from": "config.getConfig",

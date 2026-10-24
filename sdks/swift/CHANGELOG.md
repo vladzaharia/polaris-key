@@ -15,6 +15,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(_:default:)`, `client.config.getConfigSource(_:)` and `client.config.getSecret(_:)` replace `config(_:default:)`, `configSource(_:)` and `secret(_:)`; the `PolarisKeyClient.config(_:default:)` shortcut is removed. No aliases.
+  Migrating: `client.config(k, default: d)` and `client.config.config(k, default: d)` become `client.config.get(k, default: d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`.
+
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you set `GateOptions.renewURL`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. SwiftUI draws the numbered steps and the request QR.
   Migrating: pass an https `url` in `KitOffers` to get Buy in your browser on the paywall, and `renewURL` on `GateOptions` to get Renew.
 

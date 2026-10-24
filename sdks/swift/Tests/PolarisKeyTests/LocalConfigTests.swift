@@ -98,7 +98,7 @@ final class LocalConfigTests: XCTestCase {
         var events = c.events.makeAsyncIterator()
         try await c.config.set("ui.theme", .string("light"))
         let theme = await c.config.string("ui.theme", default: "x")
-        let source = await c.config.configSource("ui.theme")
+        let source = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, "light")
         XCTAssertEqual(source, .local)
         let event = await events.next()

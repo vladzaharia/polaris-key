@@ -75,11 +75,11 @@ public struct ConfigSetting: Sendable {
 
     /// The effective value, or `fallback` when no layer has one.
     public func value(default fallback: JSONValue) async -> JSONValue {
-        await client.config(key, default: fallback)
+        await client.get(key, default: fallback)
     }
 
     /// Where the effective value comes from.
-    public func source() async -> ConfigSource { await client.configSource(key) }
+    public func source() async -> ConfigSource { await client.getConfigSource(key) }
 
     /// Whether the operator locked the key (`enforced` or `hidden`).
     public func isLocked() async -> Bool { await client.isLocked(key) }

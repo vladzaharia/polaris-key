@@ -291,7 +291,7 @@ final class PkeyDevLiveTests: XCTestCase {
         XCTAssertEqual(afterState.value, .string(value))
         XCTAssertEqual(afterState.source, .enforced)
         XCTAssertTrue(afterState.locked, "the operator's value cannot be overridden locally")
-        let read = await client.config.config(setting, default: .string("unset"))
+        let read = await client.config.get(setting, default: .string("unset"))
         XCTAssertEqual(read, .string(value))
 
         // The same document again: nothing changed, nothing is announced.

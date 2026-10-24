@@ -68,7 +68,7 @@ describe("gen-api-surface", () => {
 
   it("Swift, Kotlin and Godot assert today's spellings", async () => {
     const files = await renderAll(loadApi());
-    expect(files.get(SWIFT_OUT)).toContain("ConfigClient.config(_:default:)");
+    expect(files.get(SWIFT_OUT)).toContain("ConfigClient.get(_:default:)");
     expect(files.get(KOTLIN_OUT)).toContain("ConfigClient::configSource");
     expect(files.get(GODOT_OUT)).toContain('"get_value"');
   });

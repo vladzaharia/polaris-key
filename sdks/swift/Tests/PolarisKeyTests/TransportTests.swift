@@ -87,7 +87,7 @@ final class TransportTests: XCTestCase {
         XCTAssertTrue(c.core.localOnly)
 
         // Reads over the cached document still work.
-        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let theme = await c.config.get("ui.theme", default: .string("d"))
         XCTAssertEqual(theme, .string("local"))
         let localStatus = await c.status().status
         XCTAssertEqual(localStatus, .notApplicable)
