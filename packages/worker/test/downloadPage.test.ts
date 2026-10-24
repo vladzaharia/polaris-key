@@ -449,7 +449,11 @@ describe("download.json (the page model)", () => {
     expect(by("scoop").command).toBe(
       `scoop install ${CONSOLE}/${SLUG}/distribution/scoop/stable.json`,
     );
-    expect(by("homebrew").command).toBe("brew install --cask diceroll");
+    const brew = m.actions.filter((a) => a.kind === "homebrew");
+    expect(brew.map((a) => [a.platforms, a.command])).toEqual([
+      [["macos"], "brew install --cask vlad/games/diceroll"],
+      [["macos", "linux"], "brew install vlad/games/dice"],
+    ]);
   });
 
   it("the key inventory's public fingerprints, never an upload key or a CI observation", async () => {
@@ -716,7 +720,8 @@ describe("the page on the bytes host", () => {
       "https://apps.obtainium.imranr.dev/redirect?r=",
       "fdroidrepos://",
       "scoop install",
-      "brew install --cask diceroll",
+      "brew install --cask vlad/games/diceroll",
+      "brew install vlad/games/dice",
       "https://store.steampowered.com/app/3100000/",
     ])
       expect(html, needle).toContain(needle);

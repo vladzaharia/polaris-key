@@ -326,7 +326,7 @@ describe("Distribution's customerDownloads hook (through Core)", () => {
       d!.installSources!.find((s) => s.kind === "homebrew")!.qr,
     ).toBeNull();
     expect(d!.installSources!.find((s) => s.kind === "homebrew")!.command).toBe(
-      "brew install --cask diceroll",
+      "brew install --cask vlad/games/diceroll",
     );
     expect(
       d!.installSources!.find((s) => s.kind === "scoop")!.command,

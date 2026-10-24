@@ -47,7 +47,7 @@ In your library, select **Add to Obtainium** for step&nbsp;2.
 
 ## Scoop, Homebrew and other commands
 
-Some apps list an install command under the system it is for. Copy it from the app's own download page or your library, then run it in a terminal. It installs the app, so don't run a command you don't understand. If you don't already use Scoop or Homebrew, skip this and download the file from your library instead ([Download your app](/docs/help/download/)).
+Some apps list an install command under the system it is for. Copy it from the app's own download page or your library, then run it in a terminal. A Homebrew command names the app's own tap. It installs the app, so don't run a command you don't understand. If you don't already use Scoop or Homebrew, skip this and download the file from your library instead ([Download your app](/docs/help/download/)).
 
 ## When a new version shows up
 
