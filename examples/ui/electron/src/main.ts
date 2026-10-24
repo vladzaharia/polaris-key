@@ -35,7 +35,12 @@ void (async () => {
   await app.whenReady();
 
   const devUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
-  const pageUrl = devUrl ?? `app://main/index.html`;
+  const base = devUrl ?? `app://main/index.html`;
+  // PKEY_KIT_PLATFORM=windows|macos|linux forces the kit's chrome (the e2e harness uses it).
+  const forced = process.env.PKEY_KIT_PLATFORM;
+  const pageUrl = forced
+    ? `${base}${base.includes("?") ? "&" : "?"}platform=${encodeURIComponent(forced)}`
+    : base;
 
   if (!devUrl) {
     const root = join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);

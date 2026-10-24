@@ -53,7 +53,7 @@ if (!client.isLicensed()) {
 // Layered config: enforced|hidden > local > env > remote-default > fallback.
 const concurrency = client.config.get<number>("run.concurrency", 3);
 const vpnUrl = client.config.getSecret("proxy.subscriptionUrl");
-const hasVpn = client.license.isEntitled("polarisVpn");
+const hasVpn = client.entitlements.has("polarisVpn");
 
 // One Core pass: trust refresh -> enabled documents in parallel -> verify -> cache -> report.
 await client.sync();
@@ -86,7 +86,7 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Need                   | Call                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Activation refusals    | `activateWithKey` / `enroll` answer a typed `ActivationResult`; every kind carries the server's `code`, an unknown 4xx is `refused{code}` and never `device-limit`. `copy.message(code)` (`core.copy`) is the sentence to show.                                                                                                                 |
-| Entitlements           | `license.isEntitled(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlementValue(name)`, `licenseInfo()`.                                                                                                                                                                                                   |
+| Entitlements           | `entitlements.has(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlements.value(name)`, `entitlements.all()`, `license.licenseInfo()`.                                                                                                                                                                     |
 | Local settings         | `config.set(key, value)` / `config.clear(key)` persist an override in the state directory (refused for operator-locked keys); `config.setting(key)` is one key's handle; `onConfigChange(key \| "*")`.                                                                                                                                          |
 | Sign-in                | `identity.signInWithBrowser()` opens the device-code page in the system browser; `waitForSignIn(prompt, { confirm })` is the retired attach opt-in (`attachable` is always false); a Deny on the approval page ends as `{ status: "error", code: "sign-in-denied" }`; `identity.current()`, `identity.signOut()`; `qr.terminal()` / `qr.svg()`. |
 | Store purchases        | `client.commerce`: `binding()`, `claim(store, payload)`, `claimSteam(ticketHex, dlcAppId)`, `claimAppStore(jws)`, `claimPlay(productId, token)`. The host passes what its store gave it.                                                                                                                                                        |

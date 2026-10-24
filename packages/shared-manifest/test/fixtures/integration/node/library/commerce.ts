@@ -11,6 +11,6 @@ const client = await PolarisKeyClient.create({
 export async function claim(ticketHex: string, dlcAppId: string) {
   const r = await client.commerce.claimSteam(ticketHex, dlcAppId);
   if (r.kind !== "ok") return r.message;
-  return client.license.isEntitled(r.flag) ? "unlocked" : "pending";
+  return client.entitlements.has(r.flag) ? "unlocked" : "pending";
 }
-console.log(client.license.isEntitled("dlc.hd"));
+console.log(client.entitlements.has("dlc.hd"));

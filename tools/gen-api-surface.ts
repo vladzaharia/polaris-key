@@ -110,6 +110,7 @@ const NODE_CLASS: Record<string, string> = {
   client: "PolarisKeyClient",
   config: "ConfigClient",
   license: "LicenseClient",
+  entitlements: "EntitlementsClient",
   identity: "IdentityClient",
 };
 
@@ -159,6 +160,7 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ConfigClient,`,
+    `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
     `  PolarisKeyClient,`,
@@ -311,7 +313,19 @@ const SWIFT_TYPE: Record<string, string> = {
   license: "LicenseClient",
   identity: "IdentityClient",
   events: "PolarisKeyClient",
+  devices: "DevicesClient",
+  release: "ReleaseClient",
+  update: "UpdateClient",
+  distribution: "DistributionClient",
+  commerce: "CommerceClient",
+  packs: "PacksClient",
 };
+/** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
+const SWIFT_UNASSERTED = new Set([
+  "commerce.listening",
+  "commerce.products",
+  "config.decode",
+]);
 const SWIFT_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
   pinnedReleaseKeys: "PolarisKeyClientOptions",
@@ -326,6 +340,7 @@ function renderSwift(api: Api): string {
   const lines: string[] = [];
   for (const r of rowsFor(api, "swift")) {
     const ref = `${r.name}${swiftLabels(r.entry.labels)}`;
+    if (SWIFT_UNASSERTED.has(r.id)) continue;
     if (r.kind === "option") {
       const holder =
         r.path !== undefined
@@ -333,8 +348,12 @@ function renderSwift(api: Api): string {
           : (SWIFT_OPTION_HOLDER[r.name] ?? "CoreOptions");
       lines.push(`_ = \\${holder}.${r.name}  // ${r.id}`);
     } else if (r.handle) {
-      lines.push(`_ = ConfigSetting.${ref}  // ${r.id}`);
-    } else if (r.kind === "stream") {
+      lines.push(
+        r.entry.shape === "property"
+          ? `_ = \\ConfigSetting.${r.name}  // ${r.id}`
+          : `_ = ConfigSetting.${ref}  // ${r.id}`,
+      );
+    } else if (r.kind === "stream" || r.entry.shape === "property") {
       lines.push(
         `_ = \\${SWIFT_TYPE[r.ns] ?? "PolarisKeyClient"}.${r.name}  // ${r.id}`,
       );
@@ -345,6 +364,8 @@ function renderSwift(api: Api): string {
   return [
     BANNER("//"),
     `import PolarisKey`,
+    `import PolarisKeyPacks`,
+    `import PolarisKeyUpdate`,
     ``,
     `/// Compile-only and never called: a renamed or removed symbol fails the test target's build.`,
     `func apiSurface() async {`,

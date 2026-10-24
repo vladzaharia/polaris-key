@@ -2,6 +2,7 @@
 import { expect, it } from "vitest";
 import {
   ConfigClient,
+  EntitlementsClient,
   IdentityClient,
   LicenseClient,
   PolarisKeyClient,
@@ -17,9 +18,10 @@ export type Surface = [
   NonNullable<Options["update"]>["pinnedReleaseKeys"],
   Options["baseUrl"],
   Options["expectedServices"],
-  ConfigSetting["get"],
+  ConfigSetting["value"],
   ConfigSetting["source"],
   ConfigSetting["locked"],
+  ConfigSetting["visibility"],
   ConfigSetting["set"],
   ConfigSetting["clear"],
   ConfigSetting["on"],
@@ -48,11 +50,11 @@ it("config.setting", () =>
 it("license.activateWithKey", () =>
   expect("activateWithKey" in LicenseClient.prototype).toBe(true));
 it("entitlements.has", () =>
-  expect("isEntitled" in LicenseClient.prototype).toBe(true));
+  expect("has" in EntitlementsClient.prototype).toBe(true));
 it("entitlements.value", () =>
-  expect("entitlementValue" in LicenseClient.prototype).toBe(true));
+  expect("value" in EntitlementsClient.prototype).toBe(true));
 it("entitlements.all", () =>
-  expect("getEntitlements" in LicenseClient.prototype).toBe(true));
+  expect("all" in EntitlementsClient.prototype).toBe(true));
 it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>
@@ -149,3 +151,9 @@ it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>
   expect("getConfig" in PolarisKeyClient.prototype).toBe(false));
+it("removed: license.isEntitled", () =>
+  expect("isEntitled" in LicenseClient.prototype).toBe(false));
+it("removed: license.entitlementValue", () =>
+  expect("entitlementValue" in LicenseClient.prototype).toBe(false));
+it("removed: license.getEntitlements", () =>
+  expect("getEntitlements" in LicenseClient.prototype).toBe(false));
