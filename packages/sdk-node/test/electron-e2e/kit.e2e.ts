@@ -403,12 +403,7 @@ function measure(opts: { zoomed: boolean }): LayoutFacts {
 
 /** Layout findings the kit still has, pinned so the suite stays honest in both directions: the
  *  check must still fail here (it turns red the day the kit is fixed: drop the row). */
-const KNOWN_PRIMARY_BELOW_FOLD: Record<string, string> = {
-  "linux update 844x390":
-    "the GNOME update prompt's primary action is below the fold of a short landscape window",
-  "linux update 640x360":
-    "the GNOME update prompt's primary action is below the fold of a 360 px window",
-};
+const KNOWN_PRIMARY_BELOW_FOLD: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------------------------
 // The layout matrix: chrome x scene (one launch each) x scheme x size.

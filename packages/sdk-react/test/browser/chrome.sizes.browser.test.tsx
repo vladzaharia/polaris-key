@@ -20,6 +20,7 @@ import { page } from "vitest/browser";
 import { createRoot, type Root } from "react-dom/client";
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
+import type { UiInput } from "@polaris-key/ui-core";
 import * as Kit from "@polaris-key/react/kit";
 import {
   HOST_APP_HTML,
@@ -117,6 +118,7 @@ async function mount(
   scene: Scene,
   scheme: Scheme,
   rootPx = 16,
+  tweak?: (input: UiInput) => UiInput,
 ): Promise<HTMLElement> {
   document.documentElement.style.fontSize = `${rootPx}px`;
   document.body.style.margin = "0";
@@ -133,7 +135,9 @@ async function mount(
         <div dangerouslySetInnerHTML={{ __html: HOST_APP_HTML }} />
       ) : null}
       <Component
-        input={sceneInput(scene, { os: chrome.os, formFactor: "computer" })}
+        input={(tweak ?? ((i: UiInput) => i))(
+          sceneInput(scene, { os: chrome.os, formFactor: "computer" }),
+        )}
         {...(scene.sheet ? { presentation: "sheet", open: true } : {})}
         fill={
           !dialogScene &&
@@ -236,7 +240,15 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                 const card = kit
                   .querySelector(".card")!
                   .getBoundingClientRect();
-                if (card.height < innerHeight - 8)
+                // Only when the stage fits the window: a card plus its padding taller than the
+                // window scrolls from the top and cannot be centred (GNOME device-limit at 200 %:
+                // card 868 px, stage 932 px in 900 px).
+                const stage = kit.querySelector<HTMLElement>(".stage");
+                if (
+                  card.height < innerHeight - 8 &&
+                  (!stage ||
+                    stage.getBoundingClientRect().height <= innerHeight)
+                )
                   expect(
                     Math.abs(card.top - (innerHeight - card.bottom)),
                     "card centred",
@@ -299,4 +311,46 @@ describe("text scales with the root font, in each chrome", () => {
           `text ${i} follows the root font`,
         ).toBeCloseTo(2, 1);
     });
+});
+
+// The update prompt with its full three lines of notes (the Electron sample's) in a short window:
+// the dialog scrolls and its footer stays pinned, so the primary is in the first viewport in every
+// chrome (UK-06-GNOME-CENTRE: GNOME left it at the end of the scrolling card).
+describe("the update prompt with full release notes in a short window", () => {
+  const long = (i: UiInput): UiInput => ({
+    ...i,
+    releaseNotes: [
+      {
+        version: i.update?.version ?? "2.0.0",
+        date: "2026-10-01",
+        notes: [
+          "Faster mix export with a progress bar that reports each stem as it finishes.",
+          "A new sample-rate picker in Settings that remembers your choice per project.",
+          "Fixes a crash when a device is renamed while a sync is running in the background.",
+        ].join("\n"),
+      },
+    ],
+  });
+  for (const chrome of CHROMES)
+    for (const scheme of SCHEMES)
+      for (const size of SIZES.filter((s) =>
+        ["844x390", "640x360"].includes(s.label),
+      ))
+        it(`${chrome.name} ${size.label} ${scheme}`, async () => {
+          await page.viewport(size.width, size.height);
+          const scene = SCENES.find((s) => s.id === "UpdatePrompt.available")!;
+          const kit = await mount(chrome, scene, scheme, 16, long);
+          expect(kit.textContent).toContain("Faster mix export");
+          const primary = [
+            ...kit.querySelectorAll<HTMLElement>(
+              '.btn[data-variant="primary"]',
+            ),
+          ].find(visible)!;
+          const r = primary.getBoundingClientRect();
+          expect(r.top, "primary top").toBeGreaterThanOrEqual(-0.5);
+          expect(
+            r.bottom,
+            "primary is below the first viewport",
+          ).toBeLessThanOrEqual(innerHeight + 0.5);
+        });
 });
