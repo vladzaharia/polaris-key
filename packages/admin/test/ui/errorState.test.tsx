@@ -8,7 +8,6 @@ import {
 } from "@testing-library/react";
 import * as React from "react";
 import { HttpError } from "../../src/api.js";
-import { HttpError } from "../../src/portal/api.js";
 import { portalVoice } from "../../src/portal/errors.js";
 import { ErrorState } from "../../src/ui/ErrorState.js";
 import { ErrorVoiceProvider } from "../../src/ui/errorVoice.js";

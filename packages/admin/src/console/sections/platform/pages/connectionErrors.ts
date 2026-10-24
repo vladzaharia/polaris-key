@@ -22,9 +22,9 @@ export interface Failure {
   link?: { label: string; href: string };
 }
 
-/** The server's own words, or nothing: `ApiError`'s default message is just "api 500". */
+/** The server's own words, or nothing: `HttpError`'s default message is just "http 500". */
 function serverWords(e: HttpError): string | undefined {
-  return e.message && !/^api \d{3}$/.test(e.message) ? e.message : undefined;
+  return e.message && !/^http \d{3}$/.test(e.message) ? e.message : undefined;
 }
 
 export function failureOf(e: unknown): Failure | null {
@@ -44,7 +44,7 @@ export function failureOf(e: unknown): Failure | null {
       code: "popup_closed",
     };
   }
-  if (e instanceof HttpError) {
+  if (e instanceof HttpError && e.status !== 0) {
     const fields = e.fields ?? [];
     if (e.code === "exists") {
       return {
@@ -88,7 +88,8 @@ export function failureOf(e: unknown): Failure | null {
   return {
     title: c.title,
     description:
-      (e instanceof HttpError ? serverWords(e) : undefined) ?? c.description,
+      (e instanceof HttpError && e.status !== 0 ? serverWords(e) : undefined) ??
+      c.description,
     fields: e instanceof HttpError ? (e.fields ?? []) : [],
   };
 }

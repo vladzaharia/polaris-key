@@ -29,7 +29,7 @@ export function checkFailure(
     (i) => i.account.toLowerCase() === owner.toLowerCase(),
   );
   const copy = errorCopy(error, { thing: "Product", repo });
-  if (!(error instanceof HttpError))
+  if (!(error instanceof HttpError) || error.status === 0)
     return {
       kind: "network",
       title: copy.title,

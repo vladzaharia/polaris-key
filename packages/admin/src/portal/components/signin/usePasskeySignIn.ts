@@ -2,6 +2,7 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../lib/copy.js";
 import { portalApi, HttpError } from "../../api.js";
+import { isUnknownCredential } from "../../errors.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import {
@@ -66,7 +67,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       try {
         out = await mutate("passkeySignInVerify", response);
       } catch (err) {
-        if (err instanceof HttpError && err.unknownCredential)
+        if (isUnknownCredential(err))
           signalUnknownPasskey(options, response.id);
         throw err;
       }

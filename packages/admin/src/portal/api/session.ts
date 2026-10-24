@@ -1,11 +1,4 @@
-import { HttpError } from "../../lib/http.js";
-import {
-  HttpError,
-  call,
-  enc,
-  http,
-  type PortalConnection,
-} from "./transport.js";
+import { call, enc, http, type PortalConnection } from "./transport.js";
 
 export interface PortalAccount {
   id: string;
@@ -122,15 +115,11 @@ export const sessionApi = {
   /** "Not you?": ends this browser's session and stays on the card. */
   signOutHere: async (): Promise<void> => {
     // No CSRF binder here, and the redirect is not followed: only "the request was made" matters.
-    try {
-      await http.send(
-        "/logout",
-        { method: "POST", redirect: "manual" },
-        { raw: true, csrf: false },
-      );
-    } catch (e) {
-      throw e instanceof HttpError ? HttpError.from(e) : e;
-    }
+    await http.send(
+      "/logout",
+      { method: "POST", redirect: "manual" },
+      { raw: true, csrf: false },
+    );
   },
 
   /** Every session and app of the account, this browser's included. */

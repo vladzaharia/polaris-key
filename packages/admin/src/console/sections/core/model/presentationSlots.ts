@@ -138,7 +138,8 @@ export function uploadError(
     if (e.status === 415)
       return `That file type is not accepted. Use ${ACCEPTED_FORMATS}.${keeps}`;
   }
-  if (e instanceof HttpError) return `The upload failed. Try again.${keeps}`;
+  if (e instanceof HttpError && e.status !== 0)
+    return `The upload failed. Try again.${keeps}`;
   return `The upload didn't reach Polaris Key. Check your connection and try again.${keeps}`;
 }
 

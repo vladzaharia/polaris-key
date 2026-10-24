@@ -48,9 +48,9 @@ export function linkRefusal(
   error: unknown,
   ctx: { slug: string; repository: string },
 ): Refusal {
-  const api = error instanceof HttpError ? error : null;
+  const api = error instanceof HttpError && error.status !== 0 ? error : null;
   const message =
-    api?.message && api.message !== `api ${api.status}` ? api.message : "";
+    api?.message && api.message !== `http ${api.status}` ? api.message : "";
   const problems = api?.errors ?? [];
   const repo = ctx.repository || "the repository";
   if (api?.status === 409)

@@ -38,7 +38,7 @@ interface ToolProps {
 function errorText(err: unknown): string {
   if (err instanceof HttpError) {
     if (err.status === 422)
-      return err.message && err.message !== `portal api ${err.status}`
+      return err.message && err.message !== `http ${err.status}`
         ? err.message
         : t("locker.methods.nameLength");
     if (err.status === 404) return t("locker.methods.alreadyGone");

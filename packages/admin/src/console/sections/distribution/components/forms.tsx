@@ -24,7 +24,7 @@ export class SubmitCancelled extends Error {
 export function serverFieldErrors(error: unknown): FieldErrorMap | null {
   if (!(error instanceof HttpError) || !error.fields?.length) return null;
   const message =
-    error.message && error.message !== `api ${error.status}`
+    error.message && error.message !== `http ${error.status}`
       ? error.message
       : "The server rejected this value.";
   return Object.fromEntries(error.fields.map((f) => [f, message]));

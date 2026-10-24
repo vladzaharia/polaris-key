@@ -1,4 +1,5 @@
-import { HttpError } from "./api.js";
+import { HttpError, readSsoNext } from "./api.js";
+import type { PortalSsoNext } from "./api.js";
 import { t } from "../lib/copy.js";
 import { focusAfterRetry } from "./focus.js";
 import { helpForRefusal } from "./helpLinks.js";
@@ -26,6 +27,20 @@ export function isSignedOut(err: unknown): boolean {
  */
 export function isStepUpRequired(err: unknown): boolean {
   return err instanceof HttpError && err.code === "step_up_required";
+}
+
+/** I-30: the connection an enforced domain's refusal names instead (`body.next`), if any. */
+export function ssoNextOf(err: unknown): PortalSsoNext | undefined {
+  if (!(err instanceof HttpError)) return undefined;
+  const body = err.body as { next?: unknown } | null | undefined;
+  return body && typeof body === "object" ? readSsoNext(body.next) : undefined;
+}
+
+/** I-16: a passkey sign-in refused because no account here holds that credential. */
+export function isUnknownCredential(err: unknown): boolean {
+  if (!(err instanceof HttpError)) return false;
+  const body = err.body as { unknownCredential?: unknown } | null | undefined;
+  return !!body && typeof body === "object" && body.unknownCredential === true;
 }
 
 export function isNotFound(err: unknown): boolean {

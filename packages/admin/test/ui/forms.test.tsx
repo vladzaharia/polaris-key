@@ -89,7 +89,7 @@ describe("useAdminForm", () => {
     expect(result.current.isDirty).toBe(false);
   });
 
-  it("maps an ApiError's fields onto the fields and keeps the draft", async () => {
+  it("maps an HttpError's fields onto the fields and keeps the draft", async () => {
     const onSubmit = vi
       .fn()
       .mockRejectedValue(

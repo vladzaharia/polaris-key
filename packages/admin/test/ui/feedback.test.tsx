@@ -105,7 +105,7 @@ describe("EmptyState", () => {
 });
 
 describe("ErrorState", () => {
-  it("words an ApiError and offers Retry", () => {
+  it("words an HttpError and offers Retry", () => {
     const retry = vi.fn();
     render(
       <ErrorState

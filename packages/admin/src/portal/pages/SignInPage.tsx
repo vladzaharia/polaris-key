@@ -44,7 +44,7 @@ import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
 import { useCapabilities } from "../data.js";
-import { portalErrorCopy } from "../errors.js";
+import { portalErrorCopy, ssoNextOf } from "../errors.js";
 import {
   blocksResend,
   checkKey,
@@ -1032,7 +1032,8 @@ function CodeStep({
       await qc.invalidateQueries({ queryKey: qk.me() });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
-      if (err instanceof HttpError && err.next) return void onRouted(err.next);
+      const routed = ssoNextOf(err);
+      if (routed) return void onRouted(routed);
       // The verify's other 403: a right code for an account that can't sign in (the Worker's
       // `forbidden`, §3.13). Another code or a resend would end the same way.
       if (err instanceof HttpError && err.status === 403)
@@ -1056,7 +1057,8 @@ function CodeStep({
         wait: resendDelay(out),
       };
     } catch (err) {
-      if (err instanceof HttpError && err.next) return void onRouted(err.next);
+      const routed = ssoNextOf(err);
+      if (routed) return void onRouted(routed);
       if (err instanceof HttpError && err.code === "signin_expired")
         return void onExpired();
       if (
@@ -1197,8 +1199,9 @@ function SsoStep({
     try {
       onCode(resendDelay(await mutate("resendSignInCode")));
     } catch (err) {
-      if (err instanceof HttpError && err.next) {
-        onRouted(err.next);
+      const routed = ssoNextOf(err);
+      if (routed) {
+        onRouted(routed);
         return;
       }
       if (err instanceof HttpError && err.code === "signin_expired") {

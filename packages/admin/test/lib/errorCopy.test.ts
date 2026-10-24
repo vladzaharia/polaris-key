@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../../src/lib/http.js";
 import {
-  HttpError,
   RELEASE_POLICY_ERROR_MESSAGES,
   SERVICE_ERROR_MESSAGES,
 } from "../../src/api.js";

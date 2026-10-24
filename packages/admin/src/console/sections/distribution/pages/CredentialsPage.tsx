@@ -247,7 +247,7 @@ function describe(e: unknown): { title: string; description?: string } {
     return {
       title: "That app belongs to another product",
       description:
-        e.message && e.message !== `api ${e.status}`
+        e.message && e.message !== `http ${e.status}`
           ? e.message
           : "It is assigned to another product through the platform's store connection. Unassign it there first.",
     };

@@ -465,7 +465,7 @@ export function releasePolicyMessage(err: unknown): string {
       ? RELEASE_POLICY_ERROR_MESSAGES[err.reason]
       : undefined;
     if (known) return known;
-    if (err.message && err.message !== `api ${err.status}`) return err.message;
+    if (err.message && err.message !== `http ${err.status}`) return err.message;
     return `Request failed (${err.status}).`;
   }
   return err instanceof Error ? err.message : "Request failed.";

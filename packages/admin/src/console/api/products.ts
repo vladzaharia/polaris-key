@@ -488,7 +488,7 @@ export interface ManifestPlan {
 }
 
 /** `POST …/release/link?dryRun=1`: the checks passed; this is what a link would do. A refusal
- *  is an `ApiError` whose `reason` names the failed check (`repository`, `app`, `manifest`,
+ *  is an `HttpError` whose `reason` names the failed check (`repository`, `app`, `manifest`,
  *  `slug`, `policy`, `product`). */
 export interface LinkCheckResult {
   ok: true;
@@ -503,7 +503,7 @@ export interface LinkCheckResult {
 }
 
 /** `POST …/release/resync?dryRun=1` (UX-78): what a resync would do now. Writes nothing. A
- *  refusal is an `ApiError` whose `reason` names the failed check (`product`, `app`,
+ *  refusal is an `HttpError` whose `reason` names the failed check (`product`, `app`,
  *  `manifest`, `slug`); a policy refusal is a `plan.conflicts` item instead. */
 export interface ResyncPlanResult {
   ok: true;
@@ -532,7 +532,7 @@ export const productsApi = {
   attention: () => call<{ items: AttentionItemDto[] }>("/manage/api/attention"),
   /**
    * I-41: a support code a customer read out → the product and user it names. A `404` (an
-   * `ApiError`) is every refusal: unknown, malformed, or a product the operator cannot read.
+   * `HttpError`) is every refusal: unknown, malformed, or a product the operator cannot read.
    */
   supportCode: (code: string) =>
     call<{ product: string; subject: string }>(

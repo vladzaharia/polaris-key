@@ -758,7 +758,7 @@ function PasskeyGlyph({
 function changeErrorText(err: unknown, name?: string): string {
   if (err instanceof HttpError) {
     if (err.code === "link_conflict")
-      return err.message && err.message !== `portal api ${err.status}`
+      return err.message && err.message !== `http ${err.status}`
         ? err.message
         : t("locker.methods.errLinkConflict");
     if (err.code === "auth_method_disabled" || err.status === 404)

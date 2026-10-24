@@ -16,7 +16,7 @@ import {
 
 // The api module is the same-origin client for /manage/api/*. These exercise the transport:
 // CSRF echo on mutations, Content-Type only with a body, 401 → login redirect, and the typed
-// ApiError surface — all against a stubbed fetch so they're network-free.
+// HttpError surface — all against a stubbed fetch so they're network-free.
 
 interface Call {
   url: string;
@@ -267,7 +267,7 @@ describe("api — step-up refusals", () => {
 });
 
 describe("api — error handling", () => {
-  it("a 401 redirects to login and throws ApiError(401)", async () => {
+  it("a 401 redirects to login and throws HttpError(401)", async () => {
     const redirect = vi.fn();
     setLoginRedirectForTests(redirect);
     stubFetch(() => new Response(null, { status: 401 }));
@@ -295,7 +295,7 @@ describe("api — error handling", () => {
     }
   });
 
-  it("a non-ok non-JSON error still throws ApiError with the status", async () => {
+  it("a non-ok non-JSON error still throws HttpError with the status", async () => {
     stubFetch(() => new Response("upstream boom", { status: 502 }));
     await expect(api.products()).rejects.toMatchObject({ status: 502 });
   });
@@ -307,9 +307,9 @@ describe("api — error handling", () => {
   });
 });
 
-describe("ApiError", () => {
+describe("HttpError", () => {
   it("formats its message from the status by default", () => {
-    expect(new HttpError(403).message).toBe("api 403");
+    expect(new HttpError(403).message).toBe("http 403");
   });
 });
 
@@ -800,7 +800,7 @@ describe("api — every product-scoped resource is under its owning service", ()
     expect(calls[1]!.init.method).toBe("POST");
   });
 
-  it("surfaces the services endpoint's coherence codes as ApiError.errors", async () => {
+  it("surfaces the services endpoint's coherence codes as HttpError.errors", async () => {
     // `errors` is not `fields`: these name a RELATIONSHIP between inputs that are individually
     // valid, which is why the Services editor renders them beside the toggle that created the
     // contradiction instead of beside a field that failed to parse.
