@@ -38,7 +38,7 @@ internal suspend fun apiSurface() {
     ConfigClient::clearAll  // config.clearAll
     ConfigClient::changes  // config.onConfigChange
     ConfigClient::setting  // config.setting
-    LicenseClient::activate  // license.activateWithKey
+    LicenseClient::activateWithKey  // license.activateWithKey
     EntitlementsClient::has  // entitlements.has
     EntitlementsClient::value  // entitlements.value
     EntitlementsClient::all  // entitlements.all

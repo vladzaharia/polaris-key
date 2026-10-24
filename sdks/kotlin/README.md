@@ -155,7 +155,7 @@ suspend fun start(key: String) {
             core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
         ),
     )
-    client.activate(key)                       // license: stores the token, then syncs (forced)
+    client.license.activateWithKey(key)                       // license: stores the token, then syncs (forced)
     if (!isUsable(client.status())) showGate()
     val theme = client.config.get("ui.theme", JsonPrimitive("dark"))
     val notes = client.release.changelog()
@@ -165,7 +165,7 @@ suspend fun start(key: String) {
 ```
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
-  floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
+  floor), `activateWithKey`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
   `licenseInfo` (license id, tier, tier label,
   device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
   `["stable"]`). The `entitlements` namespace (`has`, `value`, `all`, in `EntitlementsClient`) reads the held document; **`entitlements.has` answers `false` whenever the gate is not usable** (revoked,
@@ -215,7 +215,7 @@ suspend fun start(key: String) {
   `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
   the license does not grant it, then syncs so documents and decisions follow.
 - **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
-  `CompletableFuture`s (`start`, `sync`, `status`, `hasEntitlement`, `licenseInfo`, `activate`,
+  `CompletableFuture`s (`start`, `sync`, `status`, `hasEntitlement`, `licenseInfo`, `activateWithKey`,
   `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
   `PolarisKeyFutures.create(options)` builds the client), and every options class has
   `@JvmOverloads` constructors.
@@ -271,7 +271,7 @@ import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
 
 suspend fun replaceDevice(key: String) {
-    val r = client.activate(key)
+    val r = client.license.activateWithKey(key)
     if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
         val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
         // offer "Replace a device", opening `link`

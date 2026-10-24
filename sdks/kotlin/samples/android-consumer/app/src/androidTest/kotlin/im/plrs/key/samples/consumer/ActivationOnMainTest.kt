@@ -71,7 +71,7 @@ class ActivationOnMainTest {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().penaltyDeath().build())
             // The README's start, on the main thread: nothing else.
             val client = PolarisKeyAndroid.client(context, options)
-            val activation = client.activate("pkey_${product}_key")
+            val activation = client.license.activateWithKey("pkey_${product}_key")
             val sync = client.sync()
             listOf(activation, sync, client.status().status, client.license.licenseId())
         }

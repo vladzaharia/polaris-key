@@ -6,6 +6,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key)` is renamed `activateWithKey(key)`, the `PolarisKeyClient.activate(key)` facade is removed, and `PolarisKeyFutures.activate` is now `activateWithKey`. The kit's own `PolarisGateActions.activate` is unchanged. No aliases.
+  Migrating: `client.activate(k)` and `client.license.activate(k)` become `client.license.activateWithKey(k)`; `futures.activate(k)` becomes `futures.activateWithKey(k)`.
+
 - **Entitlement reads are the `entitlements` namespace (SP-35b).** `client.entitlements.has(name)`, `client.entitlements.value(name)` and `client.entitlements.all()` replace `license.isEntitled`, `license.entitlementValue` and `license.entitlements()`; `PolarisKeyFutures.isEntitled` is now `hasEntitlement`. `has` and `value` answer false/null while the gate is not usable; `all()` is the ungated read of the held document. No aliases. `PolarisServer.isEntitled` (`:server`) is unchanged.
   Migrating: `client.license.isEntitled(n)` becomes `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`; `futures.isEntitled(n)` becomes `futures.hasEntitlement(n)`.
 

@@ -143,7 +143,7 @@ Here `client` is the one `App` built: `(application as App).client`. Screens, br
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.activate(key)`, read the state with `client.status()` and then `client.licenseChanges`, and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and then `client.licenseChanges`, and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
 
 ```kotlin title="OwnUi.kt"
 import im.plrs.key.core.Copy
@@ -151,7 +151,7 @@ import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.PolarisKeyClient
 
 suspend fun activate(client: PolarisKeyClient, key: String): Boolean =
-    client.activate(key) is ActivationResult.Ok
+    client.license.activateWithKey(key) is ActivationResult.Ok
 
 // What to show instead of your app: null when the license is usable.
 suspend fun lockedMessage(client: PolarisKeyClient): String? =

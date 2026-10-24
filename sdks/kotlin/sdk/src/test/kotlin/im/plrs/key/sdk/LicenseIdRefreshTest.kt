@@ -82,7 +82,7 @@ class LicenseIdRefreshTest {
             }
         }
         val client = PolarisKeyClient.create(options(store, transport))
-        assertTrue(client.activate("pkey_djdl_test") is ActivationResult.Ok)
+        assertTrue(client.license.activateWithKey("pkey_djdl_test") is ActivationResult.Ok)
         assertEquals("lic_trial", client.license.licenseId())
         assertFalse(client.entitlements.has("pro"))
         val sentBefore = transport.requests().size

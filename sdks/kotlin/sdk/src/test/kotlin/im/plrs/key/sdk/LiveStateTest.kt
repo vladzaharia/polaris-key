@@ -81,7 +81,7 @@ class LiveStateTest {
         val c = client(server)
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
         val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
-        assertTrue(c.activate("pkey_djdl_x") is ActivationResult.Ok)
+        assertTrue(c.license.activateWithKey("pkey_djdl_x") is ActivationResult.Ok)
         assertEquals(LicenseStatus.ok, seen.last().status)
 
         // A server revoke: the document 401s with no ETag movement; the next sync still says so.
@@ -108,7 +108,7 @@ class LiveStateTest {
     fun aRevokedDeviceHasNoEntitlements() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         assertEquals(JsonPrimitive(3), c.entitlements.value("seats"))
         assertEquals(setOf("pro", "seats"), c.entitlements.all().keys)
         server.revoked = true
@@ -125,7 +125,7 @@ class LiveStateTest {
     fun aRejectedTokenIsAskedAboutOnceNotInAStorm() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         server.revoked = true
         repeat(40) { c.sync(force = true) }
         assertTrue("token requests: ${server.tokenRequests.get()}", server.tokenRequests.get() <= 5)
@@ -167,7 +167,7 @@ class LiveStateTest {
         repeat(20) {
             val server = Server(signer, now)
             val c = client(server)
-            c.activate("pkey_djdl_x")
+            c.license.activateWithKey("pkey_djdl_x")
             server.revoked = true
             val passes = (0 until 12).map { i ->
                 async(kotlinx.coroutines.Dispatchers.Default) { if (i % 3 == 0) c.sync(force = true) else c.sync() }
@@ -182,7 +182,7 @@ class LiveStateTest {
     fun aPublishQueuedBehindTheLockNeverEmitsAStaleLicensedState() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
         val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
         // Hold the publish lock, as a slow concurrent pass would.
@@ -191,7 +191,7 @@ class LiveStateTest {
         lock.lock()
         try {
             // A forced publish (a second activation's) queues behind it while the licence is still ok...
-            val first = async(kotlinx.coroutines.Dispatchers.Default) { c.activate("pkey_djdl_x") }
+            val first = async(kotlinx.coroutines.Dispatchers.Default) { c.license.activateWithKey("pkey_djdl_x") }
             delay(500)
             // ...then the server revokes, and a forced sync learns it (its publish queues too).
             server.revoked = true
@@ -217,7 +217,7 @@ class LiveStateTest {
         val c = client(server)
         val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
         val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         assertEquals(LicenseStatus.ok, c.licenseState.value?.status)
         c.license.deactivate()
         withTimeout(1_000) { while (seen.last().status == LicenseStatus.ok) delay(5) }
@@ -230,7 +230,7 @@ class LiveStateTest {
     fun aRevokedInstallListsNoChannelsBeyondStable() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         server.revoked = true
         c.sync(force = true)
         assertEquals(listOf("stable"), c.license.entitledChannels())
@@ -240,7 +240,7 @@ class LiveStateTest {
     fun listDevicesSaysWhenItIsOffline() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)
-        c.activate("pkey_djdl_x")
+        c.license.activateWithKey("pkey_djdl_x")
         server.rosterFails = true
         val devices = c.listDevices()
         assertEquals(1, devices.size)

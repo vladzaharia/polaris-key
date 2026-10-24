@@ -239,7 +239,7 @@ object KotlinReplay {
                 out["documents"] = JsonObject(docs)
             }
             "activate", "enroll" -> {
-                val r = if (action == "activate") client.activate(args["key"].stringValue ?: "") else client.enroll()
+                val r = if (action == "activate") client.license.activateWithKey(args["key"].stringValue ?: "") else client.enroll()
                 out["result"] = JsonPrimitive(activationKind(r))
                 r.code?.let { out["code"] = JsonPrimitive(it) }
                 // PX-W8: the refusal link, exactly as served; null when the result carries none.

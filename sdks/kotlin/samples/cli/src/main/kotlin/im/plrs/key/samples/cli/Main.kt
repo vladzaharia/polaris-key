@@ -36,7 +36,7 @@ public suspend fun run(client: PolarisKeyClient, command: List<String>, out: Pri
             }
             "activate" -> {
                 val key = command.getOrNull(1) ?: return usage(out)
-                when (val r = client.activate(key)) {
+                when (val r = client.license.activateWithKey(key)) {
                     is ActivationResult.Ok -> out.println("activated")
                     else -> {
                         out.println("refused: $r")

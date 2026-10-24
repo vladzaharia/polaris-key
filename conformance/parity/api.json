@@ -1537,11 +1537,6 @@
     },
     {
       "sdk": "kotlin",
-      "path": "client.activate",
-      "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
-    },
-    {
-      "sdk": "kotlin",
       "path": "client.enroll",
       "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
     },
@@ -2734,10 +2729,7 @@
           "planned": "SP-35b",
           "labels": ["key"]
         },
-        "kotlin": {
-          "spelling": "activate",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "react": {
           "spelling": "usePolarisKey().submitKey",
           "shape": "hook",
@@ -5838,6 +5830,16 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\.getCurrentDevice\\s*\\("
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.activate",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|futures)\\.activate\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
       }
     }
   ]

@@ -88,7 +88,7 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
     val client = this
     return object : PolarisGateActions {
         override suspend fun status(): LicenseState = client.status()
-        override suspend fun activate(key: String): ActivationResult = client.activate(key)
+        override suspend fun activate(key: String): ActivationResult = client.license.activateWithKey(key)
         override suspend fun enroll(): ActivationResult = client.enroll()
         override suspend fun sync() {
             client.sync()

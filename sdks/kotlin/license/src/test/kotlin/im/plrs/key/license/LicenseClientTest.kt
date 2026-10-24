@@ -115,7 +115,7 @@ class LicenseClientTest {
             var acquired = 0
             val (core, transport) = core(store, deviceName) { response }
             core.start()
-            val result = LicenseClient(core, options) { acquired++ }.activate("pkey_djdl_key")
+            val result = LicenseClient(core, options) { acquired++ }.activateWithKey("pkey_djdl_key")
             Triple(result, transport.requests().single(), Triple(store.getToken(), core.tokenSource(), acquired))
         }
 
@@ -246,7 +246,7 @@ class LicenseClientTest {
         val offline = runBlocking {
             val (core, _) = core(InMemoryStore("djdl", "dev1")) { throw PolarisException(ErrorCode.networkError, "offline") }
             core.start()
-            LicenseClient(core, LicenseClientOptions(fingerprint = false)).activate("pkey_x")
+            LicenseClient(core, LicenseClientOptions(fingerprint = false)).activateWithKey("pkey_x")
         }
         assertEquals(ErrorCode.network, offline.code)
     }

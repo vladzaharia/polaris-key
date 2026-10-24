@@ -59,7 +59,7 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     public fun licenseInfo(): CompletableFuture<LicenseInfo?> = call { client.license.licenseInfo() }
 
-    public fun activate(key: String): CompletableFuture<ActivationResult> = call { client.activate(key) }
+    public fun activateWithKey(key: String): CompletableFuture<ActivationResult> = call { client.license.activateWithKey(key) }
 
     public fun enroll(): CompletableFuture<ActivationResult> = call { client.enroll() }
 

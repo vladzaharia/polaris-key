@@ -93,7 +93,7 @@ fun kindOf(r: ActivationResult): String = when (r) {
 class Refusal(val message: String, val link: String? = null, val retryAfterSeconds: Long? = null)
 
 suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
-    val r = client.activate(key)
+    val r = client.license.activateWithKey(key)
     if (r is ActivationResult.Ok) return null
     val message = Copy.activationMessage(kindOf(r), code = r.code)
     return when (r) {
@@ -379,7 +379,7 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
         Row {
             Button(onClick = {
                 scope.launch {
-                    val r = client.activate(key.trim())
+                    val r = client.license.activateWithKey(key.trim())
                     link = (r as? ActivationResult.DeviceLimit)?.manageUrl
                         ?.let { ManageLink.withReturn(ManageLink.withKey(it, key.trim()), "tidewater://activated") }
                     if (r !is ActivationResult.Ok) message = Copy.activationMessage(r.code ?: "ok", code = r.code)
@@ -445,7 +445,7 @@ suspend fun deviceLimit(): ActivationResult {
             license = LicenseClientOptions(fingerprint = false),
         ),
     )
-    return client.activate("pkey_acme_0000").also { client.close() }
+    return client.license.activateWithKey("pkey_acme_0000").also { client.close() }
 }
 ```
 

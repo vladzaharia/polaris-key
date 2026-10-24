@@ -167,7 +167,7 @@ class LiveDevTest : ConformanceSuite() {
     fun b1_firstActivation() = scenario {
         val device = device("ok")
         val client = device.client
-        // The quickstart, as written: `if (!isUsable(client.status())) client.activate(userEnteredKey)`.
+        // The quickstart, as written: `if (!isUsable(client.status())) client.license.activateWithKey(userEnteredKey)`.
         assertFalse("a new install is not usable", isUsable(client.status()))
         assertEquals(LicenseStatus.needsActivation, client.status().status)
         activate(client, "ok")
@@ -318,7 +318,7 @@ class LiveDevTest : ConformanceSuite() {
 
     /** [client] takes the seeded key [state], which must activate it. */
     private suspend fun activate(client: PolarisKeyClient, state: String) {
-        val result = client.activate(key(state))
+        val result = client.license.activateWithKey(key(state))
         assertTrue("the $state key activates, got $result", result is ActivationResult.Ok)
     }
 
@@ -346,7 +346,7 @@ class LiveDevTest : ConformanceSuite() {
     /** A new device's attempt with [state]'s key: the answer, and the device left as it was. */
     private suspend fun refused(state: String): ActivationResult {
         val client = device().client
-        val result = client.activate(key(state))
+        val result = client.license.activateWithKey(key(state))
         assertFalse("$state must not activate", result is ActivationResult.Ok)
         assertEquals(LicenseStatus.needsActivation, client.status().status)
         assertNull(client.license.activation())

@@ -736,8 +736,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     public suspend fun isLicensed(now: Long? = null): Boolean = license.isLicensed(now)
 
-    public suspend fun activate(key: String): ActivationResult = license.activate(key)
-
     public suspend fun enroll(): ActivationResult = license.enroll()
 
     /**

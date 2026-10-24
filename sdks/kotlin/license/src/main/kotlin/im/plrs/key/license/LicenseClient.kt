@@ -176,7 +176,7 @@ public class LicenseClient(
         acquire(LicenseEndpoints.enroll(core, fingerprint()), TokenSource.enroll)
 
     /** Exchange a licence key for a per-device token. */
-    public suspend fun activate(key: String): ActivationResult =
+    public suspend fun activateWithKey(key: String): ActivationResult =
         acquire(LicenseEndpoints.activate(core, key, fingerprint()), TokenSource.activate)
 
     /** Persist a freshly issued token, then raise the acquisition event. A failed write is reported (R4-12). */
