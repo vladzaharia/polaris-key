@@ -76,7 +76,12 @@ const table = (headers, rows) =>
   ].join("\n");
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
-function manifestValidationCodes() {
+/**
+ * The validator's emit sites as plain data (no MDX escaping, no backticks): `rows` are
+ * [code, severity, document, path, message] sorted by code then path, `descriptor` is
+ * [code, path, message] for the release-descriptor validator. The skills generator reuses it.
+ */
+export function validationCodeRows() {
   // `.pkey/distribution`'s rules (P2b-02) and the duplicate-spelling pass (ST-19) live in their
   // own modules of the same validator. Each module is scanned on its own: the helper regex is lazy
   // across lines, so running it over concatenated sources lets a match start in one file and end
@@ -90,11 +95,11 @@ function manifestValidationCodes() {
     /add\(\s*(errors|warnings),\s*"(product|schema|release|distribution)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(addRe)])) {
     rows.push([
-      `\`${m[4]}\``,
+      m[4],
       m[1] === "warnings" ? "warning" : "error",
       m[2],
-      `\`${m[3].slice(1, -1)}\``,
-      mdxProse(m[5].slice(1, -1).replace(/\\"/g, '"')),
+      m[3].slice(1, -1),
+      m[5].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   // constrained/constrainedList/boundedText(errors, "<file>", value, <path>, "<code>", …, "<message>")
@@ -103,11 +108,11 @@ function manifestValidationCodes() {
     /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[^;]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[^;]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(helperRe)])) {
     rows.push([
-      `\`${m[3]}\``,
+      m[3],
       "error",
       m[1],
-      `\`${m[2].slice(1, -1)}\``,
-      mdxProse(m[4].slice(1, -1).replace(/\\"/g, '"')),
+      m[2].slice(1, -1),
+      m[4].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   // The requirement rule (ST-38) emits one code per `requires` edge through a generic loop, so no
@@ -121,11 +126,11 @@ function manifestValidationCodes() {
     /\[\s*"([a-z_]+)_requires_([a-z]+)",\s*("(?:[^"\\]|\\.)*")\s*,?\s*\]/g,
   )) {
     rows.push([
-      `\`${m[1]}_requires_${m[2]}\``,
+      `${m[1]}_requires_${m[2]}`,
       "error",
       "product",
-      `\`/modules/${m[1]}\``,
-      mdxProse(m[3].slice(1, -1).replace(/\\"/g, '"')),
+      `/modules/${m[1]}`,
+      m[3].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   const seen = new Set();
@@ -135,8 +140,31 @@ function manifestValidationCodes() {
     seen.add(key);
     return true;
   });
-  unique.sort((a, b) => a[0].localeCompare(b[0]) || a[3].localeCompare(b[3]));
-  const descriptor = releaseDescriptorCodes();
+  // Ordered as the rendered, backtick-wrapped cells compare (the closing backtick sorts against
+  // `_` and prefix-shorter codes), so the page keeps its order.
+  const tick = (v) => `\`${v}\``;
+  unique.sort(
+    (a, b) =>
+      tick(a[0]).localeCompare(tick(b[0])) ||
+      tick(a[3]).localeCompare(tick(b[3])),
+  );
+  return { rows: unique, descriptor: releaseDescriptorCodes() };
+}
+
+function manifestValidationCodes() {
+  const { rows, descriptor: rawDescriptor } = validationCodeRows();
+  const unique = rows.map(([code, severity, doc, path, message]) => [
+    `\`${code}\``,
+    severity,
+    doc,
+    `\`${path}\``,
+    mdxProse(message),
+  ]);
+  const descriptor = rawDescriptor.map(([code, path, message]) => [
+    `\`${code}\``,
+    `\`${path}\``,
+    mdxProse(message),
+  ]);
   return page(
     "Manifest validation codes",
     "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source.",
@@ -170,16 +198,21 @@ function releaseDescriptorCodes() {
   const seen = new Set();
   for (const m of source.matchAll(errRe)) {
     const row = [
-      `\`${m[2]}\``,
-      `\`${m[1].slice(1, -1)}\``,
-      mdxProse(m[3].slice(1, -1).replace(/\\(["\\])/g, "$1")),
+      m[2],
+      m[1].slice(1, -1),
+      m[3].slice(1, -1).replace(/\\(["\\])/g, "$1"),
     ];
     const key = row.join("\0");
     if (seen.has(key)) continue;
     seen.add(key);
     rows.push(row);
   }
-  rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+  const tick = (v) => `\`${v}\``;
+  rows.sort(
+    (a, b) =>
+      tick(a[0]).localeCompare(tick(b[0])) ||
+      tick(a[1]).localeCompare(tick(b[1])),
+  );
   return rows;
 }
 

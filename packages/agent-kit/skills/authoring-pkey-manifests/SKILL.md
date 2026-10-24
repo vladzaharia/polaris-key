@@ -15,6 +15,8 @@ Reference (all now on the docs site, in the repo under `packages/docs/src/conten
 guide), `build/manifest/register.md` (getting a product into D1), and `start/concepts.md` (the
 canonical glossary).
 
+Every validator error and warning code, by manifest file: [references/validation-codes.md](references/validation-codes.md).
+
 ## Checklist
 
 ### 1. Scaffold

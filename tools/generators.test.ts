@@ -184,6 +184,7 @@ describe("pnpm gen selection", () => {
       "services",
       "channels",
       "roles-matrix",
+      "skills",
       "registry-docs",
       "readme-work",
       "ux-rows",
