@@ -117,31 +117,11 @@ public class LicenseClient(
     private suspend fun doc(): LicenseDoc? = core.cache().license?.doc
 
     /**
-     * True iff the gate is usable now AND the named entitlement is present with the value `true`
-     * (S-19 G11): a revoked, expired, blocked or never-activated install is entitled to nothing,
-     * whatever its last verified document said. Behaviour change in the SDK parity pass: it used
-     * to read the document alone.
+     * The held document's entitlement values, ungated: the raw read [EntitlementsClient] builds its
+     * gated reads on.
      */
-    public suspend fun isEntitled(name: String, now: Long? = null): Boolean {
-        if (!isUsable(status(now))) return false
-        return doc()?.entitlements?.get(name)?.value.boolValue == true
-    }
-
-    /**
-     * The raw value of the named entitlement (any JSON type), or null when absent OR when the gate is
-     * not usable (SP-51): a revoked, expired, blocked or never-activated install is entitled to
-     * nothing, as [isEntitled] says. [licenseInfo] stays the ungated diagnostic.
-     */
-    public suspend fun entitlementValue(name: String, now: Long? = null): JsonElement? {
-        if (!isUsable(status(now))) return null
-        return doc()?.entitlements?.get(name)?.value
-    }
-
-    /** Every entitlement's value; empty whenever the gate is not usable (SP-51), like [entitlementValue]. */
-    public suspend fun entitlements(now: Long? = null): Map<String, JsonElement> {
-        if (!isUsable(status(now))) return emptyMap()
-        return doc()?.entitlements?.mapValues { it.value.value } ?: emptyMap()
-    }
+    internal suspend fun documentEntitlements(): Map<String, JsonElement> =
+        doc()?.entitlements?.mapValues { it.value.value } ?: emptyMap()
 
     /**
      * The licence summary an account screen shows (notes/SDK-PARITY-PASS.md §3.3), read from the
@@ -164,13 +144,13 @@ public class LicenseClient(
     }
 
     /** The signed greeting block, or null. Signed so it cannot be spoofed locally. */
-    public suspend fun profile(): DocProfile? = doc()?.profile
+    public suspend fun getProfile(): DocProfile? = doc()?.profile
 
     /** The account signed in on this device (`profile.user`, SP-54), or null; a key-activated
      *  device (a holder email, no `user`) is null. Total. */
-    public suspend fun licenseUser(): SignedInUser? = im.plrs.key.core.licenseUser(doc())
+    public suspend fun getLicenseUser(): SignedInUser? = im.plrs.key.core.licenseUser(doc())
 
-    public suspend fun licenseId(): String? = doc()?.licenseId
+    public suspend fun getLicenseId(): String? = doc()?.licenseId
 
     /**
      * The channels this licence grants: the `channels` entitlement's string values, in order, as
@@ -196,7 +176,7 @@ public class LicenseClient(
         acquire(LicenseEndpoints.enroll(core, fingerprint()), TokenSource.enroll)
 
     /** Exchange a licence key for a per-device token. */
-    public suspend fun activate(key: String): ActivationResult =
+    public suspend fun activateWithKey(key: String): ActivationResult =
         acquire(LicenseEndpoints.activate(core, key, fingerprint()), TokenSource.activate)
 
     /** Persist a freshly issued token, then raise the acquisition event. A failed write is reported (R4-12). */

@@ -7,6 +7,7 @@ import im.plrs.key.config.ConfigClient
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.packs.PacksClient
 import im.plrs.key.release.DistributionClient
@@ -28,19 +29,19 @@ internal suspend fun apiSurface() {
     UpdateClientOptions::pinnedReleaseKeys  // options.pinnedReleaseKeys
     CoreOptions::baseUrl  // options.baseUrl
     CoreOptions::expectedServices  // options.expectedServices
-    ConfigClient::config  // config.get
-    ConfigClient::configSource  // config.getConfigSource
-    ConfigClient::secret  // config.getSecret
+    ConfigClient::get  // config.get
+    ConfigClient::getConfigSource  // config.getConfigSource
+    ConfigClient::getSecret  // config.getSecret
     ConfigClient::mintToken  // config.mintToken
     ConfigClient::set  // config.set
     ConfigClient::clear  // config.clear
     ConfigClient::clearAll  // config.clearAll
     ConfigClient::changes  // config.onConfigChange
     ConfigClient::setting  // config.setting
-    LicenseClient::activate  // license.activateWithKey
-    LicenseClient::isEntitled  // entitlements.has
-    LicenseClient::entitlementValue  // entitlements.value
-    LicenseClient::entitlements  // entitlements.all
+    LicenseClient::activateWithKey  // license.activateWithKey
+    EntitlementsClient::has  // entitlements.has
+    EntitlementsClient::value  // entitlements.value
+    EntitlementsClient::all  // entitlements.all
     PolarisKeyClient::events  // events
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation
@@ -51,7 +52,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::supports  // client.supports
     PolarisKeyClient::caps  // client.caps
     PolarisKeyClient::sync  // client.sync
-    PolarisKeyClient::syncState  // client.getSyncState
+    PolarisKeyClient::getSyncState  // client.getSyncState
     PolarisKeyClient::importBundle  // client.importBundle
     PolarisKeyClient::crashTags  // client.crashTags
     PolarisKeyClient::status  // client.status
@@ -60,7 +61,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::listDevices  // client.listDevices
     PolarisKeyClient::deauthorizeDevice  // client.deauthorizeDevice
     PolarisKeyClient::renameDevice  // client.renameDevice
-    PolarisKeyClient::startRefreshLoop  // client.startRefresh
+    PolarisKeyClient::startRefresh  // client.startRefresh
     PolarisKeyClient::close  // client.close
     ConfigClient::listUserConfig  // config.listUserConfig
     ConfigClient::schemaVersion  // config.schemaVersion
@@ -68,8 +69,8 @@ internal suspend fun apiSurface() {
     LicenseClient::activation  // license.activation
     LicenseClient::licenseInfo  // license.licenseInfo
     LicenseClient::entitledChannels  // license.entitledChannels
-    LicenseClient::profile  // license.getProfile
-    LicenseClient::licenseId  // license.getLicenseId
+    LicenseClient::getProfile  // license.getProfile
+    LicenseClient::getLicenseId  // license.getLicenseId
     LicenseClient::enroll  // license.enroll
     LicenseClient::deactivate  // license.deactivate
     IdentityClient::beginSignIn  // identity.beginSignIn
@@ -112,7 +113,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::register  // client.register
     PolarisKeyClient::currentDevice  // client.currentDevice
     PolarisKeyClient::deactivate  // client.deactivate
-    LicenseClient::licenseUser  // license.getLicenseUser
+    LicenseClient::getLicenseUser  // license.getLicenseUser
     CommerceClient::hiddenHere  // commerce.hiddenHere
     CommerceClient::isUnlocked  // commerce.isUnlocked
     LicenseClient::status  // license.status
@@ -123,10 +124,9 @@ internal suspend fun apiSurface() {
     PolarisKeyClient.Companion::createFromBundle  // client.createFromBundle
     ConfigClient::fetchCatalog  // config.fetchCatalog
     PolarisKeyClient.DevicesFacet::attest  // devices.attest
-    PolarisKeyClient.DevicesFacet::attestUnavailable  // devices.attestSupport
+    PolarisKeyClient.DevicesFacet::attestSupport  // devices.attestSupport
     UpdateClient::channelFeed  // update.channelFeed
     CommerceClient::products  // commerce.products
-    PolarisKeyClient::licenseChanges  // client.licenseChanges
     PolarisKeyClient::channelChoices  // client.channelChoices
     PolarisKeyClient::setChannel  // client.setChannel
     PolarisKeyClient::startInBackground  // client.startInBackground

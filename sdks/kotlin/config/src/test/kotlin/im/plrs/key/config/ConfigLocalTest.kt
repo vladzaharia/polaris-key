@@ -75,11 +75,11 @@ class ConfigLocalTest {
     fun aLocalOverrideBeatsTheDefaultAndNeverAnEnforcedEntry() = runBlocking {
         val c = config()
         c.set("ui.theme", JsonPrimitive("light"))
-        assertEquals(JsonPrimitive("light"), c.config("ui.theme", JsonPrimitive("x")))
-        assertEquals(ConfigSource.local, c.configSource("ui.theme"))
+        assertEquals(JsonPrimitive("light"), c.get("ui.theme", JsonPrimitive("x")))
+        assertEquals(ConfigSource.local, c.getConfigSource("ui.theme"))
         refused(ErrorCode.managedByAdmin) { c.set("admin.lock", JsonPrimitive(false)) }
         c.clear("ui.theme")
-        assertEquals(ConfigSource.remoteDefault, c.configSource("ui.theme"))
+        assertEquals(ConfigSource.remoteDefault, c.getConfigSource("ui.theme"))
     }
 
     @Test
@@ -93,7 +93,7 @@ class ConfigLocalTest {
         refused(ErrorCode.invalidOptions) { c.set("run.concurrency", JsonPrimitive(64)) }
         refused(ErrorCode.invalidOptions) { c.set("run.concurrency", JsonPrimitive(2.5)) }
         c.set("run.concurrency", JsonPrimitive(8))
-        assertEquals(JsonPrimitive(8), c.config("run.concurrency", JsonPrimitive(0)))
+        assertEquals(JsonPrimitive(8), c.get("run.concurrency", JsonPrimitive(0)))
     }
 
     @Test
@@ -104,7 +104,7 @@ class ConfigLocalTest {
             ConfigClient(core, ConfigClientOptions(environment = emptyMap())).set("ui.theme", JsonPrimitive("light"))
             val again = ConfigClient(core, ConfigClientOptions(environment = emptyMap()))
             assertEquals(mapOf("ui.theme" to JsonPrimitive("light")), again.localValues())
-            assertEquals(JsonPrimitive("light"), again.config("ui.theme", JsonPrimitive("x")))
+            assertEquals(JsonPrimitive("light"), again.get("ui.theme", JsonPrimitive("x")))
             assertEquals(true, java.io.File(dir, "local-config.json").isFile)
             // An explicit slot is honoured too.
             val slot = FileStateSlot(java.io.File(dir, "other.json"))

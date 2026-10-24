@@ -6,6 +6,7 @@ package im.plrs.key.ui
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -88,13 +91,13 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
     val client = this
     return object : PolarisGateActions {
         override suspend fun status(): LicenseState = client.status()
-        override suspend fun activate(key: String): ActivationResult = client.activate(key)
+        override suspend fun activate(key: String): ActivationResult = client.license.activateWithKey(key)
         override suspend fun enroll(): ActivationResult = client.enroll()
         override suspend fun sync() {
             client.sync()
         }
 
-        override val changes: Flow<LicenseState> get() = client.licenseChanges
+        override val changes: Flow<LicenseState> get() = client.events.filterIsInstance<PolarisEvent.License>().map { it.state }
     }
 }
 

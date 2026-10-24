@@ -99,7 +99,7 @@ class MainSafetyTest {
         }
         val client = runBlocking(Dispatchers.Main) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().penaltyDeath().build())
-            PolarisKeyAndroid.client(context, options).also { it.activate("pkey_${product}_key") }
+            PolarisKeyAndroid.client(context, options).also { it.license.activateWithKey("pkey_${product}_key") }
         }
 
         // Enumerate off the main thread.

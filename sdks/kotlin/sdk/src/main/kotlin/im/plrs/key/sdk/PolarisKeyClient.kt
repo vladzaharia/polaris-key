@@ -69,6 +69,7 @@ import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.license.LicenseEndpoints
@@ -257,6 +258,9 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         return core.attestDevice(provider).trustLevel == "attested"
     }
 
+    /** Entitlement reads: `has`, `value`, `all` (SP-35b). A thin view over [license]'s gate. */
+    public val entitlements: EntitlementsClient = EntitlementsClient(license)
+
     public val config: ConfigClient = ConfigClient(core, options.config, reacquire) { attestForRetry() }
     /**
      * The changelog, the URLs, record verification and `fetch()` (a verified, resumable build
@@ -383,7 +387,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val commerce: CommerceClient = CommerceClient(
         core,
         attest = { attestForRetry() },
-        isEntitled = { license.isEntitled(it) },
+        isEntitled = { entitlements.has(it) },
         outletKind = { update.outlet()?.kind },
     )
 
@@ -397,8 +401,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
          */
         public suspend fun attest(): AttestResult = core.attestDevice(attestation())
 
-        /** Why this install cannot attest, or null when it can. Offline. */
-        public fun attestUnavailable(): im.plrs.key.core.Unsupported? = attestation().unavailable()
+        /** Whether [attest] can run here, as `supports(devices.attest)` would answer it. Offline. */
+        public fun attestSupport(): im.plrs.key.core.Support {
+            val u = attestation().unavailable() ?: return im.plrs.key.core.Support.Supported(im.plrs.key.core.Feature.devicesAttest)
+            return im.plrs.key.core.Support.Unavailable(u)
+        }
 
         public suspend fun register(): RegisterResult = this@PolarisKeyClient.register()
 
@@ -413,15 +420,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
     public val identity: IdentityClient = IdentityClient(core, onAcquired = { syncAfterAcquisition() })
-
-    private val changes = MutableSharedFlow<LicenseState>(extraBufferCapacity = 16)
-
-    /**
-     * The licence state after every transition (SP-51): an activation, a sync that moved the
-     * documents OR the gate (a 401 that revoked this device, a block, grace and expiry as the floor
-     * moves), a deactivation or wipe. A state equal to the last one emitted is not emitted again.
-     */
-    public val licenseChanges: SharedFlow<LicenseState> = changes.asSharedFlow()
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
 
@@ -449,7 +447,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             stateFlow.value = read
             changed
         }
-        if (emit) changes.tryEmit(state!!)
+        if (emit) eventFlow.tryEmit(PolarisEvent.License(state!!))
     }
 
     private fun sha256Hex(text: String): String =
@@ -460,11 +458,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     private val eventFlow = MutableSharedFlow<PolarisEvent>(extraBufferCapacity = 64)
 
-    /** Licence, config, update-offer and pack events, for every subscriber (§3.11). */
+    /**
+     * Licence, config, update-offer and pack events, for every subscriber (§3.11). A
+     * [PolarisEvent.License] follows every licence transition (SP-51): an activation, a sync that
+     * moved the documents OR the gate (a 401 that revoked this device, a block, grace and expiry as
+     * the floor moves), a deactivation or wipe. A state equal to the last one is not emitted again.
+     */
     public val events: SharedFlow<PolarisEvent> = eventFlow.asSharedFlow()
 
     init {
-        scope.launch { changes.collect { eventFlow.emit(PolarisEvent.License(it)) } }
         scope.launch { config.changes.collect { eventFlow.emit(PolarisEvent.Config(it)) } }
         scope.launch { update.offers.collect { eventFlow.emit(PolarisEvent.UpdateAvailable(it)) } }
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
@@ -488,7 +490,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
                 }
             }
         }
-        startRefreshLoop()
+        startRefresh()
     }
 
     /**
@@ -706,7 +708,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     /** The bridge contract, assembled from the managers that own each piece. */
-    public suspend fun syncState(): SyncState {
+    public suspend fun getSyncState(): SyncState {
         val cache = core.cache()
         return SyncState(
             activation = license.activation(),
@@ -731,10 +733,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public suspend fun status(now: Long? = null): LicenseState = license.status(now)
 
     public suspend fun isLicensed(now: Long? = null): Boolean = license.isLicensed(now)
-
-    public suspend fun config(key: String, default: JsonElement): JsonElement = config.config(key, default)
-
-    public suspend fun activate(key: String): ActivationResult = license.activate(key)
 
     public suspend fun enroll(): ActivationResult = license.enroll()
 
@@ -813,7 +811,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────
     /** Start polling on `refreshIntervalSeconds` (no-op when unset, already running or local-only). */
     @Synchronized
-    public fun startRefreshLoop() {
+    public fun startRefresh() {
         val seconds = refreshIntervalSeconds ?: return
         if (seconds <= 0 || refreshJob != null || core.localOnly) return
         refreshJob = scope.launch {

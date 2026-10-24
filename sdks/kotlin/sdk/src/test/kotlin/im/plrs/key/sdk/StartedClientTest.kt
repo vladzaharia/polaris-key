@@ -62,7 +62,7 @@ class StartedClientTest {
         }
         val client = PolarisKeyClient(options(InMemoryStore("djdl", "dev-started"), transport))
         // No start(): the activation itself loads the device id first.
-        val result = client.activate("pkey_djdl_key")
+        val result = client.license.activateWithKey("pkey_djdl_key")
         assertTrue("$result", result is ActivationResult.Ok)
         val activate = transport.requests().first { it.path == "/djdl/license/activate" }
         assertEquals("dev-started", activate.headers[HeaderName.device])

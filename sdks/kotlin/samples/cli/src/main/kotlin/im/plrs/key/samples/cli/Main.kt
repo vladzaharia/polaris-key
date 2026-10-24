@@ -32,11 +32,11 @@ public suspend fun run(client: PolarisKeyClient, command: List<String>, out: Pri
                 client.license.licenseInfo()?.let { info ->
                     out.println("licence: ${info.licenseId} tier=${info.tier ?: "-"} devices=${info.deviceLimit ?: "-"}")
                 }
-                out.println("entitlements: ${client.license.entitlements().keys.sorted().joinToString(", ").ifEmpty { "-" }}")
+                out.println("entitlements: ${client.entitlements.all().keys.sorted().joinToString(", ").ifEmpty { "-" }}")
             }
             "activate" -> {
                 val key = command.getOrNull(1) ?: return usage(out)
-                when (val r = client.activate(key)) {
+                when (val r = client.license.activateWithKey(key)) {
                     is ActivationResult.Ok -> out.println("activated")
                     else -> {
                         out.println("refused: $r")
@@ -46,7 +46,7 @@ public suspend fun run(client: PolarisKeyClient, command: List<String>, out: Pri
             }
             "config" -> {
                 val key = command.getOrNull(1) ?: return usage(out)
-                out.println("$key = ${client.config(key, JsonNull)} (${client.config.configSource(key)?.name ?: "unset"})")
+                out.println("$key = ${client.config.get(key, JsonNull)} (${client.config.getConfigSource(key)?.name ?: "unset"})")
             }
             "set" -> {
                 val key = command.getOrNull(1) ?: return usage(out)

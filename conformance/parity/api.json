@@ -431,6 +431,11 @@
         "ns": "presentation",
         "type": "PresentationSource",
         "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Presentation.kt"
+      },
+      {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/EntitlementsClient.kt"
       }
     ],
     "godot": [
@@ -1531,11 +1536,6 @@
     },
     {
       "sdk": "kotlin",
-      "path": "client.activate",
-      "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
-    },
-    {
-      "sdk": "kotlin",
       "path": "client.enroll",
       "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
     },
@@ -2183,6 +2183,11 @@
       "sdk": "godot",
       "path": "presentation.same",
       "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
   "concepts": [
@@ -2355,10 +2360,7 @@
         "swift": {
           "labels": ["_", "default"]
         },
-        "kotlin": {
-          "spelling": "config",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "get_value",
           "reason": "Object.get is a native method"
@@ -2382,10 +2384,7 @@
         "react": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "configSource",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "get_config_source"
         }
@@ -2407,10 +2406,7 @@
         "python": {},
         "godot": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "secret",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -2730,10 +2726,7 @@
         "python": {},
         "godot": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "activate",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "react": {
           "spelling": "usePolarisKey().submitKey",
           "shape": "hook",
@@ -2759,10 +2752,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {},
         "react": {
           "spelling": "useEntitlement",
@@ -2785,10 +2775,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {},
         "react": {
           "planned": "LX-19",
@@ -2805,10 +2792,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "license.entitlements",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {},
         "react": {
           "planned": "LX-19",
@@ -3134,10 +3118,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "syncState",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3246,10 +3227,7 @@
       "sdks": {
         "node": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "startRefreshLoop",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3352,10 +3330,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "profile",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3367,10 +3342,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "licenseId",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -4085,10 +4057,7 @@
       "sdks": {
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "licenseUser",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -4550,10 +4519,7 @@
       "kind": "method",
       "sdks": {
         "swift": {},
-        "kotlin": {
-          "spelling": "attestUnavailable",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -4687,17 +4653,6 @@
       "sdks": {
         "swift": {},
         "kotlin": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "client.licenseChanges",
-      "kind": "stream",
-      "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
       },
       "layer": "client"
     },
@@ -5960,6 +5915,166 @@
       "scan": {
         "pattern": "\\bbuildURL\\s*\\(",
         "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.syncState\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.startRefreshLoop()",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.startRefreshLoop\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "DevicesFacet.attestUnavailable()",
+      "to": "devices.attestSupport",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.attestUnavailable\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyFutures.isEntitled",
+      "to": "hasEntitlement",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:pk|futures)\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.config(key, default)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.activate",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|futures)\\.activate\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "client.licenseChanges",
+      "package": "SP-35b",
+      "note": "collect `events` filtered to `PolarisEvent.License`, or `licenseState`",
+      "scan": {
+        "pattern": "\\.licenseChanges\\b",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
       }
     }
   ]
