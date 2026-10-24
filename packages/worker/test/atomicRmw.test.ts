@@ -14,11 +14,7 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import {
-  rotateDeviceToken,
-  touchDeviceMetadata,
-  validateDeviceToken,
-} from "../src/core/devices.js";
+import { rotateDeviceToken, touchDeviceMetadata } from "../src/core/devices.js";
 import {
   claimDeviceSeat,
   getDevice,

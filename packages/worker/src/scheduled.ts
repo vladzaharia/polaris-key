@@ -79,7 +79,6 @@ import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   SUMMARY_NAMES_MAX,
-  listNames,
   pruneHeartbeats,
   pruneJobRuns,
   recordJobRun,

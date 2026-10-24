@@ -636,7 +636,7 @@ async function seedReleaseKey(
   db: Db,
   slug: string,
   key: Pins,
-  notes: string[],
+  _notes: string[],
 ): Promise<Pins[] | null> {
   const row = await db.first<{ release_keys_json: string | null }>(
     "SELECT release_keys_json FROM release_config WHERE product = ?",

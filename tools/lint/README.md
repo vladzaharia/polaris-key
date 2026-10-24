@@ -60,5 +60,7 @@ export function parse(text, { root }) {
    ledger.
 3. A CI step runs `lint.sh check`.
 
+`size.mjs` is the 800-line budget for `packages/worker/src` (rule `size:over-800`, ledger `debt/size.json`; `pnpm lint:size`, `pnpm lint:size:record`).
+
 `generated.json` is written by `pnpm gen registry-docs`; do not edit it. `jsonl-test` is a
 fixture-only adapter for `lint-debt.test.ts`.

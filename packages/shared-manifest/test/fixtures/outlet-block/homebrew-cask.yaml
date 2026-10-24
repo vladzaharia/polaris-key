@@ -2,10 +2,7 @@ outlets:
   # Homebrew
   homebrew:
     kind: direct
-    # Platforms the direct download offers.
-    platforms:
-      - macos
-    # Homebrew cask token.
-    homebrewCask: dice
     # Your own tap, <owner>/homebrew-<name>.
     homebrewTap: acme/homebrew-tap
+    # Homebrew cask token.
+    homebrewCask: dice

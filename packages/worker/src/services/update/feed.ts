@@ -300,7 +300,7 @@ export async function computeAppcast(
   waitUntil: ((promise: Promise<unknown>) => void) | undefined,
   step: UpdateStep,
 ): Promise<Response> {
-  const { req, env, db, cfg, product, origin, now, fetchImpl } = ctx;
+  const { req, env, db, cfg, product, origin, now } = ctx;
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
   const arch = params.arch ?? DEFAULT_APPCAST_ARCH;

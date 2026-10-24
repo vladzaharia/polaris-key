@@ -69,6 +69,7 @@ import {
 } from "./doctor.js";
 import { nearest } from "./suggest.js";
 import {
+  failLine,
   Spinner,
   termFor,
   type Term,
@@ -885,18 +886,6 @@ function unknownOption(flag: string, term: Term): string {
     `Unknown option ${flag.split("=")[0]}. Run pkey help to see the options.`,
     term,
   );
-}
-
-function failLine(text: string, term: Term): string {
-  const { painter, symbols, caps } = term;
-  const lines = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
-  return `${lines
-    .map((l, i) =>
-      i === 0
-        ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}`
-        : `   ${painter.line(l)}`,
-    )
-    .join("\n")}\n`;
 }
 
 /**

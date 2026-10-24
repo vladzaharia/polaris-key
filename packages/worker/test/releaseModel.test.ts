@@ -74,7 +74,7 @@ function apply(raw: Database.Database, files: string[]): void {
 
 /** Today's shapes, as the pre-P2-03 sync wrote them: no deliverable, no seq, no role. */
 async function seedLegacyStore(db: SqliteDb): Promise<void> {
-  await seedProduct(db, SLUG);
+  await seedProduct(db, SLUG, { beforeMigration0106: true });
   await db.run(
     `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, beta_branch,
        binary_name, summary_marker)

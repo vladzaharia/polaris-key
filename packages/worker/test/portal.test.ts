@@ -38,7 +38,6 @@ import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../src/services/identity/portal/session.js";
 
 const PORTAL_SECRET = "test-portal-session-secret";

@@ -36,7 +36,6 @@ import {
   getActiveSchema,
   getProductSyncState,
   getProduct,
-  setAutoIssuePolicy,
   setServices,
 } from "../src/core/products/store.js";
 import { getReleaseConfig } from "../src/services/release/index.js";

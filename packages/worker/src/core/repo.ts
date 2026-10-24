@@ -5,7 +5,7 @@
 // predicate on every statement) so a tenant boundary can't be crossed even on a logic bug, and
 // takes the `Db` abstraction, so it unit-tests against in-memory SQLite and runs unchanged on D1.
 
-import type { Db, DbParam, DbStatement } from "../db/types.js";
+import type { Db } from "../db/types.js";
 
 // ── Row types (mirror migrations/0001_init.sql) ──────────────────────────────
 export interface ProductRow {

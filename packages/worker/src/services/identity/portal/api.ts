@@ -26,7 +26,6 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { isAllowedDownloadRedirectHost } from "../../../core/hosts.js";
 import { isAllowedStorageHost } from "../../../platform/http.js";
 import { parseJsonOr } from "../../../platform/json.js";
-import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type {

@@ -29,6 +29,7 @@ import im.plrs.key.ui.PolarisCopy
 import im.plrs.key.ui.PolarisKeyWindow
 import im.plrs.key.ui.PolarisKeyWindowState
 import im.plrs.key.ui.PolarisSettingsPane
+import im.plrs.key.ui.rememberPolarisOpener
 import im.plrs.key.update.UpdateClientOptions
 import kotlin.system.exitProcess
 import kotlinx.coroutines.delay
@@ -73,7 +74,7 @@ fun main(args: Array<String>) {
             copy = PolarisCopy(productName = title),
             decide = { world?.decide() ?: client.update.decide() },
         ) {
-            TidewaterApp(title, smoke = options.smoke)
+            TidewaterApp(title, smoke = options.smoke, openLink = options.openLink)
         }
         LaunchedEffect(options.start) {
             when (options.start) {
@@ -88,9 +89,16 @@ fun main(args: Array<String>) {
 
 /** The product's own screen, shown once the licence allows it. */
 @Composable
-private fun TidewaterApp(title: String, smoke: Boolean) {
+private fun TidewaterApp(title: String, smoke: Boolean, openLink: String?) {
+    val opener = rememberPolarisOpener()
     LaunchedEffect(smoke) {
         if (smoke) {
+            if (openLink != null) {
+                // The Flatpak portal check: the link goes through the kit's opener, and the Settings-portal reads
+                // (made when the window opened) get a moment to land before the process exits.
+                println("smoke: link ${if (opener(openLink)) "handed to the desktop" else "refused"}")
+                delay(2_000)
+            }
             println("smoke: the gate let $title through")
             exitProcess(0)
         }

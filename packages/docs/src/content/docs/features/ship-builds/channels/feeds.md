@@ -138,6 +138,12 @@ the repo key.
    registration replaces the release track's previous set in one batch, so a client never reads a new
    `entry.jar` beside an old index.
 
+**In CI.** `channels: auto` runs the build after an app `release publish`, from the APKs in `dir`: the keystore is `$PKEY_FDROID_KEYSTORE`, its alias `$PKEY_FDROID_ALIAS` and its password `$PKEY_FDROID_KS_PASS`. Run it yourself with `pkey storefront fdroid --product <slug> --channel stable --out fdroid --keystore fdroid.keystore --alias repo`.
+
+- `apksigner` comes from `$ANDROID_HOME/build-tools`, or `--apksigner`. The signer is checked against the product's `fdroid-repo` key before anything is uploaded.
+- It needs `distribution:feeds`, which an operator adds deliberately. Without `--keystore` it writes the unsigned files and stops.
+- `--out` must be a directory of its own. The command replaces only the files it writes there, and refuses the working directory, a parent of it, or a directory that holds anything else; keep the keystore and the APKs outside it.
+
 The relay then serves **only registered files**, using the content type the Worker chose for
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
 that the registered `index-v2.json` names, and that the release track's feed still selects, is a `302`

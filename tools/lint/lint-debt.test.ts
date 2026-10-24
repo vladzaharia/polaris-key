@@ -213,3 +213,39 @@ describe("CLI over stdin", () => {
     expect(cli(["check", ...base], "garbage").status).toBe(2);
   });
 });
+
+describe("size budget (P0-30.3)", () => {
+  const sizeRun = (mode: string, text: string) => {
+    writeFileSync(input, text);
+    return run([mode, "--tool", "size", "--ledger", ledger, "--input", input]);
+  };
+  const over = (file: string, n: number) => `${file}\t${n}\n`;
+
+  it("fails a new 801-line file as new:", async () => {
+    writeFileSync(ledger, ledgerOf({}));
+    const r = await sizeRun("check", over("packages/worker/src/a.ts", 801));
+    expect(r.code).toBe(1);
+    expect(r.out).toEqual([
+      "new: packages/worker/src/a.ts size:over-800 1 (ledger 0)",
+    ]);
+  });
+
+  it("fails a ledgered file cut to 800 as cleared (re-record):", async () => {
+    writeFileSync(
+      ledger,
+      ledgerOf({ "packages/worker/src/a.ts": { "size:over-800": 1 } }),
+    );
+    const r = await sizeRun("check", "");
+    expect(r.code).toBe(1);
+    expect(r.out[0]).toContain("cleared (re-record): packages/worker/src/a.ts");
+  });
+
+  it("skips a generated file and passes a ledgered one", async () => {
+    writeFileSync(
+      ledger,
+      ledgerOf({ "packages/worker/src/a.ts": { "size:over-800": 1 } }),
+    );
+    const text = readFileSync(join(HERE, "fixtures", "size.txt"), "utf8");
+    expect((await sizeRun("check", text)).code).toBe(0);
+  });
+});

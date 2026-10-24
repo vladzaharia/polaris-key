@@ -14,7 +14,7 @@ import type {
   SyncJson,
   SyncMutation,
 } from "@polaris-key/protocol/sync";
-import { makeTestDb, NO_HOOKS } from "./helpers.js";
+import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
   makeEnv,
@@ -33,7 +33,7 @@ import type { Env } from "../src/platform/env.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
 import { serializeWebOrigins } from "../src/core/cors.js";
-import { loadProduct, type Product } from "../src/core/products.js";
+import { loadProduct } from "../src/core/products.js";
 import { setDeviceSubject } from "../src/core/accounts/accountSubjects.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { handleActivate } from "../src/services/license/activation.js";
@@ -46,10 +46,8 @@ import { recordLimiterChecks } from "./rlMock.js";
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
 const LISTED = "https://play.djdl.example";
-const UNLISTED = "https://evil.example";
 const DEVICE = "dev-push-1";
 const CLIENT = "c_AAAAAAAAAAAAAAAAAAAAAA";
-const OTHER_CLIENT = "c_BBBBBBBBBBBBBBBBBBBBBB";
 
 const entry = (key: string, schema: unknown, extra: object = {}) => ({
   key,
@@ -230,8 +228,6 @@ const resultsOf = async (res: Response): Promise<MutationResult[]> => {
   expect(res.status).toBe(200);
   return ((await res.json()) as PushResponse).results;
 };
-const errorOf = async (res: Response) =>
-  ((await res.json()) as { error: { code: string } }).error.code;
 
 afterEach(() => vi.useRealTimers());
 

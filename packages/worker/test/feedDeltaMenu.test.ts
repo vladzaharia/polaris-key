@@ -325,17 +325,6 @@ async function publish(
   };
 }
 
-/** v1 and v2 of the core pack (variant `texture=s3tc`), v2 with a payload delta from v1. */
-async function coreV1V2() {
-  await access(CORE, "public");
-  const v1 = await publish(CORE, "1.0.0", 1, { variant: { texture: "s3tc" } });
-  const v2 = await publish(CORE, "1.1.0", 2, {
-    variant: { texture: "s3tc" },
-    from: v1.payloadSha256,
-  });
-  return { v1, v2 };
-}
-
 function payloadUrl(
   pack: string,
   variant: string,
@@ -354,7 +343,6 @@ function get(
   return call(env, db, noFetch, url, { method, headers });
 }
 
-const CHROMIUM_AE = "gzip, deflate, br, zstd";
 const CHROMIUM_AE_DCZ = "gzip, deflate, br, zstd, dcz";
 const sfBinary = (hex: string) =>
   `:${Buffer.from(hex, "hex").toString("base64")}:`;

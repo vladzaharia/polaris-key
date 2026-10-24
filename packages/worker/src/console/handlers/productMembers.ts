@@ -29,11 +29,8 @@ import {
 } from "../../core/rbac/bindings.js";
 import {
   consoleDirectoryPeople,
-  consoleRootHolders,
   type ConsoleDirectoryPerson,
 } from "../../services/identity/public.js";
-import type { Db } from "../../db/types.js";
-import type { Env } from "../../platform/env.js";
 import type { AdminCtx } from "../routes.js";
 import { createBinding, editBinding, revokeBinding } from "./bindings.js";
 import { superadminAccountIds } from "./accessShared.js";

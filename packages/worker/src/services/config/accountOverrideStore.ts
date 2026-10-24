@@ -134,7 +134,7 @@ export const accountOverrideStore: SubjectStore = {
     await db.batch([stmtDeleteAccountOverrides(product, subject)]);
   },
 
-  async export({ db, now }, { product, subject }) {
+  async export({ db }, { product, subject }) {
     const row = await getAccountOverrides(db, product, subject);
     const p = parseAccountOverridePayload(row?.payload_json ?? null);
     const catalog = await catalogOf(db, product);

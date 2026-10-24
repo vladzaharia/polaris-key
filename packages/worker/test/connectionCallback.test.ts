@@ -137,7 +137,7 @@ async function emailAccount(db: Db, email: string): Promise<string> {
 
 /** `/login/sso/<id>`, the IdP, then `/callback`, in one browser. */
 async function signInThrough(
-  w: CardWorld,
+  _w: CardWorld,
   d: Device,
   claims: Record<string, unknown>,
   query = "",

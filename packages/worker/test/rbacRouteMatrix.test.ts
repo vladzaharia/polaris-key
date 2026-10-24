@@ -112,7 +112,6 @@ const BY_KEY: Record<string, { key: string; area: AreaId }> = {
 // ── Driving the dispatcher ──────────────────────────────────────────────────────────────────
 
 const ADMIN_GROUP = "admins";
-let env: Env;
 let db: Db;
 
 beforeAll(async () => {

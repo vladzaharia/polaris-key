@@ -17,10 +17,22 @@
  */
 
 import path from "node:path";
-import { channelForOutlet, type ChannelEntry } from "@polaris-key/manifest";
+import {
+  channelForOutlet,
+  findChannel,
+  type ChannelEntry,
+} from "@polaris-key/manifest";
 import { cellWidth, wrapSpans, type Line } from "@polaris-key/node/terminal";
+import { envelope } from "./account.js";
 import type { ChannelArgs, ChannelIo } from "./channel.js";
+import {
+  SYNC_USAGE,
+  manifestFailure,
+  termOf,
+  unknownOption,
+} from "./channel.js";
 import { UsageError } from "./errors.js";
+import { canRequestGithubOidc, CI_TOKEN_ENV } from "./oidc.js";
 import { buildFdroidFeed, DEFAULT_KS_PASS_ENV } from "./feeds.js";
 import {
   descriptorManifestOf,
@@ -29,10 +41,14 @@ import {
   type MatchedBuild,
 } from "./publish.js";
 import { loadManifest } from "./manifest.js";
-import { termFor, type Term, type TermOut } from "./terminal.js";
-import { untrusted, untrustedJson } from "./untrusted.js";
+import { failLine, type Term, type TermOut } from "./terminal.js";
+import { untrusted } from "./untrusted.js";
 import { loadStepProduct, type StepOutlet } from "./storefronts/outlets.js";
-import { PR_TOKEN_ENV, runPrStep } from "./storefronts/prRun.js";
+import {
+  FirstSubmissionError,
+  PR_TOKEN_ENV,
+  runPrStep,
+} from "./storefronts/prRun.js";
 import { itchPushStep } from "./storefronts/itch.js";
 import { runStoreSteps, commandLine } from "./storefronts/run.js";
 import { snapUploadStep } from "./storefronts/snap.js";
@@ -58,7 +74,7 @@ export interface SyncRow {
   state: RowState;
   /** The secret's environment variable when it is what the row waits on (never its value). */
   secret?: string;
-  reason?: "missing-secret" | "needs-dir" | "no-file";
+  reason?: "missing-secret" | "needs-dir" | "no-file" | "first-submission";
   /** local-files: the matched build's platform and its file (absolute). */
   platform?: string;
   file?: string;
@@ -150,7 +166,7 @@ function filesFor(
   return out;
 }
 
-/** The plan: pure, no network. Rows follow `.pkey/distribution`'s order. */
+/** The plan: pure, no network. Rows follow the manifest's outlet order, which is alphabetical by id. */
 export function planSync(
   outlets: readonly StepOutlet[],
   o: PlanOptions,
@@ -342,6 +358,12 @@ async function runRows(
         if (r.pr?.url) row.url = r.pr.url;
       }
     } catch (err) {
+      if (err instanceof FirstSubmissionError) {
+        // Not a failure: Flathub's first submission is a person's, with its own files.
+        row.state = "skipped";
+        row.reason = "first-submission";
+        continue;
+      }
       row.state = "failed";
       row.error = (err instanceof Error ? err.message : String(err)).split(
         "\n",
@@ -370,7 +392,9 @@ function describe(r: SyncRow, dryRun: boolean): string {
         ? `skipped: ${r.secret} is not set`
         : r.reason === "no-file"
           ? "skipped: no fitting file under --dir"
-          : "skipped: needs --dir";
+          : r.reason === "first-submission"
+            ? "skipped: the first submission is by hand (pkey storefront flathub init)"
+            : "skipped: needs --dir";
     case "done":
       return r.platform && r.store === "itch"
         ? `pushed ${r.platform}`
@@ -388,10 +412,14 @@ function describe(r: SyncRow, dryRun: boolean): string {
   }
 }
 
+/** A row's name: its channel, and its outlet id too when that differs (`scoop (homebrew)`). */
+const labelOf = (r: SyncRow): string =>
+  r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
+
 function writeText(
   rows: readonly SyncRow[],
   product: string,
-  channel: string,
+  track: string,
   dryRun: boolean,
   io: ChannelIo,
   term: Term,
@@ -399,13 +427,40 @@ function writeText(
   const { painter, symbols, caps } = term;
   const u = (v: string) => untrusted(v, io.env);
   const out = io.stdout;
-  out.write(
-    `${painter.style(`Channels for ${u(product)}`, ["strong"])} ${painter.style(`${symbols.separator} ${u(channel)}${dryRun ? ` ${symbols.separator} dry run` : ""}`, ["muted"])}\n`,
-  );
   if (!rows.length) {
-    out.write("Nothing to sync: no pr or ci outlet in .pkey/distribution.\n");
+    out.write(
+      "Nothing to sync. Sync covers winget, Homebrew, Scoop, Flathub, itch.io, Snap and F-Droid; add one with pkey channel add <id>.\n",
+    );
     return;
   }
+  const count = (s: RowState[]) =>
+    rows.filter((r) => s.includes(r.state)).length;
+  const failed = count(["failed"]);
+  const parts = [
+    failed && `${failed} failed`,
+    dryRun
+      ? count(["planned"]) && `${count(["planned"])} planned`
+      : count(["opened", "existing", "unchanged", "done"]) &&
+        `${count(["opened", "existing", "unchanged", "done"])} done`,
+    count(["skipped"]) && `${count(["skipped"])} skipped`,
+  ].filter(Boolean);
+  const glyph = failed
+    ? painter.style(symbols.fail, ["danger"])
+    : dryRun
+      ? painter.style(symbols.stepActive, ["muted"])
+      : parts.length === 1 && count(["skipped"])
+        ? painter.style(symbols.warn, ["warning"])
+        : painter.style(symbols.ok, ["success"]);
+  out.write(
+    `${glyph}  ${painter.line([
+      { text: u(product), style: ["strong"] },
+      {
+        text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
+        style: ["muted"],
+      },
+      { text: `: ${parts.join(", ")}` },
+    ])}\n`,
+  );
   const width = Math.max(10, caps.columns - 3);
   const markOf = (r: SyncRow): string =>
     r.state === "failed"
@@ -417,7 +472,7 @@ function writeText(
           : painter.style(symbols.ok, ["success"]);
   for (const r of rows) {
     const spans: Line = [
-      { text: `${u(r.outlet)}`, style: ["strong"] },
+      { text: u(labelOf(r)), style: ["strong"] },
       { text: ": ", style: ["muted"] },
       { text: u(describe(r, dryRun)) },
     ];
@@ -434,14 +489,6 @@ function writeText(
         `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}\n`,
       );
   }
-  const count = (s: RowState[]) =>
-    rows.filter((r) => s.includes(r.state)).length;
-  const parts = dryRun
-    ? [`${count(["planned"])} planned`]
-    : [`${count(["opened", "existing", "unchanged", "done"])} done`];
-  if (count(["skipped"])) parts.push(`${count(["skipped"])} skipped`);
-  if (count(["failed"])) parts.push(`${count(["failed"])} failed`);
-  out.write(`${parts.join(", ")}\n`);
 }
 
 /** The builds under `dir` that `.pkey/release`'s artifacts map names (as `release publish` matches). */
@@ -459,47 +506,74 @@ async function matchBuilds(cwd: string, dir: string): Promise<MatchedBuild[]> {
   return m.builds;
 }
 
+export const NO_CI_CREDENTIAL =
+  "No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.";
+
+const KNOWN_FLAGS = [
+  "channel",
+  "version",
+  "dir",
+  "dry-run",
+  "json",
+  "product",
+  "base-url",
+  "no-report",
+];
+
 /** `pkey channel sync`. */
 export async function channelSync(
   a: ChannelArgs,
   io: ChannelIo,
 ): Promise<number> {
-  if (a.positional.length > 1)
+  const bad = unknownOption(a, io, KNOWN_FLAGS);
+  if (bad !== null) return bad;
+  if (a.positional.length > 1) throw new UsageError(SYNC_USAGE);
+  const track = str(a, "channel") ?? "stable";
+  if (findChannel(track))
     throw new UsageError(
-      "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]",
+      `--channel is the release track (stable, beta, dev, …); ${track} is a distribution channel.`,
     );
   const dryRun = bool(a, "dry-run");
   const json = bool(a, "json");
-  const product = await loadStepProduct(io.cwd, str(a, "product"));
+  let product;
+  try {
+    product = await loadStepProduct(io.cwd, str(a, "product"));
+  } catch (e) {
+    return manifestFailure("channel sync", e, io, json);
+  }
   const dir = str(a, "dir");
   const builds = dir ? await matchBuilds(io.cwd, dir) : [];
   const rows = planSync(product.outlets, { dir, builds, env: io.env });
+  // One check before any step: every step reports into the ledger with the CI credential.
+  if (
+    rows.some((r) => r.state === "planned") &&
+    !io.env[CI_TOKEN_ENV]?.trim() &&
+    !canRequestGithubOidc(io.env)
+  ) {
+    if (json)
+      io.stdout.write(
+        envelope("channel sync", 1, {
+          error: "no-ci-credential",
+          message: NO_CI_CREDENTIAL,
+        }),
+      );
+    else
+      io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
+    return 1;
+  }
   await runRows(rows, a, io, product.slug, product.outlets, dryRun);
-  const channel = str(a, "channel") ?? "stable";
   const failed = rows.some((r) => r.state === "failed");
   if (json) {
     io.stdout.write(
-      `${untrustedJson(
-        {
-          ok: !failed,
-          dryRun,
-          product: product.slug,
-          channel,
-          steps: rows.map((r) => ({ ...r, notes: undefined })),
-        },
-        2,
-      )}\n`,
+      envelope("channel sync", failed ? 1 : 0, {
+        dryRun,
+        product: product.slug,
+        track,
+        steps: rows.map(({ store: _store, notes: _notes, ...r }) => r),
+      }),
     );
   } else {
-    const stdout = io.stdout as TermOut;
-    writeText(
-      rows,
-      product.slug,
-      channel,
-      dryRun,
-      io,
-      (io.term ?? ((o: TermOut) => termFor(o, io.env)))(stdout),
-    );
+    writeText(rows, product.slug, track, dryRun, io, termOf(io, io.stdout));
   }
   return failed ? 1 : 0;
 }

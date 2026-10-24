@@ -28,6 +28,26 @@ Removed · 2026-10-24 · distribution
 
 **Action required:** change the command in your CI. `pkey feeds fdroid` exits 2 and runs nothing. The flags are the same.
 
+### pkey channel add and sync
+
+Added · 2026-10-24 · distribution
+
+`pkey channel add <id>` appends a channel to `.pkey/distribution`. `pkey channel sync` runs the steps your declared channels have. The publish Action runs `sync` after an app release unless you set `channels: none`.
+
+### Publish Action takes eight inputs
+
+Breaking · 2026-10-24 · release · distribution
+
+**Action required:** move every removed input into `args`. The Action now takes `command`, `args`, `release-key`, `content-key`, `base-url`, `working-directory`, `dry-run` and `channels`; any other `with:` key fails the step and names the flag to use. The product comes from `.pkey/product`.
+
+```yaml
+with:
+  args: --tag ${{ github.ref_name }} --channel beta --dir dist
+  release-key: ${{ secrets.PKEY_RELEASE_KEY }}
+```
+
+After a successful app publish, `channels: auto` (the default) runs `pkey channel sync`. Set `channels: none` to skip it.
+
 ## 0.9.0
 
 ### The license-override migration is gone

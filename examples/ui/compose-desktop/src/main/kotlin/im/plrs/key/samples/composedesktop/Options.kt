@@ -49,13 +49,15 @@ internal data class Options(
     val height: Int = 640,
     val shots: String? = null,
     val smoke: Boolean = false,
+    /** With `--smoke`: open this https link through the kit's opener, then wait for the host-fact reads (the Flatpak portal check). */
+    val openLink: String? = null,
     /** Draw under the macOS title bar (the Mac sheet floats 52 dp down). */
     val fullSize: Boolean = true,
 ) {
     companion object {
         const val USAGE = """usage: [--live] [--state walk|activate|limit|gate|update|progress|settings|devices] [--scheme light|dark]
        [--preset polaris|native] [--platform macos|windows|gnome] [--size WxH] [--plain]
-       [--shots <dir>] [--smoke]
+       [--shots <dir>] [--smoke [--open-link <https url>]]
   --live reads PKEY_PRODUCT, PKEY_BASE_URL and PKEY_TRUST (k1=<key>,...); PKEY_RELEASE_KEYS pins the update keys."""
 
         fun parse(args: Array<String>): Options {
@@ -75,6 +77,7 @@ internal data class Options(
                         val parts = value(flag).lowercase().split('x')
                         o = o.copy(width = parts.getOrNull(0)?.toIntOrNull() ?: fail("--size is WxH"), height = parts.getOrNull(1)?.toIntOrNull() ?: fail("--size is WxH"))
                     }
+                    "--open-link" -> o = o.copy(openLink = value(flag))
                     "--shots" -> o = o.copy(shots = value(flag))
                     else -> fail("unknown flag $flag")
                 }

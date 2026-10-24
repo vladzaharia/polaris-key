@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
-import { NOW, seedProduct } from "./seed.js";
+import { seedProduct } from "./seed.js";
 
 async function tableNames(): Promise<Set<string>> {
   const db = makeTestDb();

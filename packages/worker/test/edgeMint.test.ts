@@ -1510,7 +1510,7 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     const runScript = handle.exec.bind(handle);
     for (const f of beforeUsage) runScript(sqlFor(f));
     const db = new SqliteDb(handle);
-    await seedProduct(db, "djdl");
+    await seedProduct(db, "djdl", { beforeMigration0106: true });
     for (const [col, value] of Object.entries(productColumns)) {
       await db.run(`UPDATE products SET ${col} = ? WHERE slug = 'djdl'`, value);
     }

@@ -45,7 +45,6 @@ import {
   APP_STORE_SERVER_API,
   APP_STORE_SERVER_API_SANDBOX,
   serverApiToken,
-  type AppleServerContext,
 } from "../../../../core/stores/apple/server.js";
 export {
   PLATFORM_APP_STORE_SERVER_CREDENTIAL,

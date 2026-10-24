@@ -43,7 +43,6 @@ const DOWN = readFileSync(
   "utf8",
 );
 const ISSUER = "https://id.plrs.example";
-type Ctx = { db: SqliteDb; env: Env; now: number; origin: string };
 
 function license(
   product: string,
@@ -82,8 +81,8 @@ async function productionShaped(): Promise<{
   const db = new SqliteDb(raw);
   const run = (q: string, ...p: unknown[]) => raw.prepare(q).run(...p);
 
-  await seedProduct(db, "acme");
-  await seedProduct(db, "custom");
+  await seedProduct(db, "acme", { beforeMigration0106: true });
+  await seedProduct(db, "custom", { beforeMigration0106: true });
   run(
     `INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
      VALUES ('acme', ?, 'cid', NULL, NULL, ?)`,

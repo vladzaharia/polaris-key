@@ -23,6 +23,7 @@ import {
   spinnerFrames,
   symbolsFor,
   truncateEnd,
+  wrapSpans,
   type Line,
   type RailRow,
   type Symbols,
@@ -265,4 +266,27 @@ export class Spinner implements StageProgress {
     }
     return `${glyph}  ${truncateEnd(this.label, max - 3, symbols.ellipsis)}`;
   }
+}
+
+/**
+ * `✗  text` for an error line, wrapped under its own column. `wrap: "tty"` wraps only on a
+ * terminal, so a piped line stays whole for grep.
+ */
+export function failLine(
+  text: string,
+  term: Term,
+  wrap: "always" | "tty" = "always",
+): string {
+  const { painter, symbols, caps } = term;
+  const lines =
+    wrap === "tty" && !caps.tty
+      ? [[{ text }]]
+      : wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  return `${lines
+    .map((l, i) =>
+      i === 0
+        ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}`
+        : `   ${painter.line(l)}`,
+    )
+    .join("\n")}\n`;
 }

@@ -66,6 +66,7 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/build/wire/index.html": "public",
   "/docs/build/wire/packs/index.html": "public",
   "/docs/build/wire/trust/index.html": "public",
+  "/docs/features/ship-builds/ci-stores/index.html": "public",
   "/docs/help/code/account_required/index.html": "public",
   "/docs/help/code/activation.attestation-required/index.html": "public",
   "/docs/help/code/activation.device-limit/index.html": "public",

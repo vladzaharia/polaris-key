@@ -15,7 +15,7 @@ done in Steamworks. For a product on Steam, Polaris Key does what Steam does all
 - it **sets a build live on a named branch** (`beta`, `staging`, a playtest branch);
 - it shows a **copy card** of the store page's text, pre-filled from the
   [shared listing](/docs/features/ship-builds/channels/polaris-key/), and serves the **asset pack** that
-  [`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) made at Steam's sizes;
+  [`pkey listing assets`](/docs/features/ship-builds/channels/polaris-key/#listing-assets) made at Steam's sizes;
 - it keeps a **checklist** of the human steps, with links to the Steamworks pages.
 
 Depots are uploaded from the release workflow's steamcmd step (the VDFs `pkey transport steam`

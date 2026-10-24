@@ -161,7 +161,7 @@ async function refuseSystem(
 
 export async function handleCiPublisher(
   req: Request,
-  env: Env,
+  _env: Env,
   db: Db,
   session: AdminSession,
   slug: string,

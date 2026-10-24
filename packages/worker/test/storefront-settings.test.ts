@@ -89,7 +89,7 @@ async function beforePs02(): Promise<Database.Database> {
   const raw = new Database(":memory:");
   for (const f of BEFORE) raw.exec(sql(f));
   for (const slug of ["on", "off", "bare"])
-    await seedProduct(new SqliteDb(raw), slug);
+    await seedProduct(new SqliteDb(raw), slug, { beforeMigration0106: true });
   legacyUpsert(raw, "on", 1);
   legacyUpsert(raw, "off", 0);
   return raw;
@@ -403,7 +403,7 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
   });
 
   it("refuses invalid listing values and names each field", async () => {
-    const { db, env, patch } = await fixture();
+    const { db, patch } = await fixture();
     const res = await patch({
       storeListed: "public",
       storeAudience: "anyone",

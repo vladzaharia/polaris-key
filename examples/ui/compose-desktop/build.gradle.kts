@@ -62,3 +62,10 @@ tasks.register<JavaExec>("shots") {
     // Extra flags: -Pextra="--scheme dark --preset native --platform windows --size 900x640".
     providers.gradleProperty("extra").orNull?.let { args(it.split(" ").filter(String::isNotBlank)) }
 }
+
+// The uber jar (the Flatpak, UK-10.13) merges signed dependency jars; their signature files no longer match.
+afterEvaluate {
+    tasks.matching { it.name == "packageUberJarForCurrentOS" }.configureEach {
+        (this as org.gradle.jvm.tasks.Jar).exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.EC")
+    }
+}

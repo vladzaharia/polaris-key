@@ -12,7 +12,6 @@
  * editor, and the OIDC provisioning writer's account-row secrets.
  */
 import { describe, expect, it } from "vitest";
-import Database from "better-sqlite3";
 import { verifyJws } from "@polaris-key/jws";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { ManagedEntry } from "@polaris-key/protocol";

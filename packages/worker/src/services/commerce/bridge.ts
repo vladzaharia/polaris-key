@@ -40,7 +40,6 @@ import type { DeviceRow } from "../../core/repo.js";
 import { sha256Hex } from "../../platform/hash.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { readCappedText } from "../../core/readCapped.js";
-import { STORE_HOOK } from "../../core/stores/hooks.js";
 import { isStore, type Store } from "../../core/licensing/storeGrants.js";
 import {
   APP_STORE_EVENTS,
