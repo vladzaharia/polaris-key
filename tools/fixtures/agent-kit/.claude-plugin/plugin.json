@@ -1,0 +1,8 @@
+{
+  "name": "polaris-key",
+  "description": "Fixture kit for the release builder tests.",
+  "author": { "name": "Polaris Key" },
+  "homepage": "https://key.plrs.im/docs/agents",
+  "repository": "https://github.com/polaris-key/polaris-key",
+  "license": "MIT"
+}

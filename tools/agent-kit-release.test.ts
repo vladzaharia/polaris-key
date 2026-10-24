@@ -1,0 +1,108 @@
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import {
+  buildKit,
+  claudeCommand,
+  PINNED_CLAUDE_CODE,
+} from "./agent-kit-release.js";
+import { ZipReader } from "../packages/cli/src/zip.js";
+
+const kit = join(__dirname, "fixtures", "agent-kit");
+const dirs: string[] = [];
+function tmp(): string {
+  const d = mkdtempSync(join(tmpdir(), "ak-release-"));
+  dirs.push(d);
+  return d;
+}
+afterAll(() => {
+  for (const d of dirs) rmSync(d, { recursive: true, force: true });
+});
+
+describe("agent-kit release builder", () => {
+  it("is byte-reproducible and the marketplace sha256 matches the zip", () => {
+    const a = buildKit({ kit, version: "1.2.3", out: tmp() });
+    const b = buildKit({ kit, version: "1.2.3", out: tmp() });
+    const bytes = readFileSync(a.zipPath);
+    expect(bytes.equals(readFileSync(b.zipPath))).toBe(true);
+    const sha = createHash("sha256").update(bytes).digest("hex");
+    expect(a.zipSha256).toBe(sha);
+    const m = JSON.parse(readFileSync(a.marketplacePath, "utf8"));
+    expect(m.name).toBe("polaris-key");
+    expect(m.plugins[0].source).toEqual({
+      source: "archive",
+      url: "https://key.plrs.im/docs/agents/polaris-key-1.2.3.zip",
+      sha256: sha,
+    });
+  });
+
+  it("packs exactly the plugin files, sorted, with the version stamped", async () => {
+    const r = buildKit({ kit, version: "1.2.3", out: tmp() });
+    const z = await ZipReader.open(r.zipPath);
+    const names = z.entries.map((e) => e.name);
+    const plugin = JSON.parse((await z.read(z.entries[0]!)).toString("utf8"));
+    await z.close();
+    expect(names).toEqual([
+      ".claude-plugin/plugin.json",
+      "LICENSE",
+      "README.md",
+      "skills/demo-skill/SKILL.md",
+    ]);
+    expect(plugin.version).toBe("1.2.3");
+    expect(
+      JSON.parse(readFileSync(join(kit, ".claude-plugin/plugin.json"), "utf8"))
+        .version,
+    ).toBeUndefined();
+  });
+
+  it("honours --base-url", () => {
+    const r = buildKit({
+      kit,
+      version: "1.0.0",
+      out: tmp(),
+      baseUrl: "https://example.test/x/",
+    });
+    const m = JSON.parse(readFileSync(r.marketplacePath, "utf8"));
+    expect(m.plugins[0].source.url).toBe(
+      "https://example.test/x/polaris-key-1.0.0.zip",
+    );
+  });
+
+  it("--local writes a directory marketplace with a relative source", () => {
+    const out = tmp();
+    const r = buildKit({ kit, version: "1.2.3", out, local: true });
+    const m = JSON.parse(
+      readFileSync(
+        join(r.localMarketplaceDir!, ".claude-plugin", "marketplace.json"),
+        "utf8",
+      ),
+    );
+    expect(m.plugins[0].source).toBe("./polaris-key");
+    expect(
+      existsSync(join(out, "local/polaris-key/skills/demo-skill/SKILL.md")),
+    ).toBe(true);
+    expect(existsSync(join(out, "local/polaris-key/package.json"))).toBe(false);
+    expect(existsSync(join(out, "local/polaris-key/scripts"))).toBe(false);
+  });
+
+  it("refuses a bad version", () => {
+    expect(() => buildKit({ kit, version: "v1", out: tmp() })).toThrow(
+      /semver/,
+    );
+  });
+});
+
+describe("claudeCommand", () => {
+  it("prefers PKEY_CLAUDE_BIN, then PATH, then the pinned npx only in CI", () => {
+    expect(
+      claudeCommand({ PKEY_CLAUDE_BIN: "npx -y x@1" }, () => true),
+    ).toEqual(["npx", "-y", "x@1"]);
+    expect(claudeCommand({}, () => true)).toEqual(["claude"]);
+    expect(claudeCommand({}, () => false)).toBeNull();
+    expect(claudeCommand({ CI: "true" }, () => false)?.join(" ")).toContain(
+      `@anthropic-ai/claude-code@${PINNED_CLAUDE_CODE}`,
+    );
+  });
+});
