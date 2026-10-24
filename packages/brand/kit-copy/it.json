@@ -698,6 +698,7 @@
     "signin.approve.enter": "Inserisci il codice mostrato sull'altro dispositivo.",
     "signin.approve.codeLabel": "Codice",
     "signin.approve.look": "Cerca",
+    "signin.approve.askPackages": "pkey su {host} chiede un token per i pacchetti.",
     "signin.approve.askBody": "Il codice {code} chiede di accedere al tuo account.",
     "signin.approve.where": "Luogo",
     "signin.approve.when": "Quando",

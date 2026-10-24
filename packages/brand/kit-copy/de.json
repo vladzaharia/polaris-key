@@ -698,6 +698,7 @@
     "signin.approve.enter": "Geben Sie den Code ein, der auf dem anderen Gerät angezeigt wird.",
     "signin.approve.codeLabel": "Code",
     "signin.approve.look": "Suchen",
+    "signin.approve.askPackages": "pkey auf {host} bittet um ein Paket-Token.",
     "signin.approve.askBody": "Code {code} möchte sich bei Ihrem Konto anmelden.",
     "signin.approve.where": "Ort",
     "signin.approve.when": "Zeit",

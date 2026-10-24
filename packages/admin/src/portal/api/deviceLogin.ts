@@ -33,6 +33,9 @@ export interface PortalDeviceLoginRequest {
   approverCountry: string | null;
   newLocation: boolean;
   stepUpRequired: boolean;
+  /** Set on a command-line request for a packages token (F-37.1). */
+  scope?: string;
+  client?: { name: string; version: string; host: string };
 }
 
 export const deviceLoginApi = {

@@ -50569,6 +50569,66 @@
         }
       }
     },
+    "signin.approve.askPackages": {
+      "comment": "Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey on %1$@ asks for a packages token."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey auf %1$@ bittet um ein Paket-Token."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey sur %1$@ demande un jeton de paquets."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey en %1$@ pide un token de paquetes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O pkey em %1$@ pede um token de pacotes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey su %1$@ chiede un token per i pacchetti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ の pkey がパッケージトークンを求めています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 pkey가 패키지 토큰을 요청했어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 上的 pkey 请求软件包令牌。"
+          }
+        }
+      }
+    },
     "signin.approve.checkDevice": {
       "comment": "Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.",
       "extractionState": "manual",

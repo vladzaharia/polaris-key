@@ -1564,6 +1564,8 @@
     <!-- Approve dialog: looks the code up (reads only, never approves). -->
     <string name="signin_approve_look">Buscar</string>
     <string name="signin_approve_look__macos">Buscar</string>
+    <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
+    <string name="signin_approve_askPackages">pkey en %1$s pide un token de paquetes.</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">El código %1$s pide iniciar sesión en tu cuenta.</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->

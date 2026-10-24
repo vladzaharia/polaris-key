@@ -1544,6 +1544,8 @@
     <!-- Approve dialog: looks the code up (reads only, never approves). -->
     <string name="signin_approve_look">查找</string>
     <string name="signin_approve_look__macos">查找</string>
+    <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
+    <string name="signin_approve_askPackages">%1$s 上的 pkey 请求软件包令牌。</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">代码 %1$s 请求登录你的账户。</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->

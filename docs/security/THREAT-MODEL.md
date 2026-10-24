@@ -8803,12 +8803,28 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   ever) re-checks the account's status and the erasure fence, then mints through Core's
   `mintAccountToken` (scope `admin`, 7 days, label `pkey on <host>`). The plaintext exists only in
   that response, which sets no session cookie. A start skips the `portalEnabled` gate (it runs in
-  console context) and asks for `admin` only; `packages:read` is a `422 bad_request`. The client
+  console context) and asks for `admin` or `packages:read` (F-37.1, below); any other scope is a `422 bad_request`. The client
   block is attacker-chosen text, cleaned (control and bidi characters dropped, host at most 64
   characters) and shown to the approver as "unverified"; the approver also sees the place
   (edge geolocation), which a client cannot forge in the request (a VPN can choose the exit city); the device line comes from the User-Agent and is attacker-chosen too. **Residual:** the phishing of the portal feature
   applies, and an admin token is worth more. The console card (ST-34.6) must require a stepped-up
   console session, so approving needs a fresh sign-in, not just a cookie.
+
+- **A `packages:read` CLI request (F-37.1).** `pkey feeds setup --write` starts `{purpose: "cli",
+scope: "packages:read", client}`. It is the PORTAL's to decide, in Polaris Locker
+  (`approveUrl` `#/account/approve?code=`): `findByCode` accepts a `cli` record only when its scope
+  is `packages:read`, so the portal still answers an `admin` record `410 expired`, and the
+  console's `findCliByCode` still takes `admin` only, so neither approver can be talked into the
+  other's grant. Lookup, the new-place step-up (`approvalNeedsStepUp`), the single-use consume and
+  the new-device notice are the portal's, unchanged. The poll mints through the same
+  `mintAccountToken` with scope `packages:read` (90 days; the registry resolves `pkeyp_` tokens by
+  scope, so it can never reach the admin API), writes `portal.personal_token.create`, and answers
+  the token with `registryOrigin`, `username` and the account's readable feeds. **Step-up:** a packages
+  approval always needs a sign-in no older than `STEP_UP_MAX_AGE_SECONDS`, whatever the place
+  (`isPackagesRequest` forces it in `lookup`'s `stepUpRequired` and in `approve`, the 401
+  `step_up_required` path, code kept live), the same bar as minting on the account's Packages page.
+  **Residual:** the client block (host name) is attacker-chosen text shown to the approver; the
+  email notice still says "a new device signed in" (wording follows in F-37.5).
 
 ### The console's approval card for `pkey login` (ST-34.6)
 

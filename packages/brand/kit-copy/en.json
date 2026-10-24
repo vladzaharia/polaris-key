@@ -3500,6 +3500,11 @@
       "role": "button",
       "note": "Approve dialog: looks the code up (reads only, never approves)."
     },
+    "signin.approve.askPackages": {
+      "value": "pkey on {host} asks for a packages token.",
+      "role": "body",
+      "note": "Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is."
+    },
     "signin.approve.askBody": {
       "value": "Code {code} asks to sign in to your account.",
       "role": "body",
