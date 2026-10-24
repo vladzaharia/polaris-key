@@ -17,7 +17,7 @@ import type {
   ReleaseChannelsResponse,
   ReleaseStoreResponse,
 } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { confirmFor } from "../src/lib/actions.js";
 import { actionIdOf } from "../src/console/sections/release/components/PolicyDialog.js";
 import { CHANNELS, SLUG, STORE } from "./releaseFixture.js";
@@ -633,13 +633,11 @@ describe("Channel actions — one confirmed request each (CHN-3, PAD-1 to PAD-5)
 
   it("a refusal keeps the dialog open with the console's wording for its reason", async () => {
     updateReleaseChannel.mockRejectedValue(
-      new ApiError(
-        409,
-        ["releaseId"],
-        "bad_request",
-        undefined,
-        "release_yanked",
-      ),
+      new HttpError(409, {
+        fields: ["releaseId"],
+        code: "bad_request",
+        reason: "release_yanked",
+      }),
     );
     mountPage();
     const stable = await lane("stable");

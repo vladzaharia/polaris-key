@@ -10,7 +10,7 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import { errorCopy } from "../../lib/errorCopy.js";
 import { toast } from "../../ui/toast.js";
 import { useMe } from "../data/hooks.js";
@@ -49,7 +49,7 @@ export interface UseSetup {
 }
 
 const isConflict = (e: unknown): boolean =>
-  e instanceof ApiError && e.status === 409;
+  e instanceof HttpError && e.status === 409;
 
 export function useSetup(slug: string): UseSetup {
   const area = SETUP_AREA;
@@ -96,7 +96,7 @@ export function useSetup(slug: string): UseSetup {
       return true;
     } catch (err) {
       const copy = errorCopy(err, { thing: "Your choice" });
-      const forbidden = err instanceof ApiError && err.status === 403;
+      const forbidden = err instanceof HttpError && err.status === 403;
       toast.error(copy.title, {
         description:
           (forbidden ? gate.disabledReason : undefined) || copy.description,

@@ -2,7 +2,7 @@ import * as React from "react";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import type { PortalLicenseDetail, PortalLicenseSummary } from "../../api.js";
 import { useRemoveLicense } from "../../data.js";
-import { PortalApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { licenseStatus, type LibraryProduct } from "../../model/library.js";
 import { licenseOptionLabel } from "../../model/product.js";
@@ -91,7 +91,7 @@ export function RemoveLicenseDialog({
 
 /** `409 not_removable` in the person's words (copy.en.json's), else the portal's usual copy. */
 function removeErrorCopy(err: unknown): { title: string; description: string } {
-  if (err instanceof PortalApiError && err.code === "not_removable")
+  if (err instanceof HttpError && err.code === "not_removable")
     return {
       title: t("core.codes.not_removable.title"),
       description: t("core.codes.not_removable.message"),

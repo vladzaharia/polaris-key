@@ -1,7 +1,7 @@
 import * as React from "react";
 import { CircleAlert, KeyRound, Loader, UsersRound } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ApiError, type SearchLicenseDto } from "../../../api.js";
+import { HttpError, type SearchLicenseDto } from "../../../api.js";
 import { reads } from "../../data/reads.js";
 import { r } from "../../routes.js";
 import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
@@ -109,7 +109,7 @@ export function useEntityItems(
   const group = isKey ? "Pasted key" : "Licenses";
   if (found.error && !found.isFetching) {
     const limited =
-      found.error instanceof ApiError && found.error.status === 429;
+      found.error instanceof HttpError && found.error.status === 429;
     const icon = <CircleAlert aria-hidden className="size-4" />;
     if (limited)
       return [

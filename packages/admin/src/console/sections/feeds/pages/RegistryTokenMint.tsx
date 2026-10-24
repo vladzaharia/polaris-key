@@ -7,7 +7,7 @@
 import * as React from "react";
 import { KeyRound, Upload } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type FeedEcosystem,
   type RegistryTokensDto,
 } from "../../../../api.js";
@@ -308,9 +308,9 @@ export function MintDialog({
       : undefined;
   const invalid = !!(daysError || labelError || feedsError);
   // What the server refused, by field (422), marked on the form instead of a bare banner.
-  const refused = failure instanceof ApiError ? (failure.fields ?? []) : [];
+  const refused = failure instanceof HttpError ? (failure.fields ?? []) : [];
   const limitHit =
-    failure instanceof ApiError && failure.reason === "token_limit";
+    failure instanceof HttpError && failure.reason === "token_limit";
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -366,7 +366,7 @@ export function MintDialog({
       if (stepUp.check(err)) return;
       setFailure(err);
       // A 422 marks fields: focus the first one.
-      if (err instanceof ApiError && err.fields?.length)
+      if (err instanceof HttpError && err.fields?.length)
         window.setTimeout(
           () =>
             formRef.current

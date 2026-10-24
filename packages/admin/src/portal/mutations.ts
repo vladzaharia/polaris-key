@@ -13,7 +13,7 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { createWrites, type Target, type WriteSpec } from "../lib/writes.js";
-import { portalApi, PortalApiError } from "./api.js";
+import { portalApi, HttpError } from "./api.js";
 import { qk, qkAll, qkFamily } from "./queries.js";
 
 const exact = (key: Target["key"]): Target => ({ key, exact: true });
@@ -344,7 +344,7 @@ export async function removeLibraryEntryOrGone(product: string) {
   try {
     return await portalApi.removeLibraryEntry(product);
   } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404)
+    if (err instanceof HttpError && err.status === 404)
       return { ok: true as const, product, inLibrary: false };
     throw err;
   }
@@ -354,7 +354,7 @@ export async function removeLicenseOrGone(product: string, licenseId: string) {
   try {
     return await portalApi.removeLicense(product, licenseId);
   } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404)
+    if (err instanceof HttpError && err.status === 404)
       return { ok: true as const, product, licenseId };
     throw err;
   }

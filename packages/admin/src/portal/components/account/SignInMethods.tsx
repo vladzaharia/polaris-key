@@ -24,7 +24,7 @@ import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
 import { formatDay } from "../../date.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalAccount,
   type PortalMethod,
   type PortalMethods,
@@ -756,9 +756,9 @@ function PasskeyGlyph({
 
 /** The failure of a change that is not "confirm it's you first", in words. */
 function changeErrorText(err: unknown, name?: string): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "link_conflict")
-      return err.message && err.message !== `portal api ${err.status}`
+      return err.message && err.message !== `http ${err.status}`
         ? err.message
         : t("locker.methods.errLinkConflict");
     if (err.code === "auth_method_disabled" || err.status === 404)
@@ -1005,12 +1005,11 @@ function AddEmail({
     } catch (err) {
       if (isStepUpRequired(err)) setStep({ kind: "stepUp" });
       else {
-        if (err instanceof PortalApiError && err.status === 422)
-          setInvalid(true);
+        if (err instanceof HttpError && err.status === 422) setInvalid(true);
         setError(
-          err instanceof PortalApiError && err.status === 422
+          err instanceof HttpError && err.status === 422
             ? t("signin.email.invalid")
-            : err instanceof PortalApiError && err.code === "email_unavailable"
+            : err instanceof HttpError && err.code === "email_unavailable"
               ? t("locker.stepUp.noEmail")
               : changeErrorText(err),
         );
@@ -1038,10 +1037,10 @@ function AddEmail({
     } catch (err) {
       setCode("");
       if (isStepUpRequired(err)) setStep({ kind: "stepUp" });
-      else if (err instanceof PortalApiError && err.code === "invalid_code") {
+      else if (err instanceof HttpError && err.code === "invalid_code") {
         const left = err.triesLeft;
         setError(wrongCodeText(left));
-      } else if (err instanceof PortalApiError && err.code === "signin_expired")
+      } else if (err instanceof HttpError && err.code === "signin_expired")
         setError(expiredCodeText());
       else setError(changeErrorText(err));
     } finally {

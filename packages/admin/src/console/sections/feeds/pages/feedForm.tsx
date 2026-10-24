@@ -5,7 +5,7 @@
 
 import * as React from "react";
 import type { FieldValues } from "react-hook-form";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import type { AdminForm } from "../../../../ui/form.js";
@@ -20,7 +20,7 @@ export function FeedSubmitError({
 }: {
   error: unknown;
 }): React.ReactElement | null {
-  if (error instanceof ApiError && error.reason === "version_conflict")
+  if (error instanceof HttpError && error.reason === "version_conflict")
     return null;
   return (
     <SubmitError
@@ -61,7 +61,7 @@ export function ConflictNotice<T extends FieldValues>({
   const sync = React.useContext(FeedSyncContext);
   const own = sync.own.current.has(version);
   const refused =
-    form.submitError instanceof ApiError &&
+    form.submitError instanceof HttpError &&
     form.submitError.reason === "version_conflict";
   const [kept, setKept] = React.useState(false);
   React.useEffect(() => setKept(false), [form.submitError]);

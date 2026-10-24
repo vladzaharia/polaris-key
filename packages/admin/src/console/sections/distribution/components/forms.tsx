@@ -6,7 +6,7 @@
  */
 
 import * as React from "react";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { errorCopy, type ErrorContext } from "../../../../lib/errorCopy.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
@@ -22,9 +22,9 @@ export class SubmitCancelled extends Error {
 
 /** A 422's named fields, each with the server's own sentence when it sent one. */
 export function serverFieldErrors(error: unknown): FieldErrorMap | null {
-  if (!(error instanceof ApiError) || !error.fields?.length) return null;
+  if (!(error instanceof HttpError) || !error.fields?.length) return null;
   const message =
-    error.message && error.message !== `api ${error.status}`
+    error.message && error.message !== `http ${error.status}`
       ? error.message
       : "The server rejected this value.";
   return Object.fromEntries(error.fields.map((f) => [f, message]));
@@ -38,7 +38,7 @@ export function SubmitError({
   context?: ErrorContext;
 }): React.ReactElement | null {
   if (!error || error instanceof SubmitCancelled) return null;
-  if (error instanceof ApiError && error.fields?.length) return null;
+  if (error instanceof HttpError && error.fields?.length) return null;
   const copy = errorCopy(error, context);
   return (
     <div className="px-5 py-3">

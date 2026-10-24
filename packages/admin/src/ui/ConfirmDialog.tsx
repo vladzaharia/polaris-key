@@ -106,7 +106,7 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * The default inline message: the error's own message. Callers with an `ApiError` pass
+ * The default inline message: the error's own message. Callers with an `HttpError` pass
  * `describeError={(e) => errorCopy(e, context)}` (ADMIN.md §5.9).
  */
 function defaultDescribe(error: unknown): {

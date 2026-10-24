@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   setPortalCsrf,
   type PortalDiscoverOffer,
   type PortalDownloads,
@@ -58,7 +58,7 @@ async function orNull<T>(read: () => Promise<T>): Promise<T | null> {
   try {
     return await read();
   } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404) return null;
+    if (err instanceof HttpError && err.status === 404) return null;
     throw err;
   }
 }
@@ -77,7 +77,7 @@ export async function fetchSession(): Promise<PortalMe | null> {
     if (read === sessionReads) setPortalCsrf(me.csrf);
     return me;
   } catch (err) {
-    if (err instanceof PortalApiError && err.status === 401) {
+    if (err instanceof HttpError && err.status === 401) {
       // The link was confirmed on another device: this tab signs in now (I-07).
       if (await portalApi.finishPendingSignIn()) return fetchSession();
       return null;

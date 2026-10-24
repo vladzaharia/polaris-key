@@ -6,7 +6,7 @@ import { announce } from "../../ui/LiveRegion.js";
 import { Spinner } from "../../ui/Spinner.js";
 import { cn } from "../../lib/cn.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalAccount,
   type PortalAvatar,
   type PortalProfile,
@@ -221,7 +221,7 @@ export function ProfileEditor({
     save.mutate(change, {
       onSuccess: () => onDone(true),
       onError: (err) => {
-        const reason = err instanceof PortalApiError ? err.reason : undefined;
+        const reason = err instanceof HttpError ? err.reason : undefined;
         if (reason === "unknown_upload") {
           // The upload was collected: it can't be picked anymore, so it leaves the tiles.
           setUpload(null);

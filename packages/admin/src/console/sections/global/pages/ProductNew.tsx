@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, type SlugCheck } from "../../../../api.js";
+import { HttpError, type SlugCheck } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -260,7 +260,7 @@ export function ProductNew(): React.ReactElement {
   const failWith = (err: unknown, at: Via) => {
     setSubmitting(false);
     // `.pkey/` changed after the check: read it again; Create waits for that.
-    if (at === "github" && err instanceof ApiError && err.status === 409) {
+    if (at === "github" && err instanceof HttpError && err.status === 409) {
       setStale(true);
       setChanged(true);
       void checkAgain();

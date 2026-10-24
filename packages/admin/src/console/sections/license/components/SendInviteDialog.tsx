@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { Button } from "../../../../ui/Button.js";
@@ -92,12 +92,12 @@ export function SendInviteDialog({
         setFailed({ reason: res.delivered.reason });
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
+      if (err instanceof HttpError && err.status === 429) {
         setUntil(Date.now() + (err.retryAfter ?? 600) * 1000);
         setClock(Date.now());
       }
       // They already have it: the record still says Waiting until it is read again.
-      if (err instanceof ApiError && err.reason === "in_account")
+      if (err instanceof HttpError && err.reason === "in_account")
         void queryClient.invalidateQueries({
           queryKey: qk.license(slug, licenseId),
         });

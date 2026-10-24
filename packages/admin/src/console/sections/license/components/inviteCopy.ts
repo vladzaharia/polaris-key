@@ -4,7 +4,7 @@
  * tells the operator to copy one.
  */
 
-import { ApiError, type KeyEmailFailure } from "../../../../api.js";
+import { HttpError, type KeyEmailFailure } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 
 /** One line for why the invitation did not go out. */
@@ -46,7 +46,7 @@ export function inviteRefusal(
   waitSeconds: number,
 ): InviteRefusal {
   const base = { tone: "danger", title: "No invitation was sent" } as const;
-  if (error instanceof ApiError && error.status === 409) {
+  if (error instanceof HttpError && error.status === 409) {
     const say = (description: string, permanent = false): InviteRefusal => ({
       ...base,
       permanent,
@@ -80,7 +80,7 @@ export function inviteRefusal(
         return say(inviteFailureCopy(error.reason, email), true);
     }
   }
-  if (error instanceof ApiError && error.status === 429)
+  if (error instanceof HttpError && error.status === 429)
     return {
       tone: "warning",
       permanent: false,

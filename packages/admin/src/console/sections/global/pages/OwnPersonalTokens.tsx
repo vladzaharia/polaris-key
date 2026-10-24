@@ -15,7 +15,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { ApiError, type OwnPersonalToken } from "../../../../api.js";
+import { HttpError, type OwnPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -56,7 +56,7 @@ export function useMyPersonalTokens(): UseQueryResult<OwnPersonalToken[]> {
   return useQuery({
     ...globalReads.myPersonalTokens(),
     // A v1 cookie's answer is permanent for the session: do not retry it.
-    retry: (n, e) => !(e instanceof ApiError && e.status === 409) && n < 2,
+    retry: (n, e) => !(e instanceof HttpError && e.status === 409) && n < 2,
   });
 }
 
@@ -121,7 +121,7 @@ export function OwnPersonalTokens(): React.ReactElement {
       ? [{ label: "Revoke…", tone: "danger", onSelect: () => setRevoking(t) }]
       : [];
   const reauth =
-    tokens.error instanceof ApiError &&
+    tokens.error instanceof HttpError &&
     tokens.error.status === 409 &&
     tokens.error.code === "reauth";
   const copy = revoking ? revokeCopy(revoking) : null;

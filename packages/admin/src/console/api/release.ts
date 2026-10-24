@@ -3,7 +3,7 @@
  * Types and the `releaseApi` methods live together; `api.ts` re-exports the types and spreads the methods.
  */
 import { RELEASE_POLICY_ERROR_MESSAGES } from "../../lib/releasePolicyMessages.js";
-import { ApiError, call, enc, p } from "./transport.js";
+import { HttpError, call, enc, p } from "./transport.js";
 import type { SettingsSource } from "./update.js";
 import type { ArtifactRole } from "@polaris-key/manifest";
 
@@ -460,12 +460,12 @@ export { RELEASE_POLICY_ERROR_MESSAGES };
 
 /** The console's wording for a release policy refusal. */
 export function releasePolicyMessage(err: unknown): string {
-  if (err instanceof ApiError) {
+  if (err instanceof HttpError) {
     const known = err.reason
       ? RELEASE_POLICY_ERROR_MESSAGES[err.reason]
       : undefined;
     if (known) return known;
-    if (err.message && err.message !== `api ${err.status}`) return err.message;
+    if (err.message && err.message !== `http ${err.status}`) return err.message;
     return `Request failed (${err.status}).`;
   }
   return err instanceof Error ? err.message : "Request failed.";

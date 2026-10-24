@@ -295,11 +295,12 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
 export function packageFeedsConflict(
   error: unknown,
 ): import("../../../../api.js").PackageFeedsSwitch | null {
-  const e = error as { status?: unknown; packageFeeds?: unknown } | null;
-  return e?.status === 409 &&
-    e.packageFeeds &&
-    typeof e.packageFeeds === "object"
-    ? (e.packageFeeds as import("../../../../api.js").PackageFeedsSwitch)
+  const e = error as { status?: unknown; body?: unknown } | null;
+  if (e?.status !== 409) return null;
+  const feeds = (e.body as { packageFeeds?: unknown } | null | undefined)
+    ?.packageFeeds;
+  return feeds && typeof feeds === "object"
+    ? (feeds as import("../../../../api.js").PackageFeedsSwitch)
     : null;
 }
 

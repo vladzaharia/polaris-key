@@ -7,8 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import * as React from "react";
-import { ApiError } from "../../src/api.js";
-import { PortalApiError } from "../../src/portal/api.js";
+import { HttpError } from "../../src/api.js";
 import { portalVoice } from "../../src/portal/errors.js";
 import { ErrorState } from "../../src/ui/ErrorState.js";
 import { ErrorVoiceProvider } from "../../src/ui/errorVoice.js";
@@ -18,7 +17,7 @@ afterEach(cleanup);
 describe("ErrorState, console voice (the default)", () => {
   it("words the refusal through errorCopy and offers Try again", () => {
     const retry = vi.fn();
-    render(<ErrorState error={new ApiError(500)} onRetry={retry} />);
+    render(<ErrorState error={new HttpError(500)} onRetry={retry} />);
     const alert = screen.getByRole("alert");
     expect(alert.getAttribute("data-error-action")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -28,7 +27,7 @@ describe("ErrorState, console voice (the default)", () => {
   it('a named failure reads "{thing} didn\'t load" with Retry and Copy details', () => {
     render(
       <ErrorState
-        error={new ApiError(500)}
+        error={new HttpError(500)}
         thing="Licenses"
         onRetry={() => undefined}
       />,
@@ -39,7 +38,7 @@ describe("ErrorState, console voice (the default)", () => {
   });
 
   it("ignores the portal's props: no h1, no portal look", () => {
-    render(<ErrorState error={new ApiError(500)} asPage page="Library" />);
+    render(<ErrorState error={new HttpError(500)} asPage page="Library" />);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 });
@@ -51,11 +50,15 @@ describe("ErrorState, portal voice", () => {
   it("titles a network failure in the person's words and offers Retry", () => {
     const retry = vi.fn();
     withPortal(
-      <ErrorState error={new PortalApiError(0, "network")} onRetry={retry} />,
+      <ErrorState
+        error={new HttpError(0, { code: "network" })}
+        onRetry={retry}
+      />,
     );
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
-      portalVoice.copy(new PortalApiError(0, "network"), { account: false })
-        .title,
+      portalVoice.copy(new HttpError(0, { code: "network" }), {
+        account: false,
+      }).title,
     );
     fireEvent.click(
       screen.getByRole("button", { name: portalVoice.retryLabel }),
@@ -66,7 +69,7 @@ describe("ErrorState, portal voice", () => {
   it("offers no Retry for a refusal that cannot be retried", () => {
     withPortal(
       <ErrorState
-        error={new PortalApiError(404, "not_found")}
+        error={new HttpError(404, { code: "not_found" })}
         onRetry={() => undefined}
       />,
     );
@@ -76,7 +79,9 @@ describe("ErrorState, portal voice", () => {
   });
 
   it("asPage makes the title the screen's h1", () => {
-    withPortal(<ErrorState error={new PortalApiError(0, "network")} asPage />);
+    withPortal(
+      <ErrorState error={new HttpError(0, { code: "network" })} asPage />,
+    );
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
   });
@@ -90,7 +95,7 @@ describe("ErrorState, portal voice", () => {
           message="We couldn't load Diceroll."
         />
         <ErrorState
-          error={new PortalApiError(0, "network")}
+          error={new HttpError(0, { code: "network" })}
           message="We couldn't load Diceroll."
         />
       </>,
@@ -103,7 +108,7 @@ describe("ErrorState, portal voice", () => {
 
   it("a refusal with a Help page links to it", () => {
     withPortal(
-      <ErrorState error={new PortalApiError(404, "file_not_found")} />,
+      <ErrorState error={new HttpError(404, { code: "file_not_found" })} />,
     );
     const link = screen.getByRole("link", { name: portalVoice.helpLabel });
     expect(link.getAttribute("href")).toMatch(/^\/docs\//);
@@ -112,7 +117,7 @@ describe("ErrorState, portal voice", () => {
   it("backTo adds the way out; Copy details carries the code and status", () => {
     withPortal(
       <ErrorState
-        error={new PortalApiError(429, "rate_limited")}
+        error={new HttpError(429, { code: "rate_limited" })}
         backTo={{ href: "#/", label: "Library" }}
       />,
     );
@@ -120,7 +125,7 @@ describe("ErrorState, portal voice", () => {
       screen.getByRole("link", { name: "Library" }).getAttribute("href"),
     ).toBe("#/");
     expect(
-      portalVoice.details(new PortalApiError(429, "rate_limited")),
+      portalVoice.details(new HttpError(429, { code: "rate_limited" })),
     ).toMatchObject({
       code: "rate_limited",
       status: 429,

@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { toast } from "../../ui/toast.js";
 import { Celebration, viewTransition } from "../../ui/motion/index.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalKeyPreview,
   type PortalLicenseSummary,
 } from "../api.js";
@@ -373,7 +373,7 @@ export function ActivateDialog({
       },
       onError: (err) => {
         // A Worker without the preview: add directly, as before G22.
-        if (err instanceof PortalApiError && err.status === 404) {
+        if (err instanceof HttpError && err.status === 404) {
           inFlight.current = false;
           add(slugNow);
         } else setServerVerdict(claimError(err, nameFor(slugNow)));
@@ -1183,7 +1183,7 @@ function focusDialogHeading(from: HTMLElement | null): void {
 
 /** A failed preview or claim as a verdict (§4.19), never a toast. */
 function claimError(err: unknown, name: string): KeyVerdict {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     const v = claimVerdict(err, name);
     if (v) return v;
     // A server error is not the key's fault: its own words, and nothing to retype.

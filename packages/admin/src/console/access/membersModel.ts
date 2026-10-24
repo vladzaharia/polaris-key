@@ -5,7 +5,7 @@
  */
 
 import {
-  ApiError,
+  HttpError,
   type AreaId,
   type GrantBody,
   type Me,
@@ -301,7 +301,7 @@ export function describeMembersError(e: unknown): {
   action?: string;
   details?: Record<string, unknown>;
 } {
-  if (e instanceof ApiError && e.reason && REASONS[e.reason])
+  if (e instanceof HttpError && e.reason && REASONS[e.reason])
     return REASONS[e.reason]!;
   return errorCopy(e, { thing: "Members" });
 }

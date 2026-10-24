@@ -15,7 +15,7 @@
 
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
-import { ApiError, type ConnectionDiscovery } from "../../../../api.js";
+import { HttpError, type ConnectionDiscovery } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { useMe } from "../../../data/hooks.js";
 import { RegisterAddresses, registerAt } from "./RegisterAddresses.js";
@@ -207,7 +207,7 @@ export function AddConnectionPage(): React.ReactElement {
       setCreated(res.connection.id);
       go("done");
     } catch (e) {
-      if (e instanceof ApiError && e.code === "step_up_required") markStale();
+      if (e instanceof HttpError && e.code === "step_up_required") markStale();
       else setSaveError(e);
     } finally {
       setSaving(false);

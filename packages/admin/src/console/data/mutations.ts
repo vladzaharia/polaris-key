@@ -21,7 +21,7 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { createWrites, type Target } from "../../lib/writes.js";
 import {
   api,
-  ApiError,
+  HttpError,
   type AdminApi,
   type AlertScope,
   type FeedScope,
@@ -1192,7 +1192,7 @@ const writes = createWrites<AdminApi, WriteMethod>({
     // The page showed a state the server no longer has: refetch it.
     if (
       method === "commerceUseAssigned" &&
-      error instanceof ApiError &&
+      error instanceof HttpError &&
       error.reason === "no_assigned_app"
     )
       void writes.invalidateAfter(method, args);
@@ -1224,7 +1224,7 @@ export function bindWriteInvalidation(client: QueryClient): () => void {
  */
 export function refreshMeOnNoAccess(error: unknown): void {
   if (
-    !(error instanceof ApiError) ||
+    !(error instanceof HttpError) ||
     error.status !== 403 ||
     error.reason !== "no_access"
   )

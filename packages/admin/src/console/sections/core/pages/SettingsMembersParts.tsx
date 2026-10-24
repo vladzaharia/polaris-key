@@ -6,7 +6,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type Member,
   type MemberInvite,
   type MemberRole,
@@ -291,7 +291,7 @@ export function RemoveDialog({
             await mutate("revokeProductMember", slug, id);
           } catch (e) {
             // Already gone is the outcome we want.
-            if (!(e instanceof ApiError && e.status === 404)) throw e;
+            if (!(e instanceof HttpError && e.status === 404)) throw e;
           }
         }
         if (self) {

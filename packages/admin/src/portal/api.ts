@@ -33,7 +33,7 @@ export type {
   PortalSession,
 } from "./api/session.js";
 export type { PortalConnection, PortalSsoNext } from "./api/transport.js";
-export { readSsoNext, PortalApiError, setPortalCsrf } from "./api/transport.js";
+export { readSsoNext, HttpError, setPortalCsrf } from "./api/transport.js";
 export type {
   PortalEntitlement,
   PortalLicenseOrigin,

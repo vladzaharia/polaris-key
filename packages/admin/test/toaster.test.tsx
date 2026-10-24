@@ -7,7 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import * as React from "react";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { AppToaster, TOAST_DURATIONS, toast } from "../src/ui/toast.js";
 
 /**
@@ -74,7 +74,7 @@ describe("toaster durations", () => {
   it("keeps an error until it is dismissed (UI-11), worded by errorCopy", () => {
     vi.useFakeTimers();
     render(<AppToaster />);
-    act(() => void toast.error(new ApiError(429, undefined, "rate_limited")));
+    act(() => void toast.error(new HttpError(429, { code: "rate_limited" })));
     act(() => vi.advanceTimersByTime(1));
     act(() => vi.advanceTimersByTime(60_000));
     expect(screen.getByText("Too many requests")).toBeTruthy();
@@ -90,7 +90,7 @@ describe("toaster durations", () => {
       value: { writeText },
     });
     render(<AppToaster />);
-    act(() => void toast.error(new ApiError(500, undefined, "boom")));
+    act(() => void toast.error(new HttpError(500, { code: "boom" })));
     act(() => vi.advanceTimersByTime(1));
     expect(screen.getByText(/Copy the details/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Copy details" }));
@@ -103,7 +103,7 @@ describe("toaster durations", () => {
   it("a toast that does not promise details has no Copy details button", () => {
     vi.useFakeTimers();
     render(<AppToaster />);
-    act(() => void toast.error(new ApiError(429, undefined, "rate_limited")));
+    act(() => void toast.error(new HttpError(429, { code: "rate_limited" })));
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole("button", { name: "Copy details" })).toBeNull();
   });

@@ -20,7 +20,7 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type ProductUserDetail,
   type ProductUserLicense,
   type ProductUserRelink,
@@ -130,7 +130,7 @@ export function UserRecord({
   }
   const user = q.data?.user;
   if (!user) {
-    const notFound = q.error instanceof ApiError && q.error.status === 404;
+    const notFound = q.error instanceof HttpError && q.error.status === 404;
     return (
       <div className="space-y-6">
         <PageHeader

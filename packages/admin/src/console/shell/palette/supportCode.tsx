@@ -1,7 +1,7 @@
 import * as React from "react";
 import { LifeBuoy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError } from "../../../api.js";
+import { HttpError } from "../../../api.js";
 import {
   SUPPORT_CODE_BAD_CHECK,
   SUPPORT_CODE_LOOKALIKE,
@@ -72,9 +72,9 @@ export function useSupportCodeItems(
     ];
   }
   if (!shaped) return [];
-  if (found.error instanceof ApiError && found.error.status === 429)
+  if (found.error instanceof HttpError && found.error.status === 429)
     return inert("limited", "Too many lookups. Try again in a minute.");
-  if (found.error instanceof ApiError && found.error.status === 404)
+  if (found.error instanceof HttpError && found.error.status === 404)
     return inert(
       "none",
       `No user with support code ${dashed} in your products. Check it with the customer.`,

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ApiError,
+  HttpError,
   type ConfigEntry,
   type ProductCatalog,
 } from "../../../../api.js";
@@ -154,7 +154,7 @@ export function ReviewDrawer({
   const breaking =
     Object.keys(referencedBy).length > 0 || Object.keys(typeNotes).length > 0;
   const conflict =
-    error instanceof ApiError &&
+    error instanceof HttpError &&
     error.status === 409 &&
     error.reason === "catalog_version_conflict";
   const stale = server !== null && server.schemaVersion !== draft.baseVersion;
@@ -178,7 +178,7 @@ export function ReviewDrawer({
       onPublished(res.schemaVersion);
     } catch (err) {
       setError(err);
-      if (err instanceof ApiError && err.status === 409)
+      if (err instanceof HttpError && err.status === 409)
         void queryClient.invalidateQueries({ queryKey: qk.catalog(slug) });
     } finally {
       setPublishing(false);

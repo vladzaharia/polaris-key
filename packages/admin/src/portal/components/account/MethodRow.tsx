@@ -6,7 +6,7 @@ import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalMethods,
   type PortalRemoveRefusal,
 } from "../../api.js";
@@ -294,7 +294,7 @@ export function MethodRow({
 }
 
 function removeErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     // The Worker's own sentence for its two guards ("This is your only way to sign in. …").
     if (
       (err.code === "last_link" || err.reason === "only_email") &&

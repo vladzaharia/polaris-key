@@ -15,7 +15,7 @@ import { cn } from "../../../lib/cn.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   setPortalCsrf,
   type PortalGate,
   type PortalGateChoice,
@@ -150,7 +150,7 @@ export function FinishStep({
       setPhase({ kind: "gate", gate: await portalApi.gate() });
     } catch (err) {
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.status === 400 || err.status === 404)
       )
         return setPhase({ kind: "gone" });
@@ -475,7 +475,7 @@ function FinishForm({
       await fn();
     } catch (err) {
       // Every refusal is worded here, from the catalog; the Worker's prose never reaches the page.
-      if (err instanceof PortalApiError) {
+      if (err instanceof HttpError) {
         if (err.status === 409 || err.code === "email_in_use") {
           setEditing(false);
           return void (await reload());
@@ -717,7 +717,7 @@ function FinishForm({
         const out = await mutate("gateVerify", value);
         await done(out.next, out.nudge);
       } catch (err) {
-        if (err instanceof PortalApiError) {
+        if (err instanceof HttpError) {
           if (err.status === 409 || err.code === "email_in_use") {
             setEditing(false);
             return void (await reload());
@@ -748,7 +748,7 @@ function FinishForm({
           },
         };
       } catch (err) {
-        if (err instanceof PortalApiError && err.status === 429)
+        if (err instanceof HttpError && err.status === 429)
           return { error: t("signin.rateLimitedFew") };
         return { error: t("signin.approve.failed") };
       }

@@ -37,7 +37,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { KeysPage, refreshedCopy } =
   await import("../src/console/sections/core/pages/Keys.js");
 
@@ -494,7 +494,7 @@ describe("Keys and secrets → Signing keys (A-4)", () => {
 
   it("shows a key list error with Retry", async () => {
     const user = userEvent.setup();
-    fns.productKeys.mockRejectedValueOnce(new ApiError(500));
+    fns.productKeys.mockRejectedValueOnce(new HttpError(500));
     mount();
     await user.click(
       (await screen.findAllByRole("button", { name: "Try again" }))[0]!,
@@ -639,7 +639,7 @@ describe("Keys and secrets → the page", () => {
   });
 
   it("shows an error state when the product cannot load", async () => {
-    fns.product.mockRejectedValue(new ApiError(500));
+    fns.product.mockRejectedValue(new HttpError(500));
     mount();
     expect(
       await screen.findByRole("button", { name: "Try again" }),
@@ -666,7 +666,7 @@ describe("durable credentials keep their input across the step-up (F-33b.7)", ()
   it("Issue token: the dialog turns into Sign in again, and reopens with its input afterwards", async () => {
     const user = userEvent.setup();
     fns.issueCiToken.mockRejectedValue(
-      new ApiError(403, undefined, "step_up_required"),
+      new HttpError(403, { code: "step_up_required" }),
     );
     const first = mount();
     await user.click(
@@ -700,7 +700,7 @@ describe("durable credentials keep their input across the step-up (F-33b.7)", ()
   it("the trusted-publisher drawer keeps its entries and reopens", async () => {
     const user = userEvent.setup();
     fns.putCiPublisher.mockRejectedValue(
-      new ApiError(403, undefined, "step_up_required"),
+      new HttpError(403, { code: "step_up_required" }),
     );
     const first = mount();
     await user.click(

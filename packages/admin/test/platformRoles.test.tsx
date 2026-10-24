@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { AreaId, Me, Member, MembersView } from "../src/api.js";
 import { ROLES_MATRIX } from "../src/console/access/rolesMatrix.generated.js";
 import { render } from "@testing-library/react";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { PlatformRoles } from "../src/console/sections/platform/pages/platformRoles.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 
@@ -330,7 +330,7 @@ describe("Roles tab: focus after a Retry", () => {
       loading: boolean,
       error: unknown,
     ) => <PlatformRoles view={v} loading={loading} error={error} {...props} />;
-    const { rerender } = render(ui(undefined, false, new ApiError(500)));
+    const { rerender } = render(ui(undefined, false, new HttpError(500)));
     expect(screen.getByRole("alert")).toBeTruthy();
     // A retried query with no data goes back to pending: the flag must survive it.
     rerender(ui(undefined, true, null));
@@ -346,7 +346,7 @@ describe("Roles tab: focus after a Retry", () => {
       <PlatformRoles
         view={undefined}
         loading={false}
-        error={new ApiError(500)}
+        error={new HttpError(500)}
         onRetry={() => undefined}
       />,
     );
@@ -358,7 +358,7 @@ describe("Roles tab: focus after a Retry", () => {
       <PlatformRoles
         view={undefined}
         loading={false}
-        error={new ApiError(403)}
+        error={new HttpError(403)}
         onRetry={() => undefined}
       />,
     );

@@ -55,7 +55,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { UsersPage } =
   await import("../src/console/sections/core/pages/Users.js");
 const { isSteppedUp, stepUpHref } =
@@ -333,7 +333,7 @@ describe("User record", () => {
   });
 
   it("answers an unknown subject with not found", async () => {
-    productUser.mockRejectedValue(new ApiError(404));
+    productUser.mockRejectedValue(new HttpError(404));
     mount(`#/p/djdl/users/${OTHER}`);
     expect(
       await screen.findByText("This product has no such user"),
@@ -484,7 +484,7 @@ describe("relink", () => {
   });
 
   it("falls back to the step-up prompt when the server refuses it", async () => {
-    const refusal = new ApiError(403, undefined, "step_up_required");
+    const refusal = new HttpError(403, { code: "step_up_required" });
     refusal.message = "Sign in again to continue.";
     relinkProductUserLicense.mockRejectedValue(refusal);
     const dialog = await openRelink();

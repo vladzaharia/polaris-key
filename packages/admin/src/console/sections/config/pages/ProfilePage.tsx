@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type OverrideUpdate,
   type ProfileDetail,
 } from "../../../../api.js";
@@ -219,11 +219,11 @@ function PayloadTab({
         description: `${updates.length} ${updates.length === 1 ? "key" : "keys"} updated.`,
       });
     } catch (err) {
-      if (err instanceof ApiError && err.fields?.length) {
+      if (err instanceof HttpError && err.fields?.length) {
         // Row-level, not a toast: the worker named the keys.
         setServerFields(err.fields);
       } else if (
-        err instanceof ApiError &&
+        err instanceof HttpError &&
         err.reason === "no_active_catalog"
       ) {
         toast.error("Publish a catalog first", {

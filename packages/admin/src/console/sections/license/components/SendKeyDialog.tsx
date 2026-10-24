@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { ApiError, type KeyEmailFailure } from "../../../../api.js";
+import { HttpError, type KeyEmailFailure } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -74,7 +74,7 @@ export function sendKeyRefusal(
   email: string,
   waitSeconds: number,
 ): SendKeyRefusal {
-  if (error instanceof ApiError && error.status === 409) {
+  if (error instanceof HttpError && error.status === 409) {
     const base = {
       tone: "danger",
       noKey: true,
@@ -106,7 +106,7 @@ export function sendKeyRefusal(
         ),
       };
   }
-  if (error instanceof ApiError && error.status === 429)
+  if (error instanceof HttpError && error.status === 429)
     return {
       tone: "warning",
       noKey: true,
@@ -208,7 +208,7 @@ export function SendKeyDialog({
         setAck(false);
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
+      if (err instanceof HttpError && err.status === 429) {
         const wait = err.retryAfter ?? 600;
         setUntil(Date.now() + wait * 1000);
         setClock(Date.now());

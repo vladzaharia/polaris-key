@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PortalApiError } from "../src/portal/api.js";
+import { HttpError } from "../src/portal/api.js";
 import { avatarSrc } from "../src/portal/components/Avatar.js";
 import {
   currentPictureOrigin,
@@ -256,7 +256,7 @@ describe("sourceSummary (§4.26)", () => {
 
 describe("profileErrorCopy: from the Worker's reason, never its message", () => {
   const refusal = (status: number, reason?: string) => {
-    const e = new PortalApiError(status, "bad_request");
+    const e = new HttpError(status, { code: "bad_request" });
     e.message = "raw worker message";
     if (reason) e.reason = reason;
     return e;

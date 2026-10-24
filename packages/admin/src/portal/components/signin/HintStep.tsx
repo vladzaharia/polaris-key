@@ -14,7 +14,7 @@ import {
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
 import { t } from "../../../lib/copy.js";
-import { PortalApiError, type PortalEmailSent } from "../../api.js";
+import { HttpError, type PortalEmailSent } from "../../api.js";
 import { initialsOf } from "../Avatar.js";
 import type { LastMethod } from "../../lastMethod.js";
 import { usePasskeySignIn } from "./usePasskeySignIn.js";
@@ -92,7 +92,7 @@ export function HintStep({
       onSent(email, await mutate("startEmailSignIn", email));
     } catch (err) {
       setError(
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
           (err.status === 429 || err.code === "rate_limited")
           ? t("signin.rateLimitedFew")
           : t("signin.emailDown"),

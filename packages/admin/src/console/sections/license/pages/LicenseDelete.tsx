@@ -16,7 +16,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ApiError,
+  HttpError,
   type LicenseBulkDeleteResult,
   type LicenseCleanupCandidate,
   type LicenseDeletion,
@@ -119,7 +119,7 @@ export function deletable(l: Pick<LicenseSummary, "deletion">): boolean {
 
 /** The Worker's refusal names every reason; anything else gets the console's usual copy. */
 function describeDelete(e: unknown): { title: string; description?: string } {
-  if (e instanceof ApiError && e.code === "license_not_deletable")
+  if (e instanceof HttpError && e.code === "license_not_deletable")
     return { title: "This license can't be deleted", description: e.message };
   return errorCopy(e, { thing: "License" });
 }

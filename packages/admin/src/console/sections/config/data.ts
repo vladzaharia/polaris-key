@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-query";
 import {
   api,
-  ApiError,
+  HttpError,
   type CatalogKeyUsage,
   type CatalogVersionSummary,
   type EdgeMintRecipesResponse,
@@ -28,7 +28,7 @@ import { licenseQuery } from "../license/data.js";
 
 /** A 404 from a read: the thing does not exist (a product with no catalog yet). */
 export function isNotFound(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 404;
+  return error instanceof HttpError && error.status === 404;
 }
 
 /** The active catalog, shared with Distribution's pack gates (one fetcher for the key). */

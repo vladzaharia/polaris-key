@@ -75,7 +75,7 @@ export const toast = {
   success: (title: string, opts?: ToastOptions) => show("success", title, opts),
   info: (title: string, opts?: ToastOptions) => show("info", title, opts),
   warning: (title: string, opts?: ToastOptions) => show("warning", title, opts),
-  /** An `ApiError` (or any thrown value) is worded by `errorCopy`; a string is the title. */
+  /** An `HttpError` (or any thrown value) is worded by `errorCopy`; a string is the title. */
   error: (errorOrTitle: unknown, opts?: ToastOptions) => {
     if (typeof errorOrTitle === "string")
       return show("error", errorOrTitle, opts);

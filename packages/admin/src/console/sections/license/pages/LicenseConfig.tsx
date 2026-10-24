@@ -32,7 +32,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ApiError,
+  HttpError,
   type ConfigEntry,
   type LicenseConfigOverrides,
   type LicenseDetail,
@@ -296,7 +296,7 @@ function ConfigEditor({
     } catch (err) {
       // A 422 carries catalog-validated `fields`, each prefixed with its dotted key: they land
       // on the rows that caused them.
-      if (err instanceof ApiError && err.fields?.length) {
+      if (err instanceof HttpError && err.fields?.length) {
         setServerFields(err.fields);
         toast.error("Some values were rejected", {
           description: "See the highlighted keys.",

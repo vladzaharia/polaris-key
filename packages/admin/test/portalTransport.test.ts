@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../src/lib/http.js";
-import { PortalApiError, portalApi, setPortalCsrf } from "../src/portal/api.js";
+import { portalApi, setPortalCsrf } from "../src/portal/api.js";
+import { isUnknownCredential, ssoNextOf } from "../src/portal/errors.js";
 
 const CSRF = "X-PKey-Portal-CSRF";
 
@@ -76,12 +77,12 @@ describe("the portal's transport (security-relevant behaviour)", () => {
   it("/logout accepts any status but reports a network failure", async () => {
     stub(new TypeError("offline"));
     const e = await portalApi.signOutHere().catch((x) => x);
-    expect(e).toBeInstanceOf(PortalApiError);
+    expect(e).toBeInstanceOf(HttpError);
     expect(e).toMatchObject({ status: 0, code: "network" });
   });
 });
 
-describe("PortalApiError on the core", () => {
+describe("HttpError on the core", () => {
   it("is an HttpError and keeps the portal's fields", async () => {
     stub(
       new Response(
@@ -103,7 +104,6 @@ describe("PortalApiError on the core", () => {
       ),
     );
     const e = await portalApi.cancelDeletion().catch((x) => x);
-    expect(e).toBeInstanceOf(PortalApiError);
     expect(e).toBeInstanceOf(HttpError);
     expect(e).toMatchObject({
       status: 403,
@@ -113,25 +113,24 @@ describe("PortalApiError on the core", () => {
       retryAfter: 9,
       reason: "r",
       stale: ["started"],
-      unknownCredential: true,
-      next: {
-        kind: "sso",
-        connection: { id: "okta-1", label: "Okta" },
-        enforced: true,
-      },
     });
-    expect(e.body).toMatchObject({ unknownCredential: true });
+    expect(isUnknownCredential(e)).toBe(true);
+    expect(ssoNextOf(e)).toEqual({
+      kind: "sso",
+      connection: { id: "okta-1", label: "Okta" },
+      enforced: true,
+    });
   });
 
-  it("keeps the 'portal api N' message when the server sent none", async () => {
+  it("keeps the default message when the server sent none", async () => {
     stub(new Response("nope", { status: 502 }), new TypeError("offline"));
     const a = await portalApi.me().catch((x) => x);
-    expect(a.message).toBe("portal api 502");
+    expect(a.message).toBe("http 502");
     const b = await portalApi.me().catch((x) => x);
     expect(b).toMatchObject({
       status: 0,
       code: "network",
-      message: "portal api 0",
+      message: "network",
     });
   });
 
@@ -156,8 +155,8 @@ describe("PortalApiError on the core", () => {
     );
     for (const next of bad) {
       const e = await portalApi.cancelDeletion().catch((x) => x);
-      expect(e, JSON.stringify(next)).toBeInstanceOf(PortalApiError);
-      expect(e.next, JSON.stringify(next)).toBeUndefined();
+      expect(e, JSON.stringify(next)).toBeInstanceOf(HttpError);
+      expect(ssoNextOf(e), JSON.stringify(next)).toBeUndefined();
     }
   });
 

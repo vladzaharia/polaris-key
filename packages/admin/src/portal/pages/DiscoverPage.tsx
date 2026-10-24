@@ -8,7 +8,7 @@ import { StationaryStar } from "../../ui/EmptyState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalAccount,
   type PortalDiscoverOffer,
 } from "../api.js";
@@ -285,7 +285,7 @@ export function DiscoverPage({
 /** An Add that didn't go through, in the person's words (§6.4), inline on the tile. */
 function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
   if (
-    err instanceof PortalApiError &&
+    err instanceof HttpError &&
     err.status === 409 &&
     err.code === "not_eligible"
   ) {
@@ -298,7 +298,7 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
     };
   }
   // The button stays "Add to library" and the words say what to do, once.
-  const offline = err instanceof PortalApiError && err.status === 0;
+  const offline = err instanceof HttpError && err.status === 0;
   const copy = portalErrorCopy(err);
   return {
     text: `${t("locker.discover.addFailed", { product: offer.name })} ${offline ? t("core.codes.transport.message") : copy.description}`,

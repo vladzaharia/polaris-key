@@ -72,7 +72,7 @@ export * from "./console/api/settings.js";
 export * from "./console/api/sync.js";
 export * from "./console/api/search.js";
 export {
-  ApiError,
+  HttpError,
   setCsrf,
   setLoginRedirectForTests,
 } from "./console/api/transport.js";

@@ -20,7 +20,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, type LicenseDetail } from "../../../../api.js";
+import { HttpError, type LicenseDetail } from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { licenseQuery } from "../data.js";
@@ -114,7 +114,7 @@ export function LicenseRecord({
     return <PageSkeleton template="record" label="license" />;
   }
   if (!license) {
-    const notFound = q.error instanceof ApiError && q.error.status === 404;
+    const notFound = q.error instanceof HttpError && q.error.status === 404;
     return (
       <div className="space-y-6">
         <PageHeader

@@ -18,7 +18,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
-  ApiError,
+  HttpError,
   type AccountOverridesView,
   type OverrideUpdate,
   type ProductCatalog,
@@ -66,7 +66,7 @@ export function accountPayload(
 }
 
 function isNotFound(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 404;
+  return error instanceof HttpError && error.status === 404;
 }
 
 export function AccountOverrideEditor({
@@ -100,7 +100,7 @@ export function AccountOverrideEditor({
       });
     } catch (err) {
       if (
-        err instanceof ApiError &&
+        err instanceof HttpError &&
         err.status === 409 &&
         err.code === "conflict"
       ) {
@@ -110,7 +110,7 @@ export function AccountOverrideEditor({
         toast.error("These account overrides changed in the meantime", {
           description: "They were reloaded. Check the values, then save again.",
         });
-      } else if (err instanceof ApiError && err.fields?.length) {
+      } else if (err instanceof HttpError && err.fields?.length) {
         // A 422 carries catalog-validated `fields`, each prefixed with its dotted key: they land
         // on the rows that caused them.
         setServerFields(err.fields);

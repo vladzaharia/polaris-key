@@ -8,7 +8,7 @@
 import * as React from "react";
 import { Mail, Webhook } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type AlertDestination,
   type AlertScope,
 } from "../../../api.js";
@@ -159,7 +159,7 @@ export function DestinationRow({
         if (res.outcome === "ok") toast.success("Test alert delivered");
         else setTestFail({ detail: res.detail });
       } catch (e) {
-        if (e instanceof ApiError && e.status === 429 && e.retryAfter) {
+        if (e instanceof HttpError && e.status === 429 && e.retryAfter) {
           setThrottledHere(true);
           onThrottled(e.retryAfter);
           return;

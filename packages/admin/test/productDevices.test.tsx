@@ -42,7 +42,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { DevicesPage } =
   await import("../src/console/sections/core/pages/Devices.js");
 const { useRoute } = await import("../src/console/router.js");
@@ -277,7 +277,7 @@ describe("Core → Devices", () => {
   it("a drawer load error offers Retry", async () => {
     const user = userEvent.setup();
     productDevice
-      .mockRejectedValueOnce(new ApiError(500))
+      .mockRejectedValueOnce(new HttpError(500))
       .mockResolvedValue(detail(device(1)));
     mount("#/p/djdl/devices/dev_1");
     const dialog = await screen.findByRole("dialog");
@@ -293,7 +293,7 @@ describe("Core → Devices", () => {
     expect(await screen.findByText("No devices yet")).toBeTruthy();
     cleanup();
     resetCore();
-    productDevices.mockRejectedValue(new ApiError(500));
+    productDevices.mockRejectedValue(new HttpError(500));
     mount();
     expect(
       await screen.findByRole("button", { name: "Try again" }),

@@ -6,7 +6,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, type ConnectionDomain } from "../../../../api.js";
+import { HttpError, type ConnectionDomain } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -43,7 +43,7 @@ import { useConnectionTest } from "./useConnectionTest.js";
 export function ConnectionPage({ id }: { id: string }): React.ReactElement {
   const q = useQuery({
     ...platformReads.connection(id),
-    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 2,
+    retry: (n, e) => !(e instanceof HttpError && e.status === 404) && n < 2,
   });
   const page = useQuery(reads.platformConnections());
   const gate = useWriteGate("platform");
@@ -86,14 +86,14 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
     try {
       await fn();
     } catch (e) {
-      if (e instanceof ApiError && e.code === "step_up_required") markStale();
+      if (e instanceof HttpError && e.code === "step_up_required") markStale();
       throw e;
     }
     await Promise.all([q.refetch(), page.refetch()]);
   };
 
   if (q.isError && !c) {
-    const missing = q.error instanceof ApiError && q.error.status === 404;
+    const missing = q.error instanceof HttpError && q.error.status === 404;
     return missing ? (
       <div className="space-y-6">
         <PageHeader

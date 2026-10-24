@@ -33,7 +33,7 @@ import {
 } from "@tanstack/react-query";
 import { KeyRound, RefreshCw, Upload } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type CredentialCheck,
   type PlatformStore,
   type PlatformStoreApp,
@@ -947,7 +947,7 @@ export function ConnectForm({
     } catch (e) {
       if (mine !== run.current) return;
       const copy =
-        e instanceof ApiError && e.status === 429
+        e instanceof HttpError && e.status === 429
           ? {
               title: "Too many checks",
               description: "Wait a few minutes, then check again.",
@@ -1365,7 +1365,7 @@ function AppsTable({
   );
 
   const storeError =
-    query.error instanceof ApiError && query.error.code === "store_unavailable"
+    query.error instanceof HttpError && query.error.code === "store_unavailable"
       ? query.error
       : null;
 
@@ -1494,7 +1494,7 @@ export function describeAssignError(
   storeLabel: string,
   names: Map<string, string>,
 ): { title: string; description?: string } {
-  if (e instanceof ApiError) {
+  if (e instanceof HttpError) {
     const other = productInMessage(e.message);
     const otherName = other ? (names.get(other) ?? other) : null;
     if (e.code === "app_assigned_elsewhere")

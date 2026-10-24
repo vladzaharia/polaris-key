@@ -480,8 +480,10 @@ describe("App sign-in", () => {
   });
 
   it("renders every card but Product connection when Managed config is out of reach (403)", async () => {
-    const { ApiError } = await import("../src/api.js");
-    edgeMintRecipes.mockRejectedValue(new ApiError(403, [], "forbidden"));
+    const { HttpError } = await import("../src/api.js");
+    edgeMintRecipes.mockRejectedValue(
+      new HttpError(403, { fields: [], code: "forbidden" }),
+    );
     renderPage();
     expect(await screen.findByText(/Needs Managed config access/)).toBeTruthy();
     expect(screen.getByText("Always on")).toBeTruthy();

@@ -14,7 +14,7 @@
 
 import * as React from "react";
 import { channelLabel } from "@polaris-key/manifest";
-import { ApiError, type ListingImportChange } from "../../../../../api.js";
+import { HttpError, type ListingImportChange } from "../../../../../api.js";
 import { Button } from "../../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../../ui/ConfirmDialog.js";
 import { StatusPill } from "../../../../../ui/StatusPill.js";
@@ -135,7 +135,7 @@ function RevertToManifest({
         confirmLabel="Revert"
         // A 409 is the Reload notice below, not a second message.
         describeError={(e) =>
-          e instanceof ApiError && e.status === 409
+          e instanceof HttpError && e.status === 409
             ? null
             : errorCopy(e, { area: "distribution", thing: "Import" })
         }
@@ -148,7 +148,7 @@ function RevertToManifest({
               confirm: preview!.digest,
             });
           } catch (e) {
-            if (e instanceof ApiError && e.status === 409) setChanged(true);
+            if (e instanceof HttpError && e.status === 409) setChanged(true);
             throw e;
           }
           toast.success(`${label} reverted to the manifest`);

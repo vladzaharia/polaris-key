@@ -1,5 +1,5 @@
 import type { PortalFileReason } from "./product.js";
-import { PortalApiError, call, enc } from "./transport.js";
+import { HttpError, call, enc } from "./transport.js";
 
 export interface PortalEntitlement {
   key: string;
@@ -516,7 +516,7 @@ export const libraryApi = {
       await call<unknown>(`/api/discover/${enc(product)}`),
     );
     // An answer this build can't show reads like any product it can't see.
-    if (!body) throw new PortalApiError(404, "not_found");
+    if (!body) throw new HttpError(404, { code: "not_found" });
     return body;
   },
 

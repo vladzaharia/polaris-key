@@ -1,5 +1,7 @@
 import { HttpError, createHttpClient } from "../../lib/http.js";
 
+export { HttpError };
+
 /** A sign-in connection the card can offer (I-30): its id names `/login/sso/<id>`. */
 export interface PortalConnection {
   id: string;
@@ -36,47 +38,6 @@ export function readSsoNext(x: unknown): PortalSsoNext | undefined {
   };
 }
 
-export class PortalApiError extends HttpError {
-  /** I-30: an enforced domain's refusal names the connection to use instead. */
-  next?: PortalSsoNext;
-  /** I-16: a passkey sign-in refused because no account here holds that credential. */
-  unknownCredential?: boolean;
-  constructor(status: number, code?: string) {
-    super(status, { code });
-    this.name = "PortalApiError";
-    this.message = `portal api ${status}`;
-  }
-
-  /** A transport refusal as the portal's error: the core's fields plus what only the portal reads. */
-  static from(e: HttpError): PortalApiError {
-    const out = new PortalApiError(e.status, e.code);
-    const serverMessage =
-      e.message !== `http ${e.status}` &&
-      !(e.status === 0 && e.code === "network");
-    if (serverMessage) out.message = e.message;
-    Object.assign(out, {
-      fields: e.fields,
-      errors: e.errors,
-      reason: e.reason,
-      area: e.area,
-      retryAfter: e.retryAfter,
-      triesLeft: e.triesLeft,
-      stale: e.stale,
-      body: e.body,
-    });
-    const body = e.body as {
-      next?: unknown;
-      unknownCredential?: unknown;
-    } | null;
-    if (body && typeof body === "object") {
-      const next = readSsoNext(body.next);
-      if (next) out.next = next;
-      if (body.unknownCredential === true) out.unknownCredential = true;
-    }
-    return out;
-  }
-}
-
 const CSRF_HEADER = "X-PKey-Portal-CSRF";
 
 let csrf = "";
@@ -91,7 +52,7 @@ export const http = createHttpClient({
 });
 
 /**
- * One request to the Worker, answered or refused as a {@link PortalApiError}. `withCsrf` sends
+ * One request to the Worker, answered or refused as an {@link HttpError}. `withCsrf` sends
  * the portal binder for every change and for a personal-data download.
  */
 async function send(
@@ -99,13 +60,7 @@ async function send(
   init: RequestInit,
   withCsrf: boolean,
 ): Promise<Response> {
-  try {
-    return await http.send(path, init, { csrf: withCsrf });
-  } catch (e) {
-    throw e instanceof HttpError && !(e instanceof PortalApiError)
-      ? PortalApiError.from(e)
-      : e;
-  }
+  return http.send(path, init, { csrf: withCsrf });
 }
 
 export async function call<T>(

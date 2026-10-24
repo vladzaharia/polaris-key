@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { ApiError, type AdminApiToken, type Me } from "../src/api.js";
+import { HttpError, type AdminApiToken, type Me } from "../src/api.js";
 import { errorCopy } from "../src/lib/errorCopy.js";
 import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 
@@ -467,13 +467,7 @@ describe("an emergency sign-in (ST-30c.2, N3)", () => {
 
   it("the 403 break_glass_session refusal reads as its own problem, not 'you need edit access'", () => {
     const copy = errorCopy(
-      new ApiError(
-        403,
-        undefined,
-        "forbidden",
-        undefined,
-        "break_glass_session",
-      ),
+      new HttpError(403, { code: "forbidden", reason: "break_glass_session" }),
     );
     expect(copy.title).toBe("Emergency sign-in can't do this");
     expect(copy.description).toBe(

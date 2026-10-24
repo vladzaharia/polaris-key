@@ -23,7 +23,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, type ProductSetting } from "../../api.js";
+import { HttpError, type ProductSetting } from "../../api.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
@@ -75,7 +75,7 @@ const BADGE: Record<ProductSetting["source"], Source> = {
 
 /** A write refused because the setting changed since the row was read. */
 const isConflict = (e: unknown): boolean =>
-  e instanceof ApiError && e.status === 409;
+  e instanceof HttpError && e.status === 409;
 
 /** `product:licensing.anchorPolicy` → `.pkey/product`'s `licensing.anchorPolicy`. */
 function manifestFile(path: string | null): string {

@@ -9,7 +9,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ProductDetail, SyncUsageResponse } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 
 const product = vi.fn();
@@ -259,7 +259,7 @@ describe("Cloud Sync → Usage", () => {
     renderPage();
     expect(await heading("Where players sync from")).toBeTruthy();
     cleanup();
-    schema.mockRejectedValue(new ApiError(404, undefined, "not_found"));
+    schema.mockRejectedValue(new HttpError(404, { code: "not_found" }));
     renderPage();
     expect(await heading("Where people sync from")).toBeTruthy();
   });
@@ -393,7 +393,7 @@ describe("Cloud Sync → Usage", () => {
   });
 
   it("answers a failed read with Retry", async () => {
-    syncUsage.mockRejectedValueOnce(new ApiError(500, undefined, "internal"));
+    syncUsage.mockRejectedValueOnce(new HttpError(500, { code: "internal" }));
     renderPage();
     const retry = await screen.findByRole("button", { name: "Retry" });
     syncUsage.mockResolvedValue(FIXTURE);
@@ -402,7 +402,7 @@ describe("Cloud Sync → Usage", () => {
   });
 
   it("a refused read says so, never 'you need edit access'", async () => {
-    syncUsage.mockRejectedValue(new ApiError(403, undefined, "forbidden"));
+    syncUsage.mockRejectedValue(new HttpError(403, { code: "forbidden" }));
     renderPage();
     expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/edit access/i);

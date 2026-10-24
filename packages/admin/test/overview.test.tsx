@@ -38,7 +38,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { OverviewPage } =
   await import("../src/console/sections/core/pages/Overview.js");
 
@@ -624,7 +624,7 @@ describe("Core → Overview", () => {
 
   it("shows an error state with Retry when the product cannot load", async () => {
     const user = userEvent.setup();
-    fns.product.mockRejectedValueOnce(new ApiError(500));
+    fns.product.mockRejectedValueOnce(new HttpError(500));
     mount();
     await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(

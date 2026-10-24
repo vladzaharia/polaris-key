@@ -22,7 +22,7 @@ import {
 import { SpellOut } from "../../../../ui/SpellOut.js";
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type Me,
   type ProductUserLicense,
   type ProductUserRelink,
@@ -185,7 +185,7 @@ export function RelinkDialog({
       confirmLabel="Relink license"
       confirmDisabled={!fresh || !targetOk || !reasonOk}
       describeError={(e) =>
-        e instanceof ApiError && e.code === "target_not_found"
+        e instanceof HttpError && e.code === "target_not_found"
           ? null
           : errorCopy(e, { thing: "License" })
       }
@@ -203,11 +203,11 @@ export function RelinkDialog({
             description: `It now belongs to ${parsed.kind === "code" ? formatSupportCode(parsed.code) : res.subject}. Undo is open for 72 hours.`,
           });
         } catch (e) {
-          if (e instanceof ApiError && e.code === "target_not_found") {
+          if (e instanceof HttpError && e.code === "target_not_found") {
             setMissing(true);
             targetRef.current?.focus();
           }
-          if (e instanceof ApiError && e.code === "step_up_required")
+          if (e instanceof HttpError && e.code === "step_up_required")
             markStale();
           throw e;
         }
@@ -299,7 +299,7 @@ export function UndoRelinkDialog({
           });
           toast.success("Relink undone");
         } catch (e) {
-          if (e instanceof ApiError && e.code === "step_up_required")
+          if (e instanceof HttpError && e.code === "step_up_required")
             markStale();
           throw e;
         }

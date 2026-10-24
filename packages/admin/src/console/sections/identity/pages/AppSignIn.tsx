@@ -13,7 +13,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, type ProductSetting } from "../../../../api.js";
+import { HttpError, type ProductSetting } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useAdminForm } from "../../../../ui/form.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -145,7 +145,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const connection: ConnectionState = mint.isPending
     ? { kind: "loading" }
     : mint.isError
-      ? mint.error instanceof ApiError && mint.error.status === 403
+      ? mint.error instanceof HttpError && mint.error.status === 403
         ? { kind: "no-access" }
         : { kind: "error", error: mint.error, retry: () => void mint.refetch() }
       : {

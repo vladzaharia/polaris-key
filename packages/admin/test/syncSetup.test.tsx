@@ -15,7 +15,7 @@ import type {
   ProductSetting,
   SyncUsageResponse,
 } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { invalidationFor } from "../src/console/data/mutations.js";
 import { qk } from "../src/console/data/queries.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
@@ -361,7 +361,7 @@ describe("Cloud Sync → Setup", () => {
 
   it("answers a stale sign-in with the step-up state, consequences kept", async () => {
     const user = userEvent.setup();
-    patch.mockRejectedValue(new ApiError(403, undefined, "step_up_required"));
+    patch.mockRejectedValue(new HttpError(403, { code: "step_up_required" }));
     renderPage();
     await user.click(
       await screen.findByRole("button", { name: "Pause writes…" }),
@@ -414,7 +414,7 @@ describe("Cloud Sync → Setup", () => {
     cleanup();
     usage.mockResolvedValue(USAGE());
     platformSettings.mockReset();
-    platformSettings.mockRejectedValueOnce(new ApiError(500));
+    platformSettings.mockRejectedValueOnce(new HttpError(500));
     platformSettings.mockResolvedValue(view([PAUSED(false), QUOTA]));
     renderPage();
     await user.click(await screen.findByRole("button", { name: /Try again/ }));
@@ -574,8 +574,8 @@ describe("Cloud Sync → Setup", () => {
 
   it("gives each failed read its own error with Retry, and keeps the rest of the card", async () => {
     const user = userEvent.setup();
-    usage.mockRejectedValueOnce(new ApiError(500));
-    productSettings.mockRejectedValueOnce(new ApiError(500));
+    usage.mockRejectedValueOnce(new HttpError(500));
+    productSettings.mockRejectedValueOnce(new HttpError(500));
     renderPage();
     expect(await screen.findByText(/Usage didn't load/)).toBeTruthy();
     expect(screen.getByText(/The storage ceiling didn't load/)).toBeTruthy();
@@ -712,7 +712,7 @@ describe("Cloud Sync → Setup", () => {
   it("keeps the number and the reason across a step-up sign-in", async () => {
     const user = userEvent.setup();
     updateSetting.mockRejectedValueOnce(
-      new ApiError(403, undefined, "step_up_required"),
+      new HttpError(403, { code: "step_up_required" }),
     );
     const { dialog, field } = await openCeiling(user);
     await user.clear(field);
@@ -777,7 +777,7 @@ describe("Cloud Sync → Setup", () => {
 
   it("keeps the typed number when the save fails, and on a version conflict reloads the setting", async () => {
     const user = userEvent.setup();
-    updateSetting.mockRejectedValueOnce(new ApiError(500));
+    updateSetting.mockRejectedValueOnce(new HttpError(500));
     const { dialog, field } = await openCeiling(user);
     await user.clear(field);
     await user.type(field, "20");
@@ -790,7 +790,7 @@ describe("Cloud Sync → Setup", () => {
     expect(field.value).toBe("20");
 
     // A conflict: the setting is read again and the typed number and reason stay.
-    updateSetting.mockRejectedValueOnce(new ApiError(409));
+    updateSetting.mockRejectedValueOnce(new HttpError(409));
     productSettings.mockClear();
     productSettings.mockResolvedValue({
       settings: [CEILING(40 * GiB, "console")],

@@ -1,11 +1,12 @@
 /**
- * The console's transport: the CSRF token, the 401 sign-in, `ApiError`, and the one HTTP client
+ * The console's transport: the CSRF token, the 401 sign-in, and the one HTTP client
  * every `console/api/*` module calls through. Importable only by `api.ts` and its siblings.
  */
 import { markSessionEnded, waitForSessionBack } from "../shell/endedState.js";
-import type { PackageFeedsSwitch } from "./feeds.js";
 import { createHttpClient, HttpError } from "../../lib/http.js";
 import { startStepUp } from "../../lib/stepUp.js";
+
+export { HttpError };
 
 // ── transport ─────────────────────────────────────────────────────────────────
 const CSRF_HEADER = "X-PKey-CSRF";
@@ -41,47 +42,6 @@ export function setLoginRedirectForTests(
     });
 }
 
-export class ApiError extends HttpError {
-  constructor(
-    status: number,
-    fields?: string[],
-    code?: string,
-    /**
-     * Stable COHERENCE codes, distinct from `fields`. A field name says "this input was
-     * malformed"; an `errors` entry says "these inputs are individually fine and jointly
-     * impossible" — `update_requires_distribution` names no single toggle, it names a relationship.
-     * Only the endpoints that validate a whole object against rules (services, so far) send it.
-     */
-    errors?: string[],
-    /**
-     * A machine-readable refusal reason (`unknown_channel`, `release_yanked`, …). The release
-     * policy routes send it beside the generic `code` (worker `release/admin.ts`).
-     */
-    reason?: string,
-  ) {
-    super(status, { fields, code, errors, reason });
-    this.message = `api ${status}`;
-    this.name = "ApiError";
-  }
-  /** F-34.8: a `version_conflict` 409 from `PUT …/package-feeds` carries the switch as it stands. */
-  packageFeeds?: PackageFeedsSwitch;
-}
-
-/** The refusal as the console's error class, keeping the Worker's message when it sent one. */
-function toApiError(r: HttpError): ApiError {
-  const e = new ApiError(r.status, r.fields, r.code, r.errors, r.reason);
-  if (r.message && r.message !== `http ${r.status}`) e.message = r.message;
-  e.retryAfter = r.retryAfter;
-  e.area = r.area;
-  e.triesLeft = r.triesLeft;
-  e.stale = r.stale;
-  e.body = r.body;
-  const feeds = (r.body as { packageFeeds?: unknown } | undefined)
-    ?.packageFeeds;
-  if (r.status === 409 && feeds && typeof feeds === "object")
-    e.packageFeeds = feeds as PackageFeedsSwitch;
-  return e;
-}
 export interface ConsoleOptions {
   stepUpRedirect?: boolean;
   hold?: boolean;
@@ -90,7 +50,6 @@ export interface ConsoleOptions {
 const http = createHttpClient<ConsoleOptions>({
   csrfHeader: CSRF_HEADER,
   csrf: () => csrf,
-  createError: toApiError,
   // The 401 sign-in. A page that had a session stays where it is under the overlay (`csrf` is set
   // once `/me` loaded), and the request waits for the sign-in and goes again, once. `/me` itself
   // is the probe that learns the session is back, so it never waits on itself (`hold: false`).
