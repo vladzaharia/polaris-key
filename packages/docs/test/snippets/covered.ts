@@ -32,6 +32,61 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}quickstart/kotlin.mdx`, language: "kotlin" },
   { path: `${BUILD}sdks/kotlin/your-own-ui.md`, language: "kotlin" },
   { path: `${BUILD}ui/frameworks/compose.mdx`, language: "kotlin" },
+  {
+    path: `${BUILD}ui/components/paywall.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/polaris-key-gate.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/release-notes.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/settings.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/sign-in-handoff.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/sign-in.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/status-screen.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/toast.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/update-progress.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/update-prompt.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/welcome.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
   { path: `${BUILD}ui/components/about.mdx`, language: "kotlin", prose: false },
   {
     path: `${BUILD}ui/components/account-and-license.mdx`,

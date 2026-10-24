@@ -87,16 +87,19 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
 
     **Drop-in.** `PolarisKeyGate(client, signIn = true) { }` runs the device-code sign-in inside the gate.
 
-    **Styled part.** `PolarisSignIn(state)` over `PolarisSignInState(client.signInActions(), scope)`, or `KitSignIn(inputs, presentation)` for the form ([Sign-in on its own](/docs/build/ui/frameworks/compose/#sign-in-on-its-own)).
+    **Styled part.** `PolarisSignInScreen(ui)` over `PolarisSignInState(client.signInActions(), scope)`, or `KitSignIn(inputs, presentation)` for the form ([Sign-in on its own](/docs/build/ui/frameworks/compose/#sign-in-on-its-own)).
 
     **Headless.** `PolarisSignInState` in `polaris-key-ui-core`.
 
     ```kotlin android
     import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
+    import androidx.compose.runtime.collectAsState
+    import androidx.compose.runtime.getValue
     import androidx.compose.runtime.remember
     import androidx.compose.runtime.rememberCoroutineScope
     import im.plrs.key.sdk.PolarisKeyClient
-    import im.plrs.key.ui.PolarisSignIn
+    import im.plrs.key.ui.PolarisSignInScreen
     import im.plrs.key.ui.PolarisSignInState
     import im.plrs.key.ui.signInActions
 
@@ -104,7 +107,9 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
     fun MySignIn(client: PolarisKeyClient, onCancel: () -> Unit) {
         val scope = rememberCoroutineScope()
         val state = remember(client) { PolarisSignInState(client.signInActions(), scope) }
-        PolarisSignIn(state, onCancel = onCancel)
+        val ui by state.ui.collectAsState()
+    LaunchedEffect(state) { state.start() }
+    PolarisSignInScreen(ui, onCancel = onCancel, onRestart = state::restart)
     }
     ```
 
