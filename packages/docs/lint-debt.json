@@ -1,5 +1,18 @@
 {
   "$comment": "Today's hits of scripts/lint-docs.ts, by page and rule. It only shrinks: a new hit fails the lint, and so does an entry nothing hits any more. A package that writes a page clears the page's entries in the same change; `tsx scripts/lint-docs.ts --update` rewrites the file.",
   "version": 1,
-  "debt": {}
+  "debt": {
+    "contribute/service-model": {
+      "removed-name": 2
+    },
+    "operate/console/products": {
+      "removed-name": 1
+    },
+    "reference/protocol/bundles": {
+      "removed-name": 1
+    },
+    "reference/protocol/discovery": {
+      "removed-name": 3
+    }
+  }
 }
