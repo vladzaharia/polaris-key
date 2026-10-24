@@ -146,7 +146,24 @@ struct KitCallout: View {
                         KitText(title, .label, color: .strong)
                     #endif
                 }
-                if let message { KitText(message, .meta, color: .default) }
+                if let message {
+                    #if os(macOS)
+                        // A refusal with no title of its own carries the glyph on its message.
+                        if screen.state == .rejected, title == nil {
+                            Label {
+                                KitText(message, .meta, color: .default)
+                            } icon: {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(style.palette.danger)
+                                    .accessibilityHidden(true)
+                            }
+                        } else {
+                            KitText(message, .meta, color: .default)
+                        }
+                    #else
+                        KitText(message, .meta, color: .default)
+                    #endif
+                }
                 if let caption = screen.line("part.seatMeter.caption"),
                     case .number(let used)? = caption.args["used"],
                     case .number(let limit)? = caption.args["limit"]
