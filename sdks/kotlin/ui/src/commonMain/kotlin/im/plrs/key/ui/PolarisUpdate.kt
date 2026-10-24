@@ -247,7 +247,7 @@ private fun PolarisUpdatePromptCard(
                         Text(
                             title,
                             style = MaterialTheme.typography.headlineSmall,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = headAlign,
                             modifier = Modifier.fillMaxWidth().semantics { heading() },
                         )
                         Spacer(Modifier.height(8.dp))

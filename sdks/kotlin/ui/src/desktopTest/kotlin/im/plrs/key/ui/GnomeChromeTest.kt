@@ -158,6 +158,29 @@ class GnomeChromeTest {
         return pixels
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theSheetHeaderLeadsOnTheNotesEdgeNotCentred() = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 700, height = 700) {
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    PolarisSurface { _, _ ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            PolarisUpdatePromptHosted(PolarisUpdateUi(version = "2.5", currentVersion = "2.4.1"), {}, {}, null)
+                        }
+                    }
+                }
+            }
+            waitForIdle()
+            val heading = onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.Heading)).fetchSemanticsNode()
+            val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            heading.config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+            val layout = results.first()
+            assertEquals(0f, layout.getLineLeft(0), "the title starts at the leading edge of its column")
+            assertTrue(layout.getLineRight(0) < heading.size.width - 20, "and does not fill the line")
+        }
+    }
+
     @Test
     fun theSheetIsAnAdwDialogRadius12WithAnEdgeInLightAndNoOutlineInDark() = withPlatform("Gnome") {
         val left = (700 - 460) / 2
