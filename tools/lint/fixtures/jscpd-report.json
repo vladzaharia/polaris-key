@@ -1,0 +1,23 @@
+{
+  "statistics": { "clones": 3 },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 6,
+      "firstFile": { "name": "packages/a/src/x.ts", "start": 1, "end": 7 },
+      "secondFile": { "name": "packages/b/src/y.ts", "start": 40, "end": 46 }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "firstFile": { "name": "packages/a/src/x.ts", "start": 20, "end": 29 },
+      "secondFile": { "name": "packages/a/src/x.ts", "start": 50, "end": 59 }
+    },
+    {
+      "format": "javascript",
+      "lines": 5,
+      "firstFile": { "name": "./tools/z.mjs", "start": 3, "end": 8 },
+      "secondFile": { "name": "packages/b/src/y.ts", "start": 90, "end": 95 }
+    }
+  ]
+}
