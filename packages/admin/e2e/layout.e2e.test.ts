@@ -1709,6 +1709,16 @@ describe("?setting= deep links", () => {
       "#/platform/settings?setting=LAZY_DELTAS",
       "platform-setting-LAZY_DELTAS",
     ],
+    [
+      "the extra reserved display terms list",
+      "#/platform/settings?setting=identity.reservedDisplayTerms",
+      "platform-setting-identity.reservedDisplayTerms",
+    ],
+    [
+      "the display name approval",
+      "#/p/djdl/identity/app-sign-in?setting=identity.displayNameApproved",
+      "setting-identity.displayNameApproved",
+    ],
   ];
   for (const [what, hash, id] of LINKS) {
     it(`${what} takes the focus and scrolls into view`, async () => {

@@ -1287,3 +1287,111 @@ describe("A-13 hardening", () => {
     expect(await listPlatformAudit(db, { limit: 10 })).toHaveLength(0);
   });
 });
+
+describe("identity.reservedDisplayTerms (PX-W13c): the list kind", () => {
+  const path = "/api/platform/settings/identity.reservedDisplayTerms";
+
+  it("is listed as a list with its bounds, empty by default", async () => {
+    const { body } = await call(
+      adminEnv(),
+      makeTestDb(),
+      "/api/platform/settings",
+    );
+    const row = (body.settings as any[]).find(
+      (s) => s.key === "identity.reservedDisplayTerms",
+    );
+    expect(row).toMatchObject({
+      kind: "list",
+      max: 64,
+      maxLength: 64,
+      value: [],
+      default: [],
+      source: "default",
+      confirm: { change: "L1" },
+    });
+  });
+
+  it("adds terms (trimmed, de-duplicated by skeleton), audits, and reads them back", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    const res = await call(env, db, path, {
+      method: "PATCH",
+      body: {
+        value: ["  Steam Deck ", "steam  deck", "Acme Store"],
+        expectedVersion: 0,
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      value: ["Steam Deck", "Acme Store"],
+      source: "runtime",
+      version: 1,
+    });
+    expect(
+      await platformSetting(env, db, "identity.reservedDisplayTerms"),
+    ).toEqual(["Steam Deck", "Acme Store"]);
+    const audit = await listPlatformAudit(db, { limit: 10 });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      action: "platform.setting.set",
+      setting_key: "identity.reservedDisplayTerms",
+    });
+    expect(JSON.parse(audit[0]!.after_json!).effective).toEqual([
+      "Steam Deck",
+      "Acme Store",
+    ]);
+  });
+
+  it("removing every extra term leaves the built-in floor in force", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    await call(env, db, path, {
+      method: "PATCH",
+      body: { value: ["Acme Store"], expectedVersion: 0 },
+    });
+    const cleared = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: [], expectedVersion: 1 },
+    });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.value).toEqual([]);
+    const { reservedDisplayTerm } = await import("@polaris-key/manifest");
+    const extra = (await platformSetting(
+      env,
+      db,
+      "identity.reservedDisplayTerms",
+    )) as string[];
+    expect(reservedDisplayTerm("Acme Store", extra)).toBeNull();
+    expect(reservedDisplayTerm("Steam Deck Companion", extra)).not.toBeNull();
+  });
+
+  it("refuses a term with no letter or digit, a non-list and an over-long term or list", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    for (const value of [
+      ["!!!"],
+      "Steam",
+      [1],
+      ["x".repeat(65)],
+      Array(65).fill("a"),
+    ]) {
+      const r = await call(env, db, path, {
+        method: "PATCH",
+        body: { value, expectedVersion: 0 },
+      });
+      expect(r.status).toBe(422);
+    }
+    // The term and the list are named, not the generic "not a valid value".
+    const long = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: ["x".repeat(65)], expectedVersion: 0 },
+    });
+    expect(JSON.stringify(long.body)).toContain("is over 64 characters");
+    const many = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: Array(66).fill("a"), expectedVersion: 0 },
+    });
+    expect(JSON.stringify(many.body)).toContain("remove 2 (limit 64)");
+    expect((await listPlatformAudit(db, { limit: 10 })).length).toBe(0);
+  });
+});

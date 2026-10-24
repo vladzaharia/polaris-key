@@ -237,7 +237,9 @@ export function ConfirmDialog({
             // The intent shows in the button too; a phone at large text needs the width.
             <span className="mt-0.5 max-sm:hidden">{ICON[intent]}</span>
           ) : null}
-          <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+          <span className="max-h-[40vh] min-w-0 overflow-y-auto [overflow-wrap:anywhere]">
+            {title}
+          </span>
         </span>
       }
       description={description}

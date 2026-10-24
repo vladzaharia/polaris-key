@@ -189,6 +189,30 @@ function reservedDisplayNames(over: Setting = {}): Setting {
   };
 }
 
+function reservedTerms(over: Setting = {}): Setting {
+  return {
+    key: "identity.reservedDisplayTerms",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    kind: "list",
+    max: 64,
+    maxLength: 64,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: [],
+    deployValue: null,
+    value: [],
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { change: "L1" },
+    ...over,
+  };
+}
+
 const RESERVED = {
   mode: "warn",
   keys: [
@@ -586,6 +610,123 @@ describe("Reserved display names (PX-W13)", () => {
     ).toBe("true");
     const jobs = await section("Jobs");
     expect(within(jobs).queryByText("Reserved display names")).toBeNull();
+  });
+});
+
+describe("Extra reserved display terms (PX-W13c)", () => {
+  it("adds a term: one per line, a draft until Save, then L1 and the whole list is written", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => reservedTerms({ value: ["Acme"], version: 1 }),
+          () => ({
+            ...view(),
+            settings: [...view().settings, reservedTerms()],
+          }),
+        ),
+      }),
+    });
+    const identity = await section("Sign-in");
+    const field = within(identity).getByLabelText(
+      "Extra reserved display terms",
+    );
+    await userEvent.type(field, "Acme{Enter}  {Enter}Zephyr");
+    const bar = await within(identity).findByRole("region", {
+      name: "Unsaved changes in Extra reserved display terms",
+    });
+    expect(within(identity).getByText("2 added")).toBeTruthy();
+    expect(within(identity).getByText(/2 of 64/)).toBeTruthy();
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Save extra reserved display terms?",
+      }),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/^Adds/).textContent).toBe(
+      "Adds Acme, Zephyr",
+    );
+    expect(within(dialog).getByText(/are warned\./)).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toMatchObject({
+      value: ["Acme", "Zephyr"],
+      expectedVersion: 0,
+    });
+  });
+});
+
+describe("Extra reserved display terms: long lists and bad terms (PX-W13c fix round)", () => {
+  const boot60 = () =>
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => reservedTerms(),
+          () => ({
+            ...view(),
+            settings: [...view().settings, reservedTerms()],
+          }),
+        ),
+      }),
+    });
+
+  it("summarises 60 terms: three names then a count, never the list, in title, button and note", async () => {
+    boot60();
+    const identity = await section("Sign-in");
+    const field = within(identity).getByLabelText(
+      "Extra reserved display terms",
+    );
+    fireEvent.change(field, {
+      target: {
+        value: Array.from({ length: 60 }, (_, i) => `Term${i}`).join("\n"),
+      },
+    });
+    expect(within(identity).getByText("60 added")).toBeTruthy();
+    const bar = await within(identity).findByRole("region", {
+      name: "Unsaved changes in Extra reserved display terms",
+    });
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/^Adds/).textContent).toBe(
+      "Adds Term0, Term1, Term2 and 57 more",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    ).toBeTruthy();
+    expect(dialog.textContent).not.toContain("Term30");
+  });
+
+  it("names the bad term under the field and holds Save", async () => {
+    boot60();
+    const identity = await section("Sign-in");
+    const field = within(identity).getByLabelText(
+      "Extra reserved display terms",
+    );
+    fireEvent.change(field, { target: { value: "Steam\n!!!" } });
+    expect((await within(identity).findByRole("alert")).textContent).toBe(
+      '"!!!" needs a letter or digit.',
+    );
+    const bar = within(identity).getByRole("region", {
+      name: "Unsaved changes in Extra reserved display terms",
+    });
+    expect(
+      (within(bar).getByRole("button", { name: "Save…" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.change(field, { target: { value: `${"x".repeat(70)}` } });
+    expect((await within(identity).findByRole("alert")).textContent).toContain(
+      "is over 64 characters.",
+    );
+    fireEvent.change(field, {
+      target: {
+        value: Array.from({ length: 66 }, (_, i) => `T${i}`).join("\n"),
+      },
+    });
+    expect((await within(identity).findByRole("alert")).textContent).toBe(
+      "66 terms: remove 2 (limit 64).",
+    );
   });
 });
 

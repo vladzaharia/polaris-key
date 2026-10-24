@@ -211,6 +211,8 @@ export interface ProductSetting {
   serviceEnabled: boolean;
   /** The console area a write needs; absent on older responses. */
   rbacArea?: AreaId;
+  /** Only the platform's admins write it, whatever `rbacArea` a product admin holds. */
+  platformOnly?: boolean;
   /** Who may write it; a `manifest` or `read-only` key is shown, not edited. */
   ownership?:
     | "operator"
