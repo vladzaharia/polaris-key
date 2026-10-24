@@ -1,6 +1,6 @@
 /**
  * `distribution.feed-access-customers` (F-34.4; P0-49 runner): a package feed's access becomes
- * Public or Customers, and no principal gains access.
+ * Public or Licensed, and no principal gains access.
  *
  * WHY THIS IS SAFE. The ladder (`registry/authorize.ts`, which this job does not touch) judges a
  * read by `stricter(feed.access_mode, dist_access(deliverable).mode)`, and the entitlement flag
@@ -37,7 +37,7 @@
  * `dist_access` (own package rows: insert at `entitled`, or raise an existing row to `entitled`
  * and `source = 'admin'`); `dist_registry_feeds.access_mode` (`authenticated`/`entitled` to
  * `licensed`). `version`, `updated_at` and timestamps of existing rows are left alone so `down`
- * is exact. New packages declared in a formerly entitled feed after the job land at Customers
+ * is exact. New packages declared in a formerly entitled feed after the job land at Licensed
  * (decision F4), not fail-closed; the dry run lists every such feed.
  */
 
@@ -91,7 +91,7 @@ interface FeedPlan {
 
 export interface FeedAccessUnitPlan {
   feeds: FeedPlan[];
-  /** Ecosystems of formerly `entitled` feeds: new packages there land at Customers (F4). */
+  /** Ecosystems of formerly `entitled` feeds: new packages there land at Licensed (F4). */
   formerlyEntitled: string[];
   /** PS-03 open access is true now and turns false once the package rows are written (E9). */
   openAccessTurnsFalse: boolean;
@@ -517,7 +517,7 @@ async function downUnit(
 export const feedAccessCustomersJob: MigrationJob = {
   id: "distribution.feed-access-customers",
   summary:
-    "Move package feeds from Authenticated/Entitled to Customers without widening any read",
+    "Move package feeds from Authenticated/Entitled to Licensed without widening any read",
   async units({ db }) {
     const rows = await db.all<{
       product: string;

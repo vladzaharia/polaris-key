@@ -35,7 +35,7 @@ export interface ProductRow {
   services_json?: string | null;
   services_source?: string | null;
   // Ownership of `compat_min`/`compat_max` (migrations/0022_a), same rules once more: NULL or
-  // 'manifest' lets a resync rewrite the window, 'admin' (set by `update/settings`) makes it skip.
+  // 'manifest' lets a resync rewrite the window, 'admin' (set through the settings API) makes it skip.
   compat_source?: string | null;
   // The per-product CORS allowlist (migrations/0024): a JSON array of exact origins from the
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every

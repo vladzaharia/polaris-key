@@ -63,13 +63,7 @@ import {
 
 type Mode = UpdateSettings["metadataAccess"];
 const MODES: Mode[] = ["public", "authenticated", "licensed", "entitled"];
-const METADATA_DESCRIPTIONS: Record<Mode, string> = {
-  public: "Anyone, with no device token.",
-  authenticated: ACCESS_DESCRIPTIONS.authenticated!,
-  licensed: ACCESS_DESCRIPTIONS.licensed!,
-  entitled:
-    "Licensed, and the license's own channels and version window decide what the feed offers it.",
-};
+const METADATA_DESCRIPTIONS = ACCESS_DESCRIPTIONS as Record<Mode, string>;
 
 const SECTIONS = [
   { id: "feed-access", title: "Metadata access" },
@@ -265,7 +259,7 @@ function AccessSection({
                 to={r.access(slug)}
                 className="py-1 text-accent-fg underline-offset-4 hover:underline"
               >
-                Change in Rollouts → Access
+                Change in Access
               </Link>
             </span>
           ) : (
@@ -275,7 +269,7 @@ function AccessSection({
                 to={r.access(slug)}
                 className="py-1 text-accent-fg underline-offset-4 hover:underline"
               >
-                Open Rollouts → Access
+                Open Access
               </Link>
             </span>
           )}

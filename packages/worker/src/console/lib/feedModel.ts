@@ -122,11 +122,11 @@ export const SETTABLE_ACCESS_MODES: readonly string[] = ["public", "licensed"];
 /** What a new feed starts as (E12). */
 export const DEFAULT_ACCESS_MODE = "licensed";
 
-/** How a stored mode reads in the console: two options, and the one stored `entitled` leftover. */
+/** A stored mode in the console's words (the admin now derives its own text from the mode). */
 export function accessDisplay(mode: string): string {
   if (mode === "public") return "public";
-  if (mode === "entitled") return "customers, packages gated individually";
-  return "customers";
+  if (mode === "entitled") return "licensed, gated per package";
+  return "licensed";
 }
 
 /** Drop the ext keys the ecosystem's adapter no longer accepts (a legacy key is tolerated on read). */

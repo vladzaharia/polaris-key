@@ -139,7 +139,7 @@ export interface OperatorPolicy {
  * Resolve the OPERATOR-owned artifact policy from the `update.operatorPolicy` row (0022_c's
  * `operator_policy_json` column until ST-11 moved it).
  *
- * This setting is written by the setting `update.operatorPolicy` (the console's `update/settings`,
+ * This setting is written by the setting `update.operatorPolicy` (the console's update settings,
  * through `writeSetting()`) and by nothing else: no manifest shape carries either key (R6-03), and resync never names the column. It is
  * separate from `artifact_policy_json` precisely because that blob is manifest-owned and a
  * resync rewrites it whole — which used to drop these keys on every push.

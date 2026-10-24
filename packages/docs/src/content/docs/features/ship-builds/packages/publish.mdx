@@ -19,7 +19,7 @@ Your package lands on the feed for its ecosystem as a release, with the same che
 
 Before you start:
 
-- The product's package feeds are on (they are, unless someone chose **Turn off package feeds**). Syncing the manifest below creates the feed for your ecosystem at **Customers**, with its namespace derived from the package name. See [Feeds set themselves up](/docs/features/ship-builds/packages/#feeds-set-themselves-up).
+- The product's package feeds are on (they are, unless someone chose **Turn off package feeds**). Syncing the manifest below creates the feed for your ecosystem at **Licensed**, with its namespace derived from the package name. See [Feeds set themselves up](/docs/features/ship-builds/packages/#feeds-set-themselves-up).
 - The CLI is installed. See [Install the SDKs and the CLI](/docs/build/install/).
 
 ## Declare the package
@@ -42,7 +42,7 @@ release:
         tarball: { match: "tidewater-sdk-*.tgz" }
 ```
 
-Sync the manifest and the feed exists: there is no console step. The namespace is exactly the names you declare, so a second package in the same ecosystem is covered only if it falls inside it (an npm package in the same `@scope`, a Maven group under the declared groupId). Otherwise declare it, then widen the namespace in the console. The feed is Customers until you set it to Public.
+Sync the manifest and the feed exists: there is no console step. The namespace is exactly the names you declare, so a second package in the same ecosystem is covered only if it falls inside it (an npm package in the same `@scope`, a Maven group under the declared groupId). Otherwise declare it, then widen the namespace in the console. The feed is Licensed until you set it to Public.
 
 Each `match` is a file-name glob over the publish step's `--dir`. An OCI deliverable matches an image layout, a Cargo one the `.crate`, a Go one a module zip or a `go.mod`.
 
