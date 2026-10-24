@@ -147,10 +147,14 @@ const MOVE_ROWS: readonly MoveRow[] = [
     ],
   },
   {
+    rule: "scoped gate command",
+    marker: "pnpm gate",
+    destinations: [{ file: "AGENTS.md", section: "Testing" }],
+  },
+  {
     rule: "scoped lead gate",
     marker: "$PKEY_LEAD/gate.sh",
     destinations: [
-      { file: "AGENTS.md", section: "Testing" },
       {
         file: ".claude/skills/running-the-omniplatform-program/SKILL.md",
         section: "Integrating and closing agents",
@@ -506,7 +510,7 @@ describe("names cited by AGENTS.md exist", () => {
         const plain = span.match(/^pnpm (?:run )?([\w:.-]+)/);
         if (plain) {
           const script = plain[1] as string;
-          const builtin = ["install", "exec", "add", "audit", "dlx"];
+          const builtin = ["install", "exec", "add", "audit", "dlx", "turbo"];
           if (
             !builtin.includes(script) &&
             !(script in packageScripts(".")) &&

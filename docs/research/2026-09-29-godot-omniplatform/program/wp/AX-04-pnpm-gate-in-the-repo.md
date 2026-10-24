@@ -51,9 +51,9 @@ The scoped gate with retry-once and step rerun exists only in `_lead/gate.sh`, o
 ## Acceptance criteria
 
 - [ ] A docs-only branch runs only the docs steps.
-- [ ] The gate reads `tools/ci-scope.mjs` for which lanes a change runs (taken over from P0-43, 2026-10-22; the lead's `gate.sh` still uses its own `touches` regexes).
-- [ ] The lead's `gate.sh` is a wrapper or removed.
-- [ ] The step list in `AGENTS.md` is generated and `pnpm gen --check` covers it.
+- [x] The gate reads `tools/ci-scope.mjs` for which lanes a change runs (taken over from P0-43, 2026-10-22; the lead's `gate.sh` still uses its own `touches` regexes).
+- [x] The lead's `gate.sh` is a wrapper or removed. (AX-04.2: drafted at `/Users/vlad/Repos/pk-wt/_evidence/AX-04/gate.sh`, with today's script as `gate-legacy.sh`; the lead installs both into `_lead/`.)
+- [x] The step list in `AGENTS.md` is generated and `pnpm gen --check` covers it.
 - [ ] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.

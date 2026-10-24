@@ -49,7 +49,7 @@ The program lives in `docs/research/2026-09-29-godot-omniplatform/program/`. Its
 - [ ] Merge a passed branch locally with `$PKEY_LEAD/merge.sh`. It auto-resolves only generated
       files and stops on any other conflict. Send real conflicts to **one integration agent** for the
       batch, not back to each builder.
-- [ ] Run `$PKEY_LEAD/gate.sh` once per integration batch. CI on `main` runs the full matrix, and
+- [ ] Run `$PKEY_LEAD/gate.sh` (a wrapper over `pnpm gate`) once per integration batch. CI on `main` runs the full matrix, and
       a deploy waits for it.
 - [ ] Run `$PKEY_LEAD/stall-watch.sh` in the background whenever agents run. Act on every quiet,
       long or unclosed report; resume, stop or re-scope the work, then re-arm the watcher.

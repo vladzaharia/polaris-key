@@ -2532,9 +2532,8 @@ by scope.
   what its job reads, not only its own tree: the Python lane names the Python samples under
   `examples/` and the two cross-SDK fixtures its tests open (`sdks/godot/tests/qr/fixtures.json`,
   `docs/design/ui-kits/terminal-parity.json`), and a rename counts at its old path and its new one.
-  The `changes` job decides this through `tools/ci-scope.mjs`. The lead's local `gate.sh` does not
-  yet ask that script; it still carries its own regexes until it runs `node tools/ci-scope.mjs touches <lane> --worktree`,
-  so until then a local run can pick different lanes from CI for the same files.
+  The `changes` job decides this through `tools/ci-scope.mjs`. `pnpm gate` (`tools/gate.mjs`) asks the
+  same script, so a local run picks the same lanes as CI for the same files.
   A new lane or matrix is one entry in that file and one job in `ci.yml`
   (`tools/ci-scope.test.ts` fails when the two disagree).
 - A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot

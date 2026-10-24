@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 # One required check: `CI OK` (the ci-ok job at the end). Which jobs a pull request runs is decided
-# once, by the `changes` job from tools/ci-scope.json (the same map the lead's local gate.sh is to read
-# through tools/ci-scope.mjs; it does not yet): a lane runs when a changed path is one of its `paths` or a `shared` input;
+# once, by the `changes` job from tools/ci-scope.json (the same map `pnpm gate` reads
+# through tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
 # the `js` job always runs. A pull request runs the floor and the latest of each matrix, `main`
 # (and any non-PR run, or a pull request whose changed files cannot be read) every lane and the full
 # matrix. A skipped lane counts as passed in `ci-ok`; a failed or cancelled one does not.

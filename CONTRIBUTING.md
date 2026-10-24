@@ -26,46 +26,19 @@ default is newer, prefix commands: `mise exec node@22 -- pnpm test`.
 
 ## The green-gate commands
 
-Run these before opening a PR — they are what CI runs (`.github/workflows/ci.yml`), plus
-`pnpm format`, which CI does not run because `pnpm lint` already covers the source files:
+Run the gate before opening a PR:
 
 ```sh
-pnpm build                       # build all JS packages (turbo)
-pnpm gen --check                 # every generator's drift gate, from the registry (tools/generators.ts)
-pnpm typecheck
-pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
-                                 # except the browser runner below
-pnpm lint                        # per-package prettier check
-pnpm --filter @polaris-key/admin build
-
-# The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green
-# `pnpm test` cannot prove the Worker runs in the runtime it ships to.
-pnpm --filter @polaris-key/worker typecheck:workerd
-pnpm --filter @polaris-key/worker test:workerd
-
-# The browser conformance runner (CI jobs browser, browser-firefox, browser-webkit). Root
-# `pnpm test` leaves it out because it needs a Playwright browser; install Chromium once with
-# `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
-pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
-
-# The React drop-in kit at every size in Chromium (CI job react-kit): no sideways scroll, the main
-# action in the first viewport, 24 px targets, text that scales with the root font. Set
-# PKEY_KIT_SHOTS=<dir> to also write each render to <dir>/react.<screen>/<size>-<scheme>.png.
-pnpm --filter @polaris-key/react test:browser
-
-( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
-( cd sdks/swift && swift build && swift test )        # Swift
-sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )   # Kotlin
-
-pnpm format                      # prettier check over md/json too (format:fix to apply)
+pnpm gate            # scoped to the lanes your diff turns on (what a PR needs)
+pnpm gate --full     # every step, every lane
+pnpm gate --plan     # print the steps without running them
 ```
 
-Or run the whole cross-language suite in one shot:
-
-```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner + Kotlin
-```
+[`AGENTS.md`](AGENTS.md#the-green-gate) lists the steps. One of them is the drift gate, `pnpm gen --check`. A failed step reruns on
+its own once; resume with `pnpm gate --only <n>` or `--from <n>`. CI runs every lane on `main`,
+plus the browser runners, the UI kits and the Kotlin suites (`pnpm test:browser`,
+`pnpm ui:lint`, `pnpm ui:report`, `./gradlew -Ppkey.jvmOnly=true …test` in `sdks/kotlin`).
+`pnpm test:all` runs the cross-language suites in one shot.
 
 ## Pre-commit hooks
 
