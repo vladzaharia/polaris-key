@@ -55,6 +55,27 @@ class PolarisUpdateStateTest {
     }
 
     @Test
+    fun aRequestedCheckOffersADismissedOrSkippedVersionAgain() {
+        val state = PolarisUpdateState()
+        val release = DecisionRelease("2.5.0", 7)
+        val check = UpdateCheck(
+            "stable",
+            UpdateDecision.Platform(release, mandatory = false, critical = false, discardStaged = false),
+            UpdateCheck.FeedSource.network,
+            UpdateCheck.RecordSource.none,
+            emptyList(),
+        )
+        state.show(PolarisUpdateUi("2.5.0"))
+        state.dismiss()
+        state.skippedVersion = "2.5.0"
+        state.show(PolarisUpdateUi("2.5.0"))
+        assertNull(state.offer.value)
+        assertEquals(true, state.showRequested(check))
+        assertEquals("2.5.0", state.offer.value?.version)
+        assertEquals("2.5.0", state.skippedVersion)
+    }
+
+    @Test
     fun followsABackgroundInstallAndFinishesIt() = runTest {
         val stages = MutableStateFlow<InstallStage>(InstallStage.Idle)
         val calls = mutableListOf<String>()

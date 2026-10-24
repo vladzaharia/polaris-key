@@ -154,6 +154,22 @@ public class PolarisUpdateState {
     }
 
     /**
+     * Offer what [check] decided because the person asked ("Check for updates" in a menu): a version they
+     * dismissed with Later or skipped is offered again. Answers whether an offer is open now.
+     */
+    public fun showRequested(check: UpdateCheck): Boolean {
+        val skipped = skippedVersion
+        dismissedVersion = null
+        skippedVersion = null
+        try {
+            show(check)
+        } finally {
+            skippedVersion = skipped
+        }
+        return _offer.value != null
+    }
+
+    /**
      * Hand the offered decision to the platform installer ([actions]). A typed N/A or a failure
      * stays on the offer as [PolarisUpdateUi.error]; a started install keeps the offer until the
      * platform reports it downloaded ([readyToRestart]) or the app restarts.
