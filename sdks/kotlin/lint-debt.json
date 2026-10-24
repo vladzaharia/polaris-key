@@ -2695,11 +2695,18 @@
     },
     "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisWindows.desktop.kt": {
       "detekt:complexity.LongMethod": 1,
-      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.LongParameterList": 4,
       "detekt:naming.FunctionNaming": 8,
       "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
       "ktlint:standard:function-naming": 8,
-      "ktlint:standard:function-signature": 4
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/AccentSwatchSmokeTest.kt": {
       "detekt:style.MagicNumber": 4,

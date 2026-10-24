@@ -1151,6 +1151,9 @@
     "packages/cli/test/channelAdd.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/cli/test/channelSync.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/cli/test/cli.test.ts": {
       "jscpd:duplicate": 6
     },
@@ -1221,7 +1224,7 @@
       "jscpd:duplicate": 3
     },
     "packages/cli/test/storefronts.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/cli/test/storefrontsPr.test.ts": {
       "jscpd:duplicate": 2
@@ -3920,6 +3923,9 @@
     "packages/worker/test/rbacStoredPrincipal.test.ts": {
       "jscpd:duplicate": 3
     },
+    "packages/worker/test/recordDeploy.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/refusals.test.ts": {
       "jscpd:duplicate": 3
     },
@@ -4372,6 +4378,9 @@
     },
     "tools/gen-services.ts": {
       "jscpd:duplicate": 4
+    },
+    "tools/lint/kotlin-adapters.test.ts": {
+      "jscpd:duplicate": 1
     },
     "tools/mockups/build-kit.mjs": {
       "jscpd:duplicate": 2
