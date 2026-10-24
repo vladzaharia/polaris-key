@@ -393,6 +393,72 @@ final class KitRulesTests: XCTestCase {
                 ".fixedSize(horizontal: false, vertical: true)"))
     }
 
+    // MARK: The render matrix's inputs (UK-08.7)
+
+    func testACustomAccentKeepsThreeToOneOnEverySurfaceInBothSchemes() throws {
+        // Increase Contrast adds the full-contrast hairline; the accent fill is 3:1 or more on
+        // every surface with it on or off (the resolver does not depend on the setting).
+        for dark in [true, false] {
+            let r = try XCTUnwrap(PolarisAccent.resolve("#ff6a3d", dark: dark))
+            let surfaces =
+                dark
+                ? PolarisKit.Dark.accentSurfaces : PolarisKit.Light.accentSurfaces
+            for surface in surfaces {
+                XCTAssertGreaterThanOrEqual(
+                    PolarisAccent.contrast(r.solid, String(format: "#%06x", surface.hex)), 3,
+                    "dark: \(dark)")
+            }
+            let id = KitIdentity.resolve(
+                PolarisKeyPreviewState.base { $0.presentation = PolarisKeyPreviewState.driftKart })
+            for increased in [false, true] {
+                let p = KitPaletteResolver.palette(
+                    identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                    increaseContrast: increased)
+                XCTAssertEqual(p.accentSolid, BrandColor(hexString: r.solid)!.color)
+            }
+        }
+    }
+
+    func testIncreaseContrastTakesTheFullContrastHairline() {
+        let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+        for dark in [true, false] {
+            func border(_ increased: Bool) -> Color {
+                KitPaletteResolver.palette(
+                    identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                    increaseContrast: increased
+                ).border
+            }
+            XCTAssertNotEqual(border(true), border(false), "dark: \(dark)")
+        }
+    }
+
+    func testForcedAccessibilityOnlyAddsToTheSystem() {
+        let off = PolarisKeyForcedAccessibility()
+        XCTAssertFalse(off.increaseContrast)
+        XCTAssertFalse(off.reduceTransparency)
+        XCTAssertEqual(off, EnvironmentValues().polarisKeyForcedAccessibility)
+    }
+
+    /// Every `components.json` state is reached by a preview state, so the Mac harness (which
+    /// renders `PolarisKeyPreviewState.all`) draws each catalog state.
+    func testEveryCatalogStateIsReachedByAPreviewState() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let url = root.appendingPathComponent("packages/brand/kit-copy/components.json")
+        let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let components = try XCTUnwrap(json?["components"] as? [String: [String: Any]])
+        let reached = Set(PolarisKeyPreviewState.all.map { "\($0.component.rawValue).\($0.state)" })
+        var missing: [String] = []
+        for (name, component) in components {
+            for state in component["states"] as? [String] ?? []
+            where !reached.contains("\(name).\(state)") {
+                missing.append("\(name).\(state)")
+            }
+        }
+        XCTAssertEqual(missing.sorted(), [])
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {

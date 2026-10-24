@@ -10,6 +10,21 @@
 // Launch arguments are the iOS harness's (-pkeyState, -pkeyScheme, -pkeyPreset, -pkeyAccent,
 // -pkeyLocale) plus -pkeyWindow WxH and -pkeyInactive (see App/TidewaterKitApp.swift).
 //
+// The suites (UK-08.7; each a test method, so CI can run one):
+//   testRenders          the eight board screens at the four window rows x both schemes x both
+//                        presets, the three sheets, and (PKEY_KIT_INACTIVE=1) the inactive window
+//   testStates           every preview state (every components.json state) x both schemes at 900x640
+//   testUpdateWindow     the Sparkle update window in each of its fixture states x schemes x presets
+//   testAccessibility    the board screens at 900x640 under Increase Contrast, Reduce Transparency,
+//                        the custom accent #ff6a3d, a presentation document's accent and icon (no
+//                        integrator theme) and the macOS 15 material look (forcesMaterial)
+//   testLargeText        the 200 % stand-in (M6): Dynamic Type forced to accessibility3 at 480x520,
+//                        900x640 and 1440x900
+//
+// Every render is also checked for: no element cut off by the window (horizontally everywhere,
+// vertically outside a scroll view), and the one primary button inside the window - the first
+// viewport - for the screens that have one.
+//
 // Inputs (read as TEST_RUNNER_<NAME> too, which is how run.sh passes them):
 //   PKEY_KIT_SHOTS      where the renders go (unset: attachments only)
 //   PKEY_KIT_ONLY       comma-separated states (default: the Mac set)
@@ -23,6 +38,7 @@
 // Accessibility), which CI's macOS images grant.
 
 import AppKit
+import PolarisKeyUICore
 import SnapshotTesting
 import XCTest
 
@@ -35,17 +51,56 @@ final class KitRenderMacTests: XCTestCase {
         var preset: String
         var scheme: String
         var inactive: Bool
+        var tag: String
         var audit: [String]
+        var layout: [String]
     }
 
-    /// The states the Mac slices render; the rest of the catalog is the iOS harness's.
-    static let all = [
-        "Welcome.default", "Activate.parsed", "Activate.device-limit", "SignIn.methods",
-        "SignInHandoff.code", "LicenseChoice.many", "DeviceLimit.default", "StatusScreen.revoked",
+    /// One render: a state (or an update-window fixture) at a window size, with launch arguments.
+    struct Variant {
+        var state: String
+        var window = "900x640"
+        var scheme = "dark"
+        var preset = "polaris-key"
+        var inactive = false
+        var sheet = false
+        /// Names the extra: `contrast`, `large`, ... (empty: none).
+        var tag = ""
+        var args: [String] = []
+        /// An update-window fixture (`Update.<fixture>`), drawn by the driver's own window.
+        var update: String?
+    }
+
+    /// The Settings window's Account pane (`-pkeySettings`): the kit's own pane at its own size, so
+    /// the window rows do not apply and it renders once per scheme and preset.
+    static let settingsPane = "SettingsPane.account"
+
+    /// The eight board screens (UI-KITS §7; the `desktop.html` rows): gate, activate, sign-in,
+    /// device limit, update, settings, states, grace.
+    static let board = [
+        "Welcome.default", "Activate.parsed", "SignIn.methods", "DeviceLimit.default",
+        "UpdatePrompt.available", "SettingsPane.account", "StatusScreen.revoked",
+        "GraceBanner.days-left",
     ]
+
+    /// Board screens that draw a primary button on every Mac window.
+    static let hasPrimary = ["Welcome.default", "Activate.parsed"]
+
+    /// More states the four-window rows also draw (kept from UK-08.2).
+    static let extraRows = ["Activate.device-limit", "SignInHandoff.code", "LicenseChoice.many"]
 
     /// The steps drawn as a sheet.
     static let sheets = ["Activate.parsed", "SignIn.methods", "SignInHandoff.code"]
+
+    /// The update window's fixtures (`UpdateFixture` in PolarisKeyUpdateUI).
+    static let updateFixtures = [
+        "permission", "checking", "found", "downloading", "downloading-unknown", "extracting",
+        "ready", "installing", "downloaded", "quit-to-install", "up-to-date", "error",
+        "error-cannot-install",
+    ]
+
+    static let windows = ["480x520", "900x640", "1440x900", "1920x1080"]
+    static let schemes = ["dark", "light"]
 
     static func env(_ name: String) -> String? {
         let env = ProcessInfo.processInfo.environment
@@ -55,73 +110,183 @@ final class KitRenderMacTests: XCTestCase {
 
     var out: URL? { Self.env("PKEY_KIT_SHOTS").map { URL(fileURLWithPath: $0) } }
     var baselineFailures: [String] = []
+    var quick: Bool { Self.env("PKEY_KIT_QUICK") == "1" }
+
+    /// PKEY_KIT_ONLY narrows every suite to these states.
+    func only(_ states: [String]) -> [String] {
+        guard let only = Self.env("PKEY_KIT_ONLY").map({ Set($0.split(separator: ",").map(String.init)) })
+        else { return states }
+        return states.filter { only.contains($0) }
+    }
+
+    func windowRows() -> [String] {
+        Self.env("PKEY_KIT_WINDOWS").map { $0.split(separator: ",").map(String.init) }
+            ?? (quick ? ["900x640"] : Self.windows)
+    }
 
     @MainActor
     func testRenders() throws {
-        let quick = Self.env("PKEY_KIT_QUICK") == "1"
         let states =
-            Self.env("PKEY_KIT_ONLY").map { $0.split(separator: ",").map(String.init) }
-            ?? (quick ? ["Welcome.default"] : Self.all)
-        let windows =
-            Self.env("PKEY_KIT_WINDOWS").map { $0.split(separator: ",").map(String.init) }
-            ?? (quick ? ["900x640"] : ["480x520", "900x640", "1440x900", "1920x1080"])
+            Self.env("PKEY_KIT_ONLY") != nil
+            ? only(Self.board + Self.extraRows)
+            : (quick ? ["Welcome.default"] : Self.board + Self.extraRows)
         let inactive = Self.env("PKEY_KIT_INACTIVE") == "1"
-        var renders: [Render] = []
+        var variants: [Variant] = []
         // The Mac sheet (`presentation: "sheet"`, UK-08.3): the step as one fitted 440 pt panel
         // over Welcome, at the common window.
         if !quick, Self.env("PKEY_KIT_ONLY") == nil {
             for state in Self.sheets {
-                for scheme in ["dark", "light"] {
-                    renders.append(
-                        try render(state, window: "900x640", scheme: scheme, sheet: true))
+                for scheme in Self.schemes {
+                    variants.append(Variant(state: state, scheme: scheme, sheet: true))
                 }
             }
         }
-        for window in windows {
+        for window in windowRows() {
             for state in states {
-                for scheme in ["dark", "light"] {
-                    renders.append(try render(state, window: window, scheme: scheme))
+                for scheme in Self.schemes {
+                    variants.append(Variant(state: state, window: window, scheme: scheme))
                 }
                 guard !quick else { continue }
-                for scheme in ["dark", "light"] {
-                    renders.append(
-                        try render(state, window: window, scheme: scheme, preset: "native"))
+                for scheme in Self.schemes {
+                    variants.append(
+                        Variant(state: state, window: window, scheme: scheme, preset: "native"))
                 }
                 if inactive {
-                    renders.append(
-                        try render(state, window: window, scheme: "light", inactive: true))
+                    variants.append(
+                        Variant(state: state, window: window, scheme: "light", inactive: true))
                 }
             }
+        }
+        try run(variants, file: "renders-mac.json")
+    }
+
+    /// Every preview state, so every `components.json` state (KitRulesTests proves the mapping),
+    /// in both schemes at the common window.
+    @MainActor
+    func testStates() throws {
+        try XCTSkipIf(quick, "quick run")
+        let ids = Self.env("PKEY_KIT_ONLY") != nil
+            ? only(PolarisKeyPreviewState.all.map(\.id))
+            : PolarisKeyPreviewState.all.map(\.id).filter { !Self.board.contains($0) }
+        let variants = ids.flatMap { id in
+            Self.schemes.map { Variant(state: id, scheme: $0) }
+        }
+        try run(variants, file: "renders-mac-states.json")
+    }
+
+    @MainActor
+    func testUpdateWindow() throws {
+        try XCTSkipIf(quick || Self.env("PKEY_KIT_ONLY") != nil, "narrowed run")
+        var variants: [Variant] = []
+        for fixture in Self.updateFixtures {
+            for preset in ["polaris-key", "native"] {
+                for scheme in Self.schemes {
+                    variants.append(
+                        Variant(
+                            state: "Update.\(fixture)", window: "auto", scheme: scheme,
+                            preset: preset, update: fixture))
+                }
+            }
+        }
+        try run(variants, file: "renders-mac-update.json")
+    }
+
+    /// Increase Contrast, Reduce Transparency, the custom accent, a presentation document's
+    /// accent and icon, and the macOS 15 look, on the board screens at 900x640.
+    @MainActor
+    func testAccessibility() throws {
+        try XCTSkipIf(quick, "quick run")
+        let extras: [(tag: String, args: [String])] = [
+            ("contrast", ["-pkeyContrast", "increased"]),
+            ("reduce-transparency", ["-pkeyReduceTransparency"]),
+            ("accent", ["-pkeyAccent", "#ff6a3d"]),
+            // The product's accent and icon arrive as a presentation document delivers them:
+            // no theme from the integrator, no icon passed in.
+            ("presentation", ["-pkeyPresentation"]),
+            // The macOS 15 look (system materials, solid capsules) on macOS 26, for review.
+            ("material", ["-pkeyMaterial"]),
+        ]
+        var variants: [Variant] = []
+        for extra in extras {
+            for state in only(Self.board) {
+                for scheme in Self.schemes {
+                    variants.append(
+                        Variant(state: state, scheme: scheme, tag: extra.tag, args: extra.args))
+                }
+            }
+        }
+        try run(variants, file: "renders-mac-accessibility.json")
+    }
+
+    /// The 200 % stand-in (M6): a Mac has no Dynamic Type slider, so the sample forces
+    /// `.dynamicTypeSize(.accessibility3)`.
+    @MainActor
+    func testLargeText() throws {
+        try XCTSkipIf(quick, "quick run")
+        var variants: [Variant] = []
+        // Not the Settings pane: its native Form keeps the system's text on a Mac (a half-scaled
+        // pane is worse than the system's own), so it has no 200 % row until it is redrawn.
+        for window in ["480x520", "900x640", "1440x900"] {
+            for state in only(Self.board) where state != Self.settingsPane {
+                for scheme in Self.schemes {
+                    variants.append(
+                        Variant(
+                            state: state, window: window, scheme: scheme, tag: "large",
+                            args: ["-pkeyTypeSize", "ax3"]))
+                }
+            }
+        }
+        try run(variants, file: "renders-mac-large.json")
+    }
+
+    @MainActor
+    private func run(_ variants: [Variant], file: String) throws {
+        var renders: [Render] = []
+        var seen = Set<String>()
+        for var variant in variants {
+            // The pane has one size, so it is one render however many window rows ask for it.
+            if variant.state == Self.settingsPane { variant.window = "auto" }
+            guard seen.insert(Self.name(variant)).inserted else { continue }
+            renders.append(try render(variant))
         }
         if let out {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-            try JSONEncoder.pretty.encode(renders).write(
-                to: out.appendingPathComponent("renders-mac.json"))
+            try JSONEncoder.pretty.encode(renders).write(to: out.appendingPathComponent(file))
         }
         // "Nearly passed" is the audit's warning; it stays in the JSON and does not fail the run.
         let kitIssues = renders.flatMap { r in
             r.audit.filter { !$0.contains("nearly passed") }.map { "\(r.name): \($0)" }
         }
         XCTAssertEqual(kitIssues, [], "accessibility audit issues")
+        XCTAssertEqual(
+            renders.flatMap { r in r.layout.map { "\(r.name): \($0)" } }, [],
+            "clipped elements, or a primary outside the first viewport")
         XCTAssertEqual(baselineFailures, [], "renders that differ from their baselines")
     }
 
-    @MainActor
-    private func render(
-        _ state: String, window: String, scheme: String, preset: String = "polaris-key",
-        inactive: Bool = false, sheet: Bool = false
-    ) throws -> Render {
+    static func name(_ v: Variant) -> String {
         let os = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
-        let name =
-            "mac\(os)-\(window)-\(state)-\(preset)-\(scheme)\(inactive ? "-inactive" : "")\(sheet ? "-sheet" : "")"
+        return
+            "mac\(os)-\(v.window)-\(v.state)-\(v.preset)-\(v.scheme)\(v.tag.isEmpty ? "" : "-\(v.tag)")\(v.inactive ? "-inactive" : "")\(v.sheet ? "-sheet" : "")"
+    }
+
+    @MainActor
+    private func render(_ v: Variant) throws -> Render {
+        let os = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        let name = Self.name(v)
         let app = XCUIApplication()
-        var args = [
-            "-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime", "-pkeyWindow", window,
-            "-ApplePersistenceIgnoreState", "YES",
-        ]
-        if preset == "native" { args += ["-pkeyPreset", "native"] }
-        if inactive { args += ["-pkeyInactive"] }
-        if sheet { args += ["-pkeySheet"] }
+        var args = ["-pkeyScheme", v.scheme, "-pkeyFreezeTime", "-ApplePersistenceIgnoreState", "YES"]
+        if let fixture = v.update {
+            args += ["-pkeyUpdate", fixture]
+        } else if v.state == Self.settingsPane {
+            args += ["-pkeySettings"]
+        } else {
+            args += ["-pkeyState", v.state, "-pkeyWindow", v.window]
+        }
+        if v.preset == "native" { args += ["-pkeyPreset", "native"] }
+        if v.inactive { args += ["-pkeyInactive"] }
+        if v.sheet { args += ["-pkeySheet"] }
+        args += v.args
         if let extra = Self.env("PKEY_KIT_EXTRA_ARGS") {
             args += extra.split(separator: " ").map(String.init)
         }
@@ -132,7 +297,7 @@ final class KitRenderMacTests: XCTestCase {
         XCTAssertTrue(win.waitForExistence(timeout: 10), "\(name): no window")
         // The 250 ms loading grace and the first layout.
         Thread.sleep(forTimeInterval: 0.9)
-        if inactive {
+        if v.inactive {
             // A real inactive window: the app hands the activation to Finder itself
             // (-pkeyInactive); this does the same from the runner, whichever lands first.
             XCUIApplication(bundleIdentifier: "com.apple.finder").activate()
@@ -148,11 +313,12 @@ final class KitRenderMacTests: XCTestCase {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try shot.pngRepresentation.write(to: out.appendingPathComponent("\(name).png"))
         }
-        try baseline(shot.image, state: state, name: name)
+        try baseline(shot.image, state: v.state, name: name)
 
+        let layout = layoutIssues(win, expectPrimary: Self.hasPrimary.contains(v.state) && !v.sheet)
         var issues: [String] = []
         // The audit needs the app frontmost to reach its elements.
-        if inactive { app.activate() }
+        if v.inactive { app.activate() }
         try app.performAccessibilityAudit(for: .all) { issue in
             let label = issue.element.map { "'\($0.label)'" } ?? "-"
             issues.append("\(issue.compactDescription) [\(label)]")
@@ -160,8 +326,44 @@ final class KitRenderMacTests: XCTestCase {
         }
         app.terminate()
         return Render(
-            name: name, os: os, window: window, state: state, preset: preset, scheme: scheme,
-            inactive: inactive, audit: issues)
+            name: name, os: os, window: v.window, state: v.state, preset: v.preset,
+            scheme: v.scheme, inactive: v.inactive, tag: v.tag, audit: issues, layout: layout)
+    }
+
+    /// What the layout must satisfy, read from one accessibility snapshot of the window:
+    ///   * no text, button or field is cut off by the window: horizontally anywhere, and
+    ///     vertically outside a scroll view (a scroll view's rows scroll in);
+    ///   * the one primary button (`pkey.primary`) lies wholly inside the window, which is the
+    ///     first viewport, on the screens that have one.
+    @MainActor
+    func layoutIssues(_ win: XCUIElement, expectPrimary: Bool) -> [String] {
+        guard let snapshot = try? win.snapshot() else { return ["no accessibility snapshot"] }
+        let bounds = snapshot.frame.insetBy(dx: -1.5, dy: -1.5)
+        let checked: Set<XCUIElement.ElementType> = [
+            .staticText, .button, .textField, .secureTextField, .link, .checkBox, .popUpButton,
+            .radioButton, .switch, .slider,
+        ]
+        var issues: [String] = []
+        var primaries = 0
+        func walk(_ node: XCUIElementSnapshot, inScroll: Bool) {
+            let f = node.frame
+            let label = "\(node.elementType.rawValue) '\(node.label)'"
+            if node.identifier == "pkey.primary" {
+                primaries += 1
+                if !bounds.contains(f) { issues.append("primary outside the window: \(f)") }
+            }
+            if checked.contains(node.elementType), f.width > 0, f.height > 0, !node.label.isEmpty {
+                let horizontal = f.minX >= bounds.minX && f.maxX <= bounds.maxX
+                if !horizontal || (!inScroll && !bounds.contains(f)) {
+                    issues.append("cut off by the window: \(label) \(f)")
+                }
+            }
+            let scroll = inScroll || node.elementType == .scrollView
+            for child in node.children { walk(child, inScroll: scroll) }
+        }
+        walk(snapshot, inScroll: false)
+        if expectPrimary && primaries == 0 { issues.append("no primary button in the window") }
+        return issues
     }
 
     /// `<component>-<state>` as the iOS harness names a baseline directory.

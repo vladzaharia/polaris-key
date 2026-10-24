@@ -51,6 +51,8 @@ struct KitButton: View {
             )
             .layoutValue(key: KitActionSlotKey.self, value: KitActionSlot(kind: kind, leading: leading))
             .accessibilityAddTraits(busy ? .updatesFrequently : [])
+            // The render suite finds the one primary by this (UK-08.7); VoiceOver does not read it.
+            .accessibilityIdentifier(kind == .primary ? "pkey.primary" : "")
             .accessibilityValue(busy ? Text(strings.string("a11y.busy")) : Text(""))
             .accessibilityHint(
                 glyph == PolarisKitGlyph.newWindow
