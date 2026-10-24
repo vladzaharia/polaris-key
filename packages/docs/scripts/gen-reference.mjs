@@ -1189,8 +1189,80 @@ function githubAction() {
   );
 }
 
+// ── Compatibility and versions: every floor is read from its source file ─────────────────────
+function compatibility() {
+  const must = (value, what) => {
+    if (!value) throw new Error(`compatibility: cannot read ${what}`);
+    return value;
+  };
+  const protocol = must(
+    /export const PROTOCOL_VERSION = (\d+);/.exec(
+      read("packages", "shared-protocol", "src", "core.ts"),
+    )?.[1],
+    "PROTOCOL_VERSION",
+  );
+  const engines = (pkg) =>
+    must(
+      JSON.parse(read("packages", pkg, "package.json")).engines?.node,
+      `${pkg} engines.node`,
+    );
+  const python = must(
+    /^requires-python\s*=\s*"([^"]+)"/m.exec(
+      read("sdks", "python", "pyproject.toml"),
+    )?.[1],
+    "requires-python",
+  );
+  const swiftPackage = read("sdks", "swift", "Package.swift");
+  const tools = must(
+    /swift-tools-version:\s*([\d.]+)/.exec(swiftPackage)?.[1],
+    "swift-tools-version",
+  );
+  const platforms = must(
+    /^\s+platforms:\s*\[([^\]]+)\]/m.exec(swiftPackage)?.[1],
+    "Swift platforms",
+  );
+  const apple = [...platforms.matchAll(/\.(\w+)\(\.v(\d+)\)/g)]
+    .map(([, os, v]) => `${os} ${v}`)
+    .join(", ");
+  must(apple, "Swift platforms");
+  const godot = must(
+    /Godot (\d+\.\d+) and later/.exec(
+      read("sdks", "godot", "addons", "polaris_key", "plugin.cfg"),
+    )?.[1],
+    "Godot minimum in plugin.cfg",
+  );
+  const toml = read("sdks", "kotlin", "gradle", "libs.versions.toml");
+  const tomlValue = (key) =>
+    must(
+      new RegExp(`^${key}\\s*=\\s*"([^"]+)"`, "m").exec(toml)?.[1],
+      `libs.versions.toml ${key}`,
+    );
+  const rows = [
+    ["Node", `Node ${engines("sdk-node")}`],
+    ["React", `Node ${engines("sdk-react")} for the desktop-over-node path`],
+    ["Python", `Python ${python}`],
+    ["Swift", `${apple}; swift-tools-version ${tools}`],
+    ["Godot", `Godot ${godot} or later`],
+    [
+      "Kotlin",
+      `JVM bytecode ${tomlValue("jvmTarget")}; Android min SDK ${tomlValue("androidMinSdk")} (compile and target ${tomlValue("androidCompileSdk")})`,
+    ],
+  ];
+  return page(
+    "Compatibility and versions",
+    "The protocol version and the minimum toolchain of each SDK.",
+    `The wire protocol is version ${protocol}. Every SDK and the server share one version, derived from the release tag, so pair an SDK with the server release of the same version.`,
+    `## Minimum toolchain
+
+${table(["SDK", "Minimum"], rows)}
+
+Each minimum is read from the SDK's own manifest: \`engines\`, \`requires-python\`, \`Package.swift\`, the Godot addon's \`plugin.cfg\` and the Kotlin version catalog.`,
+  );
+}
+
 export const EMITTERS = {
   "reference/github-action.mdx": githubAction,
+  "reference/compatibility.mdx": compatibility,
   "reference/api-names.mdx": apiNames,
   "reference/validation-codes.mdx": manifestValidationCodes,
   "reference/config-entry.mdx": configEntryReference,

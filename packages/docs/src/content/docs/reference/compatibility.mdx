@@ -1,0 +1,22 @@
+---
+title: "Compatibility and versions"
+description: "The protocol version and the minimum toolchain of each SDK."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+The wire protocol is version 4. Every SDK and the server share one version, derived from the release tag, so pair an SDK with the server release of the same version.
+
+## Minimum toolchain
+
+| SDK | Minimum |
+| --- | --- |
+| Node | Node >=22.13.0 |
+| React | Node >=22.13.0 for the desktop-over-node path |
+| Python | Python >=3.9 |
+| Swift | macOS 15, iOS 18, tvOS 18, visionOS 2; swift-tools-version 6.0 |
+| Godot | Godot 4.4 or later |
+| Kotlin | JVM bytecode 17; Android min SDK 24 (compile and target 36) |
+
+Each minimum is read from the SDK's own manifest: `engines`, `requires-python`, `Package.swift`, the Godot addon's `plugin.cfg` and the Kotlin version catalog.
