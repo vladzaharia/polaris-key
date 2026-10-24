@@ -1367,9 +1367,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Product");
       const alert = p.getByRole("alert");
-      await alert
-        .getByText("Couldn't load this product. Try again in a moment.")
-        .waitFor();
+      await alert.getByText("Couldn't load this product.").waitFor();
       await alert.getByRole("link", { name: "Library" }).waitFor();
     },
   },
@@ -1849,7 +1847,7 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Your library");
       await p
         .getByRole("alert")
-        .getByText("Couldn't load your library. Try again in a moment.")
+        .getByText("Couldn't load your library.")
         .waitFor();
     },
   },
