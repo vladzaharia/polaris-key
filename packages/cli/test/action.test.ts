@@ -1,6 +1,7 @@
 /**
- * P2-06 — the `polaris-key/publish` Action entry, the standalone bundle and its freshness gate,
- * `pkey manifest schemas`, and the SigV4 signer against AWS's published examples.
+ * P2-06, A-25.5 — the `polaris-key/publish` Action entry (eight inputs, the removed-input refusals,
+ * `channels: auto`), the standalone bundle and its freshness gate, `pkey manifest schemas`, and the
+ * SigV4 signer against AWS's published examples.
  */
 
 import { execFile } from "node:child_process";
@@ -13,10 +14,9 @@ import { parse as parseYaml } from "yaml";
 import {
   ACTION_INPUTS,
   actionInput,
-  ensureZstd,
   isActionInvocation,
-  pinsInput,
   runAction,
+  splitArgs,
 } from "../src/action.js";
 import { runPkey, signV4 } from "../src/index.js";
 import {
@@ -27,11 +27,13 @@ import {
   fakeServer,
   instant,
   json,
+  RELEASE_PEM,
+  RELEASE_PEM_BODY,
+  RELEASE_YAML_KEYED,
   repo,
   SLUG,
   tempDir,
 } from "./publishFixture.js";
-import { npmPackage, PACKAGES_RELEASE_YAML } from "./packageFixtures.js";
 
 const run = promisify(execFile);
 const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -39,32 +41,57 @@ const repoRoot = path.resolve(pkgDir, "..", "..");
 
 afterEach(cleanup);
 
-function inputs(over: Record<string, string> = {}) {
-  const raw: Record<string, string> = {
-    product: SLUG,
-    deliverable: "app",
-    version: "",
-    tag: "v0.3.0",
-    channel: "",
-    dir: "dist",
-    source: "r2",
-    meta: "",
-    "base-url": BASE,
-    "dry-run": "false",
-    ...over,
-  };
-  return Object.fromEntries(
-    Object.entries(raw).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
-  );
+/** The step's environment: `with:` keys as GitHub passes them, plus action.yml's defaults. */
+async function stepEnv(withInputs: Record<string, string>) {
+  const yml = parseYaml(
+    await readFile(path.join(repoRoot, "actions/publish/action.yml"), "utf8"),
+  ) as { inputs: Record<string, { default?: string }> };
+  const env: Record<string, string> = {};
+  for (const [name, decl] of Object.entries(yml.inputs)) {
+    const value = withInputs[name] ?? decl.default;
+    if (value !== undefined) env[`INPUT_${name.toUpperCase()}`] = String(value);
+  }
+  for (const [name, value] of Object.entries(withInputs))
+    if (!(name in yml.inputs)) env[`INPUT_${name.toUpperCase()}`] = value;
+  return env;
+}
+
+const PUBLISH_ARGS = `--tag v0.3.0 --dir dist --base-url ${BASE}`;
+
+async function act(
+  cwd: string,
+  withInputs: Record<string, string>,
+  over: { GITHUB_OUTPUT?: string; fetchImpl?: typeof fetch } = {},
+) {
+  const io = capture();
+  const server = fakeServer();
+  const code = await runAction({
+    env: {
+      ...actionsEnv(
+        over.GITHUB_OUTPUT ? { GITHUB_OUTPUT: over.GITHUB_OUTPUT } : {},
+      ),
+      ...(await stepEnv(withInputs)),
+    },
+    cwd,
+    stdout: io.stdout,
+    stderr: io.stderr,
+    fetchImpl: over.fetchImpl ?? server.fetchImpl,
+    sleep: instant,
+  });
+  return { code, io, server };
 }
 
 describe("the Action entry", () => {
-  it("is chosen only with no argv, inside Actions, with the product input", () => {
-    const env = { GITHUB_ACTIONS: "true", INPUT_PRODUCT: SLUG };
+  it("is chosen only with no argv, inside Actions, with the command input (D-A6)", () => {
+    const env = { GITHUB_ACTIONS: "true", INPUT_COMMAND: "release publish" };
     expect(isActionInvocation([], env)).toBe(true);
     expect(isActionInvocation(["validate"], env)).toBe(false);
     expect(isActionInvocation([], { GITHUB_ACTIONS: "true" })).toBe(false);
-    expect(isActionInvocation([], { INPUT_PRODUCT: SLUG })).toBe(false);
+    expect(isActionInvocation([], { INPUT_COMMAND: "x" })).toBe(false);
+    // The old detector no longer selects the Action.
+    expect(
+      isActionInvocation([], { GITHUB_ACTIONS: "true", INPUT_PRODUCT: SLUG }),
+    ).toBe(false);
     // GitHub upper-cases names and keeps hyphens; an unset input arrives as "".
     expect(actionInput({ "INPUT_BASE-URL": " https://x " }, "base-url")).toBe(
       "https://x",
@@ -72,20 +99,49 @@ describe("the Action entry", () => {
     expect(actionInput({ INPUT_CHANNEL: "" }, "channel")).toBeUndefined();
   });
 
-  it("publishes from its inputs and writes release-id and outcome to $GITHUB_OUTPUT", async () => {
+  it("splits args on whitespace and newlines, quotes group, nothing expands", () => {
+    expect(splitArgs("")).toEqual([]);
+    expect(splitArgs("--a 1\n--b  2\n")).toEqual(["--a", "1", "--b", "2"]);
+    expect(splitArgs('--notes \'two words\' --x="a b" ""')).toEqual([
+      "--notes",
+      "two words",
+      "--x=a b",
+      "",
+    ]);
+    expect(splitArgs("$HOME *.zip `id` $(id) ; rm -rf \\n")).toEqual([
+      "$HOME",
+      "*.zip",
+      "`id`",
+      "$(id)",
+      ";",
+      "rm",
+      "-rf",
+      "\\n",
+    ]);
+    expect(() => splitArgs("--a 'b")).toThrow(/unterminated/);
+  });
+
+  it("declares exactly the eight inputs, in order, with the documented defaults", async () => {
+    const yml = parseYaml(
+      await readFile(path.join(repoRoot, "actions/publish/action.yml"), "utf8"),
+    ) as { inputs: Record<string, { default?: string }> };
+    expect(Object.keys(yml.inputs)).toEqual([...ACTION_INPUTS]);
+    expect(ACTION_INPUTS).toHaveLength(8);
+    expect(yml.inputs.command!.default).toBe("release publish");
+    expect(yml.inputs.channels!.default).toBe("auto");
+    expect(yml.inputs["dry-run"]!.default).toBe("false");
+    expect(yml.inputs["base-url"]!.default).toBeUndefined();
+  });
+
+  it("publishes from args and writes release-id and outcome to $GITHUB_OUTPUT", async () => {
     const cwd = await repo();
     const output = path.join(cwd, "gh_output");
     await writeFile(output, "");
-    const server = fakeServer();
-    const io = capture();
-    const code = await runAction({
-      env: { ...actionsEnv({ GITHUB_OUTPUT: output }), ...inputs() },
+    const { code, io, server } = await act(
       cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-    });
+      { args: PUBLISH_ARGS },
+      { GITHUB_OUTPUT: output },
+    );
     expect(io.err()).toBe("");
     expect(code).toBe(0);
     expect(await readFile(output, "utf8")).toBe(
@@ -94,17 +150,23 @@ describe("the Action entry", () => {
     expect(server.calls.filter((c) => c.method === "PUT")).toHaveLength(8);
   });
 
+  it("base-url reaches the CLI as PKEY_BASE_URL, with no flag", async () => {
+    const cwd = await repo();
+    const { code, io, server } = await act(cwd, {
+      args: "--tag v0.3.0 --dir dist",
+      "base-url": BASE,
+      channels: "none",
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    expect(server.calls.length).toBeGreaterThan(0);
+  });
+
   it("dry-run: true uploads nothing", async () => {
     const cwd = await repo();
-    const server = fakeServer();
-    const io = capture();
-    const code = await runAction({
-      env: { ...actionsEnv(), ...inputs({ "dry-run": "true" }) },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
+    const { code, server } = await act(cwd, {
+      args: PUBLISH_ARGS,
+      "dry-run": "true",
     });
     expect(code).toBe(0);
     expect(server.calls.filter((c) => c.method === "PUT")).toEqual([]);
@@ -113,7 +175,23 @@ describe("the Action entry", () => {
     ).toBe(true);
   });
 
-  it("a refusal is an ::error:: annotation and exit 1, so the job fails", async () => {
+  it("refuses a dry-run or channels value outside its set", async () => {
+    const cwd = await repo();
+    for (const [name, value, message] of [
+      ["dry-run", "yes", "dry-run must be true or false"],
+      ["channels", "all", "channels must be auto or none"],
+    ] as const) {
+      const { code, io, server } = await act(cwd, {
+        args: PUBLISH_ARGS,
+        [name]: value,
+      });
+      expect(code).toBe(1);
+      expect(io.err()).toContain(message);
+      expect(server.calls).toEqual([]);
+    }
+  });
+
+  it("a failed command is an ::error:: annotation and exit 1, so the job fails", async () => {
     const cwd = await repo();
     const server = fakeServer();
     server.script("/token", () =>
@@ -127,15 +205,13 @@ describe("the Action entry", () => {
         403,
       ),
     );
-    const io = capture();
-    const code = await runAction({
-      env: { ...actionsEnv(), ...inputs() },
+    const { code, io } = await act(
       cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-    });
+      { args: PUBLISH_ARGS },
+      {
+        fetchImpl: server.fetchImpl,
+      },
+    );
     expect(code).toBe(1);
     expect(io.out()).toMatch(
       /^::error title=pkey release publish::Exchanging the GitHub OIDC token failed \(403 policy_mismatch\).*%0A {2}failing claim: environment/m,
@@ -143,127 +219,202 @@ describe("the Action entry", () => {
     expect(io.err()).toContain("policy_mismatch");
   });
 
-  it("refuses a dry-run input that is not true or false", async () => {
-    const cwd = await repo();
+  it("runs another command in working-directory", async () => {
+    const cwd = await tempDir();
+    const sub = path.join(cwd, "app");
+    await mkdir(sub);
+    await writeFile(path.join(sub, "marker.txt"), "x");
     const io = capture();
+    // `manifest schemas --out` is resolved against the working directory.
     const code = await runAction({
-      env: { ...actionsEnv(), ...inputs({ "dry-run": "yes" }) },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-    });
-    expect(code).toBe(1);
-    expect(io.err()).toContain("dry-run must be true or false");
-  });
-});
-
-/**
- * The step's environment as the GitHub runner builds it from action.yml: every input the workflow
- * sets in `with:`, plus every input action.yml gives a `default:`, whether the workflow set it or
- * not. A defaulted input is therefore always non-empty, which a refusal of "inputs that do not
- * apply" must survive (the v0.8.13 publish failure: `source` defaulted to r2 and every package
- * publish was refused).
- */
-async function githubStepEnv(withInputs: Record<string, string>) {
-  const yml = parseYaml(
-    await readFile(path.join(repoRoot, "actions/publish/action.yml"), "utf8"),
-  ) as { inputs: Record<string, { default?: string }> };
-  const env: Record<string, string> = {};
-  for (const [name, decl] of Object.entries(yml.inputs)) {
-    const value = withInputs[name] ?? decl.default;
-    if (value !== undefined) env[`INPUT_${name.toUpperCase()}`] = String(value);
-  }
-  for (const name of Object.keys(withInputs))
-    if (!(name in yml.inputs))
-      throw new Error(`action.yml has no input ${name}`);
-  return env;
-}
-
-describe("the Action under action.yml's defaults, as GitHub runs it", () => {
-  it("publishes a package deliverable (no app-only input defaults reach it)", async () => {
-    const cwd = await repo(npmPackage(), PACKAGES_RELEASE_YAML);
-    const output = path.join(cwd, "gh_output");
-    await writeFile(output, "");
-    const server = fakeServer();
-    const io = capture();
-    // publish-package.yml's `with:` block.
-    const env = await githubStepEnv({
-      product: SLUG,
-      deliverable: "npm.sdk",
-      version: "1.4.0",
-      channel: "stable",
-      dir: "dist",
-      "base-url": BASE,
-    });
-    // The defaults are applied: dry-run and transport-report arrive though the job never set them.
-    expect(env["INPUT_DRY-RUN"]).toBe("false");
-    expect(env["INPUT_TRANSPORT-REPORT"]).toBe("true");
-    const code = await runAction({
-      env: { ...actionsEnv({ GITHUB_OUTPUT: output }), ...env },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-    });
-    expect(code, io.err()).toBe(0);
-    const final = server.to("/release/publish/submit")[1]!.body as {
-      descriptor: { kind: string };
-    };
-    expect(final.descriptor.kind).toBe("package");
-    // A source the workflow sets explicitly is still refused for a package.
-    const refused = capture();
-    const bad = await runAction({
       env: {
         ...actionsEnv(),
-        ...(await githubStepEnv({
-          product: SLUG,
-          deliverable: "npm.sdk",
-          dir: "dist",
-          source: "r2",
-          "base-url": BASE,
+        ...(await stepEnv({
+          command: "manifest schemas",
+          args: "--out vendor",
+          "working-directory": "app",
         })),
       },
       cwd,
-      stdout: refused.stdout,
-      stderr: refused.stderr,
-      fetchImpl: fakeServer().fetchImpl,
-      sleep: instant,
-    });
-    expect(bad).toBe(1);
-    expect(refused.err()).toMatch(
-      /^source do not apply to a package deliverable/,
-    );
-  });
-
-  it("still publishes the app from r2 when source is not set", async () => {
-    const cwd = await repo();
-    const output = path.join(cwd, "gh_output");
-    await writeFile(output, "");
-    const server = fakeServer();
-    const io = capture();
-    const env = await githubStepEnv({
-      product: SLUG,
-      tag: "v0.3.0",
-      dir: "dist",
-      "base-url": BASE,
-    });
-    expect(env.INPUT_SOURCE).toBeUndefined();
-    const code = await runAction({
-      env: { ...actionsEnv({ GITHUB_OUTPUT: output }), ...env },
-      cwd,
       stdout: io.stdout,
       stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
     });
     expect(io.err()).toBe("");
     expect(code).toBe(0);
-    expect(await readFile(output, "utf8")).toBe(
-      "release-id=v0.3.0\noutcome=created\n",
-    );
-    // r2: the bytes are uploaded to Polaris Key (`github` would upload nothing).
-    expect(server.calls.filter((c) => c.method === "PUT")).toHaveLength(8);
+    expect((await readdir(path.join(sub, "vendor"))).length).toBeGreaterThan(0);
+    await expect(readdir(path.join(cwd, "vendor"))).rejects.toThrow();
+    const missing = capture();
+    const bad = await runAction({
+      env: {
+        ...actionsEnv(),
+        ...(await stepEnv({ args: "--dir x", "working-directory": "nope" })),
+      },
+      cwd,
+      stdout: missing.stdout,
+      stderr: missing.stderr,
+    });
+    expect(bad).toBe(1);
+    expect(missing.err()).toContain("working-directory is not a directory");
+  });
+
+  it("an unterminated quote in args fails before any network call", async () => {
+    const cwd = await repo();
+    const { code, io, server } = await act(cwd, { args: "--tag 'v1" });
+    expect(code).toBe(1);
+    expect(io.err()).toContain("unterminated");
+    expect(server.calls).toEqual([]);
+  });
+});
+
+describe("the Action's secrets", () => {
+  it("release-key reaches the signer as PKEY_RELEASE_KEY; the key is never printed or sent", async () => {
+    const cwd = await repo(undefined, RELEASE_YAML_KEYED);
+    const { code, io, server } = await act(cwd, {
+      args: PUBLISH_ARGS,
+      "release-key": RELEASE_PEM,
+      channels: "none",
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    const submit = server.to("/publish/submit")[0]!.body as { record?: string };
+    expect(typeof submit.record).toBe("string");
+    const seen = JSON.stringify(server.calls) + io.out() + io.err();
+    expect(seen).not.toContain(RELEASE_PEM_BODY);
+  });
+
+  it("without release-key a keyed product is refused naming PKEY_RELEASE_KEY", async () => {
+    const cwd = await repo(undefined, RELEASE_YAML_KEYED);
+    const { code, io } = await act(cwd, { args: PUBLISH_ARGS });
+    expect(code).toBe(1);
+    expect(io.err()).toContain("PKEY_RELEASE_KEY");
+  });
+
+  it("keys are not on argv: a bogus command that echoes its argv never shows them", async () => {
+    const cwd = await repo();
+    const { code, io } = await act(cwd, {
+      command: "bogus",
+      "release-key": "SECRET-RELEASE-KEY-SENTINEL",
+      "content-key": "SECRET-CONTENT-KEY-SENTINEL",
+    });
+    expect(code).toBe(1);
+    const seen = io.out() + io.err();
+    expect(seen).toContain("bogus");
+    expect(seen).not.toContain("SENTINEL");
+  });
+});
+
+describe("the Action's removed inputs (D-A2)", () => {
+  const SENTINEL = "never-echo-this-value";
+  const cases: [string, string][] = [
+    [
+      "product",
+      "Input product was removed in 0.9. Put --product <value> in args.",
+    ],
+    [
+      "deliverable",
+      "Input deliverable was removed in 0.9. Put --deliverable <value> in args.",
+    ],
+    ["version", "Put --version <value> in args."],
+    ["tag", "Put --tag <value> in args."],
+    ["channel", "Put --channel <value> in args."],
+    ["dir", "Input dir was removed in 0.9. Put --dir <value> in args."],
+    ["source", "Put --source <value> in args."],
+    ["pins", "Put --pin <value> in args."],
+    ["delegation", "Put --delegation <value> in args."],
+    ["itch-platform", "Put --platform <value> in args."],
+    ["storefront-outlet", "Put --outlet <value> in args."],
+    ["transport-report", "Put --no-report in args."],
+    ["storefront", "Use channels: auto, or command: storefront"],
+    ["transport", "Use command: transport <step>"],
+    ["assets", "Use command: assets push"],
+  ];
+
+  it.each(cases)(
+    "%s is refused before any network call, naming its replacement, without its value",
+    async (name, replacement) => {
+      const cwd = await repo();
+      const { code, io, server } = await act(cwd, {
+        args: PUBLISH_ARGS,
+        [name]: SENTINEL,
+      });
+      expect(code).toBe(1);
+      expect(server.calls).toEqual([]);
+      expect(io.err()).toContain(`Input ${name} was removed in 0.9.`);
+      expect(io.err()).toContain(replacement);
+      expect(io.err() + io.out()).not.toContain(SENTINEL);
+      expect(io.out()).toMatch(/^::error title=pkey::Input /);
+    },
+  );
+
+  it("an input that was never one is refused too, and every removed input is listed at once", async () => {
+    const cwd = await repo();
+    const { code, io } = await act(cwd, {
+      args: PUBLISH_ARGS,
+      tag: "v1",
+      colour: "red",
+    });
+    expect(code).toBe(1);
+    expect(io.err()).toContain("Input tag was removed in 0.9.");
+    expect(io.err()).toContain("Input colour is not an input of this Action.");
+  });
+});
+
+describe("the Action's channels input (D-A3)", () => {
+  const DISTRIBUTION = "outlets:\n  itch:\n    target: vlad/diceroll\n";
+
+  async function withChannels() {
+    const cwd = await repo();
+    await writeFile(path.join(cwd, ".pkey/distribution.yaml"), DISTRIBUTION);
+    return cwd;
+  }
+  const syncs = (out: string) =>
+    out.match(/^Channels for diceroll/gm)?.length ?? 0;
+
+  it("auto runs channel sync once after an app publish, with the publish's flags", async () => {
+    const cwd = await withChannels();
+    const { code, io } = await act(cwd, {
+      args: `${PUBLISH_ARGS} --channel beta`,
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    expect(io.out()).toContain("Channels for diceroll · beta");
+    expect(syncs(io.out())).toBe(1);
+  });
+
+  it("none, a pack and a non-publish command never sync", async () => {
+    const cwd = await withChannels();
+    const none = await act(cwd, { args: PUBLISH_ARGS, channels: "none" });
+    expect(none.code).toBe(0);
+    expect(syncs(none.io.out())).toBe(0);
+    const other = await act(cwd, { command: "validate" });
+    expect(syncs(other.io.out())).toBe(0);
+  });
+
+  it("a pack publish never syncs", async () => {
+    const cwd = await withChannels();
+    const { io } = await act(cwd, {
+      args: `--deliverable some.pack --version 1.0.0 --dir dist`,
+    });
+    expect(syncs(io.out())).toBe(0);
+  });
+
+  it("a failed publish does not sync", async () => {
+    const cwd = await withChannels();
+    const { code, io } = await act(cwd, { args: "--tag v0.3.0 --dir missing" });
+    expect(code).toBe(1);
+    expect(syncs(io.out())).toBe(0);
+  });
+
+  it("dry-run prints the plan and runs no step", async () => {
+    const cwd = await withChannels();
+    const { code, io, server } = await act(cwd, {
+      args: PUBLISH_ARGS,
+      "dry-run": "true",
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    expect(syncs(io.out())).toBe(1);
+    expect(server.calls.filter((c) => c.method === "PUT")).toEqual([]);
   });
 });
 
@@ -345,91 +496,6 @@ describe("the standalone bundle", () => {
   });
 });
 
-describe("the Action's pack inputs (P4-03)", () => {
-  it("declares exactly the inputs the entry reads, in order", async () => {
-    const yml = await readFile(
-      path.join(repoRoot, "actions/publish/action.yml"),
-      "utf8",
-    );
-    const block = yml.slice(
-      yml.indexOf("\ninputs:\n"),
-      yml.indexOf("\noutputs:\n"),
-    );
-    const names = [...block.matchAll(/^ {2}([a-z-]+):$/gm)].map((m) => m[1]);
-    expect(names).toEqual([...ACTION_INPUTS]);
-  });
-
-  it("splits pins on whitespace and commas", () => {
-    expect(pinsInput(undefined)).toEqual([]);
-    expect(pinsInput("a.b@1.0.0, c.d@2.0.0\ne.f@3")).toEqual([
-      "a.b@1.0.0",
-      "c.d@2.0.0",
-      "e.f@3",
-    ]);
-  });
-
-  it("installs zstd with apt-get update then install when it is missing or old, and fails with the minimum otherwise", () => {
-    const out = { write: () => true };
-    // Missing, then present after the install: fixed argv, no shell.
-    const calls: string[][] = [];
-    let installed = false;
-    ensureZstd({
-      stdout: out,
-      platform: "linux",
-      exec: (cmd, args) => {
-        calls.push([cmd, ...args]);
-        if (cmd === "zstd") {
-          if (!installed) throw new Error("ENOENT");
-          return "*** Zstandard CLI (64-bit) v1.5.5, by Yann Collet ***";
-        }
-        if (args.includes("install")) installed = true;
-        return "";
-      },
-    });
-    expect(calls).toEqual([
-      ["zstd", "-V"],
-      ["sudo", "-n", "apt-get", "update", "-q"],
-      ["sudo", "-n", "apt-get", "install", "-y", "-q", "zstd"],
-      ["zstd", "-V"],
-    ]);
-    // apt still gives an old version.
-    expect(() =>
-      ensureZstd({
-        stdout: out,
-        platform: "linux",
-        exec: (cmd) => (cmd === "zstd" ? "v1.4.8" : ""),
-      }),
-    ).toThrow(/needs zstd ≥ 1\.5\.5; apt-get installed 1\.4\.8/);
-    // apt-get fails.
-    expect(() =>
-      ensureZstd({
-        stdout: out,
-        platform: "linux",
-        exec: (cmd) => {
-          throw new Error(`${cmd} failed`);
-        },
-      }),
-    ).toThrow(/needs zstd ≥ 1\.5\.5, and installing it with apt-get failed/);
-    // Not Linux: no install attempt.
-    const mac: string[] = [];
-    expect(() =>
-      ensureZstd({
-        stdout: out,
-        platform: "darwin",
-        exec: (cmd) => (mac.push(cmd), "v1.5.2"),
-      }),
-    ).toThrow(/needs zstd ≥ 1\.5\.5; this runner has 1\.5\.2/);
-    expect(mac).toEqual(["zstd"]);
-  });
-
-  it("installs zstd only when it is missing", () => {
-    const calls: string[] = [];
-    const out = { write: () => true };
-    ensureZstd({ stdout: out, exec: (cmd) => (calls.push(cmd), "v1.5.7") });
-    expect(calls).toEqual(["zstd"]);
-  });
-});
-
 describe("SigV4", () => {
   // AWS's published examples ("Authenticating Requests: Using the Authorization Header",
   // Amazon S3 API reference), credentials AKIAIOSFODNN7EXAMPLE / wJalrXUtnFEMI/K7MDENG/....
@@ -484,152 +550,5 @@ describe("SigV4", () => {
         "SignedHeaders=date;host;x-amz-content-sha256;x-amz-date;x-amz-storage-class, " +
         "Signature=98ad721746da40c64f1a55b78f14c238d841ea1380cd77a1b5971af0ece108bd",
     );
-  });
-});
-
-describe("the Action's assets input (HA-06)", () => {
-  const PNG = new Uint8Array([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 8, 7,
-  ]);
-  const SHOT = new Uint8Array([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 6, 5, 4,
-  ]);
-
-  async function workspace(): Promise<string> {
-    const cwd = await tempDir();
-    for (const [rel, bytes] of [
-      ["art/icon.png", PNG],
-      ["art/shots/b.png", SHOT],
-      ["art/shots/a.png", PNG],
-    ] as const) {
-      await mkdir(path.dirname(path.join(cwd, rel)), { recursive: true });
-      await writeFile(path.join(cwd, rel), bytes);
-    }
-    return cwd;
-  }
-
-  it("pushes the map's files in one ticket and one POST, with no dir needed", async () => {
-    const cwd = await workspace();
-    const server = fakeServer();
-    server.script("/assets", () =>
-      json({ ok: true, stored: [], kept: [], refused: [] }),
-    );
-    const io = capture();
-    const env = await githubStepEnv({
-      product: SLUG,
-      "base-url": BASE,
-      assets:
-        "art/icon.png: presentation.icon\n# the listing\nart/shots/*.png: listing.screenshot\n",
-    });
-    const code = await runAction({
-      env: {
-        ...actionsEnv(),
-        ...env,
-        PKEY_CI_TOKEN: `pkeyci_${"A".repeat(43)}`,
-      },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-    });
-    expect(code, io.err()).toBe(0);
-    expect(server.to("/release/publish/uploads")).toHaveLength(1);
-    // Two distinct files (the icon and screenshot a share their bytes).
-    expect(server.to("/staging/")).toHaveLength(2);
-    const [push] = server.to(`/${SLUG}/assets`);
-    expect(
-      (push!.body as { assets: { slot: string }[] }).assets.map((a) => a.slot),
-    ).toEqual([
-      "presentation.icon",
-      "listing.screenshot:1",
-      "listing.screenshot:2",
-    ]);
-  });
-
-  it("resolves globs against dir, fails the step on a refusal and refuses other inputs", async () => {
-    const cwd = await workspace();
-    const refused = fakeServer();
-    refused.script("/assets", () =>
-      json({
-        ok: false,
-        stored: [],
-        kept: [],
-        refused: [
-          { slot: "listing.header", locale: "", reason: "not-an-image" },
-        ],
-      }),
-    );
-    const io = capture();
-    const code = await runAction({
-      env: {
-        ...actionsEnv(),
-        ...(await githubStepEnv({
-          product: SLUG,
-          dir: "art",
-          "base-url": BASE,
-          assets: "icon.png: listing.header",
-        })),
-        PKEY_CI_TOKEN: `pkeyci_${"A".repeat(43)}`,
-      },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: refused.fetchImpl,
-      sleep: instant,
-    });
-    expect(code).toBe(1);
-    expect(io.err()).toContain(
-      "1 file was refused: listing.header (not-an-image)",
-    );
-    for (const [extra, message] of [
-      [{ tag: "v1.0.0" }, /^tag does not apply to an assets step/],
-      [{ storefront: "itch-push" }, /^assets is a step of its own/],
-      [{ deliverable: "core.pack" }, /^deliverable does not apply/],
-    ] as const) {
-      const bad = capture();
-      const c = await runAction({
-        env: {
-          ...actionsEnv(),
-          ...(await githubStepEnv({
-            product: SLUG,
-            "base-url": BASE,
-            assets: "art/icon.png: presentation.icon",
-            ...extra,
-          })),
-        },
-        cwd,
-        stdout: bad.stdout,
-        stderr: bad.stderr,
-        fetchImpl: fakeServer().fetchImpl,
-        sleep: instant,
-      });
-      expect(c).toBe(1);
-      expect(bad.err()).toMatch(message);
-    }
-  });
-
-  it("dry-run: true resolves the map and sends nothing", async () => {
-    const cwd = await workspace();
-    const server = fakeServer();
-    const io = capture();
-    const code = await runAction({
-      env: {
-        ...actionsEnv(),
-        ...(await githubStepEnv({
-          product: SLUG,
-          "dry-run": "true",
-          assets: "art/icon.png: presentation.icon",
-        })),
-      },
-      cwd,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-    });
-    expect(code, io.err()).toBe(0);
-    expect(io.out()).toContain("Would push art/icon.png → presentation.icon");
-    expect(server.calls).toHaveLength(0);
   });
 });

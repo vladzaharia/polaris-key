@@ -6,55 +6,27 @@ description: "The publish Action's inputs and outputs, generated from action.yml
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
-`polaris-key/publish` publishes a release from a GitHub Actions job. Match built files against .pkey/release, upload them and submit the release descriptor (or a pack's signed release record) to Polaris Key. The CI guide is [Ship builds from CI](/docs/features/ship-builds/ci/).
+`polaris-key/publish` publishes a release from a GitHub Actions job. Run a pkey command from CI, by default publish a release to Polaris Key and sync its channels. The CI guide is [Ship builds from CI](/docs/features/ship-builds/ci/).
 
 ## Inputs
 
 | Input | Required | Default | Description |
 | --- | --- | --- | --- |
-| `product` | yes | — | The product slug (must equal .pkey/product's slug). |
-| `deliverable` | no | `app` | The deliverable to publish. `app`, a pack id .pkey/release declares (a pack release, signed with release-key; needs zstd >= 1.5.5, which GitHub's hosted runners carry), or a package id (a package release for a package feed, extracted from dir and never signed). |
-| `version` | no | — | The release version. Defaults to `tag` without a leading `v`. |
-| `tag` | no | — | The git tag (also the release id) — on a tag push, the github.ref_name context. |
-| `channel` | no | — | The canonical channel the release is published to (stable, beta or a declared one). |
-| `dir` | no | — | The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at \<dir>/\<variant key or "default">/ (one .pck file, or the tree). Required for every step but assets, where it is only the base the globs resolve against (default the workspace). |
-| `source` | no | — | App only. Where the bytes live. `r2` (the default) uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release. No `default:` here on purpose, because GitHub passes every defaulted input, and a package publish or a transport step refuses this one; the Action applies `r2` for the app itself. |
-| `meta` | no | — | A JSON file \{"\<buildId>": \{"buildNumber", "minOS", "requires"\}\}, relative to the workspace. |
-| `base-url` | no | `https://key.plrs.im` | The Polaris Key origin. |
-| `release-key` | no | — | The release key's PKCS#8 PEM, from a GitHub Environment secret (secrets.PKEY_RELEASE_KEY). With it the Action signs the release record (pkey-release+jws) under the .pkey/release releaseKeys entry it matches. Required when .pkey/release declares releaseKeys. Never logged or sent. |
-| `content-key` | no | — | P4-19, pack only. A delegated content key's PKCS#8 PEM, from the content team's GitHub Environment secret (secrets.PKEY_CONTENT_KEY). With delegation, the Action signs the pack record under the kid pkd1-\<delegation sha256> instead of a release key; the pack must be a data-only type (files.tree, data.json, l10n.table) with a compatible or standalone binding, inside the delegation's scope and window, and every file must pass the data-only rule. Exclusive of release-key. Never logged or sent. |
-| `delegation` | no | — | P4-19, pack only. With content-key, the sha256 of the delegation record that names the key (pkey release delegate prints it). |
-| `min-supported-seq` | no | — | The release record's minSupportedSeq — the oldest release seq installs on the platforms this release targets should be prompted up to. |
-| `content-stamp` | no | — | App only, when .pkey/release declares packs. The pkey-content.json stamp the build embedded (written by pkey release content-stamp before the export); it becomes the release's content. |
-| `embedded` | no | — | App only. Instead of content-stamp, compute the content from the pkey-marker/1 markers under this directory (verified against releaseKeys). |
-| `pins` | no | — | App only. Pins for packs the build does not embed, as \<packId>@\<version> entries separated by spaces, commas or newlines; resolved through Polaris Key. |
-| `out` | no | — | Pack only. Keep the signed record and the payloads at \<out>/\<packId>/\<version>/ for the next publish's bases (cache it with actions/cache, keyed by pack id). |
-| `bases` | no | — | Pack only. Read earlier releases kept by out; the patch.deltaBases newest whose record Polaris Key confirms get deltas. |
-| `script-extensions` | no | — | Pack only (godot.pck). P4-28. Extensions the lint refuses as scripts beside .gd, .gdc and .cs, for an app with a GDExtension script language (lua, wren), separated by spaces, commas or newlines. The device asks its engine; this makes CI refuse the same packs. |
-| `script-types` | no | — | Pack only (godot.pck). P4-28. That language's script class names (LuaScript), refused as embedded-script markers and treated as script types in references, separated by spaces, commas or newlines. |
-| `dry-run` | no | `false` | Upload, sign and write no release. For the app, print the descriptor, the unsigned record and the server's verdict on a dry-run submit; for a pack, print the lint, the gate, the objects (new and already stored), the bytes per strategy and the unsigned record, with no server verdict (nothing is submitted). Either way it still mints upload tickets (for a pack, one per 256 objects), which expire within the hour. |
-| `transport` | no | — | P5-08, pack only. Instead of publishing, run one store-transport step for the pack release `version` published earlier, whose publish `out` cache is `dir`. One of apple-ba-package (Manifest.json for asset pack \<pack>-c\<contentApi> and xcrun ba-package; a macOS runner), apple-ba-upload (App Store Connect, with ASC_KEY_ID, ASC_ISSUER_ID and ASC_PRIVATE_KEY from secrets in the step's env; `dir` is then the package step's transport-out; commit the .pkey/asset-packs.json it writes on the first upload), play-pad-modules (Play asset-pack modules into gradle-project) or steam-depot-vdf (a content-only SteamPipe build for steamcmd). Each writes the pack's marker beside the payload and reports the transport's availability to Distribution. |
-| `content-api` | no | — | P5-08, apple-ba steps. The content level the asset pack is for (its id is \<pack>-c\<content-api>). Defaults to .pkey/release's deliverables.app.content.contentApi. |
-| `variant` | no | — | P5-08, transport steps. The published variant to package (its key, e.g. texture=astc) when the pack varies by an axis the transport cannot target (play-pad targets texture itself). |
-| `transport-out` | no | — | P5-08, apple-ba-package and steam-depot-vdf. Where to write the asset pack or the SteamPipe build (default build/pkey-transport/apple-ba or build/pkey-transport/steam). |
-| `gradle-project` | no | — | P5-08, play-pad-modules. The Godot Android Gradle build (android/build) the modules are written into and patched. |
-| `pad-delivery` | no | — | P5-08, play-pad-modules. fast-follow or on-demand (default fast-follow for essential and prefetch packs, on-demand otherwise). |
-| `steam-depot` | no | — | P5-08, steam-depot-vdf. The pack's depot id (a DLC depot for a paid pack). |
-| `steam-branch` | no | — | P5-08, steam-depot-vdf. The Steam branch; default the steam outlet's branches[channel]. |
-| `steam-setlive` | no | — | P5-08, steam-depot-vdf. true sets the build live on a named branch (never the default branch, which a person promotes in Steamworks). |
-| `asc-expect-resource` | no | — | P5-08, apple-ba-upload. The asset pack's App Store Connect resource id, to adopt an asset pack .pkey/asset-packs.json does not record yet. |
-| `transport-report` | no | `true` | P5-08, transport steps. false writes everything and reports nothing to Distribution. |
-| `storefront` | no | — | A-18h. Instead of publishing, run one CI-plane store step, only as a command the store's CI allow-list admits, reported before and after into Polaris Key's store ledger. itch-push (butler push dir \<user/game>:\<itch-platform[-channel]> --userversion version, the target from the itch outlet's identity; BUTLER_API_KEY from a CI environment secret in the step's env), snap-metadata (the listing model's Snap summary and description into snapcraft.yaml; dir is the file or its project directory; run it before the snap is built), snap-upload (snapcraft upload --release= the snap channels the snap outlet maps channel onto; dir is the .snap or a directory holding one; SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login, in the step's env) or snap-upload-metadata (snapcraft upload-metadata). dry-run prints the checked command lines. |
-| `itch-platform` | no | — | A-18h, itch-push. The platform word the butler channel starts with (windows, linux, mac or android), which is how itch.io tags the upload; a channel other than stable suffixes it (windows-beta). |
-| `storefront-outlet` | no | — | A-18h, storefront steps. The outlet id whose identity binds the step, when .pkey/distribution declares more than one of the store's kind. |
-| `assets` | no | — | HA-06. Instead of publishing, host files that are not on the web: one "\<glob>: \<slot>[@\<locale>]" per line (a block scalar; blank lines and # comments skipped). Slots are presentation.icon, listing.icon, listing.header, listing.screenshot:\<1-16> or a listing image slot (icon-master, play:feature-graphic, ...); the unnumbered listing.screenshot numbers its glob's matches 1 to n in path order, and every other glob must match exactly one file. Globs resolve against dir when set, else the workspace. PNG, JPEG, WebP, GIF or AVIF only, up to 10 MiB for icon slots and 20 MiB for the rest. A slot an operator uploaded in the console, or one a manifest declares, is kept as it is. Needs the opt-in assets:write scope on the trusted publisher and Release on for the product. A refused file fails the step. |
+| `command` | no | `release publish` | The pkey command to run, as typed after `pkey` (for example `release publish`, `channel sync`, `assets push`). |
+| `args` | no | — | The command's flags and arguments, split on whitespace and newlines; single and double quotes group. No shell, no variable or glob expansion. The product is read from .pkey/product. |
+| `release-key` | no | — | The release key's PKCS#8 PEM, from a GitHub Environment secret (secrets.PKEY_RELEASE_KEY). Passed to the command as PKEY_RELEASE_KEY, never on argv, never logged or sent. |
+| `content-key` | no | — | A delegated content key's PKCS#8 PEM, for a data-only pack release (secrets.PKEY_CONTENT_KEY). Passed to the command as PKEY_CONTENT_KEY, never on argv, never logged or sent. |
+| `base-url` | no | — | The Polaris Key origin (PKEY_BASE_URL). Default key.plrs.im. |
+| `working-directory` | no | — | The directory the command runs in, relative to the workspace. Default the workspace. |
+| `dry-run` | no | `false` | Appends --dry-run. A release publish uploads nothing and writes no release; the channel sync prints its plan and runs no step. |
+| `channels` | no | `auto` | `auto` runs `pkey channel sync` once after a successful app `release publish`; `none` does not. |
 
 ## Outputs
 
 | Output | Description |
 | --- | --- |
-| `release-id` | The release id (the tag, else `\<deliverable>@\<version>`). |
-| `outcome` | The submit's outcome — `created`, `enriched` or `unchanged` (on a dry run, the outcome the submit would have). |
+| `release-id` | The release id (the tag, else `\<deliverable>@\<version>`), from `release publish`. |
+| `outcome` | The submit's outcome — `created`, `enriched` or `unchanged` (on a dry run, the outcome the submit would have), from `release publish`. |
 
 ## Runs
 

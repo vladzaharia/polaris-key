@@ -502,9 +502,9 @@ pkey &lt;command&gt; --help (or -h) prints the same as pkey help &lt;command&gt;
 
 No `--json`: the answer is text.
 
-## GitHub Action
+## GitHub Action inputs removed in 0.9
 
-The `polaris-key/publish` Action runs these commands. Each input becomes the flag shown; an input marked step picks which subcommand runs.
+The `polaris-key/publish` Action now takes `command` and `args`. These inputs no longer exist and fail the step; put the flag shown in `args` (an input marked step picks a subcommand: set it as `command`).
 
 | Input | Command | Flag |
 | --- | --- | --- |
@@ -516,9 +516,6 @@ The `polaris-key/publish` Action runs these commands. Each input becomes the fla
 | `dir` | `pkey release` | `--dir` |
 | `source` | `pkey release` | `--source` |
 | `meta` | `pkey release` | `--meta` |
-| `base-url` | `pkey release` | `--base-url` |
-| `release-key` | `pkey release` | `--release-key-file` |
-| `content-key` | `pkey release` | `--content-key-file` |
 | `delegation` | `pkey release` | `--delegation` |
 | `min-supported-seq` | `pkey release` | `--min-supported-seq` |
 | `content-stamp` | `pkey release` | `--content-stamp` |
@@ -528,7 +525,6 @@ The `polaris-key/publish` Action runs these commands. Each input becomes the fla
 | `bases` | `pkey release` | `--bases` |
 | `script-extensions` | `pkey release` | `--script-extensions` |
 | `script-types` | `pkey release` | `--script-types` |
-| `dry-run` | `pkey release` | `--dry-run` |
 | `assets` | `pkey assets` | step |
 | `transport` | `pkey transport` | step |
 | `deliverable` | `pkey transport` | `--deliverable` |

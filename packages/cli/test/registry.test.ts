@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { cellWidth, stripAnsi } from "@polaris-key/node/terminal";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACTION_INPUTS } from "../src/action.js";
+import { ACTION_INPUTS, REMOVED_INPUTS } from "../src/action.js";
 import { applyContext, resolveContext } from "../src/context.js";
 import {
   checkRegistry,
@@ -244,18 +244,57 @@ describe("help and completion come from the table", () => {
 // ── The Action mapping ───────────────────────────────────────────────────────────────────────
 
 describe("the Action mapping", () => {
+  // The 28 inputs 0.9 removed (A-25.5). Losing one from the table would let an old workflow's
+  // key through as "not an input" instead of naming its replacement.
+  const REMOVED = [
+    "product",
+    "deliverable",
+    "version",
+    "tag",
+    "channel",
+    "dir",
+    "source",
+    "meta",
+    "delegation",
+    "min-supported-seq",
+    "content-stamp",
+    "embedded",
+    "pins",
+    "out",
+    "bases",
+    "script-extensions",
+    "script-types",
+    "transport",
+    "content-api",
+    "variant",
+    "transport-out",
+    "gradle-project",
+    "pad-delivery",
+    "steam-depot",
+    "steam-branch",
+    "steam-setlive",
+    "asc-expect-resource",
+    "transport-report",
+    "storefront",
+    "itch-platform",
+    "storefront-outlet",
+    "assets",
+  ];
   const claimed = (cmds: readonly PkeyCommand[]) =>
     new Set(cmds.flatMap((c) => Object.keys(c.action ?? {})));
 
-  it("claims every Action input, and nothing that is not one", () => {
+  it("the registry's action maps are exactly the removed-input table, and hold none of the eight current inputs", () => {
     const names = claimed(COMMANDS);
-    expect([...names].sort()).toEqual([...ACTION_INPUTS].sort());
+    expect([...names].sort()).toEqual([...REMOVED].sort());
+    expect(Object.keys(REMOVED_INPUTS).sort()).toEqual([...REMOVED].sort());
+    for (const input of ACTION_INPUTS) expect(names.has(input)).toBe(false);
   });
 
-  it("negative control: a table that forgets a command leaves an input unclaimed", () => {
+  it("negative control: a table that forgets a command leaves a removed input unclaimed", () => {
     const without = COMMANDS.filter((c) => c.name !== "transport");
-    const missing = ACTION_INPUTS.filter((i) => !claimed(without).has(i));
-    expect(missing).toContain("steam-depot");
+    expect(REMOVED.filter((i) => !claimed(without).has(i))).toContain(
+      "steam-depot",
+    );
   });
 });
 
@@ -753,7 +792,7 @@ describe("reference/cli.mdx", () => {
     const page = renderPage();
     for (const c of COMMANDS) expect(page).toContain(`### \`pkey ${c.name}\``);
     for (const [, heading] of GROUPS) expect(page).toContain(`## ${heading}`);
-    for (const input of ACTION_INPUTS)
+    for (const input of Object.keys(REMOVED_INPUTS))
       expect(page).toContain(`| \`${input}\` |`);
   });
 
