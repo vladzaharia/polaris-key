@@ -8,7 +8,7 @@ sidebar:
   order: 3
 ---
 
-Account emails come from `noreply@auth.plrs.im` or `noreply@plrs.im`. None asks for your full license key.
+Account emails come from Polaris Locker, at `noreply@auth.plrs.im` or `noreply@plrs.im`. None asks for your full license key.
 In a security email, choose **Secure your account** if it was not you.
 
 If you didn't ask, ignore it. Code didn't arrive? See [Your
@@ -42,7 +42,7 @@ The old key cannot activate new devices; existing ones keep working. If unexpect
 
 ### <a id="download-link"></a>Download <var>App</var> for <var>System</var>
 
-Open it on the device you install on. You may need to sign in first.
+Open the link on the device you install on. You may need to sign in first.
 
 ## Devices and sign-in
 
