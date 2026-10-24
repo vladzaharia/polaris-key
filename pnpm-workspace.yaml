@@ -30,7 +30,9 @@ overrides:
   # published packages' dist/ output and the Worker bundle were verified unchanged (bar the docs
   # CSP hashes) when these were added.
   "undici@^7": ^7.29.1
-  "undici@^8": ^8.10.2
+  # undici 8 < 8.12.2: GHSA-xjj6-f33q-929c (unhandled error on excessive content-encodings; parent is
+  # astro > unifont, docs tooling only).
+  "undici@^8": ^8.12.2
   "ws@^8": ^8.21.0
   "sharp@<0.35.4": ^0.35.4
   "devalue@^5": ^5.9.3
