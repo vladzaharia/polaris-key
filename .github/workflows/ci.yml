@@ -125,6 +125,9 @@ jobs:
         run: pnpm lint:dupes
       # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
       - run: pnpm lint:knip
+      # P0-30.3: the 800-line budget for packages/worker/src, against tools/lint/debt/size.json.
+      - name: Size budget
+        run: pnpm lint:size
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
       # the storefront CI plane, the settings reference, the brand tokens, the publish Action's bundle

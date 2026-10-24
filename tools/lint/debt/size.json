@@ -1,0 +1,213 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    "packages/worker/src/console/auth.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/console/handlers/bindings.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/console/handlers/feeds.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/console/handlers/platformStoreConnections.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/console/handlers/productSettings.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/console/handlers/products.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/assets/blobGc.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/assets/blobs.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/assets/hostedAssetPulls.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/assets/hostedAssetUploads.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/assets/hostedAssets.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/brandHtml.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/devices.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/devices/store.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/hooks.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/licensing/grants.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/licensing/issue.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/licensing/store.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/notify/alertDestinations.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/notify/templates.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/ops/settingsBackfill.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/outletCredentials.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/platformCredentials.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/publisher.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/registry/registryTokens.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/settings/write.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/core/storefront/rules/appStore.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/scheduled.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/availability.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/bytes.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/ciSecretCheck.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/apply.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/distribute.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/iapCatalog.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/provision.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/provision.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/connectors/play/storefront.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/listing/admin.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/page/model.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/readiness.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/distribution/registry/godot/documents.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/accounts/mergeUndo.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/accounts/productUsers.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/card/emailSignIn.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/card/gate.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/connections/admin.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/consoleAccount.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/portal/api.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/portal/dataExport.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/portal/deviceLogin.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/portal/repo.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/portal/selfService.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/license/admin/licenses.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/admin.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/descriptor.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/health.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packages/ociPush.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packages/prune.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packs/delegations.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packs/ingest.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packs/resolve.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/packs/sets.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/policy.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/publish.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/resolve.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/release/store.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/update/resolverCompare.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/update/simulate.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/update/updaterFeeds.ts": {
+      "size:over-800": 1
+    }
+  }
+}
