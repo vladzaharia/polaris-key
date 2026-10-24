@@ -9385,7 +9385,7 @@
       "area": "ADMIN",
       "owners": ["P0-32", "P0-34"],
       "built": "built",
-      "evidence": "packages/admin/src/console/shell/*, nav.ts, router.tsx, data/queryClient.tsx, lib/router-core.ts",
+      "evidence": "packages/admin/src/console/shell/*, nav.ts, router.tsx, data/queryClient.tsx, lib/http.ts, lib/writes.ts, lib/router-core.ts",
       "note": "Delivered; P0-32/P0-34 only consolidate the data layer and router core."
     },
     {

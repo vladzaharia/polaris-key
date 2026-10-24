@@ -262,7 +262,7 @@ another product.
 The console uses TanStack Query. Successful reads are fresh for 30 seconds, refetch on window focus,
 and do not retry silently. Failed reads surface an error and an explicit retry.
 
-Every API write goes through `console/data/mutations.ts`. That mutation table declares the query
+Every read is a `queryOptions` factory in a data module (`console/data/reads.ts` or a section's `data.ts`), with its key in `console/data/queries.ts`; `test/queryFactories.test.ts` rejects a `queryFn` or bare `api.*` read elsewhere. All requests go through the one HTTP client in `lib/http.ts` (the only `fetch`, and the only error class, `HttpError`). Every API write goes through `console/data/mutations.ts`, built on the shared write engine `lib/writes.ts`. That mutation table declares the query
 keys made stale after the server confirms the write; tests reject direct write calls and missing
 invalidation declarations. This includes product creation, repository linking and resync, service
 changes, release and rollout operations, credentials and secrets, licensing, managed configuration,

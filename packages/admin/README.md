@@ -6,7 +6,7 @@ Two React + Vite single-page apps in one package: the operator console at `/mana
 
 - Built to `dist/` with two HTML entries (`vite.config.ts`): `manage.html` loads `src/main.tsx` (console), `index.html` loads `src/portal/main.tsx` (portal).
 - Served by `../worker`, which copies `dist/` into its `[assets]` root (`pnpm --filter @polaris-key/worker assemble`). The Worker allows the shells' inline scripts by hash (`../worker/src/core/adminCsp.ts`).
-- Calls the Worker only, same-origin: the console through `src/api.ts` (`/manage/api/*`), the portal through `src/portal/api.ts`.
+- Calls the Worker only, same-origin: the console through `src/api.ts` (`/manage/api/*`), the portal through `src/portal/api.ts`. Both are barrels over per-area modules (`console/api/`, `portal/api/`) on one HTTP client, `lib/http.ts`.
 - Reads `@polaris-key/protocol`, `catalog`, `manifest`, `ui-core` and `brand` as workspace packages.
 - Links out to the docs site (served at `/docs` by the same Worker) from two tables, below.
 
@@ -16,15 +16,19 @@ Two React + Vite single-page apps in one package: the operator console at `/mana
 index.html, manage.html   the two SPA shells; each carries the same inline theme script
 src/
   main.tsx, App.tsx       console entry and root
-  api.ts                  typed client for /manage/api
+  api.ts                  barrel for the typed /manage/api client (modules in console/api/,
+                          one per area; console/api/transport.ts is its transport)
   console/                console app: nav.ts, router.tsx, routes.ts, pages/, sections/,
                           shell/, access/, templates/, settings.generated.ts
     nav.ts                the page table: sidebar, router, top bar and palette read it
-  portal/                 customer portal app: pages/, model/, components/, copy/, api.ts
+  portal/                 customer portal app: pages/, model/, components/, copy/, api.ts (barrel over api/),
+                          queries.ts (qk + pq read factories), mutations.ts (PORTAL_MUTATIONS)
   ui/                     shared React kit (Button, Dialog, Table pieces, Badges, ...);
                           focusRoute.ts moves focus to the h1 and announces on a route change
   lib/                    pure helpers; docsLinks.ts is the dialog/empty-state help-link table;
-                          router-core.ts is the hash-router store both apps sit on
+                          router-core.ts is the hash-router store both apps sit on;
+                          http.ts is the one fetch and the one HttpError; writes.ts is the
+                          write engine both mutation tables use (createWrites, mutate, useWrite)
   schema/                 catalog-driven field editors
   components/             theme and brand pieces shared by both apps
   kit/                    component gallery at #/__kit, compiled in development only
