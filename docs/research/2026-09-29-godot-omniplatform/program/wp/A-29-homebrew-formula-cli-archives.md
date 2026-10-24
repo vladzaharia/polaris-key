@@ -46,6 +46,16 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **DC-14**; DX consolidation H: Distribution channels, storefronts and commerce.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (A-29.1; plan F-37-ST-46-A-29-slices.md §0 H1-H8)
+
+- H1: formulas are generated for products' CLIs, not for `pkey` (no archives).
+- H2: the PR plane's allow-list lives in the Worker (`core/storefront/prPlane.ts` `HOMEBREW_PR`); the CLI copy is generated. Formula commands `formula-pull-request` / `formula-status` sit beside the cask's, whose argv is unchanged (D-H1). Paths and natural keys are per command.
+- H3: `homebrewFormula` already exists in the manifest; no validator change (rule 9 untouched). `subkindOf` still does not count a formula-only outlet (A-29.2).
+- H4: PR inputs now accept a cask or a formula outlet; a formula reads macOS and Linux (D-H2).
+- H5/H6: catalogue (`dmg`, `platformNeeds`) and download page: A-29.2.
+- H7: Verify is stale; no transcript records the PR plane. Gates: `gen storefront-ci`, `gen action-bundle`, `ciPlaneGenerated`, storefront suites.
+- H8: Linuxbrew detection in the SDKs is a follow-up, not A-29.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
