@@ -55,7 +55,7 @@ public struct ActivateView: View {
         } actions: {
             ActivateActions(
                 screen: screen, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
-                onCancel: onCancel, onDone: onDone)
+                onCancel: onCancel, onDone: onDone, onDifferentKey: { text = "" })
         }
     }
 }
@@ -129,8 +129,41 @@ struct KitCallout: View {
                 $0.key.hasPrefix("core.") && $0.key.hasSuffix(".message")
             }
             VStack(alignment: .leading, spacing: style.space(.xs)) {
-                if let title { KitText(title, .label, color: .strong) }
-                if let message { KitText(message, .meta, color: .default) }
+                if let title {
+                    #if os(macOS)
+                        if screen.state == .rejected {
+                            Label {
+                                KitText(title, .label, color: .strong)
+                            } icon: {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(style.palette.danger)
+                                    .accessibilityHidden(true)
+                            }
+                        } else {
+                            KitText(title, .label, color: .strong)
+                        }
+                    #else
+                        KitText(title, .label, color: .strong)
+                    #endif
+                }
+                if let message {
+                    #if os(macOS)
+                        // A refusal with no title of its own carries the glyph on its message.
+                        if screen.state == .rejected, title == nil {
+                            Label {
+                                KitText(message, .meta, color: .default)
+                            } icon: {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(style.palette.danger)
+                                    .accessibilityHidden(true)
+                            }
+                        } else {
+                            KitText(message, .meta, color: .default)
+                        }
+                    #else
+                        KitText(message, .meta, color: .default)
+                    #endif
+                }
                 if let caption = screen.line("part.seatMeter.caption"),
                     case .number(let used)? = caption.args["used"],
                     case .number(let limit)? = caption.args["limit"]
@@ -161,6 +194,42 @@ struct ActivateActions: View {
     var onReplaceDevice: (() -> Void)?
     var onCancel: (() -> Void)?
     var onDone: (() -> Void)?
+    /// A refused key's way on (macOS): clear the field and focus it.
+    var onDifferentKey: (() -> Void)?
+
+    /// Whether a refusal is the service's answer to a well-formed key (a callout, not the field's
+    /// own message): the fix is a different key.
+    static func refusesTheKey(_ screen: KitScreen<ActivateState>) -> Bool {
+        screen.state == .rejected && screen.copy.contains { $0.key.hasPrefix("core.") }
+    }
+
+    /// The device-limit fix's label: "Replace a Device" on a Mac (the button's `macos` variant, title
+    /// case), the screen's title elsewhere.
+    static var replaceKey: String {
+        #if os(macOS)
+            return "signin.replace.open"
+        #else
+            return "deviceLimit.title"
+        #endif
+    }
+
+    /// The secondary verb: on a Mac "Back" inline and "Cancel" in a sheet, drawn as a bordered
+    /// secondary directly left of the default; a quiet "Cancel" elsewhere.
+    @Environment(\.kitInSheet) private var inSheet
+    var cancelKey: String {
+        #if os(macOS)
+            return inSheet ? "common.cancel" : "common.back"
+        #else
+            return "common.cancel"
+        #endif
+    }
+    static var cancelKind: KitButtonKind {
+        #if os(macOS)
+            return .secondary
+        #else
+            return .quiet
+        #endif
+    }
 
     /// The Done step's lone action, when the host gave one (DL4: a lone action is the primary).
     static func doneActionKey(onDone: Bool) -> String? { onDone ? "signin.done.start" : nil }
@@ -171,7 +240,7 @@ struct ActivateActions: View {
             case .deviceLimit:
                 if screen.line("deviceLimit.noManage") == nil, let onReplaceDevice {
                     KitButton(
-                        line: screen.lineOrKey("deviceLimit.title"), kind: .primary,
+                        line: screen.lineOrKey(Self.replaceKey), kind: .primary,
                         glyph: PolarisKitGlyph.newWindow, action: onReplaceDevice
                     )
                     .keyboardShortcut(.defaultAction)
@@ -191,14 +260,22 @@ struct ActivateActions: View {
                     }
                 }
             default:
-                KitButton(
-                    line: CopyLine("activate.submit"), kind: .primary, busy: screen.state == .busy,
-                    action: onSubmit
-                )
-                .keyboardShortcut(.defaultAction)
+                if Self.refusesTheKey(screen), let onDifferentKey {
+                    KitButton(
+                        line: CopyLine("signin.key.differentKey"), kind: .primary,
+                        action: onDifferentKey
+                    )
+                    .keyboardShortcut(.defaultAction)
+                } else {
+                    KitButton(
+                        line: CopyLine("activate.submit"), kind: .primary,
+                        busy: screen.state == .busy, action: onSubmit
+                    )
+                    .keyboardShortcut(.defaultAction)
+                }
             }
             if let onCancel, screen.state != .done {
-                KitButton(line: CopyLine("common.cancel"), kind: .quiet, action: onCancel)
+                KitButton(line: CopyLine(cancelKey), kind: Self.cancelKind, action: onCancel)
                     .keyboardShortcut(.cancelAction)
             }
         }
@@ -237,7 +314,7 @@ public struct DeviceLimitView: View {
             VStack(alignment: .leading, spacing: 6) {
                 // The component is titled Replace a device in every kit (UI-KITS DeviceLimit,
                 // owner 2026-10-05); the seat count is the line under it.
-                KitText(screen.lineOrKey("deviceLimit.title"), .title, color: .strong)
+                KitText(screen.lineOrKey(ActivateActions.replaceKey), .title, color: .strong)
                     .accessibilityAddTraits(.isHeader)
                 if let count = screen.line("deviceLimit.heading") {
                     KitText(count, .headline, color: .strong)
@@ -272,7 +349,7 @@ public struct DeviceLimitView: View {
                 case .removed, .none:
                     EmptyView()
                 }
-                KitButton(line: CopyLine("common.back"), kind: .quiet, action: onBack)
+                KitButton(line: CopyLine("common.back"), kind: ActivateActions.cancelKind, action: onBack)
                     .keyboardShortcut(.cancelAction)
             }
         }
@@ -285,7 +362,7 @@ public struct DeviceLimitView: View {
                     case .number(let used)? = caption.args["used"],
                     case .number(let limit)? = caption.args["limit"]
                 {
-                    SeatMeter(used: used, limit: limit)
+                    SeatMeter(used: used, limit: limit, showsCaption: showsSeatCaption)
                 }
                 if screen.state == .default || screen.state == .busy {
                     VStack(spacing: 0) {
@@ -331,6 +408,15 @@ public struct DeviceLimitView: View {
                 }
             }
         }
+    }
+
+    /// The count is stated once: the heading says "3 of 3" on a Mac, so the meter is the picture.
+    private var showsSeatCaption: Bool {
+        #if os(macOS)
+            return screen.line("deviceLimit.heading") == nil
+        #else
+            return true
+        #endif
     }
 
     private var leastRecent: String? {

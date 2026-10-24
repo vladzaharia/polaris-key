@@ -487,6 +487,14 @@
     <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="menu_manageLicense">Gerenciar a licença</string>
     <string name="menu_manageLicense__macos">Gerenciar a licença</string>
+    <!-- App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71). -->
+    <string name="menu_signOut">Sair</string>
+    <string name="menu_signOut__macos">Sair</string>
+    <!-- The Account tab of the macOS Settings window, and the window's title while it is selected. -->
+    <string name="menu_account">Conta</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out. -->
+    <string name="signin_signout_confirm">Sair</string>
+    <string name="signin_signout_confirm__macos">Sair</string>
     <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
     <string name="notify_updateReady_title">Atualização pronta</string>
     <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->

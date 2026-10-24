@@ -421,7 +421,7 @@
     },
     "ui.settings": {
       "status": "implemented",
-      "note": "The settings family; AccountAndLicenseSection and SettingsSection, panes in the host's font, rendered on the simulator."
+      "note": "The settings family; AccountAndLicenseSection and SettingsSection, panes in the host's font, rendered on the simulator. macOS (UK-08.4): PolarisKeySettingsPane, the Account tab for a Settings scene, and PolarisKeyCommands (Check for Updates…, Manage License…, Sign Out…), driven by KitSettingsMacTests in CI."
     },
     "ui.paywall": {
       "status": "implemented",

@@ -7,6 +7,13 @@
 #   PKEY_KIT_ONLY=Welcome.default,SignIn.methods run.sh   only these states
 #   PKEY_KIT_QUICK=1 run.sh    each state in both schemes only (no AX, landscape or native)
 #   run.sh --open              generate the project and open it in Xcode
+#   run.sh --mac               build the macOS sample and run KitRenderMacTests on this Mac (UK-08.2)
+#   run.sh --mac --build-only  build the Mac sample and its UI tests (build-for-testing); needs no
+#                              UI automation
+#   Mac renders: mac<OS>-<W>x<H>-<state>-<preset>-<scheme>[-inactive].png and renders-mac.json in
+#   PKEY_KIT_SHOTS (default build/shots-mac). Also PKEY_KIT_WINDOWS=900x640,480x520 and
+#   PKEY_KIT_INACTIVE=1 (also render each state with the window inactive). The test runner needs
+#   UI automation allowed (owner step O1); CI images have it.
 #
 #   PKEY_KIT_SHOTS  where the renders go (default: build/shots)
 #   PKEY_KIT_DEVICE the device's name in the file names (default: the simulator's, lower-cased)
@@ -35,6 +42,27 @@ trap 'cp "$BUILD/Package.resolved.sdk" "$RESOLVED"' EXIT
 
 if [ "${1:-}" = "--open" ]; then
   open "$HERE/TidewaterKit.xcodeproj"
+  exit 0
+fi
+
+if [ "${1:-}" = "--mac" ]; then
+  MSHOTS="${PKEY_KIT_SHOTS:-$BUILD/shots-mac}"
+  mkdir -p "$MSHOTS"
+  VERB=test
+  [ "${2:-}" = "--build-only" ] && VERB=build-for-testing
+  TEST_RUNNER_PKEY_KIT_SHOTS="$MSHOTS" TEST_RUNNER_PKEY_KIT_ONLY="${PKEY_KIT_ONLY:-}" \
+    TEST_RUNNER_PKEY_KIT_QUICK="${PKEY_KIT_QUICK:-0}" \
+    TEST_RUNNER_PKEY_KIT_WINDOWS="${PKEY_KIT_WINDOWS:-}" \
+    TEST_RUNNER_PKEY_KIT_INACTIVE="${PKEY_KIT_INACTIVE:-0}" \
+    TEST_RUNNER_PKEY_KIT_EXTRA_ARGS="${PKEY_KIT_EXTRA_ARGS:-}" \
+    TEST_RUNNER_PKEY_KIT_BASELINES="${PKEY_KIT_BASELINES:-}" \
+    TEST_RUNNER_PKEY_KIT_RECORD="${PKEY_KIT_RECORD:-0}" \
+    xcodebuild "$VERB" \
+    -project "$HERE/TidewaterKit.xcodeproj" -scheme TidewaterKitMac \
+    -destination "platform=macOS" \
+    -derivedDataPath "$BUILD/dd-mac" -resultBundlePath "$BUILD/results-mac-$(date +%s).xcresult" \
+    CODE_SIGNING_ALLOWED=YES
+  echo "run.sh: Mac renders in $MSHOTS"
   exit 0
 fi
 

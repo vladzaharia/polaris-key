@@ -89,14 +89,38 @@ public struct KitResolvedStyle: Sendable, Equatable {
 
     /// A control's height: 52 pt, a step down in compact, up in spacious.
     public var controlHeight: CGFloat {
-        switch density {
-        case .compact: return 44
-        case .comfortable: return CGFloat(PolarisKit.IOS.controlHeight)
-        case .spacious: return 60
-        }
+        #if os(macOS)
+            // The Mac column (S1): 28 pt, a step down/up with density.
+            switch density {
+            case .compact: return 24
+            case .comfortable: return CGFloat(PolarisKit.MacOS.controlHeight)
+            case .spacious: return 32
+            }
+        #else
+            switch density {
+            case .compact: return 44
+            case .comfortable: return CGFloat(PolarisKit.IOS.controlHeight)
+            case .spacious: return 60
+            }
+        #endif
     }
 
-    public var cardPad: CGFloat { CGFloat(PolarisKit.IOS.cardPad) }
+    /// The Welcome hero's capsule on macOS (`.extraLarge`, 36 pt); a plain control elsewhere.
+    public var heroControlHeight: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.controlHeightHero)
+        #else
+            return controlHeight
+        #endif
+    }
+
+    public var cardPad: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.cardPad)
+        #else
+            return CGFloat(PolarisKit.IOS.cardPad)
+        #endif
+    }
     /// The inset grouped list's radius (`theme.radius`; surfaces scale from the control radius).
     public var groupRadius: CGFloat {
         switch radius {
@@ -108,15 +132,32 @@ public struct KitResolvedStyle: Sendable, Equatable {
     }
     /// A field's radius (filled, no border).
     public var fieldRadius: CGFloat {
+        #if os(macOS)
+            // The Mac form radius token (10) at the default step.
+            let form = CGFloat(PolarisKit.MacOS.radiusForm)
+            switch radius {
+            case .sm: return form - 2
+            case .md: return form
+            case .lg: return form + 4
+            case .points(let n): return CGFloat(n)
+            }
+        #else
         switch radius {
         case .sm: return 10
         case .md: return 14
         case .lg: return 18
         case .points(let n): return CGFloat(n)
         }
+        #endif
     }
     /// The sheet's radius (concentric with the device's corners).
-    public var sheetRadius: CGFloat { CGFloat(PolarisKit.IOS.radiusSheet) }
+    public var sheetRadius: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.radiusSheet)
+        #else
+            return CGFloat(PolarisKit.IOS.radiusSheet)
+        #endif
+    }
 
     /// The 4 pt spacing scale (BRAND §4.6; DL3).
     public func space(_ step: KitSpace) -> CGFloat {
@@ -216,11 +257,15 @@ public enum KitTextRole: Sendable, CaseIterable {
     }
 
     var spec: Spec {
-        let t = PolarisKit.IOS.Typography.self
+        #if os(macOS)
+            let t = PolarisKit.MacOS.Typography.self
+        #else
+            let t = PolarisKit.IOS.Typography.self
+        #endif
         switch self {
         case .display: return Spec(size: t.display.size, weight: .semibold, textStyle: .largeTitle)
         case .title: return Spec(size: t.title.size, weight: .semibold, textStyle: .title)
-        case .headline: return Spec(size: 20, weight: .semibold, textStyle: .title3)
+        case .headline: return Spec(size: headlineSize, weight: .semibold, textStyle: .title3)
         case .body: return Spec(size: t.body.size, weight: .regular, textStyle: .body)
         case .label: return Spec(size: t.label.size, weight: .medium, textStyle: .body)
         case .button: return Spec(size: t.button.size, weight: .medium, textStyle: .body)
@@ -229,6 +274,17 @@ public enum KitTextRole: Sendable, CaseIterable {
         case .code: return Spec(size: t.code.size, weight: .medium, textStyle: .title)
         case .key: return Spec(size: t.body.size, weight: .regular, textStyle: .body)
         }
+    }
+}
+
+extension KitTextRole {
+    /// The headline step has no token: 20 pt on iOS, 15 pt between the Mac title and body.
+    fileprivate var headlineSize: Double {
+        #if os(macOS)
+            return 15
+        #else
+            return 20
+        #endif
     }
 }
 
@@ -324,9 +380,16 @@ enum KitPaletteResolver {
             dark
             ? (PolarisBrand.Dark.success, PolarisBrand.Dark.warning, PolarisBrand.Dark.danger)
             : (PolarisBrand.Light.success, PolarisBrand.Light.warning, PolarisBrand.Light.danger)
-        let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+        #if os(macOS)
+            // A Mac window's dark ground is the system's (about #1f1f22), not the phone's black,
+            // so the field's fill stays one step above it.
+            let page = dark ? BrandColor(hex: 0x1f1f22) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x2b2d34) : BrandColor(hex: 0xffffff)
+        #else
+            let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
+        #endif
         let raised = dark ? BrandColor(hex: 0x16181d) : BrandColor(hex: 0xffffff)
-        let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
 
         var p = KitPalette(
             page: page.color, raised: raised.color, sunken: sunken.color,
