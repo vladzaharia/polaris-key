@@ -58,6 +58,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.ui.brand.BrandAccent
+import im.plrs.key.ui.brand.KitRadius
+import im.plrs.key.ui.brand.PolarisKitTokens
 import im.plrs.key.ui.brand.PolarisAccent
 import im.plrs.key.ui.brand.PolarisBrandTokens
 
@@ -296,9 +298,17 @@ private fun PolarisThemeResolved(
         }
         PolarisBranding.PolarisKey -> {
             val resolved = remember(accent, darkTheme) { accent?.let { PolarisAccent.resolve(it.toHex(), darkTheme) } }
-            val scheme = remember(darkTheme, resolved) {
-                polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand.withInk(darkTheme) }
+            // Windows (UK-10.5): a contrast theme draws the system colours, whatever the product accent.
+            val fluent = autoPlatformVariant() == PolarisPlatformVariant.Windows
+            val contrast = fluent && rememberThemeHostFacts().highContrast
+            val scheme = remember(darkTheme, resolved, contrast) {
+                if (contrast) {
+                    windowsContrastScheme(darkTheme)
+                } else {
+                    polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand.withInk(darkTheme) }
+                }
             }
+            val system = if (contrast) FluentSystemColors.forTheme(darkTheme) else null
             val inkText = if (darkTheme) PolarisBrandTokens.Dark.textStrong else PolarisBrandTokens.Light.textStrong
             val typography = polarisBrandTypography(MaterialTheme.typography)
             val config = PolarisUiConfig(
@@ -308,16 +318,16 @@ private fun PolarisThemeResolved(
                 copy = copy,
                 logo = logo,
                 dark = darkTheme,
-                status = PolarisStatusColors.brand(darkTheme),
-                // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields.
-                controlShape = CircleShape,
-                accentText = resolved?.let { colorOf(it.fg) } ?: inkText,
-                fieldShape = RoundedCornerShape(16.dp),
-                focus = resolved?.let { colorOf(it.focus) } ?: inkText,
+                status = if (contrast) PolarisStatusColors.from(scheme) else PolarisStatusColors.brand(darkTheme),
+                // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields; Windows: radius 4.
+                controlShape = if (fluent) PolarisFluent.controlShape else CircleShape,
+                accentText = system?.hotlight ?: resolved?.let { colorOf(it.fg) } ?: inkText,
+                fieldShape = if (fluent) PolarisFluent.controlShape else RoundedCornerShape(16.dp),
+                focus = system?.windowText ?: resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
             )
-            MaterialTheme(colorScheme = scheme, typography = typography, shapes = polarisBrandShapes) {
+            MaterialTheme(colorScheme = scheme, typography = typography, shapes = if (fluent) polarisFluentShapes else polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
             }
         }
@@ -401,12 +411,12 @@ public object PolarisTheme {
     /** The shape of the kit's buttons: full round (Material's default neutral). */
     public val buttonShape: Shape
         @Composable
-        get() = current.controlShape ?: ButtonDefaults.shape
+        get() = if (polarisWindow.fluent) PolarisFluent.controlShape else current.controlShape ?: ButtonDefaults.shape
 
     /** The shape of the kit's filled text fields: Material's filled-field shape neutral, radius 16 branded. */
     public val fieldShape: Shape
         @Composable
-        get() = current.fieldShape ?: TextFieldDefaults.shape
+        get() = if (polarisWindow.fluent) PolarisFluent.controlShape else current.fieldShape ?: TextFieldDefaults.shape
 
     /** The product icon's shape: a 28 % squircle (the monogram tile, a host icon). */
     public val iconShape: Shape
@@ -416,7 +426,7 @@ public object PolarisTheme {
     /** A message screen's card on a wide window or TV: radius 28 (UI-KITS.md §1.4, Android sheets). */
     public val cardShape: Shape
         @Composable @ReadOnlyComposable
-        get() = MessageCardShape
+        get() = if (polarisWindow.fluent) PolarisFluent.overlayShape else MessageCardShape
 
     /** The keyboard and D-pad focus ring's colour. */
     public val focusColor: Color
@@ -509,6 +519,22 @@ public fun polarisBrandColorScheme(dark: Boolean): ColorScheme {
         )
     }
 }
+
+/** The Windows controls' shape: radius 4 (`PolarisKitTokens.Windows`). */
+internal val polarisFluentControlShape: RoundedCornerShape =
+    RoundedCornerShape(((PolarisKitTokens.Windows.radiusControl as KitRadius.Fixed).dp).dp)
+
+/** The Windows overlays' shape (the ContentDialog, a card): radius 8. */
+internal val polarisFluentOverlayShape: RoundedCornerShape = RoundedCornerShape(PolarisKitTokens.Windows.radiusOverlay.dp)
+
+/** The Material shapes of the Windows chrome: controls 4, overlays 8. */
+internal val polarisFluentShapes: Shapes = Shapes(
+    extraSmall = polarisFluentControlShape,
+    small = polarisFluentControlShape,
+    medium = polarisFluentOverlayShape,
+    large = polarisFluentOverlayShape,
+    extraLarge = polarisFluentOverlayShape,
+)
 
 /** The brand radii as Material shapes: controls md, cards lg, the largest surfaces xl. */
 public val polarisBrandShapes: Shapes = Shapes(

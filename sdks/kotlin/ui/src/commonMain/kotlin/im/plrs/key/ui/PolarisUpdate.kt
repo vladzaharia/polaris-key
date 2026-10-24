@@ -348,7 +348,7 @@ private fun PolarisSkipRow(content: @Composable () -> Unit) {
  * No lines hides the label; no page hides the link (UI-KITS.md 4.3 UpdatePrompt).
  */
 @Composable
-private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
+internal fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
     val opener = rememberPolarisOpener()
@@ -419,6 +419,10 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
         val sheet = maxWidth < PolarisSheetBelow
         val available = maxHeight
         CompositionLocalProvider(LocalPolarisWindow provides window) {
+            if (window.fluent) {
+                PolarisFluentUpdateDialog(ui, onUpdate, onLater, onSkip)
+                return@CompositionLocalProvider
+            }
             // The window is the scrim: a tap on it dismisses an optional update; the card takes its own taps.
             // Taps, not click semantics: TalkBack gets no unnamed full-window control (Later and Back dismiss).
             Box(

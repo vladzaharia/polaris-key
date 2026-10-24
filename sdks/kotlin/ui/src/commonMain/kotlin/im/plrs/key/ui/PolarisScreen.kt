@@ -631,6 +631,10 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
     val show = focused && (window.tv || keyboard || window.variant.isDesktop)
     val color = PolarisTheme.focusColor
     val ring = if (window.tv) 3.dp else 2.dp
+    // Windows (UK-10.5): the Fluent two-tone ring, the text colour around the surface colour.
+    val fluent = window.fluent
+    val fluentOuter = MaterialTheme.colorScheme.onSurface
+    val fluentInner = MaterialTheme.colorScheme.background
     val scale by animateFloatAsState(if (window.tv && focused) 1.05f else 1f, label = "PolarisFocusScale")
     val requester = remember { FocusRequester() }
     // The first focus goes in once the control is placed (a request before that has nothing to land on).
@@ -647,7 +651,9 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
         }
         .drawWithContent {
             drawContent()
-            if (show) {
+            if (show && fluent) {
+                drawFluentFocusRing(shape, fluentOuter, fluentInner)
+            } else if (show) {
                 val stroke = ring.toPx()
                 val inset = 2.dp.toPx() + stroke / 2
                 val outline = shape.createOutline(Size(size.width + inset * 2, size.height + inset * 2), layoutDirection, this)
@@ -691,6 +697,13 @@ public fun PolarisPrimaryButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = PolarisTheme.buttonShape
+    if (polarisWindow.fluent) {
+        PolarisFluentButton(
+            FluentButtonKind.Accent, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
+            modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
+        )
+        return
+    }
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
@@ -741,6 +754,13 @@ public fun PolarisSecondaryButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = PolarisTheme.buttonShape
+    if (polarisWindow.fluent) {
+        PolarisFluentButton(
+            FluentButtonKind.Standard, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
+            modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
+        )
+        return
+    }
     FilledTonalButton(
         onClick = onClick,
         enabled = enabled && !busy,
@@ -784,6 +804,13 @@ public fun PolarisTextButton(
     val interaction = remember { MutableInteractionSource() }
     val shape = PolarisTheme.buttonShape
     val tv = polarisWindow.tv
+    if (polarisWindow.fluent) {
+        PolarisFluentButton(
+            FluentButtonKind.Subtle, text, onClick, interaction, enabled = enabled,
+            modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus),
+        )
+        return
+    }
     TextButton(
         onClick = onClick,
         enabled = enabled,
@@ -812,22 +839,33 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, con
         ) { content() }
         return
     }
+    // Windows (UK-10.5): the primary first, the row's buttons at equal width, 8 dp apart.
+    val fluent = polarisWindow.fluent
     CompositionLocalProvider(LocalPolarisActionRow provides true) {
         Layout(content = content, modifier = modifier.fillMaxWidth()) { measurables, constraints ->
-            val gap = PolarisSpace.controls.roundToPx()
+            val gap = (if (fluent) 8.dp else PolarisSpace.controls).roundToPx()
             val minWidth = 96.dp.roundToPx()
             val maxWidth = constraints.maxWidth
-            val widths = measurables.map { it.maxIntrinsicWidth(Constraints.Infinity).coerceAtLeast(minWidth) }
+            val natural = measurables.map { it.maxIntrinsicWidth(Constraints.Infinity).coerceAtLeast(minWidth) }
+            val widths = if (fluent) natural.map { natural.max() } else natural
             val fits = widths.sum() + gap * (measurables.size - 1).coerceAtLeast(0) <= maxWidth
             if (fits) {
                 val height = measurables.zip(widths).maxOfOrNull { (m, w) -> m.minIntrinsicHeight(w) } ?: 0
                 val placeables = measurables.zip(widths).map { (m, w) -> m.measure(Constraints.fixed(w, height)) }
                 layout(maxWidth, height) {
-                    var x = maxWidth
-                    for (p in placeables) {
-                        x -= p.width
-                        p.placeRelative(x, 0)
-                        x -= gap
+                    if (fluent) {
+                        var x = 0
+                        for (p in placeables) {
+                            p.placeRelative(x, 0)
+                            x += p.width + gap
+                        }
+                    } else {
+                        var x = maxWidth
+                        for (p in placeables) {
+                            x -= p.width
+                            p.placeRelative(x, 0)
+                            x -= gap
+                        }
                     }
                 }
             } else {
@@ -982,8 +1020,14 @@ internal fun PolarisTextField(
 ) {
     val branded = PolarisTheme.current.branding == PolarisBranding.PolarisKey
     val shape = PolarisTheme.fieldShape
+    val fluent = polarisWindow.fluent
     Column(modifier.fillMaxWidth()) {
-        TextField(
+        if (fluent) {
+            PolarisFluentTextField(
+                value, onValueChange, label, Modifier, placeholder, enabled, error != null, trailing, focusRequester,
+                keyboardOptions, keyboardActions,
+            )
+        } else TextField(
             value = value,
             onValueChange = onValueChange,
             label = { Text(label) },
