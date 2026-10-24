@@ -107,6 +107,16 @@
     "swift-floor": {
       "paths": ["sdks/swift/"]
     },
+    "swiftui-mac": {
+      "paths": [
+        "sdks/swift/Sources/PolarisKeyUI",
+        "sdks/swift/Sources/PolarisKeyUpdate",
+        "sdks/swift/Package.swift",
+        "sdks/swift/Tests/PolarisKeyUISnapshotTests/",
+        "examples/ui/swiftui/",
+        "packages/brand/kit-copy/"
+      ]
+    },
     "kotlin": {
       "paths": ["sdks/kotlin/"]
     },

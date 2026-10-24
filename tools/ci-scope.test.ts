@@ -554,3 +554,37 @@ describe("a workflow's path filter covers the local actions its jobs use", () =>
     },
   );
 });
+
+// UK-08.8: the SwiftUI kit's macOS renders (macos-26 and macos-15) run only for the kit's own tree,
+// the sample and the copy it renders, and CI OK waits for them.
+describe("ci.yml renders the SwiftUI kit on the Mac", () => {
+  const job = ci.jobs["swiftui-mac"]!;
+  const steps = JSON.stringify(job.steps ?? []);
+
+  it("is its own lane, and CI OK waits for it", () => {
+    expect(job.if).toBe("needs.changes.outputs.swiftui-mac == 'true'");
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).toContain("swiftui-mac");
+    expect(on(["examples/ui/swiftui/run.sh"])).toContain("swiftui-mac");
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyUpdateUI/Driver.swift"]),
+    ).toContain("swiftui-mac");
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"]),
+    ).not.toContain("swiftui-mac");
+  });
+
+  it("runs both legs, pins XcodeGen by checksum, and always uploads", () => {
+    expect(JSON.stringify(job.strategy)).toContain("macos-26");
+    expect(JSON.stringify(job.strategy)).toContain("macos-15");
+    expect(JSON.stringify(job.strategy)).toContain("select-xcode-26.sh");
+    expect(JSON.stringify(job.strategy)).toContain("select-xcode-16.sh");
+    expect(steps).toContain(
+      "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef",
+    );
+    expect(
+      (job.steps ?? []).some(
+        (s) => s.if === "always()" && /upload-artifact/.test(s.uses ?? ""),
+      ),
+    ).toBe(true);
+  });
+});

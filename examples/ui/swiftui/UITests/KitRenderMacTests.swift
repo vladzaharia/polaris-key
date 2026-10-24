@@ -31,7 +31,10 @@
 //   PKEY_KIT_QUICK=1    Welcome.default in both schemes at one size, nothing else
 //   PKEY_KIT_WINDOWS    comma-separated WxH list (default 480x520, 900x640, 1440x900 and 1920x1080)
 //   PKEY_KIT_INACTIVE   1: also render each default-row state with the window inactive
-//   PKEY_KIT_BASELINES / PKEY_KIT_RECORD   compare with / record baselines as on iOS
+//   PKEY_KIT_BASELINES / PKEY_KIT_RECORD   compare with / record baselines as on iOS. Record-first
+//                       (UK-08.8): when PKEY_KIT_BASELINES holds no mac<OS>-*.png for this OS yet, the
+//                       run records them and does not fail on missing ones, so CI's first run on an OS
+//                       passes and produces the set to commit.
 //   PKEY_KIT_EXTRA_ARGS extra launch arguments
 //
 // Needs UI automation allowed for the test runner (System Settings > Privacy & Security >
@@ -376,6 +379,19 @@ final class KitRenderMacTests: XCTestCase {
             ? "\(component)-\(parts[1].replacingOccurrences(of: ".", with: "-"))" : component
     }
 
+    /// True when `PKEY_KIT_BASELINES` holds no `mac<OS>-*.png` for this OS: the first run on an OS
+    /// records instead of comparing. Read once, before the first render writes one.
+    static let recordFirst: Bool = {
+        guard let root = env("PKEY_KIT_BASELINES") else { return false }
+        let prefix = "mac\(ProcessInfo.processInfo.operatingSystemVersion.majorVersion)-"
+        let files = FileManager.default.enumerator(atPath: root)
+        while let file = files?.nextObject() as? String {
+            let name = (file as NSString).lastPathComponent
+            if name.hasPrefix(prefix) && name.hasSuffix(".png") { return false }
+        }
+        return true
+    }()
+
     /// Compare a render with its baseline at 1x (a Retina window is redrawn to its point size),
     /// or record it under PKEY_KIT_RECORD=1. Baselines live in
     /// `<root>/<component>-<state>/<name>.png`.
@@ -386,7 +402,7 @@ final class KitRenderMacTests: XCTestCase {
             .appendingPathComponent(Self.baselineName(state))
             .appendingPathComponent("\(name).png")
         let small = Self.oneX(image)
-        if Self.env("PKEY_KIT_RECORD") == "1" {
+        if Self.env("PKEY_KIT_RECORD") == "1" || Self.recordFirst {
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Self.png(small).write(to: url)
