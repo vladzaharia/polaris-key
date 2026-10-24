@@ -8,6 +8,12 @@ importers:
 
   .: {}
 
+  byo-design-system:
+    devDependencies:
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4
+
   htmx:
     dependencies:
       htmx.org:
@@ -53,6 +59,19 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: 7.3.1
         version: 7.3.1(svelte@5.57.2)(vite@8.3.4)
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4
+
+  tauri:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: 2.12.3
+        version: 2.12.3
+      '@tauri-apps/plugin-opener':
+        specifier: 2.7.1
+        version: 2.7.1
+    devDependencies:
       vite:
         specifier: 8.3.4
         version: 8.3.4
@@ -336,6 +355,12 @@ packages:
     peerDependencies:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
+
+  '@tauri-apps/api@2.12.3':
+    resolution: {integrity: sha512-9s0PKw0p4r3kFq92jhpivYSp+cSht15o0gXpZxuQd0+dV9KCexEVkNaLELVoLdJWyoH4KlfQo5h3W2LIM8siJg==}
+
+  '@tauri-apps/plugin-opener@2.7.1':
+    resolution: {integrity: sha512-XkXdt30rontti9TII/gBBxFRXWfj8DiprFW7RgBFRBj1OhdfjBNVcFqSEWkkZ4hXafHnuEnB7F1sFsmu6uyywQ==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -1109,6 +1134,12 @@ snapshots:
       svelte: 5.57.2
       vite: 8.3.4
       vitefu: 1.1.3(vite@8.3.4)
+
+  '@tauri-apps/api@2.12.3': {}
+
+  '@tauri-apps/plugin-opener@2.7.1':
+    dependencies:
+      '@tauri-apps/api': 2.12.3
 
   '@types/babel__core@7.20.5':
     dependencies:

@@ -1,0 +1,17 @@
+{
+  "name": "polaris-key-recipe-tauri",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.3",
+    "@tauri-apps/plugin-opener": "2.7.1"
+  },
+  "devDependencies": {
+    "vite": "8.3.4"
+  }
+}

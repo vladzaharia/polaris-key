@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "The main window may open https links in the system browser, and nothing else.",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }]
+    }
+  ]
+}
