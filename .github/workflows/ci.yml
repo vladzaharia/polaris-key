@@ -32,6 +32,7 @@ jobs:
       python: ${{ steps.scope.outputs.python }}
       swift: ${{ steps.scope.outputs.swift }}
       swift-floor: ${{ steps.scope.outputs.swift-floor }}
+      swiftui-mac: ${{ steps.scope.outputs.swiftui-mac }}
       kotlin: ${{ steps.scope.outputs.kotlin }}
       android: ${{ steps.scope.outputs.android }}
       godot: ${{ steps.scope.outputs.godot }}
@@ -713,6 +714,77 @@ jobs:
         with:
           name: apple-hosted-logs
           path: sdks/swift/PlatformHostTests/build/logs/
+
+  # UK-08.8: the SwiftUI kit's macOS render suite (examples/ui/swiftui/UITests/KitRenderMacTests.swift:
+  # `run.sh --mac`, XCUITest with the accessibility audit and the layout assertions on every render).
+  # Two legs, because the kit draws two looks: macos-26 (Xcode 26.6) renders the full set (the board
+  # screens at four window sizes x schemes x presets, every preview state, the update window, the
+  # accessibility rows, the 200 % rows, inactive windows); macos-15 (Xcode 16.4) renders the board
+  # screens at 900x640 x schemes x presets, the macOS 15 look. Baselines are committed per OS
+  # (`mac26-*`, `mac15-*` under sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__); a leg
+  # whose OS has none yet RECORDS them and passes (the harness's record-first rule), so the first run
+  # on main produces the set to commit; after that a render that differs fails. Always uploads the
+  # renders, renders-mac*.json, the recorded baselines and the xcresult. Estimate: macos-26 about 600
+  # renders at 8 to 12 s (80 to 120 min) plus a 10 min build; macos-15 32 renders (5 min) plus the build.
+  swiftui-mac:
+    name: SwiftUI kit, macOS renders (${{ matrix.runner }})
+    needs: changes
+    if: needs.changes.outputs.swiftui-mac == 'true'
+    # Non-blocking until the first baselines are committed (UK-08.8); the baseline commit removes this and adds the job to ci-ok.
+    continue-on-error: true
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            os: "26"
+            xcode: sdks/swift/tools/select-xcode-26.sh
+            timeout: 150
+            inactive: "1"
+            only: ""
+            windows: ""
+            tests: ""
+          - runner: macos-15
+            os: "15"
+            xcode: sdks/swift/tools/select-xcode-16.sh
+            timeout: 45
+            inactive: "0"
+            only: "Welcome.default,Activate.parsed,SignIn.methods,DeviceLimit.default,UpdatePrompt.available,SettingsPane.account,StatusScreen.revoked,GraceBanner.days-left"
+            windows: "900x640"
+            tests: "KitRenderMacTests/testRenders"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Xcode (26.6 or 16.4)
+        run: ${{ matrix.xcode }}
+      - name: Render the kit on the Mac (record when this OS has no baselines)
+        env:
+          PKEY_KIT_BASELINES: ${{ github.workspace }}/sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__
+          PKEY_KIT_INACTIVE: ${{ matrix.inactive }}
+          PKEY_KIT_ONLY: ${{ matrix.only }}
+          PKEY_KIT_WINDOWS: ${{ matrix.windows }}
+          PKEY_KIT_TESTS: ${{ matrix.tests }}
+        # XcodeGen 2.45.4, the release asset checked against its SHA-256 (as in apple-hosted).
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen.zip" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
+          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" examples/ui/swiftui/run.sh --mac
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swiftui-mac-${{ matrix.os }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            examples/ui/swiftui/build/shots-mac/
+            examples/ui/swiftui/build/results-mac-*.xcresult
+            sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/**/mac${{ matrix.os }}-*.png
 
   # SP-52: a Release arm64 app must be at least 25% smaller than over the v0.8.33 SDK. Report
   # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static

@@ -459,6 +459,35 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(missing.sorted(), [])
     }
 
+    /// UK-08.8: every state the Mac harness lists (its board, extra rows and sheets) is a preview
+    /// state, and the states suite renders every preview state off the board, so the Mac
+    /// renders cover them all. Read from the harness source, which the package
+    /// cannot import.
+    func testEveryMacStateListedInASuiteIsAPreviewState() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent(
+                "examples/ui/swiftui/UITests/KitRenderMacTests.swift"), encoding: .utf8)
+        func list(_ name: String) throws -> [String] {
+            let range = try XCTUnwrap(
+                source.range(
+                    of: "static let \(name) = \\[[^\\]]*\\]", options: .regularExpression),
+                "\(name) not found in the Mac harness")
+            return String(source[range]).split(separator: "\"").map(String.init)
+                .enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+        }
+        let all = Set(PolarisKeyPreviewState.all.map(\.id))
+        // The Settings pane has its own launch argument, not a preview state.
+        for name in ["board", "extraRows", "sheets"] {
+            let unknown = try list(name).filter { $0 != "SettingsPane.account" && !all.contains($0) }
+            XCTAssertEqual(unknown, [], "\(name) lists states that are not preview states")
+        }
+        let board = try list("board")
+        XCTAssertEqual(board.count, 8, "the eight board screens")
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {
