@@ -90,7 +90,8 @@ public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polari
  * The whole kit wired to [client]: boot (with the gate, pack progress and the update banner) and
  * then [content]. [onSignIn] starts sign-in from the activation screen (null hides the button);
  * [signIn] runs the device-code sign-in inside the gate instead, whose "Use a license key instead"
- * and Cancel come back to the key field; [packs] shows per-pack progress during the boot fetch.
+ * and Cancel come back to the key field; [onQuit] is the host's quit, called once a desktop installer
+ * is open (the kit never quits by itself); [packs] shows per-pack progress during the boot fetch.
  */
 @Composable
 public fun PolarisKeyApp(
@@ -100,6 +101,7 @@ public fun PolarisKeyApp(
     onSignIn: (() -> Unit)? = null,
     packs: Boolean = client.packs.configured,
     signIn: Boolean = false,
+    onQuit: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -141,7 +143,7 @@ public fun PolarisKeyApp(
             gate = gate,
             packs = packState,
             onSignIn = onSignIn,
-            onUpdate = { update.install(updateActions, scope) },
+            onUpdate = { update.install(updateActions, scope, onQuit) },
             signIn = signInState,
         ) {
             val offer by update.offer.collectAsState()
@@ -150,7 +152,7 @@ public fun PolarisKeyApp(
                 offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Restart }?.let { ui ->
                     PolarisUpdateBanner(
                         ui,
-                        onUpdate = { update.install(updateActions, scope) },
+                        onUpdate = { update.install(updateActions, scope, onQuit) },
                         onDismiss = if (ui.mandatory) null else update::dismiss,
                     )
                 }
@@ -159,7 +161,7 @@ public fun PolarisKeyApp(
             offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Install }?.let { ui ->
                 PolarisUpdatePromptDialog(
                     ui,
-                    onUpdate = { update.install(updateActions, scope) },
+                    onUpdate = { update.install(updateActions, scope, onQuit) },
                     onLater = update::dismiss,
                     onSkip = if (ui.mandatory) null else update::skip,
                 )

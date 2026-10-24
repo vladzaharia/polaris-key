@@ -7,6 +7,7 @@ import im.plrs.key.core.UpdateDecision
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.update.InstallResult
 import im.plrs.key.update.InstallStage
+import im.plrs.key.update.InstallProgressSource
 import im.plrs.key.update.ProgressiveInstallDriver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -104,7 +105,7 @@ public fun PolarisKeyClient.updateActions(): PolarisUpdateActions {
             (client.update.installDriver as? ProgressiveInstallDriver)?.finish() ?: InstallResult.NothingToInstall
 
         override val stages: Flow<InstallStage>
-            get() = (client.update.installDriver as? ProgressiveInstallDriver)?.progress ?: emptyFlow()
+            get() = (client.update.installDriver as? InstallProgressSource)?.progress ?: emptyFlow()
     }
 }
 
@@ -157,11 +158,14 @@ public class PolarisUpdateState {
      * stays on the offer as [PolarisUpdateUi.error]; a started install keeps the offer until the
      * platform reports it downloaded ([readyToRestart]) or the app restarts.
      */
-    public fun install(actions: PolarisUpdateActions, scope: CoroutineScope) {
+    public fun install(actions: PolarisUpdateActions, scope: CoroutineScope, onStarted: (() -> Unit)? = null) {
         val finishing = downloaded
         val currentCheck = check
         if (currentCheck == null && !finishing) return
-        scope.launch {
+        // One install at a time: "Restart when ready" while a desktop download runs queues nothing
+        // more, because the running install opens the verified installer and then hands off.
+        if (installing != null) return
+        val job = scope.launch {
             val result = try {
                 if (finishing) actions.finish() else actions.install(currentCheck!!)
             } catch (e: CancellationException) {
@@ -174,8 +178,14 @@ public class PolarisUpdateState {
             _offer.update { offer ->
                 offer?.copy(error = (result as? InstallResult.Failed)?.let { PolarisUpdateFailure(it.code, it.detail) })
             }
+            // The host quits (a desktop installer replaces the app); the kit never quits by itself.
+            if (result is InstallResult.Started) onStarted?.invoke()
         }
+        installing = job
+        job.invokeOnCompletion { installing = null }
     }
+
+    @Volatile private var installing: Job? = null
 
     /** The platform's download progress (a Play flexible update's InstallState). */
     public fun progress(done: Long, total: Long) {

@@ -128,7 +128,7 @@ public object PolarisKeyDesktop {
                     fetch = { url, part, size, progress -> OkHttpArtifactFetch(client().core).fetch(url, part, size, progress) },
                     dir = File(dir, "updates/installer"),
                     opener = desktop.opener,
-                    progress = desktop.downloadProgress,
+                    onBytes = desktop.downloadProgress,
                 ),
             )
         }
