@@ -1045,6 +1045,32 @@ export const COMMANDS: readonly PkeyCommand[] = [
     env: [CI_ENV],
   },
   {
+    name: "channel",
+    group: "storefront",
+    json: true,
+    summary: "Add a delivery channel to .pkey/distribution, and sync its steps",
+    rows: [
+      ["channel add <id>", "Add a channel to .pkey/distribution"],
+      ["channel sync", "Run the PR steps the declared channels have"],
+    ],
+    tree: { add: [], sync: [] },
+    usage: [
+      "pkey channel add id [--field name=value ...] [--outlet-id id] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]",
+    ],
+    about: [
+      {
+        subs: ["add"],
+        text:
+          "channel add writes one outlet, with a comment on every field, into " +
+          ".pkey/distribution (created when absent; comments already there stay). --field " +
+          "sets an identity field; a value starting [ or { is JSON. The outlet is named for " +
+          "the channel unless --outlet-id says otherwise. Nothing is written if the id is " +
+          "taken or .pkey/ would stop validating.",
+      },
+    ],
+  },
+  {
     name: "storefront",
     group: "storefront",
     json: true,
