@@ -490,14 +490,14 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
  */
 export const PENDING: readonly PendingEntry[] = [
   // API-only stores (S-18 §2.2).
-  { target: "table:platform_store_settings", owner: "ST-12" },
-  { target: "table:platform_credentials", owner: "ST-12" },
-  { target: "table:outlet_credentials", owner: "ST-12" },
-  { target: "table:dist_store_products", owner: "ST-12" },
-  { target: "column:dist_store_products.source", owner: "ST-12" },
+  { target: "table:platform_store_settings", owner: "A-22" },
+  { target: "table:platform_credentials", owner: "P0-28" },
+  { target: "table:outlet_credentials", owner: "P0-28" },
+  { target: "table:dist_store_products", owner: "CM-23" },
+  { target: "column:dist_store_products.source", owner: "CM-23" },
   {
     target: "env:PLATFORM_APPLE_TEAM_ID",
-    owner: "ST-12",
+    owner: "A-22",
     note: "stores.appStore.teamId",
   },
 ];

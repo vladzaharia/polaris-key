@@ -826,9 +826,9 @@ async function writeProduct(
       claimed: op === "set" && linked && def.ownership === "claimable",
       // A rich key with a `set` adapter (`distribution.access`) is not governed here: its claim
       // lives in the adapter's own table (`dist_access.source = 'admin'`), which the manifest
-      // ingest skips until a revert, exactly as the bespoke `…/distribution/access` route
-      // behaved. That route never asked for a break-glass claim, even on a manifest-authoritative
-      // product (the system product always), and the console has no field for one. A
+      // ingest skips until a revert. It never asks for a break-glass claim, even on a
+      // manifest-authoritative product (the system product always), and the console has no field
+      // for one. A
       // break-glass claim could not expire either: expiry lapses a `product_settings` row, and
       // the `dist_access` rows are not one. Revert hands the `app` row back, as before.
       governed:
