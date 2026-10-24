@@ -10,6 +10,7 @@ export default defineConfig({
     environment: "node",
     include: ["e2e/**/*.e2e.test.ts"],
     testTimeout: 120_000,
+    maxConcurrency: 4,
     hookTimeout: 120_000,
   },
 });

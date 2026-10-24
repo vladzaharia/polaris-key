@@ -1333,181 +1333,193 @@ const ONLY_CASES = process.env.PK_LAYOUT_CASES?.split(",");
 for (const vp of VIEWPORTS) {
   for (const theme of THEMES) {
     if (ONLY && ONLY !== `${vp.label}/${theme}`) continue;
-    describe(`layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`, () => {
-      for (const c of CASES) {
-        if (vp.only && !vp.only.includes(c.name)) continue;
-        if (vp.accept && !vp.accept(c.name)) continue;
-        if (c.minWidth && vp.width < c.minWidth) continue;
-        if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n))) continue;
-        it(c.name, async () => {
-          const { page, gaps, errors } = await open(c, theme, vp);
-          try {
-            const { violations, scrollers } = await page.evaluate(probeLayout, {
-              // The page's bottom padding is in rem, so it grows with the text.
-              trailingSlack:
-                TRAILING_SLACK * ((vp.rootFontPercent ?? 100) / 100),
-              rows: vp.width >= 1024,
-            });
-            const csp = await page.evaluate(() =>
-              (window as unknown as { __v: string[] }).__v.splice(0),
-            );
-            const errorState =
-              (await page.locator("#content [data-error-action]").count()) > 0;
-            const found = withoutDebt(c.name, violations);
-            report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
-              violations: found,
-              scrollers,
-              gaps: [...new Set(gaps)],
-              errors,
-              errorState,
-            };
-            if (SHOTS)
-              await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
-            expect(csp, "CSP violations").toEqual([]);
-            // F-34.7: the Packages page passes axe (contrast included) in both themes.
-            if (c.name.includes("package-feeds"))
-              expect(await axeWithin(page, "#content"), "axe").toEqual([]);
-            expect(
-              await page.evaluate(
-                () => document.documentElement.scrollWidth - window.innerWidth,
-              ),
-              "page-level horizontal scroll",
-            ).toBeLessThanOrEqual(0);
-            expect(
-              await unlabelledScrollers(page),
-              "sideways tables outside a labelled region",
-            ).toEqual([]);
-            if (vp.label === "wide" || vp.label.startsWith("zoom")) {
-              // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
-              // Every rule, with 24 px touch targets (WCAG 2.5.8) at every size.
-              expect(
-                await lintFindings(page, { minTouch: 24 }),
-                "ui:lint findings",
-              ).toEqual([]);
-            }
-            if (
-              [
-                "desktop",
-                "phone",
-                "landscape-small",
-                "reduced-transparency",
-              ].includes(vp.label)
-            )
-              // B6, B7, B17 over the render (UK-63); the focus-ring walk once per page.
-              expect(
-                await uxBarChecked(page, c.name, {
-                  focus: vp.label === "desktop" && theme === "dark",
-                }),
-                "UX bar (B6, B7, B17)",
-              ).toEqual([]);
-            if (
-              ["desktop", "phone", "rail"].includes(vp.label) &&
-              (await page.locator("header[data-masthead]").count()) > 0
-            )
-              // axe zero over the masthead and any workbench (ST-48): landmarks, names, contrast.
-              expect(
-                [
-                  ...(await axeWithin(page, "header[data-masthead]")),
-                  ...((await page.locator("[data-workbench]").count()) > 0
-                    ? await axeWithin(page, "[data-workbench]")
-                    : []),
-                ],
-                "axe: masthead and workbench",
-              ).toEqual([]);
-            expect(
-              await shellStateBreaches(page),
-              "shell state colours (B2, B4, B17)",
-            ).toEqual([]);
-            expect(
-              await pillTextBreaches(page),
-              "status text escapes its pill or chip (N1)",
-            ).toEqual([]);
-            expect(
-              await rowMenuOverlaps(page),
-              "a row menu sits on the row's text (T1)",
-            ).toEqual([]);
-            expect(
-              await emptyStateStarBreaches(page),
-              "stationary star (BRAND.md §7.7)",
-            ).toEqual([]);
-            if (vp.forcedColors)
-              expect(
-                await forcedColourBreaches(page),
-                "forced-colour boundaries",
-              ).toEqual([]);
-            if (vp.forcedColors) {
-              // B-009: a sidebar group header is a row, not a control box. It and the single-page
-              // link opt out with data-forced-flat, so neither is drawn with a 1 px border.
-              const boxed = await page.evaluate(() =>
-                [
-                  ...document.querySelectorAll<HTMLElement>(
-                    "[data-section-header]",
-                  ),
-                ]
-                  // The current page's row keeps its 2 px selected border (the non-colour cue).
-                  .filter(
-                    (el) =>
-                      el.checkVisibility() && !el.hasAttribute("aria-current"),
-                  )
-                  .map((el) => ({
-                    flat: el.hasAttribute("data-forced-flat"),
-                    border: getComputedStyle(el).borderTopWidth,
-                    label: (el.textContent ?? "").trim().slice(0, 30),
-                  }))
-                  .filter((h) => !h.flat || h.border !== "0px")
-                  .map((h) => `${h.label}: flat=${h.flat} border=${h.border}`),
+    describe.concurrent(
+      `layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`,
+      () => {
+        for (const c of CASES) {
+          if (vp.only && !vp.only.includes(c.name)) continue;
+          if (vp.accept && !vp.accept(c.name)) continue;
+          if (c.minWidth && vp.width < c.minWidth) continue;
+          if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n)))
+            continue;
+          it(c.name, async () => {
+            const { page, gaps, errors } = await open(c, theme, vp);
+            try {
+              const { violations, scrollers } = await page.evaluate(
+                probeLayout,
+                {
+                  // The page's bottom padding is in rem, so it grows with the text.
+                  trailingSlack:
+                    TRAILING_SLACK * ((vp.rootFontPercent ?? 100) / 100),
+                  rows: vp.width >= 1024,
+                },
               );
+              const csp = await page.evaluate(() =>
+                (window as unknown as { __v: string[] }).__v.splice(0),
+              );
+              const errorState =
+                (await page.locator("#content [data-error-action]").count()) >
+                0;
+              const found = withoutDebt(c.name, violations);
+              report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
+                violations: found,
+                scrollers,
+                gaps: [...new Set(gaps)],
+                errors,
+                errorState,
+              };
+              if (SHOTS)
+                await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
+              expect(csp, "CSP violations").toEqual([]);
+              // F-34.7: the Packages page passes axe (contrast included) in both themes.
+              if (c.name.includes("package-feeds"))
+                expect(await axeWithin(page, "#content"), "axe").toEqual([]);
               expect(
-                boxed,
-                "sidebar group headers are flat in forced colours",
+                await page.evaluate(
+                  () =>
+                    document.documentElement.scrollWidth - window.innerWidth,
+                ),
+                "page-level horizontal scroll",
+              ).toBeLessThanOrEqual(0);
+              expect(
+                await unlabelledScrollers(page),
+                "sideways tables outside a labelled region",
               ).toEqual([]);
-            }
-            if (vp.forcedColors && c.name === "djdl:services") {
-              // State never rests on colour alone: in forced colours an on switch must draw
-              // differently from an off one (track fill and knob). The fixture has every
-              // switch on, so an off twin is a clone with the unchecked state attributes.
-              const looks = await page.evaluate(() => {
-                const sw = document.querySelector<HTMLElement>(
-                  '[role="switch"][data-state="checked"]',
-                );
-                if (!sw) return null;
-                const draw = (el: HTMLElement) =>
-                  `${getComputedStyle(el).backgroundColor}|${getComputedStyle(el.firstElementChild!).backgroundColor}`;
-                const on = draw(sw);
-                const twin = sw.cloneNode(true) as HTMLElement;
-                for (const el of [twin, twin.firstElementChild!])
-                  el.setAttribute("data-state", "unchecked");
-                sw.after(twin);
-                const off = draw(twin);
-                twin.remove();
-                return { on, off };
-              });
-              expect(looks, "an on switch is drawn").not.toBeNull();
+              if (vp.label === "wide" || vp.label.startsWith("zoom")) {
+                // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
+                // Every rule, with 24 px touch targets (WCAG 2.5.8) at every size.
+                expect(
+                  await lintFindings(page, { minTouch: 24 }),
+                  "ui:lint findings",
+                ).toEqual([]);
+              }
+              if (
+                [
+                  "desktop",
+                  "phone",
+                  "landscape-small",
+                  "reduced-transparency",
+                ].includes(vp.label)
+              )
+                // B6, B7, B17 over the render (UK-63); the focus-ring walk once per page.
+                expect(
+                  await uxBarChecked(page, c.name, {
+                    focus: vp.label === "desktop" && theme === "dark",
+                  }),
+                  "UX bar (B6, B7, B17)",
+                ).toEqual([]);
+              if (
+                ["desktop", "phone", "rail"].includes(vp.label) &&
+                (await page.locator("header[data-masthead]").count()) > 0
+              )
+                // axe zero over the masthead and any workbench (ST-48): landmarks, names, contrast.
+                expect(
+                  [
+                    ...(await axeWithin(page, "header[data-masthead]")),
+                    ...((await page.locator("[data-workbench]").count()) > 0
+                      ? await axeWithin(page, "[data-workbench]")
+                      : []),
+                  ],
+                  "axe: masthead and workbench",
+                ).toEqual([]);
               expect(
-                looks!.on,
-                "on and off switches look the same in forced colours",
-              ).not.toBe(looks!.off);
+                await shellStateBreaches(page),
+                "shell state colours (B2, B4, B17)",
+              ).toEqual([]);
+              expect(
+                await pillTextBreaches(page),
+                "status text escapes its pill or chip (N1)",
+              ).toEqual([]);
+              expect(
+                await rowMenuOverlaps(page),
+                "a row menu sits on the row's text (T1)",
+              ).toEqual([]);
+              expect(
+                await emptyStateStarBreaches(page),
+                "stationary star (BRAND.md §7.7)",
+              ).toEqual([]);
+              if (vp.forcedColors)
+                expect(
+                  await forcedColourBreaches(page),
+                  "forced-colour boundaries",
+                ).toEqual([]);
+              if (vp.forcedColors) {
+                // B-009: a sidebar group header is a row, not a control box. It and the single-page
+                // link opt out with data-forced-flat, so neither is drawn with a 1 px border.
+                const boxed = await page.evaluate(() =>
+                  [
+                    ...document.querySelectorAll<HTMLElement>(
+                      "[data-section-header]",
+                    ),
+                  ]
+                    // The current page's row keeps its 2 px selected border (the non-colour cue).
+                    .filter(
+                      (el) =>
+                        el.checkVisibility() &&
+                        !el.hasAttribute("aria-current"),
+                    )
+                    .map((el) => ({
+                      flat: el.hasAttribute("data-forced-flat"),
+                      border: getComputedStyle(el).borderTopWidth,
+                      label: (el.textContent ?? "").trim().slice(0, 30),
+                    }))
+                    .filter((h) => !h.flat || h.border !== "0px")
+                    .map(
+                      (h) => `${h.label}: flat=${h.flat} border=${h.border}`,
+                    ),
+                );
+                expect(
+                  boxed,
+                  "sidebar group headers are flat in forced colours",
+                ).toEqual([]);
+              }
+              if (vp.forcedColors && c.name === "djdl:services") {
+                // State never rests on colour alone: in forced colours an on switch must draw
+                // differently from an off one (track fill and knob). The fixture has every
+                // switch on, so an off twin is a clone with the unchecked state attributes.
+                const looks = await page.evaluate(() => {
+                  const sw = document.querySelector<HTMLElement>(
+                    '[role="switch"][data-state="checked"]',
+                  );
+                  if (!sw) return null;
+                  const draw = (el: HTMLElement) =>
+                    `${getComputedStyle(el).backgroundColor}|${getComputedStyle(el.firstElementChild!).backgroundColor}`;
+                  const on = draw(sw);
+                  const twin = sw.cloneNode(true) as HTMLElement;
+                  for (const el of [twin, twin.firstElementChild!])
+                    el.setAttribute("data-state", "unchecked");
+                  sw.after(twin);
+                  const off = draw(twin);
+                  twin.remove();
+                  return { on, off };
+                });
+                expect(looks, "an on switch is drawn").not.toBeNull();
+                expect(
+                  looks!.on,
+                  "on and off switches look the same in forced colours",
+                ).not.toBe(looks!.off);
+              }
+              expect(
+                await columnBreaches(
+                  page,
+                  "#content > div",
+                  CONSOLE_COLUMN_MAX,
+                  false,
+                ),
+                "content column",
+              ).toEqual([]);
+              expect(
+                found.map(
+                  (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
+                ),
+              ).toEqual([]);
+            } finally {
+              await closeContext(page.context());
             }
-            expect(
-              await columnBreaches(
-                page,
-                "#content > div",
-                CONSOLE_COLUMN_MAX,
-                false,
-              ),
-              "content column",
-            ).toEqual([]);
-            expect(
-              found.map(
-                (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
-              ),
-            ).toEqual([]);
-          } finally {
-            await closeContext(page.context());
-          }
-        });
-      }
-    });
+          });
+        }
+      },
+    );
   }
 }
 
