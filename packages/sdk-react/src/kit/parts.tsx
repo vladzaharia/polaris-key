@@ -52,6 +52,8 @@ export interface KitCtx {
   embedded?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** Settings, opened by the host: the account pane drawn above the settings rows. */
+  account?: ReactNode;
   /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
   dialog?: boolean;
   /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */

@@ -52,6 +52,7 @@ const SIZES: readonly {
   { label: "390x844", width: 390, height: 844 },
   { label: "844x390", width: 844, height: 390 },
   { label: "640x360", width: 640, height: 360 },
+  { label: "760x420", width: 760, height: 420 },
   { label: "480x520", width: 480, height: 520 },
   { label: "820x1180", width: 820, height: 1180 },
   { label: "1180x820", width: 1180, height: 820 },
@@ -222,6 +223,25 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                 return r && (r.width < 24 || r.height < 24) ? [label(el)] : [];
               });
               expect(small.join("\n")).toBe("");
+              // A short split's docked bar draws no band across the window (it would cut through
+              // the identity panel), and the card is centred in the window, not left at the top.
+              const bar = kit.querySelector<HTMLElement>(
+                "[data-split] .card > .actions",
+              );
+              if (bar && kit.getAttribute("data-shape") === "short") {
+                expect(
+                  getComputedStyle(bar, "::before").content,
+                  "a band across the window",
+                ).toBe("none");
+                const card = kit
+                  .querySelector(".card")!
+                  .getBoundingClientRect();
+                if (card.height < innerHeight - 8)
+                  expect(
+                    Math.abs(card.top - (innerHeight - card.bottom)),
+                    "card centred",
+                  ).toBeLessThanOrEqual(24);
+              }
               // A landscape window draws the landscape (or the short) layout.
               if (
                 scene.id === "Welcome.default" &&
