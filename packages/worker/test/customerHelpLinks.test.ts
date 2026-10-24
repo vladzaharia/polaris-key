@@ -75,3 +75,57 @@ describe("Help links on Locker pages", () => {
     },
   );
 });
+
+// DOC-06b.1: the Worker's own table (`core/helpLinks.ts`) and the anchor each Locker notice
+// names (`help: "<id>"` in `core/notify/templates.ts`) are real Help pages and headings.
+describe("Help links in Locker mail", () => {
+  const workerPaths = [
+    ...read("worker/src/core/helpLinks.ts").matchAll(
+      /"(\/docs\/help\/[^"]*)"/g,
+    ),
+  ].map((m) => m[1]!);
+  const anchors = [
+    ...read("worker/src/core/notify/templates.ts").matchAll(
+      /\bhelp: "([a-z0-9-]+)"/g,
+    ),
+  ].map((m) => m[1]!);
+  const emailsSource = read("docs/src/content/docs/help/emails.md");
+  const slugManifest = join(dist, "docs-slugs.json");
+
+  it("declares the table and an anchor per notice", () => {
+    expect(workerPaths).toEqual(
+      expect.arrayContaining([
+        "/docs/help/what-is-polaris-locker/",
+        "/docs/help/emails/",
+        "/docs/help/secure-your-account/",
+        "/docs/help/check-a-download/",
+        "/docs/help/approve-a-sign-in/",
+      ]),
+    );
+    expect(anchors.length).toBeGreaterThan(20);
+  });
+
+  it("every notice anchor is an entry on the Emails page", () => {
+    const missing = anchors.filter(
+      (a) => !emailsSource.includes(`<a id="${a}"></a>`),
+    );
+    expect(missing, `no such entry: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it.skipIf(!existsSync(slugManifest))(
+    "every path and anchor exists in the built docs site",
+    () => {
+      const manifest = JSON.parse(readFileSync(slugManifest, "utf8")) as {
+        routes: string[];
+      };
+      const routes = new Set(manifest.routes);
+      expect(workerPaths.filter((p) => !routes.has(p))).toEqual([]);
+      // The entries carry hand-set `<a id>` anchors, not heading slugs: read the built page.
+      const page = readFileSync(
+        join(dist, "help", "emails", "index.html"),
+        "utf8",
+      );
+      expect(anchors.filter((a) => !page.includes(`id="${a}"`))).toEqual([]);
+    },
+  );
+});

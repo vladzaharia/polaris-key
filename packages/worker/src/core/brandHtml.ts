@@ -34,6 +34,7 @@ import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { LOCKER_LOCKUP_PALETTES, lockupMetrics } from "@polaris-key/brand/svg";
 import { escapeHtml } from "../platform/html.js";
+import { WORKER_HELP_LINKS } from "./helpLinks.js";
 
 /** Where the admin build emits the brand fonts and the Pinned K web identity. */
 export const BRAND_FONT_PATH = "/assets/branding/fonts";
@@ -768,8 +769,8 @@ export function renderBrandPage(opts: BrandPageOptions): string {
 
 /** Help and Privacy under every Polaris Locker card (no Terms: no such page exists). */
 export const LOCKER_CARD_LINKS = [
-  { label: "Help", href: "/docs/help/" },
-  { label: "Privacy", href: "/docs/help/your-data/" },
+  { label: "Help", href: WORKER_HELP_LINKS.help },
+  { label: "Privacy", href: WORKER_HELP_LINKS.privacy },
 ] as const;
 
 /**

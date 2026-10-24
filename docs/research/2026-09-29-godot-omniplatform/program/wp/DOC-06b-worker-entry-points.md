@@ -76,6 +76,29 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections (2026-10-24)
+
+The code is the fact (slice plan A-25-DOC-12a-DOC-06b-slices §0).
+
+- **W0.** "Worker entry points" means the pages and mails a customer reaches from the Worker, not
+  `index.ts`, `mount.ts`, `router.ts` or `dispatch.ts`. None of those changes.
+- **W1.** There is no `notices.ts`. The templates are `core/notify/templates.ts` (`buildNotice`),
+  rendered by `core/notify/render.ts`. The other Locker mail is the sign-in link in
+  `core/notify/send.ts`. Operator mail (`cliSignInNotice`, `access*`, alerts) is Polaris Key mail
+  and keeps its footer (D-W1).
+- **W2.** The Help targets exist: `help/emails.md` has one `<a id>` per notice,
+  `secure-your-account.mdx`, `check-a-download.md`, `approve-a-sign-in.mdx`. `what-is-polaris-key`
+  is now `what-is-polaris-locker.md`.
+- **W3.** Three Locker notices had no entry on `help/emails.md`: `deviceReplacedNotice`,
+  `packagesTokenNotice`, `licenseFromDeveloperNotice`. Added in DOC-06b.1.
+- **W4.** "Wasn't you? Secure your account" goes to the app (`#/account/methods`), not Help. The
+  callout keeps that link; the footer adds **Secure your account** to the Help article (D-W2).
+- **W5.** Worker HTML pages already link Help and Privacy (`LOCKER_CARD_LINKS`, now reading
+  `core/helpLinks.ts`). The device pages do not link `approve-a-sign-in` (DOC-06b.2).
+- **W6.** The download page footer has no Help link (DOC-06b.2).
+- **W7.** The gates: the snapshot suites `portalNotices`, `customerEmailHtml`, `lockerMail`,
+  `licenseCreateDelivery`; `customerHelpLinks.test.ts` and the slug-manifest checks.
+
 ## Steps
 
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.

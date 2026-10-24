@@ -10,7 +10,11 @@ Mossgarden was added to your Polaris Locker account with a license key.
 
 Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
-You are receiving this because of a change to your Polaris Locker account.",
+You are receiving this because of a change to your Polaris Locker account.
+
+What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+
+About this email: https://key.plrs.im/docs/help/emails/#license-added",
   },
   "deleted": {
     "subject": "Your Polaris Locker account has been deleted",
@@ -20,7 +24,11 @@ Your Polaris Locker account, its email addresses and its sign-in methods have be
 
 Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.
 
-You are receiving this because your Polaris Locker account was deleted. We sent it to every verified email on the account.",
+You are receiving this because your Polaris Locker account was deleted. We sent it to every verified email on the account.
+
+What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+
+About this email: https://key.plrs.im/docs/help/emails/#account-deleted",
   },
   "keyEmail": {
     "subject": "Your Mossgarden license",
@@ -36,7 +44,11 @@ Enter it in the app to activate. Keep it private: anyone with the key can use it
 
 Open in Polaris Locker: https://key.plrs.im/signin?product=mossgarden
 
-You are receiving this because a license was created for this address.",
+You are receiving this because a license was created for this address.
+
+What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+
+About this email: https://key.plrs.im/docs/help/emails/#license-key",
   },
   "newDevice": {
     "subject": "A new device signed in to your Polaris Locker account",
@@ -48,7 +60,13 @@ Open Polaris Locker: https://key.plrs.im/#/account/sessions
 
 Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
-You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
+
+What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+
+About this email: https://key.plrs.im/docs/help/emails/#new-device-sign-in
+
+Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
   },
 }
 `;
