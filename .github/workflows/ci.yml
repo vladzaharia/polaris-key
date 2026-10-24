@@ -730,6 +730,8 @@ jobs:
     name: SwiftUI kit, macOS renders (${{ matrix.runner }})
     needs: changes
     if: needs.changes.outputs.swiftui-mac == 'true'
+    # Non-blocking until the first baselines are committed (UK-08.8); the baseline commit removes this and adds the job to ci-ok.
+    continue-on-error: true
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
@@ -1441,7 +1443,6 @@ jobs:
         apple-footprint,
         apple-plugin,
         swift-floor,
-        swiftui-mac,
         kotlin,
         kotlin-desktop,
         android,

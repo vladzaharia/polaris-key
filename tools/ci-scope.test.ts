@@ -38,10 +38,12 @@ const scope = loadScope();
 interface Step {
   uses?: string;
   run?: string;
+  if?: string;
 }
 interface Job {
   needs?: string | string[];
   if?: string;
+  "continue-on-error"?: boolean;
   "runs-on"?: string;
   outputs?: Record<string, string>;
   strategy?: { matrix?: unknown };
@@ -409,7 +411,9 @@ describe("ci.yml reads the scope", () => {
   it("aggregates every other job in ci-ok, which runs always", () => {
     const ok = jobs["ci-ok"]!;
     expect(ok.if).toBe("${{ always() }}");
-    const others = Object.keys(jobs).filter((id) => id !== "ci-ok");
+    const others = Object.keys(jobs).filter(
+      (id) => id !== "ci-ok" && id !== "swiftui-mac",
+    ); // swiftui-mac is non-blocking until its baselines are committed (UK-08.8);
     expect(needsOf(ok).sort()).toEqual(others.sort());
   });
 });
@@ -556,14 +560,16 @@ describe("a workflow's path filter covers the local actions its jobs use", () =>
 });
 
 // UK-08.8: the SwiftUI kit's macOS renders (macos-26 and macos-15) run only for the kit's own tree,
-// the sample and the copy it renders, and CI OK waits for them.
+// the sample and the copy it renders, and CI OK does not wait for them until the baselines are committed.
 describe("ci.yml renders the SwiftUI kit on the Mac", () => {
   const job = ci.jobs["swiftui-mac"]!;
   const steps = JSON.stringify(job.steps ?? []);
 
-  it("is its own lane, and CI OK waits for it", () => {
+  it("is its own lane, non-blocking for CI OK", () => {
     expect(job.if).toBe("needs.changes.outputs.swiftui-mac == 'true'");
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).toContain("swiftui-mac");
+    expect(job["continue-on-error"]).toBe(true);
+    // Non-blocking until the first baselines are committed (UK-08.8).
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swiftui-mac");
     expect(on(["examples/ui/swiftui/run.sh"])).toContain("swiftui-mac");
     expect(
       on(["sdks/swift/Sources/PolarisKeyUpdateUI/Driver.swift"]),
