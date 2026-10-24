@@ -23,6 +23,7 @@ const ALWAYS = [
   "test",
   "lint",
   "lint-ts",
+  "skills",
 ];
 const ran = (files: string[] | null, flags = {}) =>
   plan(files, flags)
@@ -50,8 +51,15 @@ describe("STEPS", () => {
       "admin-e2e",
     ]);
   });
+  it("appends step 23 skills, always on, as one root script", () => {
+    const s = STEPS[22]!;
+    expect([s.n, s.id, s.lane]).toEqual([23, "skills", null]);
+    expect(s.argv({} as never)).toEqual(["pnpm", "skills:all"]);
+  });
   it("appends the P0-46 lint steps as 18-22 with their lanes", () => {
-    expect(STEPS.slice(17).map((s) => [s.n, s.id, s.lane, !!s.heavy])).toEqual([
+    expect(
+      STEPS.slice(17, 22).map((s) => [s.n, s.id, s.lane, !!s.heavy]),
+    ).toEqual([
       [18, "lint-ts", null, false],
       [19, "lint-python", "python", false],
       [20, "lint-swift", "swift-floor", false],
@@ -114,6 +122,7 @@ describe("plan", () => {
     expect(ran(["docs/a.md"], { from: 10 })).toEqual([
       "check-links",
       "lint-ts",
+      "skills",
     ]);
   });
   it("names the lanes CI runs that have no local step", () => {
