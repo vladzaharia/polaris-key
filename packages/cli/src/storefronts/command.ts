@@ -31,6 +31,7 @@ import {
   writeFlathubInit,
   type PrGeneratorOptions,
 } from "./prRun.js";
+import { buildFdroidFeed, FEEDS_USAGE } from "../feeds.js";
 import { loadStepProduct, pickOutlet, type StepOutlet } from "./outlets.js";
 import { commandLine, runStoreSteps, type StoreStep } from "./run.js";
 import {
@@ -47,6 +48,7 @@ export const STOREFRONT_USAGE =
   "       pkey storefront snap upload-metadata --snap <file.snap>\n" +
   "       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n" +
   "       pkey storefront allow-list [--store s] [--json]\n" +
+  "       pkey storefront fdroid --product <slug> --channel <c> --out <dir> [--keystore <path> --alias <a>]\n" +
   "       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n" +
   "              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n" +
   "       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n" +
@@ -174,6 +176,32 @@ export async function cmdStorefront(
       outlet: pickOutlet(p, s.outletKinds, str(a, "outlet"), s.label),
     };
   };
+  if (store === "fdroid") {
+    const product = str(a, "product");
+    const channel = str(a, "channel");
+    const out = str(a, "out");
+    if (step !== undefined || !product || !channel || !out)
+      throw new UsageError(FEEDS_USAGE);
+    await buildFdroidFeed({
+      cwd: io.cwd,
+      product,
+      channel,
+      out,
+      keystore: str(a, "keystore"),
+      alias: str(a, "alias"),
+      ksPassEnv: str(a, "ks-pass-env"),
+      apksigner: str(a, "apksigner"),
+      icon: str(a, "icon"),
+      dryRun: bool(a, "dry-run"),
+      baseUrl: str(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+    });
+    return 0;
+  }
   switch (`${store ?? ""} ${step ?? ""}`) {
     case "itch push": {
       const { slug, outlet } = await outletFor("itch");

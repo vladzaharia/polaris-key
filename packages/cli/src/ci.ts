@@ -15,7 +15,7 @@
  * looser rule (`s3.ts`): a PUT of content-addressed bytes is idempotent.
  *
  * P2b-03, P2b-04 and P2b-05 reuse this client for `pkey distribution report`, `rollout|halt`
- * and `pkey feeds fdroid`.
+ * and `pkey storefront fdroid`.
  */
 
 import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";

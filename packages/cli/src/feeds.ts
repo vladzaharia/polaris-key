@@ -1,5 +1,5 @@
 /**
- * `pkey feeds fdroid` (P2b-05, notes/E2 §C2): build, sign, upload and register one channel's
+ * `pkey storefront fdroid` (P2b-05, notes/E2 §C2): build, sign, upload and register one channel's
  * F-Droid repository. The Worker relays the result and never holds the repo key.
  *
  *   1. Read the generator's inputs: `GET /<p>/distribution/feeds/fdroid/<channel>`
@@ -46,7 +46,7 @@ import { apkSignerSha256 } from "./buildMetadata.js";
 import { UsageError } from "./errors.js";
 
 export const FEEDS_USAGE =
-  "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n" +
+  "Usage: pkey storefront fdroid --product <slug> --channel <c> --out <dir>\n" +
   "              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n" +
   "              [--icon <png>] [--base-url <url>] [--dry-run]";
 
@@ -596,7 +596,7 @@ export async function staleOutFiles(
   }
   if (foreign.length)
     throw new UsageError(
-      `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`,
+      `--out ${dir} holds files pkey storefront fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`,
     );
   return { files, dirs };
 }

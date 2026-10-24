@@ -122,7 +122,7 @@ There is one repository per release track, at `/<product>/distribution/fdroid/<c
 repository includes stable. It is a **static repository signed by CI**: Polaris Key never holds
 the repo key.
 
-1. CI runs `pkey feeds fdroid --product <slug> --channel <c> --out <dir> --keystore … --alias …`.
+1. CI runs `pkey storefront fdroid --product <slug> --channel <c> --out <dir> --keystore … --alias …`.
    The CLI reads the generator's inputs from `GET …/distribution/feeds/fdroid/<channel>` (the APKs
    the release track lists, with their metadata, and the files registered now). It writes
    `index-v2.json`, `entry.json` and a diff against the current index, then signs `entry.jar` with
@@ -142,7 +142,7 @@ The relay then serves **only registered files**, using the content type the Work
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
 that the registered `index-v2.json` names, and that the release track's feed still selects, is a `302`
 to its immutable delivery URL. The relay finds an APK by its file name, so each listed release's APK needs a distinct name (put the version in it, as in
-`Diceroll-1.2.0-android.apk`); `pkey feeds fdroid` refuses a set where two releases share one.
+`Diceroll-1.2.0-android.apk`); `pkey storefront fdroid` refuses a set where two releases share one.
 Anything else, including a path that fails the safe-path check, is not-found. So is a registered
 file once a non-public deliverable's release carries the same bytes.
 

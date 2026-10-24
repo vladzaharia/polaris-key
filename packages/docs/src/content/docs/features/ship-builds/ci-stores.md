@@ -17,7 +17,7 @@ signed with a repo key the Worker never holds:
 
 ```yaml title=".github/workflows/release.yml"
 - run:
-    node pkey.mjs feeds fdroid --product your-product --channel stable --out fdroid
+    node pkey.mjs storefront fdroid --product your-product --channel stable --out fdroid
     --keystore fdroid.keystore --alias repo
   env:
     PKEY_FDROID_KS_PASS: ${{ secrets.FDROID_KS_PASS }}

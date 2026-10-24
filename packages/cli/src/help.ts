@@ -826,31 +826,19 @@ export const COMMANDS: readonly PkeyCommand[] = [
     group: "feeds",
     json: true,
     context: ["product", "baseUrl"],
-    summary: "The F-Droid feed, package-feed setup and feed pruning",
+    summary: "Package-feed setup and feed pruning",
     rows: [
-      ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
       ["feeds setup", "Print the setup for one package feed"],
       ["feeds prune", "Delete main builds below the newest stable"],
     ],
-    tree: { fdroid: [], setup: [], prune: [] },
+    tree: { setup: [], prune: [] },
     usage: [
-      "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
-        "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
     ],
     about: [
-      {
-        subs: ["fdroid"],
-        text:
-          "pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, " +
-          "entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and " +
-          "the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and " +
-          "registers it; the token needs distribution:feeds. Without --keystore it writes the " +
-          "unsigned files and stops.",
-      },
       {
         subs: ["prune"],
         text:
@@ -874,9 +862,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "reading the registry token from that environment variable. Offline: nothing is sent " +
           "anywhere.",
       },
-      { subs: ["fdroid", "prune"], text: CI_PARA },
+      { subs: ["prune"], text: CI_PARA },
     ],
-    env: [ciEnvFor(["fdroid", "prune"])],
+    env: [ciEnvFor(["prune"])],
   },
   {
     name: "listing",
@@ -1063,6 +1051,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
         "storefront snap upload-metadata",
         "Send the snap's summary, description and icon",
       ],
+      [
+        "storefront fdroid",
+        "Build, sign and register a channel's F-Droid repo",
+      ],
       ["storefront exec", "Run another allow-listed store command"],
       ["storefront allow-list", "Print the commands each store's CI admits"],
       [
@@ -1075,6 +1067,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     tree: {
       itch: ["push"],
       snap: ["metadata", "upload", "upload-metadata"],
+      fdroid: [],
       exec: [],
       "allow-list": [],
       winget: ["pr", "status"],
@@ -1089,6 +1082,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       "pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] " +
         "[--dry-run] [--no-report]",
       "pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]",
+      "pkey storefront fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
+        "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey storefront exec store command --op operation [--outlet id] [--tool-path path] " +
         "-- argv...",
       "pkey storefront allow-list [--store s] [--json]",
@@ -1118,6 +1113,15 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "reported back to Polaris Key before and after it runs (distribution:report), so the " +
           "store's ledger shows it beside console steps; a step already done in the same run " +
           "is skipped. --dry-run checks and prints the command lines.",
+      },
+      {
+        subs: ["fdroid"],
+        text:
+          "pkey storefront fdroid builds the channel's F-Droid repository (index-v2.json, " +
+          "entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and " +
+          "the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and " +
+          "registers it; the token needs distribution:feeds. Without --keystore it writes the " +
+          "unsigned files and stops.",
       },
       {
         subs: STORE_SUBS,

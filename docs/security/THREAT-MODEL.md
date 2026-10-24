@@ -972,7 +972,7 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
   read. So a registered file is never a paid pack's payload, whether the caller names its digest
   or uploads the bytes. The channel's file set and its `feed` refs are replaced in one batch.
 - **The repo key never reaches the Worker.** CI signs `entry.jar` with `apksigner`. Before it
-  uploads, `pkey feeds fdroid` refuses a signature by any key other than the `fdroid-repo` entries
+  uploads, `pkey storefront fdroid` refuses a signature by any key other than the `fdroid-repo` entries
   of the operator-owned key inventory. F-Droid clients pin the fingerprint they were given when
   they added the repository, so a pipeline holding another key cannot get a client to accept its
   index.

@@ -1255,7 +1255,7 @@ async function seedPackPayload(
   );
 }
 
-/** Stage the files under a ticket, as `pkey feeds fdroid` uploads them, and register them. */
+/** Stage the files under a ticket, as `pkey storefront fdroid` uploads them, and register them. */
 async function registerRepo(
   w: World,
   channel: string,

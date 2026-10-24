@@ -152,7 +152,6 @@ import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
-import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
@@ -826,6 +825,12 @@ function adminIo(parsed: ParsedArgs, rt: Runtime): AdminIo {
  */
 function unknownCommand(name: string, term: Term, parent?: string): string {
   const sub = parent ? name.slice(parent.length + 1) : name;
+  // F-37.4: the F-Droid build moved, with no alias. Exit 2, nothing runs.
+  if (parent === "feeds" && sub === "fdroid")
+    return failLine(
+      "pkey feeds fdroid moved. Run pkey storefront fdroid.",
+      term,
+    );
   const near = nearest(
     sub,
     parent
@@ -2351,7 +2356,7 @@ async function cmdRelease(
   }
 }
 
-/** `pkey feeds fdroid` (P2b-05, `feeds.ts`), `pkey feeds setup` (F-12, `feedSetup.ts`) and
+/** `pkey feeds setup` (F-12, `feedSetup.ts`) and
  *  `pkey feeds prune` (feed retention, `feedPrune.ts`). */
 async function cmdFeeds(
   parsed: ParsedArgs,
@@ -2393,32 +2398,7 @@ async function cmdFeeds(
     // An applied prune with failed versions is not done: exit non-zero so CI notices.
     return report.totals.failed > 0 ? 1 : 0;
   }
-  const product = flagString(parsed, "product");
-  const channel = flagString(parsed, "channel");
-  const out = flagString(parsed, "out");
-  if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(
-      `${FEEDS_USAGE}\n${FEEDS_SETUP_USAGE}\n${FEEDS_PRUNE_USAGE}`,
-    );
-  await buildFdroidFeed({
-    cwd,
-    product,
-    channel,
-    out,
-    keystore: flagString(parsed, "keystore"),
-    alias: flagString(parsed, "alias"),
-    ksPassEnv: flagString(parsed, "ks-pass-env"),
-    apksigner: flagString(parsed, "apksigner"),
-    icon: flagString(parsed, "icon"),
-    dryRun: flagBool(parsed, "dry-run"),
-    baseUrl: flagString(parsed, "base-url"),
-    env: ci.env,
-    stdout,
-    stderr,
-    fetchImpl: ci.fetchImpl,
-    sleep: ci.sleep,
-  });
-  return 0;
+  throw new UsageError(`${FEEDS_SETUP_USAGE}\n${FEEDS_PRUNE_USAGE}`);
 }
 
 /** `pkey listing import` (A-18c, `listing.ts`) and `pkey listing assets` (A-18d, `listingAssets.ts`). */
