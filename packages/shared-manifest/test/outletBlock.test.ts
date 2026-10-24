@@ -3,7 +3,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { describe, expect, it } from "vitest";
-import { parseManifest, renderOutletBlock } from "../src/index.js";
+import {
+  channelIdentityFields,
+  parseManifest,
+  renderOutletBlock,
+} from "../src/index.js";
 
 const dir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -59,7 +63,6 @@ const CASES: {
     name: "homebrew-cask",
     channel: "homebrew",
     identity: {
-      platforms: ["macos"],
       homebrewCask: "dice",
       homebrewTap: "acme/homebrew-tap",
     },
@@ -67,13 +70,12 @@ const CASES: {
   {
     name: "homebrew-formula",
     channel: "homebrew",
-    identity: { platforms: ["linux"], homebrewFormula: "dice" },
+    identity: { homebrewFormula: "dice" },
   },
   {
     name: "scoop",
     channel: "scoop",
     identity: {
-      platforms: ["windows"],
       scoop: { bin: "dice.exe" },
       scoopBucket: "acme/scoop-bucket",
     },
@@ -142,6 +144,27 @@ describe("renderOutletBlock", () => {
     expect(() => renderOutletBlock("nope", {}, { format: "yaml" })).toThrow(
       /unknown channel "nope"; known channels: polaris-key, .*itch/,
     );
+  });
+
+  it("a direct channel reads only its own package manager's fields", () => {
+    expect(channelIdentityFields("homebrew")).toEqual([
+      "homebrewTap",
+      "homebrewCask",
+      "homebrewFormula",
+    ]);
+    expect(channelIdentityFields("scoop")).toEqual(["scoopBucket", "scoop"]);
+    expect(() =>
+      renderOutletBlock("homebrew", { scoopBucket: "a/b" }, { format: "yaml" }),
+    ).toThrow(/unknown field scoopBucket for channel homebrew/);
+  });
+
+  it("the app id comment says which store's id it is", () => {
+    expect(
+      renderOutletBlock("flathub", { appId: "com.a.B" }, { format: "yaml" }),
+    ).toContain("# Flatpak application id, like com.example.App.");
+    expect(
+      renderOutletBlock("steam", { appId: "480" }, { format: "yaml" }),
+    ).toContain("# Steam app id.");
   });
 
   it("an unknown field names the known ones", () => {

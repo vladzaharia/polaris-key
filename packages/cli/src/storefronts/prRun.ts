@@ -63,6 +63,9 @@ import {
   type WingetOptions,
 } from "./winget.js";
 
+/** Flathub has no manifest for the app yet: the first submission is by hand, not a failure. */
+export class FirstSubmissionError extends Error {}
+
 /** The environment variable that holds the GitHub token (a CI environment secret). */
 export const PR_TOKEN_ENV = "PKEY_PR_TOKEN";
 
@@ -264,7 +267,7 @@ export async function planPr(
           break;
         }
         if (!found)
-          throw new Error(
+          throw new FirstSubmissionError(
             `${repo} has no ${appId}.yml, .yaml or .json manifest: the first submission is a person's (pkey storefront flathub init writes its files).`,
           );
       } else
