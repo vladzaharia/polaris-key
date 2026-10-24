@@ -119,6 +119,16 @@
         "packages/brand/kit-copy/"
       ]
     },
+    "compose-desktop": {
+      "paths": [
+        "sdks/kotlin/ui/",
+        "sdks/kotlin/ui-core/",
+        "sdks/kotlin/update/",
+        "sdks/kotlin/desktop/",
+        "examples/ui/compose-desktop/",
+        "packages/brand/kit-copy/"
+      ]
+    },
     "kotlin": {
       "paths": ["sdks/kotlin/"]
     },
