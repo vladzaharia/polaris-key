@@ -10,3 +10,5 @@ native/windows/bin/
 native/windows/velopack/shim/target/
 # MSVC object files SCons writes beside the Windows sources.
 native/windows/**/*.obj
+# GDScript lint venv (tools/lint.sh)
+.lint-venv/
