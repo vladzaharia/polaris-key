@@ -8819,11 +8819,12 @@ scope: "packages:read", client}`. It is the PORTAL's to decide, in Polaris Locke
   the new-device notice are the portal's, unchanged. The poll mints through the same
   `mintAccountToken` with scope `packages:read` (90 days; the registry resolves `pkeyp_` tokens by
   scope, so it can never reach the admin API), writes `portal.personal_token.create`, and answers
-  the token with `registryOrigin`, `username` and the account's readable feeds. **Residual:** the
-  account's own Packages page needs a fresh sign-in to mint; this approval needs one only for a
-  new place, so an attacker in the victim's country who talks them into approving gets a
-  read-only packages token (the same reach as that page), shown to the approver as the host name
-  the attacker chose.
+  the token with `registryOrigin`, `username` and the account's readable feeds. **Step-up:** a packages
+  approval always needs a sign-in no older than `STEP_UP_MAX_AGE_SECONDS`, whatever the place
+  (`isPackagesRequest` forces it in `lookup`'s `stepUpRequired` and in `approve`, the 401
+  `step_up_required` path, code kept live), the same bar as minting on the account's Packages page.
+  **Residual:** the client block (host name) is attacker-chosen text shown to the approver; the
+  email notice still says "a new device signed in" (wording follows in F-37.5).
 
 ### The console's approval card for `pkey login` (ST-34.6)
 

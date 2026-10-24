@@ -716,7 +716,11 @@ function requestView(
     expiresIn: Math.max(0, record.expiresAt - now),
     approverCountry: approver.country,
     newLocation,
-    stepUpRequired: approvalNeedsStepUp(session, newLocation, now),
+    stepUpRequired: approvalNeedsStepUp(
+      session,
+      newLocation || isPackagesRequest(record),
+      now,
+    ),
     ...(isPackagesRequest(record)
       ? { scope: record.scope, client: record.client }
       : {}),
@@ -758,8 +762,11 @@ export async function handleDeviceLoginApprove(
 
   // Checked BEFORE the code is spent, so a step-up answer leaves it live for the retry.
   if (decision === "approve") {
-    const newLocation = isNewLocation(record.location, requestLocation(req));
-    if (approvalNeedsStepUp(session, newLocation, now)) {
+    // A packages token always needs a fresh sign-in, as minting one on Account → Packages does.
+    const needsFresh =
+      isNewLocation(record.location, requestLocation(req)) ||
+      isPackagesRequest(record);
+    if (approvalNeedsStepUp(session, needsFresh, now)) {
       // Not a decision (the code stays live), but worth a row: during a phishing attempt this is
       // the trace of someone being talked into approving a device elsewhere.
       await portalAudit(db, {

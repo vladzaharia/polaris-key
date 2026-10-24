@@ -695,4 +695,48 @@ describe("a packages:read CLI request", () => {
     expect(((await res.json()) as { feeds: unknown[] }).feeds).toEqual([feed]);
     expect(seen).toEqual([ada.accountId]);
   });
+
+  it("always needs a fresh sign-in to approve, even from the same place; the code stays live for the retry", async () => {
+    const { env, db } = await setup();
+    const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
+    const issue = async (at: number): Promise<Session> => {
+      const { token, session } = await issuePortalSessionRow(
+        env,
+        db,
+        {
+          accountId: account.id,
+          email: account.primary_email,
+          name: account.display_name,
+        },
+        at,
+      );
+      return {
+        cookie: `${PORTAL_COOKIE}=${token}`,
+        csrf: session.csrf,
+        accountId: account.id,
+      };
+    };
+    const stale = await issue(NOW - 3600);
+    const s = await startCli(env, db, PKG_START);
+    const seen = await call(env, db, "POST", "/api/device-login/lookup", {
+      session: stale,
+      body: { code: s.code },
+    });
+    expect(await seen.json()).toMatchObject({
+      request: { newLocation: false, stepUpRequired: true },
+    });
+    const refused = await portalApprove(env, db, stale, s.code);
+    expect(refused.status).toBe(401);
+    expect(await refused.json()).toMatchObject({ error: "step_up_required" });
+    expect(await (await poll(env, db, s)).json()).toMatchObject({
+      status: "pending",
+    });
+    // After the step-up (a fresh sign-in) the same code approves, and the poll mints.
+    const fresh = await issue(NOW);
+    expect((await portalApprove(env, db, fresh, s.code)).status).toBe(200);
+    expect(await (await poll(env, db, s)).json()).toMatchObject({
+      status: "approved",
+      scope: "packages:read",
+    });
+  });
 });
