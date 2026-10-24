@@ -430,6 +430,19 @@ No `--json`: the answer is text.
 
 ## Channels
 
+### `pkey channel`
+
+Add a delivery channel to .pkey/distribution, and sync its steps.
+
+```text
+pkey channel add id [--field name=value ...] [--outlet-id id] [--json]
+pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]
+```
+
+channel add writes one outlet, with a comment on every field, into .pkey/distribution (created when absent; comments already there stay). --field sets an identity field; a value starting [ or \{ is JSON. The outlet is named for the channel unless --outlet-id says otherwise. Nothing is written if the id is taken or .pkey/ would stop validating.
+
+`--json`: one JSON line on stdout.
+
 ### `pkey storefront`
 
 Run store CLIs from CI and open store pull requests.

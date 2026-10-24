@@ -1,0 +1,43 @@
+/**
+ * `pkey channel …` (A-25.2, A-25.3): one command, one dispatcher.
+ *
+ *   channel add <id>    append the channel's outlet to .pkey/distribution (`channelAdd.ts`)
+ *   channel sync        run the PR steps the declared channels have (`channelSync.ts`)
+ */
+
+import type { Out, Sleep } from "./ci.js";
+import type { CiEnv } from "./oidc.js";
+import { UsageError } from "./errors.js";
+import { channelAdd } from "./channelAdd.js";
+import { channelSync } from "./channelSync.js";
+
+export const CHANNEL_USAGE =
+  "Usage: pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]\n" +
+  "       pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]";
+
+export interface ChannelArgs {
+  positional: string[];
+  flags: Record<string, string | boolean>;
+  /** Every string value of a repeatable flag (`--field a=1 --field b=2`), in order. */
+  multi: Record<string, string[]>;
+}
+
+export interface ChannelIo {
+  cwd: string;
+  env: CiEnv;
+  stdout: Out;
+  stderr: Out;
+  fetchImpl?: typeof fetch;
+  sleep?: Sleep;
+}
+
+/** `pkey channel …`. */
+export async function cmdChannel(
+  a: ChannelArgs,
+  io: ChannelIo,
+): Promise<number> {
+  const [sub] = a.positional;
+  if (sub === "add") return channelAdd(a, io);
+  if (sub === "sync") return channelSync(a, io);
+  throw new UsageError(CHANNEL_USAGE);
+}

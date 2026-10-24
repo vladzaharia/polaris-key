@@ -113,6 +113,7 @@ describe("the command table", () => {
         .sort(),
     ).toEqual([
       "bundle",
+      "channel",
       "dev",
       "doctor",
       "feeds",
