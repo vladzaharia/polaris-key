@@ -3,16 +3,17 @@
 // imports it on demand when a kit root resolves to a desktop variant.
 import { lightDomDesktopCss } from "@polaris-key/elements/contract";
 
-import { desktopDone } from "./styles.js";
-
+// This file is bundled on its own (scripts/bundle-contract.mjs), so it cannot share a module-level
+// flag with styles.ts: it keeps its own, and styles.ts records the result once the import resolves.
+const adopted = new WeakSet<Document>();
 let sheet: CSSStyleSheet | null = null;
 
 export { lightDomDesktopCss };
 
 /** Adopt the desktop sheet into `doc` once, after the web sheet. */
 export function adoptDesktop(doc: Document): void {
-  if (desktopDone.has(doc)) return;
-  desktopDone.add(doc);
+  if (adopted.has(doc)) return;
+  adopted.add(doc);
   if (
     !("adoptedStyleSheets" in doc) ||
     typeof CSSStyleSheet !== "function" ||

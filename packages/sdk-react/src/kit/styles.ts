@@ -29,7 +29,10 @@ export function hasDesktopStyles(doc: Document | undefined): boolean {
 export function adoptDesktopStyles(doc: Document | undefined): Promise<void> {
   if (!doc || desktopDone.has(doc)) return Promise.resolve();
   return import("./desktopCss.js").then(
-    (m) => m.adoptDesktop(doc),
+    (m) => {
+      m.adoptDesktop(doc);
+      desktopDone.add(doc);
+    },
     () => void desktopDone.add(doc), // never arrives: the kit keeps the web chrome
   );
 }
