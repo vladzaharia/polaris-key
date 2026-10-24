@@ -193,3 +193,22 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Real-app strips for surfaces blocked on todo packages A-24, U-31, P2-09, P2-11, ST-43, ST-48, LX-43
 - Firefox smoke on a runner where Playwright launches
 - Full TabPanel migration remains with P0-39
+
+## Corrections (2026-10-23)
+
+Checked against staging at 8a8548da2. The code is the fact; these override the text above.
+
+- **B1. The consolidation trims stand.** No real-app strips are committed. TabPanel adoption moved to P0-39, which is done and left it to the packages that rebuild records (P0-39 brief:114), so it is out of MO-13.
+- **B2. The PageTabs indicator clip is done.** B-026 (20b8febfc) drops the `pk-vt-indicator` name while the strip overflows (`motion.css:738`, `[data-strip-overflow]`, set at `PageTabs.tsx:201`). That is the brief's fallback.
+- **B3. `pk-vt-tabpanel` is done** on the route-tab pages (2026-10-11, aaf822ae6 and after).
+- **B4. The licence prefetch was open; MO-13.1 closes it.** The record reads `licenseQuery(slug, id)`; the row's primary cell is a real link from `rowHref`. `DataTable` gains `onRowIntent(row)` (pointer enter and focus of that link only, so a sweep down a 60-row table is not 60 reads); `LicensesPage` prefetches the record; `licenseQuery` carries an explicit `staleTime` so repeated hovers do not refetch.
+- **B5. `console/pages/platformOperations.tsx` is gone.** ST-09 merged it into Platform → Status (`sections/platform/pages/platformStatus.tsx:38-55`). Auto-refresh is on by default with an operator pause (`AUTO_REFRESH_KEY`); the page polls every `OPERATIONS_REFRESH_MS = 30_000` (`platformOperationsAssess.tsx:33`) through `reads.platformOperations()` (P0-32). It does not use `ui/motion/changed.ts`.
+- **B6. Strips already exist under `PK_SHOTS_DIR`** in `dataMotion`, `deviceMotion`, `libraryMotion` and `shellMotion`; the CDP playback-rate loop is copied three times; `motion.e2e.test.ts` has none. Reuse `PK_SHOTS_DIR` with one helper; no `PK_MOTION_STRIPS` (M1).
+- **B7. No e2e throttles the CPU.** The method is `prototype/motion/tools/perf.mjs`. At 4x, S-23 §3.5 measured the 60- and 200-row filters at p95 33.3 and 33.4 ms, so the budget is p95 <= 33.4 ms (M2).
+- **B8. Firefox.** Every admin e2e suite calls `chromium.launch()`; `layout.e2e.test.ts` has a `PK_LAYOUT_BROWSER` switch. The CI `console` job runs in `mcr.microsoft.com/playwright:v1.63.0-noble`, which ships Firefox. Locally Firefox exits at launch on macOS 27 (S-23 §11).
+- **B9. Prerequisites have moved.** U-31, ST-43 and ST-48 are done. A-24, P2-09, P2-11 and LX-43 are still todo. Testable now: the masthead, the canvas, U-31's "The recipe changed while you were reviewing" notice. Not built anywhere: the workspace entrance and a new-product shared element (follow-ups, M6).
+- **B10. Hidden tabs.** Nothing pauses loops on `visibilitychange` (BRAND.md:686). The spinner, shimmer and refetch bar are CSS-only (`motion.css:116-128`); the check is that no JS loop (rAF or timer) drives them.
+- **B11. Docs.** `contribute/` has no motion page and its sidebar is an explicit list (`packages/docs/src/lib/doors.ts`). `docs/design/admin/components.md` has no `src/ui/motion` rows. The kits' motion mapping already lives in UI-KITS.md §4.8; link to it.
+- **B12. Naming.** End users see the portal as Polaris Locker. The contributor page is Polaris Key developer docs and says "the portal (Polaris Locker)" once.
+
+## QA record

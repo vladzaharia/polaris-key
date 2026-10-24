@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Archive, KeySquare } from "lucide-react";
 import { type LicenseSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
@@ -44,6 +45,7 @@ import {
   serverFacetIds,
   useServerFilter,
 } from "../components/LicenseListParts.js";
+import { licenseQuery } from "../data.js";
 import { useLicenseColumns } from "../components/licenseColumns.js";
 import {
   BulkDeleteDialog,
@@ -96,6 +98,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     counts: serverCounts,
     loadAll,
   } = useLicensePages(slug, serverFilter);
+  const queryClient = useQueryClient();
   const [searchingAll, setSearchingAll] = React.useState(false);
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
@@ -404,6 +407,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           (holderOf(l).kind === "floating" ? `Floating license ${l.id}` : l.id)
         }
         rowHref={(l) => r.license(slug, l.id)}
+        onRowIntent={(l) =>
+          // The record is read before the click, so its skeleton is gone and the name (pk-key)
+          // has both ends on a first visit. Fresh data is not refetched (licenseQuery's staleTime).
+          void queryClient.prefetchQuery(licenseQuery(slug, l.id))
+        }
         linkComponent={Link}
         facets={facets}
         search={{

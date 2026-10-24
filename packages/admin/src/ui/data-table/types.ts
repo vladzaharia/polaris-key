@@ -162,6 +162,12 @@ export interface DataTableProps<T> {
   selection?: { mode: "multi"; bulkActions: BulkAction<T>[] };
   /** The record a row opens. The primary cell renders as a real link to it. */
   rowHref?: (row: T) => string;
+  /**
+   * The operator's intent to open a row: the primary link gets the pointer or keyboard focus
+   * (MO-13.1). Fires for that link only, never the rest of the row, so sweeping the pointer down a
+   * table is not one call per row; dedupe the work (a prefetch's `staleTime`). Needs `rowHref`.
+   */
+  onRowIntent?: (row: T) => void;
   /** The row's name for its action menu ("Actions for {name}"). Default: the row id. */
   rowLabel?: (row: T) => string;
   rowActions?: (row: T) => RowActionItem[];
@@ -170,6 +176,8 @@ export interface DataTableProps<T> {
     to: string;
     className?: string;
     children: React.ReactNode;
+    onPointerEnter?: React.PointerEventHandler<HTMLAnchorElement>;
+    onFocus?: React.FocusEventHandler<HTMLAnchorElement>;
   }>;
   pagination?: PaginationConfig;
   density?: Density;
