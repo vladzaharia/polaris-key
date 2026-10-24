@@ -26,6 +26,7 @@
     "common.reconnect": "再接続",
     "common.dismiss": "閉じる",
     "common.byDeveloper": "開発：{developer}",
+    "common.linkUnavailable": "このリンクでは、ここで開けるものがありません。",
     "part.thisDevice": "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}",
     "part.thisDeviceTitle": "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}",
     "part.platform.macos": "macOS",

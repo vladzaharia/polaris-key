@@ -79,6 +79,8 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
     implementation(libs.androidx.activity.compose)
+    // Navigation lives in the host, never in the kit (UK-09b.3): kit screens are destinations here.
+    implementation(libs.androidx.navigation.compose)
 
     debugImplementation(libs.compose.ui.test.manifest)
     testImplementation(libs.junit)

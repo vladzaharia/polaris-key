@@ -19,6 +19,7 @@
   "common.reconnect": "다시 연결",
   "common.dismiss": "닫기",
   "common.byDeveloper": "{developer} 제작",
+  "common.linkUnavailable": "이 링크로는 여기서 열 수 있는 것이 없어요.",
   "part.thisDevice": "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}",
   "part.thisDeviceTitle": "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}",
   "part.platform.macos": "macOS",

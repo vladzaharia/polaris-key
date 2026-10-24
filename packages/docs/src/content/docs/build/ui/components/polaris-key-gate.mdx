@@ -84,7 +84,7 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
   <TabItem label="Compose">
     <KitStatus kit="compose" />
 
-    **Drop-in.** `PolarisKeyApp(client) { }` on Android; `PolarisKeyWindow(client) { }` on the desktop, which opens the gate, update and Settings windows.
+    **Drop-in.** `PolarisKeyGate(client) { }` on Android; `PolarisKeyWindow(client) { }` on the desktop, which opens the gate, update and Settings windows.
 
     **Styled part.** `PolarisGate(state) { }` over `PolarisGateState(client.gateActions(), scope)`; restyle through `PolarisTheme`.
 

@@ -19,6 +19,7 @@
   "common.reconnect": "重新连接",
   "common.dismiss": "忽略",
   "common.byDeveloper": "开发者：{developer}",
+  "common.linkUnavailable": "此链接在这里无法打开任何内容。",
   "part.thisDevice": "{formFactor, select, iphone {这台iPhone} ipad {这台iPad} mac {这台Mac} phone {这部手机} tablet {这台平板电脑} computer {这台电脑} tv {这台电视} other {这台设备}}",
   "part.thisDeviceTitle": "{formFactor, select, iphone {此iPhone} ipad {此iPad} mac {此Mac} phone {此手机} tablet {此平板电脑} computer {此电脑} tv {此电视} other {此设备}}",
   "part.platform.macos": "macOS",

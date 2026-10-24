@@ -33,6 +33,7 @@ export type KitCopyKey =
   | "common.reconnect"
   | "common.dismiss"
   | "common.byDeveloper"
+  | "common.linkUnavailable"
   | "part.thisDevice"
   | "part.thisDeviceTitle"
   | "part.platform.macos"

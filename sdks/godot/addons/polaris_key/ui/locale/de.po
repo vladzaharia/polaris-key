@@ -132,6 +132,11 @@ msgstr "Ausblenden"
 msgid "common.byDeveloper"
 msgstr "von {developer}"
 
+#. That link doesn't open anything here.
+#. Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed.
+msgid "common.linkUnavailable"
+msgstr "Dieser Link öffnet hier nichts."
+
 #. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
 #. The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
 msgid "part.thisDevice"

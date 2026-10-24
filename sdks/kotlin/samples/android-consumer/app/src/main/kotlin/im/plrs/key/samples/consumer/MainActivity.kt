@@ -7,7 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import im.plrs.key.billing.PolarisPlayBilling
 import im.plrs.key.billing.create
-import im.plrs.key.ui.PolarisKeyApp
+import im.plrs.key.ui.PolarisKeyGate
 
 /** The drop-in kit over the app's client, and Play Billing beside it (a direct build never buys). */
 class MainActivity : ComponentActivity() {
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                PolarisKeyApp(client) { Text("Licensed") }
+                PolarisKeyGate(client) { Text("Licensed") }
             }
         }
     }

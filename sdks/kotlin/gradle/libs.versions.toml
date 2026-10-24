@@ -115,6 +115,10 @@ roborazzi-compose-desktop = { module = "io.github.takahirom.roborazzi:roborazzi-
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
+# The sample's navigation (UK-09b.3, :sample-compose-android only; the kit owns no navigation): 2.9.8, released
+# 2026-04-22, its AAR declares minCompileSdk 35 and minAndroidGradlePluginVersion 8.6.0 (checked on the AAR). 2.10.0 and
+# later declare minCompileSdk 37 and AGP 9.1.0, the same wall as the Compose BOM above. Pinned to the exact version.
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.9.8" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 # The Ed25519 backend below Android API 33 in :android (P6-12): the same Tink, built for Android.

@@ -104,6 +104,11 @@
       "role": "body",
       "note": "Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated)."
     },
+    "common.linkUnavailable": {
+      "value": "That link doesn't open anything here.",
+      "role": "body",
+      "note": "Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed."
+    },
     "part.thisDevice": {
       "value": "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
       "role": "label",
