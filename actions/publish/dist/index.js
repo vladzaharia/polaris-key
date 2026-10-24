@@ -34227,7 +34227,7 @@ var NODE_LIBRARY = {
       ``,
       `await client.sync();`,
       `if (!client.isLicensed()) console.log(copy.message(client.status().status));`,
-      `const pro = client.license.isEntitled(${q2(c.entitlement)});`,
+      `const pro = client.entitlements.has(${q2(c.entitlement)});`,
       `console.log(pro);`
     )
   }),
@@ -34325,9 +34325,9 @@ var NODE_LIBRARY = {
       `export async function claim(ticketHex: string, dlcAppId: string) {`,
       `  const r = await client.commerce.claimSteam(ticketHex, dlcAppId);`,
       `  if (r.kind !== "ok") return r.message;`,
-      `  return client.license.isEntitled(r.flag) ? "unlocked" : "pending";`,
+      `  return client.entitlements.has(r.flag) ? "unlocked" : "pending";`,
       `}`,
-      `console.log(client.license.isEntitled(${q2(c.commerceFlag)}));`
+      `console.log(client.entitlements.has(${q2(c.commerceFlag)}));`
     )
   })
 };
@@ -34744,7 +34744,7 @@ var PY_LIBRARY = {
       ``,
       `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
       `# later: today the value stays on this device.`,
-      `volume = client.config.setting(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `volume = client.config.setting(${q2(c.configKey)})`,
       `volume.set(${py(c.configFallback)})`,
       `print(volume.value)`
     )

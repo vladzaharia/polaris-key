@@ -32,7 +32,7 @@ The console says Setting, Secret or Minted token; the catalog keeps `kind` and `
       the key is the recipe id. No block and no legacy recipe: the validator warns. A top-level
       `edgeMint[]` recipe still reads, and `pkey validate --fix` moves it into its entry.
 - [ ] **`flag`** — an entitlement. Flags ride the **license** document only and are read with
-      `isEntitled` / `getEntitlements`; they are not "managed config". A config-only product has
+      `entitlements.has` / `entitlements.all`; they are not "managed config". A config-only product has
       no flags in play.
 
 ### 2. Write the entry

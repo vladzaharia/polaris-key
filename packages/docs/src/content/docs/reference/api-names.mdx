@@ -25,7 +25,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.create` | `client.create` | `PolarisKeyProvider` | `client.create` | `client.create` | `client.create` | `PolarisKey.configure` | — |
 | `client.fromConfig` | reserved for SP-32a | | | | | | — |
 | `client.doctor` | reserved for SP-32b | | | | | | — |
-| `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `bootHost` (planned: SP-35b) | `client.boot` | `ui.boot` |
+| `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `client.boot` | `client.boot` | `ui.boot` |
 | `client.discover` | `client.discover` | — | `client.discover` | `client.discover` | `client.discover` | — | — |
 | `client.init` | `client.init` | — | `client.init` | — | — | — | — |
 | `client.portal` | `client.portal` | — | `client.portal` | — | — | — | — |
@@ -79,6 +79,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.client` | — | — | — | — | `client.client` | — | — |
 | `client.playPacks` | — | — | — | — | `client.playPacks` | — | — |
 | `client.flavor` | — | — | — | — | `client.flavor` | — | — |
+| `client.bootHost` | — | — | — | — | `client.bootHost` | — | — |
 
 ## options
 
@@ -112,11 +113,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
-| `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `enforced` (planned: SP-35) | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
-| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35) | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
+| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | planned (U-07) | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | planned (U-07) | `config.setting.clear` | `config.resolve` |
-| `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | — | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | — | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | — | — |
@@ -154,9 +155,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `entitlements.has` | `license.isEntitled` (planned: SP-35) | `useEntitlement` | `license.is_entitled` (planned: SP-35) | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `license.entitlementValue` (planned: SP-35) | — | `license.entitlement_value` (planned: SP-35) | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `license.getEntitlements` (planned: SP-35) | — | `license.get_entitlements` (planned: SP-35) | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.has` | `entitlements.has` | `useEntitlement` | `license.is_entitled` (planned: SP-35) | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | — | `license.entitlement_value` (planned: SP-35) | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | — | `license.get_entitlements` (planned: SP-35) | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -342,3 +343,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Node | `ConfigSetting.get` | `config.setting.value` | SP-35 |
 | Node | `ConfigSetting.source()` | `config.setting.source` | SP-35 |
 | Node | `ConfigSetting.locked()` | `config.setting.locked` | SP-35 |
+| Python | `config.setting.enforced` | `config.setting.locked` | SP-35 |
+| Python | `config.setting.subscribe` | `config.setting.on` | SP-35 |
+| Python | `config.setting(key, fallback)` | `config.get` | SP-35 |
+| Node | `license.isEntitled` | `entitlements.has` | SP-35 |
+| Node | `license.entitlementValue` | `entitlements.value` | SP-35 |
+| Node | `license.getEntitlements` | `entitlements.all` | SP-35 |

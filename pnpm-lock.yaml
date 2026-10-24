@@ -540,6 +540,9 @@ importers:
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      playwright-core:
+        specifier: 1.63.0
+        version: 1.63.0
       yargs:
         specifier: ^18.2.0
         version: 18.2.0

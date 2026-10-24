@@ -32,6 +32,11 @@
         "file": "packages/sdk-node/src/license/client.ts"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "packages/sdk-node/src/license/entitlements.ts"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "packages/sdk-node/src/identity/client.ts"
@@ -494,6 +499,11 @@
     },
     {
       "sdk": "node",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
       "path": "client.config",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
@@ -734,18 +744,8 @@
     },
     {
       "sdk": "node",
-      "path": "license.isEntitled",
-      "reason": "row entitlements.has (spelling license.isEntitled, planned SP-35); rule 1 matches rows by the surface namespace only"
-    },
-    {
-      "sdk": "node",
-      "path": "license.entitlementValue",
-      "reason": "row entitlements.value (planned SP-35); see license.isEntitled"
-    },
-    {
-      "sdk": "node",
-      "path": "license.getEntitlements",
-      "reason": "row entitlements.all (planned SP-35); see license.isEntitled"
+      "path": "license.documentEntitlements",
+      "reason": "the raw document read the entitlements view builds its gated reads on; not an app verb"
     },
     {
       "sdk": "node",
@@ -1760,11 +1760,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "bootHost",
-          "planned": "SP-35b",
-          "reason": "an extension function today: PolarisKeyClient.bootHost(...) in the sdk module"
-        },
+        "kotlin": {},
         "godot": {},
         "react": {
           "spelling": "useBoot",
@@ -2150,10 +2146,7 @@
       "feature": "config.resolve",
       "sdks": {
         "node": {},
-        "python": {
-          "spelling": "enforced",
-          "planned": "SP-35"
-        },
+        "python": {},
         "react": {},
         "swift": {
           "spelling": "isLocked",
@@ -2174,10 +2167,7 @@
       "enum": "settingVisibility",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "python": {},
         "react": {},
         "swift": {
           "planned": "SP-35b",
@@ -2249,10 +2239,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "spelling": "subscribe",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "onChange",
           "planned": "SP-35b"
@@ -2315,10 +2302,7 @@
       "returns": "bool",
       "layer": "client",
       "sdks": {
-        "node": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.is_entitled",
           "planned": "SP-35"
@@ -2353,10 +2337,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.entitlement_value",
           "planned": "SP-35"
@@ -2381,10 +2362,7 @@
       "kind": "method",
       "feature": "license.entitlements",
       "sdks": {
-        "node": {
-          "spelling": "license.getEntitlements",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.get_entitlements",
           "planned": "SP-35"
@@ -4433,6 +4411,17 @@
         }
       },
       "layer": "client"
+    },
+    {
+      "id": "client.bootHost",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only host bootstrap (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
     }
   ],
   "removed": [
@@ -4504,6 +4493,51 @@
       "scan": {
         "pattern": "\\b(?:setting|theme|volume)\\w*\\.locked\\(\\)"
       }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.enforced",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.enforced\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.subscribe",
+      "to": "config.setting.on",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.subscribe\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting(key, fallback)",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.getEntitlements",
+      "to": "entitlements.all",
+      "package": "SP-35"
     }
   ]
 }

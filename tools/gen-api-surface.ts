@@ -110,6 +110,7 @@ const NODE_CLASS: Record<string, string> = {
   client: "PolarisKeyClient",
   config: "ConfigClient",
   license: "LicenseClient",
+  entitlements: "EntitlementsClient",
   identity: "IdentityClient",
 };
 
@@ -159,6 +160,7 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ConfigClient,`,
+    `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
     `  PolarisKeyClient,`,
@@ -396,6 +398,8 @@ const KOTLIN_UNASSERTED = new Set([
   "client.playPacks",
   "client.flavor",
 ]);
+/** Extension functions on the client, declared top-level in the sdk package (Boot.kt). */
+const KOTLIN_EXTENSION = new Set(["client.boot", "client.bootHost"]);
 /** Entry points that live on the client's companion. */
 const KOTLIN_COMPANION = new Set([
   "client.create",
@@ -419,7 +423,7 @@ function renderKotlin(api: Api): string {
       lines.push(`${holder}::${r.name}  // ${r.id}`);
     } else if (KOTLIN_COMPANION.has(r.id)) {
       lines.push(`PolarisKeyClient.Companion::${r.name}  // ${r.id}`);
-    } else if (r.id === "client.boot") {
+    } else if (KOTLIN_EXTENSION.has(r.id)) {
       lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
     } else if (r.handle) {
       continue; // Kotlin has no setting handle until U-07 (a StateFlow today)
@@ -444,11 +448,15 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
-    ...(api.concepts.some(
-      (c) => c.id === "client.boot" && c.sdks?.kotlin?.spelling === "bootHost",
-    )
-      ? [`import im.plrs.key.sdk.bootHost`]
-      : []),
+    ...[
+      ...new Set(
+        rowsFor(api, "kotlin")
+          .filter((r) => KOTLIN_EXTENSION.has(r.id))
+          .map((r) => r.name),
+      ),
+    ]
+      .sort()
+      .map((n) => `import im.plrs.key.sdk.${n}`),
     `import im.plrs.key.update.UpdateClient`,
     `import im.plrs.key.update.UpdateClientOptions`,
     ``,

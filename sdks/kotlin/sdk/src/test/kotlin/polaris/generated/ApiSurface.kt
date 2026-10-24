@@ -14,6 +14,7 @@ import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.boot
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.update.UpdateClient
 import im.plrs.key.update.UpdateClientOptions
@@ -21,7 +22,7 @@ import im.plrs.key.update.UpdateClientOptions
 /** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */
 internal suspend fun apiSurface() {
     PolarisKeyClient.Companion::create  // client.create
-    PolarisKeyClient::bootHost  // client.boot
+    PolarisKeyClient::boot  // client.boot
     CoreOptions::productSlug  // options.productSlug
     CoreOptions::pinnedKeys  // options.pinnedKeys
     UpdateClientOptions::pinnedReleaseKeys  // options.pinnedReleaseKeys
@@ -139,4 +140,5 @@ internal suspend fun apiSurface() {
     ReleaseClient::verifyRecord  // release.verifyRecord
     UpdateClient::reportedOutlet  // update.reportedOutlet
     PacksClient::estimate  // packs.estimate
+    PolarisKeyClient::bootHost  // client.bootHost
 }
