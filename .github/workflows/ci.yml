@@ -118,6 +118,8 @@ jobs:
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang react --job-status "${{ job.status }}"
       - run: pnpm lint
+      # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
+      - run: pnpm lint:knip
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
       # the storefront CI plane, the settings reference, the brand tokens, the publish Action's bundle
