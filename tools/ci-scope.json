@@ -76,6 +76,7 @@
     "python": {
       "paths": [
         "sdks/python/",
+        "tools/lint/",
         "packages/ui-qa/",
         "examples/python-cli/",
         "examples/python-renpy/",
@@ -93,6 +94,7 @@
         "packages/worker/",
         "packages/zstd-wasm/",
         "sdks/python/",
+        "tools/lint/",
         "examples/server-"
       ]
     },
