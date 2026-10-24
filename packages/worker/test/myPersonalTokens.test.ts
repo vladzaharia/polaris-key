@@ -36,7 +36,6 @@ import { memberIdFor } from "../src/core/console/memberId.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";
-const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
 const T = NOW + 10;
 
 type Db = ReturnType<typeof makeTestDb>;

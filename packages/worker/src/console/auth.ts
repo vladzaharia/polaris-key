@@ -68,7 +68,6 @@ import {
   isSameOriginRequest,
   readTextCapped,
 } from "../core/accounts/browserRequestGuard.js";
-import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import { holdsRoot } from "../core/rbac/principal.js";

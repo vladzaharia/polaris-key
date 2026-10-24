@@ -340,7 +340,7 @@ async function seed(w: World): Promise<Facts> {
     adaSubject.djdl,
     NOW - 500,
   );
-  const overrides = (config: string, updatedBy: string) =>
+  const overrides = (config: string, _updatedBy: string) =>
     JSON.stringify({
       config: {
         theme: { state: "enforced", value: config, updatedAt: NOW - 50 },

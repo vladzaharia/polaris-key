@@ -194,7 +194,7 @@ export function portalMember(
  */
 export async function buildSignInUrl(
   env: Env,
-  db: Db,
+  _db: Db,
   req: Request,
   product: { slug: string },
 ): Promise<string> {
@@ -208,7 +208,7 @@ export async function buildSignInUrl(
  */
 export async function accountPortalUrl(
   env: Env,
-  db: Db,
+  _db: Db,
   fallbackOrigin: string,
   product: { slug: string },
 ): Promise<string | null> {

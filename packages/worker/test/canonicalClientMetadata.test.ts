@@ -139,7 +139,7 @@ interface Row {
 async function seeded(): Promise<Database.Database> {
   const raw = new Database(":memory:");
   for (const f of BEFORE) raw.exec(sql(f));
-  await seedProduct(new SqliteDb(raw), "djdl");
+  await seedProduct(new SqliteDb(raw), "djdl", { beforeMigration0106: true });
   const insert = raw.prepare(
     "INSERT INTO devices (product, device_id, license_id, first_seen, last_seen, platform, arch, sdk_name) VALUES ('djdl', ?, 'lic', 1, 1, ?, ?, ?)",
   );

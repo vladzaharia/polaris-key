@@ -44,7 +44,6 @@ import {
   tighterMin,
 } from "../licensing/entitlements.js";
 import { resolveMergedPayload } from "../licensing/payload.js";
-import { customerTierOf } from "../licensing/implicitTier.js";
 import type { Product } from "../products.js";
 
 /** The entitlement a tier, a licence override or an add-on sets (plans/U-01b.md D5). */

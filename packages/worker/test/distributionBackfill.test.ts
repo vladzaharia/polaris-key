@@ -116,7 +116,7 @@ const SEEDS: Seed[] = [
 async function seeded(): Promise<{ raw: Database.Database; db: SqliteDb }> {
   const { raw, db } = databaseAt(BEFORE);
   for (const s of SEEDS) {
-    await seedProduct(db, s.slug);
+    await seedProduct(db, s.slug, { beforeMigration0106: true });
     await setServices(db, s.slug, s.json, s.source, NOW);
   }
   return { raw, db };

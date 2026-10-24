@@ -49,7 +49,6 @@ import {
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../src/services/identity/portal/session.js";
 import {
   handlePortalApi,
@@ -141,36 +140,6 @@ async function snapshot(res: Response) {
   };
 }
 
-async function admin(
-  w: World,
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Response> {
-  const { token, session } = await consoleTestSession(
-    w.env,
-    w.db,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
-    NOW,
-  );
-  const full = `/api/products/${SLUG}/distribution${path}`;
-  return handleAdmin(
-    new Request(`${CONSOLE}/manage${full}`, {
-      method,
-      headers: {
-        cookie: `${ADMIN_COOKIE}=${token}`,
-        [CSRF_HEADER]: session.csrf,
-        "content-type": "application/json",
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    }),
-    w.env,
-    w.db,
-    full,
-    { now: NOW },
-  );
-}
-
 /** The generic settings routes (ST-05b): `distribution.access` is a setting, not a route. */
 async function setting(
   w: World,
@@ -247,7 +216,6 @@ async function services(
   );
 }
 
-const HEX = "a".repeat(64);
 /** Every byte route, canonical then alias, under one host. */
 function bytePaths(host: string): Array<[string, string]> {
   const p = `${host}/${SLUG}`;

@@ -196,18 +196,6 @@ export const signInPage = {
     }),
 };
 
-function authJson(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: portalSecurityHeaders(
-      new Headers({
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store",
-      }),
-    ),
-  });
-}
-
 /**
  * `GET /login`: the platform's single sign-on, which is the env-seeded platform connection
  * (I-30; plans/I-27.md §2.3 "Pocket ID": the seeded row is the connection's only source).

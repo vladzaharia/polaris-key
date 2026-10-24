@@ -108,7 +108,7 @@ export async function resolvePrincipal(
   env: RootEnv,
   db: Db | null,
   subject: ConsoleSubject,
-  now: number,
+  _now: number,
 ): Promise<Principal> {
   const grants: Grant[] = [];
   const root =

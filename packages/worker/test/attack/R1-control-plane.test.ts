@@ -14,7 +14,6 @@ import { makeTestDb } from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
 import { approveEdgeMintRecipe, makeEnv, NOW, seedProduct } from "../seed.js";
 import type { Env } from "../../src/platform/env.js";
-import type { Db } from "../../src/db/types.js";
 import { handleAdmin } from "../../src/console/index.js";
 import type { IdTokenVerifier } from "../../src/console/auth.js";
 import {

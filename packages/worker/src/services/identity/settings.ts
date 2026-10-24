@@ -27,12 +27,6 @@
  */
 
 import {
-  SYSTEM_ACTORS,
-  auditStatement,
-  sql,
-  actorColumns,
-} from "../../core/audit.js";
-import {
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
@@ -40,10 +34,7 @@ import {
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import {
-  manifestRowSettingStatements,
-  manifestValueAt,
-} from "../../core/rowSettings.js";
+import { manifestRowSettingStatements } from "../../core/rowSettings.js";
 
 import {
   readRowSettings,

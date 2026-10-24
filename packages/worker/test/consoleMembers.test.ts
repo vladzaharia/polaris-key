@@ -4,7 +4,6 @@
  * from the link, which leaves a signed-in non-root member (as in rbacStoredPrincipal.test.ts).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { bindAdminFlow } from "./flowBinderHelper.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -17,11 +16,7 @@ import {
   type IdTokenVerifier,
 } from "../src/console/auth.js";
 import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  LIVE_CHECK_SECONDS,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
 import type { AreaId } from "../src/core/rbac/areas.js";
 import type { GrantScope, Role } from "../src/core/rbac/can.js";

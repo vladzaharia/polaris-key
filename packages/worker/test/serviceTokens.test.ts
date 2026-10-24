@@ -24,7 +24,6 @@ import {
 } from "../src/core/console/session.js";
 import {
   forgetRegistryTokens,
-  hashRegistryToken,
   lookupRegistryCredential,
   mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";

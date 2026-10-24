@@ -43,11 +43,7 @@ import { handleMintToken } from "../src/services/config/mint.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { createBrowserSession } from "../src/services/identity/index.js";
-import {
-  serializeServices,
-  validateServices,
-  type ServicesMap,
-} from "../src/core/services.js";
+import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { getDevice } from "../src/core/devices/store.js";
 import { getLicense } from "../src/core/licensing/store.js";
 import { setServices } from "../src/core/products/store.js";

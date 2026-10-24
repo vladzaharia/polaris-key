@@ -365,7 +365,7 @@ describe("prepareLink (the dry run)", () => {
   });
 
   it("services an operator set in the console are planned as kept, and stay kept", async () => {
-    const { db, env } = await manualProduct();
+    const { db } = await manualProduct();
     await setServices(
       db,
       "tonebox",

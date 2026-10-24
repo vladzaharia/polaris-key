@@ -59,10 +59,7 @@ import {
 } from "../src/services/identity/accounts/repo.js";
 import { deleteProduct } from "../src/core/products/store.js";
 import type { Db, DbStatement } from "../src/db/types.js";
-import {
-  syncAccountLicenseLinks,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { syncAccountLicenseLinks } from "../src/services/identity/portal/repo.js";
 import { attachClaimedLicenses } from "../src/services/identity/accounts/platformMigration.js";
 import { suppressEmail } from "../src/core/notify/emailDelivery.js";
 import { sendLibraryNotices } from "../src/services/identity/accounts/libraryNotice.js";

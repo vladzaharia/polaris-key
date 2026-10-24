@@ -149,7 +149,7 @@ export interface SteamOwnership {
 
 /** `CheckAppOwnership` for (steamid, app). Throws `StoreUnavailable`. */
 export async function checkOwnership(
-  ctx: SteamContext,
+  _ctx: SteamContext,
   key: string,
   steamId: string,
   appId: string,

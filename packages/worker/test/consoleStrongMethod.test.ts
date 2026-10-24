@@ -46,7 +46,6 @@ import {
   recordLinkGroups,
 } from "../src/services/identity/portal/repo.js";
 import { portalIdentityIssuerKey } from "../src/services/identity/portal/repo.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";

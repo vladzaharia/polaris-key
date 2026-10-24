@@ -7,7 +7,6 @@
  * signed-in non-root member whose authority is exactly the bindings written here.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { bindAdminFlow } from "./flowBinderHelper.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -21,12 +20,7 @@ import {
 } from "../src/console/auth.js";
 import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
-import {
-  bindingUnchangedSql,
-  newBindingId,
-  stmtInsertBinding,
-  stmtUpdateBindingAreas,
-} from "../src/core/rbac/bindings.js";
+import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
 import type { AreaId } from "../src/core/rbac/areas.js";
 import type { GrantScope, Role } from "../src/core/rbac/can.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
@@ -238,14 +232,6 @@ async function send(
 
 async function rows(sql: string, ...params: string[]) {
   return db.all<Record<string, string | number | null>>(sql, ...params);
-}
-
-async function storedAreas(id: string) {
-  const r = await db.first<{ areas_json: string | null }>(
-    "SELECT areas_json FROM console_role_bindings WHERE id = ?",
-    id,
-  );
-  return r === null ? "gone" : r.areas_json;
 }
 
 let env: Env;

@@ -53,7 +53,6 @@ import {
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../src/services/identity/portal/session.js";
 import {
   discoverCount,

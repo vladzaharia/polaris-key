@@ -74,7 +74,6 @@ import {
   fresh,
   full,
   minimal,
-  schemaJson,
   ENTRIES,
   SLUG,
   URL_,

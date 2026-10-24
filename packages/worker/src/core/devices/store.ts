@@ -1,7 +1,7 @@
 // Device store (P0-18): `devices`, seats, device trust, fingerprints and device facts. Split out
 // of `core/repo.ts`.
 
-import type { Db, DbParam, DbStatement } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type { DeviceRow, DeviceFactsRow, FingerprintRow } from "../repo.js";
 
 // ── Devices ──────────────────────────────────────────────────────────────────

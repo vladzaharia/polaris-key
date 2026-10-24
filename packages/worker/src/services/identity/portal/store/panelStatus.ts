@@ -116,7 +116,7 @@ function nonEmpty(v: unknown): boolean {
 export async function polarisKeyStatus(
   input: PolarisKeyStatusInput,
 ): Promise<PolarisKeyStatus> {
-  const { env, db, product, delivery, now } = input;
+  const { env, db, product, delivery } = input;
   const settings = await getPortalProductSettings(db, product.slug);
   const listing = await storefrontListing(db, product.slug);
   const identityEligible = await storefrontIdentityEligible(db, product.slug);

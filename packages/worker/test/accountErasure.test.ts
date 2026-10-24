@@ -16,7 +16,6 @@ import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import { restoreDb, snapshotDb } from "./d1Restore.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { appendAudit, type AuditRow } from "../src/core/audit.js";

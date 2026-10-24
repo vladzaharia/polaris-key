@@ -8,7 +8,6 @@
  * the field back) or Keep (the claim stays, so nothing to call). Read-only.
  */
 
-import type { Db } from "../db/types.js";
 import { tryParseJson } from "../platform/json.js";
 import { getActiveSchema } from "./products/store.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";

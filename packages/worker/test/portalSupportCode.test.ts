@@ -35,10 +35,7 @@ import { identityEnabled } from "../src/core/accounts/identityGate.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
 import { subjectForSupportCode } from "../src/core/accounts/supportCodes.js";
-import {
-  listProductUsers,
-  lookupProductUser,
-} from "../src/services/identity/accounts/productUsers.js";
+import { listProductUsers } from "../src/services/identity/accounts/productUsers.js";
 import {
   addLibraryEntry,
   getOrCreateAccountByEmail,

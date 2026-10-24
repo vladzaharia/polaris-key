@@ -58,7 +58,7 @@ export const RETIRED_DEVICE_TOKEN = `plrst_${"r".repeat(43)}`;
  *  fence (`core/accounts/erasureFence.ts`) reads the ledger on every request that acts as an
  *  account and fails closed with no bucket, so an env that omits it models a deploy that refuses
  *  those requests. A test that needs another bucket (or none) sets or deletes `env.BLOBS`. */
-export function makeEnv(kv: KvMock, _slugs: string[]): Env {
+export function makeEnv(kv: KvMock, _slugs?: string[]): Env {
   const env: Record<string, unknown> = {
     HOT: asKv(kv),
     DB: undefined,
@@ -75,9 +75,9 @@ export function makeEnv(kv: KvMock, _slugs: string[]): Env {
 export async function seedProduct(
   db: Db,
   slug: string,
-  opts: { catalog?: unknown } = {},
+  opts: { catalog?: unknown; beforeMigration0106?: boolean } = {},
 ): Promise<void> {
-  await insertProduct(db, {
+  const row = {
     slug,
     name: slug,
     signing_kid: TEST_KID,
@@ -90,7 +90,31 @@ export async function seedProduct(
     release_source: null,
     created_at: NOW,
     modified_at: NOW,
-  });
+  };
+  if (opts.beforeMigration0106) {
+    // A database cut before 0106 has no `presentation_json` column (the migration tests that seed
+    // an older schema): insertProduct always names it.
+    await db.run(
+      `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+         default_max_offline_days, default_device_limit, admin_group, release_source,
+         created_at, modified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      row.slug,
+      row.name,
+      row.signing_kid,
+      row.signing_pub,
+      row.compat_min,
+      row.compat_max,
+      row.default_max_offline_days,
+      row.default_device_limit,
+      row.admin_group,
+      row.release_source,
+      row.created_at,
+      row.modified_at,
+    );
+  } else {
+    await insertProduct(db, row);
+  }
   // KEK-custody: seal TEST_PEM under the constant TEST_KEK and insert the active product key
   // that `Product.signingKey()` opens on demand.
   const encPrivate = await seal({ PLATFORM_KEK: TEST_KEK } as Env, TEST_PEM, {

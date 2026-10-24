@@ -1090,9 +1090,7 @@ describe("R6-12 /download/<token>", () => {
   });
 
   it("makes the claim itself the gate: exactly one caller sees changes === 1", async () => {
-    const { db, env, token } = await fixture(
-      "https://github.com/acme/djdl/x.dmg",
-    );
+    const { db, env } = await fixture("https://github.com/acme/djdl/x.dmg");
     const hash = (await db.first<{ token_hash: string }>(
       "SELECT token_hash FROM release_download_tokens LIMIT 1",
     ))!.token_hash;

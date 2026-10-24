@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
 import { verifyConfigDoc, verifyLicenseDoc } from "@polaris-key/client-core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
-import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {

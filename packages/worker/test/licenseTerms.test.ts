@@ -13,7 +13,6 @@ import {
   injectAdminPolicy,
   licenseOwnDeviceLimit,
   licenseTermsOf,
-  stampedEntitlements,
   tierDeviceLimit,
   tighterMax,
   tighterMin,

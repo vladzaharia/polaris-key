@@ -2,13 +2,11 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
-import { getProduct } from "../src/core/products/store.js";
-import { appendAudit, listAudit } from "../src/core/audit.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
