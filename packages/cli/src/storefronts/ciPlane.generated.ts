@@ -516,16 +516,85 @@ export const CI_PLANE: CiPlaneDeclaration = {
             confirm: "plain",
             why: "read the pull request's state and review labels (the verifier; it writes nothing)",
           },
+          "formula-pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern:
+                  "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal",
+                },
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal",
+                },
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}",
+              },
+            ],
+            confirm: "plain",
+            why: "the formula in the product's own tap; never homebrew/core, which has notability rules and needs the owner",
+          },
+          "formula-status": {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern:
+                  "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal",
+                },
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal",
+                },
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}",
+              },
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)",
+          },
         },
       },
       commandOps: {
         "pull-request": ["uploadBuild", "release", "writeListingText"],
         status: ["status"],
+        "formula-pull-request": ["uploadBuild", "release", "writeListingText"],
+        "formula-status": ["status"],
       },
       paths: [
         {
           template: "Casks/{cask}.rb",
           why: "the cask",
+        },
+        {
+          command: "formula-pull-request",
+          template: "Formula/{formula}.rb",
+          why: "the formula",
         },
       ],
       naturalKey: ["cask", "version"],
@@ -549,6 +618,44 @@ export const CI_PLANE: CiPlaneDeclaration = {
           "--repo",
           "homebrew/homebrew-core",
           "--cask",
+          "dice",
+          "--version",
+          "1.0.0",
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "Homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0",
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0",
+        ],
+        [
+          "formula-pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0",
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--cask",
+          "dice",
+          "--formula",
           "dice",
           "--version",
           "1.0.0",

@@ -248,7 +248,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         text:
           "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file " +
-          "that exists is kept unless you pass --force.",
+          "that exists is kept unless you pass --force. On a terminal it asks what the product " +
+          "is for and whether to start with a Free tier; --modules and --starter-tier answer instead.",
       },
       {
         text:
@@ -1126,8 +1127,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         subs: STORE_SUBS,
         text:
-          "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in " +
-          "your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own " +
+          "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask " +
+          "and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a " +
+          ".tar.gz or .zip build for macOS and Linux, and --command names its executable, " +
+          "default the formula's name), the Scoop feed's manifest in your own " +
           "bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the " +
           "channel's newest release, and opens one pull request per version with the GitHub " +
           "token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for " +

@@ -361,3 +361,182 @@ describe("role agents", () => {
     }
   });
 });
+
+const NESTED_DIRS = [
+  "packages/worker",
+  "packages/docs",
+  "conformance",
+  "sdks/godot",
+] as const;
+
+const INSTRUCTION_ROOTS = [".", ...NESTED_DIRS] as const;
+
+describe("nested instruction files", () => {
+  for (const dir of NESTED_DIRS) {
+    it(`${dir}/AGENTS.md is short and links its README`, () => {
+      const lines = read(dir, "AGENTS.md").trimEnd().split(/\r?\n/);
+      expect(lines.length, `${dir}/AGENTS.md`).toBeLessThan(40);
+      expect(read(dir, "AGENTS.md")).toMatch(/\]\(README\.md\)/);
+      expect(existsSync(join(ROOT, dir, "README.md"))).toBe(true);
+    });
+
+    it(`${dir}/CLAUDE.md only imports AGENTS.md`, () => {
+      expect(read(dir, "CLAUDE.md")).toBe("@AGENTS.md\n");
+    });
+
+    it(`${dir} instruction files carry no machine paths`, () => {
+      for (const file of ["AGENTS.md", "CLAUDE.md"]) {
+        expect(read(dir, file), `${dir}/${file}`).not.toMatch(/\/Users\/|~\//);
+      }
+    });
+  }
+
+  it("does not hardcode a hard-rule count", () => {
+    const countedRules = /\beleven\b|\b\d+\s+hard rules\b/i;
+    for (const dir of INSTRUCTION_ROOTS) {
+      expect(read(dir, "AGENTS.md"), dir).not.toMatch(countedRules);
+    }
+  });
+});
+
+// The root cites some paths relative to the directory it is describing.
+const PATH_BASES = [
+  ".",
+  "packages/worker",
+  "packages/docs",
+  "conformance",
+  "conformance/corpus/v2",
+  "conformance/corpus/v2/content",
+  "conformance/corpus/v2/content/blobs",
+  "packages/worker/src",
+  "packages/worker/src/core",
+  "packages/docs/scripts",
+  "packages/docs/src/content/docs",
+] as const;
+
+// Names the root cites on purpose although they are not in the tree: moved or retired
+// files, dead naming, unreleased paths and the deployed host.
+const INTENTIONALLY_ABSENT = new Set([
+  ".opencode",
+  ".polaris",
+  "docs/CONCEPTS.md",
+  "docs/ADOPTER-GUIDE.md",
+  "docs/CONFIG-AUTHORING.md",
+  "products/README.md",
+  "key.plrs.im/docs",
+  "sdks/swift/Tests/PolarisKeyTests/Resources",
+  "pkey-chunks/1",
+  "sdks/python/.venv", // created by the Python lane's setup, never tracked
+  "_mockups", // the lead's directory, outside the repo
+]);
+
+describe("names cited by AGENTS.md exist", () => {
+  const generatorFamilies = new Set(
+    [...read("tools/generators.ts").matchAll(/^\s*id:\s*"([^"]+)"/gm)].map(
+      (match) => match[1],
+    ),
+  );
+  const packageScripts = (dir: string): Record<string, string> => {
+    const file = join(ROOT, dir, "package.json");
+    if (!existsSync(file)) return {};
+    return JSON.parse(readFileSync(file, "utf8")).scripts ?? {};
+  };
+  const packageDirs = (): Map<string, string> => {
+    const out = new Map<string, string>();
+    for (const parent of ["packages", "tools", "products", "conformance"]) {
+      const candidates = [parent];
+      for (const entry of existsSync(join(ROOT, parent))
+        ? execFileSync("ls", [join(ROOT, parent)])
+            .toString()
+            .split("\n")
+        : []) {
+        if (entry) candidates.push(`${parent}/${entry}`);
+      }
+      for (const dir of candidates) {
+        const file = join(ROOT, dir, "package.json");
+        if (!existsSync(file)) continue;
+        const name = JSON.parse(readFileSync(file, "utf8")).name;
+        if (typeof name === "string") out.set(name, dir);
+      }
+    }
+    return out;
+  };
+  const packages = packageDirs();
+
+  const looksLikePath = (token: string): boolean => {
+    if (/\s|[<>*{}|$:]|^@|^-|^\.\.\.|…/.test(token)) return false;
+    if (/^~|^\/|\$/.test(token)) return false;
+    return token.includes("/") || /\.(md|ts|mjs|json|yaml|sh)$/.test(token);
+  };
+
+  for (const dir of INSTRUCTION_ROOTS) {
+    const file = join(dir, "AGENTS.md");
+    const text = read(file);
+    const spans = [...text.matchAll(/`([^`\n]+)`/g)].map((m) => m[1] as string);
+
+    it(`${file}: every backticked repo path resolves`, () => {
+      const missing = spans
+        .filter(looksLikePath)
+        .map((token) => token.replace(/[.,;:]+$/, "").replace(/\/+$/, ""))
+        .filter((token) => !INTENTIONALLY_ABSENT.has(token))
+        .filter(
+          (token) =>
+            !PATH_BASES.some((base) => existsSync(join(ROOT, base, token))) &&
+            !existsSync(join(ROOT, dir, token)),
+        );
+      expect(missing, `${file} cites paths that do not exist`).toEqual([]);
+    });
+
+    it(`${file}: every pnpm script exists`, () => {
+      const bad: string[] = [];
+      for (const span of spans) {
+        const filtered = span.match(/^pnpm --filter (\S+) (?:run )?([\w:.-]+)/);
+        if (filtered && filtered[2] === "exec") continue;
+        if (filtered) {
+          const pkgDir = packages.get(filtered[1] as string);
+          const script = filtered[2] as string;
+          if (!pkgDir || !(script in packageScripts(pkgDir))) bad.push(span);
+          continue;
+        }
+        const gen = span.match(/^pnpm gen(?: ([a-z][\w-]*))?/);
+        if (gen) {
+          if (gen[1] && !generatorFamilies.has(gen[1])) bad.push(span);
+          continue;
+        }
+        const plain = span.match(/^pnpm (?:run )?([\w:.-]+)/);
+        if (plain) {
+          const script = plain[1] as string;
+          const builtin = ["install", "exec", "add", "audit", "dlx"];
+          if (
+            !builtin.includes(script) &&
+            !(script in packageScripts(".")) &&
+            !(script in packageScripts(dir))
+          ) {
+            bad.push(span);
+          }
+        }
+      }
+      expect(bad, `${file} cites pnpm commands that do not exist`).toEqual([]);
+    });
+
+    it(`${file}: every skill a table row names exists`, () => {
+      const skills = new Set(
+        execFileSync("ls", [join(ROOT, ".claude/skills")])
+          .toString()
+          .split("\n")
+          .filter(Boolean),
+      );
+      const bad: string[] = [];
+      for (const line of text.split(/\r?\n/)) {
+        if (!line.startsWith("|") || !/skill/i.test(line)) continue;
+        for (const m of line.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)) {
+          const name = m[1] as string;
+          if (!skills.has(name) && !existsSync(join(ROOT, dir, name))) {
+            bad.push(name);
+          }
+        }
+      }
+      expect(bad).toEqual([]);
+    });
+  }
+});

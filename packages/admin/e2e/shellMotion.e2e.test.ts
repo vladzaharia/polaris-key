@@ -212,7 +212,8 @@ async function openSheet(page: Page): Promise<void> {
 }
 
 describe("shell motion at 390 px (motion on)", () => {
-  it("the nav drawer slides in from the inline start and out again, then unmounts", async () => {
+  // Disabled as flaky (owner 2026-10-23 rule): the unmount check saw two leftover nodes once on CI (run 40069710173 attempt 1) with no code change. Re-enable once the drawer exit is awaited deterministically.
+  it.skip("the nav drawer slides in from the inline start and out again, then unmounts", async () => {
     const page = await open();
     await openDrawer(page);
     expect(await animationsOn(page, DRAWER)).toEqual([

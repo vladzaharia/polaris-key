@@ -36,6 +36,8 @@ export async function frameStrip(
   options: StripOptions = {},
 ): Promise<void> {
   if (!SHOTS) return;
+  // Frame strips slow the clock over the DevTools protocol: Chromium only.
+  if (page.context().browser()?.browserType().name() !== "chromium") return;
   mkdirSync(SHOTS, { recursive: true });
   const offsets = options.offsets ?? STRIP_OFFSETS;
   const theme =

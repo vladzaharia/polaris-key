@@ -324,9 +324,17 @@ export const GENERATORS: Generator[] = [
   {
     id: "registry-docs",
     title:
-      "This registry as a docs page, the AGENTS.md generated-files table and the lint-debt exclusion snapshot",
+      "This registry as a docs page, AGENTS.md's generated blocks and the lint-debt exclusion snapshot",
     order: 110,
-    inputs: ["tools/generators.ts", "tools/gen-generators-doc.ts"],
+    inputs: [
+      "tools/generators.ts",
+      "tools/gen-generators-doc.ts",
+      "pnpm-workspace.yaml",
+      "{packages,sdks}/*/README.md",
+      "{conformance,tools,products,examples,docs}/README.md",
+      "actions/publish/README.md",
+      "docs/*/README.md",
+    ],
     outputs: [
       "packages/docs/src/content/docs/reference/generators.mdx",
       "AGENTS.md",

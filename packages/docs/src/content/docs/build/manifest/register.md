@@ -24,7 +24,7 @@ A product that keeps its manifest in its own repo is registered by linking that 
    pkey init --product tidewater --name "Tidewater Studio" --modules license,config
    ```
 
-   You should see `.pkey/product.yaml` and `.pkey/schema.yaml` created. Existing files are never overwritten without `--force`.
+   You should see `.pkey/product.yaml` and `.pkey/schema.yaml` created. Existing files are never overwritten without `--force`. On a terminal, `pkey init` asks what the product is for and whether to start with a Free tier; `--modules` and `--starter-tier` answer instead.
 
 2. **CLI** Check the manifest with the rules the platform applies.
 
