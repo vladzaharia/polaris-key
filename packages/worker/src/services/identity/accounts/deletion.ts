@@ -667,10 +667,10 @@ export async function disableAccount(
   const { db, env, now } = ctx;
   const row = await getAccountRow(db, accountId);
   if (!row || row.status !== "active") return { ok: false };
-  // ONE batch (atomic in D1): the status flip, the pre-I-05 mirror (so a Worker rollback does not
-  // re-enable the account), and ST-30's link side: the account's sessions end and no link stays
-  // strong or freshly asserted, so re-enabling does not resurrect console access (the person signs
-  // in through the console IdP again). A crash cannot leave strength set on a disabled account.
+  // ONE batch (atomic in D1): the status flip and ST-30's link side: the account's sessions end
+  // and no link stays strong or freshly asserted, so re-enabling does not resurrect console access
+  // (the person signs in through the console IdP again). A crash cannot leave strength set on a
+  // disabled account.
   await db.batch([
     {
       sql: "UPDATE accounts SET status = 'disabled', modified_at = ? WHERE id = ? AND status = 'active'",
