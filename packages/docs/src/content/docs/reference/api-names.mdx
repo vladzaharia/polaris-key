@@ -156,7 +156,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `license.activateWithKey` | `license.activateWithKey` | `usePolarisKey().submitKey` (planned: I-10a) | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
+| `license.activateWithKey` | `license.activateWithKey` | `usePolarisKey().submitKey` (planned: I-10a) | `license.activate_with_key` | `license.activateWithKey` | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | `license.activation` | `license.activation` | — |
 | `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | `license.licenseInfo` | — | — |
@@ -396,6 +396,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Swift | `license.entitlementValue` | `entitlements.value` | SP-35b |
 | Swift | `license.entitlements()` | `entitlements.all` | SP-35b |
 | Swift | `client.isEnabled(flag:)` | `entitlements.has` | SP-35b |
+| Swift | `license.activate(key:)` | `license.activateWithKey` | SP-35b |
 | Node | `config.getConfig` | `config.get` | SP-35 |
 | Node | `PolarisKeyClient.getConfig` | `config.get` | SP-35 |
 | Python | `config.get_config` | `config.get` | SP-35 |

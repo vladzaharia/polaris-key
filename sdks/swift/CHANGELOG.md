@@ -15,6 +15,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key:)` is renamed `activateWithKey(_:)`, and the `PolarisKeyClient.activate(key:)` facade is removed. No aliases.
+  Migrating: `client.activate(key: k)` and `client.license.activate(key: k)` become `client.license.activateWithKey(k)`.
+
 - **Entitlements are a namespace (SP-35b).** `client.entitlements` has `has(_:)`, `value(_:)` and `all()`. `has` and `value` answer false and nil whenever the licence gate is not usable (S-19 G11); `all()` reads the held document. `license.isEntitled`, `license.entitlementValue`, `license.entitlements()` and `client.isEnabled(flag:)` are removed. No aliases.
   Migrating: `client.license.isEntitled(n)` and `client.isEnabled(flag: n)` become `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`.
 

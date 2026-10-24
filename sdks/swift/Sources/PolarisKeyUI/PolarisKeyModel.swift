@@ -179,7 +179,7 @@ public final class PolarisKeyModel {
         guard !trimmed.isEmpty else { return }
         if showsWork { isWorking = true }
         defer { if showsWork { isWorking = false } }
-        let result = await client.activate(key: trimmed)
+        let result = await client.license.activateWithKey(trimmed)
         if case .deviceLimit = result { lastKey = trimmed } else { lastKey = nil }
         lastActivation = result
         lastError = copy.activationMessage(result)

@@ -198,7 +198,7 @@ public actor LicenseClient {
 
     /// Exchange a licence key for a per-device token.
     @discardableResult
-    public func activate(key: String) async -> ActivationResult {
+    public func activateWithKey(_ key: String) async -> ActivationResult {
         await acquire(
             LicenseEndpoints.activate(core, key: key, fingerprint: fingerprint()), source: .activate)
     }

@@ -59,7 +59,7 @@ They are English only: the drop-in kit translates, this layer does not.
 
 ## First activation and refusals
 
-`activate(key:)` never throws for a refusal: it answers an `ActivationResult` whose case says which.
+`activateWithKey(_:)` never throws for a refusal: it answers an `ActivationResult` whose case says which.
 `ErrorCopy.activationMessage(result.kind)` is the sentence for each.
 
 ```swift
@@ -88,7 +88,7 @@ func refusalScreen(_ result: ActivationResult) -> (message: String, link: String
 }
 
 func activate(_ client: PolarisKeyClient, key: String) async -> String? {
-    refusalScreen(await client.activate(key: key))?.message
+    refusalScreen(await client.license.activateWithKey(key))?.message
 }
 ```
 
@@ -201,7 +201,7 @@ final class LicenseModel {
     }
 
     func activate(key: String) async {
-        let result = await client.activate(key: key)
+        let result = await client.license.activateWithKey(key)
         if case .ok = result { message = nil } else {
             message = ErrorCopy.activationMessage(result.kind)
         }

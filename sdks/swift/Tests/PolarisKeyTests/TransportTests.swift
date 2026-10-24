@@ -94,7 +94,7 @@ final class TransportTests: XCTestCase {
 
         // Activation surfaces the refusal as a code the host can render, rather than as an
         // indistinguishable transport failure.
-        guard case .error(let code, _, _) = await c.activate(key: "PKEY-XXXX") else {
+        guard case .error(let code, _, _) = await c.license.activateWithKey("PKEY-XXXX") else {
             return XCTFail("activation must refuse")
         }
         XCTAssertEqual(code, PolarisError.localOnly)
@@ -374,7 +374,7 @@ final class TransportTests: XCTestCase {
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
                 pinnedKeys: signer.trust, trustRefresh: false, store: store,
                 transport: server.transport, expectedServices: [.license], fingerprint: false))
-        guard case .ok = await c.activate(key: "PKEY-KEY") else {
+        guard case .ok = await c.license.activateWithKey("PKEY-KEY") else {
             return XCTFail("activation should succeed")
         }
         let activated = await c.status().status

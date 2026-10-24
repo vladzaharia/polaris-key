@@ -62,7 +62,7 @@ final class LicenseIdRefreshTests: XCTestCase {
             server, signer, licenseId: "lic_trial", tier: "free", issuedAt: t, etag: "lic-1")
 
         let c = try await PolarisKeyClient.create(options: options)
-        let activated = await c.activate(key: "pkey_djdl_test")
+        let activated = await c.license.activateWithKey("pkey_djdl_test")
         XCTAssertEqual(activated, .ok(token: "pkeyt_lx17", schemaVersion: 4))
         let before = await c.license.licenseId()
         XCTAssertEqual(before, "lic_trial")

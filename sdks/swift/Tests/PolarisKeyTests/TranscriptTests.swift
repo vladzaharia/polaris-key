@@ -240,7 +240,7 @@ enum SwiftReplay {
             }
             out["documents"] = .object(docs)
         case "activate":
-            activation(await client.activate(key: step.args["key"]?.stringValue ?? ""), into: &out)
+            activation(await client.license.activateWithKey(step.args["key"]?.stringValue ?? ""), into: &out)
         case "enroll":
             activation(await client.enroll(), into: &out)
         case "boot":

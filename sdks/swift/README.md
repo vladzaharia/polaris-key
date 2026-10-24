@@ -103,7 +103,7 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 
 | Surface                                                                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
+| `activateWithKey(_:)`, `enroll()`                                          | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
 | `entitlements.has(_:)`, `entitlements.value(_:)`, `entitlements.all()`     | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `licenseInfo()`                                                            | License id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -148,7 +148,7 @@ if await client.isLicensed() {
 }
 
 // Activate with a license key (key → token, persisted, then a forced sync).
-let result = await client.activate(key: userEnteredKey)
+let result = await client.license.activateWithKey(userEnteredKey)
 
 // Or, for a config-only product, mint a credential with no key at all (§6).
 let registered = await client.register()
@@ -382,7 +382,7 @@ is on and already validated by `ManageLink.read`. It is never an auth failure.
 import PolarisKey
 
 func replaceDeviceLink(_ client: PolarisKeyClient, key: String) async -> String? {
-    if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
+    if case .deviceLimit(_, _, let manageURL?) = await client.license.activateWithKey(key) {
         // Offer "Replace a device", opening this link behind a tap.
         return ManageLink.withReturn(ManageLink.withKey(manageURL, key), "myapp://activated")
     }

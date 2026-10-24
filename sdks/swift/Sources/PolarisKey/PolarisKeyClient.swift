@@ -649,11 +649,6 @@ public actor PolarisKeyClient {
     }
 
     @discardableResult
-    public func activate(key: String) async -> ActivationResult {
-        await license.activate(key: key)
-    }
-
-    @discardableResult
     public func enroll() async -> ActivationResult {
         await license.enroll()
     }

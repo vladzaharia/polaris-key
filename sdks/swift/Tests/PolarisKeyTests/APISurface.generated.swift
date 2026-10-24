@@ -28,7 +28,7 @@ func apiSurface() async {
     _ = ConfigSetting.set  // config.setting.set
     _ = ConfigSetting.clear  // config.setting.clear
     _ = ConfigSetting.on  // config.setting.on
-    _ = LicenseClient.activate(key:)  // license.activateWithKey
+    _ = LicenseClient.activateWithKey  // license.activateWithKey
     _ = EntitlementsClient.has  // entitlements.has
     _ = EntitlementsClient.value  // entitlements.value
     _ = EntitlementsClient.all  // entitlements.all

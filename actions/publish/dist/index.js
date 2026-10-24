@@ -34839,7 +34839,7 @@ var SWIFT_LIBRARY = {
       `    options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
       `_ = await client.sync()`,
       `if await !client.isLicensed() {`,
-      `    let result = await client.activate(key: userEnteredKey)`,
+      `    let result = await client.license.activateWithKey(userEnteredKey)`,
       `    print(result)`,
       `}`
     )

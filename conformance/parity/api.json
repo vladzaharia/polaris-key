@@ -1192,11 +1192,6 @@
     },
     {
       "sdk": "swift",
-      "path": "client.activate",
-      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
-    },
-    {
-      "sdk": "swift",
       "path": "client.enroll",
       "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
     },
@@ -2730,11 +2725,7 @@
         "node": {},
         "python": {},
         "godot": {},
-        "swift": {
-          "spelling": "activate",
-          "planned": "SP-35b",
-          "labels": ["key"]
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "activate",
           "planned": "SP-35b"
@@ -5638,6 +5629,16 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "client\\.isEnabled\\(flag:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.activate(key:)",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|c)\\.activate\\(key:",
         "files": ["*.swift", "fence:swift"]
       }
     },
