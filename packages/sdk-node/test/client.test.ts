@@ -265,9 +265,9 @@ describe("PolarisKeyClient — activation + reads", () => {
     expect(client.license.activation()).toBe("token");
 
     // …from the CONFIG document
-    expect(client.getConfig("quality.floor", "any")).toBe("flac");
-    expect(client.config.getConfig("quality.floor", "any")).toBe("flac");
-    expect(client.getConfig("missing.key", "fallback")).toBe("fallback");
+    expect(client.config.get("quality.floor", "any")).toBe("flac");
+    expect(client.config.get("quality.floor", "any")).toBe("flac");
+    expect(client.config.get("missing.key", "fallback")).toBe("fallback");
     expect(client.config.getConfigSource("quality.floor")).toBe("enforced");
     expect(client.config.getSecret("serviceA.oauth")).toBe("tok");
     expect(client.config.getSecret("nope")).toBeNull();
@@ -284,7 +284,7 @@ describe("PolarisKeyClient — activation + reads", () => {
       store: new InMemoryStore(PRODUCT),
       fetchImpl: mockFetch().impl,
     });
-    expect(client.getConfig("quality.floor", "def")).toBe("def");
+    expect(client.config.get("quality.floor", "def")).toBe("def");
     expect(client.config.getSecret("x")).toBeNull();
     expect(client.config.schemaVersion()).toBeNull();
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
@@ -328,7 +328,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(cache).not.toHaveProperty("etag");
 
     // …and the derived state still round-trips through the public surface.
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     expect(client.license.isEntitled("polarisVpn")).toBe(true);
     expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
 
@@ -424,7 +424,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     // BOTH documents recovered on the shared re-acquire.
     expect(client.status().status).toBe("ok");
     expect(client.license.isEntitled("polarisVpn")).toBe(true);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     const cache = await store.readCache();
     expect(cache?.docs?.license).toBeDefined();
     expect(cache?.docs?.config).toBeDefined();
@@ -477,7 +477,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
       allowedRange: { min: "2.0.0" },
     });
     // …and the CONFIG service is untouched by a license block (§2.2, D-08).
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
   });
 
   it("403 {error:{code:'channel_not_allowed'}} → channel-not-entitled, with no allowedRange", async () => {
@@ -508,7 +508,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
       fetchImpl: m.impl,
     });
     await client.license.activateWithKey(KEY);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
 
     // A build gate closes…
     m.opts.licenseBlocked = true;
@@ -527,7 +527,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     m.opts.notModified = true;
     const res = await client.sync();
     expect(res.documents.config?.kind).toBe("unchanged");
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     expect(client.getSyncState().blocked).toBeNull();
     expect(client.status().status).toBe("needs-activation");
 
@@ -582,7 +582,7 @@ describe("PolarisKeyClient — offline-first init", () => {
     });
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     expect(client.license.isEntitled("polarisVpn")).toBe(true);
     expect(client.license.getLicenseId()).toBe("lic_cached");
     // §4.2 — every counter is recomputed from what just re-verified, not read off the file.

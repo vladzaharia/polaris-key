@@ -17,7 +17,7 @@
 //
 // ── WHAT MOVED IN v3 ────────────────────────────────────────────────────────────────────────
 //
-//   * the accessors are `client.config.*`, not the god-object's `client.getConfig` — config
+//   * the accessors are `client.config.*`, not the god-object's `client.getConfig` (removed) — config
 //     resolution is the config SERVICE's job, and a product that disabled it never has to think
 //     about `envPrefix`/`env`/`localOverrides` at all (they ride `ConfigClientOptions`);
 //   * the document is `pkey-config+jws` with `config`/`secrets` at the TOP LEVEL — v2's
@@ -125,11 +125,11 @@ describe("layered config — enforced/hidden are locked", () => {
         env: { PKEY_CONFIG_quality__floor: "wav" },
       },
     );
-    expect(c.config.getConfig("quality.floor", "x")).toBe("flac");
+    expect(c.config.get("quality.floor", "x")).toBe("flac");
     expect(c.config.getConfigSource("quality.floor")).toBe("enforced");
   });
 
-  it("hidden is still applied by getConfig and also wins over overrides", async () => {
+  it("hidden is still applied by get and also wins over overrides", async () => {
     // `hidden` is `enforced` PLUS withheld from enumeration. Withheld is not inert.
     const c = await clientWith(
       { "secret.knob": entry("hidden", "locked") },
@@ -138,7 +138,7 @@ describe("layered config — enforced/hidden are locked", () => {
         env: { PKEY_CONFIG_secret__knob: "nope2" },
       },
     );
-    expect(c.config.getConfig("secret.knob", "x")).toBe("locked");
+    expect(c.config.get("secret.knob", "x")).toBe("locked");
     expect(c.config.getConfigSource("secret.knob")).toBe("hidden");
   });
 });
@@ -152,7 +152,7 @@ describe("layered config — default precedence (local > env > remote > fallback
       localOverrides: { "run.concurrency": 8 },
       env: { PKEY_CONFIG_run__concurrency: "16" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(8);
+    expect(c.config.get("run.concurrency", 1)).toBe(8);
     expect(c.config.getConfigSource("run.concurrency")).toBe("local");
   });
 
@@ -160,7 +160,7 @@ describe("layered config — default precedence (local > env > remote > fallback
     const c = await clientWith(cfg, {
       env: { PKEY_CONFIG_run__concurrency: "16" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(16);
+    expect(c.config.get("run.concurrency", 1)).toBe(16);
     expect(c.config.getConfigSource("run.concurrency")).toBe("env");
   });
 
@@ -171,19 +171,19 @@ describe("layered config — default precedence (local > env > remote > fallback
         env: { PKEY_CONFIG_log__level: "debug" },
       },
     );
-    expect(c.config.getConfig("log.level", "x")).toBe("debug");
+    expect(c.config.get("log.level", "x")).toBe("debug");
     expect(c.config.getConfigSource("log.level")).toBe("env");
   });
 
   it("remote-default wins when no local/env present", async () => {
     const c = await clientWith(cfg);
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(4);
+    expect(c.config.get("run.concurrency", 1)).toBe(4);
     expect(c.config.getConfigSource("run.concurrency")).toBe("remote-default");
   });
 
   it("fallback wins when the key is absent everywhere", async () => {
     const c = await clientWith({});
-    expect(c.config.getConfig("missing.key", 99)).toBe(99);
+    expect(c.config.get("missing.key", 99)).toBe(99);
     expect(c.config.getConfigSource("missing.key")).toBe("fallback");
   });
 
@@ -192,7 +192,7 @@ describe("layered config — default precedence (local > env > remote > fallback
       envPrefix: "DJDL_",
       env: { DJDL_run__concurrency: "32" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(32);
+    expect(c.config.get("run.concurrency", 1)).toBe(32);
     expect(c.config.getConfigSource("run.concurrency")).toBe("env");
   });
 });
@@ -207,7 +207,7 @@ describe("env var naming — PKEY_CONFIG_ + dotted-key mapping (§8)", () => {
     const c = await clientWith(cfg, {
       env: { PKEY_CONFIG_run__concurrency: "16" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(16);
+    expect(c.config.get("run.concurrency", 1)).toBe(16);
     expect(c.config.getConfigSource("run.concurrency")).toBe("env");
   });
 
@@ -217,7 +217,7 @@ describe("env var naming — PKEY_CONFIG_ + dotted-key mapping (§8)", () => {
     const c = await clientWith(cfg, {
       env: { PLRS_CONFIG_run__concurrency: "16" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(4);
+    expect(c.config.get("run.concurrency", 1)).toBe(4);
     expect(c.config.getConfigSource("run.concurrency")).toBe("remote-default");
   });
 
@@ -225,7 +225,7 @@ describe("env var naming — PKEY_CONFIG_ + dotted-key mapping (§8)", () => {
     const c = await clientWith(cfg, {
       env: { PKEY_CONFIG_run_concurrency: "16" },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(4);
+    expect(c.config.get("run.concurrency", 1)).toBe(4);
   });
 });
 
@@ -250,7 +250,7 @@ describe("env value coercion", () => {
         env: { PKEY_CONFIG_run__knob: raw },
       },
     );
-    expect(c.config.getConfig("run.knob", "fb")).toEqual(expected);
+    expect(c.config.get("run.knob", "fb")).toEqual(expected);
   });
 
   it("keeps a malformed JSON-LOOKING value as the raw string", async () => {
@@ -263,7 +263,7 @@ describe("env value coercion", () => {
         env: { PKEY_CONFIG_run__knob: '{"a":' },
       },
     );
-    expect(c.config.getConfig("run.knob", "fb")).toBe('{"a":');
+    expect(c.config.get("run.knob", "fb")).toBe('{"a":');
     expect(c.config.getConfigSource("run.knob")).toBe("env");
   });
 
@@ -274,13 +274,13 @@ describe("env value coercion", () => {
         env: { PKEY_CONFIG_run__knob: "debug" },
       },
     );
-    expect(c.config.getConfig("run.knob", "fb")).toBe("debug");
+    expect(c.config.get("run.knob", "fb")).toBe("debug");
   });
 });
 
 // @pkey-feature config.list
 describe("listUserConfig", () => {
-  it("excludes hidden entries but getConfig still returns them; marks enforced", async () => {
+  it("excludes hidden entries but get still returns them; marks enforced", async () => {
     const c = await clientWith(
       {
         "run.concurrency": entry("default", 4),
@@ -309,7 +309,7 @@ describe("listUserConfig", () => {
     });
     // hidden is withheld from the list yet still applied.
     expect(list.some((e) => e.key === "secret.knob")).toBe(false);
-    expect(c.config.getConfig("secret.knob", "x")).toBe("locked");
+    expect(c.config.get("secret.knob", "x")).toBe("locked");
   });
 });
 
@@ -371,7 +371,7 @@ describe("D-08 — a product with the config service DISABLED", () => {
 
   it("every read falls back instead of throwing or inventing a value", async () => {
     const c = await configDisabledClient();
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(1);
+    expect(c.config.get("run.concurrency", 1)).toBe(1);
     expect(c.config.getConfigSource("run.concurrency")).toBe("fallback");
     expect(c.config.listUserConfig()).toEqual([]);
     expect(c.config.getSecret("api.key")).toBeNull();
@@ -393,9 +393,9 @@ describe("D-08 — a product with the config service DISABLED", () => {
         env: { PKEY_CONFIG_log__level: "debug" },
       },
     });
-    expect(c.config.getConfig("run.concurrency", 1)).toBe(8);
+    expect(c.config.get("run.concurrency", 1)).toBe(8);
     expect(c.config.getConfigSource("run.concurrency")).toBe("local");
-    expect(c.config.getConfig("log.level", "info")).toBe("debug");
+    expect(c.config.get("log.level", "info")).toBe("debug");
   });
 });
 
@@ -404,7 +404,7 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
     // The latent crash this pins: activation succeeds, the license document comes back 403
     // BLOCKED and the config document errors, so the cache carries a block and no documents at
     // all. Every accessor has to survive that state — a gate that renders "version-too-old"
-    // and then throws on the first `getConfig` is a worse outcome than no gate.
+    // and then throws on the first `get` is a worse outcome than no gate.
     const store = new InMemoryStore("djdl");
     let activated = false;
     const impl = (async (input: string | URL | Request): Promise<Response> => {
@@ -443,8 +443,8 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
     expect(client.status().status).toBe("version-too-old");
     expect(client.status().allowedRange).toEqual({ min: "2.0.0" });
 
-    expect(() => client.config.getConfig("any.key", "fb")).not.toThrow();
-    expect(client.config.getConfig("any.key", "fb")).toBe("fb");
+    expect(() => client.config.get("any.key", "fb")).not.toThrow();
+    expect(client.config.get("any.key", "fb")).toBe("fb");
     expect(client.config.getConfigSource("any.key")).toBe("fallback");
     expect(client.config.listUserConfig()).toEqual([]);
     expect(client.config.getSecret("any")).toBeNull();

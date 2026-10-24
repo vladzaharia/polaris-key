@@ -73,13 +73,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.get` | `getConfig` (planned: SP-35) | `useManagedConfig().get` | `get_config` (planned: SP-35) | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
+| `config.get` | `config.get` | `useManagedConfig().get` | `get_config` (planned: SP-35) | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
 | `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
 | `config.mintToken` | `config.mintToken` | — | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
 | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
-| `config.clearAll` | planned (SP-35) | `config.clearAll` | planned (SP-35) | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
+| `config.clearAll` | `config.clearAll` | `config.clearAll` | planned (SP-35) | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
 | `config.onConfigChange` | `config.onConfigChange` | — | `on_change` (planned: SP-35) | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `get` (planned: SP-35) | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
@@ -258,4 +258,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 ## Removed in 0.9
 
-Nothing is removed yet. Each rename lists its old name here when it ships.
+| SDK | Old name | New name or note | Package |
+| --- | --- | --- | --- |
+| Node | `config.getConfig` | `config.get` | SP-35 |
+| Node | `PolarisKeyClient.getConfig` | `config.get` | SP-35 |

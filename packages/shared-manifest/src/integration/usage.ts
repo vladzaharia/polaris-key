@@ -179,7 +179,7 @@ const NODE_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       NODE_HEAD(c),
       ``,
       `await client.sync();`,
-      `const value = client.config.getConfig(${q(c.configKey)}, ${q(c.configFallback)});`,
+      `const value = client.config.get(${q(c.configKey)}, ${q(c.configFallback)});`,
       `const secret = client.config.getSecret(${q(c.secretKey)});`,
       `const minted = await client.config.mintToken(${q(c.mintRecipe)});`,
       `client.events.on("config", () => console.log("settings changed"));`,

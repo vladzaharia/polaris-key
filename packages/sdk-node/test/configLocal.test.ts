@@ -75,11 +75,29 @@ describe("config.local (§3.11)", () => {
 
     // A second client over the same state directory sees the persisted value.
     const again = await seededClient({ routes, extra: { stateDir: dir } });
-    expect(again.client.config.getConfig("ui.theme", "light")).toBe("dark");
+    expect(again.client.config.get("ui.theme", "light")).toBe("dark");
 
     await theme.clear();
     expect(theme.get("light")).toBe("light");
     expect(keyed).toEqual(["dark", undefined]);
+  });
+
+  it("clearAll drops every local override in one write, persists, and emits per key", async () => {
+    const routes = { "GET /djdl/config/schema": () => json(CATALOG) };
+    const { client, dir } = await seededClient({ routes });
+    await client.config.set("ui.theme", "dark");
+    await client.config.set("ui.other", 3);
+    const all: string[] = [];
+    client.config.onConfigChange("*", (c) => all.push(c.key));
+    await client.config.clearAll();
+    expect(client.config.get("ui.theme", "light")).toBe("light");
+    expect(client.config.get("ui.other", 0)).toBe(0);
+    expect(client.config.localValues()).toEqual({});
+    expect(all.sort()).toEqual(["ui.other", "ui.theme"]);
+    const again = await seededClient({ routes, extra: { stateDir: dir } });
+    expect(again.client.config.get("ui.theme", "light")).toBe("light");
+    await client.config.clearAll(); // already empty: no change, no throw
+    expect(all).toHaveLength(2);
   });
 
   it("validates against the catalog and refuses a locked key", async () => {

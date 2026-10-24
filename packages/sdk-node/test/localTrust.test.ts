@@ -153,13 +153,13 @@ describe("a hard 401 / a build block deletes the document it answered for", () =
         config: () => new Response("", { status: 401 }),
       }),
     });
-    expect(client.getConfig("k", "none")).toBe("v");
+    expect(client.config.get("k", "none")).toBe("v");
     await client.sync();
     const rec = (await store.readCache())!;
     expect(rec.docs?.config).toBeUndefined();
     expect(rec.etags?.config).toBeUndefined();
     expect(rec.docs?.license).toBeDefined();
-    expect(client.getConfig("k", "none")).toBe("none");
+    expect(client.config.get("k", "none")).toBe("none");
   });
 
   it("a 403 build block deletes docs.license; clearing `blocked` yields needs-activation", async () => {
