@@ -288,8 +288,9 @@ On macOS, `PolarisSparkle.start(client:)` follows license and channel changes an
 feed in step; `SUPublicEDKey` in your `Info.plist` stays the anchor that verifies the payload.
 `isUndismissable(check.decision)` is true for a mandatory offer: show it as a persistent notice over
 a running app, not a sheet. An update check that fails reports its reason in `check.errors`; it
-does not throw while a committed feed is left to decide from. A custom Sparkle driver (your own
-update UI) is planned.
+does not throw while a committed feed is left to decide from. For your own update UI, pass
+`userDriver:` (an `SPUUserDriver`) to `PolarisSparkle.start`; it changes the UI only, never the feed,
+the signature check or the install.
 
 ## Tests
 

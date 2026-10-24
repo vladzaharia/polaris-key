@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **`PolarisSparkle.start(client:channel:bundle:userDriver:)` takes your own Sparkle user driver (UK-08.5).** Pass an `SPUUserDriver` and the updater is an `SPUUpdater` on it; without one it is the standard controller as before. Only the UI changes: the feed, headers, channels, journal events, the `SUPublicEDKey` assertion and Sparkle's signature check and install are the same. Source break (the API is unreleased): `PolarisSparkle.controller` is now `SPUStandardUpdaterController?` (`nil` with a `userDriver`) and the new `updater: SPUUpdater` is set on both paths. Migrating: `sparkle.controller.updater` becomes `sparkle.updater`; `sparkle.controller.checkForUpdates(nil)` becomes `sparkle.checkForUpdates()`.
+
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
   (320 × 104 points minimum); its `Layout` and `Treatment` options and `PolarisPoweredByBadge.size(layout:width:)`
