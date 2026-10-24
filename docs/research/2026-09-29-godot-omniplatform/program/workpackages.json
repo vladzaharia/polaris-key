@@ -1250,7 +1250,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-46-lint-baselines-debt-ledgers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-47",
@@ -16134,7 +16134,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-12a-generators.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-12b",
@@ -17681,7 +17681,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03b)"
       ],
       "brief": "wp/AX-03b-agents-md-router-repo-map-nested-files.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "AX-04",
@@ -17701,7 +17701,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3, §10 decision 13 (AX-04)"
       ],
       "brief": "wp/AX-04-pnpm-gate-in-the-repo.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "AX-05",
