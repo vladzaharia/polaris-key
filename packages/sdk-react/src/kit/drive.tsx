@@ -19,16 +19,10 @@ import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ProductCatalog } from "@polaris-key/catalog";
 
 import type { DeviceInfo, PolarisAdapter } from "../core/index.js";
-import type { KitView } from "../desktop/bridge.js";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
-import {
-  kitComponent,
-  PolarisKeyGate as Gate_,
-  type KitAction,
-  type KitProps,
-  type PolarisKeyGateProps,
-} from "./component.js";
+import type { KitAction, KitProps } from "./component.js";
+import { kitComponent } from "./kitComponent.js";
 import { openLink, safeLink } from "./links.js";
 import { installProgressInput } from "./adapt.js";
 import type { SettingsRow } from "./views.js";
@@ -321,7 +315,7 @@ function OpenedAccount(props: {
   );
 }
 
-function DrivenSettings(
+export function DrivenSettings(
   props: Props & {
     adapter: PolarisAdapter;
     version?: string;
@@ -429,7 +423,7 @@ type Found = {
   more?: string;
 };
 
-function DrivenUpdate(
+export function DrivenUpdate(
   props: Props & {
     adapter: PolarisAdapter;
     version?: string;
@@ -578,65 +572,6 @@ function DrivenUpdate(
           done();
       }, props.onAction)}
     />
-  );
-}
-
-/**
- * What the host asked the window to open (`PolarisAdapter.onOpen`, a native menu item): the drop-in
- * Settings, or an update check that ends in the prompt or "You're up to date", each as a modal
- * dialog over the app. Closing returns focus to what held it. Draws nothing when nothing is open.
- */
-function OpenedHost(props: {
-  adapter: PolarisAdapter;
-  version?: string;
-  theme?: KitProps["theme"];
-}) {
-  const { adapter, version } = props;
-  const theme = props.theme ? { theme: props.theme } : {};
-  const [view, setView] = useState<KitView | null>(null);
-  useEffect(() => adapter.onOpen?.((v) => setView(v)), [adapter]);
-  const onClose = useCallback(() => setView(null), []);
-  if (view === "settings")
-    return (
-      <DrivenSettings
-        adapter={adapter}
-        onDismiss={onClose}
-        onCheckUpdates={() => setView("update")}
-        {...(version !== undefined ? { version } : {})}
-        {...theme}
-      />
-    );
-  if (view === "update")
-    return (
-      <DrivenUpdate
-        adapter={adapter}
-        opened={{ onClose }}
-        {...theme}
-        {...(version !== undefined ? { version } : {})}
-      />
-    );
-  return null;
-}
-
-/**
- * `<PolarisKeyGate>`, with the host's menu requests wired in: on a desktop host that can ask
- * (`adapter.onOpen`), a native "Manage license" or "Check for updates" item opens Settings or the
- * update prompt over the app, in this window. The app's children are where it lives, so it shows
- * only while the license lets the app run (a gate screen is never covered by it).
- */
-export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
-  const sdk = useSdk();
-  if (props.input !== undefined || !sdk?.adapter.onOpen)
-    return <Gate_ {...props} />;
-  return (
-    <Gate_ {...props}>
-      {props.children}
-      <OpenedHost
-        adapter={sdk.adapter}
-        {...(props.theme ? { theme: props.theme } : {})}
-        {...(sdk.version !== undefined ? { version: sdk.version } : {})}
-      />
-    </Gate_>
   );
 }
 

@@ -8,7 +8,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { platformVariant } from "@polaris-key/ui-core/theme";
-import { DESKTOP_VARIANTS, platformVars, tokenCss } from "../src/tokens.js";
+import { DESKTOP_VARIANTS, platformVars } from "../src/desktopTokens.js";
+import { tokenCss } from "../src/tokens.js";
 
 const brandCss = readFileSync(
   join(import.meta.dirname, "..", "..", "brand", "css", "kit.css"),
