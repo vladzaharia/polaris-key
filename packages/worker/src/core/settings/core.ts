@@ -512,8 +512,8 @@ export const CORE_SLICE: readonly SettingDef[] = [
     since: "HA-10",
   }),
   // ── Platform-owned product policies (ST-11, notes/S-18 §4.14.4) ─────────────────────────
-  // Lazy-delta opt-in and sign-in mail cap: SQL-only until ST-11 (`lazy_delta_settings`,
-  // `email_product_caps`, copied once into `product_settings` rows; ST-25 drops the tables).
+  // Lazy-delta opt-in and sign-in mail cap: SQL-only until ST-11 (the old
+  // lazy-delta and mail-cap tables, copied once into `product_settings` rows and since dropped).
   // Operator-owned, never in the manifest. Rows are written through `writeSetting()`.
   setting({
     key: "deltas.lazy.enabled",

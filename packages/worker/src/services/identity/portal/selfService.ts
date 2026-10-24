@@ -49,7 +49,6 @@ import {
   productFromKey,
 } from "../../../platform/crypto.js";
 import { normalizeEmail } from "../../../platform/email.js";
-import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { type LicenseRow } from "../../../core/repo.js";
@@ -180,7 +179,7 @@ async function resolveClaimKey(
   const product: ProductFacts = {
     slug,
     name: productRow.name,
-    branding: parseJsonColumn(productRow.branding_json),
+    branding: null,
   };
   const keyRow = await getKey(
     db,

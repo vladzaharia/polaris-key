@@ -42,7 +42,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
-    "lazy_delta_settings",
     "delta_demand_devices",
     "delta_demand",
     "platform_deploys",
@@ -63,7 +62,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "platform_heartbeats",
     "store_operations",
     "email_suppressions",
-    "email_product_caps",
     // LX-08 (plans/LX-01.md §6.1): the licensing model. Written only through
     // src/core/licensing/grants.ts (grants, grant_entitlements) and Core (the rest).
     "grants",

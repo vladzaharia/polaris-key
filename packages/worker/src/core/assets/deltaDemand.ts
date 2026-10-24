@@ -153,7 +153,7 @@ const OFF: LazyDeltaSettings = {
   dailyCap: DEFAULT_DAILY_CAP,
 };
 
-/** The product-scope keys (ST-11): `lazy_delta_settings`' three columns, now `product_settings` rows. */
+/** The product-scope keys (ST-11): the old lazy-delta table's three columns, now `product_settings` rows. */
 export const LAZY_ENABLED_KEY = "deltas.lazy.enabled";
 export const LAZY_HOT_DEVICES_KEY = "deltas.lazy.hotDevices";
 export const LAZY_DAILY_CAP_KEY = "deltas.lazy.dailyCap";

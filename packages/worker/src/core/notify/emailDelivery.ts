@@ -110,7 +110,7 @@ function positiveInt(value: unknown): number | null {
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
-/** The product-scope key (ST-11): `email_product_caps.daily_cap`, now a `product_settings` row. */
+/** The product-scope key (ST-11): the old per-product mail cap, now a `product_settings` row. */
 export const PRODUCT_EMAIL_CAP_KEY = "email.dailyCap";
 
 /**

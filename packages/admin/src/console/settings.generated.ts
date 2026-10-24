@@ -2058,12 +2058,6 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Core → Settings; Core → Overview",
   },
   {
-    thing: "Old lazy-delta and sign-in mail cap tables",
-    reason:
-      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
-    shows: "Product → Settings",
-  },
-  {
     thing: "Feed access migration records (what the F-34.4 job overwrote)",
     reason:
       "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",

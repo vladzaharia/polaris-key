@@ -1098,11 +1098,15 @@ describe("R11-08 migration safety", () => {
     //   * 0099_dist_listing_assets_manifest.sql (HA-07) rebuilds `dist_listing_assets` to widen its
     //     source CHECK with `manifest`. Every column is copied unchanged and nothing is renamed or
     //     removed above the schema; no table holds a foreign key into it.
+    //   * 0140_retire_legacy_settings.sql (ST-25.3) is the CONTRACT step of two expand/contract pairs
+    //     (0124, 0126): it drops two tables and six columns that no Worker since v0.9.15 reads or
+    //     writes, after the 14-day window; its down script is in scripts/rollback/.
     const REBUILDS = [
       "0016_drop_dead_pii.sql",
       "0017_portal_fk_cascade.sql",
       "0058_b_release_deliverables_kind.sql",
       "0099_dist_listing_assets_manifest.sql",
+      "0140_retire_legacy_settings.sql",
     ];
     const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)
@@ -1250,7 +1254,7 @@ describe("R11-09 test-vs-production DB divergence", () => {
     await seedProduct(db, "acme");
     await expect(
       db.run(
-        "UPDATE products SET branding_json = ? WHERE slug='acme'",
+        "UPDATE products SET name = ? WHERE slug='acme'",
         new ArrayBuffer(4),
       ),
     ).rejects.toThrow(/can only bind/i);

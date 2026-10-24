@@ -181,15 +181,14 @@ describe("enforce", () => {
   });
 
   it("a product that had magic link off keeps SSO-only sign-in through an enforced domain (I-29)", async () => {
-    // Before I-29 a product could turn email magic links off (`magic_enabled = 0`) to force
+    // Before I-29 a product could turn email magic links off (a per-product magic-link switch) to force
     // SSO. The column is no longer read: the same control is the domain's `enforce`, and an
     // address outside it signs in by email whatever that old row says.
     const w = await seededWorld();
     await w.db.run(
       `INSERT INTO portal_product_settings
-         (product, portal_enabled, oidc_enabled, magic_enabled, license_key_claim_enabled,
-          releases_enabled, created_at, modified_at)
-       VALUES ('acme', 1, 1, 0, 0, 0, ?, ?)`,
+         (product, portal_enabled, created_at, modified_at)
+       VALUES ('acme', 1, ?, ?)`,
       NOW,
       NOW,
     );

@@ -18,8 +18,6 @@ export interface ProductRow {
   default_max_offline_days: number;
   default_device_limit: number;
   admin_group: string | null;
-  /** Never written since ST-47; the column stays until a migration drops it. */
-  branding_json?: string | null;
   release_source: string | null;
   status?: string;
   deleted_at?: number | null;

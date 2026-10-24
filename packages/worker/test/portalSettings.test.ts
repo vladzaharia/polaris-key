@@ -263,12 +263,6 @@ describe("PATCH …/identity/portal writes the rows", () => {
 describe("branding: one store", () => {
   it("is edited through the route, validated, and read by the Locker from that store", async () => {
     const { db, env, patch } = await fixture(false);
-    // The retired store holds a value; the Locker must not read it.
-    await db.run(
-      "UPDATE products SET branding_json = ? WHERE slug = ?",
-      '{"developerName":"Retired"}',
-      SLUG,
-    );
     const l = await locker(env, db, "");
     const lic = await seedLicenseWithKey(db, SLUG);
     await linkLicense(db, l.account.id, SLUG, lic.licenseId, "admin", NOW);

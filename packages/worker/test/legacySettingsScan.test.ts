@@ -106,9 +106,6 @@ export const KNOWN: Record<string, Record<string, string>> = {
       "PERMANENT: the truth-store column release_metadata.artifacts_access / release_artifacts.access (CHECK-bound, D6)",
   },
   branding_json: {
-    "packages/worker/src/core/repo.ts": "ST-25.3",
-    "packages/worker/scripts/registry-clients/seed.mjs": "ST-25.3",
-    "packages/worker/src/services/identity/portal/selfService.ts": "ST-25.3",
     "packages/worker/src/services/identity/admin.ts":
       "PERMANENT: the live portal_product_settings.branding_json (the portal's presentation row)",
     "packages/worker/src/services/identity/portal/api.ts":
@@ -119,18 +116,6 @@ export const KNOWN: Record<string, Record<string, string>> = {
       "PERMANENT: the live portal_product_settings.branding_json (the portal's presentation row)",
     "packages/worker/src/services/identity/signInSettings.ts":
       "PERMANENT: the live portal_product_settings.branding_json (the portal's presentation row)",
-  },
-  lazy_delta_settings: {
-    "packages/worker/src/core/assets/deltaDemand.ts": "ST-25.3",
-    "packages/worker/src/core/settings/core.ts": "ST-25.3",
-    "packages/worker/src/db/owners.ts": "ST-25.3",
-    "packages/worker/scripts/settings-coverage.ts": "ST-25.3",
-  },
-  email_product_caps: {
-    "packages/worker/src/core/notify/emailDelivery.ts": "ST-25.3",
-    "packages/worker/src/core/settings/core.ts": "ST-25.3",
-    "packages/worker/src/db/owners.ts": "ST-25.3",
-    "packages/worker/scripts/settings-coverage.ts": "ST-25.3",
   },
   legacyDefault: {
     "packages/worker/src/core/rowSettings.ts": "ST-25.7",
@@ -195,22 +180,6 @@ export const KNOWN: Record<string, Record<string, string>> = {
       "PERMANENT: the manifest field name claimByKey in a test expectation",
     "packages/shared-manifest/src/index.ts":
       "PERMANENT: the manifest error code invalid_identity_claim_by_key",
-  },
-  oidc_enabled: {
-    "packages/worker/src/services/identity/portal/repo.ts": "ST-25.3",
-  },
-  magic_enabled: {
-    "packages/worker/src/services/identity/portal/repo.ts": "ST-25.3",
-  },
-  releases_enabled: {
-    "packages/worker/src/services/identity/portal/repo.ts": "ST-25.3",
-  },
-  auto_link_enabled: {
-    "packages/worker/src/services/identity/portal/repo.ts": "ST-25.3",
-  },
-  license_key_claim_enabled: {
-    "packages/worker/src/services/identity/portal/repo.ts": "ST-25.3",
-    "packages/worker/src/services/identity/portal/origin.ts": "ST-25.3",
   },
 };
 
