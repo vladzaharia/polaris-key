@@ -26,6 +26,12 @@ const TARGET = FILES.find((f) => f.endsWith("_default_tier.sql"))!;
 const ASSERTION = FILES.find(
   (f) => f.endsWith("_b_index_assertion.sql") && f > TARGET,
 )!;
+/** This file's own required list: the newest assertion (REQUIRED_INDEXES) has moved on since. */
+const ASSERTION_NAMES = [
+  ...readFileSync(join(DIR, ASSERTION), "utf8").matchAll(
+    /^\s*\('(idx_\w+)'\)/gm,
+  ),
+].map((m) => m[1]);
 const DOWN = join(
   HERE,
   "..",
@@ -161,10 +167,11 @@ describe.each(["each", "transaction"] as const)(
           )
           .get(),
       ).toEqual({
-        expected: REQUIRED_INDEXES.length,
-        found: REQUIRED_INDEXES.length,
+        expected: ASSERTION_NAMES.length,
+        found: ASSERTION_NAMES.length,
         missing: "",
       });
+      expect(ASSERTION_NAMES).toContain("idx_tiers_implicit");
       expect(REQUIRED_INDEXES).toContain("idx_tiers_implicit");
     });
   },
