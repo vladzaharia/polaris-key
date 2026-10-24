@@ -421,7 +421,9 @@ export function useKit(
   const modelRef = useRef<BareViewModel | null>(null);
   const deliver = (fn: () => void) => queueMicrotask(fn);
   if (!modelRef.current)
-    modelRef.current = new BareViewModel(component, modelOf, input, { deliver });
+    modelRef.current = new BareViewModel(component, modelOf, input, {
+      deliver,
+    });
   const model = modelRef.current;
   if (JSON.stringify(model.snapshot) !== JSON.stringify(input))
     model.update(() => input);
@@ -431,7 +433,9 @@ export function useKit(
   useEffect(() => {
     // StrictMode unmounts and mounts again: a disposed model is replaced, never reused.
     if (!modelRef.current) {
-      modelRef.current = new BareViewModel(component, modelOf, input, { deliver });
+      modelRef.current = new BareViewModel(component, modelOf, input, {
+        deliver,
+      });
       force();
     }
     const m = modelRef.current;
