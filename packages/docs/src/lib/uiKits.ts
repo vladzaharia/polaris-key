@@ -149,6 +149,7 @@ export const UI_KITS: readonly UiKit[] = [
     tier: "must",
     package: "im.plrs.key:polaris-key-ui",
     status: { ships: true },
+    samples: ["examples/ui/compose-android/", "examples/ui/compose-desktop/"],
     current: { label: "Compose", href: "/docs/build/ui/frameworks/compose/" },
   },
   {
