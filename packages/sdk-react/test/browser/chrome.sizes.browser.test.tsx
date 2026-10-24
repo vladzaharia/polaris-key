@@ -236,7 +236,15 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                 const card = kit
                   .querySelector(".card")!
                   .getBoundingClientRect();
-                if (card.height < innerHeight - 8)
+                // Only when the stage fits the window: a card plus its padding taller than the
+                // window scrolls from the top and cannot be centred (GNOME device-limit at 200 %:
+                // card 868 px, stage 932 px in 900 px).
+                const stage = kit.querySelector<HTMLElement>(".stage");
+                if (
+                  card.height < innerHeight - 8 &&
+                  (!stage ||
+                    stage.getBoundingClientRect().height <= innerHeight)
+                )
                   expect(
                     Math.abs(card.top - (innerHeight - card.bottom)),
                     "card centred",
