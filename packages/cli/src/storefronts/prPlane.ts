@@ -81,18 +81,36 @@ export function prParams(
   return out;
 }
 
-/** Whether `path` is one a `pull-request` with this (already allow-listed) argv may write. */
+/**
+ * Whether `path` is one the pull-request `command` (default `pull-request`) with this (already
+ * allow-listed) argv may write. The Worker's copy (`prPathAllowed`, THREAT-MODEL §9) is the control;
+ * this one refuses first. A rule of another command never applies.
+ */
 export function prPathAllowed(
   store: PrPlaneStore,
   argv: readonly string[],
   path: string,
+  command = "pull-request",
 ): boolean {
-  if (path.length > 512 || path.includes("..") || path.startsWith("/"))
+  if (
+    !prWritesFiles(command) ||
+    path.length > 512 ||
+    path.includes("..") ||
+    path.includes("\\") ||
+    path.startsWith("/")
+  )
     return false;
-  const values = prParams(store.list, "pull-request", argv);
+  const values = prParams(store.list, command, argv);
   return store.paths.some(
-    (rule) => prPathPattern(rule.template, values)?.test(path) ?? false,
+    (rule) =>
+      (rule.command ?? "pull-request") === command &&
+      (prPathPattern(rule.template, values)?.test(path) ?? false),
   );
+}
+
+/** Whether `command` opens a pull request (and so writes files). */
+export function prWritesFiles(command: string): boolean {
+  return command === "pull-request" || command === "formula-pull-request";
 }
 
 /** The ledger natural key of a PR step: `pr:<package>:<version>`. */
@@ -102,7 +120,9 @@ export function prNaturalKey(
   argv: readonly string[],
 ): string | null {
   const values = prParams(store.list, command, argv);
-  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  const [pkg, version] = (store.commandKeys?.[command] ?? store.naturalKey).map(
+    (k) => values[k],
+  );
   return pkg && version ? `pr:${pkg}:${version}` : null;
 }
 
@@ -172,9 +192,10 @@ export function checkPrPaths(
   store: PrPlaneStore,
   argv: readonly string[],
   paths: readonly string[],
+  command = "pull-request",
 ): void {
   for (const p of paths)
-    if (!prPathAllowed(store, argv, p))
+    if (!prPathAllowed(store, argv, p, command))
       throw new Error(
         `Refused by the PR plane: ${p} is not a path ${store.label}'s pull request may write (${store.paths.map((r) => r.template).join(", ")}).`,
       );

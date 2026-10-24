@@ -78,6 +78,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `storefront-ci`      | reads            | `pnpm gen storefront-ci`               |
 | `settings`           | reads            | `pnpm gen settings`                    |
 | `docs-reference`     | reads            | `pnpm gen docs-reference`              |
+| `registry-docs`      | reads            | `pnpm gen registry-docs`               |
 | `readme-work`        | reads and writes | `pnpm gen readme-work`                 |
 | `parity`             | reads            | `pnpm gen parity`                      |
 | `docs-csp`           | writes           | `pnpm gen docs-csp` (named run only)   |

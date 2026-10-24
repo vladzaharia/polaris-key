@@ -73,7 +73,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `settings`       | writes           | `pnpm gen settings`                    |
 | `cli-reference`  | writes           | `pnpm gen cli-reference`               |
 | `docs-reference` | reads and writes | `pnpm gen docs-reference`              |
-| `registry-docs`  | writes           | `pnpm gen registry-docs`               |
+| `registry-docs`  | reads and writes | `pnpm gen registry-docs`               |
 | `readme-work`    | reads and writes | `pnpm gen readme-work`                 |
 | `parity`         | reads            | `pnpm gen parity`                      |
 | `docs-csp`       | reads            | `pnpm gen docs-csp` (named run only)   |

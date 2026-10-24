@@ -1797,10 +1797,17 @@ describe("the PR plane (A-18i; S-15 §4.4, §6.3)", () => {
 
       it("admits its sample of both commands, the identity bound, and only the github pseudo-tool", () => {
         expect(plane.list.tool).toBe(PR_TOOL);
-        expect(Object.keys(plane.list.commands).sort()).toEqual([
-          "pull-request",
-          "status",
-        ]);
+        // Homebrew also declares the formula's pair (A-29.1; its own tests are in prPlane.test.ts).
+        expect(Object.keys(plane.list.commands).sort()).toEqual(
+          plane.store === "homebrew"
+            ? [
+                "formula-pull-request",
+                "formula-status",
+                "pull-request",
+                "status",
+              ]
+            : ["pull-request", "status"],
+        );
         for (const command of ["pull-request", "status"]) {
           expect(
             checkCiCommand(plane.list, command, argv(command), sample.identity),

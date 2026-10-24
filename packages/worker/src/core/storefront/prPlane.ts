@@ -8,8 +8,9 @@
  *   winget    microsoft/winget-pkgs (fork)   manifests/<p>/<Pub>/<Pkg>/<v>/          another repository;
  *                                            <id>.yaml, .installer.yaml,             merge, close, a
  *                                            .locale.<locale>.yaml (schema 1.12.0)   branch delete
- *   homebrew  the outlet's homebrewTap       Casks/<homebrewCask>.rb                 homebrew/cask or any
- *                                                                                    Homebrew repository
+ *   homebrew  the outlet's homebrewTap       Casks/<homebrewCask>.rb (pull-request), homebrew/cask, homebrew/core
+ *                                            Formula/<homebrewFormula>.rb            or any Homebrew
+ *                                            (formula-pull-request; A-29.1)          repository
  *   scoop     the outlet's scoopBucket       bucket/<app>.json                       a ScoopInstaller bucket
  *   flathub   flathub/<appId>                <appId>.yml|.yaml|.json,                flathub/flathub (the
  *                                            <appId>.metainfo.xml                    first submission is a
@@ -51,13 +52,31 @@ export const PR_COMMANDS = ["pull-request", "status"] as const;
 export type PrCommand = (typeof PR_COMMANDS)[number];
 
 /**
- * A file a `pull-request` step may write: a path template whose `{param}` placeholders are the
+ * Every command that opens a pull request and so writes files: `pull-request`, and Homebrew's
+ * `formula-pull-request` (A-29.1: the same `pull-request` argv over `--formula`, so the cask's
+ * argv is unchanged and an older CLI keeps working).
+ */
+export const PR_WRITE_COMMANDS = [
+  "pull-request",
+  "formula-pull-request",
+] as const;
+
+/** Whether `command` is one that opens a pull request (and may report `files`). */
+export function prWritesFiles(command: string): boolean {
+  return (PR_WRITE_COMMANDS as readonly string[]).includes(command);
+}
+
+/**
+ * A file a pull-request step may write: a path template whose `{param}` placeholders are the
  * command's parameters (`{param|segments}`: its dot-separated parts as directories; `{param|first}`:
- * its first character, lower-cased) and `{locale}`, any BCP 47-shaped locale.
+ * its first character, lower-cased) and `{locale}`, any BCP 47-shaped locale. `command` is the
+ * pull-request command the rule belongs to (default `pull-request`): a rule never applies to
+ * another command's argv.
  */
 export interface PrPathRule {
   readonly template: string;
   readonly why: string;
+  readonly command?: string;
 }
 
 export interface PrPlaneStore {
@@ -76,11 +95,13 @@ export interface PrPlaneStore {
   readonly fork: boolean;
   readonly list: CiAllowList;
   /** Command → the storefront operations it performs. */
-  readonly commandOps: Readonly<Record<PrCommand, readonly string[]>>;
+  readonly commandOps: Readonly<Record<string, readonly string[]>>;
   /** What a `pull-request` may write. */
   readonly paths: readonly PrPathRule[];
   /** The parameters of the natural key: the package (cask, app, app id), then the version. */
   readonly naturalKey: readonly [string, string];
+  /** Natural-key parameters of a command that differs from `naturalKey` (Homebrew's formula). */
+  readonly commandKeys?: Readonly<Record<string, readonly [string, string]>>;
   /** Labels the verifier reports: a moderator's request for changes, and validation trouble. */
   readonly labels: {
     readonly needsAuthor: readonly string[];
@@ -103,6 +124,8 @@ const WINGET_ID = String.raw`[A-Za-z0-9][A-Za-z0-9-]{0,31}(?:\.[A-Za-z0-9][A-Za-
 const HOMEBREW_TAP = String.raw`(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}`;
 /** `HOMEBREW_CASK_PATTERN`. */
 const CASK = String.raw`[a-z0-9][a-z0-9.@-]{0,99}`;
+/** `HOMEBREW_FORMULA_PATTERN`, without a `..` (the name is a file name under `Formula/`). */
+const FORMULA = String.raw`(?!.*\.\.)[a-z0-9][a-z0-9.@+_-]{0,99}`;
 /** `SCOOP_BUCKET_PATTERN`: never the ScoopInstaller organisation. */
 const SCOOP_BUCKET = String.raw`(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/(?!\.)[A-Za-z0-9._-]{1,100}`;
 /** A Scoop app name (the manifest's file name in the bucket). */
@@ -223,31 +246,72 @@ export const WINGET_PR: PrPlaneStore = {
 
 // ── Homebrew (own tap) ──────────────────────────────────────────────────────────────────────
 
+const HOMEBREW_REPO = param("repo", HOMEBREW_TAP, {
+  identity: { field: "homebrewTap", match: "equal" },
+});
+
+/** The cask's commands plus the formula's, named `formula-pull-request` and `formula-status`. */
+function withFormula(cask: CiAllowList, formula: CiAllowList): CiAllowList {
+  return {
+    tool: cask.tool,
+    commands: {
+      ...cask.commands,
+      "formula-pull-request": formula.commands["pull-request"]!,
+      "formula-status": formula.commands["status"]!,
+    },
+  };
+}
+
 export const HOMEBREW_PR: PrPlaneStore = {
   store: "homebrew",
   label: "Homebrew tap",
   outletKinds: ["direct"],
   repo: "{homebrewTap}",
   fork: false,
-  list: prCommands(
-    [
-      param("repo", HOMEBREW_TAP, {
-        identity: { field: "homebrewTap", match: "equal" },
-      }),
-    ],
-    [
-      "--cask",
-      param("cask", CASK, {
-        identity: { field: "homebrewCask", match: "equal" },
-      }),
-      "--version",
-      param("version", VERSION),
-    ],
-    "the cask in the product's own tap; never homebrew/cask, which has notability rules and needs the owner",
+  list: withFormula(
+    prCommands(
+      [HOMEBREW_REPO],
+      [
+        "--cask",
+        param("cask", CASK, {
+          identity: { field: "homebrewCask", match: "equal" },
+        }),
+        "--version",
+        param("version", VERSION),
+      ],
+      "the cask in the product's own tap; never homebrew/cask, which has notability rules and needs the owner",
+    ),
+    prCommands(
+      [HOMEBREW_REPO],
+      [
+        "--formula",
+        param("formula", FORMULA, {
+          identity: { field: "homebrewFormula", match: "equal" },
+        }),
+        "--version",
+        param("version", VERSION),
+      ],
+      "the formula in the product's own tap; never homebrew/core, which has notability rules and needs the owner",
+    ),
   ),
-  commandOps: COMMAND_OPS,
-  paths: [{ template: "Casks/{cask}.rb", why: "the cask" }],
+  commandOps: {
+    ...COMMAND_OPS,
+    "formula-pull-request": COMMAND_OPS["pull-request"],
+    "formula-status": COMMAND_OPS.status,
+  },
+  paths: [
+    { template: "Casks/{cask}.rb", why: "the cask" },
+    {
+      command: "formula-pull-request",
+      template: "Formula/{formula}.rb",
+      why: "the formula",
+    },
+  ],
   naturalKey: ["cask", "version"],
+  commandKeys: {
+    "formula-pull-request": ["formula", "version"],
+    "formula-status": ["formula", "version"],
+  },
   labels: NO_LABELS,
   never: [
     [
@@ -264,6 +328,44 @@ export const HOMEBREW_PR: PrPlaneStore = {
       "--repo",
       "homebrew/homebrew-core",
       "--cask",
+      "dice",
+      "--version",
+      "1.0.0",
+    ],
+    [
+      "pull-request",
+      "--repo",
+      "Homebrew/homebrew-core",
+      "--formula",
+      "dice",
+      "--version",
+      "1.0.0",
+    ],
+    [
+      "pull-request",
+      "--repo",
+      "homebrew/homebrew-core",
+      "--formula",
+      "dice",
+      "--version",
+      "1.0.0",
+    ],
+    [
+      "formula-pull-request",
+      "--repo",
+      "vlad/homebrew-games",
+      "--formula",
+      "dice",
+      "--version",
+      "1.0.0",
+    ],
+    [
+      "pull-request",
+      "--repo",
+      "vlad/homebrew-games",
+      "--cask",
+      "dice",
+      "--formula",
       "dice",
       "--version",
       "1.0.0",
@@ -428,17 +530,33 @@ export function prParams(
   return out;
 }
 
-/** Whether `path` is one a `pull-request` with this (already allow-listed) argv may write. */
+/**
+ * Whether `path` is one the pull-request `command` (default `pull-request`) with this (already
+ * allow-listed) argv may write. THE PATH CHECK (A-29.1, THREAT-MODEL §9): no traversal, no leading
+ * `/`, at most 512 characters, and then an exact match of one of the rules of THIS command, whose
+ * parameters come from this command's argv (which `checkCiCommand` bound to the outlet's identity
+ * and to a file-name-shaped pattern). A rule of another command never applies: a formula's argv
+ * cannot write `Casks/`, a cask's cannot write `Formula/`.
+ */
 export function prPathAllowed(
   store: PrPlaneStore,
   argv: readonly string[],
   path: string,
+  command = "pull-request",
 ): boolean {
-  if (path.length > 512 || path.includes("..") || path.startsWith("/"))
+  if (
+    !prWritesFiles(command) ||
+    path.length > 512 ||
+    path.includes("..") ||
+    path.includes("\\") ||
+    path.startsWith("/")
+  )
     return false;
-  const values = prParams(store.list, "pull-request", argv);
+  const values = prParams(store.list, command, argv);
   return store.paths.some(
-    (rule) => prPathPattern(rule.template, values)?.test(path) ?? false,
+    (rule) =>
+      (rule.command ?? "pull-request") === command &&
+      (prPathPattern(rule.template, values)?.test(path) ?? false),
   );
 }
 
@@ -449,7 +567,9 @@ export function prNaturalKey(
   argv: readonly string[],
 ): string | null {
   const values = prParams(store.list, command, argv);
-  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  const [pkg, version] = (store.commandKeys?.[command] ?? store.naturalKey).map(
+    (k) => values[k],
+  );
   return pkg && version ? `pr:${pkg}:${version}` : null;
 }
 
