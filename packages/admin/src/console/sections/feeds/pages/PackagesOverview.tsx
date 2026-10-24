@@ -29,9 +29,8 @@ import {
   ECOSYSTEMS,
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
-  FEED_ACCESS_LABELS,
   OFF_REASONS,
-  accessDisplayLabel,
+  feedAccessText,
   feedHref,
   packageHref,
   type FeedScope,
@@ -84,7 +83,7 @@ function Sep(): React.ReactElement {
   );
 }
 
-/** "Customers" or "Public"; the link says where access changes. */
+/** "Licensed" or "Public"; the link says where access changes. */
 function AccessChip({
   scope,
   feed,
@@ -93,9 +92,7 @@ function AccessChip({
   feed: FeedSummary;
 }): React.ReactElement {
   const Icon = feed.accessMode === "public" ? Globe : Lock;
-  const label = feed.accessDisplay
-    ? accessDisplayLabel(feed.accessDisplay)
-    : (FEED_ACCESS_LABELS[feed.accessMode] ?? feed.accessMode);
+  const label = feedAccessText(feed.accessMode);
   return (
     <Link
       to={feedHref(scope, feed.ecosystem, "settings")}

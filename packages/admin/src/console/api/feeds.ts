@@ -34,7 +34,7 @@ export interface FeedSummary {
   configured: boolean;
   enabled: boolean;
   accessMode: string;
-  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  /** public, licensed, or "licensed, gated per package" (F-34.5). */
   accessDisplay?: string;
   status: "enabled" | "off" | "unavailable";
   reason: FeedOffReason | null;
@@ -90,7 +90,7 @@ export interface FeedsOverviewDto extends FeedsHead {
 export interface FeedSettings {
   enabled: boolean;
   accessMode: string;
-  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  /** public, licensed, or "licensed, gated per package" (F-34.5). */
   accessDisplay?: string;
   namespace: Record<string, unknown>;
   /** Where the namespace came from: provisioned from `.pkey/release`, or set in the console. */
