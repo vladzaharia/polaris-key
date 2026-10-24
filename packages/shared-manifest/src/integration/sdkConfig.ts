@@ -182,7 +182,7 @@ EXPECTED_SERVICES: List[str] = [${facts.services.map(q).join(", ")}]
 CONFIG: Dict[str, Any] = {
     "product_slug": PRODUCT_SLUG,
     "base_url": BASE_URL,
-    "trust": dict(PINNED_KEYS),
+    "pinned_keys": dict(PINNED_KEYS),
     "expected_services": list(EXPECTED_SERVICES),
 ${hasRelease ? `    "update": UpdateClientOptions(pinned_release_keys=dict(PINNED_RELEASE_KEYS)),\n` : ""}}
 `;

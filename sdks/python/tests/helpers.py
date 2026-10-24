@@ -259,13 +259,13 @@ def mock_client(handler) -> httpx.Client:
 
 
 def make_client(
-    handler, *, store=None, trust=None, client=None, version="1.0.0", **kw
+    handler, *, store=None, pinned_keys=None, client=None, version="1.0.0", **kw
 ) -> PolarisKeyClient:
     """A ``PolarisKeyClient`` wired to a mock transport. Nothing here touches the network."""
     c = PolarisKeyClient(
         product_slug=PRODUCT,
         version=version,
-        trust=TRUST if trust is None else trust,
+        pinned_keys=TRUST if pinned_keys is None else pinned_keys,
         base_url=BASE_URL,
         store=store if store is not None else InMemoryStore(PRODUCT),
         client=client if client is not None else mock_client(handler),

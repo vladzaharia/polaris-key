@@ -438,7 +438,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     client = PolarisKeyClient(
         product_slug=t["product"],
         version=(u or {}).get("installed", {}).get("version") or t["initial"]["version"],
-        trust=t["trust"],
+        pinned_keys=t["trust"],
         base_url=t["baseUrl"],
         store=store,
         client=httpx.Client(transport=httpx.MockTransport(transport)),

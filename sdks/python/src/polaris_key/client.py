@@ -144,7 +144,7 @@ class PolarisKeyClient:
         *,
         product_slug: str,
         version: str,
-        trust: Dict[str, str],
+        pinned_keys: Dict[str, str],
         base_url: Optional[str] = None,
         channel: Optional[str] = None,
         store: Optional[Store] = None,
@@ -183,7 +183,7 @@ class PolarisKeyClient:
         self.core = CoreContext(
             product_slug=product_slug,
             version=version,
-            trust=trust,
+            trust=pinned_keys,
             base_url=base_url,
             channel=channel,
             store=store,

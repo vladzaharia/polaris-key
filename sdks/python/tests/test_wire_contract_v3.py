@@ -1446,7 +1446,7 @@ def test_parity_insecure_base_url_is_refused_at_construction(url: str) -> None:
     from polaris_key import PolarisKeyClient
 
     with pytest.raises(InsecureBaseUrlError):
-        PolarisKeyClient(product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=url)
+        PolarisKeyClient(product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url=url)
 
 
 @pytest.mark.parametrize(

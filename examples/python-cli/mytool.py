@@ -24,7 +24,7 @@ VERSION = "1.0.0"
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
 
-CONFIG = {"product_slug": PRODUCT, "trust": TRUST}
+CONFIG = {"product_slug": PRODUCT, "pinned_keys": TRUST}
 
 
 @require_license

@@ -74,7 +74,7 @@ TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.0.0",                 # the HOST APPLICATION's version
-    trust=TRUST,                     # pinned signing keys
+    pinned_keys=TRUST,               # pinned signing keys
     base_url="https://key.plrs.im",  # must be https: (or http://localhost)
 )
 
@@ -275,7 +275,7 @@ Everything below hangs off one `PolarisKeyClient`; the same surface is on `Async
 ```python
 import polaris_key
 
-client = polaris_key.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+client = polaris_key.create(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
 outcome = client.boot(on_stage=lambda state, emits: print(state.stage))
 if outcome.needs_activation:
     ...  # show key entry or sign-in; client.ensure_activated() covers the keyless policies
@@ -383,7 +383,7 @@ import polaris_key
 
 
 async def main(prompt: polaris_key.SignInPrompt) -> None:
-    client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+    client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
     outcome = await client.boot()
     result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
     async for progress in client.update.packs.progress(until_done=True):
@@ -586,7 +586,7 @@ through local → env → remote value → your `fallback`.
 from polaris_key import PolarisKeyClient
 
 client = PolarisKeyClient.create(
-    product_slug="djdl", version="1.0.0", trust=TRUST,
+    product_slug="djdl", version="1.0.0", pinned_keys=TRUST,
     local_overrides={"run.concurrency": 6},  # beats a `default`, never an `enforced`/`hidden`
     env_prefix="PKEY_CONFIG_",               # the default
 )
@@ -635,9 +635,9 @@ Three depths:
    ```python
    from polaris_key.local import create_local_client, create_bundle_client
 
-   client = create_local_client(product_slug="djdl", version="1.0.0", trust=TRUST)
+   client = create_local_client(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
    client, imported = create_bundle_client(bundle=jws, product_slug="djdl",
-                                           version="1.0.0", trust=TRUST)
+                                           version="1.0.0", pinned_keys=TRUST)
    ```
 
    Every network-requiring call raises `PolarisError` with code `local-only` at the DIAL,
@@ -773,7 +773,7 @@ from polaris_key import PolarisKeyClient, UpdateClientOptions, is_undismissable
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.2.0",                       # the installed version
-    trust=TRUST,
+    pinned_keys=TRUST,
     expected_services=["release", "distribution", "update"],
     update=UpdateClientOptions(
         # kid -> raw Ed25519 release key (base64url). PLACEHOLDER: your product's release key.
@@ -855,7 +855,7 @@ from polaris_key import EmbeddedPack, PacksOptions
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.2.0",
-    trust=TRUST,
+    pinned_keys=TRUST,
     expected_services=["release", "distribution", "update"],
     update=UpdateClientOptions(
         pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
@@ -985,7 +985,7 @@ code extension. The pure functions (`verify_release_record(..., delegation=)`,
 
 The SDK follows the wire contract (v4):
 
-- **Pinned keys are terminal.** The `trust=` map you compile into your application is the
+- **Pinned keys are terminal.** The `pinned_keys=` map you compile into your application is the
   only root. Keys learned from a signed trust manifest are merged _under_ it, and a
   manifest that presents a pinned `kid` with different key bytes is rejected whole.
 - **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent from

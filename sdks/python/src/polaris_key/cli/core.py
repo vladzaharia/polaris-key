@@ -360,7 +360,7 @@ def build_client(opts: ClientOptions) -> "PolarisKeyClient":
     return PolarisKeyClient.create(
         product_slug=opts.product,
         version=opts.version,
-        trust=opts.trust,
+        pinned_keys=opts.trust,
         base_url=opts.base_url,
         config_dir=opts.config_dir,
         expected_services=opts.expected_services,

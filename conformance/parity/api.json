@@ -2251,10 +2251,7 @@
         "react": {
           "path": "trust.pinnedKeys"
         },
-        "python": {
-          "spelling": "trust",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "path": "core.pinnedKeys"
         },
@@ -5697,6 +5694,21 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\b(?:pk|polarisKey|usePolarisKey\\(\\))\\.isEntitled\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "trust",
+      "to": "options.pinnedKeys",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\btrust\\s*=\\s*(dict\\(|\\{|PINNED)|\"trust\"\\s*:",
+        "files": [
+          "*.py",
+          "*.rpy",
+          "fence:python",
+          "packages/shared-manifest/src/integration/*.ts"
+        ]
       }
     }
   ]

@@ -52,7 +52,7 @@ def _local(**kw: Any):
     return create_local_client(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=kw.pop("store", None) or InMemoryStore(PRODUCT),
         **kw,
@@ -75,7 +75,7 @@ def test_a_valid_bundle_activates_with_zero_network(tmp_path) -> None:
         now=NOW,
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=FileStore(PRODUCT, str(tmp_path)),
     )
@@ -396,7 +396,7 @@ def test_local_only_rejects_contradictory_options(banned: str) -> None:
         create_local_client(
             product_slug=PRODUCT,
             version="1.0.0",
-            trust=TRUST,
+            pinned_keys=TRUST,
             store=InMemoryStore(PRODUCT),
             **{banned: True},
         )

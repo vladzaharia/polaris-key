@@ -599,7 +599,7 @@ def _client(srv: BlobServer, work: Any, pin: ContainerPack) -> Any:
     c = make_client(
         srv,
         store=store,
-        trust=PRODUCT_TRUST,
+        pinned_keys=PRODUCT_TRUST,
         data_dir=str(work / "data"),
         expected_services=["release", "distribution", "update"],
         update=UpdateClientOptions(
