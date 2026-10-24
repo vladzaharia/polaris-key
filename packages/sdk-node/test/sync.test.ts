@@ -564,7 +564,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
     expect(r.documents.config).toBeUndefined();
 
     expect(client.status().status).toBe("ok");
-    expect(client.getConfig("quality.floor", "fallback")).toBe("fallback");
+    expect(client.config.get("quality.floor", "fallback")).toBe("fallback");
     client.close();
   });
 
@@ -593,7 +593,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
 
     expect(client.status().status).toBe("not-applicable");
     expect(client.isLicensed()).toBe(true);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     // No license document ⇒ no grants, and nothing pretends otherwise.
     expect(client.license.getEntitlements()).toEqual({});
     client.close();

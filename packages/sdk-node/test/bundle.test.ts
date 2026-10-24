@@ -534,7 +534,7 @@ describe("importBundle — the imported install is gated, offline", () => {
       decode<LicenseDoc>(decode<BundleDoc>(FULL.bundleJws).docs.license!)
         .licenseId,
     );
-    expect(client.config.getConfig("run.concurrency", 0)).toBe(4);
+    expect(client.config.get("run.concurrency", 0)).toBe(4);
     expect(client.config.getSecret("proxy.subscriptionUrl")).toBe(
       "https://vpn.example.com/sub/abc",
     );
@@ -557,7 +557,7 @@ describe("importBundle — a config-only bundle grants nothing (D-08, §7)", () 
     expect(client.license.status(NOW).status).toBe("needs-activation");
     expect(client.license.isLicensed(NOW)).toBe(false);
     // …while the settings it carried are live.
-    expect(client.config.getConfig("run.mode", "??")).toBe("air-gapped");
+    expect(client.config.get("run.mode", "??")).toBe("air-gapped");
     expect(decode<BundleDoc>((await store.readCache())!.bundle!).bundleId).toBe(
       "01JBUNDLECONFIGONLY00000",
     );
@@ -597,8 +597,8 @@ describe("importBundle — restart equivalence (§4.1)", () => {
 
     expect(restarted.license.status(NOW)).toEqual(first.license.status(NOW));
     expect(restarted.getSyncState()).toEqual(first.getSyncState());
-    expect(restarted.config.getConfig("run.concurrency", 0)).toBe(
-      first.config.getConfig("run.concurrency", 0),
+    expect(restarted.config.get("run.concurrency", 0)).toBe(
+      first.config.get("run.concurrency", 0),
     );
   });
 });

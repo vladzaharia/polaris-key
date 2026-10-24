@@ -27,6 +27,8 @@ import { toast } from "../../../../ui/toast.js";
 import { SettingRow } from "../../../../ui/settings/SettingRow.js";
 import {
   LEVEL_RANK,
+  listDelta,
+  listDeltaWords,
   confirmLevel,
   fieldUnit,
   formatSettingValue,
@@ -46,6 +48,12 @@ export function specOf(s: PlatformSetting): SettingSpec {
   if (s.kind === "switch") return { kind: "switch" };
   if (s.kind === "choice")
     return { kind: "enum", values: s.options.map((o) => o.value) };
+  if (s.kind === "list")
+    return {
+      kind: "list",
+      of: { kind: "string", maxLength: s.maxLength },
+      max: s.max,
+    };
   // The hosted-asset quotas are gigabytes of images and mirrored files, not megabytes.
   const gib = s.unit === "bytes" && s.key.startsWith("assets.quota.");
   return {
@@ -61,6 +69,7 @@ export function specOf(s: PlatformSetting): SettingSpec {
 export function confirmOf(s: PlatformSetting): SettingConfirm {
   if (s.kind === "switch") return s.confirm;
   if (s.kind === "choice") return { byValue: s.confirm };
+  if (s.kind === "list") return s.confirm;
   return { up: s.confirm.raise, down: s.confirm.lower };
 }
 
@@ -90,6 +99,7 @@ export function isConflict(error: unknown): boolean {
 function parsedDeployValue(
   setting: PlatformSetting,
 ): string | number | undefined {
+  if (setting.kind === "list") return undefined;
   const raw = setting.deployValue?.trim();
   if (!raw) return undefined;
   if (setting.kind === "switch") {
@@ -106,7 +116,7 @@ function parsedDeployValue(
 
 /** What a revert leaves in effect, and where it comes from. */
 export function afterRevert(setting: PlatformSetting): {
-  value: string | number;
+  value: string | number | string[];
   from: "deploy" | "default";
 } {
   const deploy = parsedDeployValue(setting);
@@ -118,9 +128,10 @@ export function afterRevert(setting: PlatformSetting): {
 /** What a change does, one effect per line, for its confirmation. */
 function consequencesOf(
   setting: PlatformSetting,
-  after: string | number,
+  after: string | number | string[],
   propagationSeconds: number,
-): string[] {
+  displayMode?: string,
+): React.ReactNode[] {
   const before = formatPlatformValue(setting, setting.value);
   const next = formatPlatformValue(setting, after);
   const reach =
@@ -128,6 +139,32 @@ function consequencesOf(
       ? `Takes effect within ${propagationSeconds} seconds in both Worker scripts.`
       : `Takes effect within ${propagationSeconds} seconds.`;
   switch (setting.key) {
+    case "identity.reservedDisplayTerms": {
+      const { added, removed } = listDelta(setting.value, after);
+      const names = (t: string[]) => (
+        <>
+          {t.slice(0, 3).map((n, i) => (
+            <React.Fragment key={n}>
+              {i > 0 ? ", " : null}
+              <bdi>{n}</bdi>
+            </React.Fragment>
+          ))}
+          {t.length > 3 ? ` and ${t.length - 3} more` : null}
+        </>
+      );
+      return [
+        <>
+          {added.length > 0 ? <>Adds {names(added)}</> : null}
+          {added.length > 0 && removed.length > 0 ? " · " : null}
+          {removed.length > 0 ? (
+            <>{added.length > 0 ? "removes" : "Removes"} {names(removed)}</>
+          ) : null}
+        </>,
+        "Products whose name uses a listed term show their slug on the sign-in card unless approved.",
+        `New manifests and listings that use one are ${displayMode === "error" ? "refused" : "warned"}.`,
+        `Within ${propagationSeconds} seconds.`,
+      ];
+    }
     case "LAZY_DELTAS":
       return after === "on"
         ? [
@@ -343,10 +380,13 @@ export function EditableRow({
   setting,
   storeAvailable,
   propagationSeconds,
+  displayMode,
 }: {
   setting: PlatformSetting;
   storeAvailable: boolean;
   propagationSeconds: number;
+  /** `IDENTITY_RESERVED_DISPLAY_NAMES` in force: what a listed term does to a new name. */
+  displayMode?: string;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const write = useWriteGate("platform");
@@ -373,7 +413,7 @@ export function EditableRow({
     const restore =
       prev.stored && prev.stored.valid
         ? mutate("patchPlatformSetting", prev.key, {
-            value: prev.stored.value as string | number,
+            value: prev.stored.value as string | number | string[],
             expectedVersion: written.version,
           })
         : mutate("revertPlatformSetting", prev.key, written.version);
@@ -401,7 +441,11 @@ export function EditableRow({
       labels={labelsOf(setting)}
       value={setting.value}
       version={setting.version}
-      commit={setting.kind === "integer" ? "explicit" : "immediate"}
+      commit={
+        setting.kind === "integer" || setting.kind === "list"
+          ? "explicit"
+          : "immediate"
+      }
       source={<SettingSource setting={setting} />}
       disabled={!storeAvailable}
       locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
@@ -412,15 +456,17 @@ export function EditableRow({
           : undefined
       }
       bounds={
-        setting.kind === "integer"
-          ? bytes
-            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
-                setting.key === "LAZY_DELTA_MAX_BYTES"
-                  ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
-                  : ""
-              }`
-            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
-          : undefined
+        setting.kind === "list"
+          ? `One per line, up to ${setting.max}.`
+          : setting.kind === "integer"
+            ? bytes
+              ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
+                  setting.key === "LAZY_DELTA_MAX_BYTES"
+                    ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
+                    : ""
+                }`
+              : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
+            : undefined
       }
       reloadedBy={
         stored ? (
@@ -453,18 +499,26 @@ export function EditableRow({
         setting.key === "identity.keyEntry.limit" ? "per license" : undefined
       }
       consequences={(to) =>
-        consequencesOf(setting, to as string | number, propagationSeconds)
+        consequencesOf(
+          setting,
+          to as string | number | string[],
+          propagationSeconds,
+          displayMode,
+        )
       }
       save={(value, ctx) =>
         mutate("patchPlatformSetting", setting.key, {
-          value: value as string | number,
+          value: value as string | number | string[],
           expectedVersion: ctx.expectedVersion,
           ...(LEVEL_RANK[ctx.level] >= 2 ? { confirm: setting.key } : {}),
         })
       }
       onSaved={(res, done) => {
         const written = res as PlatformSetting;
-        const text = `${setting.label} set to ${fmt(written.value)}`;
+        const text =
+          setting.kind === "list"
+            ? `Reserved terms saved: ${listDeltaWords(setting.value, written.value)}`
+            : `${setting.label} set to ${fmt(written.value)}`;
         if (done.level === "L0")
           toast.success(text, {
             action: { label: "Undo", onClick: () => undo(setting, written) },

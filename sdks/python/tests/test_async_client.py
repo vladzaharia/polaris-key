@@ -53,7 +53,7 @@ def test_methods_are_coroutines_over_the_shared_core() -> None:
         r = await c.license.activate_with_key("k")
         assert r.kind == "ok"
         assert (await c.status()).status == "ok"
-        assert await c.config.get_config("run.concurrency") == 4
+        assert await c.config.get("run.concurrency") == 4
         out = await c.boot(auto_confirm=False)
         assert out.ready
         assert c.supports("license.gate").supported  # cheap reads stay synchronous

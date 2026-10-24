@@ -247,7 +247,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "identity",
     label: "Extra reserved display terms",
     description:
-      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+      "Names to treat like the built-in reserved list.",
     keywords: ["reserved", "display name", "spoofing"],
     docs: "/docs/operate/platform/settings/",
     value: { kind: "list", of: { kind: "string", maxLength: 64 }, max: 64 },

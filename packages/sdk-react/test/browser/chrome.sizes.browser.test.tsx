@@ -52,6 +52,7 @@ const SIZES: readonly {
   { label: "390x844", width: 390, height: 844 },
   { label: "844x390", width: 844, height: 390 },
   { label: "640x360", width: 640, height: 360 },
+  { label: "760x420", width: 760, height: 420 },
   { label: "480x520", width: 480, height: 520 },
   { label: "820x1180", width: 820, height: 1180 },
   { label: "1180x820", width: 1180, height: 820 },
@@ -222,6 +223,44 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                 return r && (r.width < 24 || r.height < 24) ? [label(el)] : [];
               });
               expect(small.join("\n")).toBe("");
+              // A short split's docked bar draws no band across the window (it would cut through
+              // the identity panel), and the card is centred in the window, not left at the top.
+              const bar = kit.querySelector<HTMLElement>(
+                "[data-split] .card > .actions",
+              );
+              if (bar && kit.getAttribute("data-shape") === "short") {
+                expect(
+                  getComputedStyle(bar, "::before").content,
+                  "a band across the window",
+                ).toBe("none");
+                const card = kit
+                  .querySelector(".card")!
+                  .getBoundingClientRect();
+                if (card.height < innerHeight - 8)
+                  expect(
+                    Math.abs(card.top - (innerHeight - card.bottom)),
+                    "card centred",
+                  ).toBeLessThanOrEqual(24);
+              }
+              // Focus order follows the eye (WCAG 2.4.3): on a Mac's short window the buttons of a
+              // row read left to right in DOM order (the primary last), never row-reversed.
+              if (
+                chrome.name === "macos" &&
+                kit.getAttribute("data-shape") === "short"
+              )
+                for (const row of kit.querySelectorAll<HTMLElement>(
+                  ".actions",
+                )) {
+                  const lefts = [...row.querySelectorAll(".btn")]
+                    .filter(visible)
+                    .map((b) => b.getBoundingClientRect())
+                    .filter((r, _i, all) => Math.abs(r.top - all[0]!.top) < 4)
+                    .map((r) => r.left);
+                  expect(
+                    lefts,
+                    "focus order runs against the visual order",
+                  ).toEqual([...lefts].sort((x, y) => x - y));
+                }
               // A landscape window draws the landscape (or the short) layout.
               if (
                 scene.id === "Welcome.default" &&
