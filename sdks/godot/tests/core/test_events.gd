@@ -29,6 +29,11 @@ func run(t: PKeyTestContext) -> void:
 	sdk._emit_state()
 	t.check("events: no license event when the state did not change", events.is_empty(), str(events))
 
+	states.clear()
+	sdk._last_state = {"status": "needs-activation", "stale": true}
+	sdk._emit_state()
+	t.check("events: a non-status state change fires state_changed but no license event", states.size() == 1 and events.is_empty(), str(events))
+
 	var errs: Array = []
 	sdk.store_error.connect(func(e): errs.append(e))
 	sdk.core.store_error.emit({"op": "write", "path": "/secret/path/token", "error": 1, "message": "disk full"})

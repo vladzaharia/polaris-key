@@ -713,7 +713,7 @@ func refresh() -> PackedStringArray:
 	for k in changed:
 		var was: Array = before.get(k, [])
 		var now: Array = next.get(k, [])
-		detail.append({"key": k, "value": now[0] if not now.is_empty() else null, "previous": was[0] if not was.is_empty() else null, "source": String(get_source(k))})
+		detail.append({"key": k, "value": now[0] if not now.is_empty() else null, "previous": was[0] if not was.is_empty() else null, "source": String(get_config_source(k))})
 	config_changes.emit(detail)
 	return changed
 

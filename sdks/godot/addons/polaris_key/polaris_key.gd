@@ -539,7 +539,9 @@ func _emit_state() -> void:
 		var previous = _last_state.get("status")
 		_last_state = s
 		state_changed.emit(s)
-		_emit_event(PKeyConstants.EventKind.LICENSE, {"status": s.get("status"), "previous": previous})
+		# `license` is a STATUS change only (as Swift and Node); state_changed fires on any change.
+		if s.get("status") != previous:
+			_emit_event(PKeyConstants.EventKind.LICENSE, {"status": s.get("status"), "previous": previous})
 
 
 func _start_timer() -> void:
