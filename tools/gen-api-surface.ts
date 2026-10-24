@@ -381,7 +381,27 @@ const KOTLIN_TYPE: Record<string, string> = {
   license: "LicenseClient",
   identity: "IdentityClient",
   events: "PolarisKeyClient",
+  devices: "PolarisKeyClient.DevicesFacet",
+  release: "ReleaseClient",
+  distribution: "DistributionClient",
+  update: "UpdateClient",
+  commerce: "CommerceClient",
+  backend: "BackendClient",
+  packs: "PacksClient",
+  presentation: "PresentationSource",
 };
+/** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
+const KOTLIN_UNASSERTED = new Set([
+  "client.client",
+  "client.playPacks",
+  "client.flavor",
+]);
+/** Entry points that live on the client's companion. */
+const KOTLIN_COMPANION = new Set([
+  "client.create",
+  "client.createLocal",
+  "client.createFromBundle",
+]);
 const KOTLIN_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
   update: "UpdateClientOptions",
@@ -390,13 +410,14 @@ const KOTLIN_OPTION_HOLDER: Record<string, string> = {
 function renderKotlin(api: Api): string {
   const lines: string[] = [];
   for (const r of rowsFor(api, "kotlin")) {
+    if (KOTLIN_UNASSERTED.has(r.id)) continue;
     if (r.kind === "option") {
       const holder =
         r.path !== undefined
           ? (KOTLIN_OPTION_HOLDER[r.path.split(".")[0]!] ?? "CoreOptions")
           : "CoreOptions";
       lines.push(`${holder}::${r.name}  // ${r.id}`);
-    } else if (r.id === "client.create") {
+    } else if (KOTLIN_COMPANION.has(r.id)) {
       lines.push(`PolarisKeyClient.Companion::${r.name}  // ${r.id}`);
     } else if (r.id === "client.boot") {
       lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
@@ -414,14 +435,21 @@ function renderKotlin(api: Api): string {
     ``,
     `import im.plrs.key.config.ConfigClient`,
     `import im.plrs.key.core.CoreOptions`,
+    `import im.plrs.key.core.PresentationSource`,
     `import im.plrs.key.identity.IdentityClient`,
     `import im.plrs.key.license.LicenseClient`,
+    `import im.plrs.key.packs.PacksClient`,
+    `import im.plrs.key.release.DistributionClient`,
+    `import im.plrs.key.release.ReleaseClient`,
+    `import im.plrs.key.sdk.BackendClient`,
+    `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
     ...(api.concepts.some(
       (c) => c.id === "client.boot" && c.sdks?.kotlin?.spelling === "bootHost",
     )
       ? [`import im.plrs.key.sdk.bootHost`]
       : []),
+    `import im.plrs.key.update.UpdateClient`,
     `import im.plrs.key.update.UpdateClientOptions`,
     ``,
     `/** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */`,

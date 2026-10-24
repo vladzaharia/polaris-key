@@ -26,43 +26,43 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.fromConfig` | reserved for SP-32a | | | | | | — |
 | `client.doctor` | reserved for SP-32b | | | | | | — |
 | `client.boot` | `client.boot` | `useBoot` | `client.boot` | `client.boot` | `bootHost` (planned: SP-35b) | `client.boot` | `ui.boot` |
-| `client.discover` | `client.discover` | — | `client.discover` | `client.discover` | — | — | — |
+| `client.discover` | `client.discover` | — | `client.discover` | `client.discover` | `client.discover` | — | — |
 | `client.init` | `client.init` | — | `client.init` | — | — | — | — |
 | `client.portal` | `client.portal` | — | `client.portal` | — | — | — | — |
-| `client.presentation` | `client.presentation` | `usePresentation` | `client.presentation` | `client.presentation` | — | — | — |
-| `client.presentationIcon` | `client.presentationIcon` | — | `client.presentation_icon` | `client.presentationIcon` | — | — | — |
-| `client.presentationSource` | `client.presentationSource` | — | — | `client.presentationSource` | — | — | — |
+| `client.presentation` | `client.presentation` | `usePresentation` | `client.presentation` | `client.presentation` | `client.presentation` | — | — |
+| `client.presentationIcon` | `client.presentationIcon` | — | `client.presentation_icon` | `client.presentationIcon` | `client.presentationIcon` | — | — |
+| `client.presentationSource` | `client.presentationSource` | — | — | `client.presentationSource` | `client.presentationSource` | — | — |
 | `client.discovery` | `client.discovery` | — | `client.discovery` | — | — | — | — |
-| `client.servicesPinned` | `client.servicesPinned` | — | — | — | — | — | — |
+| `client.servicesPinned` | `client.servicesPinned` | — | — | — | `client.servicesPinned` | — | — |
 | `client.hasToken` | `client.hasToken` | — | — | — | — | — | — |
 | `client.ensureActivated` | `client.ensureActivated` | — | `client.ensure_activated` | `client.ensureActivated` | — | — | — |
-| `client.capabilities` | `client.capabilities` | `useCapabilities` | `client.capabilities` | `client.capabilities` | — | — | — |
-| `client.supports` | `client.supports` | — | `client.supports` | `client.supports` | — | — | — |
-| `client.caps` | `client.caps` | — | `client.caps` | `client.caps` | — | — | — |
-| `client.sync` | `client.sync` | — | `client.sync` | `client.sync` | — | — | — |
-| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | `syncState` (planned: SP-35b) | — | — | — |
-| `client.importBundle` | `client.importBundle` | `useImportBundle` | `client.import_bundle` | `client.importBundle` | — | — | — |
-| `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | `client.crashTags` | — | — | — |
-| `client.status` | `client.status` | — | `client.status` | `client.status` | — | — | — |
-| `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | `client.storeStatus` | — | — | — |
-| `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | `client.isLicensed` | — | — | — |
+| `client.capabilities` | `client.capabilities` | `useCapabilities` | `client.capabilities` | `client.capabilities` | `client.capabilities` | — | — |
+| `client.supports` | `client.supports` | — | `client.supports` | `client.supports` | `client.supports` | — | — |
+| `client.caps` | `client.caps` | — | `client.caps` | `client.caps` | `client.caps` | — | — |
+| `client.sync` | `client.sync` | — | `client.sync` | `client.sync` | `client.sync` | — | — |
+| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | `syncState` (planned: SP-35b) | `syncState` (planned: SP-35b) | — | — |
+| `client.importBundle` | `client.importBundle` | `useImportBundle` | `client.import_bundle` | `client.importBundle` | `client.importBundle` | — | — |
+| `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | `client.crashTags` | `client.crashTags` | — | — |
+| `client.status` | `client.status` | — | `client.status` | `client.status` | `client.status` | — | — |
+| `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | `client.storeStatus` | `client.storeStatus` | — | — |
+| `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | `client.isLicensed` | `client.isLicensed` | — | — |
 | `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
-| `client.listDevices` | `client.listDevices` | — | `client.list_devices` | `client.listDevices` | — | — | — |
-| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | `client.deauthorizeDevice` | — | — | — |
-| `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | `client.renameDevice` | — | — | — |
-| `client.startRefresh` | `client.startRefresh` | — | — | `startRefreshLoop` (planned: SP-35b) | — | — | — |
-| `client.close` | `client.close` | — | `client.close` | `client.close` | — | — | — |
+| `client.listDevices` | `client.listDevices` | — | `client.list_devices` | `client.listDevices` | `client.listDevices` | — | — |
+| `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — |
+| `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | `client.renameDevice` | `client.renameDevice` | — | — |
+| `client.startRefresh` | `client.startRefresh` | — | — | `startRefreshLoop` (planned: SP-35b) | `startRefreshLoop` (planned: SP-35b) | — | — |
+| `client.close` | `client.close` | — | `client.close` | `client.close` | `client.close` | — | — |
 | `client.tryDiscover` | — | — | `client.try_discover` | — | — | — | — |
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
 | `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
-| `client.register` | — | — | `client.register` | `client.register` | — | — | — |
-| `client.currentDevice` | — | — | `client.current_device` | `client.currentDevice` | — | — | — |
-| `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | — | — | — |
+| `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
+| `client.currentDevice` | — | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | — | — |
+| `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
 | `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
-| `client.start` | — | — | — | `client.start` | — | — | — |
+| `client.start` | — | — | — | `client.start` | `client.start` | — | — |
 | `client.storeFailure` | — | — | — | `client.storeFailure` | — | — | — |
-| `client.createLocal` | — | — | — | `client.createLocal` | — | — | — |
-| `client.createFromBundle` | — | — | — | `client.createFromBundle` | — | — | — |
+| `client.createLocal` | — | — | — | `client.createLocal` | `client.createLocal` | — | — |
+| `client.createFromBundle` | — | — | — | `client.createFromBundle` | `client.createFromBundle` | — | — |
 | `client.fromBundle` | — | — | — | `client.fromBundle` | — | — | — |
 | `client.options` | — | — | — | `client.options` | — | — | — |
 | `client.bundleVersion` | — | — | — | `client.bundleVersion` | — | — | — |
@@ -71,6 +71,14 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.syncIfStale` | — | — | — | `client.syncIfStale` | — | — | — |
 | `client.installUpdateBootHooks` | — | — | — | `client.installUpdateBootHooks` | — | — | — |
 | `client.configureUpdate` | — | — | — | `client.configureUpdate` | — | — | — |
+| `client.licenseChanges` | — | — | — | — | `client.licenseChanges` | — | — |
+| `client.channelChoices` | — | — | — | — | `client.channelChoices` | — | — |
+| `client.setChannel` | — | — | — | — | `client.setChannel` | — | — |
+| `client.startInBackground` | — | — | — | — | `client.startInBackground` | — | — |
+| `client.licenseState` | — | — | — | — | `client.licenseState` | — | — |
+| `client.client` | — | — | — | — | `client.client` | — | — |
+| `client.playPacks` | — | — | — | — | `client.playPacks` | — | — |
+| `client.flavor` | — | — | — | — | `client.flavor` | — | — |
 
 ## options
 
@@ -106,23 +114,24 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
 | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `enforced` (planned: SP-35) | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
 | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35) | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
-| `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
-| `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
+| `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | planned (U-07) | `set_value` | `config.resolve` |
+| `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | planned (U-07) | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
-| `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | — | — | — |
-| `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | — | — | — |
-| `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | `config.fetchSchema` | — | — | — |
+| `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | — | — |
+| `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | — | — |
+| `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | `config.fetchSchema` | `config.fetchSchema` | — | — |
 | `config.isLocked` | `config.isLocked` | — | — | `config.isLocked` | — | — | — |
 | `config.bool` | — | — | — | `config.bool` | — | — | — |
 | `config.int` | — | — | — | `config.int` | — | — | — |
 | `config.double` | — | — | — | `config.double` | — | — | — |
 | `config.string` | — | — | — | `config.string` | — | — | — |
 | `config.decode` | — | — | — | `config.decode` | — | — | — |
-| `config.fetchCatalog` | — | — | — | `config.fetchCatalog` | — | — | — |
+| `config.fetchCatalog` | — | — | — | `config.fetchCatalog` | `config.fetchCatalog` | — | — |
 | `config.configChanges` | — | — | — | `config.configChanges` | — | — | — |
 | `config.setting.changes` | — | — | — | `config.setting.changes` | — | — | — |
 | `config.setting.current` | — | — | — | `config.setting.current` | — | — | — |
+| `config.catalog` | — | — | — | — | `config.catalog` | — | — |
 
 ## license
 
@@ -130,16 +139,16 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
-| `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | — | — | — |
-| `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | — | — | — |
-| `license.entitledChannels` | `license.entitledChannels` | — | `license.entitled_channels` | `license.entitledChannels` | — | — | — |
-| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | `profile` (planned: SP-35b) | — | — | — |
-| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | `licenseId` (planned: SP-35b) | — | — | — |
-| `license.enroll` | `license.enroll` | — | `license.enroll` | `license.enroll` | — | — | — |
-| `license.deactivate` | `license.deactivate` | — | `license.deactivate` | `license.deactivate` | — | — | — |
-| `license.getLicenseUser` | — | — | `license.get_license_user` | `licenseUser` (planned: SP-35b) | — | — | — |
-| `license.status` | `license.status` | `useLicense` | `license.status` | `license.status` | — | — | — |
-| `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | `license.isLicensed` | — | — | — |
+| `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | `license.activation` | — | — |
+| `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | `license.licenseInfo` | — | — |
+| `license.entitledChannels` | `license.entitledChannels` | — | `license.entitled_channels` | `license.entitledChannels` | `license.entitledChannels` | — | — |
+| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | `profile` (planned: SP-35b) | `profile` (planned: SP-35b) | — | — |
+| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | `licenseId` (planned: SP-35b) | `licenseId` (planned: SP-35b) | — | — |
+| `license.enroll` | `license.enroll` | — | `license.enroll` | `license.enroll` | `license.enroll` | — | — |
+| `license.deactivate` | `license.deactivate` | — | `license.deactivate` | `license.deactivate` | `license.deactivate` | — | — |
+| `license.getLicenseUser` | — | — | `license.get_license_user` | `licenseUser` (planned: SP-35b) | `licenseUser` (planned: SP-35b) | — | — |
+| `license.status` | `license.status` | `useLicense` | `license.status` | `license.status` | `license.status` | — | — |
+| `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | `license.isLicensed` | `license.isLicensed` | — | — |
 
 ## entitlements
 
@@ -163,16 +172,16 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.current` | `identity.current` | — | `identity.current` | `identity.current` | — | — | — |
 | `identity.forget` | `identity.forget` | — | — | — | — | — | — |
 | `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | `identity.signInWithBrowser` | — | — | — |
-| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | `identity.beginSignIn` | — | — | — |
-| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | `identity.pollSignIn` | — | — | — |
-| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | `identity.waitForSignIn` | — | — | — |
+| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | `identity.beginSignIn` | `identity.beginSignIn` | — | — |
+| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | `identity.pollSignIn` | `identity.pollSignIn` | — | — |
+| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | `identity.waitForSignIn` | `identity.waitForSignIn` | — | — |
 | `identity.acceptSignIn` | — | — | `identity.accept_sign_in` | `identity.acceptSignIn` | — | — | — |
 
 ## events
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `licenseChanges` (planned: SP-35b) | planned (SP-35b) | — |
+| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `events` | planned (SP-35b) | — |
 
 ## cloudSync
 
@@ -199,95 +208,98 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `devices.register` | `devices.register` | — | `devices.register` | — | — | — | — |
-| `devices.list` | `devices.list` | — | `devices.list` | `devices.list` | — | — | — |
-| `devices.rename` | `devices.rename` | — | `devices.rename` | `devices.rename` | — | — | — |
-| `devices.deauthorize` | `devices.deauthorize` | — | `devices.deauthorize` | `devices.deauthorize` | — | — | — |
-| `devices.attest` | — | — | — | `devices.attest` | — | — | — |
-| `devices.attestSupport` | — | — | — | `devices.attestSupport` | — | — | — |
+| `devices.register` | `devices.register` | — | `devices.register` | — | `devices.register` | — | — |
+| `devices.list` | `devices.list` | — | `devices.list` | `devices.list` | `devices.list` | — | — |
+| `devices.rename` | `devices.rename` | — | `devices.rename` | `devices.rename` | `devices.rename` | — | — |
+| `devices.deauthorize` | `devices.deauthorize` | — | `devices.deauthorize` | `devices.deauthorize` | `devices.deauthorize` | — | — |
+| `devices.attest` | — | — | — | `devices.attest` | `devices.attest` | — | — |
+| `devices.attestSupport` | — | — | — | `devices.attestSupport` | `attestUnavailable` (planned: SP-35b) | — | — |
 
 ## release
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `release.fetch` | `release.fetch` | — | `release.fetch` | `update.fetch` | — | — | — |
-| `release.changelog` | `release.changelog` | `useChangelog` | `release.changelog` | `release.changelog` | — | — | — |
-| `release.installUrl` | `release.installUrl` | — | `release.install_url` | `installURL` (planned: SP-35b) | — | — | — |
-| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | `downloadURL` (planned: SP-35b) | — | — | — |
+| `release.fetch` | `release.fetch` | — | `release.fetch` | `update.fetch` | `release.fetch` | — | — |
+| `release.changelog` | `release.changelog` | `useChangelog` | `release.changelog` | `release.changelog` | `release.changelog` | — | — |
+| `release.installUrl` | `release.installUrl` | — | `release.install_url` | `installURL` (planned: SP-35b) | `release.installUrl` | — | — |
+| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | `downloadURL` (planned: SP-35b) | `release.downloadUrl` | — | — |
+| `release.verifyRecord` | — | — | — | — | `release.verifyRecord` | — | — |
 
 ## update
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | — | — | — |
+| `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | `offers` | — | — |
 | `update.decidable` | `update.decidable` | — | — | — | — | — | — |
-| `update.install` | `update.install` | — | `update.install` | `update.install` | — | — | — |
-| `update.check` | `update.check` | `useLatestVersion` | `update.check` | `update.check` | — | — | — |
-| `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | — | — | — |
-| `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | `update.feedUrl` | — | — | — |
-| `update.decide` | `update.decide` | `useUpdateDecision` | `update.decide` | `update.decide` | — | — | — |
+| `update.install` | `update.install` | — | `update.install` | `update.install` | `update.install` | — | — |
+| `update.check` | `update.check` | `useLatestVersion` | `update.check` | `update.check` | `update.check` | — | — |
+| `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | `update.appcastUrl` | — | — |
+| `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | `update.feedUrl` | `update.feedUrl` | — | — |
+| `update.decide` | `update.decide` | `useUpdateDecision` | `update.decide` | `update.decide` | `update.decide` | — | — |
 | `update.feed` | `update.feed` | — | `update.feed` | `update.feed` | — | — | — |
-| `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | `update.releaseRecord` | — | — | — |
-| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | `buildURL` (planned: SP-35b) | — | — | — |
+| `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | `update.releaseRecord` | `update.releaseRecord` | — | — |
+| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | `buildURL` (planned: SP-35b) | `update.buildUrl` | — | — |
 | `update.ensureDiscovery` | `update.ensureDiscovery` | — | — | — | — | — | — |
 | `update.reload` | `update.reload` | — | `update.reload` | — | — | — | — |
 | `update.useDriver` | `update.useDriver` | — | `set_driver` | — | — | — | — |
 | `update.confirmBoot` | `update.confirmBoot` | — | `update.confirm_boot` | `client.confirmBoot` | — | — | — |
 | `update.markBootAttempt` | `update.markBootAttempt` | — | `update.mark_boot_attempt` | `client.markBootAttempt` | — | — | — |
-| `update.channelFeed` | — | — | — | `update.channelFeed` | — | — | — |
+| `update.channelFeed` | — | — | — | `update.channelFeed` | `update.channelFeed` | — | — |
 | `update.feedHeaders` | — | — | — | `update.feedHeaders` | — | — | — |
+| `update.reportedOutlet` | — | — | — | — | `update.reportedOutlet` | — | — |
 
 ## distribution
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `distribution.downloadModel` | `distribution.downloadModel` | — | `distribution.download_model` | `distribution.downloadModel` | — | — | — |
-| `distribution.thisPlatform` | `distribution.thisPlatform` | — | `distribution.this_platform` | `distribution.thisPlatform` | — | — | — |
+| `distribution.downloadModel` | `distribution.downloadModel` | — | `distribution.download_model` | `distribution.downloadModel` | `distribution.downloadModel` | — | — |
+| `distribution.thisPlatform` | `distribution.thisPlatform` | — | `distribution.this_platform` | `distribution.thisPlatform` | `distribution.thisPlatform` | — | — |
 
 ## commerce
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | — | — | — |
-| `commerce.claim` | `commerce.claim` | — | `commerce.claim` | `commerce.claim` | — | — | — |
-| `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | `commerce.claimSteam` | — | — | — |
-| `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | `commerce.claimAppStore` | — | — | — |
-| `commerce.claimPlay` | `commerce.claimPlay` | — | `commerce.claim_play` | `commerce.claimPlay` | — | — | — |
-| `commerce.hiddenHere` | — | — | `commerce.hidden_here` | — | — | — | — |
-| `commerce.isUnlocked` | — | — | `commerce.is_unlocked` | — | — | — | — |
+| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | `commerce.binding` | — | — |
+| `commerce.claim` | `commerce.claim` | — | `commerce.claim` | `commerce.claim` | `commerce.claim` | — | — |
+| `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | `commerce.claimSteam` | `commerce.claimSteam` | — | — |
+| `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | `commerce.claimAppStore` | `commerce.claimAppStore` | — | — |
+| `commerce.claimPlay` | `commerce.claimPlay` | — | `commerce.claim_play` | `commerce.claimPlay` | `commerce.claimPlay` | — | — |
+| `commerce.hiddenHere` | — | — | `commerce.hidden_here` | — | `commerce.hiddenHere` | — | — |
+| `commerce.isUnlocked` | — | — | `commerce.is_unlocked` | — | `commerce.isUnlocked` | — | — |
 | `commerce.purchase` | — | — | — | `commerce.purchase` | — | — | — |
 | `commerce.restore` | — | — | — | `commerce.restore` | — | — | — |
 | `commerce.storeProducts` | — | — | — | `commerce.storeProducts` | — | — | — |
 | `commerce.startTransactionUpdates` | — | — | — | `commerce.startTransactionUpdates` | — | — | — |
 | `commerce.stopTransactionUpdates` | — | — | — | `commerce.stopTransactionUpdates` | — | — | — |
 | `commerce.listening` | — | — | — | `commerce.listening` | — | — | — |
-| `commerce.products` | — | — | — | `commerce.products` | — | — | — |
+| `commerce.products` | — | — | — | `commerce.products` | `commerce.products` | — | — |
 
 ## packs
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `packs.ensure` | `packs.ensure` | — | `packs.ensure` | `packs.ensure` | — | — | — |
-| `packs.state` | `packs.state` | — | `packs.state` | `packs.state` | — | — | — |
-| `packs.path` | `packs.path` | — | `packs.path` | `packs.path` | — | — | — |
-| `packs.registerHandler` | `packs.registerHandler` | — | `packs.register_handler` | `packs.registerHandler` | — | — | — |
-| `packs.on` | `packs.on` | — | `packs.on` | `packs.on` | — | — | — |
-| `packs.isAvailable` | `packs.isAvailable` | — | `packs.is_available` | `packs.isAvailable` | — | — | — |
-| `packs.packFor` | `packs.packFor` | — | `packs.pack_for` | `packs.packFor` | — | — | — |
-| `packs.rollback` | `packs.rollback` | — | `packs.rollback` | `packs.rollback` | — | — | — |
-| `packs.confirm` | `packs.confirm` | — | `packs.confirm` | `packs.confirm` | — | — | — |
+| `packs.ensure` | `packs.ensure` | — | `packs.ensure` | `packs.ensure` | `packs.ensure` | — | — |
+| `packs.state` | `packs.state` | — | `packs.state` | `packs.state` | `packs.state` | — | — |
+| `packs.path` | `packs.path` | — | `packs.path` | `packs.path` | `packs.path` | — | — |
+| `packs.registerHandler` | `packs.registerHandler` | — | `packs.register_handler` | `packs.registerHandler` | `packs.registerHandler` | — | — |
+| `packs.on` | `packs.on` | — | `packs.on` | `packs.on` | `packs.on` | — | — |
+| `packs.isAvailable` | `packs.isAvailable` | — | `packs.is_available` | `packs.isAvailable` | `packs.isAvailable` | — | — |
+| `packs.packFor` | `packs.packFor` | — | `packs.pack_for` | `packs.packFor` | `packs.packFor` | — | — |
+| `packs.rollback` | `packs.rollback` | — | `packs.rollback` | `packs.rollback` | `packs.rollback` | — | — |
+| `packs.confirm` | `packs.confirm` | — | `packs.confirm` | `packs.confirm` | `packs.confirm` | — | — |
 | `packs.progress` | — | — | — | `packs.progress` | — | — | — |
+| `packs.estimate` | — | — | — | — | `packs.estimate` | — | — |
 
 ## presentation
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `presentation.subscribe` | `presentation.subscribe` | — | `presentation.subscribe` | `presentation.subscribe` | — | — | — |
+| `presentation.subscribe` | `presentation.subscribe` | — | `presentation.subscribe` | `presentation.subscribe` | `presentation.subscribe` | — | — |
 | `presentation.load` | `presentation.load` | — | — | — | — | — | — |
-| `presentation.icon` | `presentation.icon` | — | `presentation.icon` | `presentation.icon` | — | — | — |
+| `presentation.icon` | `presentation.icon` | — | `presentation.icon` | `presentation.icon` | `presentation.icon` | — | — |
 | `presentation.iconFor` | `presentation.iconFor` | — | — | — | — | — | — |
 | `presentation.loadCached` | — | — | `presentation.load_cached` | — | — | — | — |
-| `presentation.current` | `presentation.current` | — | `presentation.current` | `presentation.current` | — | — | — |
+| `presentation.current` | `presentation.current` | — | `presentation.current` | `presentation.current` | `presentation.current` | — | — |
 
 ## boot
 
@@ -306,6 +318,16 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `hooks.useLicenseGate` | — | `useLicenseGate` | — | — | — | — | — |
 | `hooks.usePolarisFetch` | — | `usePolarisFetch` | — | — | — | — | — |
 | `hooks.screenFor` | — | `hooks.screenFor` | — | — | — | — | — |
+
+## backend
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `backend.origins` | — | — | — | — | `backend.origins` | — | — |
+| `backend.headers` | — | — | — | — | `backend.headers` | — | — |
+| `backend.install` | — | — | — | — | `backend.install` | — | — |
+| `backend.interceptor` | — | — | — | — | `backend.interceptor` | — | — |
+| `backend.networkInterceptor` | — | — | — | — | `backend.networkInterceptor` | — | — |
 
 ## Removed in 0.9
 
