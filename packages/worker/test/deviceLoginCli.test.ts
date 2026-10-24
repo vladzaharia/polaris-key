@@ -185,10 +185,9 @@ describe("POST /api/device-login/start with purpose cli", () => {
     expect(portal.status).toBe(404);
   });
 
-  it("refuses packages:read, a missing scope and an unknown purpose with 422 bad_request", async () => {
+  it("refuses a missing scope and an unknown purpose with 422 bad_request", async () => {
     const { env, db } = await setup();
     for (const body of [
-      { ...CLI_START, scope: "packages:read" },
       { purpose: "cli", client: CLI_START.client },
       { ...CLI_START, scope: "root" },
       { purpose: "admin", scope: "admin" },
@@ -590,5 +589,110 @@ describe("the poll of a CLI record", () => {
       "SELECT COUNT(*) AS n FROM account_tokens WHERE scope = 'admin'",
     );
     expect(n!.n).toBe(0);
+  });
+});
+
+// F-37.1: a `packages:read` request, decided in the portal.
+const PKG_START = { ...CLI_START, scope: "packages:read" };
+
+describe("a packages:read CLI request", () => {
+  it("is approved in the portal, and the poll mints packages:read only, with the origin and feeds", async () => {
+    const { env, db } = await setup();
+    const ada = await signIn(env, db, "ada@example.com");
+    const s = await startCli(env, db, PKG_START);
+    expect(s.approveUrl).toBe(
+      `https://key.plrs.im/#/account/approve?code=${s.code}`,
+    );
+    expect(s.qr).toMatch(/^data:image\/svg\+xml/);
+    expect(s).toMatchObject({ purpose: "cli", scope: "packages:read" });
+    const lookup = await call(env, db, "POST", "/api/device-login/lookup", {
+      session: ada,
+      body: { code: s.code },
+    });
+    expect(lookup.status).toBe(200);
+    expect(await lookup.json()).toMatchObject({
+      request: {
+        scope: "packages:read",
+        client: { host: "ada-mbp.local" },
+      },
+    });
+    expect((await portalApprove(env, db, ada, s.code)).status).toBe(200);
+    const res = await poll(env, db, s);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      status: "approved",
+      scope: "packages:read",
+      label: "pkey on ada-mbp.local",
+      username: expect.any(String),
+      registryOrigin: null, // the test env configures no registry host
+      feeds: [],
+    });
+    expect(body.token).toMatch(/^pkeyp_/);
+    expect(res.headers.get("set-cookie") ?? "").not.toContain(
+      `${PORTAL_COOKIE}=`,
+    );
+    expect(
+      await resolvePersonalToken(
+        env,
+        db,
+        body.token as string,
+        "packages:read",
+        NOW,
+      ),
+    ).not.toBeNull();
+    expect(
+      await resolvePersonalToken(env, db, body.token as string, "admin", NOW),
+    ).toBeNull();
+    const rows = await db.all<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ? AND scope = 'admin'",
+      ada.accountId,
+    );
+    expect(rows[0]!.n).toBe(0);
+    expect((await poll(env, db, s)).status).toBe(410);
+  });
+
+  it("is refused by the portal when the record is admin, and by the console when it is packages", async () => {
+    const { env, db } = await setup();
+    const ada = await signIn(env, db, "ada@example.com");
+    const admin = await startCli(env, db);
+    expect((await portalApprove(env, db, ada, admin.code)).status).toBe(410);
+    const pkg = await startCli(env, db, PKG_START, "203.0.113.8");
+    expect(await cliDeviceLoginLookup(env, pkg.code, NOW)).toBeNull();
+    expect(
+      await cliDeviceLoginDecide(
+        env,
+        { code: pkg.code, accountId: ada.accountId, decision: "approve" },
+        NOW,
+      ),
+    ).toEqual({ ok: false });
+    // Still the portal's to decide.
+    expect((await portalApprove(env, db, ada, pkg.code)).status).toBe(200);
+  });
+
+  it("answers only the feeds the account's licences reach", async () => {
+    const { env, db } = await setup();
+    const feed = { ecosystem: "npm", product: "djdl" };
+    const { handleDeviceLoginPoll } =
+      await import("../src/services/identity/portal/deviceLogin.js");
+    const ada = await signIn(env, db, "ada@example.com");
+    const s = await startCli(env, db, PKG_START);
+    expect((await portalApprove(env, db, ada, s.code)).status).toBe(200);
+    const seen: string[] = [];
+    const res = await handleDeviceLoginPoll(
+      new Request(`https://key.plrs.im/api/device-login/${s.id}`, {
+        headers: { cookie: s.binding },
+      }),
+      env,
+      db,
+      s.id,
+      NOW,
+      async (accountId) => {
+        seen.push(accountId);
+        return [feed];
+      },
+    );
+    expect(((await res.json()) as { feeds: unknown[] }).feeds).toEqual([feed]);
+    expect(seen).toEqual([ada.accountId]);
   });
 });

@@ -13360,8 +13360,15 @@ paths:
         ST-34.5: the body may be `{purpose: "cli", scope: "admin", client: {name, version, host}}`
         (`pkey login`). A CLI start skips the portal-off gate, answers `approveUrl`
         `/manage/device?code=` with `qr` null, and only the console can decide it: the portal's
-        `lookup` and `approve` answer its code `410 expired`. `scope` other than `admin` is
-        `422 bad_request`.
+        `lookup` and `approve` answer its code `410 expired`.
+
+
+        F-37.1: `scope` may also be `packages:read` (`pkey feeds setup --write`). That request is
+        the portal's to decide in Polaris Locker (`approveUrl` is `#/account/approve?code=`, `qr`
+        is set, the console never sees it), with the portal's step-up for a new place and its
+        new-device notice. The poll mints a `packages:read` token (90 days, label `pkey on <host>`)
+        and also answers `registryOrigin`, `username` and `feeds` (the account's readable private
+        feeds, as `GET /api/me/tokens` lists them). Any other `scope` is `422 bad_request`.
       requestBody:
         required: false
         content:
@@ -13370,7 +13377,7 @@ paths:
               type: object
               properties:
                 purpose: { type: string, enum: [portal, cli], default: portal }
-                scope: { type: string, enum: [admin] }
+                scope: { type: string, enum: [admin, "packages:read"] }
                 client:
                   type: object
                   properties:
@@ -13414,7 +13421,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "422":
-          description: "`bad_request`: an unknown purpose, or a `cli` start whose scope is not `admin`."
+          description: "`bad_request`: an unknown purpose, or a `cli` start whose scope is not `admin` or `packages:read`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13618,9 +13625,25 @@ paths:
                           type: string,
                           description: "`pkeyp_…`; never stored.",
                         }
-                      scope: { type: string, enum: [admin] }
+                      scope: { type: string, enum: [admin, "packages:read"] }
                       expiresAt: { type: integer, description: "Unix seconds." }
                       label: { type: string }
+                      registryOrigin:
+                        {
+                          type: string,
+                          description: "`packages:read` only: the registry host.",
+                        }
+                      username:
+                        {
+                          type: string,
+                          description: "`packages:read` only: the registry username the token pairs with.",
+                        }
+                      feeds:
+                        {
+                          type: array,
+                          items: { type: object },
+                          description: "`packages:read` only: the account's readable private feeds, as `GET /api/me/tokens` lists them.",
+                        }
         "403":
           description: "`account_disabled`: the approving account can no longer sign in."
           content:

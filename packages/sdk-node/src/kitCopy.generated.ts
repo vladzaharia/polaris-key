@@ -791,6 +791,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "Enter the code shown on the other device.",
     "signin.approve.codeLabel": "Code",
     "signin.approve.look": "Find it",
+    "signin.approve.askPackages": "pkey on {host} asks for a packages token.",
     "signin.approve.askBody": "Code {code} asks to sign in to your account.",
     "signin.approve.where": "Where",
     "signin.approve.when": "When",
@@ -2414,6 +2415,7 @@ export const KIT_COPY: Readonly<
       "Geben Sie den Code ein, der auf dem anderen Gerät angezeigt wird.",
     "signin.approve.codeLabel": "Code",
     "signin.approve.look": "Suchen",
+    "signin.approve.askPackages": "pkey auf {host} bittet um ein Paket-Token.",
     "signin.approve.askBody":
       "Code {code} möchte sich bei Ihrem Konto anmelden.",
     "signin.approve.where": "Ort",
@@ -4067,6 +4069,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "Saisissez le code affiché sur l’autre appareil.",
     "signin.approve.codeLabel": "Code",
     "signin.approve.look": "Rechercher",
+    "signin.approve.askPackages":
+      "pkey sur {host} demande un jeton de paquets.",
     "signin.approve.askBody":
       "Le code {code} demande à se connecter à votre compte.",
     "signin.approve.where": "Lieu",
@@ -5709,6 +5713,7 @@ export const KIT_COPY: Readonly<
       "Escribe el código que se muestra en el otro dispositivo.",
     "signin.approve.codeLabel": "Código",
     "signin.approve.look": "Buscar",
+    "signin.approve.askPackages": "pkey en {host} pide un token de paquetes.",
     "signin.approve.askBody":
       "El código {code} pide iniciar sesión en tu cuenta.",
     "signin.approve.where": "Lugar",
@@ -7340,6 +7345,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "Digite o código mostrado no outro dispositivo.",
     "signin.approve.codeLabel": "Código",
     "signin.approve.look": "Buscar",
+    "signin.approve.askPackages": "O pkey em {host} pede um token de pacotes.",
     "signin.approve.askBody": "O código {code} pede para entrar na sua conta.",
     "signin.approve.where": "Local",
     "signin.approve.when": "Quando",
@@ -8945,6 +8951,8 @@ export const KIT_COPY: Readonly<
       "Inserisci il codice mostrato sull'altro dispositivo.",
     "signin.approve.codeLabel": "Codice",
     "signin.approve.look": "Cerca",
+    "signin.approve.askPackages":
+      "pkey su {host} chiede un token per i pacchetti.",
     "signin.approve.askBody":
       "Il codice {code} chiede di accedere al tuo account.",
     "signin.approve.where": "Luogo",
@@ -10579,6 +10587,8 @@ export const KIT_COPY: Readonly<
       "もう一方のデバイスに表示されているコードを入力してください。",
     "signin.approve.codeLabel": "コード",
     "signin.approve.look": "検索",
+    "signin.approve.askPackages":
+      "{host} の pkey がパッケージトークンを求めています。",
     "signin.approve.askBody":
       "コード {code} がアカウントへのサインインを求めています。",
     "signin.approve.where": "場所",
@@ -12183,6 +12193,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "다른 기기에 표시된 코드를 입력하세요.",
     "signin.approve.codeLabel": "코드",
     "signin.approve.look": "찾기",
+    "signin.approve.askPackages": "{host}의 pkey가 패키지 토큰을 요청했어요.",
     "signin.approve.askBody": "코드 {code}(으)로 계정 로그인을 요청했어요.",
     "signin.approve.where": "위치",
     "signin.approve.when": "시간",
@@ -13703,6 +13714,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "输入另一台设备上显示的代码。",
     "signin.approve.codeLabel": "代码",
     "signin.approve.look": "查找",
+    "signin.approve.askPackages": "{host} 上的 pkey 请求软件包令牌。",
     "signin.approve.askBody": "代码 {code} 请求登录你的账户。",
     "signin.approve.where": "位置",
     "signin.approve.when": "时间",

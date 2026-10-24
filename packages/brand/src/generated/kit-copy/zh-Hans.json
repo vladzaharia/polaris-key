@@ -670,6 +670,7 @@
   "signin.approve.enter": "输入另一台设备上显示的代码。",
   "signin.approve.codeLabel": "代码",
   "signin.approve.look": "查找",
+  "signin.approve.askPackages": "{host} 上的 pkey 请求软件包令牌。",
   "signin.approve.askBody": "代码 {code} 请求登录你的账户。",
   "signin.approve.where": "位置",
   "signin.approve.when": "时间",

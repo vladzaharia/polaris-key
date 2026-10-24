@@ -670,6 +670,7 @@
   "signin.approve.enter": "다른 기기에 표시된 코드를 입력하세요.",
   "signin.approve.codeLabel": "코드",
   "signin.approve.look": "찾기",
+  "signin.approve.askPackages": "{host}의 pkey가 패키지 토큰을 요청했어요.",
   "signin.approve.askBody": "코드 {code}(으)로 계정 로그인을 요청했어요.",
   "signin.approve.where": "위치",
   "signin.approve.when": "시간",

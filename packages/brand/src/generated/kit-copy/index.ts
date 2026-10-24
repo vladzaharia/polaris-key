@@ -684,6 +684,7 @@ export type KitCopyKey =
   | "signin.approve.enter"
   | "signin.approve.codeLabel"
   | "signin.approve.look"
+  | "signin.approve.askPackages"
   | "signin.approve.askBody"
   | "signin.approve.where"
   | "signin.approve.when"

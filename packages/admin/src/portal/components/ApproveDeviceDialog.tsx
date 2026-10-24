@@ -226,7 +226,11 @@ export function ApproveDeviceDialog({
         <>
           <DialogBody className="space-y-4">
             <p className="text-fg">
-              {t("signin.approve.askBody", { code: phase.request.code })}
+              {phase.request.scope === "packages:read" && phase.request.client
+                ? t("signin.approve.askPackages", {
+                    host: phase.request.client.host,
+                  })
+                : t("signin.approve.askBody", { code: phase.request.code })}
             </p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               <dt className="text-fg-muted">{t("signin.approve.device")}</dt>

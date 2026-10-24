@@ -670,6 +670,7 @@
   "signin.approve.enter": "もう一方のデバイスに表示されているコードを入力してください。",
   "signin.approve.codeLabel": "コード",
   "signin.approve.look": "検索",
+  "signin.approve.askPackages": "{host} の pkey がパッケージトークンを求めています。",
   "signin.approve.askBody": "コード {code} がアカウントへのサインインを求めています。",
   "signin.approve.where": "場所",
   "signin.approve.when": "日時",

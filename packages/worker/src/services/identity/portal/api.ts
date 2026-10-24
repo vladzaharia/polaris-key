@@ -1917,7 +1917,14 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
     path: "device-login/:code",
     auth: "none",
     handler: (c, m) =>
-      handleDeviceLoginPoll(c.req, c.env, c.db, m.params.code!, c.now),
+      handleDeviceLoginPoll(
+        c.req,
+        c.env,
+        c.db,
+        m.params.code!,
+        c.now,
+        (accountId) => readableFeeds(c.db, c.hooksFor, accountId, c.now),
+      ),
   },
 
   // ── Session, no licence-link sweep ────────────────────────────────────────────────────────

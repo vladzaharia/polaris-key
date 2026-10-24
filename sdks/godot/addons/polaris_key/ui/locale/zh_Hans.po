@@ -3992,6 +3992,11 @@ msgctxt "macos"
 msgid "signin.approve.look"
 msgstr "查找"
 
+#. pkey on {host} asks for a packages token.
+#. Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is.
+msgid "signin.approve.askPackages"
+msgstr "{host} 上的 pkey 请求软件包令牌。"
+
 #. Code {code} asks to sign in to your account.
 #. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
 msgid "signin.approve.askBody"
