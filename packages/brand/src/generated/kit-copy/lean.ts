@@ -71,6 +71,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.steam": { macos: "Get It on Steam" },
   "update.checkNow": { macos: "Check for Updates…" },
   "menu.manageLicense": { macos: "Manage License…" },
+  "menu.signOut": { macos: "Sign Out…" },
+  "signin.signout.confirm": { macos: "Sign Out" },
   "updateProgress.resume": { macos: "Download Now" },
   "status.useAnotherLicense": { macos: "Use Another License" },
   "status.switchChannel": { macos: "Switch Channel" },

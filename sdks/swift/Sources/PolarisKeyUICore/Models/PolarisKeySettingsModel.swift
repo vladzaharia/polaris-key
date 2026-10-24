@@ -100,6 +100,9 @@ public final class PolarisKeySettingsModel {
     public private(set) var channel: KitChannelState = .hidden
     /// The seat count against the limit, "2 of 3", only when the roster says so.
     public private(set) var seats: String?
+    /// The same count as numbers (devices in use, the license's limit), for a row that words it
+    /// itself ("2 of 3 in use").
+    public private(set) var seatCounts: (used: Int, limit: Int)?
     /// The roster ids, aligned with the device rows.
     public private(set) var deviceIds: [String] = []
     /// A failed rename or remove, shown under the list (the list stays).
@@ -146,7 +149,7 @@ public final class PolarisKeySettingsModel {
     /// A still model for previews and snapshot tests: it shows what it is given and reaches no network.
     public init(
         preview inputs: KitInputs, tier: String? = nil, holder: String? = nil,
-        channel: KitChannelState = .hidden, seats: String? = nil,
+        channel: KitChannelState = .hidden, seats: String? = nil, seatCounts: (used: Int, limit: Int)? = nil,
         handlers: KitSettingsHandlers = KitSettingsHandlers(),
         options: KitSettingsOptions = KitSettingsOptions(),
         deviceFailure: CopyLine? = nil, selectOptions: [String: [String]] = [:]
@@ -160,6 +163,7 @@ public final class PolarisKeySettingsModel {
         self.holder = holder
         self.channel = channel
         self.seats = seats
+        self.seatCounts = seatCounts
         self.deviceFailure = deviceFailure
         self.selectOptions = selectOptions
         self.devices = inputs.devices ?? []
@@ -244,6 +248,7 @@ public final class PolarisKeySettingsModel {
         deviceIds = roster.map(\.id)
         if let limit = await client.licenseInfo()?.deviceLimit, !roster.isEmpty {
             seats = "\(roster.count) of \(limit)"
+            seatCounts = (roster.count, limit)
         }
     }
 
@@ -434,7 +439,13 @@ public final class PolarisKeySettingsModel {
     /// Check now: a fresh sync, then the update service's answer. An offer reaches the gate's
     /// banner; otherwise the row says "You're up to date", or that the check failed with Try again.
     public func checkNow() async {
-        guard let client, !checking else { return }
+        guard !checking else { return }
+        // A still (preview) model reaches no network: it answers "up to date".
+        guard let client else {
+            checkFailed = false
+            checkResult = CopyLine("update.upToDate")
+            return
+        }
         checking = true
         checkResult = nil
         checkFailed = false

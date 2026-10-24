@@ -402,4 +402,43 @@ final class KitRulesTests: XCTestCase {
         }
         XCTAssertEqual(missing, [])
     }
+
+    // MARK: macOS menu and Settings pane (UK-08.4)
+
+    #if os(macOS)
+        func testTheMenuWordsAreTitleCaseWithAnEllipsis() {
+            let strings = KitStrings()
+            XCTAssertEqual(strings.string("update.checkNow"), "Check for Updates…")
+            XCTAssertEqual(strings.string("menu.manageLicense"), "Manage License…")
+            XCTAssertEqual(strings.string("menu.signOut"), "Sign Out…")
+            XCTAssertEqual(strings.string("menu.account"), "Account")
+            // The confirm is the destructive button's word, with no ellipsis: it acts.
+            XCTAssertEqual(strings.string("signin.signout.confirm"), "Sign Out")
+        }
+
+        func testTheSignOutConfirmationUsesSigninNineCopy() {
+            let strings = KitStrings()
+            XCTAssertEqual(
+                SignOutCopy.title(strings, product: "Tidewater Studio"),
+                "Sign out of Tidewater Studio on this device?")
+            XCTAssertEqual(
+                SignOutCopy.message(strings, product: "Tidewater Studio", tier: "Pro"),
+                "Tidewater Studio stops using your Pro license on this device and frees room for another device."
+            )
+        }
+
+        @MainActor func testAStillModelAnswersCheckNowWithUpToDate() async {
+            let model = PolarisKeySettingsModel(preview: PolarisKeyPreviewState.base())
+            await model.checkNow()
+            XCTAssertEqual(model.checkResult, CopyLine("update.upToDate"))
+            XCTAssertFalse(model.checkFailed)
+        }
+
+        @MainActor func testTheUpdateHookIsEmptyUntilAnUpdateWindowSetsIt() {
+            XCTAssertNil(PolarisKeyUpdateHook.present)
+            PolarisKeyUpdateHook.present = {}
+            XCTAssertNotNil(PolarisKeyUpdateHook.present)
+            PolarisKeyUpdateHook.present = nil
+        }
+    #endif
 }
