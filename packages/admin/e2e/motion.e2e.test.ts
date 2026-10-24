@@ -8,6 +8,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
 import { atRest } from "./atRest.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The motion smoke suite (notes/S-23 §6.8, D9; MO-03): the built SPA in real Chromium under the
@@ -73,7 +74,7 @@ const LONG_LIST = Array.from({ length: 48 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
-}));
+})).map(workerFields);
 /** The record a drill-down opens (MO-04): the first row, with a key and a device. */
 const RECORD = {
   ...LONG_LIST[0]!,

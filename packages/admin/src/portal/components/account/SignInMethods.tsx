@@ -94,10 +94,6 @@ import { mutate } from "../../mutations.js";
  * 5 minutes (`StepUp`). An Apple Hide My Email account gets a notice at the top. The footnote says
  * every change is recorded and emailed.
  *
- * **Make primary**, **Rename** and the product count are PX-W19's (`RowTools`): they read
- * `productCount` on an email and `name` on a passkey, which only a Worker with PX-W19 sends, so
- * an older Worker gets the page without them.
- *
  * Not here yet, for want of an API: the products that know the person through a method (see
  * PX-13's brief). **Link an existing account** (PX-15's `LinkAccountsDialog`) is the button under
  * the footnote; neither the header nor the Hide My Email notice links to it.
@@ -534,21 +530,20 @@ function MethodGroups({
               name: e.email,
               keepLabel: t("locker.methods.keepIt"),
               guardName: t("locker.methods.thisEmail"),
-              tool:
-                e.primary || e.productCount === undefined
-                  ? undefined
-                  : (render) => (
-                      <MakePrimaryTool
-                        key={m.id}
-                        methodId={e.methodId}
-                        email={e.email}
-                        focusAfter={focusGroup("email")}
-                        {...common}
-                        returnTo={returnTo({})}
-                      >
-                        {render}
-                      </MakePrimaryTool>
-                    ),
+              tool: e.primary
+                ? undefined
+                : (render) => (
+                    <MakePrimaryTool
+                      key={m.id}
+                      methodId={e.methodId}
+                      email={e.email}
+                      focusAfter={focusGroup("email")}
+                      {...common}
+                      returnTo={returnTo({})}
+                    >
+                      {render}
+                    </MakePrimaryTool>
+                  ),
               primary: e.primary,
               meta: [
                 e.productCount
@@ -608,22 +603,21 @@ function MethodGroups({
                 name: which,
                 keepLabel: t("locker.methods.keepIt"),
                 guardName: t("locker.methods.thisPasskey"),
-                tool:
-                  p && p.name !== undefined
-                    ? (render) => (
-                        <RenamePasskeyTool
-                          key={m.id}
-                          passkeyId={p.id}
-                          current={p.name ?? ""}
-                          fallback={passkeyName({ ...p, name: null })}
-                          what={which}
-                          {...common}
-                          returnTo={returnTo({})}
-                        >
-                          {render}
-                        </RenamePasskeyTool>
-                      )
-                    : undefined,
+                tool: p
+                  ? (render) => (
+                      <RenamePasskeyTool
+                        key={m.id}
+                        passkeyId={p.id}
+                        current={p.name ?? ""}
+                        fallback={passkeyName({ ...p, name: null })}
+                        what={which}
+                        {...common}
+                        returnTo={returnTo({})}
+                      >
+                        {render}
+                      </RenamePasskeyTool>
+                    )
+                  : undefined,
                 meta: p ? passkeyMeta(p) : methodMeta(m),
                 verb: "Remove",
                 consequence: t("locker.methods.passkeyRemoveNote", {

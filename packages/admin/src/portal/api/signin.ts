@@ -54,7 +54,7 @@ export interface PortalGateChoice {
 
 /**
  * The email start's and the resend's one answer (I-07, PX-W4), the same whether or not mail went
- * out. The numbers are optional so an older Worker's bare `{ ok: true }` still reads.
+ * out.
  */
 export interface PortalEmailSent {
   ok: true;

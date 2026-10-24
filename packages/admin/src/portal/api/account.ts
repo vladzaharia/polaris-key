@@ -103,8 +103,8 @@ export interface PortalMethodEmail {
   methodId: string;
   email: string;
   primary: boolean;
-  /** Products this address brought in (PX-W19); absent on an older Worker. */
-  productCount?: number;
+  /** Products this address brought in (PX-W19). */
+  productCount: number;
   connectedAt: number;
   lastUsedAt: number | null;
   canRemove: boolean;
@@ -125,8 +125,8 @@ export interface PortalPasskey {
   aaguid: string | null;
   /** The browser it was added from ("Safari on macOS"). */
   addedFrom: string | null;
-  /** The name its holder gave it (PX-W19), or null; absent on an older Worker. */
-  name?: string | null;
+  /** The name its holder gave it (PX-W19), or null. */
+  name: string | null;
   canRemove?: boolean;
   reason?: PortalRemoveRefusal | null;
 }

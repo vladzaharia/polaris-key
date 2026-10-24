@@ -110,6 +110,7 @@ const PORTAL: PortalProductSettings = {
 
 const PRODUCT: ProductDetail = {
   slug: "djdl",
+  manifestAuthoritative: { value: false, locked: false },
   name: "DJDL",
   signingKid: "kid-2026",
   releaseSource: "github",

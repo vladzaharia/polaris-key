@@ -32,12 +32,12 @@ export function isDefaultPolicy(p: TrustPolicyDto): boolean {
   return samePolicy(p, DEFAULT_POLICY);
 }
 
-/** An operation's level; a policy from a Worker that predates an operation reads `basic`. */
+/** An operation's level. */
 export function level(
   p: TrustPolicyDto,
   id: (typeof TRUST_OPERATIONS)[number]["id"],
 ): TrustLevelDto {
-  return p[id] ?? "basic";
+  return p[id];
 }
 
 export function samePolicy(a: TrustPolicyDto, b: TrustPolicyDto): boolean {
@@ -49,7 +49,7 @@ function normalise(p: TrustPolicyDto): TrustPolicyDto {
     mint: p.mint,
     gatedDelivery: p.gatedDelivery,
     commerceClaim: p.commerceClaim,
-    cloudSyncWrite: p.cloudSyncWrite ?? "basic",
+    cloudSyncWrite: p.cloudSyncWrite,
     enforce: p.enforce,
     appAttest: p.appAttest
       ? { teamId: p.appAttest.teamId, environment: p.appAttest.environment }

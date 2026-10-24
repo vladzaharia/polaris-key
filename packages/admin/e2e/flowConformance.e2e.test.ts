@@ -7,6 +7,7 @@ import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { DISTRIBUTION_ROUTES } from "../test/distributionData.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * Console flow conformance (FLOWS.md §2 C3, C5, C13, C18; UX-77) in the BUILT console, in
@@ -30,7 +31,7 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 const API = "/manage/api/products/djdl";
 
-const LICENSE = {
+const LICENSE = workerFields({
   id: "lic_ada",
   name: "Ada Lovelace",
   email: "ada@example.com",
@@ -49,7 +50,7 @@ const LICENSE = {
   identityProvider: "manual",
   origin: "admin",
   deletion: { allowed: false, reasons: [] },
-};
+});
 
 const ROUTES: Record<string, unknown> = {
   ...DISTRIBUTION_ROUTES,

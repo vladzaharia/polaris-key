@@ -94,6 +94,16 @@ route.
 to match all non-GET methods, and rejects direct API writes from view code. Add focused page tests
 for the success, refusal, and stale-data result that matter to the screen.
 
+## Never read around an older Worker
+
+The console and the portal ship inside their Worker (`worker assemble`), so a page only ever meets
+the Worker it was built with. Type a field the Worker always sends as required, and read it as
+given: no `?? fallback`, no "an older Worker omits it" branch, no comment saying so. A fixture
+carries the field, as the Worker would.
+
+Tolerate data a newer Worker may send. `libraryFromWire` skips a library entry kind this build does
+not know, because that guards against newer data, not an older Worker.
+
 ## Check the change
 
 Run the focused console tests while you work, then run the package checks and docs link check:

@@ -112,9 +112,9 @@ function assertAllDeleted(res: LicenseBulkDeleteResult, n: number): void {
   );
 }
 
-/** Whether a summary may be deleted (an older Worker that sends no verdict: let it decide). */
+/** Whether a summary may be deleted, by the Worker's verdict. */
 export function deletable(l: Pick<LicenseSummary, "deletion">): boolean {
-  return l.deletion?.allowed ?? true;
+  return l.deletion.allowed;
 }
 
 /** The Worker's refusal names every reason; anything else gets the console's usual copy. */

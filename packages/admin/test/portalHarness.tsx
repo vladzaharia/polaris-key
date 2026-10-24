@@ -98,7 +98,7 @@ export const DAY = 86_400;
 export function license(
   over: Partial<PortalLicenseSummary> & { product: string },
 ): PortalLicenseSummary {
-  return {
+  const base = {
     id: `lic_${over.product}`,
     productName: over.product[0]!.toUpperCase() + over.product.slice(1),
     name: ACCOUNT.name,
@@ -117,8 +117,26 @@ export function license(
     activeKeyCount: 1,
     deviceCount: 1,
     entitlements: [],
-    ...over,
   };
+  const merged = { ...base, ...over };
+  return {
+    ...merged,
+    // The Worker words how a licence reached the person (PX-23): a store, a key, a sign-in, else
+    // the developer. A test names `origin` itself when it means something else.
+    origin: over.origin ?? originFor(merged),
+    originStore: over.originStore ?? null,
+    removable: over.removable ?? merged.keyCount > 0,
+  };
+}
+
+function originFor(l: {
+  keyCount: number;
+  identityProvider: string;
+  originStore?: string | null;
+}): string {
+  if (l.originStore) return l.keyCount > 0 ? "store-key" : "store";
+  if (l.keyCount > 0) return "key";
+  return l.identityProvider === "oidc" ? "signin" : "developer";
 }
 
 export function device(over: Partial<PortalDevice> = {}): PortalDevice {

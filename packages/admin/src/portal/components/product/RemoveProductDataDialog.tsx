@@ -72,9 +72,7 @@ export function RemoveProductDataDialog({
   const services = useProduct(product.slug, { enabled: open }).data?.services;
   const exportData = useExportProductData(product.slug);
   const offered =
-    licenses > 0 &&
-    !refused &&
-    product.licenses.every((l) => l.removable === true);
+    licenses > 0 && !refused && product.licenses.every((l) => l.removable);
   const also = offered && alsoRemove;
   // A fresh dialog keeps the license, the default, every time it opens.
   React.useEffect(() => {

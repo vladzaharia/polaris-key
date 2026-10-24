@@ -39,7 +39,12 @@ describe("the deep link", () => {
     for (const f of Object.values(fns)) f.mockReset();
     fns.me.mockResolvedValue({ ...ME, platformAdmin: true });
     fns.product.mockResolvedValue({
-      product: { slug: "djdl", name: "DJDL", services: ALL_ON },
+      product: {
+        slug: "djdl",
+        name: "DJDL",
+        services: ALL_ON,
+        manifestAuthoritative: { value: false, locked: false },
+      },
     });
     fns.productSettings.mockResolvedValue({ settings: [] });
     fns.portalSettings.mockResolvedValue({

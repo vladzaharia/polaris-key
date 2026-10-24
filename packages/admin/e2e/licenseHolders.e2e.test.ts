@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * LX-30's holder surfaces in real Chromium under the Worker's CSP, in both themes (notes/S-24
@@ -30,7 +31,7 @@ function summary(
   id: string,
   over: Record<string, unknown>,
 ): Record<string, unknown> {
-  return {
+  return workerFields({
     id,
     name: "",
     email: "",
@@ -52,7 +53,7 @@ function summary(
     batchId: null,
     keyEntries: null,
     ...over,
-  };
+  });
 }
 
 const BATCH = {
