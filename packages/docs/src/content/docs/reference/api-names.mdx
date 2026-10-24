@@ -55,7 +55,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
 | `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
 | `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
-| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
+| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `client.current_device` | — |
 | `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
 | `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
 | `client.start` | — | — | — | `client.start` | `client.start` | `client.start` | — |
@@ -262,7 +262,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | `offers` | `update_available` | — |
 | `update.decidable` | `update.decidable` | — | — | — | — | — | — |
-| `update.install` | `update.install` | — | `update.install` | `update.install` | `update.install` | `apply` (planned: SP-35b) | — |
+| `update.install` | `update.install` | — | `update.install` | `update.install` | `update.install` | `update.install` | — |
 | `update.check` | `update.check` | `useLatestVersion` | `update.check` | `update.check` | `update.check` | `update.check` | — |
 | `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | `update.appcastUrl` | `update.appcast_url` | — |
 | `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | `update.feedUrl` | `update.feedUrl` | `update.feed_url` | — |
@@ -299,7 +299,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | `commerce.binding` | `get_binding` (planned: SP-35b) | — |
+| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | `commerce.binding` | `commerce.binding` | — |
 | `commerce.claim` | `commerce.claim` | — | `commerce.claim` | `commerce.claim` | `commerce.claim` | `commerce.claim` | — |
 | `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | `commerce.claimSteam` | `commerce.claimSteam` | `commerce.claim_steam` | — |
 | `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | `commerce.claimAppStore` | `commerce.claimAppStore` | `commerce.claim_app_store` | — |
@@ -413,3 +413,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Godot | `config.get_source` | `config.getConfigSource` | SP-35b |
 | Godot | `license.is_entitled` | `entitlements.has` | SP-35b |
 | Godot | `license.get_entitlements` | `entitlements.all` | SP-35b |
+| Godot | `devices.get_current_device` | `client.currentDevice` | SP-35b |
+| Godot | `commerce.get_binding` | `commerce.binding` | SP-35b |
+| Godot | `update.apply` | `update.install` | SP-35b |

@@ -3661,10 +3661,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "apply",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3852,10 +3849,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "get_binding",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4124,10 +4118,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "devices.get_current_device",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -5785,6 +5776,36 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\b(?:license|lic)\\.get_entitlements\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "devices.get_current_device",
+      "to": "client.currentDevice",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.get_current_device\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "commerce.get_binding",
+      "to": "commerce.binding",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bcommerce\\.get_binding\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "update.apply",
+      "to": "update.install",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bupdate\\.apply\\s*\\(",
         "files": ["*.gd", "*.tres", "fence:gdscript"]
       }
     }

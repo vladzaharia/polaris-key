@@ -290,7 +290,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			else:
 				out["code"] = String(r.code)
 		"commerceBinding":
-			var r: PKeyResult = await sdk.commerce.get_binding()
+			var r: PKeyResult = await sdk.commerce.binding()
 			out["result"] = "ok" if r.ok else String(r.code)
 			if r.ok:
 				out["bindingId"] = r.detail["bindingId"]

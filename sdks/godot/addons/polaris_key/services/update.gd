@@ -351,11 +351,11 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 
 ## The adapter for this install's outlet acts on `check` (a PKeyUpdateCheck; null: the answer
 ## update_available last carried). A coroutine -> PKeyApplyResult (see its behaviours).
-func apply(check: PKeyUpdateCheck = null) -> PKeyApplyResult:
+func install(check: PKeyUpdateCheck = null) -> PKeyApplyResult:
 	if check == null and last_available is PKeyUpdateCheck:
 		check = last_available
 	if check == null or not check.ok:
-		return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "apply() needs a decision from decide().")
+		return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "install() needs a decision from decide().")
 	if _core() == null:
 		return PKeyApplyResult.failed(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	return await updater.adapter().apply(check.decision, updater, check)

@@ -5,7 +5,7 @@ extends RefCounted
 ## for every release of the deliverable, until a refund or revocation. The device only forwards
 ## what its store handed it.
 ##
-##   get_binding()                 `GET /<p>/commerce/binding` -> PKeyResult, detail
+##   binding()                 `GET /<p>/commerce/binding` -> PKeyResult, detail
 ##                                 {bindingId, products: [{store, productId, flag, deliverable}]}.
 ##                                 Call it BEFORE buying and hand `bindingId` to the store:
 ##                                   App Store   purchase(product, bindingId)   (PKeyApple, P5-05:
@@ -62,8 +62,8 @@ extends RefCounted
 ## licence document; App Store 3.1.3(b) lets it unlock on an Apple outlet only if the same flag is
 ## also sold there as an in-app purchase. `hidden_here()` applies that rule on outlets whose
 ## commerce capability is `store-iap` and whose store is the App Store (`app-store`,
-## `testflight`), from the product list the last get_binding() returned. With no list yet it hides
-## nothing it cannot judge — call get_binding() at startup.
+## `testflight`), from the product list the last binding() returned. With no list yet it hides
+## nothing it cannot judge — call binding() at startup.
 ##
 ## Both calls need License and Distribution (`service-unavailable` without either) and a device
 ## token (`no-token`). Usable before configure() (every call then refuses).
@@ -104,9 +104,9 @@ var store_override := ""
 
 var _core_ref: WeakRef = null
 var _entitlements_ref: WeakRef = null
-## The product list from the last successful get_binding().
+## The product list from the last successful binding().
 var products: Array = []
-## The binding from the last successful get_binding() ("" until then).
+## The binding from the last successful binding() ("" until then).
 var binding_id := ""
 ## The facade whose transaction_updated is connected (null: none).
 var _watched_apple: Object = null
@@ -165,7 +165,7 @@ func _refused(core: PKeyCore) -> PKeyResult:
 
 
 ## The licence's purchase binding and the store products on sale. A coroutine.
-func get_binding() -> PKeyResult:
+func binding() -> PKeyResult:
 	var core := _core()
 	if core == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
@@ -280,7 +280,7 @@ func purchase(flag: String) -> PKeyPurchaseResult:
 	var gate := _store_gate(store)
 	if gate != null:
 		return gate
-	var b := await get_binding()
+	var b := await binding()
 	if not b.ok:
 		return PKeyPurchaseResult.from_failure(b, store)
 	var p := product_for(products, store, flag)
@@ -301,7 +301,7 @@ func restore() -> PKeyPurchaseResult:
 	var gate := _store_gate(store)
 	if gate != null:
 		return gate
-	var b := await get_binding()
+	var b := await binding()
 	if not b.ok:
 		return PKeyPurchaseResult.from_failure(b, store)
 	match store:
@@ -326,7 +326,7 @@ func claim_steam(dlc_app_id: Variant) -> PKeyPurchaseResult:
 	if s == null:
 		return PKeyPurchaseResult.of(PKeyPurchaseResult.KIND_UNSUPPORTED, "steam", PKeyErrors.UNSUPPORTED, "GodotSteam is not in this build.", {"feature": PKeyConstants.Feature.COMMERCE_RECEIPT, "reason": PKeyConstants.UnsupportedReason.DEPENDENCY, "detail": "GodotSteam is not in this build."})
 	if binding_id == "":
-		var b := await get_binding()
+		var b := await binding()
 		if not b.ok:
 			return PKeyPurchaseResult.from_failure(b, "steam")
 	var t := await steam_ticket(s, binding_id)

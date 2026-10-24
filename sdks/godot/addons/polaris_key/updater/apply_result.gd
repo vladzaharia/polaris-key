@@ -1,6 +1,6 @@
 class_name PKeyApplyResult
 extends PKeyResult
-## What acting on an update decision did (PolarisKey.update.apply(), an outlet adapter's
+## What acting on an update decision did (PolarisKey.update.install(), an outlet adapter's
 ## `apply`). When `ok`, `behaviour` is one of:
 ##
 ##   link     a page was opened (`url`): a store listing, a source or web-distribution page, a

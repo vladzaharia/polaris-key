@@ -70,14 +70,14 @@ func _binding(t: PKeyTestContext) -> void:
 	server.requests.clear()
 	plan = {"/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS})}
 	var sdk = await _sdk()
-	var r: PKeyResult = await sdk.commerce.get_binding()
+	var r: PKeyResult = await sdk.commerce.binding()
 	t.check("binding: ok", r.ok, str(r))
 	t.check("binding: lowercased and kept", r.ok and r.detail["bindingId"] == BINDING.to_lower() and sdk.commerce.binding_id == BINDING.to_lower())
 	t.check("binding: the product list is kept", sdk.commerce.products.size() == 3)
 	var req := _last("/commerce/binding")
 	t.check("binding: GET with the device bearer", req.get("method") == "GET" and String(req.get("headers", {}).get("authorization", "")) == "Bearer %s" % TOKEN, str(req.get("headers")))
 	plan = {"/commerce/binding": _json(200, {"bindingId": "not-a-uuid", "products": []})}
-	var bad: PKeyResult = await sdk.commerce.get_binding()
+	var bad: PKeyResult = await sdk.commerce.binding()
 	t.check("binding: a body without a UUID is invalid-response", not bad.ok and bad.code == PKeyErrors.INVALID_RESPONSE, str(bad))
 	sdk.queue_free()
 
@@ -151,7 +151,7 @@ func _claim_app_store(t: PKeyTestContext) -> void:
 func _client_side(t: PKeyTestContext) -> void:
 	server.requests.clear()
 	var off = await _sdk(PackedStringArray(["license", "config"]))
-	var r: PKeyResult = await off.commerce.get_binding()
+	var r: PKeyResult = await off.commerce.binding()
 	t.check("no Distribution: service-unavailable, product N/A", not r.ok and r.code == PKeyErrors.SERVICE_UNAVAILABLE and r.detail["reason"] == "product", str(r))
 	off.queue_free()
 	var tokenless = await _sdk(PackedStringArray(["license", "config", "release", "distribution", "commerce"]), "")
@@ -164,7 +164,7 @@ func _client_side(t: PKeyTestContext) -> void:
 	tokenless.queue_free()
 	t.check("client-side refusals made no request", server.requests.is_empty(), str(server.requests.size()))
 	var bare := PKeyCommerce.new()
-	var nc: PKeyResult = await bare.get_binding()
+	var nc: PKeyResult = await bare.binding()
 	t.check("before configure(): not-configured", not nc.ok and nc.code == PKeyErrors.NOT_CONFIGURED)
 
 
@@ -174,11 +174,11 @@ func _outlet_rule(t: PKeyTestContext) -> void:
 	t.check("3.1.3(b): a flag sold nowhere (an operator's grant) is not hidden", not PKeyCommerce.hidden_on("polarisVpn", PRODUCTS))
 	plan = {"/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS})}
 	var apple = await _sdk(PackedStringArray(["license", "config", "release", "distribution", "commerce"]), TOKEN, "app-store")
-	await apple.commerce.get_binding()
+	await apple.commerce.binding()
 	t.check("app-store outlet: hides the Play-only flag", apple.commerce.hidden_here("extras.ost"))
 	t.check("app-store outlet: keeps the App Store flag", not apple.commerce.hidden_here("extras.diceSkins"))
 	apple.queue_free()
 	var steam = await _sdk(PackedStringArray(["license", "config", "release", "distribution", "commerce"]), TOKEN, "steam")
-	await steam.commerce.get_binding()
+	await steam.commerce.binding()
 	t.check("steam outlet: hides nothing", not steam.commerce.hidden_here("extras.ost"))
 	steam.queue_free()

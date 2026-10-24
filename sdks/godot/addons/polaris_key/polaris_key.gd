@@ -255,6 +255,14 @@ func _on_boot_finished(r: PKeyBootResult) -> void:
 	boot_finished.emit(r)
 
 
+## This device from local state, no network: {id, current: true, status, license_id?,
+## last_verified_at?}. {} before configure().
+func current_device() -> Dictionary:
+	if devices == null:
+		return {}
+	return devices._current_device()
+
+
 ## The offline load: device id, token, cached documents re-verified. No network. A coroutine.
 func start() -> PKeyResult:
 	if core == null:
