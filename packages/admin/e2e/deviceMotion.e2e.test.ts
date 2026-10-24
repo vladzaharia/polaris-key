@@ -503,24 +503,46 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
       await s.close();
     });
 
-  it("saves the expand and removal frames (PK_SHOTS_DIR)", async () => {
-    if (!SHOTS) return;
-    const s = await open("three", "/#/p/nightfall/devices");
-    const { page } = s;
-    await page.getByText("Studio PC").first().waitFor();
-    await atRest(page);
-    await strip(page, "expand", () =>
-      page.getByRole("button", { name: "Remove Studio PC" }).first().click(),
-    );
-    await atRest(page, 8000);
-    await strip(page, "remove", () =>
-      page
-        .getByRole("button", { name: "Remove Studio PC", exact: true })
-        .last()
-        .click(),
-    );
-    await s.close();
-  });
+  // The inline confirm's expand exists only in the portal (the console has none, MO-13.2): its
+  // strip is taken here in every mode. Reduced motion is one frame: the instant swap.
+  for (const [theme, motion] of [
+    ["dark", "no-preference"],
+    ["light", "no-preference"],
+    ["reduced", "reduce"],
+  ] as const)
+    it(`saves the expand frames (${theme}) (PK_SHOTS_DIR)`, async () => {
+      if (!SHOTS) return;
+      const s = await open("three", "/#/p/nightfall/devices", {
+        theme: theme === "light" ? "light" : "dark",
+        motion,
+      });
+      const { page } = s;
+      await page.getByText("Studio PC").first().waitFor();
+      await atRest(page);
+      await frameStrip(
+        page,
+        "mo06-expand",
+        () =>
+          page
+            .getByRole("button", { name: "Remove Studio PC" })
+            .first()
+            .click(),
+        {
+          theme,
+          offsets: motion === "reduce" ? [300] : evenOffsets(6, 300),
+          rest: false,
+        },
+      );
+      await atRest(page, 8000);
+      if (theme === "dark")
+        await strip(page, "remove", () =>
+          page
+            .getByRole("button", { name: "Remove Studio PC", exact: true })
+            .last()
+            .click(),
+        );
+      await s.close();
+    });
 
   it("the Activate steps morph as dialog transitions; the first add celebrates once, the next shows the check only", async () => {
     const claim = latch();
