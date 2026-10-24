@@ -1,0 +1,198 @@
+---
+title: "Recipes"
+description: "The web components in htmx, Vue, Svelte, Solid, Preact, Angular, Tauri and a host design system: the install line, the few lines of integration and how each framework passes the input property and hears pk-action."
+sidebar:
+  order: 5
+type: "reference"
+lastReviewed: "2026-10-24"
+lanes: ["kit"]
+---
+
+import KitStatus from "../../../../components/ui/KitStatus.astro";
+
+The drop-in is the [web components kit](/docs/build/ui/frameworks/elements/): one `pk-gate` around your app, in any framework. A recipe is that kit in one framework, with the property and event wiring that framework needs. To draw the screens yourself, take [your own UI](/docs/build/ui/#two-lanes) and the [headless models](/docs/build/ui/frameworks/elements/#headless); the Vue, Svelte, Solid, Preact and Angular samples each include a small own-UI component over `viewOf()`.
+
+<KitStatus kit="elements" />
+
+Every recipe sets the gate's `input` as a **property**: it is an object, and an attribute can only carry a string. Each framework spells that differently, and each hears the gate's `pk-action` event its own way. Registering the elements is the import. The samples run on the Tidewater fixtures, with no Worker and no network.
+
+```sh
+pnpm add @polaris-key/elements
+```
+
+Until the package is published, the samples alias the repo's build. Run them from the repo root:
+
+```sh
+pnpm --filter @polaris-key/elements build
+pnpm install --frozen-lockfile --dir examples/ui/recipes
+pnpm --dir examples/ui/recipes -r build
+```
+
+## htmx
+
+<KitStatus kit="htmx" />
+
+`pk-gate` sits outside the swapped region, so a swap never rebuilds it: it keeps its input and its place. htmx finds its `hx-*` attributes in the app as before.
+
+```html
+<pk-gate>
+  <main>
+    <section
+      hx-get="./recent.html"
+      hx-trigger="load"
+      hx-swap="innerHTML"
+    ></section>
+  </main>
+</pk-gate>
+```
+
+```html
+<script type="module">
+  import "htmx.org";
+  import "@polaris-key/elements";
+  document.querySelector("pk-gate").input = gateInput;
+</script>
+```
+
+Set `input` in script, never as an attribute. Sample: `examples/ui/recipes/htmx/`.
+
+## Vue
+
+<KitStatus kit="vue" />
+
+Tell the compiler the `pk-*` tags are not Vue components, bind `input` with `.prop` and listen with `@pk-action`.
+
+```js
+// vite.config.js
+vue({
+  template: {
+    compilerOptions: { isCustomElement: (t) => t.startsWith("pk-") },
+  },
+});
+```
+
+```vue
+<pk-gate :input.prop="input" @pk-action="onAction">
+  <main><slot /></main>
+</pk-gate>
+```
+
+Without `.prop`, Vue sets an attribute and the gate gets the string `[object Object]`. Sample: `examples/ui/recipes/vue/`.
+
+## Svelte
+
+<KitStatus kit="svelte" />
+
+Svelte 5 sets a custom element's `input` as a property when it has one. Listen with `on:pk-action`. Leave Svelte's `customElement` compiler option off: that is for building elements, not using them.
+
+```svelte
+<pk-gate {input} on:pk-action={onAction}>
+  <main><slot /></main>
+</pk-gate>
+```
+
+Sample: `examples/ui/recipes/svelte/`.
+
+## Solid
+
+<KitStatus kit="solid" />
+
+Solid sets attributes as strings unless told otherwise. `prop:input` assigns the property and `on:pk-action` listens for the element's own event.
+
+```tsx
+<pk-gate prop:input={gateInput(state())} on:pk-action={onAction}>
+  <main>{props.children}</main>
+</pk-gate>
+```
+
+Sample: `examples/ui/recipes/solid/`.
+
+## Preact
+
+<KitStatus kit="preact" />
+
+Preact assigns a prop as a property when the element has one, so `input` takes the object as is. The event is `onpk-action`, lower case with the hyphen.
+
+```tsx
+<pk-gate input={gateInput(state)} onpk-action={onAction}>
+  <main>{children}</main>
+</pk-gate>
+```
+
+Sample: `examples/ui/recipes/preact/`.
+
+## Angular
+
+<KitStatus kit="angular" />
+
+Angular 21. Add `CUSTOM_ELEMENTS_SCHEMA` so the template accepts `pk-*`, bind `[input]` (a property binding) and listen with `(pk-action)`. The event type is `CustomEvent`, so cast it in the template.
+
+```ts
+@Component({
+  selector: "app-root",
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  template: `
+    <pk-gate [input]="input()" (pk-action)="onAction($any($event))">
+      <ng-content />
+    </pk-gate>
+  `,
+})
+export class App {}
+```
+
+Sample: `examples/ui/recipes/angular/`.
+
+## Tauri
+
+<KitStatus kit="tauri" />
+
+The front end is any recipe above in a Tauri v2 window: it builds and runs on its own. The reference shell in `examples/ui/recipes/tauri/src-tauri/` is committed and is not compiled in CI.
+
+Grant the window one permission: opening `https` links in the system browser. The sign-in card and any store link need nothing more. No shell, file-system or http permission is needed.
+
+```json
+{
+  "identifier": "default",
+  "windows": ["main"],
+  "permissions": [
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }] }
+  ]
+}
+```
+
+The Rust bridge is not shipped. Until it is, the elements run on fixtures, or live over `fetch` with a Worker. Sample: `examples/ui/recipes/tauri/`.
+
+## Your design system
+
+The gate takes a host design system through three seams. It writes no style into a shadow root.
+
+1. **Tokens.** Map the host's shape tokens (radius, control height, focus width, font) onto `--pk-*` on `pk-provider`. The kit sets its own scales on `:host`, and a value that only inherits loses to that, so `pk-gate` and `pk-sign-in` take the provider's value explicitly with `inherit`.
+2. **Structure.** `::part(primary)`, `::part(secondary)` and `::part(card)`.
+3. **Accent.** Pass the host's brand color as `theme.accent`. The kit resolves it for contrast in each scheme, so colors stay with the scheme and the accent, not a token-by-token map.
+
+```css
+pk-provider {
+  --pk-kit-radius-control: var(--hds-radius-control);
+  --pk-kit-control-height: var(--hds-control-height);
+}
+pk-provider :is(pk-gate, pk-sign-in) {
+  --pk-kit-radius-control: inherit;
+  --pk-kit-control-height: inherit;
+}
+pk-gate::part(primary) {
+  text-transform: uppercase;
+}
+```
+
+```js
+document.getElementById("provider").theme = {
+  accent: "#b45309",
+  product: { name: "Tidewater Studio", developer: "Harbor Audio" },
+};
+```
+
+Keep the spacing scale and the three type weights. The theme value is on [Theming](/docs/build/ui/theming/). Sample: `examples/ui/recipes/byo-design-system/`.
+
+## States to handle
+
+The gate draws every state itself in each recipe. The states and panes are on the [web components page](/docs/build/ui/frameworks/elements/); in your own UI, `viewOf()` returns each state's copy keys.

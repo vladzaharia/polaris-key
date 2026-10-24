@@ -57,7 +57,6 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/build/registering/index.html": "public",
   "/docs/build/sdks/kotlin-ui/index.html": "public",
   "/docs/build/ui/localisation/index.html": "public",
-  "/docs/build/ui/recipes/index.html": "public",
   "/docs/build/web-cors/index.html": "public",
   "/docs/build/wire/bundles/index.html": "public",
   "/docs/build/wire/cache-and-clock/index.html": "public",

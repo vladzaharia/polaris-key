@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { BASELINE_DIRS } from "../../ui-qa/src/config";
 import { BASELINES, DIRS } from "../src/lib/baselines";
 import { CATALOG, classify, kebab } from "../src/lib/shots";
-import { COMPONENTS_NOT_BUILT, UI_KITS } from "../src/lib/uiKits";
+import { COMPONENTS_NOT_BUILT, UI_KITS, statusLabel } from "../src/lib/uiKits";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const uiDir = join(docsRoot, "src", "content", "docs", "build", "ui");
@@ -155,6 +155,32 @@ describe("component pages", () => {
   it("no page outlives its catalog component", () => {
     const slugs = new Set(Object.keys(CATALOG).map(kebab));
     for (const page of pages) expect(slugs.has(page), page).toBe(true);
+  });
+});
+
+describe("recipes", () => {
+  const recipes = UI_KITS.filter((k) => "recipe" in k.status);
+
+  it("each recipe kit has a sample folder, a section on the recipes page and no framework page of its own", () => {
+    const page = read(uiDir, "recipes.mdx");
+    expect(recipes.map((k) => k.id).sort()).toEqual(
+      ["angular", "htmx", "preact", "solid", "svelte", "tauri", "vue"].sort(),
+    );
+    for (const k of recipes) {
+      expect(statusLabel(k), k.id).toBe("Recipe");
+      for (const s of k.samples ?? [])
+        expect(existsSync(join(docsRoot, "..", "..", s)), s).toBe(true);
+      expect(page, k.id).toContain(`<KitStatus kit="${k.id}" />`);
+      expect(existsSync(join(uiDir, "frameworks", `${k.id}.mdx`)), k.id).toBe(
+        false,
+      );
+    }
+  });
+
+  it("the elements kit ships, with its not-published note", () => {
+    const k = UI_KITS.find((x) => x.id === "elements");
+    expect(k && statusLabel(k)).toBe("Shipped");
+    expect(k?.note).toMatch(/not published/i);
   });
 });
 
