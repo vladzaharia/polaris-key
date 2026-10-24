@@ -3,7 +3,7 @@ class FixtureClient:
     def get_value(self, key):
         return key
 
-    def get_config(self, key):
+    def get(self, key):
         return key
 
     @property
