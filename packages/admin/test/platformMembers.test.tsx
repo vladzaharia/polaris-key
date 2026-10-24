@@ -24,6 +24,10 @@ import {
 
 /** Platform → Members (`#/platform/members`, ST-31.11): the roster, invites and role changes. */
 
+// Load the Platform section's lazy chunk once, before any test: on CI the first test otherwise
+// pays its cold transform and times out waiting for the page heading.
+await import("../src/console/sections/platform/index.js");
+
 const NOW = 1_790_000_000;
 const PATH = "/manage/api/members";
 const BINDINGS = "/manage/api/bindings";
