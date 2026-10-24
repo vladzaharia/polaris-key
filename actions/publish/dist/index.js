@@ -32116,6 +32116,9 @@ var INITIAL_FEATURES = [
 var KEYS = (ascii2) => `${ascii2 ? "Up/Down" : "↑↓"} move · Space toggle · Enter confirm · Esc cancel`;
 var CONFIRM_KEYS = "y yes · n no · Esc cancel";
 var andList = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "";
+function initInput(given) {
+  return given ?? process.stdin;
+}
 function mayPrompt(term, stdin) {
   return term.caps.interactive && stdin.isTTY === true;
 }
@@ -52517,7 +52520,7 @@ async function cmdInit(parsed, rt) {
   if (tierFlag !== void 0 && tierFlag !== "free" && tierFlag !== "none")
     throw new UsageError("--starter-tier takes free or none.");
   let starterTier = tierFlag;
-  const stdin = rt.stdin ?? process.stdin;
+  const stdin = initInput(rt.stdin);
   const term = termFor(stdout, rt.ci.env, rt.g, stdin);
   if (mayPrompt(term, stdin)) {
     const clash = async (rels) => {

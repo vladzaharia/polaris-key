@@ -367,8 +367,9 @@ describe("the Action's channels input (D-A3)", () => {
     await writeFile(path.join(cwd, ".pkey/distribution.yaml"), DISTRIBUTION);
     return cwd;
   }
+  // Sync's verdict-first line: `<glyph>  diceroll · track <name>: ...`, one per track.
   const syncs = (out: string) =>
-    out.match(/^Channels for diceroll/gm)?.length ?? 0;
+    out.match(/^\S+ +diceroll · track /gm)?.length ?? 0;
 
   it("auto runs channel sync once after an app publish, with the publish's flags", async () => {
     const cwd = await withChannels();
@@ -377,7 +378,7 @@ describe("the Action's channels input (D-A3)", () => {
     });
     expect(io.err()).toBe("");
     expect(code).toBe(0);
-    expect(io.out()).toContain("Channels for diceroll · beta");
+    expect(io.out()).toContain("diceroll · track beta");
     expect(syncs(io.out())).toBe(1);
   });
 
