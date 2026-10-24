@@ -226,12 +226,6 @@ release:
       name: "im.plrs.key:polaris-key-server-ktor"
       artifacts:
         files: { match: "polaris-key-server-ktor-*" }
-    maven.spring-boot-starter:
-      kind: package
-      ecosystem: maven
-      name: "im.plrs.key:polaris-key-spring-boot-starter"
-      artifacts:
-        files: { match: "polaris-key-spring-boot-starter-*" }
     maven.billing:
       kind: package
       ecosystem: maven

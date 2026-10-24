@@ -250,17 +250,28 @@ export interface LicenseHolderContext {
   origin: string;
 }
 
-/** Identity's implementation of the two association directions. */
+/** A licence that joined an account at an address's verification (LX-27c.3). */
+export interface JoinedLicense {
+  product: string;
+  id: string;
+  /** `licenses.invited_at`: when an invitation for it went out; null when none did. */
+  invitedAt: number | null;
+  /** Active and unexpired when it joined: only such a license announces itself (LX-27c.3). */
+  active: boolean;
+}
+
+/** Identity's implementation of the association directions. */
 export interface LicenseHolderHooks {
   /**
    * The account has verified `email` (it is one of `verifiedAccountEmails`): attach every licence
    * waiting on it that may join this account. Answers how many joined. An address the account has
-   * not verified attaches nothing.
+   * not verified attaches nothing. Answers the licences that joined (LX-27c.3: the caller sends the
+   * library notice).
    */
   accountEmailVerified(
     db: Db,
     args: { accountId: string; email: string; now: number },
-  ): Promise<number>;
+  ): Promise<JoinedLicense[]>;
   /**
    * The licence has just been given an email: if an account verified that address, the licence
    * is not in an account, the product's auto-link resolves on and the pair is not blocked, attach
@@ -272,6 +283,12 @@ export interface LicenseHolderHooks {
     ctx: LicenseHolderContext,
     args: { product: string; licenseId: string },
   ): Promise<boolean>;
+  /**
+   * LX-27c: whether a licence created now for `product` would join the account that verifies its
+   * address, that is, whether implicit auto-link resolves on. An invitation (a sign-in link, no
+   * key) is only meaningful where it does. A custom-issuer product resolves off.
+   */
+  autoLinksNewLicenses(db: Db, product: string): Promise<boolean>;
 }
 
 /** Whether a mounted service contributes the implementation (the guard test asserts it does, at the root). */
@@ -290,8 +307,18 @@ export async function onAccountEmailVerified(
   email: string,
   now: number,
 ): Promise<number> {
+  return (await onAccountEmailVerifiedJoined(db, accountId, email, now)).length;
+}
+
+/** `onAccountEmailVerified`, answering the licences that joined (LX-27c.3). */
+export async function onAccountEmailVerifiedJoined(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<JoinedLicense[]> {
   const hooks = contributedLicenseHolders();
-  return hooks ? hooks.accountEmailVerified(db, { accountId, email, now }) : 0;
+  return hooks ? hooks.accountEmailVerified(db, { accountId, email, now }) : [];
 }
 
 /**
@@ -308,4 +335,17 @@ export async function associateLicenseHolder(
   return hooks
     ? hooks.licenseEmailAssigned(ctx, { product, licenseId })
     : false;
+}
+
+/**
+ * LX-27c: can an invitation reach a licence of `product`? `null` when nothing is contributed
+ * (Identity is off, so there is no account to sign in to), else whether auto-link resolves on.
+ * License reads it through here and never imports Identity (rule 6).
+ */
+export async function newLicensesAutoLink(
+  db: Db,
+  product: string,
+): Promise<boolean | null> {
+  const hooks = contributedLicenseHolders();
+  return hooks ? hooks.autoLinksNewLicenses(db, product) : null;
 }

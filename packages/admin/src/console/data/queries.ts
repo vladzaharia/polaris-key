@@ -86,21 +86,14 @@ export const qk = {
   /** The admin API tokens (`GET /manage/api/tokens`): the deployment's, so under `platform`. */
   apiTokens: (): QueryKey => ["platform", "api-tokens"],
   personalTokens: (): QueryKey => ["platform", "personal-tokens"],
+  /** Platform → Members: the roster, the root rule and the invites (ST-31.11). */
+  members: (): QueryKey => ["platform", "members"],
+  /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */
+  productMembers: (slug: string) => product(slug, "members"),
+  myPersonalTokens: (): QueryKey => ["me", "personal-tokens"],
   /** Platform → Connections (I-31): the page and every connection on it. */
   platformConnections: (): QueryKey => ["platform", "connections"],
   platformConnection: (id: string): QueryKey => ["platform", "connections", id],
-  /**
-   * The licence override migration (U-03): its state and inventory. As a prefix, also the
-   * per-product reads and the report.
-   */
-  overrideMigration: (): QueryKey => ["platform", "override-migration"],
-  /** The run's report, all products (`""`) or one. Under `overrideMigration`. */
-  overrideMigrationReport: (product: string): QueryKey => [
-    "platform",
-    "override-migration",
-    "report",
-    product,
-  ],
   /** Every store connection; as a prefix, also every store's apps listing. */
   platformStores: (): QueryKey => ["platform", "store-connections"],
   platformStoreApps: (store: string, tracks: boolean): QueryKey => [
@@ -171,6 +164,9 @@ export const qk = {
   /** U-03: the subject's account overrides; under the record, so a Users write refreshes it. */
   userOverrides: (slug: string, subject: string) =>
     product(slug, "core", "users", "record", subject, "overrides"),
+  /** The subject's data export, read once on demand (never cached). */
+  userExport: (slug: string, subject: string) =>
+    product(slug, "core", "users", "record", subject, "export"),
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),
@@ -222,6 +218,7 @@ export const qk = {
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),
+  syncUsage: (slug: string) => product(slug, "sync", "usage"),
   /** The version history (A-6). Under the catalog prefix, so a publish refreshes it. */
   catalogVersions: (slug: string) =>
     product(slug, "config", "catalog", "versions"),

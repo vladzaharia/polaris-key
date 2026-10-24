@@ -9,11 +9,7 @@ import { NOW } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { handleAdminApi } from "../src/console/api.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   connectionSecretContext,
   resolveConnection,
@@ -21,6 +17,8 @@ import {
 import { open } from "../src/platform/keyvault.js";
 import { plainProviderText } from "../src/services/identity/connections/testSignIn.js";
 import { challengeName } from "../src/services/identity/connections/domains.js";
+import { adminOidcConfig } from "../src/platform/platformOidc.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ISSUER = "https://sso.corp.example";
 const SECRET = "s3cr3t-value-that-must-never-come-back";
@@ -104,12 +102,14 @@ async function api(
   body?: unknown,
   as: As = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub: as.sub ?? "op1",
       name: "Ada",
-      email: "ada@x.io",
+      // One address per operator: a shared verified address joins one account (SM-3).
+      email: as.sub ? `${as.sub}@x.io` : "ada@x.io",
       groups: as.groups ?? ["admins"],
       ...(as.stepUp ? { authTime: NOW, stepUp: true } : {}),
     },
@@ -560,9 +560,12 @@ describe("test sign-in", () => {
         "SELECT COUNT(*) AS n FROM identity_connections",
       ))!.n,
     ).toBe(0);
+    // The operators' own console links (their sign-ins) are the only ones: the tested IdP's
+    // subject becomes no link.
     expect(
       (await w.db.first<{ n: number }>(
-        "SELECT COUNT(*) AS n FROM account_links",
+        "SELECT COUNT(*) AS n FROM account_links WHERE kind <> 'email' AND issuer_key <> ?",
+        adminOidcConfig(w.env)!.issuer,
       ))!.n,
     ).toBe(0);
   });

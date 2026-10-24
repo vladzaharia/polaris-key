@@ -381,8 +381,8 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     // PX-W13 (plans/PX-W13.md §8 Q4, as amended): the operator's approval of one product whose
     // display name uses a reserved term (a third party's "Steam Deck Companion"). Operator-only
-    // and audited; read by the manifest rule and the card's render-time check through ST-04's
-    // resolver, which PX-W13b wires.
+    // and audited; read by the manifest rule, the listing claims and the card's render-time check
+    // through ST-04's resolver (core/accounts/reservedDisplayNames.ts, PX-W13b).
     setting({
       key: "identity.displayNameApproved",
       scope: "product",
@@ -390,17 +390,19 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "identity.signIn",
       label: "Approved display name",
       description:
-        "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
+        "Lets this product use a name that matches a reserved term. Covers every name the product uses.",
       keywords: ["reserved", "display name", "reserved_display_name"],
       docs: "/docs/build/manifest/product/",
       value: { kind: "boolean" },
       defaultValue: false,
       merge: "cascade",
       ownership: "operator",
+      platformOnly: true,
       confirm: { on: "L1", off: "L0" },
       visibleWhen: VISIBLE,
+      readers: ["core/accounts/reservedDisplayNames.ts"],
       storage: { kind: "scalar" },
-      pending: { wp: "PX-W13b" },
+      since: "PX-W13b",
     }),
     SYNC_TIER_ON_SIGN_IN,
   ],

@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/api.schema.json",
+  "title": "Polaris Key SDK API registry (conformance/parity/api.json)",
+  "description": "The canonical SDK names (SP-35). Hand-written; tools/api-check.ts validates it. A concept names its feature id; each SDK that ships it is listed under `sdks` (`{}` = the generated spelling), and only a difference from the casing rule is written down. `removed` rows are the 0.9 migration table and the lint's scan list.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "casing",
+    "surfaces",
+    "ignore",
+    "concepts",
+    "removed"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "apiVersion": { "const": 1 },
+    "casing": {
+      "type": "object",
+      "additionalProperties": { "enum": ["camel", "snake"] },
+      "required": ["node", "react", "python", "swift", "kotlin", "godot"]
+    },
+    "surfaces": {
+      "description": "What the lint reads, per SDK; every public verb here is a row.",
+      "type": "object",
+      "propertyNames": {
+        "enum": ["node", "react", "python", "swift", "kotlin", "godot"]
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ns", "file"],
+          "properties": {
+            "ns": { "type": "string", "minLength": 1 },
+            "type": { "type": "string" },
+            "file": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "ignore": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "reason"],
+        "properties": {
+          "sdk": { "$ref": "#/$defs/sdk" },
+          "path": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "concepts": { "type": "array", "items": { "$ref": "#/$defs/concept" } },
+    "removed": { "type": "array", "items": { "$ref": "#/$defs/removed" } }
+  },
+  "$defs": {
+    "sdk": { "enum": ["node", "react", "python", "swift", "kotlin", "godot"] },
+    "concept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)*$"
+        },
+        "kind": {
+          "enum": [
+            "namespace",
+            "method",
+            "property",
+            "option",
+            "stream",
+            "hook",
+            "value"
+          ]
+        },
+        "feature": {
+          "type": "string",
+          "description": "A feature id in features.json."
+        },
+        "enum": { "type": "string", "description": "A name in enums.json." },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": {
+                "enum": ["string", "json", "bool", "int", "strings", "listener"]
+              }
+            }
+          }
+        },
+        "configFile": {
+          "type": "boolean",
+          "description": "An option polaris-key.json carries (C-24)."
+        },
+        "reserved": {
+          "type": "string",
+          "description": "The package that ships the name; no SDK lists it until then."
+        },
+        "layer": { "enum": ["client", "server", "cli"], "default": "client" },
+        "returns": { "type": "string" },
+        "unit": { "type": "string" },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "triggers": { "type": "array", "items": { "type": "string" } },
+        "reason": {
+          "type": "string",
+          "description": "Why the concept sits outside the client surface."
+        },
+        "sdks": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/sdk" },
+          "additionalProperties": { "$ref": "#/$defs/sdkEntry" }
+        }
+      }
+    },
+    "sdkEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spelling": { "type": "string" },
+        "reason": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "path": { "type": "string" },
+        "shape": {
+          "enum": ["hook", "provider", "flow", "signal", "method", "property"]
+        },
+        "sdkOnly": { "type": "boolean" },
+        "planned": {
+          "type": "string",
+          "description": "An open work package. The entry's spelling is the SDK's current one (none when the symbol is absent today)."
+        }
+      }
+    },
+    "removed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sdk", "from", "package"],
+      "oneOf": [{ "required": ["to"] }, { "required": ["note"] }],
+      "properties": {
+        "sdk": { "$ref": "#/$defs/sdk" },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "description": "A concept id." },
+        "note": { "type": "string" },
+        "package": { "type": "string" },
+        "scan": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pattern": { "type": "string" },
+            "files": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

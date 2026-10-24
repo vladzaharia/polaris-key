@@ -13,7 +13,7 @@
 //   `channelFeed()`  the verified feed `decide()` would use, without the record. (Named apart
 //                    from `feed()`, the Sparkle helper, which is unchanged.)
 //   `releaseRecord()` one release record by hash, verified against the PINNED release keys.
-//   `buildURL()`     the route an install downloads a build from (`distribution/builds`).
+//   `buildUrl()`     the route an install downloads a build from (`distribution/builds`).
 //
 // No Sparkle import: this file is the network client, and it works on any platform — an iOS app
 // is a "decide only" host (App Store, TestFlight, a marketplace) and calls `decide()` exactly as
@@ -501,7 +501,7 @@ extension UpdateClient {
     /// percent-encoded. That route serves the build's payload from every location it has; the
     /// R2-only blob route is never used. Verify the bytes against the record's `size` and
     /// `sha256` before staging. Nil when discovery has not been loaded or names neither template.
-    public func buildURL(version: String, buildId: String) async -> URL? {
+    public func buildUrl(version: String, buildId: String) async -> URL? {
         guard let doc = await core.discoveryDocument,
             let template = doc.services[.distribution]?.endpoints["builds"]
                 ?? doc.services[.release]?.endpoints["builds"]

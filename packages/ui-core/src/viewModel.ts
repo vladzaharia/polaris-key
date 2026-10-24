@@ -13,7 +13,7 @@ import {
   type Now,
   type Schedule,
 } from "./loading.js";
-import { MODELS } from "./models/index.js";
+import { MODELS, type Model } from "./models/index.js";
 import { createStore, type Deliver, type Store } from "./store.js";
 import type { View } from "./view.js";
 import type { ComponentName } from "./vocabulary.js";
@@ -24,8 +24,9 @@ export interface ViewModelOptions {
   now?: Now;
 }
 
-export class ViewModel<C extends ComponentName = ComponentName> {
+export class BareViewModel<C extends ComponentName = ComponentName> {
   readonly component: C;
+  private readonly model: Model;
   private input: UiInput;
   private readonly store: Store<View>;
   private readonly schedule: Schedule;
@@ -35,9 +36,11 @@ export class ViewModel<C extends ComponentName = ComponentName> {
 
   constructor(
     component: C,
+    model: Model,
     input: UiInput = {},
     options: ViewModelOptions = {},
   ) {
+    this.model = model;
     this.component = component;
     this.input = input;
     this.schedule = options.schedule ?? defaultSchedule;
@@ -87,7 +90,7 @@ export class ViewModel<C extends ComponentName = ComponentName> {
    * already says how long it waited (`elapsedMs`) is taken as it is.
    */
   private compute(): View {
-    const model = MODELS[this.component];
+    const model = this.model;
     const plain = model(contextOf(this.input));
     if (this.input.elapsedMs !== undefined) return plain;
     const delayed = DELAYED_LOADING_STATES.includes(
@@ -104,5 +107,19 @@ export class ViewModel<C extends ComponentName = ComponentName> {
         ...(this.now ? { now: this.now } : {}),
       });
     return model(contextOf({ ...this.input, elapsedMs: this.timer.elapsed() }));
+  }
+}
+
+/** The `ViewModel` of a component whose model the table supplies. A renderer that needs few models
+ *  (the React gate) uses `BareViewModel` with the ones it draws, so a bundler keeps the rest out. */
+export class ViewModel<
+  C extends ComponentName = ComponentName,
+> extends BareViewModel<C> {
+  constructor(
+    component: C,
+    input: UiInput = {},
+    options: ViewModelOptions = {},
+  ) {
+    super(component, MODELS[component], input, options);
   }
 }

@@ -36,7 +36,7 @@ sdks/godot/
   project.godot               main loop = PKeyTestRunner; flush_stdout_on_print
   export_presets.cfg          one preset, "Conformance (Linux)": the test pack (and its
                               polaris_key/* stamp options)
-  polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
+  polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product_slug
                               pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
   native/                     the native plugins' sources: ios/ (P5-05), and P5-07's macos/,
@@ -121,7 +121,7 @@ sdks/godot/
                               output, hashing, the desktop device-id raw source
     core/host_io.gd           PKeyHostIo: every side effect the readers perform (replaceable)
     core/facts.gd             PKeyFacts: DeviceFacts, declared probes, the engine and outlet keys
-    core/options.gd           PKeyOptions (a Resource): product, base_url, version, pins, …
+    core/options.gd           PKeyOptions (a Resource): product_slug, base_url, version, pins, …
     core/core.gd              PKeyCore: wiring, request(), sync state; PolarisKey.core
     core/b64url.gd            PKeyB64Url: strict (wire) and lenient (trust-set keys) base64url
     core/json_strict.gd       PKeyJson: RFC 8259 validator, duplicate keys, the §10 NUL rule
@@ -261,8 +261,8 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
   sdks/godot/tools/run_tests.sh
   ```
 
-  The server counts a key entry for every seat a key claims and allows three per key, so the suite
-  runs each group as one of four fixed devices and never frees the seat of the one that activated
+  The server counts a key entry for every device a key claims and allows three per key, so the suite
+  runs each group as one of four fixed devices and never stops counting the device of the one that activated
   `ok` (or `floating`): a rerun on the same server, which CI does (the editor, then the exported
   pack), activates the same device again and publishes the next patch release.
 

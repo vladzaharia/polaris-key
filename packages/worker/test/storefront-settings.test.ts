@@ -23,11 +23,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { listAudit } from "../src/core/audit.js";
 import {
   getPortalProductSettings,
@@ -43,6 +39,7 @@ import {
   parseOfferPaths,
   resolveListing,
 } from "../src/core/storefront/polarisKeyListing.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");
@@ -322,8 +319,9 @@ async function fixture() {
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -343,12 +341,12 @@ async function fixture() {
       PATH,
       { now: NOW },
     );
-  return { db, patch };
+  return { db, env, patch };
 }
 
 describe("the portal-settings route's listing fields (PS-02)", () => {
   it("accepts and returns the listing fields, and audits the change", async () => {
-    const { db, patch } = await fixture();
+    const { db, env, patch } = await fixture();
     const res = await patch({
       storeListed: "listed",
       storeOfferPaths: ["open", "group"],
@@ -379,17 +377,17 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
       [
         "storefront.polarisKey.groupLabels",
         "Changed the Polaris Locker listing for djdl: group labels for 1 group(s)",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
       [
         "storefront.polarisKey.listed",
         "Changed the Polaris Locker listing for djdl: listing auto → listed",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
       [
         "storefront.polarisKey.offerPaths",
         "Changed the Polaris Locker listing for djdl: ways to obtain all → group, open",
-        "u1",
+        await consoleActor(env, db, "u1"),
       ],
     ]);
   });
@@ -402,7 +400,7 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
   });
 
   it("refuses invalid listing values and names each field", async () => {
-    const { db, patch } = await fixture();
+    const { db, env, patch } = await fixture();
     const res = await patch({
       storeListed: "public",
       storeAudience: "anyone",

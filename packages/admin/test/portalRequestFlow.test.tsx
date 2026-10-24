@@ -279,7 +279,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     expect(screen.getByText("Added with a key · Lifetime")).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
-      screen.getByRole("button", { name: "Use this license and continue" }),
+      screen.getByRole("button", { name: "Use this license" }),
     );
     expect(
       await screen.findByRole("heading", {
@@ -376,7 +376,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     );
     renderPortal();
     const primary = await screen.findByRole("button", {
-      name: "Use this license and continue",
+      name: "Use this license",
     });
     expect((primary as HTMLButtonElement).disabled).toBe(false);
     await userEvent.click(primary);
@@ -486,7 +486,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     renderPortal();
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Use this license and continue",
+        name: "Use this license",
       }),
     );
     await screen.findByRole("heading", {
@@ -515,7 +515,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     renderPortal();
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Use this license and continue",
+        name: "Use this license",
       }),
     );
     await userEvent.click(
@@ -543,7 +543,7 @@ describe("fix round", () => {
       await screen.findByRole("radio", { name: /Diceroll Plus/ }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Use this license and continue" }),
+      screen.getByRole("button", { name: "Use this license" }),
     );
     await userEvent.click(
       await screen.findByRole("button", { name: "Change" }),
@@ -580,7 +580,7 @@ describe("fix round", () => {
       screen.queryByRole("button", { name: "Replace a device" }),
     ).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Use this license and continue" }),
+      screen.queryByRole("button", { name: "Use this license" }),
     ).toBeNull();
   });
 
@@ -603,7 +603,7 @@ describe("fix round", () => {
       screen.queryByRole("button", { name: "Replace a device" }),
     ).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Use this license and continue" }),
+      screen.getByRole("button", { name: "Use this license" }),
     ).toBeTruthy();
   });
 
@@ -747,5 +747,26 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
   it("a key in another account is refused under the field", async () => {
     await enter(false, preview({ verdict: "license_owned", license: null }));
     expect(await screen.findByText(/already in another/i)).toBeTruthy();
+  });
+});
+
+describe("Not you? (the sign-out can fail)", () => {
+  const meReads = () =>
+    fetchedRequests().filter((r) => r === "GET /api/me").length;
+
+  it("re-reads the session whether the sign-out was confirmed or not", async () => {
+    for (const logout of [{ status: 200 }, "network"] as const) {
+      cleanup();
+      flow(choices(), { "POST /logout": logout });
+      renderPortal();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Choose a license for this device",
+      });
+      const before = meReads();
+      await userEvent.click(screen.getByRole("button", { name: "Not you?" }));
+      await waitFor(() => expect(meReads()).toBeGreaterThan(before));
+      expect(fetchedRequests()).toContain("POST /logout");
+    }
   });
 });

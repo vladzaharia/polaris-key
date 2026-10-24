@@ -34,8 +34,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/distribution/pages/OutletsPage.tsx": 1123,
   "sections/feeds/pages/FeedSettings.tsx": 1083,
   "sections/feeds/pages/PackageRecord.tsx": 606,
-  "sections/feeds/pages/RegistryTokens.tsx": 889,
-  "sections/platform/pages/platformOverrideMigration.tsx": 1183,
   "sections/platform/pages/platformStores.tsx": 1790,
   "sections/release/components/PolicyDialog.tsx": 655,
   "sections/release/pages/CompatibilityPage.tsx": 753,
@@ -43,7 +41,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/release/pages/ReleaseRecord.tsx": 1244,
   "sections/release/pages/SimulatorPage.tsx": 766,
   "sections/storefronts/components/PolarisKeyPanel.tsx": 888,
-  "sections/storefronts/pages/ListingPage.tsx": 695,
 };
 
 /** Offences for a set of files (path -> line count) against a budget and an allow-list. */

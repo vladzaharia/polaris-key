@@ -35,7 +35,7 @@ export function productAttentionItems(
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const a of server ?? []) {
-    if (a.product.slug !== slug) continue;
+    if (a.product?.slug !== slug) continue;
     items.push({
       id: a.id,
       tone: a.tone,

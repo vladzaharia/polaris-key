@@ -16,6 +16,7 @@ import {
   stmtInsertLicense,
 } from "./store.js";
 import { getProduct } from "../products/store.js";
+import { isImplicitTier, issueTierFor } from "./implicitTier.js";
 import { guardedInsert, guardedWrite, oidcGrantStatements } from "./grants.js";
 import { licenseTransitionStatement } from "./lifecycleWrites.js";
 import { mergeLicenseInto, type LicenseMerge } from "./licenseMerge.js";
@@ -23,12 +24,13 @@ import { allowsOidcDefault } from "../fingerprint.js";
 import { licenseDeviceLimit, tierExpiresAt } from "./authz.js";
 import { licenseUsable } from "../devices.js";
 import { applyProvisionedAccountSecrets } from "../accounts/accountOverrides.js";
-import { licenseConfigOverridesFrozen } from "../ops/overrideMigration.js";
 import {
   applyProvisioning,
   mergeProvisionedOverrides,
   provisionedColumn,
+  provisionedSecretTarget,
   signInProvisioning,
+  type ProvisionedSecretTarget,
 } from "./provisioning.js";
 
 export interface OidcConfigRow {
@@ -350,6 +352,8 @@ export async function upgradedTier(
     getTier(db, product.slug, identityTierId),
   ]);
   if (!current || !next) return null;
+  // LX-33.2: the implicit Default tier is no tier: a licence on it is left alone, as a tierless one.
+  if (isImplicitTier(current)) return null;
   return (next.rank ?? 0) > (current.rank ?? 0) ? next : null;
 }
 
@@ -389,18 +393,23 @@ export async function updateLicenseOnSignIn(
 ): Promise<void> {
   const signIn = await signInProvisioning(db, product, identity, now);
   const declared = signIn.declared;
-  // U-03 (S-19 §8 U-03 row): from the licence-override migration's run on, provisioned SECRETS
-  // target the licence owner's account overrides (its declared secret keys are still removed
-  // from the column, so nothing stale lingers there).
-  const frozen = await licenseConfigOverridesFrozen(db);
+  // U-27.2 (L-U1): provisioned SECRETS target the licence owner's account overrides when the
+  // licence has an owner and this identity is linked to it (its declared secret keys are then
+  // removed from the column, so nothing stale lingers there); every other licence keeps them in
+  // the column.
+  const target = await provisionedSecretTarget(
+    db,
+    existing.account_id,
+    identity.sub,
+  );
   const column = await provisionedColumn(
     env,
     db,
     product.slug,
     signIn.provisioned,
-    frozen,
+    target,
   );
-  if (frozen && existing.account_id)
+  if (target === "account" && existing.account_id)
     await applyProvisionedAccountSecrets(
       env,
       db,
@@ -494,8 +503,7 @@ export async function updateLicenseOnSignIn(
  *  sign-in, the licence chooser, the device-code poll and the portal's Discover claim. */
 export interface IssueVia {
   kind: "oidc";
-  /** Seals secrets provisioned into the licence column until the override migration runs, then
-   *  into the owner's account overrides. Every caller passes it. */
+  /** Seals secrets provisioned into the licence column or the owner's account overrides. Every caller passes it. */
   env?: Env;
   /** The sign-in's mint writes its own audit row (`license.mint.oidc`) in the batch that
    *  inserts the licence. The portal's Discover claim passes `false`: it audits the licence it
@@ -564,18 +572,17 @@ export async function issueLicense(
     identity,
     now,
   );
-  // After the override migration, provisioned secrets go to the owner's account overrides (below,
-  // for a licence that has an owner). `overrides` is what the provisioning amounts to on the
-  // licence (the device-limit previews read it); entitlement keys go to the licence's `oidc`
-  // grant (`oidcGrant`) and the rest to the column (`column`).
-  const frozen = await licenseConfigOverridesFrozen(db);
-  const overrides: ManagedPayload = frozen
-    ? { ...provisionedAll, secrets: {} }
-    : provisionedAll;
-  // What the column holds for the provisioned keys: sealed (`provisionedColumn`), so only the two
-  // arms that write it (the claim and the new licence) compute it.
-  const column = () =>
-    provisionedColumn(opts.env, db, product.slug, provisionedAll, frozen);
+  // Provisioned secrets go to the owner's account overrides for a licence that has an owner this
+  // identity is linked to (U-27.2, L-U1), decided per licence below; every other licence keeps
+  // them in the column. `overrides` is what the provisioning amounts to on a licence with the
+  // given target (the device-limit previews read it); entitlement keys go to the licence's
+  // `oidc` grant (`oidcGrant`).
+  const overridesFor = (target: ProvisionedSecretTarget): ManagedPayload =>
+    target === "account" ? { ...provisionedAll, secrets: {} } : provisionedAll;
+  // What the column holds for the provisioned keys: sealed (`provisionedColumn`), so only the arms
+  // that write it (the claim and the new licence) compute it.
+  const column = (target: ProvisionedSecretTarget) =>
+    provisionedColumn(opts.env, db, product.slug, provisionedAll, target);
   const oidcGrant = (licenseId: string) =>
     oidcGrantStatements({
       product: product.slug,
@@ -626,13 +633,18 @@ export async function issueLicense(
     // Provisioning wins only on the keys its hooks declare (`mergeProvisionedOverrides`): an
     // operator's override of any other key on the enrolled licence survives the claim, as the
     // sign-in arm keeps it. Writing the column wholesale destroyed it.
+    const claimTarget = await provisionedSecretTarget(
+      db,
+      claimable.account_id,
+      identity.sub,
+    );
     await db.batch([
       {
         sql: "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
         params: [
           mergeProvisionedOverrides(
             claimable.overrides_json,
-            await column(),
+            await column(claimTarget),
             declared,
           ),
           product.slug,
@@ -644,7 +656,7 @@ export async function issueLicense(
     // Every key the provisioning DECLARES, not just the ones this identity's claims provide, so
     // a declared key whose claim is absent is cleared from the owner's row (revocation on claim
     // loss), exactly as the sign-in rewrite does.
-    if (frozen && claimable.account_id)
+    if (claimTarget === "account" && claimable.account_id)
       await applyProvisionedAccountSecrets(
         opts.env,
         db,
@@ -653,6 +665,7 @@ export async function issueLicense(
         provisionedAll.secrets,
         declared.secrets,
         now,
+        identity.sub,
       );
     await appendAudit(db, {
       product: product.slug,
@@ -688,7 +701,15 @@ export async function issueLicense(
         ...existing,
         tier_id: tierId,
         expires_at: expiresAt,
-        overrides_json: JSON.stringify(overrides),
+        overrides_json: JSON.stringify(
+          overridesFor(
+            await provisionedSecretTarget(
+              db,
+              existing.account_id,
+              identity.sub,
+            ),
+          ),
+        ),
       },
       now,
       { withoutOidcGrant: true },
@@ -766,11 +787,11 @@ export async function issueLicense(
       name: identity.name ?? null,
       email: identity.email ?? null,
       groups_json: JSON.stringify(identity.groups),
-      tier_id: tierId,
+      tier_id: await issueTierFor(db, product.slug, tierId),
       activated_at: now,
       expires_at: expiresAt,
       max_offline_days: null,
-      overrides_json: JSON.stringify(await column()),
+      overrides_json: JSON.stringify(await column("license")),
       channels_json: null,
       min_version: null,
       max_version: null,

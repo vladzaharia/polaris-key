@@ -227,6 +227,11 @@ export function licenseGrantDeleteStatements(target: {
       sql: "DELETE FROM entitlement_events WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
     },
+    // U-27.6: the backfill ledger's row for this licence (ids and a hash, no value).
+    {
+      sql: "DELETE FROM provisioned_secret_moves WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
   ];
 }
 
@@ -258,6 +263,11 @@ export function productGrantErasureStatements(product: string): DbStatement[] {
     },
     {
       sql: "DELETE FROM entitlement_events WHERE product = ?",
+      params: [product],
+    },
+    // U-27.6: the backfill ledger holds the owners' subjects.
+    {
+      sql: "DELETE FROM provisioned_secret_moves WHERE product = ?",
       params: [product],
     },
   ];

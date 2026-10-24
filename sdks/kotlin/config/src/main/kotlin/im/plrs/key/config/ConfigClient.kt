@@ -286,15 +286,15 @@ public class ConfigClient(
     private suspend fun context(): ResolveContext = ResolveContext(doc()?.config, localOverrides(), environment, envPrefix)
 
     /** The effective value for [key], honouring management state and the override layers. */
-    public suspend fun config(key: String, default: JsonElement): JsonElement =
+    public suspend fun get(key: String, default: JsonElement): JsonElement =
         ConfigResolution.resolveValue(context(), key) ?: default
 
-    /** Where `config(key)` would source its value from (provenance, for settings UIs). */
-    public suspend fun configSource(key: String): ConfigSource = ConfigResolution.resolveSource(context(), key)
+    /** Where `get(key, default)` would source its value from (provenance, for settings UIs). */
+    public suspend fun getConfigSource(key: String): ConfigSource = ConfigResolution.resolveSource(context(), key)
 
     /** The user-visible catalog (§2.2.1 rule 4): every document entry minus the `hidden` ones. */
     public suspend fun listUserConfig(): List<UserConfigEntry> = ConfigResolution.listUserEntries(context())
 
     /** A managed secret's value (string only), or null. Secrets are never enumerated. */
-    public suspend fun secret(key: String): String? = doc()?.secrets?.get(key)?.value.stringValue
+    public suspend fun getSecret(key: String): String? = doc()?.secrets?.get(key)?.value.stringValue
 }

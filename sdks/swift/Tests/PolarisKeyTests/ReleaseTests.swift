@@ -35,14 +35,14 @@ final class ReleaseTests: XCTestCase {
             XCTAssertEqual(e.code, PolarisError.serviceUnavailable)
         }
         do {
-            _ = try await c.release.installURL()
-            XCTFail("installURL() did not refuse")
+            _ = try await c.release.installUrl()
+            XCTFail("installUrl() did not refuse")
         } catch let e as PolarisError {
             XCTAssertEqual(e.code, PolarisError.serviceUnavailable)
         }
         do {
-            _ = try await c.release.downloadURL(version: "1.0.0", binary: "djdl", arch: "arm64")
-            XCTFail("downloadURL() did not refuse")
+            _ = try await c.release.downloadUrl(version: "1.0.0", binary: "djdl", arch: "arm64")
+            XCTFail("downloadUrl() did not refuse")
         } catch let e as PolarisError {
             XCTAssertEqual(e.code, PolarisError.serviceUnavailable)
         }
@@ -113,14 +113,14 @@ final class ReleaseTests: XCTestCase {
     func testTheURLBuildersMakeNoRequest() async throws {
         let server = StubServer()
         let c = try await client(server)
-        let install = try await c.release.installURL()
+        let install = try await c.release.installUrl()
         XCTAssertEqual(install.absoluteString, "https://key.example/djdl/release/install.sh")
-        let plain = try await c.release.downloadURL(version: "1.3.0", binary: "djdl", arch: "arm64")
+        let plain = try await c.release.downloadUrl(version: "1.3.0", binary: "djdl", arch: "arm64")
         XCTAssertEqual(plain.absoluteString, "https://key.example/djdl/release/dl/1.3.0/djdl-arm64")
-        let dmg = try await c.release.downloadURL(
+        let dmg = try await c.release.downloadUrl(
             version: "1.3.0", binary: "djdl", arch: "arm64", dmg: true)
         XCTAssertEqual(dmg.absoluteString, "https://key.example/djdl/release/dl/1.3.0/djdl-arm64.dmg")
-        let sum = try await c.release.downloadURL(
+        let sum = try await c.release.downloadUrl(
             version: "1.3.0", binary: "djdl", arch: "x86_64", checksum: true)
         XCTAssertEqual(
             sum.absoluteString, "https://key.example/djdl/release/dl/1.3.0/djdl-x86_64?checksum=sha256")

@@ -7,6 +7,7 @@ import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { atRest } from "./atRest.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The console's data surfaces in motion (notes/S-23 §6.1 list, status, meter, skeleton; MO-09), in
@@ -57,7 +58,9 @@ const LICENSES = Array.from({ length: 60 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
-}));
+  // The product default the Worker reports as the limit (a fifth of the track per device).
+  inheritedDeviceLimit: 5,
+})).map(workerFields);
 const ROUTES: Record<string, unknown> = {
   ...CORE_ROUTES,
   "/manage/api/products/djdl/license/licenses": { licenses: LICENSES },
@@ -340,7 +343,8 @@ const bodyRowCount = (page: Page): Promise<number> =>
   page.locator("main#content tbody > tr[data-row-id]").count();
 
 async function openStatusMenu(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Filter by status" }).click();
+  // CXF-TABLE: Status folds into the "More filters" menu (the tiles above are its quick filter).
+  await page.getByRole("button", { name: "More filters" }).click();
   await page.getByRole("checkbox", { name: /^Disabled/ }).waitFor();
   await atRest(page);
 }
@@ -631,7 +635,7 @@ describe("reduced motion: every data-surface change is an instant swap", () => {
         expect(await running(page), `${what}: still animating`).toEqual([]);
       };
 
-      await page.getByRole("button", { name: "Filter by status" }).click();
+      await page.getByRole("button", { name: "More filters" }).click();
       const disabled = page.getByRole("checkbox", { name: /^Disabled/ });
       await disabled.waitFor();
       await swapped("facet menu");

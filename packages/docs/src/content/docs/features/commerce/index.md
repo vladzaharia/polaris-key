@@ -24,13 +24,35 @@ it with `modules: { commerce: { enabled: true } }` in `.pkey/product`. With Comm
 routes answer not-found and store refund notifications are not processed; the store retries and
 then drops them. Google Play retries for 7 days and lists voided purchases for 31.
 
+## Store identity
+
+The identity fields of `commerce.stores` (`bundleId`, `packageName`, `appId`) are optional. Left
+out, the app whose purchases unlock a flag is the app the product is assigned on that store: the
+pin of its own active key, else the platform pin. Type a field to pin it; a typed value always
+wins.
+
+- **A mismatch is shown.** When the typed value differs from the assignment, Commerce → Overview
+  names both apps and offers **Use the assigned app**. It removes the typed value, so purchases of
+  the typed app stop claiming licenses; typing it again undoes it.
+- **Overview shows the source** of each store's app: typed, or from the assignment. A store with no
+  app assigned says so and stays off.
+- **Keys that disagree** raise an attention item; the lowest key id is used.
+- **Caution.** While a field is left out, a product admin with `keys` who adds a key with a lower
+  id or re-pins one changes which app's purchases unlock the flag, with no Commerce write. Each
+  change is audited on the key. Type the field once if you want it fixed.
+- **`appAppleId` is never derived.** It is checked only when typed.
+
+Store by store: [App Store](/docs/features/ship-builds/channels/app-store/#store-identity),
+[Google Play](/docs/features/ship-builds/channels/google-play/#store-identity),
+[Steam](/docs/features/ship-builds/channels/steam/#store-identity).
+
 ## Overview in the console
 
 Commerce → Overview shows each store's status, its mapped products and the latest purchases.
 
 ## How it works
 
-1. **Bind before buying.** The game calls `PolarisKey.commerce.get_binding()`
+1. **Bind before buying.** The game calls `PolarisKey.commerce.binding()`
    (`GET /<product>/commerce/binding`, device token) and gets the license's
    **binding** — a random UUID, not the license id and not personal data — plus the store products
    on sale. It hands the binding to the store with the purchase: Apple's `appAccountToken`, Play's
@@ -79,7 +101,7 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.
-2. **Set the commerce settings**, one block per store you sell on:
+2. **Set the commerce settings**, one block per store you sell on. The identity field of each block is optional ([Store identity](#store-identity)); the example types them:
 
    ```http title="Request"
    /manage/api/products/<slug>/commerce/settings (PUT)

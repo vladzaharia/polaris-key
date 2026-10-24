@@ -113,12 +113,14 @@ export function DurationCard({
           </strong>
         </div>
         {end !== null ? (
-          <p
-            className="text-xs text-fg-muted"
-            style={{ paddingInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
-          >
-            {expired ? "Expired" : `Today · ${formatDate(now)}`}
-          </p>
+          <div className="relative h-4">
+            <p
+              className="absolute top-0 whitespace-nowrap text-xs text-fg-muted"
+              style={{ insetInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
+            >
+              {expired ? "Expired" : `Today · ${formatDate(now)}`}
+            </p>
+          </div>
         ) : null}
       </div>
     </Section>
@@ -198,26 +200,47 @@ export function OriginCard({
 /** Waiting: the invitation went to an email that has not signed in yet. */
 export function InvitationCard({
   email,
+  invitedAt,
+  canInvite,
   onChangeEmail,
 }: {
   email: string;
+  /** When the last invitation email went out (LX-27c); null when none did. */
+  invitedAt: number | null;
+  /** The product can invite (Identity and auto-link on): the card says what was sent. */
+  canInvite: boolean;
   onChangeEmail: () => void;
 }): React.ReactElement {
+  // Where invitations don't work the card is as before. Where they do, it says what went out;
+  // there is no "opened" state: nothing tracks opens (privacy).
+  const sent = canInvite && invitedAt !== null;
   return (
     <Section
       id="invitation"
       title="Invitation"
       variant="settings"
       actions={
-        <Button variant="outline" size="sm" onClick={onChangeEmail}>
-          Change email…
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onChangeEmail}>
+            Change email…
+          </Button>
+        </div>
       }
     >
       <dl className="divide-y divide-border">
-        <Fact label="Sent to" sub="Waiting for sign-in">
+        <Fact
+          label={canInvite ? "Address" : "Sent to"}
+          sub="Waiting for sign-in"
+        >
           {email}
         </Fact>
+        {canInvite ? (
+          <Fact label="Invitation">
+            {invitedAt !== null
+              ? `Sent ${formatDate(fromSeconds(invitedAt))}`
+              : "Not sent"}
+          </Fact>
+        ) : null}
       </dl>
     </Section>
   );

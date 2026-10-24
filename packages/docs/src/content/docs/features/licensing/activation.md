@@ -42,8 +42,8 @@ After the key checks, Core runs one shared decision. Sign-in activation runs the
 1. **License usable.** The license is `active` and not expired, else `401`.
 2. **Fingerprint mode.** With the product's fingerprint policy on, the tier's mode wins, then the product's default, then `normal`. With it off the mode is `off`. See [Fingerprints](/docs/features/licensing/fingerprints/).
 3. **Strict needs a fingerprint.** Only `strict` makes one mandatory: without it the answer is `403 fingerprint_required`. Other modes accept a client that sent none and record the device as `unverified`.
-4. **Hardware reconcile**, before any seat decision. If the presented hardware differs from the stored hardware by more than the mode tolerates, the old binding is retired and the call answers `409 hardware_mismatch` with `drift` and `changed`. A retry binds the new hardware. If a new authorization presents hardware that an authorized sibling on the same license already holds, the stale id is retired so one device holds one seat.
-5. **Seat claim**, only for a new authorization. A device refreshing its own seat skips it. A full license answers `403 device_limit`.
+4. **Hardware reconcile**, before any device-limit decision. If the presented hardware differs from the stored hardware by more than the mode tolerates, the old binding is retired and the call answers `409 hardware_mismatch` with `drift` and `changed`. A retry binds the new hardware. If a new authorization presents hardware that an authorized sibling on the same license already holds, the stale id is retired so one device is counted once.
+5. **Device-limit check**, only for a new authorization. A device that already counts skips it. A full license answers `403 device_limit`.
 6. **Bind.** The device row is written with the request's platform, architecture, version and SDK headers. The Worker mints and stores a token hash, so a re-activation invalidates the old token at once. It also writes the server-recomputed fingerprint row, or an `unverified` marker.
 
 ```json title="Output"
@@ -56,7 +56,7 @@ After the key checks, Core runs one shared decision. Sign-in activation runs the
 }
 ```
 
-`manageUrl` opens the Polaris Locker flow that frees a seat. It is present only while Locker is on for the product, never carries a key, account id or device id, and isn't an auth failure: offer it behind a user action such as **Replace a device**.
+`manageUrl` opens the Polaris Locker flow that makes room for another device. It is present only while Locker is on for the product, never carries a key, account id or device id, and isn't an auth failure: offer it behind a user action such as **Replace a device**.
 
 ## Fingerprint body rules
 
@@ -66,7 +66,7 @@ An absent, empty, oversized (over 4 KiB) or unparseable body means no fingerprin
 
 While Identity is on, the Worker counts how many times a license key was typed on a new device, so a key passed around in public stops working on new devices and points people at an account.
 
-- **What counts.** A new device taking a seat through `/license/activate`, a browser key session, and a Locker claim. Rotation, document fetches and a device that is already enrolled don't count.
+- **What counts.** A new device counting toward the limit through `/license/activate`, a browser key session, and a Locker claim. Rotation, document fetches and a device that is already enrolled don't count.
 - **The member.** Every success carries `"keyEntries": { "used": 3, "limit": 10 }`. Show `max(0, limit − used)` entries left.
 - **The limit.** The product setting `identity.keyEntry.limit`, from 1 to 100, capped by the platform setting of the same name.
 - **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with Locker's activate link as `manageUrl`. The switch is off until the SDKs that show the refusal ship. Counting runs either way.
@@ -93,12 +93,12 @@ POST /tidewater/license/deauthorize
 Authorization: Bearer <device token>
 ```
 
-The device is marked `deauthorized`, its fingerprint and facts rows are purged, its seat frees and its token record is evicted. The response is `{"ok": true}`. No device header is needed, and the bucket (30 per 60 seconds) fails open.
+The device is marked `deauthorized`, its fingerprint and facts rows are purged, it stops counting toward the limit and its token record is evicted. The response is `{"ok": true}`. No device header is needed, and the bucket (30 per 60 seconds) fails open.
 
 A device token authenticates one device. Deauthorizing a sibling is refused with `403`, because any device could otherwise evict every other install. Cross-device management belongs on Locker.
 
 ## Next steps
 
-- [The license model](/docs/features/licensing/model/): seat pools and dormancy.
+- [The license model](/docs/features/licensing/model/): device pools and dormancy.
 - [Handle the device limit](/docs/features/licensing/device-limit/): what to show on `device_limit`.
 - [Public routes](/docs/reference/routes/) and [error codes](/docs/reference/error-codes/).

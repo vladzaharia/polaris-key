@@ -6,7 +6,7 @@ import {
   type AlertDestination,
   type AlertKindId,
   type AlertScope,
-  ApiError,
+  HttpError,
 } from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
@@ -152,7 +152,7 @@ export function DestinationDialog({
         onStepUp();
         setWantsSignIn(true);
       } else {
-        const reason = err instanceof ApiError ? err.reason : undefined;
+        const reason = err instanceof HttpError ? err.reason : undefined;
         const spec = reason ? REASONS[reason] : undefined;
         if (spec?.field) {
           setError(spec.field, spec.text);

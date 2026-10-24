@@ -23,14 +23,87 @@ import { ErrorBlock } from "./InlineFailure.js";
 import { Button } from "../../../../ui/Button.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 
-export function TierEditor({
+export function TierEditor(props: {
+  slug: string;
+  tier: TierSummary;
+  /** Licenses on the tier; `null` while unknown. */
+  used: number | null;
+}): React.ReactElement {
+  return props.tier.implicit ? (
+    <DefaultTierRecord {...props} />
+  ) : (
+    <EditableTierRecord {...props} />
+  );
+}
+
+/**
+ * The product's Default tier (LX-33.7): read-only. In release N its limits follow the product's
+ * license defaults, and it cannot be deleted.
+ */
+function DefaultTierRecord({
   slug,
   tier,
   used,
 }: {
   slug: string;
   tier: TierSummary;
-  /** Licenses on the tier; `null` while unknown. */
+  used: number | null;
+}): React.ReactElement {
+  const name = tier.label || tier.id;
+  return (
+    <section
+      aria-labelledby="tier-title"
+      className="overflow-hidden rounded-lg border border-border bg-surface-raised"
+    >
+      <div className="px-5 py-4">
+        <h2
+          id="tier-title"
+          className="truncate text-lg font-semibold text-fg-strong"
+          title={name}
+        >
+          {name}
+        </h2>
+        <p className="mt-0.5 text-sm text-fg-muted">
+          Used when a license names no tier
+          {" · "}
+          {used === null ? (
+            "Usage unknown"
+          ) : used === 0 ? (
+            usedByText(0)
+          ) : (
+            <Link
+              to={r.licenses(slug, { tier: tier.id })}
+              className="text-accent-fg underline-offset-4 hover:underline"
+            >
+              {usedByText(used)}
+            </Link>
+          )}
+        </p>
+      </div>
+      <dl className="divide-y divide-border border-t border-border text-sm">
+        <div className="grid gap-x-4 px-5 py-3 sm:grid-cols-[9rem_1fr]">
+          <dt className="text-fg-muted">Devices</dt>
+          <dd className="font-medium text-fg-strong">
+            {tier.policyDeviceLimit == null
+              ? "Unlimited"
+              : tier.policyDeviceLimit}
+          </dd>
+        </div>
+      </dl>
+      <p className="border-t border-border px-5 py-3 text-sm text-fg-muted">
+        Its limits follow the product&apos;s license defaults.
+      </p>
+    </section>
+  );
+}
+
+function EditableTierRecord({
+  slug,
+  tier,
+  used,
+}: {
+  slug: string;
+  tier: TierSummary;
   used: number | null;
 }): React.ReactElement {
   const [deleting, setDeleting] = React.useState(false);

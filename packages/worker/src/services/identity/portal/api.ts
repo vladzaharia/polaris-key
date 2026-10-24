@@ -1,5 +1,9 @@
 import { publicBranding } from "./branding.js";
 import {
+  noticeOrigin,
+  syncLicenseLinksAndNotify,
+} from "../accounts/libraryNotice.js";
+import {
   activePlatformConnections,
   audienceCovers,
 } from "../../../core/oidc/connections.js";
@@ -14,6 +18,7 @@ import {
   platformFromFileName,
 } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
@@ -74,7 +79,6 @@ import {
   portalAuthCapabilities,
   portalAudit,
   releaseServiceEnabled,
-  syncAccountLicenseLinks,
   type PortalLicenseRow,
 } from "./repo.js";
 import {
@@ -213,7 +217,10 @@ function isMutation(method: string): boolean {
 
 export { readBody };
 
-function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
+function licenseBase(
+  row: PortalLicenseRow,
+  tier: string | null,
+): Record<string, unknown> {
   return {
     id: row.id,
     product: row.product,
@@ -222,7 +229,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
-    tier: row.tier_id,
+    tier,
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,
@@ -249,7 +256,7 @@ export async function shapeLicenseSummary(
   const activeKeyCount = keys.filter((k) => k.status === "active").length;
   const settings = await getPortalProductSettings(db, row.product);
   return {
-    ...licenseBase(row),
+    ...licenseBase(row, await customerTierId(db, row)),
     ...portalLicenseOrigin({
       origin: row.origin ?? null,
       sub: row.sub,
@@ -794,7 +801,13 @@ async function handleMe(
 ): Promise<Response> {
   const account = await getPortalAccount(db, session.accountId);
   if (!account) return unauthorized();
-  await syncAccountLicenseLinks(db, session.accountId, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    session.accountId,
+    now,
+    noticeOrigin(env, req),
+  );
   return portalJson({
     account: {
       id: account.id,
@@ -969,13 +982,21 @@ async function handleCapabilities(
 }
 
 async function handleLicenses(
+  req: Request,
+  env: Env,
   db: Db,
   session: PortalSession,
   rest: string[],
   now: number,
   hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
-  await syncAccountLicenseLinks(db, session.accountId, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    session.accountId,
+    now,
+    noticeOrigin(env, req),
+  );
   const [product, licenseId] = rest;
   if (!product) {
     const rows = await listPortalLicenses(db, session.accountId);
@@ -1763,7 +1784,7 @@ interface PortalApiMatch {
 }
 
 /**
- * Whether the per-request licence-link sweep (`syncAccountLicenseLinks`) runs before the handler:
+ * Whether the per-request licence-link sweep (`syncLicenseLinksAndNotify`) runs before the handler:
  * `true` always, `false` never, `{ except }` for every method but one. Scheduling and cancelling
  * an account deletion, the passkey / sign-in-method / token routes and the device-login approval
  * skip it: re-deriving links cannot make them safer and must not block them.
@@ -1882,7 +1903,15 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
   {
     path: "device-login/start",
     auth: "none",
-    handler: (c) => handleDeviceLoginStart(c.req, c.env, c.db, c.now),
+    // ST-34.5: the body is read on POST only, as the hand dispatch did.
+    handler: async (c) =>
+      handleDeviceLoginStart(
+        c.req,
+        c.env,
+        c.db,
+        c.now,
+        c.req.method === "POST" ? await readBody(c.req) : {},
+      ),
   },
   {
     path: "device-login/:code",
@@ -2233,6 +2262,8 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
             c.now,
           )
         : handleLicenses(
+            c.req,
+            c.env,
             c.db,
             s.session,
             [m.params.product!, m.params.license!],
@@ -2246,7 +2277,15 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
     csrf: "change",
     sweep: true,
     handler: (c, m, s) =>
-      handleLicenses(c.db, s.session, [...m.rest], c.now, c.hooksFor),
+      handleLicenses(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        [...m.rest],
+        c.now,
+        c.hooksFor,
+      ),
   },
   {
     path: "claim/license-key/**",
@@ -2533,7 +2572,14 @@ async function dispatchPortalApi(
     typeof row.sweep === "boolean"
       ? row.sweep
       : req.method !== row.sweep.except;
-  if (sweep) await syncAccountLicenseLinks(db, session.accountId, now);
+  if (sweep)
+    await syncLicenseLinksAndNotify(
+      env,
+      db,
+      session.accountId,
+      now,
+      noticeOrigin(env, req),
+    );
   return row.handler(ctx, matched, { session, sessionIdHash });
 }
 

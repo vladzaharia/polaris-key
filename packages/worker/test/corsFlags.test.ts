@@ -81,6 +81,9 @@ const OLD_CORS_SERVICE_PATHS = [
   "identity/attach",
   "identity/subject",
   "identity/signout",
+  // U-05.12, U-05.13: the Cloud Sync pull and push (device bearer, never ambient).
+  "sync",
+  "sync/ops",
 ];
 
 const OLD_CORS_CORE_KINDS = [

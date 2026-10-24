@@ -100,6 +100,11 @@ export interface EmailContent {
   secret?: string;
   /** Paragraphs after the `secret` box. */
   paragraphsAfter?: string[];
+  /**
+   * Let a long unbroken word (an email address) break anywhere instead of widening the card
+   * (`overflow-wrap:anywhere`). Off by default so the other emails render as they did.
+   */
+  wrapAnywhere?: boolean;
   /** A quiet second link with the small Polaris Key logo, under the card's content. */
   secondary?: { label: string; url: string };
   /** The small print under the card. Plain text. */
@@ -125,7 +130,7 @@ export function renderEmail(c: EmailContent): string {
     cls = "pk-text",
     color: string = LIGHT.text.default,
   ) =>
-    `<p class="${cls}" style="margin:0 0 16px;font-family:${font};font-size:16px;line-height:24px;color:${color}">${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
+    `<p class="${cls}" style="margin:0 0 16px;font-family:${font};font-size:16px;line-height:24px;${c.wrapAnywhere ? "overflow-wrap:anywhere;" : ""}color:${color}">${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
   const lockupSrc = (variant: "light" | "dark") =>
     locker
       ? `${c.origin}/assets/branding/locker/locker-horizontal-${variant}-640.png`

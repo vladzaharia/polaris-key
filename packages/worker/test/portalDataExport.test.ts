@@ -974,8 +974,12 @@ describe("GET /api/me/export", () => {
     expect(Object.keys(djdl.stores).sort()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",
+      "core.provisionedSecretMoves",
+      "sync.cloudSync",
       "test.notes",
     ]);
+    // U-27.6: the backfill ledger holds ids and a hash; this account had no move.
+    expect(djdl.stores["core.provisionedSecretMoves"]).toEqual([]);
     expect(djdl.stores["test.notes"]).toEqual({
       notes: [`notes of ${adaSubject.djdl} in djdl`],
     });

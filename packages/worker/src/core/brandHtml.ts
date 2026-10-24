@@ -260,8 +260,20 @@ const AUTH_CARD_RULES = [
   // Under the card: Help and Privacy, quiet, with 24 px targets.
   `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
   `.ac-links a+a{position:relative}`,
-  `.ac-links a+a::before{content:"\\00b7";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
+  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
   `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
+  `@media (max-width: 30rem){.ac-links a{min-height:2.75rem;padding:.125rem .5rem}}`,
+  `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
+  // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
+  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken);text-align:center}`,
+  `.codepanel p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem}`,
+  `.facts{display:grid;gap:.5rem;min-width:0}`,
+  `.facts>*,.facts .fine{margin:0}`,
+  `.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}`,
+  `.tags .tag{display:inline-flex;gap:.375rem;align-items:center;max-width:100%;padding:.125rem .5rem;white-space:nowrap}`,
+  `.tags .tag .muted{white-space:normal}`,
+  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;color:var(--strong);font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
@@ -323,6 +335,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:min(3rem,8vw)}`,
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
+  // On a phone the lockup drops to the BRAND phone size (36 px) in the media query at the end of this list; this rule (more specific than the phone one in the Locker tail) is the TV size.
   `.tv .ac-brand svg{height:72px;width:auto}`,
   `.tv .ac-head img,.tv .ac-head .ac-mono{width:64px;height:64px}`,
   `.tv .ac-head-title{font-size:1.5rem;line-height:2rem}`,
@@ -340,8 +353,9 @@ const LOCKER_PAGE_CSS_TAIL = [
   ...AUTH_CARD_RULES,
   // Phones: the Locker lockup drops to 36 px in its 56 px bar. Only here, not in `AUTH_CARD_RULES`,
   // which the console card shares with its brand attribute swapped: the console card keeps its
-  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key).
-  `@media (max-width: 30rem){.ac-brand svg{height:36px;width:auto}}`,
+  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 72 px TV lockup drops
+  // to the same 36 px, inside the gutter.
+  `@media (max-width: 30rem){.ac-brand svg{height:36px;width:auto}.tv .ac-brand svg{height:36px;max-width:calc(100% - 2rem)}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
@@ -370,6 +384,42 @@ const CONSOLE_PAGE_CSS_TAIL = [
   ),
   // The brand row: the compact lockup, a hairline and "Console" (SIGN-IN.md §3.1).
   `.ac-brand>div{display:flex;align-items:center}`,
+  // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
+  // to its own line under large text, and the address breaks at "@" and ".".
+  `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:600}`,
+  `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--strong)}`,
+  `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
+  `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
+  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `.chip-change:focus-visible{outline-offset:-2px}`,
+  // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
+  // above it; its refusal sits under it as text. No motion anywhere on the card.
+  `.pk{display:grid;gap:1rem;min-width:0}`,
+  `.pk[hidden]{display:none}`,
+  `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  // Borders, not fills: a fill vanishes under forced colours.
+  `.pk .or::before,.pk .or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
+  // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
+  `.pk .button{align-items:flex-start;padding-block:.75rem}`,
+  `.pk .button .ic{margin-top:.125rem}`,
+  `.pk .button span{text-align:start}`,
+  `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
+  `.pk-err{display:grid;min-width:0}`,
+  `.pk-err .field-err{margin:0}`,
+  `.pk-err .field-err[hidden]{display:none}`,
+  // With a passkey on step-up, the passkey is the primary and the IdP round trip the ghost.
+  `.pk:not([hidden])+form .button[type=submit]{border-color:var(--edge);background:transparent;color:var(--strong)}`,
+  `@media (forced-colors: active){.pk:not([hidden])+form .button[type=submit]{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}}`,
+  `@media (forced-colors: active){.pk .or::before,.pk .or::after{border-color:CanvasText}}`,
+  // The links row has no separator dots here: a dot cannot be told from a link's name, and one
+  // stranded at a wrap reads as a glitch. The gap separates them.
+  `[data-brand=console] .ac-links a+a::before{content:none}`,
+  // The lockup at frame 13's size: native 64 px (222 x 64) from 30 rem, in rem so it grows with
+  // the text. On phones both stay in px (and capped by the width) so a scaled root font cannot clip
+  // the row or make "Console" larger than the wordmark.
+  `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
+  `[data-brand=console] .ac-brand .ac-surface{font-size:1.25rem;line-height:1.75rem;font-weight:500}`,
+  `@media (max-width: 30rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px;font-weight:400}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
@@ -443,6 +493,8 @@ export interface BrandPageOptions {
    * pass their own; `[]` shows none.
    */
   links?: readonly { label: string; href: string }[];
+  /** The links landmark's name; "Help and privacy" unless the row holds more than that. */
+  linksLabel?: string;
   /**
    * Locker only: the hosted passport (identity.device-confirm). At 960 px and wider in landscape
    * the app's art, icon, developer and device sit beside the step; narrower, `header` is the
@@ -462,6 +514,8 @@ export interface AppFacts {
   action?: string;
   /** The product's art (Core Presentation header), an image-host URL; none: icon and text only. */
   artUrl?: string | null;
+  /** An icon in the art tile instead of the initial. */
+  glyph?: IconName;
 }
 
 export type AuthCardOptions = Omit<
@@ -490,7 +544,12 @@ const ICON_PATHS = {
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
   devices:
     '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
+  // lucide "fingerprint-pattern": the glyph of ST-30c.4's Add a passkey.
+  fingerprint:
+    '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
   "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  terminal:
+    '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
 } as const;
 export type IconName = keyof typeof ICON_PATHS;
 
@@ -529,6 +588,8 @@ export function personRow(opts: {
   name: string;
   email?: string | null;
   notYouForm?: { form: string; field: string; value: string };
+  /** A **Not you?** link to a page that signs in as someone else (no form to submit). */
+  notYouHref?: string;
 }): string {
   const initial = [...opts.name][0]?.toUpperCase() ?? "?";
   const email =
@@ -540,7 +601,9 @@ export function personRow(opts: {
     `<div class="person-text"><span class="person-name">${escapeHtml(opts.name)}</span>${email}</div>` +
     (opts.notYouForm
       ? `<button class="quiet" type="submit" form="${escapeHtml(opts.notYouForm.form)}" name="${escapeHtml(opts.notYouForm.field)}" value="${escapeHtml(opts.notYouForm.value)}">Not you?</button>`
-      : "") +
+      : opts.notYouHref
+        ? `<a class="quiet" href="${escapeHtml(opts.notYouHref)}">Not you?</a>`
+        : "") +
     `</div>`
   );
 }
@@ -563,11 +626,19 @@ export function appHeader(opts: {
   sub?: string;
   /** The device the app named: its own line, with a device glyph. */
   device?: string | null;
+  /** An icon in the art tile instead of the initial (a program with no hosted icon). */
+  glyph?: IconName;
 }): string {
-  return `<div class="ac-head">${appArt(opts.name, opts.iconUrl)}<div class="ac-head-text">${appLines(opts)}</div></div>`;
+  return `<div class="ac-head">${appArt(opts.name, opts.iconUrl, opts.glyph)}<div class="ac-head-text">${appLines(opts)}</div></div>`;
 }
 
-function appArt(name: string, iconUrl?: string | null): string {
+function appArt(
+  name: string,
+  iconUrl?: string | null,
+  glyph?: IconName,
+): string {
+  if (!iconUrl && glyph)
+    return `<span class="ac-mono" aria-hidden="true">${icon(glyph)}</span>`;
   return iconUrl
     ? `<img src="${escapeHtml(iconUrl)}" alt="" width="48" height="48">`
     : `<span class="ac-mono" aria-hidden="true">${escapeHtml([...name][0]?.toUpperCase() ?? "")}</span>`;
@@ -597,7 +668,7 @@ function passportPane(f: AppFacts): string {
   const where = f.device
     ? `<p class="ac-head-sub ac-dev ac-pass-where">${deviceIcon(f.device)}<span>on <bdi>${escapeHtml(f.device)}</bdi></span></p>`
     : "";
-  return `<aside class="ac-passport${f.artUrl ? "" : " ac-noart"}">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
+  return `<aside class="ac-passport${f.artUrl ? "" : " ac-noart"}">${art}${appArt(f.name, f.iconUrl, f.glyph)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
 }
 
 let keyLockup: string | null = null;
@@ -610,6 +681,8 @@ export const BRAND_LOCKUP_HEIGHT = {
   key: 52,
   /** Locker: 437 x 80 canvas, so about 262 px wide (guide p.7 minimum 180). */
   locker: 48,
+  /** Locker in a top bar or on a bare landing: the portal header's 33 px (180 px wide, the guide's floor). */
+  lockerBar: 33,
 } as const;
 
 /**
@@ -735,6 +808,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
               ? { sub: opts.passport.developer }
               : {}),
             device: opts.passport.device ?? null,
+            ...(opts.passport.glyph ? { glyph: opts.passport.glyph } : {}),
           })
         : "");
   // One trimmed Locker lockup (48 px tall, 262 wide) on every page (no size jump between steps): muted in an app's
@@ -777,7 +851,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
       : "",
     `</main>`,
     cardLinks.length
-      ? `<nav class="ac-links" aria-label="Help and privacy">${cardLinks
+      ? `<nav class="ac-links" aria-label="${escapeHtml(opts.linksLabel ?? "Help and privacy")}">${cardLinks
           .map(
             (l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`,
           )

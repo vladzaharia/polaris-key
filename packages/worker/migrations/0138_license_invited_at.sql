@@ -1,0 +1,13 @@
+-- LX-27c.1 (plans/LX-27-slices.md L3): when the last invitation email for a licence went out.
+--
+-- Epoch seconds, written by the License service when an invitation send succeeds (create with
+-- `delivery.invite`, and send-invite); NULL: none ever went out, and on every licence made before
+-- this column. The console's list reads "Invited <date>" from it and Identity skips its "in your
+-- library" notice for a licence that carries one. It holds no address and no key. License owns
+-- the table, so TABLE_OWNERS is unchanged.
+--
+-- Expand only: the Worker deployed before LX-27c never names it. Rollback:
+-- scripts/rollback/0138_license_invited_at.down.sql. The lead renumbers this file at merge.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE licenses ADD COLUMN invited_at INTEGER;

@@ -33,6 +33,7 @@ import {
   updateArtefact,
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
+import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
 import {
@@ -551,23 +552,12 @@ export async function completeDeviceBindHop(
   });
 }
 
-/** Refuse a cross-site POST to a device-flow page.
- *
- *  Fetch Metadata decides when the browser sends it: only `same-origin` passes. Without it, an
- *  absent `Origin`, this origin, or the literal `"null"` pass. `"null"` is not optional: both
- *  device pages are served with `referrer-policy: no-referrer`, and under that policy the Fetch
- *  standard serialises a same-origin form POST's `Origin` as `null`. With the single-use CSRF
- *  token minted on the page's render, this guards only against cross-site forgery of SOMEONE
- *  ELSE'S flow. It does not stop a flow's starter, who can mint the token for their own code
- *  and POST it with no `Origin` (curl): that is the open R1-07 / R8-03 residual (no binding
- *  between the confirming browser and the IdP callback) — see THREAT-MODEL.md "Remote
- *  phishing". */
-export function sameOriginPost(req: Request): boolean {
-  const site = req.headers.get("sec-fetch-site");
-  if (site !== null) return site === "same-origin";
-  const origin = req.headers.get("origin");
-  return !origin || origin === "null" || origin === new URL(req.url).origin;
-}
+// `sameOriginPost` (Fetch Metadata, then `Origin`, `"null"` allowed under no-referrer) lives in Core,
+// next to the other browser request guards. With the single-use CSRF token minted on the page's
+// render it guards only against cross-site forgery of SOMEONE ELSE'S flow. It does not stop a
+// flow's starter, who can mint the token for their own code and POST it with no `Origin` (curl):
+// that is the open R1-07 / R8-03 residual (no binding between the confirming browser and the IdP
+// callback), see THREAT-MODEL.md "Remote phishing".
 
 /** `sameOriginPost` for the pages that DECIDE (the approval and the licence chooser): a POST
  *  that carries neither Fetch Metadata nor an `Origin` is a script, not a browser, and is

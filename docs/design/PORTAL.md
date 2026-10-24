@@ -89,7 +89,7 @@ Profile reads and saves the display name and picture through the profile API. Th
 
 ## 5. Data, writes, and freshness
 
-The portal data layer is `portal/data.ts`. All portal query keys begin with `portal`; reads do not silently retry, refetch on window focus, and use a 30-second default stale time. Optional APIs that return 404 become an explicit absence only where the UI has a defined absence state, such as Discover, profile editing, methods, sessions, downloads, and package access.
+The portal data layer is three modules over one HTTP client (`lib/http.ts`, whose `HttpError` is the only error class): `portal/queries.ts` holds every query key (`qk`) and one `queryOptions` factory per read (`pq`), `portal/mutations.ts` holds `PORTAL_MUTATIONS` (the queries each confirmed write makes stale; hooks call `useWrite`), and `portal/data.ts` holds the hooks and the QueryClient. All portal query keys begin with `portal`; reads do not silently retry, refetch on window focus, and use a 30-second default stale time. Optional APIs that return 404 become an explicit absence only where the UI has a defined absence state, such as Discover, profile editing, methods, sessions, downloads, and package access.
 
 | Customer action                | Worker result that the portal refreshes                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------------------ |
@@ -127,7 +127,7 @@ The following are intentionally not presented above as shipped portal functional
 ## 8. Source map
 
 - App composition and signed-in/signed-out boundary: `packages/admin/src/portal/App.tsx`
-- Canonical routes, legacy redirects, focus, and deep-link sanitisation: `packages/admin/src/portal/router.ts`
-- Server client, queries, mutations, and cache invalidation: `packages/admin/src/portal/api.ts` and `packages/admin/src/portal/data.ts`
+- Canonical routes, legacy redirects and deep-link sanitisation: `packages/admin/src/portal/router.ts`, on the shared hash-router core `packages/admin/src/lib/router-core.ts`; route focus and its announcement: `packages/admin/src/ui/focusRoute.ts`
+- Server client: `packages/admin/src/portal/api.ts` (a barrel over `packages/admin/src/portal/api/`) on the shared HTTP client `packages/admin/src/lib/http.ts`; query keys and read factories: `packages/admin/src/portal/queries.ts`; the write table and cache invalidation: `packages/admin/src/portal/mutations.ts` on `packages/admin/src/lib/writes.ts`; hooks: `packages/admin/src/portal/data.ts`
 - Shell, sign-in card, page components, and focused flows: `packages/admin/src/portal/components/` and `packages/admin/src/portal/pages/`
 - Portal API route and handler composition: `packages/worker/src/console/routes.ts` and `packages/worker/src/console/`

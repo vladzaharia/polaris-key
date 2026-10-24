@@ -1,0 +1,6081 @@
+{
+  "$schema": "./api.schema.json",
+  "apiVersion": 1,
+  "casing": {
+    "node": "camel",
+    "react": "camel",
+    "python": "snake",
+    "swift": "camel",
+    "kotlin": "camel",
+    "godot": "snake"
+  },
+  "surfaces": {
+    "node": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "packages/sdk-node/src/client.ts"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "packages/sdk-node/src/config/client.ts"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "packages/sdk-node/src/config/client.ts"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "packages/sdk-node/src/license/client.ts"
+      },
+      {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "packages/sdk-node/src/license/entitlements.ts"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "packages/sdk-node/src/identity/client.ts"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "packages/sdk-node/src/devices/client.ts"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "packages/sdk-node/src/release/client.ts"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "packages/sdk-node/src/update/client.ts"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "packages/sdk-node/src/distribution/client.ts"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "packages/sdk-node/src/commerce/client.ts"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "packages/sdk-node/src/packs/client.ts"
+      },
+      {
+        "ns": "events",
+        "type": "PolarisEventEmitter",
+        "file": "packages/sdk-node/src/core/events.ts"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "packages/sdk-node/src/core/store.ts"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationStore",
+        "file": "packages/sdk-node/src/core/presentation.ts"
+      },
+      {
+        "ns": "boot",
+        "file": "packages/sdk-node/src/boot.ts"
+      }
+    ],
+    "react": [
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/hooks.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/Provider.tsx"
+      },
+      {
+        "ns": "options",
+        "type": "PolarisKeyConfig",
+        "file": "packages/sdk-react/src/react/Provider.tsx"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/useBoot.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/usePresentation.ts"
+      },
+      {
+        "ns": "client",
+        "file": "packages/sdk-react/src/react/usePolarisFetch.ts"
+      },
+      {
+        "ns": "update",
+        "file": "packages/sdk-react/src/update/useLatestVersion.ts"
+      },
+      {
+        "ns": "update",
+        "file": "packages/sdk-react/src/update/useUpdateDecision.ts"
+      },
+      {
+        "ns": "release",
+        "file": "packages/sdk-react/src/release/useChangelog.ts"
+      }
+    ],
+    "python": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/python/src/polaris_key/client.py"
+      },
+      {
+        "ns": "client",
+        "type": "AsyncPolarisKeyClient",
+        "file": "sdks/python/src/polaris_key/aio.py"
+      },
+      {
+        "ns": "client",
+        "file": "sdks/python/src/polaris_key/server_client.py"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/python/src/polaris_key/config/client.py"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "sdks/python/src/polaris_key/config/client.py"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/python/src/polaris_key/license/client.py"
+      },
+      {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/python/src/polaris_key/license/entitlements.py"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/python/src/polaris_key/identity/client.py"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "sdks/python/src/polaris_key/devices/client.py"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/python/src/polaris_key/release/client.py"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/python/src/polaris_key/update/client.py"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/python/src/polaris_key/distribution/__init__.py"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/python/src/polaris_key/commerce/__init__.py"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/python/src/polaris_key/update/packs/client.py"
+      },
+      {
+        "ns": "events",
+        "type": "EventBus",
+        "file": "sdks/python/src/polaris_key/core/events.py"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/python/src/polaris_key/core/store.py"
+      },
+      {
+        "ns": "presentation",
+        "type": "DiscoveryPresentationSource",
+        "file": "sdks/python/src/polaris_key/presentation.py"
+      },
+      {
+        "ns": "boot",
+        "file": "sdks/python/src/polaris_key/boot.py"
+      }
+    ],
+    "swift": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/PolarisKeyClient.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/ClientBundle.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/Events.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/SignIn.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/ClientUpdate.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/Boot.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigClient.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigSetting.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigSetting.swift"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/swift/Sources/PolarisKeyLicense/LicenseClient.swift"
+      },
+      {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/swift/Sources/PolarisKeyLicense/EntitlementsClient.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/IdentityClient.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/SignIn.swift"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "sdks/swift/Sources/PolarisKey/DevicesClient.swift"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/swift/Sources/PolarisKeyRelease/ReleaseClient.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/UpdateClient.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/Install.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/UpdatePacks.swift"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/swift/Sources/PolarisKey/DistributionClient.swift"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/swift/Sources/PolarisKey/CommerceClient.swift"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/PacksClient.swift"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/UpdateContentSource.swift"
+      },
+      {
+        "ns": "events",
+        "type": "PolarisEventHub",
+        "file": "sdks/swift/Sources/PolarisKey/Events.swift"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/swift/Sources/PolarisKeyCore/Store.swift"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationSource",
+        "file": "sdks/swift/Sources/PolarisKeyCore/Presentation.swift"
+      }
+    ],
+    "kotlin": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "client",
+        "type": "Companion",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "client",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Boot.kt"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyAndroid",
+        "file": "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyAndroid.kt"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyDesktop",
+        "file": "sdks/kotlin/desktop/src/main/kotlin/im/plrs/key/desktop/PolarisKeyDesktop.kt"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/ConfigClient.kt"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseClient.kt"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesFacet",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/ReleaseClient.kt"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/DistributionClient.kt"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/UpdateClient.kt"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Commerce.kt"
+      },
+      {
+        "ns": "backend",
+        "type": "BackendClient",
+        "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Backend.kt"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/PacksClient.kt"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Store.kt"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationSource",
+        "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Presentation.kt"
+      },
+      {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/EntitlementsClient.kt"
+      }
+    ],
+    "godot": [
+      {
+        "ns": "client",
+        "file": "sdks/godot/addons/polaris_key/polaris_key.gd"
+      },
+      {
+        "ns": "config",
+        "file": "sdks/godot/addons/polaris_key/services/config.gd"
+      },
+      {
+        "ns": "config",
+        "file": "sdks/godot/addons/polaris_key/services/config/setting.gd"
+      },
+      {
+        "ns": "license",
+        "file": "sdks/godot/addons/polaris_key/services/license.gd"
+      },
+      {
+        "ns": "entitlements",
+        "file": "sdks/godot/addons/polaris_key/services/entitlements.gd"
+      },
+      {
+        "ns": "identity",
+        "file": "sdks/godot/addons/polaris_key/services/identity.gd"
+      },
+      {
+        "ns": "devices",
+        "file": "sdks/godot/addons/polaris_key/services/devices.gd"
+      },
+      {
+        "ns": "release",
+        "file": "sdks/godot/addons/polaris_key/services/release.gd"
+      },
+      {
+        "ns": "distribution",
+        "file": "sdks/godot/addons/polaris_key/services/distribution.gd"
+      },
+      {
+        "ns": "update",
+        "file": "sdks/godot/addons/polaris_key/services/update.gd"
+      },
+      {
+        "ns": "commerce",
+        "file": "sdks/godot/addons/polaris_key/services/commerce.gd"
+      },
+      {
+        "ns": "backend",
+        "file": "sdks/godot/addons/polaris_key/services/backend.gd"
+      },
+      {
+        "ns": "packs",
+        "file": "sdks/godot/addons/polaris_key/services/packs.gd"
+      },
+      {
+        "ns": "store",
+        "file": "sdks/godot/addons/polaris_key/core/store/store.gd"
+      },
+      {
+        "ns": "presentation",
+        "file": "sdks/godot/addons/polaris_key/core/presentation.gd"
+      }
+    ]
+  },
+  "ignore": [
+    {
+      "path": "client-core",
+      "reason": "the isomorphic core and the bridge v4 verbs are SP-31's, not an SDK surface"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/server",
+      "reason": "server layer: verdict objects keep isEntitled and entitlementValue (L4)"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/electron",
+      "reason": "a runtime adapter, not the client namespace surface"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/cli",
+      "reason": "CLI layer (L4); its getConfig(client, key) command function stays"
+    },
+    {
+      "sdk": "node",
+      "path": "@polaris-key/node/terminal",
+      "reason": "terminal UI subpath"
+    },
+    {
+      "sdk": "react",
+      "path": "ui.*",
+      "reason": "the kits' ui surface belongs to UK-41"
+    },
+    {
+      "sdk": "react",
+      "path": "PolarisAdapter",
+      "reason": "the adapter root keeps getConfig and isEntitled (A2); it is the kit contract, not the app surface"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.server",
+      "reason": "server layer: verdict objects keep is_entitled and entitlement_value (L4)"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.cli",
+      "reason": "CLI layer (L4)"
+    },
+    {
+      "sdk": "python",
+      "path": "polaris_key.ui",
+      "reason": "UI layer; terminal flows are not the client surface"
+    },
+    {
+      "path": "@polaris-key/server",
+      "reason": "server layer (L4): verdict objects and the requireLicense family are layer rows with no scan"
+    },
+    {
+      "path": "cli-commands",
+      "reason": "CLI commands and Action inputs are not SDK names"
+    },
+    {
+      "sdk": "node",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.events",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "config.entries",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.emitChanges",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.enabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.key",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "config.useCatalog",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.packInstalls",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.reportExtras",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.reportAccepted",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.fingerprint",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "devices.requestRegistration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "update.packs",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.journal",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.guard",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.packageName",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "update.driver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.packInstalls",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "events.safeEmit",
+      "reason": "internal emit helper"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.decodable",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.dir",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.accept",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.cachedFiles",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "presentation.prune",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "node",
+      "path": "license.documentEntitlements",
+      "reason": "the raw document read the entitlements view builds its gated reads on; not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "license.onDeactivated",
+      "reason": "an event-emitter field, not a verb; deactivation reaches apps through the events stream"
+    },
+    {
+      "sdk": "python",
+      "path": "config.doc",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.local_values",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.enabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "config.resolve_with_source",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "license.doc",
+      "reason": "the licence document property read through the entitlement rows; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.fingerprint",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.request_registration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "devices.snapshot",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "update.configured",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.ensure_releases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.pack_installs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.content_input",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.record_revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.pack_set_id",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.recover_state",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.boot_options",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.boot_fetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "packs.refused_embedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.subscribe",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.on",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "events.emit",
+      "reason": "the in-process event bus behind client.subscribe; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.get_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.set_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.clear_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.get_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.read_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.write_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "store.clear_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.accept",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.cached_files",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "presentation.prune",
+      "reason": "presentation store internals"
+    },
+    {
+      "sdk": "python",
+      "path": "client.aclose",
+      "reason": "asyncio face only (AsyncPolarisKeyClient): the awaitable close; the row is client.close"
+    },
+    {
+      "sdk": "python",
+      "path": "client.run_refresh",
+      "reason": "asyncio face only (AsyncPolarisKeyClient): the awaitable refresh loop"
+    },
+    {
+      "sdk": "python",
+      "path": "client.resolve_server_device_id",
+      "reason": "server helper in server_client.py (L4/L8: server layer, the mount contract is UK-48's); not a client verb"
+    },
+    {
+      "sdk": "python",
+      "path": "client.server_client",
+      "reason": "server helper in server_client.py (L4/L8: its trust option renames to pinned_keys with options.pinnedKeys); not a client verb"
+    },
+    {
+      "sdk": "react",
+      "path": "useEntitlement",
+      "reason": "the hook spelling of entitlements.has: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useManagedConfig",
+      "reason": "the hook spelling of the config.* rows (shape: hook): rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useConfigSetting",
+      "reason": "the hook spelling of config.setting: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useLicense",
+      "reason": "the hook spelling of license.status: rule 1 matches a hook's spelling only when the row's id shares the surface namespace"
+    },
+    {
+      "sdk": "react",
+      "path": "useCtx",
+      "reason": "wiring: reads the Provider context; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "useAdapterState",
+      "reason": "wiring: subscribes a hook to an adapter; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "usePresentationOf",
+      "reason": "internal helper behind usePresentation; not exported from the package root"
+    },
+    {
+      "sdk": "react",
+      "path": "contentReason",
+      "reason": "helper on the @polaris-key/react/update subpath, not a root verb"
+    },
+    {
+      "sdk": "react",
+      "path": "options.trust",
+      "reason": "container for options.pinnedKeys (path trust.pinnedKeys)"
+    },
+    {
+      "sdk": "react",
+      "path": "options.adapter",
+      "reason": "test seam: an injected adapter bypasses mode resolution"
+    },
+    {
+      "sdk": "react",
+      "path": "options.fetchImpl",
+      "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "react",
+      "path": "options.navigate",
+      "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "react",
+      "path": "options.now",
+      "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.attachments",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.eventHub",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.bootGuard",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.bootHooks",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.setBootHooks",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.report",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.pinnedReleaseKeys",
+      "reason": "the option echoed back; the row is options.pinnedReleaseKeys"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.enroll",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.licenseInfo",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.signInWithBrowser",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.signOut",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.currentIdentity",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.emit",
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.events",
+      "reason": "row events (the AsyncStream of PolarisKeyEvent); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.emit",
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.stream",
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.subscriberCount",
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.isEnabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.settingState",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.deliver",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.setChangeObserver",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.key",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.networkError",
+      "reason": "error-code constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.serverError",
+      "reason": "error-code constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installSignOut",
+      "reason": "wiring the client installs; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "devices.current",
+      "reason": "the namespace form of client.currentDevice"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.content",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.core",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.packs",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.noteFeedDeltas",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootFetchStage",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootPackLists",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.installReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.appStore",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.play",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.steam",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.clearCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.clearToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.getDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.getToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.readCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.readRecord",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.setToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.writeCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.writeRecord",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.packs",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.bootGuard",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.enroll",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll); follows those rows"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.defaultUpdateSlots",
+      "reason": "wiring the boot flow calls; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.dataDirectory",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.store",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.slots",
+      "reason": "desktop bootstrap helper behind PolarisKeyDesktop.client; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "MAX_PER_MINUTE",
+      "reason": "a constant in a private nested class's companion; the scanner merges companions"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.isEnabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "config.publish",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "devices.current",
+      "reason": "the namespace form of client.currentDevice"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.installDriver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "update.desktopDriver",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.noteFeedDeltas",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.getToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.setToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.clearToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.getDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.readCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.writeCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.clearCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.anchoredDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.replaceDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.stateDirectory",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "store.blocking",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "PolarisKeyFutures",
+      "reason": "a java.util.concurrent.CompletableFuture facade over the same verbs for Java callers; not a separate surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.server",
+      "reason": "server layer (:server, :server-ktor, :spring-boot-starter): verdict objects keep isEntitled and entitlementValue (L4)"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.ui",
+      "reason": "Compose UI kit (:ui, :ui-core); the kits belong to UK-41"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.billing",
+      "reason": "Play Billing adapter (:billing) behind the commerce rows; not the client surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "im.plrs.key.platform",
+      "reason": "platform backends (:platform: secure store, install source); not the client surface"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.events",
+      "reason": "row events (the all-kinds SharedFlow of PolarisEvent, present today); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.report",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.updateEvents",
+      "reason": "the update event journal the update flows write; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.config_changes",
+      "reason": "the detail behind config_changed that the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pack_phase",
+      "reason": "the pack progress the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.attach",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.set_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.is_default_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.get_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.set_compiled_catalog",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.install",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.license_user_of",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.unverified",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "entitlements.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.default_device_name",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.poll_delay",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.install",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.request_registration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.snapshot",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.attest_outlet_detail",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.builds_url",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.download_artifact",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "distribution.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "distribution.page_platform",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.channel_path",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.adapter",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.plan",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.run_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.note_boot_outcome",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.installed_build",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.feed_url_for",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.canonical_channel",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.outlet",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.detected",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.product_for",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.steam_ticket",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.hidden_on",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.normalize_origin",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.action",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.prefs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.read_stamp",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.feed_menu",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.remember_feed_content",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.stamp_named_packs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.ensure_releases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.content_input",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.record_revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pack_set_id",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.recover_state",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pending_for_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.roll_back_for_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.boot_options",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.prefetch_packs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.boot_fetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.after_first_frame",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.get_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.set_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.clear_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.get_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.has_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.bindable",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.set_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.read_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.write_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.clear_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.failed",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.accept",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.redirect_rule",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.decode",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.decode_image",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.within_budget",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.inspect",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.prune",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.named",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.cached_files",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.same",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "client.create",
+      "kind": "method",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "react": {
+          "spelling": "PolarisKeyProvider",
+          "shape": "provider",
+          "reason": "a React app starts with a provider component"
+        },
+        "godot": {
+          "spelling": "PolarisKey.configure",
+          "reason": "an autoload singleton is configured, not constructed"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.fromConfig",
+      "kind": "method",
+      "reserved": "SP-32a",
+      "layer": "client"
+    },
+    {
+      "id": "client.doctor",
+      "kind": "method",
+      "reserved": "SP-32b",
+      "layer": "client"
+    },
+    {
+      "id": "client.boot",
+      "kind": "method",
+      "feature": "ui.boot",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "useBoot",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.productSlug",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.pinnedKeys",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {
+          "path": "trust.pinnedKeys"
+        },
+        "react": {
+          "path": "trust.pinnedKeys"
+        },
+        "python": {},
+        "swift": {
+          "path": "core.pinnedKeys"
+        },
+        "kotlin": {
+          "path": "core.pinnedKeys"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.pinnedReleaseKeys",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {
+          "path": "update.pinnedReleaseKeys"
+        },
+        "react": {
+          "path": "update.pinnedReleaseKeys",
+          "reason": "only the browser adapter takes it"
+        },
+        "python": {
+          "path": "update.pinned_release_keys"
+        },
+        "swift": {},
+        "kotlin": {
+          "path": "update.pinnedReleaseKeys"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.baseUrl",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.expectedServices",
+      "kind": "option",
+      "configFile": true,
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.get",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "fallback",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "useManagedConfig().get",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "python": {},
+        "swift": {
+          "labels": ["_", "default"]
+        },
+        "kotlin": {},
+        "godot": {
+          "spelling": "get_value",
+          "reason": "Object.get is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.getConfigSource",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "returns": "configSource",
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "get_config_source"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.getSecret",
+      "kind": "method",
+      "feature": "config.secret",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "godot": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.mintToken",
+      "kind": "method",
+      "feature": "config.mint",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "planned": "U-20",
+          "reason": "the adapter has mintToken; no React hook exposes it yet"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.set",
+      "kind": "method",
+      "feature": "config.local",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "set_value",
+          "reason": "Object.set is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clear",
+      "kind": "method",
+      "feature": "config.local",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clearAll",
+      "kind": "method",
+      "feature": "config.local",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.onConfigChange",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "swift": {},
+        "python": {},
+        "kotlin": {
+          "spelling": "changes",
+          "shape": "flow",
+          "reason": "Kotlin observes a Flow"
+        },
+        "godot": {
+          "spelling": "config_changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        },
+        "react": {
+          "planned": "U-20",
+          "reason": "no React hook; useConfigSetting re-renders on a change"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "useConfigSetting",
+          "shape": "hook",
+          "reason": "a hook returns a render value; its fallback argument stays (L7)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.value",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {
+          "shape": "property"
+        },
+        "kotlin": {
+          "spelling": "value",
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.source",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {
+          "shape": "property"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.locked",
+      "kind": "property",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {
+          "shape": "property"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.visibility",
+      "kind": "property",
+      "feature": "config.resolve",
+      "enum": "settingVisibility",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {
+          "shape": "property"
+        },
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "absent today"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.set",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "value",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {},
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {
+          "spelling": "set_value",
+          "reason": "Object.set is a native method"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.clear",
+      "kind": "method",
+      "feature": "config.resolve",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {},
+        "swift": {},
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.on",
+      "kind": "method",
+      "feature": "config.resolve",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {
+          "planned": "U-07",
+          "reason": "a StateFlow until U-07"
+        },
+        "godot": {
+          "spelling": "changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        },
+        "react": {
+          "planned": "U-20",
+          "reason": "no React hook; useConfigSetting re-renders on a change"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.sync",
+      "kind": "method",
+      "feature": "config.sync",
+      "reserved": "U-06",
+      "layer": "client"
+    },
+    {
+      "id": "license.activateWithKey",
+      "kind": "method",
+      "feature": "license.activate",
+      "args": [
+        {
+          "name": "key",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "godot": {},
+        "swift": {},
+        "kotlin": {},
+        "react": {
+          "spelling": "usePolarisKey().submitKey",
+          "shape": "hook",
+          "planned": "I-10a",
+          "reason": "the aggregate hook calls it submitKey until I-10a"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.has",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "returns": "bool",
+      "layer": "client",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "spelling": "useEntitlement",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        }
+      }
+    },
+    {
+      "id": "entitlements.value",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "planned": "LX-19",
+          "reason": "useEntitlement returns a boolean only"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.all",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {},
+        "react": {
+          "planned": "LX-19",
+          "reason": "no React hook lists the grants"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.quantity",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.grants",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.consume",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-42",
+      "layer": "client"
+    },
+    {
+      "id": "entitlements.acknowledge",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-42",
+      "layer": "client"
+    },
+    {
+      "id": "license.term",
+      "kind": "method",
+      "feature": "license.entitlements",
+      "reserved": "LX-19",
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn",
+      "kind": "method",
+      "feature": "identity.oidc",
+      "reserved": "I-10a",
+      "layer": "client"
+    },
+    {
+      "id": "identity.subject",
+      "kind": "method",
+      "feature": "identity.account",
+      "reserved": "I-10a",
+      "layer": "client"
+    },
+    {
+      "id": "identity.signOut",
+      "kind": "method",
+      "feature": "identity.account",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "godot": {},
+        "react": {},
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "planned"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "events",
+      "kind": "stream",
+      "enum": "eventKind",
+      "sdks": {
+        "node": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "event",
+          "path": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        },
+        "react": {
+          "spelling": "hooks and subscribe",
+          "shape": "hook",
+          "reason": "React observes through hooks"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves",
+      "kind": "property",
+      "feature": "sync.saves",
+      "reserved": "U-22",
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection",
+      "kind": "method",
+      "feature": "sync.saves",
+      "reserved": "U-23",
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "layer": "client"
+    },
+    {
+      "id": "auth",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React session mode; SP-40 removes \"cookie\" with its own removed row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "server.isEntitled",
+      "kind": "property",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "verdict object, not the client's license namespace (L4)"
+    },
+    {
+      "id": "server.entitlementValue",
+      "kind": "property",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "verdict object, not the client's license namespace (L4)"
+    },
+    {
+      "id": "server.requireLicense",
+      "kind": "method",
+      "feature": "server.license",
+      "layer": "server",
+      "reason": "the framework drop-ins' gate family (L4); a layer row with no scan"
+    },
+    {
+      "id": "client.discover",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.init",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.portal",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentation",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "usePresentation",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
+        },
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentationIcon",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.presentationSource",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
+        },
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.discovery",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.servicesPinned",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        },
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.hasToken",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.ensureActivated",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.capabilities",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useCapabilities",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.supports",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.caps",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.sync",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.getSyncState",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.importBundle",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useImportBundle",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.crashTags",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.status",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeStatus",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.isLicensed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.listDevices",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.deauthorizeDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.renameDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.startRefresh",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.close",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.listUserConfig",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.schemaVersion",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.fetchSchema",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.isLocked",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "swift": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.activation",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.licenseInfo",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.entitledChannels",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getProfile",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getLicenseId",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.enroll",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.deactivate",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.current",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.forget",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInWithBrowser",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.beginSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.pollSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.waitForSignIn",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.register",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.list",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.rename",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.deauthorize",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.fetch",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "spelling": "update.fetch",
+          "reason": "the verified build download lives on UpdateClient in Swift"
+        },
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.changelog",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useChangelog",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.installUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.downloadUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.onUpdateAvailable",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        },
+        "kotlin": {
+          "spelling": "offers",
+          "shape": "flow",
+          "reason": "Kotlin observes a SharedFlow"
+        },
+        "godot": {
+          "spelling": "update_available",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.decidable",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.install",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.check",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useLatestVersion",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.appcastUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feedUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.decide",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useUpdateDecision",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.releaseRecord",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.buildUrl",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.ensureDiscovery",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.reload",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.useDriver",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {
+          "spelling": "set_driver"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.confirmBoot",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "spelling": "client.confirmBoot",
+          "reason": "a client method in Swift (ClientUpdate.swift)"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.markBootAttempt",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "spelling": "client.markBootAttempt",
+          "reason": "a client method in Swift (ClientUpdate.swift)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "distribution.downloadModel",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "distribution.thisPlatform",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.binding",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claim",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimSteam",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimAppStore",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.claimPlay",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.ensure",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.state",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.path",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.registerHandler",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.on",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.isAvailable",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packFor",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.rollback",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.confirm",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.subscribe",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {
+          "spelling": "changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.load",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.icon",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.iconFor",
+      "kind": "method",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.runBoot",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.tryDiscover",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.subscribe",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.outletId",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.register",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.currentDevice",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.deactivate",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.getLicenseUser",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.acceptSignIn",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "swift": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.hiddenHere",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.isUnlocked",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.loadCached",
+      "kind": "method",
+      "sdks": {
+        "python": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.registrationOpen",
+      "kind": "method",
+      "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.status",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useLicense",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
+        },
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "license.isLicensed",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.current",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "boot.ensureActivated",
+      "kind": "method",
+      "sdks": {
+        "node": {},
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisKey",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisKey",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (deprecated aggregate hook; D10/L6 keep it until its removal row)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisAuth",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisAuth",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.useLicenseGate",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "useLicenseGate",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.usePolarisFetch",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "spelling": "usePolarisFetch",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (the hook over client.backend, SP-58)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "hooks.screenFor",
+      "kind": "method",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row (maps a PolarisState to the gate screen the kit shows)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.mode",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.bridge",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.localOverrides",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.version",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.refreshIntervalSeconds",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.store",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "options.backend",
+      "kind": "option",
+      "sdks": {
+        "react": {
+          "sdkOnly": true,
+          "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.start",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeFailure",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.createLocal",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.createFromBundle",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.fromBundle",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.options",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bundleVersion",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncOnForeground",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.stopForegroundSync",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncIfStale",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.installUpdateBootHooks",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.configureUpdate",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.bool",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.int",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.double",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.string",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.decode",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.fetchCatalog",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.configChanges",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.attest",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.attestSupport",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelFeed",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feedHeaders",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.purchase",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.restore",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        },
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.storeProducts",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.startTransactionUpdates",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.stopTransactionUpdates",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.progress",
+      "kind": "method",
+      "sdks": {
+        "swift": {},
+        "godot": {
+          "spelling": "pack_progress",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.changes",
+      "kind": "property",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row",
+          "shape": "property"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.current",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.listening",
+      "kind": "property",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.products",
+      "kind": "property",
+      "sdks": {
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.channelChoices",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.setChannel",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {},
+        "godot": {
+          "spelling": "update.set_channel",
+          "reason": "a method on the update service in Godot"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.startInBackground",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.licenseState",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.client",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.playPacks",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.flavor",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.catalog",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.origins",
+      "kind": "property",
+      "sdks": {
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.headers",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.install",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.interceptor",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.networkInterceptor",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "release.verifyRecord",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.reportedOutlet",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.estimate",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bootHost",
+      "kind": "method",
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin-only host bootstrap (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.useFriendlyDeviceName",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.buildInfo",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.toasts",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.isInputCaptured",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.captureInput",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.enabled",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.catalogEntry",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.refresh",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.bindProperty",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.mintAvailable",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clearMinted",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.isLocal",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isAvailable",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isSigningIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.cancel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.openInBrowser",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.copyLink",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signedInIdentity",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.requestSignIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.fingerprint",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.restartToUpdate",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.dropStaged",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.getChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.preferredChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelLock",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.clearChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.currentStore",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.watchAppStoreUpdates",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.request",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.headersFor",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.start",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.mount",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.background",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.iconTo",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.stateChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeError",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bootFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.verifyProgress",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.inputCaptured",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.uiSound",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.inPlayChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInPending",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInConfirm",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.updateStaged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.downloadProgress",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.appStoreUpdateClaimed",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packReady",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packFailed",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.setChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    }
+  ],
+  "removed": [
+    {
+      "sdk": "swift",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.config(_:default:)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.value(default:)",
+      "to": "config.setting.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.value\\(default:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.source\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.isLocked()",
+      "to": "config.setting.locked",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.isLocked\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.onChange(_:)",
+      "to": "config.setting.on",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.onChange\\s*[({]",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "client.isEnabled(flag:)",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.isEnabled\\(flag:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.activate(key:)",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|c)\\.activate\\(key:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "config.getConfig",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "PolarisKeyClient.getConfig",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "(?<![\\w.])(?:client|mirrored)\\.getConfig\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.on_config_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "config.on_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bconfig\\.on_change\\s*\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.get",
+      "to": "config.setting.value",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.get\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.source\\(\\)"
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.locked()",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.locked\\(\\)"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.enforced",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.enforced\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.subscribe",
+      "to": "config.setting.on",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.subscribe\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting(key, fallback)",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.getEntitlements",
+      "to": "entitlements.all",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "license.is_entitled",
+      "to": "entitlements.has",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.is_entitled\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "license.entitlement_value",
+      "to": "entitlements.value",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.entitlement_value\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "license.get_entitlements",
+      "to": "entitlements.all",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.get_entitlements\\s*\\("
+      }
+    },
+    {
+      "sdk": "react",
+      "from": "expectServices",
+      "to": "options.expectedServices",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "react",
+      "from": "usePolarisKey().getConfig",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:pk|polarisKey|usePolarisKey\\(\\))\\.getConfig\\b"
+      }
+    },
+    {
+      "sdk": "react",
+      "from": "usePolarisKey().isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:pk|polarisKey|usePolarisKey\\(\\))\\.isEntitled\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "trust",
+      "to": "options.pinnedKeys",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\btrust\\s*=\\s*(dict\\(|\\{|PINNED)|\"trust\"\\s*:",
+        "files": [
+          "*.py",
+          "*.rpy",
+          "fence:python",
+          "packages/shared-manifest/src/integration/*.ts"
+        ]
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "PolarisKeyClient.getCurrentDevice",
+      "to": "client.currentDevice",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\.getCurrentDevice\\s*\\("
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.product",
+      "to": "options.productSlug",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "(?:\\b(?:o|opts|options|cfg)\\.product\\b(?!_)|^\\s*product\\s*=\\s*\")",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.pinned_trust_keys",
+      "to": "options.pinnedKeys",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bpinned_trust_keys\\b",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "config.get_source",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bget_source\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.is_entitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.is_entitled\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.get_entitlements",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.get_entitlements\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "devices.get_current_device",
+      "to": "client.currentDevice",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.get_current_device\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "commerce.get_binding",
+      "to": "commerce.binding",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bcommerce\\.get_binding\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "update.apply",
+      "to": "update.install",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bupdate\\.apply\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.changes",
+      "to": "client.events",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.changes\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.syncState\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.startRefreshLoop(onChange:)",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bstartRefreshLoop\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.installURL()",
+      "to": "release.installUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\binstallURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.downloadURL(version:binary:arch:checksum:dmg:)",
+      "to": "release.downloadUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdownloadURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "UpdateClient.buildURL(version:buildId:)",
+      "to": "update.buildUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bbuildURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.syncState\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.startRefreshLoop()",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.startRefreshLoop\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "DevicesFacet.attestUnavailable()",
+      "to": "devices.attestSupport",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.attestUnavailable\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyFutures.isEntitled",
+      "to": "hasEntitlement",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:pk|futures)\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.config(key, default)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.activate",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|futures)\\.activate\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "client.licenseChanges",
+      "package": "SP-35b",
+      "note": "collect `events` filtered to `PolarisEvent.License`, or `licenseState`",
+      "scan": {
+        "pattern": "\\.licenseChanges\\b",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    }
+  ]
+}

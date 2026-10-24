@@ -234,7 +234,7 @@ async function decide(r: GateRun): Promise<number | null> {
     if (!KNOWN.includes(status)) throw new Error(`unknown status ${status}`);
     const usable = USABLE.includes(status);
     const entitled =
-      r.entitlement === undefined || client.license.isEntitled(r.entitlement);
+      r.entitlement === undefined || client.entitlements.has(r.entitlement);
     return { status, usable, entitled };
   };
   try {

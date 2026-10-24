@@ -6,7 +6,7 @@ Two React + Vite single-page apps in one package: the operator console at `/mana
 
 - Built to `dist/` with two HTML entries (`vite.config.ts`): `manage.html` loads `src/main.tsx` (console), `index.html` loads `src/portal/main.tsx` (portal).
 - Served by `../worker`, which copies `dist/` into its `[assets]` root (`pnpm --filter @polaris-key/worker assemble`). The Worker allows the shells' inline scripts by hash (`../worker/src/core/adminCsp.ts`).
-- Calls the Worker only, same-origin: the console through `src/api.ts` (`/manage/api/*`), the portal through `src/portal/api.ts`.
+- Calls the Worker only, same-origin: the console through `src/api.ts` (`/manage/api/*`), the portal through `src/portal/api.ts`. Both are barrels over per-area modules (`console/api/`, `portal/api/`) on one HTTP client, `lib/http.ts`.
 - Reads `@polaris-key/protocol`, `catalog`, `manifest`, `ui-core` and `brand` as workspace packages.
 - Links out to the docs site (served at `/docs` by the same Worker) from two tables, below.
 
@@ -16,13 +16,19 @@ Two React + Vite single-page apps in one package: the operator console at `/mana
 index.html, manage.html   the two SPA shells; each carries the same inline theme script
 src/
   main.tsx, App.tsx       console entry and root
-  api.ts                  typed client for /manage/api
+  api.ts                  barrel for the typed /manage/api client (modules in console/api/,
+                          one per area; console/api/transport.ts is its transport)
   console/                console app: nav.ts, router.tsx, routes.ts, pages/, sections/,
                           shell/, access/, templates/, settings.generated.ts
     nav.ts                the page table: sidebar, router, top bar and palette read it
-  portal/                 customer portal app: pages/, model/, components/, copy/, api.ts
-  ui/                     shared React kit (Button, Dialog, Table pieces, Badges, ...)
-  lib/                    pure helpers; docsLinks.ts is the dialog/empty-state help-link table
+  portal/                 customer portal app: pages/, model/, components/, copy/, api.ts (barrel over api/),
+                          queries.ts (qk + pq read factories), mutations.ts (PORTAL_MUTATIONS)
+  ui/                     shared React kit (Button, Dialog, Table pieces, Badges, ...);
+                          focusRoute.ts moves focus to the h1 and announces on a route change
+  lib/                    pure helpers; docsLinks.ts is the dialog/empty-state help-link table;
+                          router-core.ts is the hash-router store both apps sit on;
+                          http.ts is the one fetch and the one HttpError; writes.ts is the
+                          write engine both mutation tables use (createWrites, mutate, useWrite)
   schema/                 catalog-driven field editors
   components/             theme and brand pieces shared by both apps
   kit/                    component gallery at #/__kit, compiled in development only
@@ -33,7 +39,7 @@ e2e/                      Chromium suites against the built SPA under the Worker
 scripts/portal-baselines.sh   re-records the linux baselines in Playwright's image (needs Docker)
 ```
 
-- Layer rules (`test/boundaries.test.ts`): `lib/` imports only `lib/`; `ui/` imports only `ui/`, `lib/` and the listed app-neutral modules; `console/` and `portal/` never import each other; nothing reachable from `portal/main.tsx` is console code or `api.ts`. Listed exceptions are in its `KNOWN` table, which only shrinks.
+- Layer rules (`test/boundaries.test.ts`): `lib/` imports only `lib/`; `ui/` imports only `ui/`, `lib/` and the listed app-neutral modules; `console/` and `portal/` never import each other; nothing reachable from `portal/main.tsx` is console code or `api.ts`. `lib/errorCopy.ts` and `ui/form.tsx` read `lib/http.ts`'s `HttpError`, so the portal bundle no longer carries `api.ts`. Listed exceptions are in its `KNOWN` table, which only shrinks.
 - Help links live in exactly two tables: `src/console/nav.ts` (per-page and per-section `docs`) and `src/lib/docsLinks.ts` (`DOCS_LINKS`). Both hold site-absolute `/docs/…/` paths. `../worker/test/docsLinks.test.ts` checks each against the built `../docs/dist/docs-slugs.json`, anchors included, and skips without a docs build. `test/nav-docs-targets.test.ts` checks the door rule and that no target is a moved page. Renaming a docs page updates both tables in the same change.
 - Baselines: CI compares the portal against the committed linux images, rendered in Playwright's image. `pnpm --filter @polaris-key/admin e2e:baselines` re-records them (needs Docker); `scripts/portal-baselines.sh --check` compares as CI does. Runs on other platforms use local, git-ignored images.
 - The inline theme script in both shells must stay byte-identical. Changing it means updating `ADMIN_SCRIPT_HASHES` in `../worker/src/core/adminCsp.ts` (`test/theme.test.tsx` checks the sources).
@@ -59,6 +65,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | Family           | Here it          | Run                       |
 | ---------------- | ---------------- | ------------------------- |
 | `services`       | writes           | `pnpm gen services`       |
+| `roles-matrix`   | writes           | `pnpm gen roles-matrix`   |
 | `constants`      | reads            | `pnpm gen constants`      |
 | `settings`       | writes           | `pnpm gen settings`       |
 | `docs-reference` | reads            | `pnpm gen docs-reference` |

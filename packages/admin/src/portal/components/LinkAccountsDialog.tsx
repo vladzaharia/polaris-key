@@ -9,22 +9,18 @@ import { PORTAL_FMT } from "../date.js";
 import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
-  portalApi,
-  PortalApiError,
+  HttpError,
   type PortalLinkAccount,
   type PortalLinkReason,
   type PortalLinkView,
 } from "../api.js";
-import {
-  portalKeys,
-  refreshAfterMethodChange,
-  useLinkView,
-  useSession,
-} from "../data.js";
+import { useLinkView, useSession } from "../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { beginSecondSignIn } from "../linkSecond.js";
 import { focusPageHeading, href, navigate } from "../router.js";
 import { StepUpInline } from "./account/StepUpInline.js";
+import { qk } from "../queries.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Link an existing account (SIGN-IN.md D-27, PORTAL.md §4.11; PX-W12's `/api/me/link`): the signed-in
@@ -88,8 +84,7 @@ export function LinkAccountsDialog({
   const flow = view.data?.flow ?? null;
   const undoable = view.data?.undoable ?? [];
   const expired =
-    view.error instanceof PortalApiError &&
-    view.error.code === "signin_expired";
+    view.error instanceof HttpError && view.error.code === "signin_expired";
 
   // A flow that expired between visits reads as a fresh start, with the reason once.
   React.useEffect(() => {
@@ -99,7 +94,7 @@ export function LinkAccountsDialog({
   const close = (): void => {
     // Leaving a half-done link forgets it: the proof lives on the server for 15 minutes.
     if (flow && action.kind !== "joined")
-      void portalApi.linkCancel().catch(() => undefined);
+      void mutate("linkCancel").catch(() => undefined);
     onClose();
   };
 
@@ -111,24 +106,24 @@ export function LinkAccountsDialog({
   };
 
   const fail = (err: unknown): void => {
-    if (err instanceof PortalApiError && err.code === "signin_expired") {
+    if (err instanceof HttpError && err.code === "signin_expired") {
       // The flow was used up by the attempt: back to the start view, keeping the undo list.
       const reset: PortalLinkView = {
         flow: null,
         undoable: view.data?.undoable ?? [],
       };
-      qc.setQueryData(portalKeys.link, reset);
+      qc.setQueryData(qk.link(), reset);
       return setAction({ kind: "idle", error: t("signin.join.expired") });
     }
-    if (err instanceof PortalApiError && err.reason === "same_account")
+    if (err instanceof HttpError && err.reason === "same_account")
       return setAction({ kind: "idle", error: t("signin.join.sameAccount") });
-    if (err instanceof PortalApiError && err.reason === "merge_pending")
+    if (err instanceof HttpError && err.reason === "merge_pending")
       return setAction({ kind: "idle", error: REASON_COPY.merge_pending() });
-    if (err instanceof PortalApiError && err.reason === "unavailable")
+    if (err instanceof HttpError && err.reason === "unavailable")
       return setAction({ kind: "idle", error: REASON_COPY.unavailable() });
     if (isStepUpRequired(err)) {
       const roles =
-        err instanceof PortalApiError && err.stale?.length
+        err instanceof HttpError && err.stale?.length
           ? err.stale
           : ["started", "other"];
       return setAction({
@@ -137,7 +132,7 @@ export function LinkAccountsDialog({
         stale: roles,
       });
     }
-    if (err instanceof PortalApiError && err.status === 409)
+    if (err instanceof HttpError && err.status === 409)
       // `last_link`: the Worker's own sentence, and where to add a way.
       return setAction({
         kind: "idle",
@@ -146,7 +141,7 @@ export function LinkAccountsDialog({
           : err.message,
         withMethods: true,
       });
-    if (err instanceof PortalApiError && err.status === 0)
+    if (err instanceof HttpError && err.status === 0)
       return setAction({ kind: "idle", error: portalErrorCopy(err).title });
     setAction({ kind: "idle", error: t("signin.join.failed") });
   };
@@ -154,7 +149,7 @@ export function LinkAccountsDialog({
   const start = async (): Promise<void> => {
     setAction({ kind: "busy" });
     try {
-      await portalApi.linkStart();
+      await mutate("linkStart");
       signInOther();
     } catch (err) {
       if (isStepUpRequired(err))
@@ -164,7 +159,7 @@ export function LinkAccountsDialog({
   };
 
   const startAgain = async (): Promise<void> => {
-    await portalApi.linkCancel().catch(() => undefined);
+    await mutate("linkCancel").catch(() => undefined);
     await start();
   };
 
@@ -185,9 +180,7 @@ export function LinkAccountsDialog({
     }
     setAction({ kind: "busy" });
     try {
-      const out = await portalApi.linkConfirm();
-      refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      const out = await mutate("linkConfirm");
       setAction({
         kind: "joined",
         undoUntil: out.merge?.undoUntil ?? null,
@@ -202,21 +195,19 @@ export function LinkAccountsDialog({
     const before = action;
     setAction({ kind: "busy" });
     try {
-      await portalApi.linkUndo(merge);
-      refreshAfterMethodChange(qc);
-      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      await mutate("linkUndo", merge);
       setAction({ kind: "undone" });
     } catch (err) {
       if (isStepUpRequired(err))
         return setAction({ kind: "stepup", then: "undo", merge });
       const msg =
-        err instanceof PortalApiError && err.status === 404
+        err instanceof HttpError && err.status === 404
           ? t("signin.join.noUndo")
-          : err instanceof PortalApiError && err.status === 0
+          : err instanceof HttpError && err.status === 0
             ? portalErrorCopy(err).title
             : t("signin.join.undoFailed");
-      if (err instanceof PortalApiError && err.status === 404)
-        void qc.invalidateQueries({ queryKey: portalKeys.link });
+      if (err instanceof HttpError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: qk.link() });
       // Back where the person was, with the reason: the Undo they pressed stays in reach.
       if (before.kind === "joined") setAction({ ...before, error: msg });
       else setAction({ kind: "idle", error: msg });

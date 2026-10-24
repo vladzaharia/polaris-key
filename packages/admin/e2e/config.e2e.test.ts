@@ -30,6 +30,7 @@ const product = {
   compatMax: "2.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
+  manifestAuthoritative: { value: false, locked: false },
   adminGroup: null,
   createdAt: 1,
   modifiedAt: 1,
@@ -243,7 +244,8 @@ describe("Config pages under the Worker's CSP", () => {
     await page.waitForTimeout(300);
     expect(await violations(page)).toEqual([]);
     await drawer(page, "Publish version 3", async () => {
-      await page.getByRole("button", { name: "Review changes" }).click();
+      // CXF-CFG: once the draft differs the button counts the changes it will review.
+      await page.getByRole("button", { name: "Review 1 change" }).click();
     });
     await closeContext(page.context());
   });

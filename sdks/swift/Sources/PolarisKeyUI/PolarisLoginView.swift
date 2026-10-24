@@ -105,7 +105,7 @@ public final class PolarisGateModel: ObservableObject {
     /// Pull the latest gate state from the client (no network).
     public func reload() async {
         state = await client.status()
-        profile = await client.profile()
+        profile = await client.getProfile()
         if let facade { identityEnabled = await facade.core.enabled(.identity) }
         hasLoaded = true
     }
@@ -122,7 +122,7 @@ public final class PolarisGateModel: ObservableObject {
     public func activate(key: String) async {
         isWorking = true
         defer { isWorking = false }
-        let result = await client.activate(key: key)
+        let result = await client.activateWithKey(key)
         lastResult = result
         lastError = copy.activationMessage(result)
         resultSerial += 1

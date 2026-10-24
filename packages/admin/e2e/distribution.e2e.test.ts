@@ -39,6 +39,7 @@ const row = (slug: string, name: string) => ({
   compatMax: "2.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
+  manifestAuthoritative: { value: false, locked: false },
   adminGroup: null,
   createdAt: 1,
   modifiedAt: 1,

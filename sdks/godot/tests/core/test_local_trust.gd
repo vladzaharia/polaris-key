@@ -139,7 +139,7 @@ func _planted_block_hint(t: PKeyTestContext) -> void:
 
 func _gate_follows_the_build(t: PKeyTestContext) -> void:
 	var opts := PKeyOptions.new()
-	opts.product = F["product"]
+	opts.product_slug = F["product"]
 	opts.build_stamp_path = ""
 	var core: PKeyCore = PKeyCore.create(opts, null, "0").detail
 	t.check("gate: the default build has the licence gate", core.license_gate_enabled())
@@ -151,7 +151,7 @@ func _gate_follows_the_build(t: PKeyTestContext) -> void:
 	cfg._discovered_services = PKeyDiscovery.services_from_list(PackedStringArray(["license", "config"]))
 	t.check("gate: discovery loaded this session can switch it on", cfg.license_gate_enabled())
 	var off := PKeyOptions.new()
-	off.product = F["product"]
+	off.product_slug = F["product"]
 	off.build_stamp_path = ""
 	off.expected_services = PackedStringArray(["license", "config"])
 	var forged: PKeyCore = PKeyCore.create(off, null, "0").detail

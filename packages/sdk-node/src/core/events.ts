@@ -1,6 +1,6 @@
 // `client.events` (SDK parity pass §3.11): one multi-subscriber stream of what changed, in Node's
 // idiom (an EventEmitter with typed events). A UI host (an Electron main process, a TUI) listens
-// here instead of polling `status()`, `getConfig()` and `update.decide()`.
+// here instead of polling `status()`, `config.get()` and `update.decide()`.
 //
 //   license          the gate's status changed (a sync, an activation, a deactivation, a bundle)
 //   config           a resolved config value changed (a sync, or a local set/clear)

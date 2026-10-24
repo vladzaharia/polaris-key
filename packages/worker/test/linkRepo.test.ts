@@ -41,12 +41,9 @@ import {
 } from "../src/core/products/store.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.
@@ -485,7 +482,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(oidc?.provider).toBe("custom");
     expect(oidc?.client_id).toBe("acme-client");
     const tier = await db.first<{ id: string }>(
-      "SELECT * FROM tiers WHERE product = ?",
+      "SELECT * FROM tiers WHERE product = ? AND implicit = 0",
       "acme",
     );
     expect(tier?.id).toBe("pro");
@@ -1918,8 +1915,9 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
   ): Promise<Response> {
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "admins";
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
       NOW,
     );

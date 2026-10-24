@@ -6,6 +6,7 @@ import { KeysPage } from "./pages/Keys.js";
 import { OverviewPage } from "./pages/Overview.js";
 import { PortalPage } from "./pages/Portal.js";
 import { PresentationPage } from "./pages/Presentation.js";
+import { PresentationListingPage } from "./pages/PresentationListing.js";
 import { ServicesPage } from "./pages/Services.js";
 import { SettingsAllPage } from "./pages/SettingsAll.js";
 import { SettingsHub } from "./pages/SettingsHub.js";
@@ -44,6 +45,8 @@ export default function CorePages({
       return hub(<ServicesPage slug={slug} />);
     case "presentation":
       return hub(<PresentationPage slug={slug} />);
+    case "presentation-listing":
+      return hub(<PresentationListingPage slug={slug} />);
     case "portal":
       return hub(<PortalPage slug={slug} />);
     case "keys":

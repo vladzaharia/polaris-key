@@ -18,6 +18,8 @@ export interface FeedSettingsWrite {
   /** The access mode an existing row takes (the row's own when the caller sent none). */
   updateAccessMode: string;
   namespace: unknown;
+  /** An operator's namespace write changed the namespace: it is no longer the manifest's. */
+  namespaceChanged?: boolean;
   maxPackageBytes: number;
   ext: unknown;
   now: number;
@@ -51,7 +53,8 @@ export async function writeFeedSettings(
   return db.runChanges(
     `UPDATE dist_registry_feeds
         SET enabled = ?, access_mode = ?, namespace_json = ?, max_package_bytes = ?,
-            ext_json = ?, version = version + 1, updated_at = ?, updated_by = ?
+            ext_json = ?, version = version + 1, updated_at = ?, updated_by = ?,
+            namespace_source = CASE WHEN ? = 1 THEN 'console' ELSE namespace_source END
       WHERE product = ? AND ecosystem = ? AND version = ?`,
     w.enabled ? 1 : 0,
     w.updateAccessMode,
@@ -60,6 +63,7 @@ export async function writeFeedSettings(
     JSON.stringify(w.ext),
     w.now,
     w.by,
+    w.namespaceChanged ? 1 : 0,
     w.owner,
     w.ecosystem,
     w.expected,

@@ -100,6 +100,11 @@ tags:
     description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
   - name: identity
     description: Product OIDC (browser + device flow) and browser sessions.
+  - name: sync
+    description: >
+      Cloud Sync (U-05; WIRE-CONTRACT-V4 §13): a signed-in person's synced settings for one
+      product. Unsigned device routes under `/{product}/sync`, bearer only, no cookie. Off, or
+      Config or Identity off, answers `404`.
   - name: registry
     description: >
       The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
@@ -291,10 +296,15 @@ paths:
                           accountPortal: https://key.plrs.im/#/p/djdl
                       sync:
                         enabled: true
-                        settings: false
+                        settings: true
                         collections: false
                         saves: false
-                        endpoints: { pull: null, push: null, files: null }
+                        endpoints:
+                          {
+                            pull: https://key.plrs.im/djdl/sync,
+                            push: https://key.plrs.im/djdl/sync/ops,
+                            files: null,
+                          }
                 configOnly:
                   summary: A config-only product — the other six are bare `enabled:false`
                   value:
@@ -443,7 +453,7 @@ paths:
     get:
       operationId: listDevices
       tags: [core]
-      summary: List the devices sharing this device's seat pool
+      summary: List the devices sharing this device's device pool
       description: >
         A LICENSED caller sees every device on its own license. A device registered WITHOUT
         a license (keyless registration under an `open`/`requires-identity` policy) sees a
@@ -528,7 +538,7 @@ paths:
         rather than being resolved to a single device. There is therefore no per-device
         404 on GET; a client that wants one device filters the roster on `id`. The scope is
         self-service in the sense the roster already is: a licensed caller sees its own
-        license's seats, a registered device sees only itself.
+        license's devices, a registered device sees only itself.
       security: [{ deviceToken: [] }]
       responses:
         "200":
@@ -1229,8 +1239,8 @@ paths:
         "200":
           description: >
             Activation result. `cache-control: no-store`. On a product with Identity on it also
-            carries `keyEntries` (PX-W9, WIRE-CONTRACT-V4 §12.2): a NEW device that takes a seat
-            is one key entry, recorded with the seat claim; an enrolled device's re-entry is not.
+            carries `keyEntries` (PX-W9, WIRE-CONTRACT-V4 §12.2): a NEW device that counts toward the limit
+            is one key entry, recorded with the device claim; an enrolled device's re-entry is not.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ActivationResult" }
@@ -1277,7 +1287,7 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            Seat pool exhausted, a `strict`-mode tier with no fingerprint, or no key entries
+            Device limit reached, a `strict`-mode tier with no fingerprint, or no key entries
             left — LEGACY FLAT. `device_limit` carries `limit` and `deviceCount` at the top
             level, plus `manageUrl` (PX-W8) while the product's customer portal is on.
             `key_entry_limit` (PX-W9, WIRE-CONTRACT-V4 §12.2 step 4): an Identity product with
@@ -1469,7 +1479,7 @@ paths:
         "403":
           description: >
             No fingerprint, no anchor, an already-claimed machine license, or the free tier's
-            seat pool is exhausted — LEGACY FLAT. `device_limit` carries `limit`,
+            device limit is reached — LEGACY FLAT. `device_limit` carries `limit`,
             `deviceCount` and, while the product's customer portal is on, `manageUrl`.
           content:
             application/json:
@@ -1649,7 +1659,7 @@ paths:
       tags: [license]
       summary: Self-deauthorize this device
       description: >
-        Retires the calling device from its own seat: the KV token record is deleted and the
+        Stops counting the calling device: the KV token record is deleted and the
         device row flips to `deauthorized`, so the very next request with that token — to any
         route — is a 401. Reads only the bearer token; `X-PKey-Device` is NOT consulted, and
         there is no body and no rate limit.
@@ -6884,8 +6894,8 @@ paths:
         Exchanges a `pkey_<product>_…` key for the session cookie, for products whose portal
         offers key entry beside (or instead of) OIDC. The key may be sent as the body field
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
-        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Seat
-        accounting applies: a browser session takes a seat like any other device, so an
+        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Device-limit
+        accounting applies: a browser session counts toward the limit like any other device, so an
         exhausted pool is a 403 `device_limit` carrying `limit` and `deviceCount` at the top
         level, plus `manageUrl` (PX-W8) while the product's customer portal is on. It is a key
         entry on the `browser` surface (PX-W9, WIRE-CONTRACT-V4 §12.2): the browser device is
@@ -6926,7 +6936,7 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            The license's seat pool is exhausted, or (PX-W9, §12.2 step 4) it has no key entries
+            The license's device limit is reached, or (PX-W9, §12.2 step 4) it has no key entries
             left — LEGACY FLAT, with `manageUrl` while the product's customer portal is on, and
             `keyEntries` on `key_entry_limit`. `license_owned` (I-09, §12.2 step 3): the licence
             is in an account, with `signInUrl`; no cookie is set and nothing is counted.
@@ -7729,14 +7739,14 @@ paths:
         2026-10-05). Renders "Choose a license for this device": the product, the device label
         (`deviceName`, or "This browser" for the redirect flow) and one radio row per candidate
         license (the account's usable licenses, plus the identity's own unattached `sub`-keyed
-        license) with its tier, its seat count ("1 of 3 devices", for every license) and its
+        license) with its tier, its device count ("1 of 3 devices", for every license) and its
         origin and term in plain words ("From signing in", "Steam key", "From Steam", "Added
         with a key", then "Lifetime" or "Expires <date>"); no license is labelled by type, since
         every license is account-bound (owner decision 2026-10-05). Only a store's name is
         shown, never an order id or purchase key. The first free row in
         rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
         A full row is disabled ("All devices in use") and offers **Replace a device** (its
-        seat-holding devices, the least recent preselected, when the account owns it and the
+        devices using the licence, the least recent preselected, when the account owns it and the
         portal is on) and a **Free a device** link to the portal's focused flow. **Create a new
         free license** appears only when the product's policy would auto-issue to this person,
         they have no `sub`-keyed license yet, and every row is full. When a Replace is pending
@@ -8490,7 +8500,7 @@ paths:
     post:
       operationId: identityChoiceDevices
       tags: [identity]
-      summary: The seat-holding devices of a full licence (Replace)
+      summary: The devices using a full licence (Replace)
       description: >
         I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
         answer travels in the body, never in a URL, and answers only the device that redeemed
@@ -8509,7 +8519,7 @@ paths:
             schema: { $ref: "#/components/schemas/ChoiceDevicesRequest" }
       responses:
         "200":
-          description: "The licence's seat-holding devices. `cache-control: no-store`."
+          description: "The devices using the licence. `cache-control: no-store`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReplaceView" }
@@ -8559,9 +8569,9 @@ paths:
         Only while the product's Identity service is on.
         Consumes the grant and answers exactly what `token` answers (`TokenResponse`, plus
         `keyEntries` after a key). `choice.kind` is `license` (with an optional
-        `replaceDeviceId`, committed in one batch with the seat), `keep` (needs the device's own
+        `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
         `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
-        with the seat, and refuses with `license_owned` and `key_entry_limit`. A refusal the
+        with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
         person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
         the grant open for the time it has left.
       security: []
@@ -8773,6 +8783,295 @@ paths:
     options:
       operationId: preflightIdentitySignOut
       tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/sync:
+    get:
+      operationId: syncPull
+      tags: [sync]
+      summary: Pull the person's synced settings since a cursor
+      description: >
+        U-05.12 (WIRE-CONTRACT-V4 §13.4). The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`; a session cookie is not read. The principal is the device's
+        pairwise subject (the account signed in on it); no parameter names a subject. A device with
+        no principal gets `403 account_required` with a `signInUrl`. A pull never changes licence
+        state and is always allowed: no trust operation, no pause, no quota check.
+
+        `cursor` absent or `0` is a snapshot; otherwise changes since it, oldest first, in pages of
+        at most 500 (changes and tombstones together) with `more: true` while more remain. A
+        `platform`-scope row is returned only to devices of its platform family. `empty: true`
+        appears only on a cursor-0 answer for a person with nothing stored. `quota` is this
+        device's resolved quota and `usage` the person's totals across devices. `aliases` maps
+        a key the catalog renamed to its current name; `catalogVersion` is the active catalog's
+        `schemaVersion`.
+
+        The ETag is the strong `"<seq>.<lastMutationId>"`; `If-None-Match` with it answers `304`.
+        A page with `more: true` carries no ETag and is never `304`, so a client cannot stop
+        paging by replaying a tag. The tag covers the data and the client's last processed
+        mutation, not `quota` or `aliases`, which a client rereads from any `200`. A cursor
+        below the 90-day tombstone horizon, or past the store's sequence, is `410 cursor_expired`:
+        the client takes a snapshot. `cache-control: private, no-cache` on `200` and `304`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - name: cursor
+          in: query
+          required: false
+          description: "The last cursor the client holds: digits, `0` for a snapshot."
+          schema: { type: string, pattern: "^(0|[1-9][0-9]{0,15})$" }
+        - name: clientId
+          in: query
+          required: false
+          description: >
+            The client's partition id (§8). `lastMutationId` is its last processed mutation when
+            it belongs to this device, else `0`.
+          schema: { type: string, pattern: "^c_[A-Za-z0-9_-]{22}$" }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: "The pull. `etag` unless `more`."
+          headers:
+            ETag:
+              schema: { type: string }
+              description: 'Strong, `"<seq>.<lastMutationId>"`. Absent while `more` is true.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncPullResponse" }
+              examples:
+                snapshot:
+                  summary: test/cloudSyncPull.test.ts
+                  value:
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    serverNow: 1700000000000
+                    cursor: 2
+                    more: false
+                    lastMutationId: 0
+                    catalogVersion: 1
+                    aliases: {}
+                    quota: { bytes: 268435456, files: true }
+                    usage: { bytes: 41, settings: 2, records: 0, files: 0 }
+                    changes:
+                      - setting: audio.music.volume
+                        scope: user
+                        value: 0.6
+                        version: 1
+                        editedHlc: "0190f3a2c1b4:0003"
+                        updatedBy: c_AAAAAAAAAAAAAAAAAAAAAA
+                    tombstones: []
+        "304":
+          description: The client's copy is current. `etag` and `cache-control` only.
+        "400":
+          description: A malformed `cursor`, `clientId` or `X-PKey-Device` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device. Not an auth failure: the client keeps its
+            state and offers sign-in behind a user action.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+              examples:
+                accountRequired:
+                  summary: test/cloudSyncPull.test.ts
+                  value:
+                    error:
+                      code: account_required
+                      message: Sign in to use Cloud Sync.
+                      signInUrl: https://key.plrs.im/signin?product=djdl
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: >
+            `cursor_expired` — the cursor is older than the tombstone horizon (or past the
+            store). NESTED. The client takes a snapshot.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: cursor_expired } } }
+        "503":
+          description: >
+            `unavailable` — the person's store could not answer now (or the subject was merged
+            twice while the request ran). NESTED, with `Retry-After`. Retry.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unavailable: { value: { error: { code: unavailable } } }
+    options:
+      operationId: preflightSyncPull
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/ops:
+    post:
+      operationId: syncPush
+      tags: [sync]
+      summary: Push a batch of synced-setting mutations
+      description: >
+        U-05.13 (WIRE-CONTRACT-V4 §13.3). The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`; no cookie. The principal is the device's pairwise subject;
+        the body names no subject, quota or platform family. The `200` is the per-mutation
+        `results` beside the pull members of §13.4 since the request's `cursor`.
+
+        The order is: token and principal (`401`, `400`, `403 account_required`); the platform
+        pause (`503 writes_paused`, `Retry-After: 300`; pulls are still served); device trust, the
+        `cloudSyncWrite` operation (`403 attestation_required` when enforced, an audit row only when
+        log-only); the body (`413 body_too_large` over 256 KiB, `400 bad_request` for a malformed
+        body or more than 100 mutations); then the object. A product that is deleted, or whose
+        Cloud Sync data is being erased, is `404`. A refusal that is not a `200` leaves the
+        client's journal as it was (push rule 1).
+
+        A declared key that is not an Editable `config` key, or is `local`, is `rejected` with
+        `setting_not_synced`, as is a synced key pushed under another scope and an open setting
+        pushed with `platform`. A declared key is validated against its entry (`value_invalid`); an
+        undeclared key is an open setting, `lastWrite`, at most 8 KiB. `quota_exceeded` carries its
+        `scope`: `user` for the person's quota and budget, `product` past the operator's ceiling.
+        A clear always passes. A `clientId` that belongs to another device is `409 client_mismatch`;
+        a `cursor` the store cannot serve is `410 cursor_expired` (the mutations were applied and
+        the retry finds them `duplicate`).
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushRequest" }
+            examples:
+              volume:
+                summary: test/cloudSyncPush.test.ts
+                value:
+                  clientId: c_AAAAAAAAAAAAAAAAAAAAAA
+                  cursor: 0
+                  atomic: false
+                  mutations:
+                    - mutationId: 41
+                      target: { setting: audio.music.volume, scope: user }
+                      op: set
+                      value: 0.6
+                      editedHlc: "0190f3a2c1b4:0003"
+      responses:
+        "200":
+          description: "The results, and the pull since the request's `cursor`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushResponse" }
+              examples:
+                accepted:
+                  summary: test/cloudSyncPush.test.ts
+                  value:
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    serverNow: 1700000000000
+                    cursor: 1
+                    more: false
+                    lastMutationId: 41
+                    catalogVersion: 1
+                    aliases: {}
+                    quota: { bytes: 268435456, files: true }
+                    usage: { bytes: 21, settings: 1, records: 0, files: 0 }
+                    results: [{ mutationId: 41, status: ok, version: 1 }]
+                    changes:
+                      - setting: audio.music.volume
+                        scope: user
+                        value: 0.6
+                        version: 1
+                        editedHlc: "0190f3a2c1b4:0003"
+                        updatedBy: c_AAAAAAAAAAAAAAAAAAAAAA
+                    tombstones: []
+        "400":
+          description: >
+            A malformed body, a missing or malformed `X-PKey-Device`, or more than 100 mutations —
+            NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (no account is signed in on the device; the body carries the
+            `signInUrl`) or `attestation_required` (the product enforces `cloudSyncWrite` and the
+            device is not attested; NESTED, whole request). Not auth failures: the client keeps its
+            journal.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                attestation:
+                  { value: { error: { code: attestation_required } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: "`client_mismatch` — the `clientId` belongs to another device. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch: { value: { error: { code: client_mismatch } } }
+        "410":
+          description: >
+            `cursor_expired` — the request's `cursor` is older than the tombstone horizon (or past
+            the store). The mutations were applied; the retry finds them `duplicate`. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: cursor_expired } } }
+        "413":
+          description: "`body_too_large` — the body is over 256 KiB. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                tooLarge: { value: { error: { code: body_too_large } } }
+        "503":
+          description: >
+            `writes_paused` (the operator paused Cloud Sync writes; `Retry-After: 300`) or
+            `unavailable` (the person's store could not answer now; `Retry-After: 5`). NESTED.
+            The journal is kept; retry after the delay.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                paused: { value: { error: { code: writes_paused } } }
+                unavailable: { value: { error: { code: unavailable } } }
+    options:
+      operationId: preflightSyncPush
+      tags: [sync]
       summary: CORS preflight
       description: >
         Browser preflight for a page on one of the product's `web.origins`. Answered
@@ -12138,7 +12437,7 @@ paths:
       description: >
         One entry per product the portal account holds a licence for (portal-enabled products
         only, `kind: license`): the product's presentation from its `.pkey/distribution` root
-        `listing`, the status of its best licence, that licence's summary with seats, and the
+        `listing`, the status of its best licence, that licence's summary with device counts, and the
         support links. Then, PS-04, one per library entry (`kind: entry`): an open product the
         account added from the storefront with no licence behind it (`license: null`,
         `licenseCount: 0`, status always `active`), shown until the account holds any licence
@@ -12156,7 +12455,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalLibrary" }
               examples:
                 oneProduct:
-                  summary: One product, one licence, two of three seats in use
+                  summary: One product, one licence, two of three devices in use
                   value:
                     products:
                       - product: tidewater
@@ -12241,9 +12540,9 @@ paths:
       description: >
         The product's presentation, its `services` (each service's own toggle, so the page shows
         a section only for a service that is on), its status, and every linked licence, best
-        first (status precedence, then the later expiry), each with its seats, its entitlements
-        and its authorized devices; a device past the dormancy window is `dormant` and holds no
-        seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
+        first (status precedence, then the later expiry), each with its device counts, its entitlements
+        and its authorized devices; a device past the dormancy window is `dormant` and does not count
+        toward the limit. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
         sign-in or a free auto-issue, with its store grants. A product the library holds as an
         entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
         neither a licence nor an entry for the product, or the developer has the portal off for
@@ -12667,7 +12966,7 @@ paths:
     get:
       operationId: getSignInLicenseDevices
       tags: [portal]
-      summary: The seat-holding devices of a full licence (Replace a device)
+      summary: The devices using a full licence (Replace a device)
       description: >
         I-08b (WIRE-CONTRACT-V4 §12.4.1). Needs the portal session AND the request's binder
         cookie. One `404` for a licence that is unknown, another account's, not full, or whose
@@ -12683,7 +12982,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: The licence's seat-holding devices.
+          description: The devices using the licence.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReplaceView" }
@@ -13056,6 +13355,40 @@ paths:
         is an SVG `data:` URI of `approveUrl` (the signed-in app's `#/account/approve?code=`).
         10 starts per client network per 10 minutes (fails closed); `404 auth_method_disabled`
         while the portal is off.
+
+
+        ST-34.5: the body may be `{purpose: "cli", scope: "admin", client: {name, version, host}}`
+        (`pkey login`). A CLI start skips the portal-off gate, answers `approveUrl`
+        `/manage/device?code=` with `qr` null, and only the console can decide it: the portal's
+        `lookup` and `approve` answer its code `410 expired`. `scope` other than `admin` is
+        `422 bad_request`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose: { type: string, enum: [portal, cli], default: portal }
+                scope: { type: string, enum: [admin] }
+                client:
+                  type: object
+                  properties:
+                    name:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    version:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    host:
+                      {
+                        type: string,
+                        description: "Truncated to 64 characters.",
+                      }
       responses:
         "201":
           description: "The request. `cache-control: no-store`."
@@ -13076,7 +13409,12 @@ paths:
                     expiresIn: 300
                     interval: 3
         "404":
-          description: "`auth_method_disabled`: the portal is off."
+          description: "`auth_method_disabled`: the portal is off (portal purpose only)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`bad_request`: an unknown purpose, or a `cli` start whose scope is not `admin`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13239,6 +13577,14 @@ paths:
         set. The answer to a decision is given once: the record is taken in one atomic step, so
         only one poll is ever signed in, and the next answers `410`. 60 polls per client network
         per minute.
+
+
+        ST-34.5: the poll of an approved `cli` request mints one `admin` personal token (7 days,
+        label `pkey on <host>`) and answers it with `token`, once; no session cookie is set. A
+        refused mint answers `409`/`422 bad_request` with a `reason`; `reason: token_limit` (the
+        account holds the most tokens it may) is stable and the CLI and the console copy key off
+        it. The approval is spent by a refused mint, so the person starts a new login. If the
+        approving account was merged away before the poll, the answer is `410`.
       parameters:
         - {
             name: requestId,
@@ -13249,18 +13595,39 @@ paths:
           }
       responses:
         "200":
-          description: "`pending` (with `expiresIn`, `interval`), `denied`, or `approved` (sets `__Host-pkey_portal`)."
+          description: "`pending` (with `expiresIn`, `interval`), `denied`, or `approved` (a portal request sets `__Host-pkey_portal`; a `cli` request answers the token and sets no session cookie)."
           content:
             application/json:
               schema:
-                type: object
-                required: [status]
-                properties:
-                  status: { type: string, enum: [pending, approved, denied] }
-                  expiresIn: { type: integer }
-                  interval: { type: integer }
+                oneOf:
+                  - type: object
+                    required: [status]
+                    not: { required: [token] }
+                    properties:
+                      status:
+                        { type: string, enum: [pending, approved, denied] }
+                      expiresIn: { type: integer }
+                      interval: { type: integer }
+                  - type: object
+                    description: "An approved `cli` request. The token is shown once."
+                    required: [status, token, scope, expiresAt, label]
+                    properties:
+                      status: { type: string, enum: [approved] }
+                      token:
+                        {
+                          type: string,
+                          description: "`pkeyp_…`; never stored.",
+                        }
+                      scope: { type: string, enum: [admin] }
+                      expiresAt: { type: integer, description: "Unix seconds." }
+                      label: { type: string }
         "403":
           description: "`account_disabled`: the approving account can no longer sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`bad_request` with `reason: token_limit`: the account holds the most personal tokens it may, so no token was minted."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13271,6 +13638,11 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`erasure_ledger_unavailable`: the erasure ledger could not be read; the approval is not spent, so poll again."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -15493,7 +15865,7 @@ paths:
         no email it is floating again: anyone with the key can add it). An auto-attach block keeps
         it out of THIS account: no later request, sign-in or email verification adds it back, only
         adding its key again. The account's package tokens for it are revoked. Its devices keep
-        running and keep their seats; the ones this account signed in on lose Cloud Sync for it.
+        running and keep counting toward the limit; the ones this account signed in on lose Cloud Sync for it.
         The detach and the block are audited in the account's history. Only a licence its key can
         bring back is removable: it needs an active licence key, and the product must let a key
         add a licence in the portal. `GET /api/licenses` and `GET /api/licenses/{product}/{licenseId}`
@@ -15707,10 +16079,14 @@ paths:
       description: >
         Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
         secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
-        credential expiring within 14 days or expired. Only broken things appear; what a product
-        has not set up yet does not. Each item states one fact per line, names its product, and
-        carries the page its fix lives in. Visibility is the registry list's, then each item's own
-        area: a member who cannot open the fix never sees the item. The worst first. Admin session
+        credential expiring within 14 days or expired, and, for a member who can edit the Platform,
+        Cloud Sync writes paused (once for the platform, with `product: null`, while at least one
+        product has Cloud Sync on). Only broken things appear; what a product has not set up yet
+        does not. Each item states one fact per line, names its product, and carries the page its
+        fix lives in. Visibility is the registry list's, then each item's own area: a member who
+        cannot open the fix never sees the item. A platform item ignores product visibility and is
+        shown only to a member who can edit the Platform, whatever their product grants. The worst
+        first, and within a tone the platform's items before the products'. Admin session
         cookie or an admin API token.
       responses:
         "200":
@@ -15882,6 +16258,9 @@ paths:
     get:
       operationId: listAdminProducts
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Every registered product, as the console's registry, Home and switcher read it
       description: >
         The product registry: one row per product that is not deleted, with its enablement
@@ -16370,6 +16749,9 @@ paths:
     get:
       operationId: getAdminIntegration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: What the product needs wired, and where an SDK has answered it
       description: >
         ST-40. Per enabled feature (`licensing`, `config`, `identity`, `update`, `packs`, `sync`,
@@ -16389,6 +16771,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminIntegration" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/distribution/channels:
+    get:
+      operationId: getAdminProductChannels
+      tags: [admin]
+      summary: The channels a product can ship through, with delivery and commerce facets
+      description: >
+        A-20.4. The product's `platforms` (from its builds, declared artifacts, an explicit
+        `direct.platforms` and the planned platforms, with the arches and formats seen) and one row
+        per channel it can use: those whose platforms and deliverable kinds it shares, plus any
+        channel with a declared outlet (`attention` includes `out_of_scope` there). `delivery.state`
+        is `not_set_up`, `ready`, `live` or `attention`; `oneClick` says the channel's store
+        credential is already held so setting it up needs no new account step. `commerce` is `null`
+        for a channel with no commerce facet, `not_set_up` or `ready` for a store Commerce sells
+        through (reason `commerce_off` while Commerce is off). Credential facts are booleans and
+        reason codes only: no key id, issuer, credential id or app name. Labels are the catalogue's.
+        Read-only; area `ship`; admin session cookie. The one-product read (`GET /products/{product}`)
+        carries only a compact `channels` (`id`, `label`, `inScope`, `delivery` state, `notUsing`) and `platforms`,
+        for a holder of any area; `oneClick` and `commerce` are on this read alone.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The channels read.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductChannels" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
@@ -16587,6 +17002,16 @@ paths:
                       expiring: { type: integer }
                       expired: { type: integer }
                       disabled: { type: integer }
+                  holders:
+                    type: object
+                    required: [invitations, invitationsOff]
+                    description: "LX-27c.4: whether an invitation can reach a licence of this product. First page only."
+                    properties:
+                      invitations: { type: boolean }
+                      invitationsOff:
+                        type: [string, "null"]
+                        enum: [identity_off, auto_link_off, no_mail, null]
+                        description: "Why not: Identity is off for the product, its auto-link resolves off (a custom issuer), or email is not set up on this server (`no_mail`). `null` when invitations are on."
         "400":
           description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:
@@ -16612,10 +17037,18 @@ paths:
         The answer has the same shape either way: `license.holder` says what a read would. The
         account lookup runs on every create with an email, whatever the outcome. LX-27: `deviceLimit`
         sets the licence's own limit; `delivery: {email: true}` (needs an email) mails the key as
-        "Your <product> license", from "<product> via Polaris Key", in this request, and the answer
+        "Your <product> license", from "<product> via Polaris Locker", in this request, and the answer
         gains `delivered: {email: sent | queued | failed}`. A failed send never undoes the licence:
         send a new key with `POST …/licenses/{licenseId}/send-key`. The key is in the email body
-        and this answer only, never in the audit row. Audited `license.create` with the holder.
+        and this answer only, never in the audit row. LX-27c: `delivery: {invite: true}` (needs an
+        email, exclusive with `delivery.email`) mails an invitation instead, "Your <product>
+        license is ready", with a plain sign-in link and no key, token or address in any URL; the
+        answer gains `delivered: {invite: sent | failed}` and the licence's `invitedAt`. `key:
+        false` (valid only with `delivery.invite`) mints no key, so the answer has no `key`.
+        An invitation is refused with 422 and a `reason` when Identity is off for the product
+        (`identity_off`) or its auto-link resolves off (`auto_link_off`, as for a custom issuer),
+        since the licence could never join an account. The answer is the same whether or not the
+        address has an account. Audited `license.create` with the holder.
         Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -16638,15 +17071,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [licenseId, key, license]
+                required: [licenseId, license]
                 properties:
                   licenseId: { type: string }
                   delivered:
                     type: object
-                    description: "Present when the request asked for `delivery.email`."
-                    required: [email]
+                    description: "Present when the request asked for `delivery.email` (`email`) or `delivery.invite` (`invite`)."
                     properties:
                       email: { type: string, enum: [sent, queued, failed] }
+                      invite: { type: string, enum: [sent, failed] }
                       reason:
                         type: string
                         enum:
@@ -16657,11 +17090,11 @@ paths:
                             daily_cap,
                             provider_refused,
                           ]
-                        description: "Present when `email` is `failed`."
+                        description: "Present when `email` or `invite` is `failed`."
                   key:
                     {
                       type: string,
-                      description: "`pkey_<slug>_…`, shown once.",
+                      description: "`pkey_<slug>_…`, shown once. Absent when the request sent `key: false`.",
                     }
                   license:
                     oneOf:
@@ -16690,7 +17123,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, a bad `deviceLimit`, `delivery` or `key`, `delivery.email` or `delivery.invite` without an email, both together (`reason: email_and_invite`), `key: false` without `delivery.invite` (`reason: key_false_without_invite`), an invitation where Identity is off or auto-link resolves off (`reason: identity_off | auto_link_off`), or a value a signed document cannot carry. A create that names no `tier` lands on the product's Default tier (LX-33.6)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16701,10 +17134,9 @@ paths:
       summary: One licence, with its holder, keys, devices and overrides
       description: >
         The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
-        hash), devices, profiles, offline window, seat count and redacted overrides, and (U-03)
-        `configOverrides`: where its config and secret overrides live (`phase`: `license`,
-        `notice`, `moving`, `moved`), whether an account owns it, the owner's subject and the
-        portal's Activate License link offered for a licence with none. Platform admins only;
+        hash), devices, profiles, offline window, device count and redacted overrides, and (U-03)
+        `configOverrides`: whether an account owns it, the owner's subject and the portal's
+        Activate License link offered for a licence with none. Platform admins only;
         admin session cookie. DELETE on this path is documented on the docs site.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -16740,8 +17172,9 @@ paths:
         (LX-30): that is Reassign (`…/users/licenses/{licenseId}/reassign`). A case-only edit of
         the same address, and a first email on a licence in an account that has none, stay a
         PATCH. A tier or device-limit change also answers `overLimit` when the licence
-        already has more devices than the new effective limit. Platform admins only; admin
-        session cookie and CSRF header.
+        already has more devices than the new effective limit. `tier` is a tier id; `null` is refused
+        (`422`, `fields: [tier]`) because every licence has a tier (LX-33.6). Platform admins only;
+        admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -16787,7 +17220,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, `tier: null` (a licence always has a tier: `fields: [tier]`), a bad `deviceLimit`, or a value a signed document cannot carry."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16851,7 +17284,7 @@ paths:
       tags: [admin]
       summary: Create up to 500 floating licences in one labelled batch (keys shown once)
       description: >
-        Creates `count` licences (1 to 500) of one tier, each with its first key, in one labelled
+        Creates `count` licences (1 to 500) of one tier (absent: the product's Default tier), each with its first key, in one labelled
         batch (LX-28, notes/S-24 §5.6, §7.1, D10). Every licence is floating (no name, no email,
         no account; a name, an email or profiles are refused), `origin: admin`, and carries the
         batch's `batchId`. The batch row, the licences, their keys and the `license.batch.create`
@@ -17318,16 +17751,14 @@ paths:
     put:
       operationId: putAdminLicenseOverrides
       tags: [admin]
-      summary: Edit a licence's own overrides (entitlements only from the override migration's run)
+      summary: Edit a licence's own overrides (config, secret and flag keys)
       description: >
         A batch of override updates, validated against the product's ACTIVE catalog
         all-or-nothing; a catalog-declared secret is sealed under PLATFORM_KEK before it is stored
-        and never echoed. U-03 (notes/S-17 §5.12 step 4, decision 20): from the start of the
-        licence-override migration's run, config and secret keys are refused with `400
-        bad_request` naming the account override route (`accountOverrides.route`, `null` for a
-        licence with no account), and entitlement (`flag`) keys are still accepted, on owned and
-        floating licences alike. Before the run every kind is accepted, as before. Platform admins
-        only; admin session cookie and CSRF header.
+        and never echoed. The licence override layer is layer 4 of the merge and is read for every
+        licence, so config, secret and entitlement (`flag`) keys are accepted on owned and floating
+        licences alike. For an owned licence the owner's account override layer sits above it and
+        wins for the same key. Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -17391,7 +17822,7 @@ paths:
         other active keys in the same batch as the insert. The key is in the email and this answer
         only. A failed send keeps the new key valid (`delivered.email` is `failed`); call again to
         retry, which a failed send does not count against. One send per licence per 10
-        minutes (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
+        minutes, shared with send-invite (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
         label and whether others were revoked, never the key or the address. Platform admins
         only; admin session cookie and CSRF header.
       parameters:
@@ -17466,6 +17897,92 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429":
           description: A key was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/send-invite:
+    post:
+      operationId: sendAdminLicenseInvite
+      tags: [admin]
+      summary: Email an invitation (a sign-in link, no key) to a waiting licence
+      description: >
+        LX-27c: mails the invitation, "Your <product> license is ready", to the licence's email
+        as "<product> via Polaris Locker". It mints nothing, and carries no key, token or address
+        in any URL. Allowed only for a waiting licence (assigned, with an email, in no account) of
+        a product with Identity on and auto-link resolving on. One mail per licence per 10
+        minutes, shared with send-key (a failed send frees it; `429 rate_limited` with
+        `retryAfter`). A send that goes out stamps the licence's `invitedAt`; a failed one does
+        not. Audited `license.invite.send`, and `license.invite.send.failed` on a failure, never
+        with the address. A floating licence is refused (400). Platform admins only; admin session
+        cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: string
+                  enum: [assigned]
+                  description: "Worded into the email's footer: the licence was just assigned. Default: the invitation was sent again."
+      responses:
+        "200":
+          description: "The send was attempted. A failed send is a 200 with `invite: failed`."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivered]
+                properties:
+                  delivered:
+                    type: object
+                    required: [invite]
+                    properties:
+                      invite: { type: string, enum: [sent, failed] }
+                      reason:
+                        type: string
+                        enum:
+                          [
+                            no_mail_binding,
+                            address_unusable,
+                            suppressed,
+                            daily_cap,
+                            provider_refused,
+                          ]
+                        description: "Present when `invite` is `failed`."
+        "400":
+          description: The licence is floating, so it has no email (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Refused before any send: the licence is already in an account (`reason: in_account`), disabled (`license_not_active`) or expired (`license_expired`, with `expiresAt`), Identity is off (`identity_off`) or auto-link resolves off (`auto_link_off`), mail is not set up (`no_mail_binding`), the address is unusable (`address_unusable`) or cannot receive our mail (`suppressed`), or the product's daily email cap is spent (`daily_cap`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`context` is not `assigned`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429":
+          description: A key or an invitation was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -17789,307 +18306,13 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration:
-    get:
-      operationId: getAdminOverrideMigration
-      tags: [admin]
-      summary: The licence-override migration's state and inventory
-      description: >
-        U-03 (notes/S-17 §5.12 step 1, decision 21): the one platform-wide migration that moves
-        owned licences' config and secret overrides onto the owner's account overrides and drops
-        unowned licences'. Answers the phase (`idle`, `notice`, `running`, `completed`), the two
-        prerequisites (the login card, I-07, and the portal Library, I-11, flagged live in
-        production), the notice and its earliest run date, the run, and the daily inventory
-        (counts per product). With `product`, that product's licences carrying config or secret
-        overrides (key names only, never a value or an account id) and its live report row
-        count. Platform admins only; admin session cookie.
-      parameters:
-        - {
-            name: product,
-            in: query,
-            required: false,
-            schema: { type: string },
-          }
-      responses:
-        "200":
-          description: The state.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-                  product:
-                    type: object
-                    additionalProperties: true
-                    properties:
-                      slug: { type: string }
-                      counts: { type: object, additionalProperties: true }
-                      licences:
-                        {
-                          type: array,
-                          items: { type: object, additionalProperties: true },
-                        }
-                      reportRows: { type: integer }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/prerequisites:
-    put:
-      operationId: putAdminOverrideMigrationPrerequisites
-      tags: [admin]
-      summary: Flag the login card and the Library live in production
-      description: >
-        Decision 21: the notice may not start until customers can act on it, so an operator
-        flags the login card (I-07) and the portal Library with Activate License (I-11) live in
-        production. Unflagging is refused once the notice has started (`409 notice_started`).
-        Audited in the platform activity log. Platform admins only; admin session cookie and CSRF
-        header.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                loginCard: { type: boolean }
-                library: { type: boolean }
-      responses:
-        "200":
-          description: Saved.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`notice_started`: withdraw the notice first."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-        "422":
-          description: Neither member, or a member that is not a boolean.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/notice:
-    post:
-      operationId: startAdminOverrideMigrationNotice
-      tags: [admin]
-      summary: Start the 30-day notice
-      description: >
-        Starts the notice; the run is possible 30 days later (`runNotBefore`). Refused with `409
-        prerequisites_missing` (and `missing`) until both prerequisites are flagged: the guard is
-        the conditional write itself. Audited. Platform admins only; admin session cookie and
-        CSRF header.
-      responses:
-        "200":
-          description: Started.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`prerequisites_missing` (with `missing`), `notice_started` or `run_started`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-    delete:
-      operationId: withdrawAdminOverrideMigrationNotice
-      tags: [admin]
-      summary: Withdraw the notice (before the run)
-      description: >
-        Withdraws the notice; a later notice starts a fresh 30 days. Refused once the run has
-        started (`409 run_started`). Audited. Platform admins only; admin session cookie and CSRF
-        header.
-      responses:
-        "200":
-          description: Withdrawn.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state]
-                properties:
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "409":
-          description: "`run_started`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/dry-run:
-    post:
-      operationId: dryRunAdminOverrideMigration
-      tags: [admin]
-      summary: The inventory and report the run would write, writing nothing
-      description: >
-        Plans the run for every product (or `product`) and answers the inventory and every report
-        row it would write. Writes nothing, not even an owner's pairwise subject (an owner with
-        none for the product is reported `subjectCreatedAtRun`), and reads no secret: secrets and
-        config keys the catalog flags `secret` are listed by name only. Platform admins only;
-        admin session cookie and CSRF header.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                product: { type: string }
-      responses:
-        "200":
-          description: The dry run.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [computedAt, inventory, report]
-                properties:
-                  computedAt: { type: integer }
-                  inventory:
-                    { $ref: "#/components/schemas/AdminOverrideInventory" }
-                  report:
-                    type: array
-                    items:
-                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/run:
-    post:
-      operationId: runAdminOverrideMigration
-      tags: [admin]
-      summary: Start or continue the run (owner-scheduled; step-up)
-      description: >
-        Starts the run, or continues it: each call processes up to 25 products under a short
-        lease and answers `progress`; call again while `done` is false. From the first call,
-        `PUT …/licenses/{licenseId}/overrides` refuses config and secrets (step 4); from
-        completion, documents stop reading them from licences (step 5). Owned licences merge
-        into the owner's account overrides (several licences of one product collapse to the most
-        recently updated value, listed in the report); unowned licences' overrides are dropped
-        with an audit row each. Needs a sign-in from the last 5 minutes (`403
-        step_up_required`). Refused before the notice window ends (`409 notice_window`, with
-        `runNotBefore`). The production run is the owner's to schedule (RUNBOOK). Platform admins
-        only; admin session cookie and CSRF header.
-      responses:
-        "200":
-          description: Progress.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [progress, state]
-                properties:
-                  progress:
-                    type: object
-                    required:
-                      [runId, done, productsDone, productsRemaining, written]
-                    properties:
-                      runId: { type: string }
-                      done: { type: boolean }
-                      completedAt: { type: [integer, "null"] }
-                      productsDone: { type: array, items: { type: string } }
-                      productsRemaining:
-                        { type: array, items: { type: string } }
-                      written:
-                        type: object
-                        properties:
-                          moved: { type: integer }
-                          collapsed: { type: integer }
-                          dropped: { type: integer }
-                      conflicts:
-                        type: integer
-                        description: >
-                          Accounts whose row kept changing between the plan and its
-                          compare-and-set write in this call; their product stays undone and the
-                          next call re-plans it.
-                  state:
-                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403":
-          description: "Not a platform admin, a CSRF failure, or `step_up_required` (with `maxAgeSeconds`)."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-        "409":
-          description: "`notice_not_started`, `notice_window` (with `runNotBefore`), `run_completed` or `run_in_progress`."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/platform/override-migration/report:
-    get:
-      operationId: getAdminOverrideMigrationReport
-      tags: [admin]
-      summary: The migration report (90 days)
-      description: >
-        One row per licence the run touched (`moved`, `collapsed`, `dropped`), kept 90 days so an
-        operator can re-apply values by hand: the licence, the owner's subject, the licence's own
-        email, the key names, and non-secret config values (with each collapse's kept and lost
-        values). Secret values are never in it. `format=csv` answers a CSV attachment. Platform
-        admins only; admin session cookie.
-      parameters:
-        - {
-            name: product,
-            in: query,
-            required: false,
-            schema: { type: string },
-          }
-        - {
-            name: format,
-            in: query,
-            required: false,
-            schema: { type: string, enum: [json, csv] },
-          }
-      responses:
-        "200":
-          description: The report.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [rows]
-                properties:
-                  rows:
-                    type: array
-                    items:
-                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
-            text/csv:
-              schema: { type: string }
-        "401": { $ref: "#/components/responses/AdminUnauthorized" }
-        "403": { $ref: "#/components/responses/AdminForbidden" }
-        "404":
-          description: No such product.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/platform/migrations:
     get:
       operationId: listAdminMigrations
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: The data-migration jobs and their latest runs
       description: >
         Every job a mounted service contributes, each with its five newest runs (without units).
@@ -18122,6 +18345,9 @@ paths:
     get:
       operationId: getAdminMigrationRun
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: One run with its units (the report)
       description: Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       parameters:
@@ -18147,6 +18373,9 @@ paths:
     post:
       operationId: dryRunAdminMigration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Plan a job and store the report, changing no data
       description: >
         Plans every unit of the job and stores the report (`changes` is the diff count; zero means
@@ -18518,6 +18747,669 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/admins:
+    get:
+      operationId: listAccessAdminsAdmin
+      tags: [admin]
+      summary: Who can give the caller access to an area
+      description: >
+        ST-29, ST-31.5. Up to three people, narrowest first: the admins of `product:<slug>` who hold
+        the area and Members, then Superadmins (the root rule's holders and stored bindings). Each is
+        a `name`, a `role` (`product_admin` or `superadmin`) and an address to copy; never an account
+        id. Platform admins and `products:*` admins are never named. A product's own admins are named
+        only to a caller who already holds an area of that product; anyone else gets the Superadmins
+        alone, the same answer for a product that does not exist. The caller is never on the list.
+        `scope` is `platform` (the default) or `product:<slug>`; `area` defaults to `console`; any
+        other value is a 400 naming the bad `fields`. Open to every signed-in member; admin session
+        cookie.
+      security:
+        - adminSession: []
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, default: platform }
+        - name: area
+          in: query
+          required: false
+          schema: { type: string, default: console }
+      responses:
+        "200":
+          description: The people who can help.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scope, area, incomplete, admins]
+                properties:
+                  scope: { type: string }
+                  area: { type: string }
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  admins:
+                    type: array
+                    maxItems: 3
+                    items:
+                      type: object
+                      required: [name, email, role]
+                      properties:
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+        "400":
+          description: An invalid `scope` or `area`; `fields` names them.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods:
+    get:
+      operationId: listMyMethodsAdmin
+      tags: [admin]
+      summary: The signed-in operator's own sign-in methods
+      description: >
+        ST-30c.3 (SM-3). Each method of the caller's account: its `kind`, a `name` (the passkey's
+        name, or the address the provider asserted; `null` when none), when it was created and last
+        used, whether it is `strong` (it opens the console) and whether it is `consoleEligible` (a
+        passkey enrolled under the console's relying-party id that is not yet strong; "Use for the
+        console" may mark it). Never an id of the account, never a secret. A break-glass session has
+        no account and is refused (403, reason `break_glass_session`). Admin session cookie; a token
+        cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The methods.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [methods]
+                properties:
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        [
+                          id,
+                          kind,
+                          name,
+                          createdAt,
+                          lastUsedAt,
+                          strong,
+                          consoleEligible,
+                        ]
+                      properties:
+                        id: { type: string }
+                        kind: { type: string }
+                        name: { type: string, nullable: true }
+                        createdAt: { type: integer }
+                        lastUsedAt: { type: integer, nullable: true }
+                        strong: { type: boolean }
+                        consoleEligible: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys/options:
+    post:
+      operationId: startMyPasskeyAdmin
+      tags: [admin]
+      summary: Start adding a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). A WebAuthn registration challenge for this session, from the same
+        ceremony as the Locker account's (I-16): the relying-party id is the console host, the
+        account needs a verified email, and the account's passkey cap applies. Needs a console
+        step-up (403 `step_up_required` from the dispatcher; I-16's own check, 401, stands behind
+        it). A break-glass session is refused. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "200":
+          description: The creation options and how long the challenge lives.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, expiresIn]
+                properties:
+                  options: { type: object }
+                  expiresIn: { type: integer }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys:
+    post:
+      operationId: addMyPasskeyAdmin
+      tags: [admin]
+      summary: Add a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). The attestation for this session's challenge. Needs a console step-up.
+        The new passkey's sign-in method is marked strong in the same request (the one place a
+        passkey is born strong; a passkey added in the Locker account never is, SM-4), written to
+        the platform audit as `rbac.method_strong` and mailed to the account and every Superadmin.
+        Removing a passkey stays in the Locker account. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response: { type: object }
+      responses:
+        "201":
+          description: Added; the passkey now opens the console.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, passkey]
+                properties:
+                  ok: { type: boolean }
+                  passkey:
+                    type: object
+                    required: [id, methodId, createdAt]
+                    properties:
+                      id: { type: string }
+                      methodId: { type: string }
+                      createdAt: { type: integer }
+        "400": { description: "The passkey response was invalid." }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          { description: "That passkey is already in use (`link_conflict`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods/{id}/strong:
+    post:
+      operationId: useMyMethodForConsoleAdmin
+      tags: [admin]
+      summary: Use one of my passkeys for the console
+      description: >
+        ST-30c.3 (SM-3(d)). Marks the caller's own passkey strong. The method must be the caller's
+        (anything else is a 404), a passkey enrolled under the console's relying-party id
+        (otherwise 403, reason `not_eligible`) and not yet strong (otherwise 409, reason
+        `already_strong`). Needs a console step-up. Writes `rbac.method_strong` to the platform audit
+        and mails the account and every Superadmin. A break-glass session is refused. Admin session
+        cookie and the CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The method's id, from the methods list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Marked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id, strong]
+                properties:
+                  ok: { type: boolean }
+                  id: { type: string }
+                  strong: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: "Not one of the caller's methods." }
+        "409": { description: "Already strong (reason `already_strong`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members:
+    get:
+      operationId: listMembersAdmin
+      tags: [admin]
+      summary: List the console's members and pending invites
+      description: >
+        ST-31.4. The root rule's group, every member (an account that holds a stored role or
+        holds Superadmin through the root rule right now) with their roles and where each came from,
+        and the invites still open. A person is named by an opaque `memberId` (`mbr_…`), display name
+        and address, never by an account id. A root-rule role has `source: root` and no `bindingId`
+        (it cannot be revoked). `grantedBy.name` is `null` when the granter is no longer a member.
+        Needs the Members area at platform scope (Superadmin, Platform admin); admin session cookie.
+        A token cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The roster.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rootRule, truncated, incomplete, members, invites]
+                properties:
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  rootRule:
+                    type: object
+                    required: [group]
+                    properties:
+                      group: { type: [string, "null"] }
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleMember" }
+                  invites:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleInvite" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members/{memberId}:
+    get:
+      operationId: getMemberAdmin
+      tags: [admin]
+      summary: Read one console member
+      description: >
+        ST-31.4. The id is matched by computing each candidate's member id, never by decoding it; an
+        unknown, stale or forged id is a 404 that says nothing else. Same access as the list.
+      security:
+        - adminSession: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          description: The opaque member id (`mbr_…`), from the list.
+          schema: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The member.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [member, incomplete]
+                properties:
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  member: { $ref: "#/components/schemas/ConsoleMember" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "503":
+          description: >
+            The member was not found and the erasure ledger could not be read for some account
+            (`reason: erasure_ledger_unavailable`), so the answer would not be reliable. Try again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/bindings:
+    post:
+      operationId: createBindingAdmin
+      tags: [admin]
+      summary: Grant a console role to a member
+      description: >
+        ST-31.6. Body `{member, role, scope, areas, confirm?}`, or, to invite (ST-31.7), `{emails, role,
+        scope, areas, confirm?}` with exactly one of `member` and `emails` (at most 20 addresses; see
+        `ConsoleInvitesResult`). An invite is held to the same rules as a grant, never names the
+        invitee in the audit trail, and sends the address a Polaris Key mail whose link opens the
+        sign-in page; it grants nothing until that address signs in. An address that belongs to an
+        existing console member becomes an account binding instead. At most 100 invited addresses
+        per member per hour (`429`, `reason: invite_budget`). `areas` is required for a
+        `product_admin` (`null` = every area, otherwise a non-empty list of product areas) and
+        absent or `null` for the other roles. An L2 target (Superadmin, Platform admin, `products:*`)
+        needs `confirm: "L2"`. The product named by a product scope must exist and not be the system
+        product. An existing `(member, role, scope)` is a 409 with its `bindingId`.
+        Needs the Members area at platform scope and a console step-up (a sign-in in the last 5
+        minutes: `403 step_up_required`).
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, scope]
+              additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
+              properties:
+                member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
+                role:
+                  {
+                    type: string,
+                    enum:
+                      [
+                        superadmin,
+                        platform_admin,
+                        product_admin,
+                        console_access,
+                      ],
+                  }
+                scope:
+                  {
+                    type: string,
+                    description: "`platform`, `products:*` or `product:<slug>`.",
+                  }
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member, or no such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "That access exists (`reason: exists`, with `bindingId`), or the member's account is disabled."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "An invalid body (`fields`), or an L2 target without `confirm` (`reason: confirm_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/bindings/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/BindingId" }
+    patch:
+      operationId: updateBindingAdmin
+      tags: [admin]
+      summary: Change a Product admin's areas
+      description: >
+        ST-31.6. Body `{areas, confirm?}`; nothing else can change (another member, role or scope
+        is a new grant). Widening needs a console step-up, narrowing does not. The caller must be
+        able to take back what was there and, when widening, give what comes out (`mayChange`).
+        Widening your own binding is refused (`self_grant`). A concurrent change makes this a 409
+        (`reason: changed`) and writes nothing.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [areas]
+              additionalProperties: false
+              properties:
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such binding.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this edit, or cannot be edited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: revokeBindingAdmin
+      tags: [admin]
+      summary: Take a console role back
+      description: >
+        ST-31.6. Removes the binding. No step-up: taking access back only narrows. The root rule is
+        computed and has no binding, so it cannot be revoked here. An invitation (a row for an address, no member) is cancelled the same
+        way and answers `{ok, bindingId, invite: true}`; no one is mailed. PATCH does not take an
+        invitation (404): cancel it and invite again.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, bindingId]
+                properties:
+                  ok: { type: boolean }
+                  bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
+                  notified: { $ref: "#/components/schemas/ConsoleNotified" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such binding.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/me/personal-tokens:
+    get:
+      operationId: listMyPersonalTokens
+      tags: [admin]
+      summary: List your own personal tokens
+      description: >
+        ST-34.4. The caller's own `pkeyp_` tokens in both scopes (`packages:read`, `admin`), live
+        first, then newest: id, label, the last four characters, scope, times and status. Never a
+        token, a hash, an account id or who revoked it. Admin session cookie only: a token (of
+        either kind) is refused, so a stolen token cannot list its siblings. A pre-account (v1)
+        cookie answers 409 `reauth`.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The caller's tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/{id}:
+    delete:
+      operationId: revokeMyPersonalToken
+      tags: [admin]
+      summary: Revoke one of your own personal tokens
+      description: >
+        ST-34.4. Reason `manual`. Another account's id is a 404, not a 403. Revoking a revoked
+        token answers it as it stands, with no second audit row. Audited in the platform activity
+        log as `account_token.revoke`, naming the label and last four characters. The registry
+        host stops accepting a `packages:read` token at once on this isolate and within 30 seconds
+        on the others. Admin session cookie and CSRF header; a token is refused. To end the token
+        you are presenting, use `DELETE /manage/api/me/personal-tokens/current`.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The token's opaque id (`ptok_…`), from the list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: The caller holds no token with that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/distribution/listing/import:
+    post:
+      operationId: importAdminListing
+      tags: [admin]
+      summary: Import a product's store listing (session or admin personal token)
+      description: >
+        ST-34.4. `{ sources: [{source, outlet?, godot?}] }` (or one `source`), `locale?`,
+        `overwrite?`, `confirm?`, `fields?`. Without `confirm`, the field-by-field diff of an
+        import; with the diff's `digest` as `confirm`, apply it. Needs the Ship builds area on the
+        product. What `pkey listing import` sends: `Authorization: Bearer pkeyp_…` with the admin
+        scope (the holder's own role is checked on every request), or the admin session cookie
+        with the CSRF header.
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: The diff, or the applied import.
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/current:
+    delete:
+      operationId: revokeCurrentPersonalToken
+      tags: [admin]
+      summary: Revoke the personal token you are presenting
+      description: >
+        ST-34.4. What `pkey logout` calls. Revokes exactly the presenting admin-scope token
+        (reason `manual`) and nothing else; its next use is a 401. A session cookie is refused
+        (403), as is a `packages:read` token (401). Audited as `account_token.revoke`.
+      security:
+        - adminPersonalToken: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
@@ -20045,6 +20937,320 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404": { description: No such destination. }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/members:
+    get:
+      operationId: listProductMembersAdmin
+      tags: [admin]
+      summary: Who holds access to one product
+      description: >
+        ST-31.5. The product's role bindings, its open invites, and, read-only, the platform roles
+        that reach it from above: Superadmins (the root rule's holders and stored bindings) and
+        `products:*` admins, each with a `source`. Platform admins are not listed. A person is named by
+        an opaque `memberId` (`mbr_…`), display name and address, never by an account id.
+        Needs the Members area on this product (a Product admin of it, or a Superadmin); admin session
+        cookie. A token cannot call it. A caller without that area on an existing product gets 403.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: The product's members.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    product,
+                    truncated,
+                    incomplete,
+                    members,
+                    invites,
+                    platformRoles,
+                  ]
+                properties:
+                  product: { type: string }
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      description: A Product admin does not see a last sign-in.
+                      required: [memberId, name, email, you, roles]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        you: { type: boolean }
+                        roles:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              [
+                                role,
+                                areas,
+                                source,
+                                bindingId,
+                                grantedBy,
+                                grantedAt,
+                              ]
+                            properties:
+                              role: { type: string }
+                              areas:
+                                type: [array, "null"]
+                                items: { type: string }
+                              source:
+                                { type: string, enum: [grant, invite, creator] }
+                              bindingId: { type: string }
+                              grantedBy:
+                                type: [object, "null"]
+                                properties:
+                                  name: { type: [string, "null"] }
+                              grantedAt: { type: integer }
+                  invites:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          bindingId,
+                          email,
+                          role,
+                          areas,
+                          invitedBy,
+                          sentAt,
+                          expiresAt,
+                        ]
+                      properties:
+                        bindingId: { type: string }
+                        email: { type: string }
+                        role: { type: string }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        invitedBy:
+                          type: [object, "null"]
+                          properties:
+                            name: { type: [string, "null"] }
+                        sentAt: { type: integer }
+                        expiresAt: { type: integer }
+                  platformRoles:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [memberId, name, email, role, scope, areas, source]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+                        scope: { type: string, enum: [platform, "products:*"] }
+                        areas:
+                          type: [array, "null"]
+                          items: { type: string }
+                        source: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such product. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: createProductMemberAdmin
+      tags: [admin]
+      summary: Give a member access to one product
+      description: >
+        ST-31.6 (D-d). The product twin of `POST /bindings`. Body `{member, role?, areas?, confirm?}`, or
+        `{emails, role?, areas?, confirm?}` to invite (ST-31.7; exactly one of `member` and `emails`);
+        `role` is `product_admin` (the default, scoped to this product, `areas` required) or
+        `console_access` (platform scope, `areas` absent). Needs the Members area on this product and
+        a console step-up.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
+              properties:
+                member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
+                role: { type: string, enum: [product_admin, console_access] }
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "That access exists (`reason: exists`, with `bindingId`), or the member's account is disabled."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body, or the system product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/members/{bindingId}:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+      - name: bindingId
+        in: path
+        required: true
+        description: The binding id (`crb_…`) from the product's members list.
+        schema: { type: string }
+    patch:
+      operationId: updateProductMemberAdmin
+      tags: [admin]
+      summary: Change a member's areas on one product
+      description: >
+        ST-31.6 (D-d). The product twin of `PATCH /bindings/{id}`, for a binding scoped to this
+        product only: another product's or a platform binding is a 404. Widening needs a console
+        step-up.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [areas]
+              additionalProperties: false
+              properties:
+                areas:
+                  type: [array, "null"]
+                  items: { type: string }
+                confirm: { type: string, enum: [L2] }
+      responses:
+        "200": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such binding on it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this edit, or cannot be edited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: An invalid body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: revokeProductMemberAdmin
+      tags: [admin]
+      summary: Take a member's access to one product back
+      description: >
+        ST-31.6 (D-d). The product twin of `DELETE /bindings/{id}`, for a binding scoped to this
+        product only. No step-up. An invitation to this product is cancelled the same way.
+        Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
+        before it writes: G1 (a granter gives only what it holds, with areas covering the areas
+        asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
+        alone), G3 (Console access by anyone with Members at platform scope or on a product), D-c
+        (taking back needs Members at the scope and areas covering the binding's; a `products:*`
+        binding is a Superadmin's alone) and D-g (no one grants themselves access). A refusal is a
+        `403 forbidden` whose `reason` is `grant_refused` or `self_grant`. The grantee is a member
+        who already holds a role or the root rule, named by `memberId`. The change and its audit rows
+        (`rbac.grant`, `rbac.revoke`) commit together; the grantee and every Superadmin are emailed
+        afterwards, and `notified` says how many were reached (`nobodyNotified` when email is off).
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, bindingId]
+                properties:
+                  ok: { type: boolean }
+                  bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
+                  notified: { $ref: "#/components/schemas/ConsoleNotified" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no such binding on it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The binding changed under this request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/products/{product}/alerts:
     get:
       operationId: listProductAlertDestinations
@@ -20475,6 +21681,15 @@ components:
         `migrations:report`, the data-migration runner's job list, run report and dry run
         (`/manage/api/platform/migrations`, `.../runs/{runId}`, `.../dry-run`); apply and down need
         a step-up and refuse every token.
+    adminPersonalToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeyp_
+      description: >
+        An admin-scope personal token (`pkeyp_…`, ST-34): the holder's own credential for the admin
+        API, an ALTERNATIVE to the session. Default deny: it reaches only the routes that name it,
+        and the holder's own role is checked on every request. It has no step-up, so no route that
+        needs one accepts it. A `packages:read` token is not accepted here.
   parameters:
     TokenId:
       name: tokenId
@@ -20518,6 +21733,12 @@ components:
       required: true
       description: The product slug (tenant).
       schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    BindingId:
+      name: id
+      in: path
+      required: true
+      description: The binding id (`crb_…`), from the Members roster.
+      schema: { type: string }
     MintId:
       name: mintId
       in: path
@@ -20775,6 +21996,25 @@ components:
                   }
                 code: forbidden
                 message: token is not scoped for this route
+    ConsoleBindingWritten:
+      description: >
+        The binding as stored (no account id), with the confirm level the target needed, whether an
+        edit widened, and who was told.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ConsoleBindingResult" }
+    ConsoleInvitesWritten:
+      description: >
+        A POST with `emails`: one result per address, in request order. `invited` (an invite row
+        that lapses after 7 days; inviting again renews it), `updated` (the address belongs to an
+        existing console member, so an account binding was written), `exists` (that member already
+        holds the grant), `merged` (the address repeated an earlier one) and `invalid` (not an
+        address). `link` is present only when the invitation mail did not go out; it is the console
+        sign-in page with the address as a hint and carries no secret. `201` when anything was
+        written, `200` when nothing was.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ConsoleInvitesResult" }
     AdminRateLimited:
       description: >
         The admin surface's per-principal budget (600 requests per 60 s). Keyed by the VERIFIED
@@ -21488,6 +22728,126 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminProductChannels:
+      type: object
+      required: [product, now, platforms, kinds, channels]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        platforms:
+          type: array
+          items:
+            type: object
+            required: [platform, arches, formats, sources]
+            properties:
+              platform: { type: string }
+              arches: { type: array, items: { type: string } }
+              formats: { type: array, items: { type: string } }
+              sources:
+                type: array
+                items:
+                  { type: string, enum: [builds, declared, outlet, planned] }
+        kinds:
+          type: array
+          description: The deliverable kinds present; empty while Release is off.
+          items: { type: string }
+        channels:
+          type: array
+          items: { $ref: "#/components/schemas/AdminChannel" }
+    AdminChannel:
+      type: object
+      required:
+        [
+          id,
+          label,
+          inScope,
+          declared,
+          oneClick,
+          notUsing,
+          delivery,
+          commerce,
+          identity,
+        ]
+      properties:
+        id: { type: string, description: The catalogue channel id. }
+        label: { type: string }
+        inScope: { type: boolean }
+        declared:
+          { type: boolean, description: An outlet for the channel is declared. }
+        oneClick: { type: boolean }
+        notUsing: { type: boolean }
+        delivery:
+          type: object
+          required: [state, attention, platforms]
+          properties:
+            state: { type: string, enum: [not_set_up, ready, live, attention] }
+            attention:
+              type: array
+              items:
+                type: object
+                required: [code]
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      [
+                        out_of_scope,
+                        no_fitting_build,
+                        credential_expiring,
+                        credential_missing,
+                        identity_mismatch,
+                      ]
+                  reasons:
+                    type: array
+                    description: With `no_fitting_build`.
+                    items:
+                      { type: string, enum: [format, arch, unknown-format] }
+                  field:
+                    type: string
+                    description: >
+                      With `identity_mismatch`: the identity field whose declared value differs
+                      from the assigned app. Names the field only, never a value.
+            platforms:
+              type: array
+              items:
+                type: object
+                required: [platform, arches]
+                properties:
+                  platform: { type: string }
+                  arches: { type: array, items: { type: string } }
+        commerce:
+          type: [object, "null"]
+          required: [state, reason, attention]
+          properties:
+            state: { type: string, enum: [not_set_up, ready, attention] }
+            reason:
+              type: [string, "null"]
+              enum: [no_settings, no_credential, commerce_off, null]
+            attention:
+              type: array
+              description: >
+                `identity_mismatch`: the store's typed app differs from the app assigned to the
+                product. Empty for a session without the `commerce` area.
+              items:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [identity_mismatch] }
+        identity:
+          type: [object, "null"]
+          description: >
+            The app the store channel's purchases belong to (A-28.7). `null` for a channel with no
+            store identity and for a session without the `commerce` area: the values are the
+            assigned app's pins.
+          required: [fields, source]
+          properties:
+            fields:
+              type: object
+              description: The field in force (`bundleId`, `packageName` or `appId`) and its value.
+              additionalProperties: { type: string }
+            source:
+              type: [string, "null"]
+              enum: [typed, assigned, null]
     AdminIntegration:
       type: object
       required: [product, now, snippet, features, server, sightings, verified]
@@ -21604,9 +22964,14 @@ components:
             required:
               [id, product, kind, tone, service, short, lines, action, area]
             properties:
-              id: { type: string, description: "`<slug>:<kind>[:<subject>]`." }
+              id:
+                {
+                  type: string,
+                  description: "`<slug>:<kind>[:<subject>]`, or `@platform:<kind>` for a platform item.",
+                }
               product:
-                type: object
+                type: [object, "null"]
+                description: "`null` for a platform item."
                 required: [slug, name]
                 properties: { slug: { type: string }, name: { type: string } }
               kind:
@@ -21619,6 +22984,10 @@ components:
                     signing.missing,
                     mint.pending,
                     credential.expiring,
+                    storefront.identity_mismatch,
+                    storefront.identity_ambiguous,
+                    channel.identity_mismatch,
+                    sync.paused,
                   ]
               tone: { type: string, enum: [danger, warning] }
               service: { type: [string, "null"] }
@@ -21632,11 +23001,20 @@ components:
                   page:
                     {
                       type: string,
-                      description: "A product page id of the console.",
+                      description: "A product page id of the console, or a global page id when `product` is null.",
                     }
                   query:
                     { type: object, additionalProperties: { type: string } }
               area: { type: string }
+              since:
+                type: integer
+                description: "Platform items only: epoch seconds the pause began."
+              by:
+                type: [string, "null"]
+                description: "Platform items only: the display name of who paused writes, never an id."
+              reason:
+                type: [string, "null"]
+                description: "Platform items only: the operator's reason for the pause."
     AdminPlatformReady:
       type: object
       required: [rows, done, total]
@@ -22018,6 +23396,9 @@ components:
             description: "The licence's own email; `''` when none.",
           }
         status: { type: string, enum: [active, disabled] }
+        invitedAt:
+          type: [integer, "null"]
+          description: "LX-27c: epoch seconds of the last invitation email that went out; `null` when none did."
         endedReason:
           type: [string, "null"]
           enum: [revoked, superseded, refunded, chargeback, null]
@@ -22116,6 +23497,12 @@ components:
           description: "LX-27: how the key reaches the holder. `email: true` mails the first key to the licence's `email` in this request; refused (422) without an email."
           properties:
             email: { type: boolean }
+            invite:
+              type: boolean
+              description: "LX-27c: mails an invitation (a sign-in link, no key) instead; exclusive with `email`; refused (422, `reason`) without an email, with Identity off or with auto-link off."
+        key:
+          type: boolean
+          description: "LX-27c: `false` mints no key; valid only with `delivery.invite`. Default `true`."
     AdminLicensePatch:
       type: object
       properties:
@@ -22144,15 +23531,7 @@ components:
     AdminAccountOverrides:
       type: object
       description: One subject's account override layer (U-03), redacted.
-      required:
-        [
-          subject,
-          configOn,
-          overrides,
-          updatedAt,
-          updatedBy,
-          licenseLayerRetired,
-        ]
+      required: [subject, configOn, overrides, updatedAt, updatedBy]
       properties:
         subject: { type: string }
         configOn:
@@ -22178,64 +23557,6 @@ components:
         updatedBy:
           type: [string, "null"]
           description: "The operator's subject, or `migration`, `merge` or `signin`."
-        licenseLayerRetired:
-          type: boolean
-          description: Whether the override migration has completed (licences no longer deliver config and secrets).
-    AdminOverrideInventory:
-      type: object
-      required: [computedAt, products, totals]
-      properties:
-        computedAt: { type: integer }
-        products:
-          type: array
-          items:
-            type: object
-            required: [product, licences, owned, dropped, collapsingAccounts]
-            properties:
-              product: { type: string }
-              licences: { type: integer }
-              owned: { type: integer }
-              dropped: { type: integer }
-              collapsingAccounts: { type: integer }
-        totals:
-          type: object
-          properties:
-            licences: { type: integer }
-            owned: { type: integer }
-            dropped: { type: integer }
-    AdminOverrideMigrationState:
-      type: object
-      description: The licence-override migration's state (U-03).
-      required: [phase, prerequisites, notice, run]
-      additionalProperties: true
-      properties:
-        phase: { type: string, enum: [idle, notice, running, completed] }
-        noticeDays: { type: integer, const: 30 }
-        reportDays: { type: integer, const: 90 }
-        prerequisites:
-          type: object
-          properties:
-            loginCard: { type: object, additionalProperties: true }
-            library: { type: object, additionalProperties: true }
-        notice:
-          type: object
-          additionalProperties: true
-          properties:
-            startedAt: { type: [integer, "null"] }
-            runNotBefore: { type: [integer, "null"] }
-            runAllowed: { type: boolean }
-        run:
-          type: object
-          additionalProperties: true
-          properties:
-            id: { type: [string, "null"] }
-            startedAt: { type: [integer, "null"] }
-            completedAt: { type: [integer, "null"] }
-            productsDone: { type: array, items: { type: string } }
-        inventory:
-          oneOf:
-            - { type: "null" }
-            - { $ref: "#/components/schemas/AdminOverrideInventory" }
     AdminMigrationRun:
       type: object
       required: [id, job, mode, status, startedAt, changes, units, remaining]
@@ -22264,40 +23585,6 @@ components:
               changes: { type: integer }
               detail: {}
               error: { type: [string, "null"] }
-    AdminOverrideReportRow:
-      type: object
-      description: >
-        One licence of the migration report. Never a secret value: secrets, and config keys the
-        catalog flags `secret`, are listed by name only.
-      required: [product, licenseId, outcome, subject, buyerEmail, keys, values]
-      additionalProperties: true
-      properties:
-        product: { type: string }
-        licenseId: { type: string }
-        outcome: { type: string, enum: [moved, collapsed, dropped] }
-        subject: { type: [string, "null"] }
-        buyerEmail: { type: [string, "null"] }
-        keys:
-          type: object
-          properties:
-            config: { type: array, items: { type: string } }
-            secrets: { type: array, items: { type: string } }
-        values:
-          type: object
-          properties:
-            config: { type: object, additionalProperties: true }
-            collapsed:
-              type: array
-              items:
-                type: object
-                required: [bucket, key, keptFrom]
-                properties:
-                  bucket: { type: string, enum: [config, secrets] }
-                  key: { type: string }
-                  keptFrom:
-                    { type: string, description: "A licence id, or `account`." }
-                  kept: { description: A non-secret value. }
-                  lost: { description: A non-secret value. }
     AdminSlugCheck:
       type: object
       required: [slug, status]
@@ -22513,6 +23800,18 @@ components:
         install: { type: string }
         remainingSecrets: { type: array, items: { type: string } }
         defaults: { $ref: "#/components/schemas/AdminCreatedDefaults" }
+        feedProvisionSkipped:
+          type: array
+          description: >
+            Package ecosystems the manifest declares whose feed was not provisioned (several npm
+            or Swift scopes, a one-segment Maven groupId, a Go host-only module), each with the
+            reason. Absent when every declared ecosystem got a feed.
+          items:
+            type: object
+            required: [ecosystem, reason]
+            properties:
+              ecosystem: { type: string }
+              reason: { type: string }
         product:
           type: [object, "null"]
           description: The created product as `GET /manage/api/products/{slug}` shows it (its `name` included).
@@ -22721,10 +24020,10 @@ components:
     PortalLicenseSeats:
       type: object
       description: >
-        One licence's summary with seats (G5). `status` is the portal status; `licenseStatus` the
+        One licence's summary with device counts (G5). `status` is the portal status; `licenseStatus` the
         stored one (`active` or `disabled`). `deviceLimit` is the limit activation enforces;
         `activeSeatCount` the authorized devices inside the dormancy window; `dormantCount` those
-        past it, which hold no seat.
+        past it, which do not count toward the limit.
       required:
         [
           id,
@@ -22755,7 +24054,7 @@ components:
       type: string
       description: >
         A product's status from its best licence, first match wins: `suspended` (the developer
-        disabled the licence), `expired`, `device_limit` (every seat in use), `expires_soon`
+        disabled the licence), `expired`, `device_limit` (the device limit reached), `expires_soon`
         (within 14 days), `active`.
       enum: [suspended, expired, device_limit, expires_soon, active]
     PortalLibrary:
@@ -23079,10 +24378,27 @@ components:
         code: { type: string, description: "The 8-letter code, `XXXX-XXXX`." }
         qr:
           type: [string, "null"]
-          description: "An SVG `data:` URI of `approveUrl`, for an `<img>`."
+          description: "An SVG `data:` URI of `approveUrl`, for an `<img>`; null for a `cli` request."
         approveUrl: { type: string }
         expiresIn: { type: integer, description: Seconds. }
         interval: { type: integer, description: "Seconds between polls." }
+        purpose:
+          type: string
+          enum: [portal, cli]
+          description: "What the request asked for (ST-34.5); absent on a portal request."
+        scope:
+          {
+            type: string,
+            enum: [admin],
+            description: "A `cli` request's scope.",
+          }
+        client:
+          type: object
+          description: "A `cli` request's cleaned client block, as shown to the approver."
+          properties:
+            name: { type: string }
+            version: { type: string }
+            host: { type: string }
     PortalDeviceLoginRequest:
       type: object
       required:
@@ -23240,7 +24556,7 @@ components:
                             lastSeen: { type: integer }
                             dormant:
                               type: boolean
-                              description: Past the dormancy window; holds no seat.
+                              description: Past the dormancy window; does not count toward the limit.
     PortalSupportCode:
       type: object
       additionalProperties: false
@@ -24155,6 +25471,139 @@ components:
           type: [string, "null"]
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
+    ConsoleGrantedBy:
+      type: [object, "null"]
+      description: >
+        Who granted it. `null` = the system or the root rule; `name: null` = someone who is no longer
+        a member.
+      required: [name]
+      properties:
+        name: { type: [string, "null"] }
+    ConsoleMember:
+      type: object
+      required: [memberId, name, email, lastSignInAt, disabled, you, roles]
+      properties:
+        memberId: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+        name: { type: string }
+        email: { type: string }
+        lastSignInAt: { type: [integer, "null"] }
+        disabled:
+          type: boolean
+          description: The account is disabled, so the member cannot sign in.
+        you: { type: boolean }
+        roles:
+          type: array
+          items:
+            type: object
+            required:
+              [role, scope, areas, source, bindingId, grantedBy, grantedAt]
+            properties:
+              role:
+                {
+                  type: string,
+                  enum:
+                    [superadmin, platform_admin, product_admin, console_access],
+                }
+              scope:
+                {
+                  type: string,
+                  description: "platform, products:*, or product:<slug>",
+                }
+              areas:
+                type: [array, "null"]
+                items: { type: string }
+              source: { type: string, enum: [root, grant, invite, creator] }
+              bindingId: { type: [string, "null"] }
+              grantedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+              grantedAt: { type: [integer, "null"] }
+    ConsoleBindingResult:
+      type: object
+      required: [ok, binding]
+      properties:
+        ok: { type: boolean }
+        unchanged:
+          type: boolean
+          description: An edit that changed nothing wrote nothing and told no one.
+        widened: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        binding:
+          type: object
+          required: [bindingId, memberId, role, scope, areas, source, grantedAt]
+          properties:
+            bindingId: { type: string }
+            memberId: { type: string }
+            role: { type: string }
+            scope: { type: string }
+            areas:
+              type: [array, "null"]
+              items: { type: string }
+            source: { type: string }
+            grantedAt: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
+    ConsoleInvitesResult:
+      type: object
+      required: [ok, results, counts, confirm, emailOff, notified]
+      properties:
+        ok: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        emailOff:
+          type: boolean
+          description: True when the deployment sends no email; the links are in `results`.
+        results:
+          type: array
+          items:
+            type: object
+            required: [email, status]
+            properties:
+              email: { type: string }
+              status:
+                type: string
+                enum: [invited, updated, exists, merged, invalid]
+              bindingId: { type: string }
+              expiresAt: { type: integer }
+              needsOperatorSignIn:
+                type: boolean
+                description: >
+                  An invite for a role that signs in through the operator identity provider
+                  (Superadmin, Platform admin, `products:*`). It is stored, and usable once that
+                  sign-in proves the address.
+              emailed: { type: boolean }
+              link: { type: string }
+        counts:
+          type: object
+          required: [invited, updated, exists, merged, invalid]
+          properties:
+            invited: { type: integer }
+            updated: { type: integer }
+            exists: { type: integer }
+            merged: { type: integer }
+            invalid: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
+    ConsoleNotified:
+      type: object
+      description: >
+        G5. How many of the people told (the member and every Superadmin) the notice reached.
+        `nobodyNotified` is true when email is off or every address failed or is suppressed.
+      required: [sent, of, nobodyNotified]
+      properties:
+        sent: { type: integer }
+        of: { type: integer }
+        nobodyNotified: { type: boolean }
+    ConsoleInvite:
+      type: object
+      required:
+        [bindingId, email, role, scope, areas, invitedBy, sentAt, expiresAt]
+      properties:
+        bindingId: { type: string }
+        email: { type: string }
+        role: { type: string }
+        scope: { type: string }
+        areas:
+          type: [array, "null"]
+          items: { type: string }
+        invitedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+        sentAt: { type: integer }
+        expiresAt: { type: integer }
     AccountTokenAdmin:
       type: object
       description: >
@@ -24189,6 +25638,37 @@ components:
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
         email: { type: [string, "null"] }
+    OwnPersonalToken:
+      type: object
+      description: >
+        One of the caller's own personal tokens (ST-34.4). No account id and no `revokedBy`;
+        `revokeReason` says who ended it (`manual` is the owner).
+      required:
+        [
+          id,
+          label,
+          hint,
+          scope,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokeReason,
+          status,
+        ]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        hint: { type: string }
+        scope: { type: string, enum: ["packages:read", admin] }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokeReason:
+          type: [string, "null"]
+          enum: [manual, admin, account_deleted, access_removed, null]
+        status: { type: string, enum: [active, expired, revoked] }
     FlatError:
       type: object
       description: >
@@ -24206,17 +25686,17 @@ components:
         message: { type: string }
         limit:
           type: integer
-          description: On `device_limit` — the seat cap.
+          description: On `device_limit` — the device limit.
         deviceCount:
           type: integer
-          description: On `device_limit` — how many seats are already taken.
+          description: On `device_limit` — how many devices already count.
         manageUrl:
           type: string
           format: uri
           maxLength: 2048
           description: >
             On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
-            frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
+            makes room for another device: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
             licence attached to an account, else
             `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. On
             `key_entry_limit` (PX-W9, §12.2) — `<portal>/activate?product=<product>`. Present
@@ -24830,7 +26310,7 @@ components:
     DeviceView:
       type: object
       description: >
-        A device row as the wire renders it (`shapeDevice`). The token hash, seat number,
+        A device row as the wire renders it (`shapeDevice`). The token hash, ordinal,
         stored overrides and last telemetry blob are deliberately NOT exposed. `licenseId` is
         the empty string for a device registered without a licence.
       required:
@@ -24870,7 +26350,7 @@ components:
     DeviceRoster:
       type: object
       description: >
-        The seat pool as this caller may see it: every device on the licence for a licensed
+        The device pool as this caller may see it: every device on the licence for a licensed
         token, or a one-element list for a device registered without one.
       required: [currentDeviceId, devices]
       properties:
@@ -25215,7 +26695,7 @@ components:
       type: object
       description: >
         What `/license/activate` and `/license/enroll` both answer with — the same four fields
-        in the same order, so an SDK has one code path for "I now hold a seat". `schemaVersion`
+        in the same order, so an SDK has one code path for "I now count toward the limit". `schemaVersion`
         is the product's CATALOG version, which is what tells the client whether its cached
         catalog is stale.
       required: [token, schemaVersion, device, license]
@@ -25393,7 +26873,7 @@ components:
         freeDeviceUrl: { type: [string, "null"] }
     ReplaceView:
       type: object
-      description: "I-08b (§12.4.1): the seat-holding devices Replace could free."
+      description: "I-08b (§12.4.1): the devices using the licence Replace could free."
       required: [licenseId, seats, devices, replace]
       additionalProperties: false
       properties:
@@ -25561,6 +27041,264 @@ components:
       additionalProperties: false
       properties:
         released: { type: boolean }
+    SyncQuota:
+      type: object
+      description: "The requesting device's resolved Cloud Sync quota (§13.1, §13.4)."
+      required: [bytes, files]
+      additionalProperties: false
+      properties:
+        bytes:
+          { type: integer, minimum: 0, description: "`0` means reads only." }
+        files: { type: boolean, description: "`false` refuses a file." }
+    SyncUsage:
+      type: object
+      description: "The person's totals across their devices (§13.4)."
+      required: [bytes, settings, records, files]
+      additionalProperties: false
+      properties:
+        bytes: { type: integer, minimum: 0 }
+        settings: { type: integer, minimum: 0 }
+        records: { type: integer, minimum: 0 }
+        files: { type: integer, minimum: 0 }
+    SyncChange:
+      description: "A setting change or a record change (§13.4)."
+      oneOf:
+        - type: object
+          required: [setting, scope, value, version, editedHlc, updatedBy]
+          additionalProperties: false
+          properties:
+            setting: { type: string }
+            scope: { type: string, enum: [user, platform] }
+            value: {}
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            updatedBy:
+              { type: string, description: "The `clientId` that wrote it." }
+            members:
+              type: object
+              additionalProperties: {}
+              description: "A `merge` setting's live members."
+        - type: object
+          required: [record, value, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, id]."
+            value: {}
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+    SyncTombstone:
+      description: "A deleted setting or record with its `editedHlc` (§13.4)."
+      oneOf:
+        - type: object
+          required: [setting, editedHlc]
+          additionalProperties: false
+          properties:
+            setting: { type: string }
+            editedHlc: { type: string }
+        - type: object
+          required: [record, editedHlc]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+            editedHlc: { type: string }
+    SyncPullResponse:
+      type: object
+      description: >
+        `GET /{product}/sync` (U-05.12, §13.4), and the pull members of a push `200` (`PushResponse`
+        adds `results`, so this schema is open). `cursor` is the page's last row while `more`, else
+        the store's sequence.
+      required:
+        [
+          subject,
+          serverNow,
+          cursor,
+          more,
+          lastMutationId,
+          catalogVersion,
+          aliases,
+          quota,
+          usage,
+          changes,
+          tombstones,
+        ]
+      properties:
+        subject:
+          {
+            type: string,
+            description: "The person's pairwise subject for this product.",
+          }
+        serverNow: { type: integer, description: "Server clock, milliseconds." }
+        cursor: { type: integer, minimum: 0 }
+        more: { type: boolean }
+        lastMutationId: { type: integer, minimum: 0 }
+        catalogVersion: { type: integer, minimum: 0 }
+        aliases:
+          type: object
+          additionalProperties: { type: string }
+          description: "A renamed key's old name to its current one (catalog migrations)."
+        quota: { $ref: "#/components/schemas/SyncQuota" }
+        usage: { $ref: "#/components/schemas/SyncUsage" }
+        empty:
+          type: boolean
+          const: true
+          description: "Only on a cursor-0 answer for a person with nothing stored."
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/SyncChange" }
+        tombstones:
+          type: array
+          items: { $ref: "#/components/schemas/SyncTombstone" }
+    AccountRequiredBody:
+      type: object
+      description: >
+        `403 account_required` on a Cloud Sync route (§13.1). Unlike `WireError`, `message` and
+        `signInUrl` ride INSIDE `error`, as the contract states them.
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, signInUrl]
+          additionalProperties: false
+          properties:
+            code: { type: string, const: account_required }
+            message: { type: string, const: Sign in to use Cloud Sync. }
+            signInUrl:
+              { type: string, description: "`<origin>/signin?product=<slug>`." }
+    SyncMutation:
+      type: object
+      description: "One mutation of a push body (§13.3). Settings only until U-09."
+      required: [mutationId, target, op]
+      properties:
+        mutationId:
+          {
+            type: integer,
+            minimum: 1,
+            description: "Strictly increasing per `clientId`.",
+          }
+        target:
+          oneOf:
+            - type: object
+              required: [setting, scope]
+              properties:
+                setting: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+                scope: { type: string, enum: [user, platform] }
+            - type: object
+              required: [record]
+              properties:
+                record:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items: { type: string }
+        op:
+          type: string
+          enum:
+            [
+              set,
+              clear,
+              setMember,
+              removeMember,
+              setField,
+              removeField,
+              delete,
+              add,
+              remove,
+            ]
+        value: {}
+        member: { type: string }
+        editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
+    PushRequest:
+      type: object
+      description: >
+        `POST /{product}/sync/ops` (U-05.13, §13.3): at most 100 mutations and 256 KiB. A
+        `mutationId` at or below the client's last processed is `duplicate`.
+      required: [clientId, cursor, mutations]
+      properties:
+        clientId: { type: string, pattern: "^c_[A-Za-z0-9_-]{22}$" }
+        cursor:
+          {
+            type: integer,
+            minimum: 0,
+            description: "The pull cursor the client holds.",
+          }
+        atomic:
+          type: boolean
+          description: "All or nothing: the first mutation that is not `ok` aborts the rest."
+        mutations:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/SyncMutation" }
+    MutationResult:
+      description: "One mutation's result (§13.3, §13.9), by `mutationId`."
+      oneOf:
+        - type: object
+          required: [mutationId, status, version]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: ok }
+            version: { type: integer, minimum: 1 }
+            renamedTo:
+              {
+                type: string,
+                description: "A catalog migration renamed the key.",
+              }
+            dropped: { type: boolean, const: true }
+        - type: object
+          required: [mutationId, status, server]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: conflict }
+            server:
+              type: object
+              required: [value, version]
+              properties:
+                value: {}
+                version: { type: integer }
+                editedHlc: { type: string }
+                members: { type: object, additionalProperties: {} }
+        - type: object
+          required: [mutationId, status, code]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: rejected }
+            code:
+              type: string
+              enum:
+                - value_invalid
+                - setting_not_synced
+                - op_invalid_for_policy
+                - collection_unknown
+                - entitlement_required
+                - quota_exceeded
+            scope:
+              type: string
+              enum: [user, collection, product]
+              description: "Only with `quota_exceeded`."
+        - type: object
+          required: [mutationId, status]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, enum: [duplicate, aborted] }
+    PushResponse:
+      description: "The push `200` (§13.3): the results beside the pull members of §13.4."
+      allOf:
+        - { $ref: "#/components/schemas/SyncPullResponse" }
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items: { $ref: "#/components/schemas/MutationResult" }
     SessionFromLicenseResult:
       type: object
       description: >

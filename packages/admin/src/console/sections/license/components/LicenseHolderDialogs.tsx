@@ -18,7 +18,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type LicenseDetail,
   type LicenseHolderMove,
 } from "../../../../api.js";
@@ -49,7 +49,8 @@ import {
 } from "../../core/pages/UserRelink.js";
 import { holderConfirmValue, holderOf } from "./holders.js";
 import { sendKeyRefusal, type UnsentKey } from "./SendKeyDialog.js";
-import { EMAIL_RE } from "./shared.js";
+import { inviteRefusal } from "./inviteCopy.js";
+import { EMAIL_RE, useInvitations } from "./shared.js";
 
 /** "When ada@example.com signs in with that email, it's in their library." (S-24 D4) */
 export function libraryLine(email: string): string {
@@ -78,7 +79,7 @@ function RecordStepUp({
 /** Mark the step-up stale on a 403 `step_up_required`, then rethrow for the dialog's message. */
 function stepUpAware(markStale: () => void) {
   return (e: unknown): never => {
-    if (e instanceof ApiError && e.code === "step_up_required") markStale();
+    if (e instanceof HttpError && e.code === "step_up_required") markStale();
     throw e;
   };
 }
@@ -136,6 +137,8 @@ function AssignForm({
   onDone: () => void;
   onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
+  // LX-27c.5 (L14): where invitations work, the box mails an invitation, not a key.
+  const canInvite = useInvitations(slug).invitations;
   const form = useAdminForm<AssignValues>({
     values: { email: "", name: license.name ?? "", sendKey: false },
     validate: (v) => {
@@ -155,7 +158,30 @@ function AssignForm({
       // stays assigned whatever the mail does. A send that did not go out hands its key to the
       // record's send dialog (shown once, with the reason); a refusal minted none and says so.
       let handoff: [UnsentKey, string] | null = null;
-      if (draft.sendKey) {
+      if (draft.sendKey && canInvite) {
+        const to = draft.email.trim();
+        try {
+          const res = await mutate(
+            "sendLicenseInvite",
+            slug,
+            license.id,
+            "assigned",
+          );
+          if (res.delivered.invite === "sent")
+            toast.success("License assigned. Invitation sent.");
+          else
+            toast.warning(
+              "License assigned. The invitation didn't go out. Resend it from the record.",
+            );
+        } catch (e) {
+          const r = inviteRefusal(
+            e,
+            to,
+            e instanceof HttpError ? (e.retryAfter ?? 600) : 600,
+          );
+          toast.warning(`License assigned. ${r.title}. ${r.description}`);
+        }
+      } else if (draft.sendKey) {
         const to = draft.email.trim();
         try {
           const res = await mutate(
@@ -175,7 +201,7 @@ function AssignForm({
           const r = sendKeyRefusal(
             e,
             to,
-            e instanceof ApiError ? (e.retryAfter ?? 600) : 600,
+            e instanceof HttpError ? (e.retryAfter ?? 600) : 600,
           );
           toast.warning(
             r.noKey
@@ -207,8 +233,12 @@ function AssignForm({
         <Checkbox
           checked={Boolean(form.rhf.watch("sendKey"))}
           onCheckedChange={(v) => form.rhf.setValue("sendKey", v)}
-          label="Email them the key"
-          description="Sends a new key to this address. Its other keys keep working."
+          label={canInvite ? "Email them an invitation" : "Email them the key"}
+          description={
+            canInvite
+              ? "Sends a sign-in link. No key is sent."
+              : "Sends a new key to this address. Its other keys keep working."
+          }
         />
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The license wasn't assigned" live>
@@ -224,7 +254,9 @@ function AssignForm({
         </Button>
         <Button type="submit" loading={form.isSubmitting}>
           {form.rhf.watch("sendKey")
-            ? "Assign and email key"
+            ? canInvite
+              ? "Assign and invite"
+              : "Assign and email key"
             : "Assign license"}
         </Button>
       </DialogFooter>

@@ -569,15 +569,18 @@ describe("the poll", () => {
 
   it("records submitted_at and reviewed_at as certification moves, so time in certification shows", async () => {
     const w = await world({ flights: null });
+    // The connector alone (`pollDirect`): the scheduled tick also runs Release's freshness pass,
+    // which from 15 minutes on re-syncs the store from the fake GitHub and drops the builds
+    // this world seeds by hand.
     w.fake.patchSubmission(PENDING, { status: "CommitStarted" });
-    await poll(w);
+    await pollDirect(w);
     w.fake.patchSubmission(PENDING, { status: "Certification" });
-    await poll(w, NOW + 900);
+    await pollDirect(w, NOW + 900);
     w.fake.patchSubmission(PENDING, {
       status: "Release",
       statusDetails: { errors: [], warnings: [], certificationReports: [] },
     });
-    await poll(w, NOW + 7200);
+    await pollDirect(w, NOW + 7200);
     const sub = (await submissions(w.db)).find(
       (s) => s.release_id === "v1.1.0",
     )!;

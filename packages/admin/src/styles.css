@@ -86,6 +86,8 @@
  * or the targets passing under it; what stuck below it sticks to the top instead.
  */
 @custom-variant short (@media (max-height: 32rem));
+/* A laptop-height viewport, 800 px or less (a 1280 × 800 screen): the product page tightens its section gaps there so Devices starts inside the first screen. */
+@custom-variant lowscreen (@media (max-height: 50rem));
 /*
  * Large text (WCAG 1.4.4): `useLargeTextFlag` (PortalShell) sets `data-large-text` on the document
  * when the root font is at least 1.5 times the default. A rem media query answers to the browser's

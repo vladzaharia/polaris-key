@@ -59,16 +59,13 @@ import {
   handleBrowserSessionLicense,
 } from "../src/services/identity/browserSession.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { setServices } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { serializeServices } from "../src/core/services.js";
 import { reportOnCopy } from "../scripts/grace-clamp-report.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const DAY = 86_400;
@@ -338,8 +335,9 @@ async function mintBundle(
   const env = w.env;
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

@@ -58,12 +58,9 @@ import {
   rsaKeyPair,
 } from "./playWorld.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MS_FIXTURES = JSON.parse(
@@ -311,8 +308,9 @@ async function call(
   w: World,
   body: Record<string, unknown>,
 ): Promise<{ status: number; json: Loose }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -790,8 +788,9 @@ describe("applying, precedence and provenance", () => {
       reason: "app-store outranks godot for this field",
     });
     // The operator puts the Godot project first for copyright.
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       w.env,
+      w.db,
       {
         sub: "u1",
         name: "Ada",

@@ -40,7 +40,6 @@ import { mergePayloads } from "./merge.js";
 import { storeGrantLayer } from "./storeGrants.js";
 import { oidcGrantLayer } from "./grants.js";
 import { accountOverrideLayer } from "../accounts/accountOverrides.js";
-import { licenseConfigOverridesRetired } from "../ops/overrideMigration.js";
 import {
   type DeviceRow,
   type LicenseProfileRow,
@@ -49,6 +48,7 @@ import {
   type TierRow,
 } from "../repo.js";
 import { getProfile, getTier, listLicenseProfiles } from "./store.js";
+import { isImplicitTier } from "./implicitTier.js";
 
 /**
  * The three managed-entry maps as the CONTROL PLANE stores them, in one object.
@@ -95,35 +95,6 @@ export async function catalogDefaultPayload(
     };
   }
   return JSON.stringify(payload);
-}
-
-/**
- * The licence overrides as the merge reads them. Before the licence-override migration's run
- * completes, the whole column (the expand phase: both layers are read, S-17 §5.12). From its
- * completion, `entitlements` only (step 5): config and secrets live on the account override layer,
- * and whatever the column still holds until the nightly sweep empties it is never delivered.
- * The migration state is read only when the column carries a config or secret key at all.
- */
-async function licenseOverrideLayer(
-  db: Db,
-  overridesJson: string | null,
-): Promise<string | null> {
-  if (!overridesJson) return overridesJson;
-  let parsed: Partial<ManagedPayload>;
-  try {
-    parsed = JSON.parse(overridesJson) as Partial<ManagedPayload>;
-  } catch {
-    return overridesJson;
-  }
-  const carries = (b: unknown): boolean =>
-    b !== null && typeof b === "object" && Object.keys(b).length > 0;
-  if (!carries(parsed.config) && !carries(parsed.secrets)) return overridesJson;
-  if (!(await licenseConfigOverridesRetired(db))) return overridesJson;
-  return JSON.stringify({
-    config: {},
-    secrets: {},
-    entitlements: parsed.entitlements ?? {},
-  });
 }
 
 /**
@@ -199,7 +170,8 @@ export async function resolveMergedPayload(
   let tier: TierRow | null = null;
   if (license?.tier_id) {
     tier = await source.tier(license.tier_id);
-    if (tier?.profile_id) {
+    // LX-33.2: an implicit tier carries no profile (its `profile_id` is NULL); read one as none.
+    if (tier?.profile_id && !isImplicitTier(tier)) {
       const p = await source.profile(tier.profile_id);
       layers.push(p?.payload_json ?? null);
     }
@@ -215,11 +187,7 @@ export async function resolveMergedPayload(
     // and BEFORE the licence's own overrides, so an operator's override of the same flag wins
     // (`core/licensing/storeGrants.ts`).
     layers.push(await source.storeGrant(license.id));
-    layers.push(
-      opts.entitlementsOnly
-        ? license.overrides_json
-        : await licenseOverrideLayer(db, license.overrides_json),
-    );
+    layers.push(license.overrides_json);
     // LX-08 (S-19 §7.14 step 4): the licence's OIDC-provisioned entitlement keys, moved out of its
     // overrides column into its `oidc` grant. Right AFTER the overrides and without any key they
     // carry, which is the order and the precedence the keys had inside the column (an operator's

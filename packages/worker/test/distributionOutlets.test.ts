@@ -21,11 +21,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { SERVICES } from "../src/mount.js";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { type ServiceRegistry } from "../src/core/registry.js";
@@ -49,6 +45,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "dice";
 const INGEST = ingestFor(SERVICES);
@@ -227,8 +224,9 @@ async function consoleCall(
 ): Promise<Response> {
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = "admins";
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
     NOW,
   );
@@ -862,7 +860,9 @@ describe("the ingest's cost is bounded for untrusted input (R10)", () => {
     // 32 outlet upserts + 1 removal sweep + 1 listing write (PX-W1: upsert, or delete when the
     // document declares none) + 1 transport delete + the (1 + 64) × 32 = 2,080 transport rows
     // P4-05 routes, 25 to an INSERT (four parameters each, inside D1's 100): 84.
-    expect(stmts).toHaveLength(32 + 1 + 1 + 1 + 84);
+    // A-27.4: plus the model sync, one guarded UPDATE per mapped field (7 app + 2 locale fields;
+    // no INSERT of the model rows while the document declares no listing): 9.
+    expect(stmts).toHaveLength(32 + 1 + 1 + 9 + 1 + 84);
     const inserts = stmts.filter((s) =>
       s.sql.includes("INSERT INTO dist_transports"),
     );

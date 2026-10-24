@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, ScanLine, Smartphone } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
@@ -18,7 +19,6 @@ import {
 import { portalErrorCopy } from "../../errors.js";
 import { sessionMethodText } from "../../model/methods.js";
 import { href, scrollBehavior } from "../../router.js";
-import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { t } from "../../../lib/copy.js";
 
@@ -68,10 +68,11 @@ export function SessionsCard(): React.ReactElement | null {
           <Skeleton className="h-14 w-full" />
         </div>
       ) : sessions.error || !sessions.data ? (
-        <ErrorPanel
+        <ErrorState
           account
           error={sessions.error}
           onRetry={() => void sessions.refetch()}
+          message={t("locker.error.loadFailedSessions")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

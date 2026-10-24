@@ -343,7 +343,6 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "maven.ui-core",
         "maven.server",
         "maven.server-ktor",
-        "maven.spring-boot-starter",
       ]),
     );
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>

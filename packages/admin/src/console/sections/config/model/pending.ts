@@ -11,7 +11,7 @@ export function pendingRecipesOf(
   slug: string,
 ): string[] {
   return (items ?? [])
-    .filter((i) => i.kind === "mint.pending" && i.product.slug === slug)
+    .filter((i) => i.kind === "mint.pending" && i.product?.slug === slug)
     .map((i) => i.action.query?.recipe)
     .filter((id): id is string => typeof id === "string");
 }

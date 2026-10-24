@@ -270,6 +270,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "core/presentation.ts",
       "core/discovery.ts",
       "services/identity/portal/library.ts",
+      "services/distribution/listing/inherit.ts",
     ],
     since: "ST-06",
   }),
@@ -307,7 +308,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     scope: "product",
     service: "core",
     area: "storefront",
-    label: "Listing",
+    label: "Listed in Polaris Locker",
     description:
       "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
@@ -416,7 +417,10 @@ export const CORE_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { change: "L0" },
-    readers: ["core/settings/setupShape.ts"],
+    readers: [
+      "core/settings/setupShape.ts",
+      "services/distribution/channels.ts",
+    ],
     storage: { kind: "scalar" },
     since: "ST-39",
   }),

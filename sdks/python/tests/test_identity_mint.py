@@ -125,7 +125,7 @@ def make(
     c = PolarisKeyClient(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust={},
+        pinned_keys={},
         base_url=BASE,
         store=Store(token),
         client=httpx.Client(transport=httpx.MockTransport(plane)),

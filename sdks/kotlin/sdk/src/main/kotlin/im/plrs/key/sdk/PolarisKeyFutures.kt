@@ -6,7 +6,7 @@
 //   PolarisKeyFutures pk = new PolarisKeyFutures(client);
 //   pk.start().get();
 //   pk.sync().get();
-//   if (pk.isEntitled("pro").get()) { … }
+//   if (pk.hasEntitlement("pro").get()) { … }
 //
 // The futures run on [scope] (Dispatchers.Default by default); cancelling a future cancels the call.
 // Results and failures are the Kotlin API's: a refusal completes the future exceptionally with the
@@ -55,11 +55,11 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun isLicensed(): CompletableFuture<Boolean> = call { client.isLicensed() }
 
     /** False whenever the gate is not usable (S-19 G11). */
-    public fun isEntitled(name: String): CompletableFuture<Boolean> = call { client.license.isEntitled(name) }
+    public fun hasEntitlement(name: String): CompletableFuture<Boolean> = call { client.entitlements.has(name) }
 
     public fun licenseInfo(): CompletableFuture<LicenseInfo?> = call { client.license.licenseInfo() }
 
-    public fun activate(key: String): CompletableFuture<ActivationResult> = call { client.activate(key) }
+    public fun activateWithKey(key: String): CompletableFuture<ActivationResult> = call { client.license.activateWithKey(key) }
 
     public fun enroll(): CompletableFuture<ActivationResult> = call { client.enroll() }
 
@@ -67,7 +67,7 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     // ── Config ───────────────────────────────────────────────────────────────────────────────
 
-    public fun config(key: String, default: JsonElement): CompletableFuture<JsonElement> = call { client.config(key, default) }
+    public fun getConfig(key: String, default: JsonElement): CompletableFuture<JsonElement> = call { client.config.get(key, default) }
 
     /** A persisted local override (`config.local`). */
     public fun setConfig(key: String, value: JsonElement): CompletableFuture<Unit> = call { client.config.set(key, value) }

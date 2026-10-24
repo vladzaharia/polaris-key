@@ -65,10 +65,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/grants.ts", "licenses", "permanent"],
   ["core/licensing/issue.ts", "licenses", "permanent"],
   ["core/licensing/lifecycleWrites.ts", "licenses", "permanent"],
-  ["core/ops/overrideMigration.ts", "account_overrides", "P0-49"],
-  ["core/ops/overrideMigration.ts", "licenses", "P0-49"],
-  ["core/ops/overrideMigration.ts", "override_migration", "P0-49"],
-  ["core/ops/overrideMigration.ts", "override_migration_report", "P0-49"],
   ["core/ops/settingsBackfill.ts", "product_schema", "P0-49"],
   ["core/ops/settingsBackfill.ts", "profiles", "P0-49"],
   ["core/ops/settingsBackfill.ts", "tiers", "P0-49"],
@@ -97,7 +93,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
  */
 const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
   ["core/accounts/accountSubjects.ts", "P0-20"],
-  ["core/ops/overrideMigration.ts", "P0-49"],
   ["services/identity/accounts/legacy.ts", "P0-24"],
 ];
 

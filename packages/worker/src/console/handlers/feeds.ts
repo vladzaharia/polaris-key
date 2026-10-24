@@ -102,11 +102,14 @@ import {
 import {
   ECOSYSTEM_LABELS,
   FEED_ACCESS_MODES,
+  DEFAULT_ACCESS_MODE,
   FEED_CAPABILITIES,
   FEED_EXTENSIONS,
   PACKAGE_ECOSYSTEMS,
   SETTABLE_ACCESS_MODES,
+  accessDisplay,
   applyExtPatch,
+  dropUnknownExt,
   feedBaseUrl,
   isVersionVerb,
   namespaceEmpty,
@@ -136,6 +139,7 @@ interface FeedRow {
   max_package_bytes: number;
   upstream: string;
   ext_json: string;
+  namespace_source: string;
   version: number;
   updated_at: number;
   updated_by: string | null;
@@ -178,7 +182,7 @@ async function ownerOf(
 async function feedRows(db: Db, owner: string): Promise<Map<string, FeedRow>> {
   const rows = await db.all<FeedRow>(
     `SELECT ecosystem, enabled, access_mode, namespace_json, max_package_bytes, upstream,
-            ext_json, version, updated_at, updated_by
+            ext_json, namespace_source, version, updated_at, updated_by
        FROM dist_registry_feeds WHERE product = ?`,
     owner,
   );
@@ -266,8 +270,10 @@ function settingsView(
   if (!feed)
     return {
       enabled: false,
-      accessMode: "public",
+      accessMode: DEFAULT_ACCESS_MODE,
+      accessDisplay: accessDisplay(DEFAULT_ACCESS_MODE),
       namespace: {},
+      namespaceSource: "console",
       maxPackageBytes: policy?.max_package_bytes_ceiling ?? 0,
       upstream: "none",
       ext: {},
@@ -275,15 +281,19 @@ function settingsView(
       updatedAt: null,
       updatedBy: null,
     };
+  // Read fail-closed, as the registry does: a value outside the ladder is the strictest.
+  const accessMode = (FEED_ACCESS_MODES as readonly string[]).includes(
+    feed.access_mode,
+  )
+    ? feed.access_mode
+    : "entitled";
   return {
     enabled: feed.enabled === 1,
-    // Read fail-closed, as the registry does: a value outside the ladder is the strictest.
-    accessMode: (FEED_ACCESS_MODES as readonly string[]).includes(
-      feed.access_mode,
-    )
-      ? feed.access_mode
-      : "entitled",
+    accessMode,
+    accessDisplay: accessDisplay(accessMode),
     namespace: parseJsonObject(feed.namespace_json) ?? {},
+    namespaceSource:
+      feed.namespace_source === "manifest" ? "manifest" : "console",
     maxPackageBytes: feed.max_package_bytes,
     upstream: "none",
     ext: parseJsonObject(feed.ext_json) ?? {},
@@ -335,6 +345,7 @@ async function readContext(env: Env, db: Db, scope: FeedScope) {
       configured: feed !== undefined,
       enabled: feed?.enabled === 1,
       accessMode: settingsView(feed, policy).accessMode,
+      accessDisplay: settingsView(feed, policy).accessDisplay,
       status,
       reason,
       packages: s.packages,
@@ -525,12 +536,10 @@ async function putSettings(
     body.accessMode !== undefined &&
     !SETTABLE_ACCESS_MODES.includes(body.accessMode as string)
   )
-    return err(
-      422,
-      "bad_request",
-      "accessMode is one of public, authenticated, licensed, entitled",
-      { fields: ["accessMode"], reason: "access_mode_unavailable" },
-    );
+    return err(422, "bad_request", "accessMode is public or licensed", {
+      fields: ["accessMode"],
+      reason: "access_mode_unavailable",
+    });
   // The system product's feeds (our SDKs) change only from the platform scope (§6.5).
   if (
     scope.kind === "product" &&
@@ -565,7 +574,8 @@ async function putSettings(
       { reason: "no_policy" },
     );
   const expected = body.expectedVersion as number;
-  const accessMode = (body.accessMode as string | undefined) ?? "public";
+  const accessMode =
+    (body.accessMode as string | undefined) ?? DEFAULT_ACCESS_MODE;
   const changed = await writeFeedSettings(db, {
     owner: owner.slug,
     ecosystem: eco,
@@ -575,8 +585,10 @@ async function putSettings(
     updateAccessMode:
       body.accessMode === undefined ? before.accessMode : accessMode,
     namespace,
+    namespaceChanged:
+      JSON.stringify(namespace) !== JSON.stringify(before.namespace),
     maxPackageBytes: maxBytes,
-    ext,
+    ext: dropUnknownExt(eco, ext),
     now,
     by: session.sub,
   });

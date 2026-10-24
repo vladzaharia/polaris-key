@@ -12,7 +12,7 @@ import {
 /**
  * PX-35: the Library's trimmed shell. No header Activate, no footer (Help and Privacy live in the
  * account menu), a sticky "Missing a license?" strip, and a denser tile grid: two columns on
- * phones, three from 761 px, four from 1180 px, five from 1700 px.
+ * phones, three from 761 px, four from 1180 px.
  */
 let portal: PortalHarness;
 beforeAll(async () => {
@@ -27,7 +27,7 @@ const SIZES = [
   { width: 360, height: 780, columns: 2 },
   { width: 390, height: 844, columns: 2 },
   { width: 1440, height: 900, columns: 4 },
-  { width: 1920, height: 1080, columns: 5 },
+  { width: 1920, height: 1080, columns: 4 },
 ] as const;
 
 describe("the Library shell trim", () => {

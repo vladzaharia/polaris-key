@@ -744,7 +744,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-27-one-adapter-store-delivery-commerce.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-27a",
@@ -912,7 +912,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-32-one-data-layer-console-portal.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-33",
@@ -960,7 +960,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-34-shared-hash-router-core.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-35",
@@ -7141,7 +7141,7 @@
         "Split from F-33 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/F-33b-service-tokens-list-filtering.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-34",
@@ -7166,7 +7166,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-34-feeds-that-provision-themselves.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-35",
@@ -7731,7 +7731,7 @@
         "Split from A-19 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/A-19b-channel-labels-literal-lint.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-20",
@@ -7755,7 +7755,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-20-product-facts-channel-read-model.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-21",
@@ -7973,7 +7973,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-28-one-store-app-binding-derived-identity.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-29",
@@ -8613,7 +8613,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-W13b-display-name-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-W14",
@@ -11843,7 +11843,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/sdk-uikits-dx.md"
       ],
       "brief": "wp/SP-35-sdk-api-registry-api-json-0-9.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-35b",
@@ -11871,7 +11871,7 @@
         "plans/SP-35.md §7 slice 2 and Appendix A (approved 2026-10-08)"
       ],
       "brief": "wp/SP-35b-sdk-api-renames-godot-swift-kotlin.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "SP-35"
     },
     {
@@ -13456,7 +13456,7 @@
         "Split from UK-11 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-11b-godot-game-look-scenes-baselines.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-12",

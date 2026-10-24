@@ -1,8 +1,7 @@
 /**
  * Discover never shows what the library holds (G24). The Worker already leaves held products out
  * of `GET /api/discover` and out of `discoverCount`; this is the portal's own guard, for an answer
- * that crossed a licence change in flight (a key added in another tab, a store purchase landing)
- * or an older Worker: an offer whose product is in the library is dropped before it is shown.
+ * that crossed a licence change in flight (a key added in another tab, a store purchase landing): an offer whose product is in the library is dropped before it is shown.
  */
 export function withoutHeld<T extends { product: string }>(
   offers: readonly T[],

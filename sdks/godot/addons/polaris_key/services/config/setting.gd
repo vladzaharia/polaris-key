@@ -20,11 +20,14 @@ signal changed(value: Variant, source: StringName)
 var key := ""
 ## The effective value (`get_value(key)` with no fallback): a copy, or null when nothing answers.
 var value: Variant = null
-## `get_source(key)`: &"enforced", &"hidden", &"local", &"env", &"remote-default" or &"fallback".
+## `get_config_source(key)`: &"enforced", &"hidden", &"local", &"env", &"remote-default" or &"fallback".
 var source: StringName = &"fallback"
 ## True when the operator locked the key (enforced or hidden): `set_value` is refused
 ## (`managed_by_admin`) and a settings screen shows it read-only.
 var locked := false
+## How the app shows the key (`PKeyConstants.SettingVisibility`): &"hidden" for a hidden key, &"readonly" for an
+## enforced one, else &"editable". Follows `source`.
+var visibility: StringName = &"editable"
 
 var _config: WeakRef
 
@@ -61,5 +64,6 @@ func _update(p_value: Variant, p_source: StringName, p_locked: bool, emit: bool)
 	value = p_value
 	source = p_source
 	locked = p_locked
+	visibility = &"hidden" if p_source == &"hidden" else (&"readonly" if p_source == &"enforced" else &"editable")
 	if moved and emit:
 		changed.emit(value, source)

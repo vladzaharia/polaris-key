@@ -73,16 +73,26 @@ public struct ConfigSetting: Sendable {
     /// The effective value, its source and whether it is locked, read together.
     public func current() async -> ConfigSettingState { await client.settingState(key) }
 
-    /// The effective value, or `fallback` when no layer has one.
-    public func value(default fallback: JSONValue) async -> JSONValue {
-        await client.config(key, default: fallback)
+    /// The effective value; nil when no layer has one (the source is then `fallback`). A default
+    /// goes through `config.get(key, default:)`.
+    public var value: JSONValue? {
+        get async { await client.settingState(key).value }
     }
 
     /// Where the effective value comes from.
-    public func source() async -> ConfigSource { await client.configSource(key) }
+    public var source: ConfigSource {
+        get async { await client.getConfigSource(key) }
+    }
 
     /// Whether the operator locked the key (`enforced` or `hidden`).
-    public func isLocked() async -> Bool { await client.isLocked(key) }
+    public var locked: Bool {
+        get async { await client.isLocked(key) }
+    }
+
+    /// How the setting appears: `editable`, `readonly` or `hidden` (`SettingVisibility`).
+    public var visibility: String {
+        get async { await client.settingVisibility(key) }
+    }
 
     /// `config.set(key, value)`.
     public func set(_ value: JSONValue) async throws { try await client.set(key, value) }
@@ -92,7 +102,7 @@ public struct ConfigSetting: Sendable {
 
     /// `config.onConfigChange(key, listener)`.
     @discardableResult
-    public func onChange(_ listener: @escaping @Sendable (ConfigChange) -> Void) -> ConfigSubscription {
+    public func on(_ listener: @escaping @Sendable (ConfigChange) -> Void) -> ConfigSubscription {
         client.onConfigChange(key, listener)
     }
 

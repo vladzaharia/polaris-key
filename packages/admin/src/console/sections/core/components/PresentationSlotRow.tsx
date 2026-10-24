@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImageIcon, Upload } from "lucide-react";
-import { ApiError, type HostedAssetDto } from "../../../../api.js";
+import { HttpError, type HostedAssetDto } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { ActionMenu } from "../../../../ui/ActionMenu.js";
 import { useWriteLock } from "../../../../ui/WriteLock.js";
@@ -117,7 +117,7 @@ export function PresentationSlotRow({
       );
     } catch (e) {
       // Another upload or a pull landed first: show the slot as it is now.
-      if (e instanceof ApiError && e.code === "asset_changed")
+      if (e instanceof HttpError && e.code === "asset_changed")
         void queryClient.invalidateQueries({
           queryKey: qk.hostedAssets(slug),
         });

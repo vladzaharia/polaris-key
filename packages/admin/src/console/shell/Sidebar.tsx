@@ -82,7 +82,7 @@ export interface SidebarProps {
   /** The product in scope; `null` on the global pages, which show platform links only (SH-10). */
   slug: string | null;
   services: ServiceState;
-  /** The product facts a `requires` reads (Package feeds needs `packageFeeds`). */
+  /** The product facts a `requires` reads (a store channel page needs its channel in scope). */
   features?: NavFeatures;
   activePage: PageId | null;
   /** The group holding the current page: a product section, `platform`, or none (Home). */

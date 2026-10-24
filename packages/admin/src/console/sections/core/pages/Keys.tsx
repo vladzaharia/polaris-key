@@ -63,6 +63,7 @@ import { useProduct } from "../../../data/hooks.js";
 import { ContentKeysSection } from "./KeysContent.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { coreBReads } from "../data.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
@@ -70,10 +71,6 @@ import { intentOf } from "./confirmGate.js";
 import { CiPublishingSection } from "./KeysCi.js";
 import { SecretsSection } from "./KeysSecrets.js";
 import { TrustPolicySection } from "./KeysTrust.js";
-
-export function fetchSigningKeys(slug: string): Promise<SigningKeysResponse> {
-  return api.productKeys(slug);
-}
 
 export function KeysPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
@@ -93,7 +90,7 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
       <VerificationSection product={p} />
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} />
-      <TrustPolicySection slug={slug} />
+      <TrustPolicySection slug={slug} syncOn={!!p.services?.sync?.enabled} />
       <CiPublishingSection slug={slug} />
       {p.services?.release?.enabled ? <ContentKeysSection slug={slug} /> : null}
     </div>
@@ -164,10 +161,7 @@ function SigningKeysSection({
   slug: string;
   product: ProductDetail;
 }): React.ReactElement {
-  const keys = useQuery({
-    queryKey: qk.keys(slug),
-    queryFn: () => fetchSigningKeys(slug),
-  });
+  const keys = useQuery(coreBReads.keys(slug));
   const now = useServerNow(keys.data, keys.dataUpdatedAt || Date.now());
   const [prepare, setPrepare] = React.useState(false);
   const [action, setAction] = React.useState<{

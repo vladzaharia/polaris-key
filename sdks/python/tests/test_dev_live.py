@@ -341,7 +341,7 @@ def test_the_generated_config_describes_this_server(dev: Dev, harness: Harness) 
     assert sorted(cfg.EXPECTED_SERVICES) == enabled
     # CONFIG is what the client takes, and says the same.
     assert cfg.CONFIG["base_url"] == cfg.BASE_URL
-    assert cfg.CONFIG["trust"] == cfg.PINNED_KEYS
+    assert cfg.CONFIG["pinned_keys"] == cfg.PINNED_KEYS
     assert cfg.CONFIG["update"].pinned_release_keys == cfg.PINNED_RELEASE_KEYS
 
     # The client built from it uses those values (the harness spreads CONFIG).
@@ -370,7 +370,7 @@ def test_first_activation(dev: Dev, lifecycle: Lifecycle) -> None:
     # The licence document came down and verified against the generated pins: the `ok` key
     # carries `exportPro`.
     assert client.license.doc is not None
-    assert client.license.is_entitled("exportPro")
+    assert client.entitlements.has("exportPro")
     profile = client.license.get_profile()
     assert profile is not None and profile.name == dev.person.name
 
@@ -428,11 +428,11 @@ def test_a_key_with_no_entries_left_is_refused_with_its_code(dev: Dev, harness: 
 def test_a_config_change_arrives_as_an_event(dev: Dev, lifecycle: Lifecycle) -> None:
     client = lifecycle.live.client
     assert lifecycle.activation.kind == "ok", lifecycle.activation
-    assert client.get_config(CONFIG_KEY) != CONFIG_VALUE
+    assert client.config.get(CONFIG_KEY) != CONFIG_VALUE
     changed: List[Event] = []
     every: List[Event] = []
     unsubscribe = [
-        client.on_config_change(CONFIG_KEY, changed.append),
+        client.config.on_config_change(CONFIG_KEY, changed.append),
         client.subscribe(every.append, ["config"]),
     ]
     try:
@@ -454,7 +454,7 @@ def test_a_config_change_arrives_as_an_event(dev: Dev, lifecycle: Lifecycle) -> 
     assert event["source"] == "enforced"
     # The one listener and the whole stream saw the same single change, and the value reads back.
     assert [e["key"] for e in every] == [CONFIG_KEY]
-    assert client.get_config(CONFIG_KEY) == CONFIG_VALUE
+    assert client.config.get(CONFIG_KEY) == CONFIG_VALUE
     assert client.config.get_config_source(CONFIG_KEY) == "enforced"
 
 

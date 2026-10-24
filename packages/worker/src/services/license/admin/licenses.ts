@@ -82,16 +82,11 @@ import {
 } from "../../../core/console/deviceLimit.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { tierExpiresAt } from "../../../core/licensing/authz.js";
+import { issueTierFor } from "../../../core/licensing/implicitTier.js";
 import {
   licenseEmail,
   subjectForOrNull,
 } from "../../../core/accounts/accountSubjects.js";
-import {
-  LICENSE_CONFIG_WRITABLE_SQL,
-  licenseConfigFrozen,
-  licenseConfigRetired,
-  readOverrideMigrationState,
-} from "../../../core/ops/overrideMigration.js";
 import { portalEnabled } from "../../../core/licensing/manageUrl.js";
 import { customerOrigin } from "../../../core/hosts.js";
 import {
@@ -116,6 +111,12 @@ import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { emailLicenseKey, handleSendKey } from "./keyEmail.js";
+import {
+  emailLicenseInvitation,
+  handleSendInvite,
+  invitationsOff,
+  inviteRefusal,
+} from "./inviteEmail.js";
 import { handleAdminDevices } from "./devices.js";
 import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
@@ -280,42 +281,27 @@ async function validateRefs(
 }
 
 /**
- * Where this licence's config and secret overrides live (U-03, notes/S-17 §5.12), for the
- * console's Config tab:
+ * The ownership facts the console's Config tab needs (U-03, notes/S-17 §5.12). The licence layer
+ * is always read and always writable (U-27), so there is no phase:
  *
- *   - `phase`: `license` (before any notice: the licence editor edits them), `notice` (the
- *     migration's notice is running; `runNotBefore` is the earliest run), `moving` (the run has
- *     started: config and secrets are frozen here, step 4), `moved` (the run completed: they live
- *     on the owner's account overrides and this licence no longer delivers them, step 5);
  *   - `owned`: whether an account owns the licence. An unowned licence has no account layer, so
  *     the console says "No account: managed config for this customer needs an account" and offers
  *     `signUpUrl`, the portal's Activate License page (an offer to the customer, never forced);
  *   - `ownerSubject`: the owner's subject for the Users-page link (created on first contact, as
  *     the licence summary's `ownerSubject` is).
- *
- * Entitlement overrides stay on the licence in every phase (decision 20).
  */
 async function configOverridesView(
   ctx: LicenseAdminContext,
   license: LicenseRow,
 ): Promise<Record<string, unknown>> {
   const slug = ctx.product.slug;
-  const state = await readOverrideMigrationState(ctx.db);
   const owned = (license.account_id ?? null) !== null;
   const origin = customerOrigin(ctx.env, ctx.req);
   return {
-    phase: licenseConfigRetired(state)
-      ? "moved"
-      : licenseConfigFrozen(state)
-        ? "moving"
-        : state.noticeStartedAt !== null
-          ? "notice"
-          : "license",
     owned,
     ownerSubject: owned
       ? await subjectForOrNull(ctx.db, license.account_id!, slug, ctx.now)
       : null,
-    runNotBefore: state.runNotBefore,
     signUpUrl:
       origin && (await portalEnabled(ctx.db, slug))
         ? `${origin}/activate?product=${encodeURIComponent(slug)}`
@@ -420,7 +406,17 @@ export async function handleLicenses(
             },
             now,
           );
-      return adminJson({ licenses, nextCursor: page.nextCursor, ...totals });
+      // LX-27c.4 (L15): whether an invitation can reach a licence of this product, and why not,
+      // on the first page (the console's wizard and record read this one fact).
+      const off = after ? undefined : await invitationsOff(ctx);
+      return adminJson({
+        licenses,
+        nextCursor: page.nextCursor,
+        ...totals,
+        ...(off === undefined
+          ? {}
+          : { holders: { invitations: off === null, invitationsOff: off } }),
+      });
     }
     if (req.method === "POST") {
       const body = await readBody(req);
@@ -432,30 +428,64 @@ export async function handleLicenses(
       // LX-27: `delivery: {email: true}` emails the first key to the licence's address in this
       // request. It needs an email (a floating key is never emailed, S-24 D11).
       const delivery = body.delivery;
-      if (
-        delivery !== undefined &&
-        (typeof delivery !== "object" ||
-          delivery === null ||
-          Array.isArray(delivery) ||
-          ("email" in delivery && typeof delivery.email !== "boolean"))
-      )
+      const deliveryShape = (
+        d: unknown,
+      ): d is { email?: boolean; invite?: boolean } =>
+        typeof d === "object" &&
+        d !== null &&
+        !Array.isArray(d) &&
+        (!("email" in d) || typeof d.email === "boolean") &&
+        (!("invite" in d) || typeof d.invite === "boolean");
+      if (delivery !== undefined && !deliveryShape(delivery))
         return err(
           422,
           ErrorCode.BadRequest,
-          "delivery must be {email: boolean}",
+          "delivery must be {email?: boolean, invite?: boolean}",
           {
             fields: ["delivery"],
           },
         );
+      if ("key" in body && typeof body.key !== "boolean")
+        return err(422, ErrorCode.BadRequest, "key must be a boolean", {
+          fields: ["key"],
+        });
       const emailDelivery =
         (delivery as { email?: boolean } | undefined)?.email === true;
-      if (emailDelivery && bodyEmail(body) == null)
+      const inviteDelivery =
+        (delivery as { invite?: boolean } | undefined)?.invite === true;
+      const mintKey = body.key !== false;
+      const refuseDelivery = (message: string, reason: string) =>
+        err(422, ErrorCode.BadRequest, message, {
+          fields: ["delivery"],
+          reason,
+        });
+      if (emailDelivery && inviteDelivery)
+        return refuseDelivery(
+          "delivery.email and delivery.invite are exclusive",
+          "email_and_invite",
+        );
+      if (!mintKey && !inviteDelivery)
+        return refuseDelivery(
+          "key: false needs delivery.invite",
+          "key_false_without_invite",
+        );
+      if ((emailDelivery || inviteDelivery) && bodyEmail(body) == null)
         return err(
           422,
           ErrorCode.BadRequest,
-          "delivery.email needs an email on the license",
+          `delivery.${inviteDelivery ? "invite" : "email"} needs an email on the license`,
           { fields: ["delivery"] },
         );
+      if (inviteDelivery) {
+        const refusal = await inviteRefusal(ctx);
+        if (refusal)
+          return refuseDelivery(
+            refusal === "identity_off"
+              ? "an invitation needs Sign-in (Identity) on"
+              : "an invitation needs auto-link on for this product",
+            refusal,
+          );
+      }
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -485,7 +515,11 @@ export async function handleLicenses(
         name: typeof body.name === "string" ? body.name : null,
         email,
         groups_json: null,
-        tier_id: typeof body.tier === "string" ? body.tier : null,
+        tier_id: await issueTierFor(
+          db,
+          slug,
+          typeof body.tier === "string" ? body.tier : null,
+        ),
         activated_at: now,
         expires_at:
           "expiresAt" in body
@@ -512,19 +546,19 @@ export async function handleLicenses(
       });
       if (profiles.length > 0)
         await setLicenseProfiles(db, slug, licenseId, profiles);
-      // Mint the first key — returned ONCE, only here.
-      const key = mintLicenseKey(slug);
-      const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
-      await insertKey(db, {
-        product: slug,
-        key_hash: keyHash,
-        license_id: licenseId,
-        status: "active",
-        label: "Initial key",
-        created_at: now,
-        created_by: session.sub,
-        last_used_at: null,
-      });
+      // Mint the first key — returned ONCE, only here. `key: false` (an invitation only) mints none.
+      const key = mintKey ? mintLicenseKey(slug) : null;
+      if (key !== null)
+        await insertKey(db, {
+          product: slug,
+          key_hash: await hashKey(key, env.KEY_HASH_PEPPER),
+          license_id: licenseId,
+          status: "active",
+          label: "Initial key",
+          created_at: now,
+          created_by: session.sub,
+          last_used_at: null,
+        });
       // LX-26 (S-24 D3): association at creation, in the same request, when an account has
       // verified the address. Identity runs the account lookup on every create with an email,
       // whatever the outcome; the answer below has the same shape either way (D4).
@@ -534,8 +568,18 @@ export async function handleLicenses(
       // LX-27: the key email, in this request (the key exists in plaintext only here). A failure
       // never undoes the licence; the answer says `failed` and send-key tries again.
       const keyEmail =
-        emailDelivery && row ? await emailLicenseKey(ctx, row, key) : null;
+        emailDelivery && row && key !== null
+          ? await emailLicenseKey(ctx, row, key)
+          : null;
+      // LX-27c: the invitation, sent with no key. Same rule: a failure never undoes the licence.
+      const invitation =
+        inviteDelivery && row ? await emailLicenseInvitation(ctx, row) : null;
       const emailDelivered = keyEmail?.email ?? null;
+      // The send stamped `invited_at`: read the row again so the answer carries it.
+      const shown =
+        invitation?.invite === "sent"
+          ? await getLicense(db, slug, licenseId)
+          : row;
       await audit(
         db,
         slug,
@@ -546,12 +590,14 @@ export async function handleLicenses(
         // The id, never the buyer's email or name (an audit row outlives erasure by up
         // to 180 days), nor whether an account took the licence, nor the key.
         `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})` +
-          (emailDelivered ? `, key email ${emailDelivered}` : ""),
+          (emailDelivered ? `, key email ${emailDelivered}` : "") +
+          (invitation ? `, invitation ${invitation.invite}` : "") +
+          (key === null ? ", no key" : ""),
       );
       return adminJson(
         {
           licenseId,
-          key,
+          ...(key !== null ? { key } : {}),
           ...(keyEmail
             ? {
                 delivered: {
@@ -559,12 +605,19 @@ export async function handleLicenses(
                   ...(keyEmail.reason ? { reason: keyEmail.reason } : {}),
                 },
               }
-            : {}),
+            : invitation
+              ? {
+                  delivered: {
+                    invite: invitation.invite,
+                    ...(invitation.reason ? { reason: invitation.reason } : {}),
+                  },
+                }
+              : {}),
           // The answer is built as if no account had taken the licence, so a create
           // is not an oracle for "does this address have an account" (no `inAccount`, no
           // `ownerSubject`, whatever the association found).
-          license: row
-            ? await summarize(ctx, { ...row, account_id: null })
+          license: shown
+            ? await summarize(ctx, { ...shown, account_id: null })
             : null,
         },
         201,
@@ -585,13 +638,6 @@ export async function handleLicenses(
       const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
       const configOverrides = await configOverridesView(ctx, license);
-      // U-03 step 5: once the run completed, the column's config and secrets are no longer
-      // delivered (they live on the owner's account overrides), so they are not shown as this
-      // licence's; the nightly sweep empties them after the report window.
-      if (configOverrides.phase === "moved") {
-        overrides.config = {};
-        overrides.secrets = {};
-      }
       return adminJson({
         ...(await summarize(ctx, license)),
         deletion: (await deletionVerdicts(ctx, [license])).get(id),
@@ -676,6 +722,11 @@ export async function handleLicenses(
         typeof nextEmail === "string" && nextEmail !== currentEmail;
       const assigns =
         emailChanged && licenseHolder(license).kind === "floating";
+      // LX-33.6: every licence has a tier. `null` used to mean "no tier"; it now has no meaning.
+      if (body.tier === null)
+        return err(422, ErrorCode.BadRequest, "a license always has a tier", {
+          fields: ["tier"],
+        });
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,
@@ -908,40 +959,6 @@ export async function handleLicenses(
     const updates = Array.isArray(body.updates)
       ? (body.updates as OverrideUpdate[])
       : [];
-    // U-03 step 4 (decision 20): from the migration run's start, config and secrets live on the
-    // account override layer. This route keeps entitlements and refuses the rest, naming where
-    // they went. Unknown keys still fall through to the catalog's 422 below.
-    const moved = updates.filter((u) => {
-      const kind =
-        u && typeof u.key === "string"
-          ? catalog.entryByKey(u.key)?.kind
-          : undefined;
-      return kind === "config" || kind === "secret";
-    });
-    const frozenRefusal = async (): Promise<Response> => {
-      const subject = license.account_id
-        ? await subjectForOrNull(db, license.account_id, slug, now)
-        : null;
-      const route = subject
-        ? `/manage/api/products/${slug}/users/${subject}/overrides`
-        : null;
-      return err(
-        400,
-        ErrorCode.BadRequest,
-        subject
-          ? `config and secret overrides moved to the account override layer: edit them on the owner's Users page (PUT ${route})`
-          : "config and secret overrides moved to the account override layer, and this license has no account: managed config for this customer needs an account",
-        {
-          fields: moved.map((u) => u.key),
-          accountOverrides: { subject, route },
-        },
-      );
-    };
-    if (
-      moved.length > 0 &&
-      licenseConfigFrozen(await readOverrideMigrationState(db))
-    )
-      return frozenRefusal();
     const result = await applyOverrides(
       env,
       slug,
@@ -954,33 +971,14 @@ export async function handleLicenses(
       return err(422, result.code, "validation failed", {
         fields: result.fields,
       });
-    if (moved.length > 0) {
-      // The freeze check and the write are one statement: a run that started since the read
-      // above makes this write nothing, and the route answers the freeze instead.
-      const changed = await db.runChanges(
-        `UPDATE licenses SET overrides_json = ?, modified_by = ?, modified_at = ?
-          WHERE product = ? AND id = ? AND ${LICENSE_CONFIG_WRITABLE_SQL}`,
-        JSON.stringify(result.payload),
-        session.sub,
-        now,
-        slug,
-        id,
-      );
-      if (changed === 0) {
-        if (licenseConfigFrozen(await readOverrideMigrationState(db)))
-          return frozenRefusal();
-        return adminNotFound();
-      }
-    } else {
-      await patchLicense(
-        db,
-        slug,
-        id,
-        { overrides_json: JSON.stringify(result.payload) },
-        session.sub,
-        now,
-      );
-    }
+    await patchLicense(
+      db,
+      slug,
+      id,
+      { overrides_json: JSON.stringify(result.payload) },
+      session.sub,
+      now,
+    );
     await audit(
       db,
       slug,
@@ -995,6 +993,7 @@ export async function handleLicenses(
 
   // /licenses/<id>/keys ...
   if (sub === "send-key") return handleSendKey(ctx, license);
+  if (sub === "send-invite") return handleSendInvite(ctx, license);
 
   if (sub === "keys") {
     return handleKeys(ctx, id, subId, action);

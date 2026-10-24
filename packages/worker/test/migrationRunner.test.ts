@@ -7,11 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
@@ -38,6 +34,7 @@ import {
 import { resolveConnection } from "../src/core/oidc/connections.js";
 import { migrationJobs } from "../src/core/contributions.js";
 import "../src/mount.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ACTOR = { sub: "op", name: "Op", email: null };
 
@@ -226,6 +223,47 @@ describe("migration runner", () => {
       "SELECT actor_sub, target_id FROM platform_audit WHERE action = 'migration.apply'",
     );
     expect(row).toEqual({ actor_sub: "op", target_id: "test.fake" });
+  });
+});
+
+describe("migration runner: unit details across the run chain", () => {
+  it("hands the report's unit detail to apply and the apply's to down, and keeps number returns as before", async () => {
+    const { ctx } = await setup();
+    const seen: Array<[string, unknown]> = [];
+    const job: MigrationJob = {
+      id: "test.details",
+      summary: "details",
+      units: async () => ["a", "b"],
+      plan: async (_c, u) => ({ changes: 1, detail: { planned: u } }),
+      apply: async (_c, u, reported) => {
+        seen.push([`apply:${u}`, reported]);
+        return u === "a" ? { changes: 1, detail: { ids: [u] } } : 1;
+      },
+      down: async (_c, u, applied) => {
+        seen.push([`down:${u}`, applied]);
+        return u === "a" ? { changes: 1, detail: { reset: u } } : 1;
+      },
+    };
+    const report = await dryRun(ctx(), job, ACTOR);
+    const applied = await apply(ctx(NOW + 1), job, ACTOR, report.id);
+    if (!applied.ok) throw new Error("apply refused");
+    // An outcome's detail is stored on the unit; a number leaves it empty.
+    expect(applied.run.units.map((u) => u.detail)).toEqual([
+      { ids: ["a"] },
+      null,
+    ]);
+    const undone = await down(ctx(NOW + 2), job, ACTOR, applied.run.id);
+    expect(undone.ok && undone.run.changes).toBe(2);
+    expect(undone.ok && undone.run.units.map((u) => u.detail)).toEqual([
+      { reset: "a" },
+      null,
+    ]);
+    expect(seen).toEqual([
+      ["apply:a", { planned: "a" }],
+      ["apply:b", { planned: "b" }],
+      ["down:a", { ids: ["a"] }],
+      ["down:b", null],
+    ]);
   });
 });
 
@@ -498,8 +536,9 @@ describe("the admin route", () => {
     body?: unknown,
     stepUp = true,
   ) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "admin-1",
         name: "Ada",
@@ -613,40 +652,30 @@ describe("the admin route", () => {
     expect(undone.body.run.status).toBe("reverted");
   });
 
-  it("reports Core's delegated override migration but never applies or undoes it", async () => {
-    const w = await seededWorld();
-    const env = Object.assign(w.env, {
-      ADMIN_SESSION_SECRET: "test-admin-session-secret",
-      PLATFORM_ADMIN_GROUP: "platform-admins",
-      PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
-      PLATFORM_OIDC_CLIENT_ID: "platform-client",
-    }) as Env;
-    const job = "core.licence-override-migration";
-    const dry = await route(
-      env,
-      w.db,
-      "POST",
-      "/api/platform/migrations/dry-run",
-      { job },
-    );
-    expect(dry.status).toBe(200);
-    expect(dry.body.run.status).toBe("reported");
-    for (const verb of ["apply", "down"]) {
-      const r = await route(
-        env,
-        w.db,
-        "POST",
-        `/api/platform/migrations/${verb}`,
-        { job, report: dry.body.run.id, run: dry.body.run.id },
-      );
-      expect(r.status, verb).toBe(409);
-      expect(r.body.code ?? r.body.error?.code, verb).toBe("delegated");
-    }
-    // Nothing ran: no apply row exists for the report.
+  it("reports a delegated job's dry run but never applies or undoes it", async () => {
+    const { db, ctx } = await setup();
+    const { job: fake, state } = fakeJob();
+    const job: MigrationJob = {
+      ...fake,
+      id: "test.delegated",
+      delegatedTo: "its own console flow",
+    };
+    const report = await dryRun(ctx(), job, ACTOR);
+    expect(report.status).toBe("reported");
+    expect(await apply(ctx(), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "delegated",
+    });
+    expect(await down(ctx(), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "delegated",
+    });
+    // Nothing ran: the data is untouched and no apply row exists for the report.
+    expect([...state.values()]).toEqual([0, 0, 0]);
     expect(
-      await w.db.first(
+      await db.first(
         "SELECT id FROM data_migration_runs WHERE source_id = ?",
-        dry.body.run.id,
+        report.id,
       ),
     ).toBeNull();
   });
@@ -659,7 +688,7 @@ describe("the admin route", () => {
       PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
       PLATFORM_OIDC_CLIENT_ID: "platform-client",
     }) as Env;
-    const job = "core.licence-override-migration";
+    const job = "release.scrub-manifest-snapshots";
     const statuses: number[] = [];
     for (let i = 0; i < 7; i++)
       statuses.push(

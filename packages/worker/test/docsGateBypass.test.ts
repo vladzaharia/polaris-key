@@ -26,8 +26,9 @@ import { dispatchWith } from "../src/dispatch.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { docsTierOf } from "../src/docs.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const DB = makeTestDb();
 const here = dirname(fileURLToPath(import.meta.url));
@@ -264,8 +265,9 @@ describe("SEC-WEB-1: gated docs are unreachable without a session", () => {
 
   it("with a platform-admin session the docs ARE served at /docs (and only there)", async () => {
     const e = env();
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       e,
+      DB,
       { sub: "op", name: "Op", email: "op@example.com", groups: ["admins"] },
       NOW,
     );

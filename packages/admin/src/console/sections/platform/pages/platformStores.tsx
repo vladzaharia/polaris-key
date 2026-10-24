@@ -24,6 +24,7 @@
  * The selected store is in the URL (`?store=`), as is the apps table's search and sort.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import {
   useQuery,
@@ -32,8 +33,7 @@ import {
 } from "@tanstack/react-query";
 import { KeyRound, RefreshCw, Upload } from "lucide-react";
 import {
-  ApiError,
-  api,
+  HttpError,
   type CredentialCheck,
   type PlatformStore,
   type PlatformStoreApp,
@@ -74,6 +74,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProducts } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { markStoreRefresh, platformReads } from "../data.js";
 import { Link, navigate, useSearchParam } from "../../../router.js";
 import { setUpHref } from "../../storefronts/pages/StorefrontsPage.js";
 import { codecs, r } from "../../../routes.js";
@@ -82,25 +83,6 @@ import { Panel } from "../../../templates/Dashboard.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────────
-
-export function fetchPlatformStores(): Promise<PlatformStoreConnection[]> {
-  return api.platformStoreConnections().then((r) => r.stores);
-}
-
-/**
- * One store's apps. A Re-check marks the next fetch of that store as a refresh (`?refresh=1`),
- * so the store is read again and the result lands in the same cache entry and states.
- */
-const refreshNext = new Set<string>();
-
-export function fetchPlatformStoreApps(
-  store: PlatformStore,
-  tracks: boolean,
-): Promise<PlatformStoreApps> {
-  const key = `${store}:${tracks ? "tracks" : "plain"}`;
-  const refresh = refreshNext.delete(key);
-  return api.platformStoreApps(store, { refresh, tracks });
-}
 
 const STORES: readonly PlatformStore[] = [
   "app-store",
@@ -114,10 +96,10 @@ const tracksCodec = codecs.oneOf(["0", "1"] as const, "0");
 
 /** A store's name before its connection has loaded. */
 const STORE_NAMES: Record<PlatformStore, string> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  "google-play": channelLabel("google-play"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  steam: channelLabel("steam"),
 };
 
 /** Display metadata, in a fixed order, with its label. Never a key: the API sends none. */
@@ -139,10 +121,13 @@ const PIN_FIELD_LABELS: Record<string, string> = {
   appId: "app ID",
 };
 
-const IDENTIFIER_LABELS: Record<string, string> = {
+export const IDENTIFIER_LABELS: Record<string, string> = {
+  appleId: "Apple ID",
+  appId: "App ID",
   bundleId: "Bundle ID",
+  developerId: "Developer ID",
   sku: "SKU",
-  packageName: "Package",
+  packageName: "Package name",
   packageFamilyName: "Package family",
   packageIdentityName: "Identity",
   appType: "Type",
@@ -303,10 +288,7 @@ export function appStatusLines(
 // ── page ─────────────────────────────────────────────────────────────────────────────────────
 
 export function StoreConnections(): React.ReactElement {
-  const stores = useQuery({
-    queryKey: qk.platformStores(),
-    queryFn: fetchPlatformStores,
-  });
+  const stores = useQuery(platformReads.stores());
   const [selected, setSelected] = useSearchParam("store", storeCodec);
   const list = stores.data ?? [];
   const current = list.find((s) => s.store === selected) ?? null;
@@ -449,8 +431,7 @@ function StoreDetail({
   const tracks = s.store === "google-play" && tracksRaw === "1";
   const configured = s.configured;
   const apps = useQuery({
-    queryKey: qk.platformStoreApps(s.store, tracks),
-    queryFn: () => fetchPlatformStoreApps(s.store, tracks),
+    ...platformReads.storeApps(s.store, tracks),
     enabled: configured && s.appsListing,
     retry: false,
   });
@@ -459,7 +440,7 @@ function StoreDetail({
 
   const recheck = async () => {
     setChecking(true);
-    refreshNext.add(`${s.store}:${tracks ? "tracks" : "plain"}`);
+    markStoreRefresh(s.store, tracks);
     try {
       const res = await apps.refetch();
       if (res.isSuccess)
@@ -797,7 +778,7 @@ const STORE_VENDORS: Record<PlatformStore, string> = {
   "app-store": "App Store Connect",
   "google-play": "Google",
   "microsoft-store": "Microsoft",
-  steam: "Steam",
+  steam: channelLabel("steam"),
 };
 
 interface ConnectField {
@@ -966,7 +947,7 @@ export function ConnectForm({
     } catch (e) {
       if (mine !== run.current) return;
       const copy =
-        e instanceof ApiError && e.status === 429
+        e instanceof HttpError && e.status === 429
           ? {
               title: "Too many checks",
               description: "Wait a few minutes, then check again.",
@@ -1384,7 +1365,7 @@ function AppsTable({
   );
 
   const storeError =
-    query.error instanceof ApiError && query.error.code === "store_unavailable"
+    query.error instanceof HttpError && query.error.code === "store_unavailable"
       ? query.error
       : null;
 
@@ -1513,7 +1494,7 @@ export function describeAssignError(
   storeLabel: string,
   names: Map<string, string>,
 ): { title: string; description?: string } {
-  if (e instanceof ApiError) {
+  if (e instanceof HttpError) {
     const other = productInMessage(e.message);
     const otherName = other ? (names.get(other) ?? other) : null;
     if (e.code === "app_assigned_elsewhere")

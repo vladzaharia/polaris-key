@@ -21,6 +21,7 @@ import {
 } from "./ascWorld.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { upsertObject } from "../src/services/distribution/connectors/state.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -95,7 +96,7 @@ describe("phased release controls", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         action: `distribution.asc.phased_release.${verb}`,
-        actor_sub: "u1",
+        actor_sub: await consoleActor(w.env, w.db, "u1"),
         target_id: "phr-110",
       });
       const body = (await res.json()) as {
@@ -201,7 +202,11 @@ describe("release a held version", () => {
     });
     const rows = await controlAudits(w);
     expect(rows.map((r) => [r.action, r.actor_sub, r.target_id])).toEqual([
-      ["distribution.asc.release", "u1", "asv-110"],
+      [
+        "distribution.asc.release",
+        await consoleActor(w.env, w.db, "u1"),
+        "asv-110",
+      ],
     ]);
     const avail = await w.db.first<{ state: string }>(
       "SELECT state FROM dist_availability WHERE outlet_id = 'app-store' AND release_id = 'v1.1.0'",

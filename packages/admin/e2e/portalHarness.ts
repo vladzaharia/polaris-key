@@ -601,6 +601,16 @@ export async function settle(page: Page): Promise<void> {
       ),
     );
     await Promise.race([decoded, new Promise((r) => setTimeout(r, 2000))]);
+    // A page that rests at (or within a few px of) its bottom rests AT its bottom. A full-page
+    // capture paints a fixed layer (a modal overlay, a bottom sheet) at the scroll offset, so an
+    // offset that is 1-2 px short of the end (the click that opened the dialog scrolled to the
+    // end before late layout settled, as on CI's runner: account-delete-mobile-light, whose whole
+    // sheet sat 1-2 px high) moves the whole layer against the baseline. Snap it; instant, so a
+    // stylesheet's `scroll-behavior: smooth` cannot leave it moving.
+    const root = document.documentElement;
+    const max = root.scrollHeight - window.innerHeight;
+    if (max > 0 && max - window.scrollY > 0 && max - window.scrollY <= 4)
+      window.scrollTo({ top: max, behavior: "instant" });
     await new Promise((r) =>
       requestAnimationFrame(() => requestAnimationFrame(r)),
     );

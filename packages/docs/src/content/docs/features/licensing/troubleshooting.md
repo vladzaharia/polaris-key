@@ -11,11 +11,11 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## device_limit
 
-**Cause** Every seat on the license is taken. Devices not seen for 90 days no longer count. A tier downgrade also leaves existing devices in place and refuses new ones.
+**Cause** The license is at its device limit. Devices not seen for 90 days no longer count. A tier downgrade also leaves existing devices in place and refuses new ones.
 
-**Fix** Free a seat. The user deauthorizes a device from another activated device, or from Polaris Locker through the response's `manageUrl`. A member can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
+**Fix** Make room for another device. The user deauthorizes a device from another activated device, or from Polaris Locker through the response's `manageUrl`. A member can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
 
-**Check it works** Activation succeeds, and the license's **Seats** meter shows a free seat.
+**Check it works** Activation succeeds, and the license's **Devices** meter shows room for another device.
 
 ## unauthorized
 

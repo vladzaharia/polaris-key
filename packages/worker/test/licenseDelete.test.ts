@@ -18,11 +18,7 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
@@ -30,6 +26,7 @@ import { listAudit } from "../src/core/audit.js";
 import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
 import { SERVICES } from "../src/mount.js";
 import { auditStatementFor } from "../src/core/audit.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "admins";
@@ -58,9 +55,12 @@ const LICENSE_KEYED = [
   "license_refusals",
   "license_relinks",
   "license_store_grants",
-  // U-03: Config's licence-override migration report.
+  // U-03: Config's licence-override migration report. Nothing deletes its rows with the licence
+  // yet (U-27b erases them); the list claims the table so the suite sees it.
   "override_migration_report",
   "portal_license_links",
+  // U-27.6: the provisioned-secret backfill ledger; Core deletes the row (`core/licensing/grants.ts`).
+  "provisioned_secret_moves",
   "registry_tokens",
 ].sort();
 
@@ -75,8 +75,9 @@ beforeEach(async () => {
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
   await seedTier(db, SLUG, "standard");
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -388,7 +389,7 @@ describe("DELETE …/license/licenses/<id>", () => {
     const actions = audit.map((a) => a.action);
     expect(actions).toContain("license.disable"); // history kept
     const del = audit.find((a) => a.action === "license.delete")!;
-    expect(del.actor_sub).toBe("u1");
+    expect(del.actor_sub).toBe(await consoleActor(env, db, "u1"));
     expect(del.summary).toBe(
       `Deleted license lic_dup (tier standard, origin oidc, account ${SUBJECT}, 1 device, 1 authorized)`,
     );
@@ -515,13 +516,15 @@ describe("DELETE …/license/licenses/<id>", () => {
 
   it("refuses a session that is not a platform admin, and a write without the CSRF token", async () => {
     await seedLicense("lic_y", { status: "disabled" });
-    const { token: outsider } = await issueSession(
+    const { token: outsider } = await consoleTestSession(
       env,
+      db,
       { sub: "u2", name: "Eve", email: "eve@x.io", groups: ["someone-else"] },
       NOW,
     );
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -552,8 +555,9 @@ describe("DELETE …/license/licenses/<id>", () => {
     ];
     for (const [method, path, body] of cases) {
       const csrfOf = (
-        await issueSession(
+        await consoleTestSession(
           env,
+          db,
           {
             sub: "u2",
             name: "Eve",

@@ -13,6 +13,7 @@ import {
   groupOf,
   isPageEnabled,
   isPlatformPage,
+  navFeaturesOf,
   isProductPage,
   pageOf,
   PRODUCT_PAGES,
@@ -42,7 +43,11 @@ import { Home } from "../sections/global/pages/Home.js";
 import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
 import { PersonalTokens } from "../sections/global/pages/PersonalTokens.js";
-import { Announcer, LiveRegion } from "../../ui/LiveRegion.js";
+import { Announcer } from "../../ui/LiveRegion.js";
+import { focusRoute } from "../../ui/focusRoute.js";
+import { Button } from "../../ui/Button.js";
+import { Callout } from "../../ui/Callout.js";
+import { formatSessionEnd } from "./UserMenu.js";
 import type { ProductLike } from "./bits.js";
 import { OPEN_PALETTE_EVENT } from "../shortcuts.js";
 import { CommandPalette } from "./CommandPalette.js";
@@ -52,6 +57,7 @@ import { ShortcutSheet } from "./ShortcutSheet.js";
 import { Sidebar, useNavCollapse } from "./Sidebar.js";
 import {
   MovedPage,
+  ChannelOutOfScopePage,
   NotFoundPage,
   ServiceOffPage,
   UnknownProductPage,
@@ -144,57 +150,29 @@ function defaultRail(): boolean {
 }
 
 /**
- * After a navigation: scroll back to the top (owner, 2026-10-03), move focus to the page's `<h1>`
- * and announce "{title}, page loaded" (ADMIN.md §5.6). `key` changes with the page or record,
- * not with its query string, so filtering a list never jumps. The first render is left alone,
- * so the skip link stays the first stop.
- * A page whose heading renders late (after its data) is waited for, briefly.
+ * After a navigation: scroll back to the top (owner, 2026-10-03), then `focusRoute` moves focus to
+ * the page's `<h1>` and announces "{title}, page loaded" (ADMIN.md §5.6) through the shared
+ * `<Announcer/>`. `key` changes with the page or record, not with its query string, so filtering
+ * a list never jumps. The first render is left alone, so the skip link stays the first stop.
  */
-function useRouteFocus(key: string, title: string): string {
-  const [message, setMessage] = React.useState("");
+function useRouteFocus(key: string, title: string): void {
   const first = React.useRef(true);
   React.useEffect(() => {
     if (first.current) {
       first.current = false;
       return;
     }
-    setMessage(`${title}, page loaded`);
     const main = document.getElementById("content");
     // The page scrolls inside <main>; reset it and the window, in case a layout scrolls the body.
     if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
     if (!main) return;
     main.scrollTop = 0;
-    const find = (): HTMLElement | null =>
-      main.querySelector<HTMLElement>("h1, [aria-level='1']");
-    const focus = (el: HTMLElement): void => {
-      if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
-      // The heading is at the top already; don't let focusing it move the reset scroll.
-      el.focus({ preventScroll: true });
-    };
-    const now = find();
-    if (now) {
-      focus(now);
-      return;
-    }
-    const observer = new MutationObserver(() => {
-      const el = find();
-      if (el) {
-        observer.disconnect();
-        focus(el);
-      }
-    });
-    observer.observe(main, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    });
-    const timer = window.setTimeout(() => observer.disconnect(), 4000);
+    let alive = true;
+    void focusRoute({ title, root: main, alive: () => alive });
     return () => {
-      observer.disconnect();
-      window.clearTimeout(timer);
+      alive = false;
     };
   }, [key, title]);
-  return message;
 }
 
 /**
@@ -227,9 +205,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const productQuery = useProduct(slug);
   const products = useProducts();
   const services: ServiceState = productQuery.data?.services ?? null;
-  const features: NavFeatures = productQuery.data
-    ? { packageFeeds: productQuery.data.packageFeeds === true }
-    : null;
+  const features: NavFeatures = navFeaturesOf(productQuery.data);
   const productRef = slug
     ? (me.products.find((p) => p.slug === slug) ?? null)
     : null;
@@ -266,6 +242,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     root.setAttribute("data-shell", "console");
     return () => root.removeAttribute("data-shell");
   }, []);
+  // A page the member's role does not include renders NoAccessPage, so its title says so.
+  const refused =
+    (route.kind === "product" || route.kind === "global") &&
+    page !== null &&
+    knownProductPageRefused(me, route);
   const masthead = React.useMemo(
     () =>
       mastheadValue({
@@ -274,15 +255,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         accent,
         product,
         platform: canIn(me, "platform"),
+        refused,
       }),
-    [route, page, accent, product, me],
+    [route, page, accent, product, me, refused],
   );
 
-  // A page the member's role does not include renders NoAccessPage, so its title says so.
-  const refused =
-    (route.kind === "product" || route.kind === "global") &&
-    page !== null &&
-    knownProductPageRefused(me, route);
   const title = documentTitle(
     route,
     routeSlug && knownProduct ? productName : null,
@@ -365,7 +342,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     desktop.addEventListener("change", onChange);
     return () => desktop.removeEventListener("change", onChange);
   }, []);
-  const announcement = useRouteFocus(
+  useRouteFocus(
     key,
     refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
   );
@@ -518,6 +495,31 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                   data-service={accent}
                   className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
                 >
+                  {me.breakGlass ? (
+                    // ST-30c.2 (D-S7): an emergency session names no account and lasts an hour.
+                    <div
+                      role="region"
+                      aria-label="Emergency sign-in"
+                      className="mb-4"
+                    >
+                      <Callout
+                        tone="warning"
+                        action={
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={signOut}
+                          >
+                            Sign out
+                          </Button>
+                        }
+                      >
+                        {me.sessionExpiresAt
+                          ? `You're using emergency sign-in until ${formatSessionEnd(me.sessionExpiresAt)}. Sign out when you're done.`
+                          : "You're using emergency sign-in. Sign out when you're done."}
+                      </Callout>
+                    </div>
+                  ) : null}
                   <MastheadContext.Provider value={masthead}>
                     <PageContent
                       key={key}
@@ -525,6 +527,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                       me={me}
                       knownProduct={knownProduct}
                       services={services}
+                      features={features}
+                      productLoading={
+                        productQuery.isPending || productQuery.isPlaceholderData
+                      }
                       productName={productName ?? routeSlug ?? ""}
                       onOpenPalette={openPalette}
                     />
@@ -613,7 +619,6 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               items={paletteItems}
             />
             <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
-            <LiveRegion message={announcement} id="route-announcer" />
             <Announcer />
           </>
         </TooltipProvider>
@@ -632,11 +637,7 @@ export function routeSkeleton(route: Route): SkeletonTemplate {
   if (route.id !== undefined || route.child) return "record";
   if (route.page === "overview" || route.page === "platform-status")
     return "dashboard";
-  if (
-    route.page === "platform-settings" ||
-    route.page === "platform-override-migration"
-  )
-    return "form";
+  if (route.page === "platform-settings") return "form";
   return "table";
 }
 
@@ -677,6 +678,8 @@ function PageContent({
   me,
   knownProduct,
   services,
+  features,
+  productLoading,
   productName,
   onOpenPalette,
 }: {
@@ -684,6 +687,9 @@ function PageContent({
   me: Me;
   knownProduct: boolean;
   services: ServiceState;
+  features: NavFeatures;
+  /** The one-product read is not in yet (the list row may stand in): the channel facts are unknown. */
+  productLoading: boolean;
   productName: string;
   onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
@@ -764,6 +770,24 @@ function PageContent({
         section={section}
         slug={route.slug}
         productName={productName}
+      />
+    );
+  }
+  // A-20.7: a link to a page of a store outside the product's scope says so, not a bare page.
+  const target = PRODUCT_PAGES.find((p) => p.page === route.page);
+  const needs = target?.requires;
+  // Until the product's facts are in (the list row stands in as placeholder data, without them), a
+  // channel page shows its loading state: the real page would flash, with the opposite advice,
+  // and fire its reads.
+  if (needs?.startsWith("channel:") && (features === null || productLoading))
+    return <PageLoading route={route} />;
+  if (needs?.startsWith("channel:") && features?.[needs] === false) {
+    return (
+      <ChannelOutOfScopePage
+        section={section}
+        title={target!.label}
+        slug={route.slug}
+        channel={needs.slice("channel:".length)}
       />
     );
   }

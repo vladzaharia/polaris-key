@@ -86,3 +86,34 @@ export const PRINCIPALS = {
 export type PrincipalName = keyof typeof PRINCIPALS;
 
 export const PRINCIPAL_NAMES = Object.keys(PRINCIPALS) as PrincipalName[];
+
+/**
+ * Extra granters for the grant-rule tests (ST-31 slice 3). Kept apart from `PRINCIPALS`, which
+ * the route-matrix suites iterate and hold expectations for.
+ *   - `alphaMembersShip`: Product admin of `alpha`, narrowed to Members and Ship builds.
+ *   - `betaAdmin`: Product admin of `beta`, every area.
+ */
+export const EXTRA_GRANTERS = {
+  alphaMembersShip: {
+    memberId: "m-alpha-ms",
+    grants: [
+      {
+        role: "product_admin",
+        scope: "product:alpha",
+        areas: ["members", "ship"],
+        source: "grant",
+      },
+    ],
+  },
+  betaAdmin: {
+    memberId: "m-beta",
+    grants: [
+      {
+        role: "product_admin",
+        scope: "product:beta",
+        areas: null,
+        source: "grant",
+      },
+    ],
+  },
+} as const satisfies Record<string, Principal>;

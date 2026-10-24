@@ -98,7 +98,7 @@ final class LocalConfigTests: XCTestCase {
         var events = c.events.makeAsyncIterator()
         try await c.config.set("ui.theme", .string("light"))
         let theme = await c.config.string("ui.theme", default: "x")
-        let source = await c.config.configSource("ui.theme")
+        let source = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, "light")
         XCTAssertEqual(source, .local)
         let event = await events.next()
@@ -172,10 +172,14 @@ final class LocalConfigTests: XCTestCase {
         try await theme.set(.string("light"))
         let local = await theme.current()
         XCTAssertEqual(local, ConfigSettingState(value: .string("light"), source: .local, locked: false))
-        let v = await theme.value(default: .null)
+        let v = await theme.value
         XCTAssertEqual(v, .string("light"))
-        let src = await theme.source()
+        let src = await theme.source
         XCTAssertEqual(src, .local)
+        let themeLocked = await theme.locked
+        XCTAssertFalse(themeLocked)
+        let themeVisibility = await theme.visibility
+        XCTAssertEqual(themeVisibility, SettingVisibility.editable)
 
         let concurrency = await c.config.setting("run.concurrency").current()
         XCTAssertEqual(concurrency, ConfigSettingState(value: .int(4), source: .enforced, locked: true))
@@ -184,7 +188,16 @@ final class LocalConfigTests: XCTestCase {
 
         let none = await c.config.setting("net.timeout").current()
         XCTAssertEqual(none, ConfigSettingState(value: nil, source: .fallback, locked: false))
-        let fallback = await c.config.setting("net.timeout").value(default: .int(30))
+        let noValue = await c.config.setting("net.timeout").value
+        XCTAssertNil(noValue)
+        let noSource = await c.config.setting("net.timeout").source
+        XCTAssertEqual(noSource, .fallback)
+        let enforcedHandle = c.config.setting("run.concurrency")
+        let enforcedLocked = await enforcedHandle.locked
+        XCTAssertTrue(enforcedLocked)
+        let enforcedVisibility = await enforcedHandle.visibility
+        XCTAssertEqual(enforcedVisibility, SettingVisibility.readonly)
+        let fallback = await c.config.get("net.timeout", default: .int(30))
         XCTAssertEqual(fallback, .int(30))
 
         await theme.clear()
@@ -235,7 +248,7 @@ final class LocalConfigTests: XCTestCase {
             StubServer.Reply(status: 200, body: jws, headers: ["ETag": "c2"])
         }
         let enforced = LockedValue<[ConfigChange]>([])
-        c.config.setting("run.concurrency").onChange { change in enforced.with { $0.append(change) } }
+        c.config.setting("run.concurrency").on { change in enforced.with { $0.append(change) } }
         let result = await c.sync()
         // Guarded so a document that did not land fails here instead of waiting on the stream.
         guard result.documents[.config] == .applied else { return XCTFail("config not applied: \(result)") }

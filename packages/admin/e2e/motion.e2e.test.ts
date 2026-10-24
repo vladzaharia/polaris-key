@@ -8,6 +8,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
 import { atRest } from "./atRest.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The motion smoke suite (notes/S-23 §6.8, D9; MO-03): the built SPA in real Chromium under the
@@ -73,7 +74,7 @@ const LONG_LIST = Array.from({ length: 48 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
-}));
+})).map(workerFields);
 /** The record a drill-down opens (MO-04): the first row, with a key and a device. */
 const RECORD = {
   ...LONG_LIST[0]!,
@@ -675,8 +676,8 @@ async function transitionsOf(
 }
 
 /**
- * The page's h1 (`heading`) has focus, and the live region announced the page by its title
- * (`announced`: a record is announced by noun and id, "License lic_1") (ADMIN.md §5.6).
+ * The page's h1 (`heading`) has focus, and the live region announced the page by that heading's
+ * accessible name (`announced`, default the heading) (ADMIN.md §5.6).
  */
 async function focusedHeading(
   page: Page,
@@ -690,7 +691,7 @@ async function focusedHeading(
     heading,
   );
   expect(
-    await page.locator("#route-announcer").textContent(),
+    (await page.locator("#pk-announcer").textContent())?.replace(/\u200b/g, ""),
     "the live region announces the page",
   ).toBe(`${announced}, page loaded`);
 }
@@ -899,7 +900,7 @@ describe("motion on: the console under the Worker's CSP", () => {
         delay: tk.micro,
       });
       expect(groupNames(forward!)).toContain("pk-main");
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       expect(await running(page)).toEqual([]);
 
       // A record tab: the indicator slides (slow), the panel fades through, the main region and
@@ -959,7 +960,7 @@ describe("motion on: the console under the Worker's CSP", () => {
       expect(again!.pseudo["::view-transition-group(pk-key)"]).toMatchObject({
         duration: tk.slow,
       });
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       // The one-shot name is gone from the row once the transition is over.
       await page.goBack();
       await row().first().waitFor();
@@ -1525,7 +1526,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
           .first()
           .click(),
       );
-      await focusedHeading(page, "Seat 01", "License lic_1");
+      await focusedHeading(page, "Seat 01");
       await none("tab", () =>
         page
           .getByRole("navigation", { name: "License sections" })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "../../src/lib/http.js";
 import {
-  ApiError,
   RELEASE_POLICY_ERROR_MESSAGES,
   SERVICE_ERROR_MESSAGES,
 } from "../../src/api.js";
@@ -20,7 +20,12 @@ const api = (
     message?: string;
   } = {},
 ) => {
-  const e = new ApiError(status, o.fields, o.code, o.errors, o.reason);
+  const e = new HttpError(status, {
+    fields: o.fields,
+    code: o.code,
+    errors: o.errors,
+    reason: o.reason,
+  });
   if (o.message) e.message = o.message;
   return e;
 };
@@ -57,6 +62,18 @@ const TABLE: [
     }),
     {},
     { title: "You don't have access to this", action: "none" },
+  ],
+  [
+    "403 in the commerce area names it",
+    api(403, { code: "forbidden", message: "nope" }),
+    { area: "commerce" },
+    { title: "You can't do that", action: "none" },
+  ],
+  [
+    "409 no_assigned_app",
+    api(409, { code: "bad_request", reason: "no_assigned_app" }),
+    { area: "commerce" },
+    { title: "No app is assigned", action: "none" },
   ],
   [
     "404",
@@ -147,10 +164,8 @@ const TABLE: [
     { title: "Something went wrong", action: "copy-details" },
   ],
   [
-    "a fetch failure the api client tagged",
-    Object.assign(new TypeError("NetworkError when attempting to fetch"), {
-      isFetchFailure: true,
-    }),
+    "a network failure (status 0)",
+    new HttpError(0, { code: "network" }),
     {},
     { title: "Can't reach Polaris Key", action: "retry" },
   ],
@@ -500,6 +515,13 @@ describe("errorCopy: GitHub access", () => {
         repo: "acme/beatgrid",
       },
     });
+  });
+
+  it("a plain 403 in the commerce area says Commerce", () => {
+    expect(
+      errorCopy(api(403, { code: "forbidden" }), { area: "commerce" })
+        .description,
+    ).toBe("You need Commerce edit access to do this.");
   });
 
   it.each([

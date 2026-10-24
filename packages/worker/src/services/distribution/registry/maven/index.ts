@@ -5,12 +5,7 @@
  */
 
 import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import {
-  extBoolean,
-  rendererOf,
-  defineFeedAdapter,
-  type FeedAdapter,
-} from "../adapter.js";
+import { rendererOf, defineFeedAdapter, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderMaven } from "./render.js";
 import { mavenRoutes } from "./routes.js";
@@ -23,16 +18,15 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = defineFeedAdapter({
   routes: mavenRoutes(() => MAVEN_RENDERER),
   renderer: {
     render: (pkg, ctx) => renderMaven(pkg, ctx),
-    stamp: "package+feed",
+    stamp: "package",
   },
   ingest: PACKAGE_ECOSYSTEM_RULES.maven,
-  settings: { ext: { yankHidesFromIndex: extBoolean } },
+  settings: { ext: {} },
   capabilities: {
-    // Maven has no yank in the protocol; the console's yank leaves maven-metadata.xml only with
-    // `yankHidesFromIndex` is not explicitly off (the default hides).
+    // Maven has no yank in the protocol; the console's yank always leaves maven-metadata.xml.
     yank: true,
     deprecate: { unsupported: "Maven has no deprecation state" },
-    yankPolicy: true,
+    yankPolicy: false,
     channels: "latest",
     signing: false,
     immutableVersions: true,

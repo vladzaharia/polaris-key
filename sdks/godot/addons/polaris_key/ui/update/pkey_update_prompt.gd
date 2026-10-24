@@ -16,7 +16,7 @@ extends PKeyUiView
 ## source page, Steam, itch and the other platforms stay silent with their own message, a web
 ## export reloads, and a direct build installs through its native updater (or the download
 ## link), downloads a code pack, or restarts into a staged one ("Restart now"). With an SDK the
-## button runs PolarisKey.update.apply(result); every link it opens is https.
+## button runs PolarisKey.update.install(result); every link it opens is https.
 ##
 ## In play (`PolarisKey.in_play`, the game sets it) a dismissable answer is only a toast at the
 ## `toast_anchor` (PolarisKey.toasts()): Update now and Dismiss, and the download's counted bar
@@ -34,7 +34,7 @@ extends PKeyUiView
 
 ## The player chose the action (after the URL, if any, was opened).
 signal action_taken(result: PKeyResult)
-## What the action did (PolarisKey.update.apply(), for a v4 answer with an SDK).
+## What the action did (PolarisKey.update.install(), for a v4 answer with an SDK).
 signal action_applied(applied: PKeyApplyResult)
 ## The player dismissed a dismissable answer.
 signal dismissed()
@@ -107,12 +107,17 @@ func _build() -> void:
 	_notes_head = label(words, "WhatsNew", "PKeySection")
 	_notes_body = label(words, "WhatsNewLines", "PKeyMuted", true)
 	_all_changes = button(words, "AllChanges", _on_all_changes, "PKeyLink")
-	_all_changes.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# At the start edge in either reading direction (the layout mirrors a shrink-to-start child).
+	_all_changes.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
 	_dismiss = button(_actions, "Dismiss", _on_dismiss)
+	_hint_bar = hint_bar(_card, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "update.later"}])
 	minimum_size_changed.connect(_queue_fit)
+
+
+var _hint_bar: PKeyHintBar
 
 
 func _floats() -> bool:
@@ -170,6 +175,7 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
+	_hint_bar.enabled = _covering
 	var row := _row()
 	set_columns(_card, row)
 	# In a row the actions sit at the end on one line; stacked, they lead under the words.
@@ -511,8 +517,13 @@ func _fetch_notes(version: String) -> void:
 
 
 func _on_all_changes() -> void:
-	if _notes_url != "":
-		OS.shell_open(_notes_url)
+	_open(_notes_url)
+
+
+## The one place this prompt opens a link: https only, never a file: or custom-scheme URL.
+func _open(url: Variant) -> void:
+	if PKeyOutletAdapter.is_https(url):
+		OS.shell_open(String(url))
 
 
 func _focus_chain() -> Array:
@@ -546,26 +557,28 @@ func _on_action() -> void:
 		else:
 			show_result(again)
 		return
-	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
+	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("install") and outlet == "":
 		action_taken.emit(result)
 		_installing = true
-		var applied: PKeyApplyResult = await sdk.update.apply(result)
+		var applied: PKeyApplyResult = await sdk.update.install(result)
 		_installing = false
 		action_applied.emit(applied)
 		return
-	if model.get("behaviour", "") == PKeyApplyResult.LINK and PKeyOutletAdapter.is_https(model.get("action_url", "")):
-		OS.shell_open(model["action_url"])
+	if model.get("behaviour", "") == PKeyApplyResult.LINK:
+		_open(model.get("action_url", ""))
 	action_taken.emit(result)
 
 
 func _on_dismiss() -> void:
-	if model.get("locked", false):
+	if model.get("locked", false) or is_closing():
 		return
-	is_dismissed = true
-	refresh_view()
-	dismissed.emit()
-	# Back to the control (the game's own) that had focus when the modal opened.
-	restore_opener()
+	# The modal fades out first; a banner goes at once.
+	close_then(func() -> void:
+		is_dismissed = true
+		refresh_view()
+		dismissed.emit()
+		# Back to the control (the game's own) that had focus when the modal opened.
+		restore_opener())
 
 
 func _cancel() -> bool:

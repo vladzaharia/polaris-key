@@ -18,6 +18,7 @@ import {
   SLUG,
   type PlayWorld,
 } from "./playWorld.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -103,7 +104,7 @@ describe("rollout controls", () => {
     expect(await controlAudits(w)).toEqual([
       {
         action: "distribution.play.fraction",
-        actor_sub: "u1",
+        actor_sub: await consoleActor(w.env, w.db, "u1"),
         target_id: "production:110,111",
         summary:
           "Set the fraction of the Google Play release 1.1.0 (versionCodes 110, 111) on track production to 20.00%",

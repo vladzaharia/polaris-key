@@ -49,6 +49,7 @@ import type { AccountContext } from "./links.js";
 import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
 import { stmtDeleteAccountMerges } from "./mergeUndo.js";
+import { stmtDeleteInvitesOfVerifiedAddresses } from "../../../core/rbac/bindings.js";
 
 /** Statements that end one (account, product) subject: its aliases, then the row itself. */
 function stmtsEndSubject(
@@ -516,6 +517,9 @@ function commitStatements(
       params: [accountId],
     },
     stmtDetachAccountLicenses(accountId),
+    // ST-31.7: an invite names an address, not the account, so the cascade misses it. The
+    // erased person's VERIFIED addresses (their links' and their primary email) leave every roster.
+    stmtDeleteInvitesOfVerifiedAddresses(accountId),
     {
       sql: "DELETE FROM account_links WHERE account_id = ?",
       params: [accountId],

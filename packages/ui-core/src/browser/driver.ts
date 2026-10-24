@@ -17,11 +17,7 @@ import {
   type PolarisAdapter,
   type PolarisState,
 } from "./sdk/core/index.js";
-import {
-  SERVICE_SLUGS,
-  servicesFromList,
-  type ServiceSlug,
-} from "./sdk/core/services.js";
+import { SERVICE_SLUGS, type ServiceSlug } from "./sdk/core/services.js";
 import type { TrustSet } from "./sdk/browser/offline.js";
 import { gateInput, type GateStep } from "./input.js";
 import { openLink, safeLink } from "./links.js";
@@ -133,9 +129,7 @@ export function createBrowserClient(
     ...(config.trust ? { trust: config.trust } : {}),
     ...(config.expectedServices
       ? {
-          expectServices: servicesFromList(
-            config.expectedServices as readonly ServiceSlug[],
-          ),
+          expectedServices: config.expectedServices as readonly ServiceSlug[],
         }
       : {}),
     ...(seams.fetchImpl ? { fetchImpl: seams.fetchImpl } : {}),

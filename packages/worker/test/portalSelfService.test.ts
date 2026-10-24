@@ -637,9 +637,12 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
       "UPDATE licenses SET status = 'disabled' WHERE product = ?",
       "djdl",
     );
-    const before = sent.length;
+    // The request's link sweep may join the waiting license and send its library notice (LX-27c.3);
+    // a refused key mints and mails nothing else.
+    const keyMail = () => sent.filter((m) => !m.subject.includes("library"));
+    const before = keyMail().length;
     expect((await call(env, db, "POST", path, owner)).status).toBe(404);
-    expect(sent.length).toBe(before);
+    expect(keyMail().length).toBe(before);
     expect((await getKey(db, "djdl", await hashKey(key)))?.status).toBe(
       "active",
     );

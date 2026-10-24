@@ -37,11 +37,8 @@ import {
   setServices,
 } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
@@ -523,7 +520,7 @@ describe("linkExistingProduct", () => {
     const schema = await getActiveSchema(db, "tonebox");
     expect(schema?.catalog_version).toBe(2);
     const tiers = await db.all<{ id: string }>(
-      "SELECT id FROM tiers WHERE product = 'tonebox'",
+      "SELECT id FROM tiers WHERE product = 'tonebox' AND implicit = 0",
     );
     expect(tiers.map((t) => t.id)).toEqual(["pro"]);
   });
@@ -718,7 +715,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
     );
     expect(res.plan.conflicts).toEqual([]);
     const tiers = await db.all<{ id: string }>(
-      "SELECT id FROM tiers WHERE product = 'tonebox'",
+      "SELECT id FROM tiers WHERE product = 'tonebox' AND implicit = 0",
     );
     expect(tiers.map((t) => t.id)).toEqual(["pro"]);
     const after = await db.first<{ n: number }>(
@@ -860,8 +857,9 @@ describe("POST …/release/link (the console route)", () => {
   ): Promise<Response> {
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "admins";
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
       NOW,
     );

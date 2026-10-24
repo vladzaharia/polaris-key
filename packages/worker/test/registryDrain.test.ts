@@ -47,11 +47,8 @@ import {
 import { renderRecordKey } from "../src/services/distribution/registry/materialise.js";
 import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
 import { distributionService } from "../src/services/distribution/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -338,15 +335,15 @@ describe("the triggers", () => {
     path: string,
     exec: { waitUntil(p: Promise<unknown>): void },
   ) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
         email: "ada@x.io",
         groups: ["platform-admins"],
-      },
-      // `dispatch` reads the real clock, so the session must be current.
+      }, // `dispatch` reads the real clock, so the session must be current.
       Math.floor(Date.now() / 1000),
     );
     return dispatch(

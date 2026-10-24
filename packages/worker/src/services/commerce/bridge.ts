@@ -51,53 +51,31 @@ import {
 import {
   APPLE_ACTED_TYPES,
   AppleRejected,
-  appStoreCredential,
   applePurchase,
   checkTransaction,
   environmentAccepted,
-  fetchTransaction,
   parseTransaction,
-  verifyAppleClaim,
   verifyAppleJws,
-  verifyAppleNotification,
-  type AppleContext,
-} from "./apple.js";
+} from "./stores/apple/purchases.js";
 import {
   PlayRejected,
-  acknowledgePurchase,
-  decodeRtdn,
+  acknowledgeOnce,
   getProductPurchase,
-  isPlaySku,
-  isPurchaseToken,
-  effectivePlaySettings,
-  playCredential,
   playPurchase,
   playPurchasesClient,
-  verifyPushJwt,
-  type PlayContext,
-} from "./play.js";
-import {
-  SteamRejected,
-  isSteamAppId,
-  isSteamTicket,
-  steamCredential,
-  verifySteamClaim,
-  type SteamContext,
-} from "./steam.js";
-import { readCommerceSettings, type CommerceSettings } from "./settings.js";
+} from "./stores/play/purchases.js";
+import { COMMERCE_FACETS, commerceFacetFor } from "./stores/index.js";
+import type { APPLE_COMMERCE } from "./stores/apple/facet.js";
+import type { PLAY_COMMERCE } from "./stores/play/facet.js";
+import { effectiveCommerceSettings } from "./identity.js";
 import {
   bindingFor,
-  getPurchase,
-  getStoreProduct,
-  isStoreProductId,
   listStoreProducts,
-  parseDetail,
   purchaseKeyHash,
   recordPurchase,
   revokeRecordedPurchase,
   type RecordContext,
   type RecordOutcome,
-  type VerifiedPurchase,
 } from "./state.js";
 import { StoreUnavailable } from "../../core/stores/http.js";
 
@@ -250,13 +228,10 @@ export async function handleBinding(ctx: ServiceContext): Promise<Response> {
     who.licenseId,
     ctx.now,
   );
-  const settings = await readCommerceSettings(ctx.db, ctx.product.slug);
-  const enabled = (s: Store) =>
-    s === "app-store"
-      ? settings.appStore !== null
-      : s === "play"
-        ? settings.play !== null
-        : settings.steam !== null;
+  const settings = (await effectiveCommerceSettings(ctx.db, ctx.product.slug))
+    .settings;
+  // A store with no facet is not shown (fails closed).
+  const enabled = (s: Store) => commerceFacetFor(s)?.enabled(settings) ?? false;
   const products = (await listStoreProducts(ctx.db, ctx.product.slug))
     .filter((p) => enabled(p.store))
     .map((p) => ({
@@ -272,80 +247,6 @@ export async function handleBinding(ctx: ServiceContext): Promise<Response> {
 }
 
 // ── claim ────────────────────────────────────────────────────────────────────────────────────
-
-/** The store contexts a product is set up for (settings plus a pinned credential). */
-async function appleContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<AppleContext | null> {
-  if (!settings.appStore) return null;
-  const credentialId = await appStoreCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.appStore.bundleId,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    settings: settings.appStore,
-    credentialId,
-  };
-}
-
-export async function playContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<PlayContext | null> {
-  if (!settings.play) return null;
-  const credentialId = await playCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.play.packageName,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    // A-16: the platform's RTDN push identity where the product leaves it unset.
-    settings: await effectivePlaySettings(ctx.env, ctx.db, settings.play),
-    credentialId,
-  };
-}
-
-export async function steamContext(
-  ctx: Pick<ServiceContext, "env" | "db" | "now"> & {
-    product: { slug: string };
-  },
-  settings: CommerceSettings,
-): Promise<SteamContext | null> {
-  if (!settings.steam) return null;
-  const credentialId = await steamCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product.slug,
-    settings.steam.appId,
-  );
-  if (!credentialId) return null;
-  return {
-    env: ctx.env,
-    db: ctx.db,
-    product: ctx.product.slug,
-    now: ctx.now,
-    settings: settings.steam,
-    credentialId,
-  };
-}
 
 /**
  * `POST …/commerce/claim` with one of
@@ -392,14 +293,16 @@ export async function handleClaim(
       'body must name a store: "app-store", "play" or "steam"',
     );
   const store = body.store;
+  // An unknown store id has no facet: the same refusal as a body that names no store.
+  const facet = commerceFacetFor(store);
+  if (!facet)
+    return bad(
+      "bad_body",
+      'body must name a store: "app-store", "play" or "steam"',
+    );
 
-  const settings = await readCommerceSettings(db, product.slug);
-  const storeCtx =
-    store === "app-store"
-      ? await appleContext(ctx, settings)
-      : store === "play"
-        ? await playContext(ctx, settings)
-        : await steamContext(ctx, settings);
+  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
+  const storeCtx = await facet.context(ctx, settings);
   if (!storeCtx) return null;
   const binding = await bindingFor(db, product.slug, who.licenseId, now);
   const record: RecordContext = {
@@ -411,113 +314,26 @@ export async function handleClaim(
   };
 
   try {
-    let purchase: VerifiedPurchase;
-    if (store === "app-store") {
-      if (typeof body.signedTransaction !== "string")
-        return bad("bad_body", "signedTransaction is required");
-      purchase = await verifyAppleClaim(
-        storeCtx as AppleContext,
-        body.signedTransaction,
-      );
-    } else if (store === "play") {
-      if (!isPlaySku(body.productId) || !isPurchaseToken(body.purchaseToken))
-        return bad("bad_body", "productId and purchaseToken are required");
-      const pctx = storeCtx as PlayContext;
-      const api = playPurchasesClient(pctx, "commerce:claim");
-      const p = await getProductPurchase(
-        api,
-        body.productId,
-        body.purchaseToken,
-      );
-      purchase = playPurchase(
-        pctx.settings,
-        body.productId,
-        body.purchaseToken,
-        p,
-      );
-      const out = await recordPurchase(record, purchase);
-      if (!out.ok) return refusal(out.reason);
-      await acknowledgeOnce(pctx, api, out, purchase);
-      return claimed(out, store, body.productId);
-    } else {
-      if (!isSteamTicket(body.ticket) || !isSteamAppId(body.dlcAppId))
-        return bad("bad_body", "ticket (hex) and dlcAppId are required");
-      if (!isStoreProductId("steam", body.dlcAppId))
-        return bad("bad_body", "dlcAppId must be a Steam app id");
-      // A-16: only an app this product mapped is ever asked about. Without this a device could
-      // use the product's (or the platform group's) publisher key as an ownership oracle for any
-      // app the key may query. The refusal is the same as a non-owner's, so it says nothing.
-      if (!(await getStoreProduct(db, product.slug, "steam", body.dlcAppId)))
-        return refusal("not_owned");
-      purchase = await verifySteamClaim(
-        storeCtx as SteamContext,
-        body.ticket,
-        body.dlcAppId,
-        binding,
-      );
-      if (purchase.state !== "active") {
-        // A non-owner gets nothing; one who owned it before loses the grant.
-        const hash = await purchaseKeyHash("steam", purchase.purchaseKey);
-        if (!(await getPurchase(db, product.slug, "steam", hash)))
-          return refusal("not_owned");
-      }
-    }
+    const parsed = facet.claim.parse(body);
+    if (!parsed.ok) return bad("bad_body", parsed.message);
+    const early = await facet.claim.guard?.(storeCtx, parsed.input);
+    if (early) return refusal(early);
+    const { purchase, settle } = await facet.claim.verify(
+      storeCtx,
+      parsed.input,
+      binding,
+    );
     const out = await recordPurchase(record, purchase);
     if (!out.ok) return refusal(out.reason);
-    if (store === "steam" && out.state !== "active")
-      return refusal("not_owned");
+    const late = await settle?.(out);
+    if (late) return refusal(late);
     return claimed(out, store, purchase.storeProductId);
   } catch (e) {
-    if (
-      e instanceof AppleRejected ||
-      e instanceof PlayRejected ||
-      e instanceof SteamRejected
-    )
-      return refusal(e.reason);
+    const reason = facet.claim.rejection(e);
+    if (reason !== null) return refusal(reason);
     if (e instanceof StoreUnavailable) return unavailable();
     throw e;
   }
-}
-
-/**
- * Acknowledge a granted Play purchase once (Google voids an unacknowledged purchase after three
- * days). Our record and Play's `acknowledgementState` both stop a second call; a failure is left
- * for the connector tick (`recheck.ts`) and never fails the grant.
- */
-export async function acknowledgeOnce(
-  pctx: PlayContext,
-  api: ReturnType<typeof playPurchasesClient>,
-  out: Extract<RecordOutcome, { ok: true }>,
-  purchase: VerifiedPurchase,
-): Promise<boolean> {
-  if (out.state !== "active") return false;
-  const row = await getPurchase(
-    pctx.db,
-    pctx.product,
-    "play",
-    out.purchaseKeyHash,
-  );
-  const detail = row ? parseDetail(row.detail_json) : {};
-  if (detail.acknowledged === true) return false;
-  try {
-    await acknowledgePurchase(
-      api,
-      purchase.storeProductId,
-      purchase.purchaseKey,
-    );
-  } catch (e) {
-    if (e instanceof StoreUnavailable || e instanceof PlayRejected)
-      return false;
-    throw e;
-  }
-  await pctx.db.run(
-    `UPDATE dist_purchases SET detail_json = ?
-      WHERE product = ? AND store = 'play' AND purchase_key_hash = ?`,
-    JSON.stringify({ ...detail, acknowledged: true, acknowledgedAt: pctx.now }),
-    pctx.product,
-    out.purchaseKeyHash,
-  );
-  return true;
 }
 
 // ── App Store Server Notifications V2 ────────────────────────────────────────────────────────
@@ -526,8 +342,11 @@ export async function handleAppStoreHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = await readCommerceSettings(db, product.slug);
-  const actx = await appleContext(ctx, settings);
+  const facet = COMMERCE_FACETS["app-store"] as typeof APPLE_COMMERCE;
+  const settings = (
+    await effectiveCommerceSettings(db, product.slug, [facet.store])
+  ).settings;
+  const actx = await facet.context(ctx, settings);
   if (!actx) return null;
   // Unverified traffic is limited per client IP only; the product-wide bucket below counts only
   // deliveries Apple signed, so junk cannot crowd out a real refund notification.
@@ -549,7 +368,7 @@ export async function handleAppStoreHook(
 
   let n;
   try {
-    n = await verifyAppleNotification(body.signedPayload, now);
+    n = await facet.notification.verify(body.signedPayload, now);
   } catch (e) {
     if (e instanceof AppleRejected) return wireError(401, "unauthorized");
     throw e;
@@ -615,7 +434,7 @@ export async function handleAppStoreHook(
       await verifyAppleJws(n.signedTransactionInfo, now),
     );
     // The notification names the transaction; the Server API says what it is.
-    const tx = await fetchTransaction(
+    const tx = await facet.recheck.fetchTransaction(
       actx,
       hinted.transactionId,
       hinted.environment,
@@ -652,8 +471,11 @@ export async function handlePlayHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = await readCommerceSettings(db, product.slug);
-  const pctx = await playContext(ctx, settings);
+  const facet = COMMERCE_FACETS["google-play"] as typeof PLAY_COMMERCE;
+  const settings = (
+    await effectiveCommerceSettings(db, product.slug, [facet.store])
+  ).settings;
+  const pctx = await facet.context(ctx, settings);
   if (!pctx) return null;
   // Unverified traffic is limited per client IP; the product bucket counts verified pushes only.
   if (
@@ -666,7 +488,7 @@ export async function handlePlayHook(
   )
     return errorResponse(429, "rate_limited", "too many notifications");
   // Authenticate the push BEFORE reading or believing the body.
-  const auth = await verifyPushJwt(
+  const auth = await facet.notification.verifyPush(
     env,
     ctx.req.headers.get("authorization"),
     pctx.settings,
@@ -686,7 +508,7 @@ export async function handlePlayHook(
   )
     return errorResponse(429, "rate_limited", "too many notifications");
   const body = parseJsonObject(raw);
-  const msg = body ? decodeRtdn(body) : null;
+  const msg = body ? facet.notification.decode(body) : null;
   // A malformed push is acknowledged (2xx) so Pub/Sub does not redeliver it forever.
   if (!msg) return json({ ok: true, ignored: "not_rtdn" });
 
@@ -768,5 +590,3 @@ export async function handlePlayHook(
     throw e;
   }
 }
-
-export { appleContext };

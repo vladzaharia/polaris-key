@@ -16,7 +16,7 @@ import { t, tParts } from "../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../copy/codeEntry.js";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   type PortalCapabilities,
   type PortalConnection,
   type PortalEmailSent,
@@ -43,8 +43,8 @@ import { LegalNav } from "../components/signin/LegalNav.js";
 import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
-import { portalKeys, useCapabilities } from "../data.js";
-import { portalErrorCopy } from "../errors.js";
+import { useCapabilities } from "../data.js";
+import { portalErrorCopy, ssoNextOf } from "../errors.js";
 import {
   blocksResend,
   checkKey,
@@ -71,6 +71,8 @@ import {
 } from "../components/signin/RequestHeader.js";
 import { requestHandleFromUrl } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
+import { qk } from "../queries.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
@@ -259,7 +261,7 @@ export function SignInPage({
   // A request that is gone (expired, unknown, Identity off, no binder) has nothing to sign in to.
   const requestGone =
     handle !== null &&
-    request.error instanceof PortalApiError &&
+    request.error instanceof HttpError &&
     request.error.status === 404;
   useDocumentTitle(
     requestGone
@@ -593,7 +595,7 @@ function ResumeStep({
         if (!live || done.current) return;
         done.current = true;
         onGone(
-          err instanceof PortalApiError && err.code === "signin_expired"
+          err instanceof HttpError && err.code === "signin_expired"
             ? t("signin.code.expiredRestart")
             : startErrorText(err),
         );
@@ -650,7 +652,7 @@ function Unreachable({
 }
 
 function startErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     // The Worker's 429 carries no wait yet.
     if (err.status === 429 || err.code === "rate_limited")
       return t("signin.rateLimitedFew");
@@ -773,10 +775,10 @@ function MethodsStep({
         onHint(value, last);
         return;
       }
-      onSent(value, await portalApi.startEmailSignIn(value));
+      onSent(value, await mutate("startEmailSignIn", value));
     } catch (err) {
       setError(startErrorText(err));
-      if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
+      if (err instanceof HttpError && err.status === 422) setInvalid(true);
     } finally {
       setSending(false);
     }
@@ -983,7 +985,7 @@ function ConnectionButton({
 }
 
 function codeErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "invalid_code") {
       return wrongCodeText(err.triesLeft);
     }
@@ -1023,24 +1025,24 @@ function CodeStep({
 
   const verify = async (value: string): Promise<CodeVerifyOutcome | void> => {
     try {
-      const out = await portalApi.verifySignInCode(value);
+      const out = await mutate("verifySignInCode", value);
       rememberVia("email");
       // A new address finishes first (I-33): the account is created there.
       if (out?.status === "finish") return void onFinish();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
+      await qc.invalidateQueries({ queryKey: qk.me() });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
-      if (err instanceof PortalApiError && err.next)
-        return void onRouted(err.next);
+      const routed = ssoNextOf(err);
+      if (routed) return void onRouted(routed);
       // The verify's other 403: a right code for an account that can't sign in (the Worker's
       // `forbidden`, §3.13). Another code or a resend would end the same way.
-      if (err instanceof PortalApiError && err.status === 403)
+      if (err instanceof HttpError && err.status === 403)
         return void onRefused();
       return {
         error: codeErrorText(err),
         // Out of tries, or the code expired: "Send a new code" is the way on, at once.
         resendNow:
-          err instanceof PortalApiError &&
+          err instanceof HttpError &&
           ((err.code === "invalid_code" && err.triesLeft === 0) ||
             err.code === "signin_expired"),
       };
@@ -1049,25 +1051,25 @@ function CodeStep({
 
   const resend = async (): Promise<CodeResendOutcome | void> => {
     try {
-      const out = await portalApi.resendSignInCode();
+      const out = await mutate("resendSignInCode");
       return {
         status: { text: t("signin.code.resent", { email }), tone: "success" },
         wait: resendDelay(out),
       };
     } catch (err) {
-      if (err instanceof PortalApiError && err.next)
-        return void onRouted(err.next);
-      if (err instanceof PortalApiError && err.code === "signin_expired")
+      const routed = ssoNextOf(err);
+      if (routed) return void onRouted(routed);
+      if (err instanceof HttpError && err.code === "signin_expired")
         return void onExpired();
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         err.status === 429 &&
         err.retryAfter !== undefined
       )
         // Too soon (or this address's minute is spent): the countdown says when.
         return { wait: Math.max(1, Math.ceil(err.retryAfter)) };
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         err.status === 429 &&
         err.code === "rate_limited"
       )
@@ -1195,18 +1197,19 @@ function SsoStep({
     setSending(true);
     setError(null);
     try {
-      onCode(resendDelay(await portalApi.resendSignInCode()));
+      onCode(resendDelay(await mutate("resendSignInCode")));
     } catch (err) {
-      if (err instanceof PortalApiError && err.next) {
-        onRouted(err.next);
+      const routed = ssoNextOf(err);
+      if (routed) {
+        onRouted(routed);
         return;
       }
-      if (err instanceof PortalApiError && err.code === "signin_expired") {
+      if (err instanceof HttpError && err.code === "signin_expired") {
         onExpired();
         return;
       }
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         err.status === 429 &&
         err.retryAfter !== undefined
       ) {
@@ -1349,7 +1352,7 @@ function KeyStep({
     setChecking(true);
     setRefused(null);
     try {
-      const preview = await portalApi.previewKeySignedOut(key);
+      const preview = await mutate("previewKeySignedOut", key);
       if (preview.verdict === "addable") return onPreview(key, preview);
       if (preview.verdict === "portal_off") return onContinue(key);
       setRefused(
@@ -1359,9 +1362,9 @@ function KeyStep({
         ),
       );
     } catch (err) {
-      const status = err instanceof PortalApiError ? err.status : 0;
+      const status = err instanceof HttpError ? err.status : 0;
       // A refusal the key itself earned (unknown, not a key, too many tries) is said under the
-      // field. Anything else (offline, a Worker error, an older Worker without the preview) must
+      // field. Anything else (offline, a Worker error) must
       // not strand the on-ramp: the key is carried through sign-in as it always was.
       if (status === 401 || status === 422 || status === 429)
         setRefused(claimVerdict({ status }, productLabel(check.slug)));

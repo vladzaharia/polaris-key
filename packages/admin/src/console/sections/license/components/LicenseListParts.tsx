@@ -15,7 +15,7 @@ import {
 import { r } from "../../../routes.js";
 import { Link, navigate } from "../../../router.js";
 import { Button } from "../../../../ui/Button.js";
-import { ApiError, type LicenseSummary } from "../../../../api.js";
+import { HttpError, type LicenseSummary } from "../../../../api.js";
 import { mutateEach } from "../../../data/mutations.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -37,8 +37,7 @@ import {
 import { expiresInText } from "../../../../lib/vocab/license.js";
 import { daysUntil, licenseState, type LicenseState } from "./shared.js";
 
-/** The facet value for "no tier" and "not in a batch": only the client can filter on them. */
-export const NO_TIER = "__none__";
+/** The facet value for "not in a batch": only the client can filter on it. */
 export const NO_BATCH = "__none__";
 
 /**
@@ -58,7 +57,7 @@ export function useServerFilter(filters: Record<string, string[]>): {
     };
     const holder = one("holder");
     const batch = one("batch", NO_BATCH);
-    const tier = one("tier", NO_TIER);
+    const tier = one("tier");
     const status = one("status");
     return {
       // The Status facet is the computed state: one value goes to the Worker.
@@ -80,7 +79,7 @@ export function serverFacetIds(filter: Record<string, string>): string[] {
 }
 
 export function isForbidden(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403;
+  return error instanceof HttpError && error.status === 403;
 }
 
 /** Permission refused: the console's no-access page, for the Licensing area. */
@@ -304,8 +303,10 @@ export function HolderPill({
         <StatusPill tone="info" icon={Mail} size="sm">
           Waiting
         </StatusPill>
-        {l.activatedAt ? (
-          <SubLine>{`Invited ${dayMonth(l.activatedAt)}`}</SubLine>
+        {l.invitedAt ? (
+          <SubLine>{`Invited ${dayMonth(l.invitedAt)}`}</SubLine>
+        ) : l.activatedAt ? (
+          <SubLine>{`Added ${dayMonth(l.activatedAt)}`}</SubLine>
         ) : null}
       </CellStack>
     );
@@ -319,7 +320,7 @@ export function HolderPill({
   );
 }
 
-/** Tier: a pill with the layers glyph; a license with no tier says so, muted (D12). */
+/** Tier: a pill with the layers glyph; a license with no tier reads as the Default tier, muted (D12). */
 export function TierPill({
   label,
   className,
@@ -327,7 +328,7 @@ export function TierPill({
   label: string | null;
   className?: string;
 }): React.ReactElement {
-  if (!label) return <span className="text-fg-muted">No tier</span>;
+  if (!label) return <span className="text-fg-muted">Default</span>;
   return (
     <span
       className={cn(
@@ -388,55 +389,6 @@ export function DurationCell({
       </CellStack>
     );
   return <span>Ends {date}</span>;
-}
-
-/** Devices: "n of limit" over a 4 px bar; a full license turns both warning, nothing more. */
-export function DevicesCell({
-  count,
-  limit,
-  from,
-}: {
-  count: number;
-  limit: number | null;
-  /** Where the limit comes from, for the tooltip. */
-  from: string;
-}): React.ReactElement {
-  if (limit === null)
-    return (
-      <CellStack>
-        <span className="tabular-nums" title={from}>
-          {count}
-        </span>
-        <SubLine>No limit</SubLine>
-      </CellStack>
-    );
-  const full = count >= limit;
-  const ratio = Math.min(1, Math.max(0, count / limit));
-  return (
-    <span
-      role="meter"
-      aria-label="Devices"
-      aria-valuenow={count}
-      aria-valuemin={0}
-      aria-valuemax={limit}
-      aria-valuetext={`${count} of ${limit} devices`}
-      title={from}
-      className="flex w-24 flex-col gap-1.5"
-    >
-      <span className={cn("tabular-nums", full && "text-warning")}>
-        {count} of {limit}
-      </span>
-      <span aria-hidden className="block h-1 rounded-full bg-border">
-        <span
-          className={cn(
-            "block h-full rounded-full",
-            full ? "bg-warning" : "bg-accent",
-          )}
-          style={{ width: `${Math.round(ratio * 100)}%` }}
-        />
-      </span>
-    </span>
-  );
 }
 
 /** Origin: Automatic grant (sparkles), By hand, or Key batch over the batch's label. */

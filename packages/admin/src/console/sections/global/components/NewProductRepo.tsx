@@ -51,7 +51,7 @@ export interface RepoList {
 }
 
 /**
- * The repository step (W22): paste `owner/repo` or a URL, or pick one the Polaris Key app can
+ * The repository step (W22): paste `owner/repo` or a URL, or pick one the Polaris Key GitHub App can
  * read. A repository that is a product already says so, and the primary opens that product.
  */
 export function RepoStep({
@@ -174,7 +174,7 @@ function RepoPicker({
     return (
       <Callout
         tone="info"
-        title="The Polaris Key app is not installed on GitHub"
+        title="The Polaris Key GitHub App is not installed on GitHub"
       >
         Install it to pick a repository here. You can still paste one above.
         {data.app ? (
@@ -199,7 +199,7 @@ function RepoPicker({
     <div className="space-y-2" onKeyDown={enterSubmits}>
       <RadioCards
         id="np-repos"
-        aria-label="Repositories the Polaris Key app can read"
+        aria-label="Repositories the Polaris Key GitHub App can read"
         columns={1}
         value={rows.some((r) => r.fullName === value) ? value : null}
         onChange={onPick}

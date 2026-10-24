@@ -13,7 +13,7 @@ extends PKeyUiView
 ## plus buttons; left and right on a pad change the value and the focus stays (up and down move).
 ##
 ## An edit writes PolarisKey.config's override store (the player's layer), so get_value() and
-## get_source() change at once (source `local`). Without a store the panel installs an in-memory
+## get_config_source() change at once (source `local`). Without a store the panel installs an in-memory
 ## PKeyOverrideStore; give PolarisKey.config a PKeyConfigFileStore to keep the values across
 ## launches. Catalog labels and descriptions are the operator's data, passed through tr() so a
 ## game can still translate them.
@@ -767,6 +767,7 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 			te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 			tab_leaves(te)
 			te.focus_exited.connect(func(): _write_text(key, te.text))
+			PKeyFocusRing.attach(te)
 			ctl = te
 		"password", "text":
 			var le := LineEdit.new()
@@ -1003,14 +1004,17 @@ func _focus_chain() -> Array:
 ## Close a `closable` panel: `closed`, the focus back to the game's control that had it, and the
 ## panel freed when `open()` made it.
 func close() -> void:
-	if not closable:
+	if not closable or is_closing():
 		return
-	closed.emit()
-	restore_opener()
-	if has_meta(FREE_ON_CLOSE_META):
-		queue_free()
-	else:
-		hide()
+	close_then(func() -> void:
+		if not is_instance_valid(self):
+			return
+		closed.emit()
+		restore_opener()
+		if has_meta(FREE_ON_CLOSE_META):
+			queue_free()
+		else:
+			hide())
 
 
 func _cancel() -> bool:

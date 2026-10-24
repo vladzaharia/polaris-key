@@ -12,11 +12,7 @@ import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { dispatch } from "../src/dispatch.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { syncReleaseStore } from "../src/services/release/sync.js";
@@ -28,6 +24,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedOperatorPolicy, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 export const SLUG = "djdl";
 export const CONSOLE = "https://key.example.test";
@@ -321,9 +318,12 @@ export async function admin(
   method: string,
   path: string,
   body?: unknown,
+  /** Where the operator signs in, when that must not be `db` (a query-counting wrapper). */
+  signInDb: Db = db,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    signInDb,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

@@ -33,8 +33,11 @@ var _gen_button: Button
 var _mirror_button: Button
 var _filter_button: Button
 var _legacy_row: HBoxContainer
+var _removed_row: Label
 var _candidates: Dictionary = {}
 var _busy := false
+## The file the dock reads and writes; a test points it elsewhere before the dock enters the tree.
+var config_path := CONFIG_PATH
 
 
 func _ready() -> void:
@@ -87,6 +90,9 @@ func _ready() -> void:
 	_legacy_row.add_child(_button("Delete it", _on_legacy_delete))
 	_legacy_row.visible = false
 	add_child(_legacy_row)
+	_removed_row = _label("")
+	_removed_row.visible = false
+	add_child(_removed_row)
 	_load()
 	_update_buttons()
 
@@ -115,18 +121,39 @@ func _button(text: String, cb: Callable) -> Button:
 
 func _load() -> void:
 	_legacy_row.visible = FileAccess.file_exists(Tools.LEGACY_CONFIG)
-	if not ResourceLoader.exists(CONFIG_PATH):
+	if not ResourceLoader.exists(config_path):
 		_base_url.text = PKeyCore.DEFAULT_BASE
 		return
-	var opts = ResourceLoader.load(CONFIG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE)
+	var opts = ResourceLoader.load(config_path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	if not (opts is PKeyOptions):
-		_say("[color=orange]%s is not a PKeyOptions resource.[/color]" % CONFIG_PATH)
+		_say("[color=orange]%s is not a PKeyOptions resource.[/color]" % config_path)
 		return
-	_product.text = opts.product
+	_product.text = opts.product_slug
 	_base_url.text = opts.base_url
 	_channel.text = opts.default_channel
-	if not opts.pinned_trust_keys.is_empty():
-		_pins.text = JSON.stringify(opts.pinned_trust_keys, "  ", true)
+	if not opts.pinned_keys.is_empty():
+		_pins.text = JSON.stringify(opts.pinned_keys, "  ", true)
+	_offer_migration(opts)
+
+
+## A file that still holds the pre-0.9 names (the two options renamed in 0.9): show the row and
+## pre-fill the fields from the held values, which are offered, never trusted. Old pins go into
+## the box as candidates and the confirmation stays unticked; Save writes only the new names.
+func _offer_migration(opts: PKeyOptions) -> void:
+	var removed := opts.removed_names()
+	_removed_row.visible = not removed.is_empty()
+	if removed.is_empty():
+		return
+	_removed_row.text = "%s uses names removed in 0.9. Save rewrites it." % config_path.get_file()
+	var old_product = opts.removed_value("product")
+	if _product.text == "" and old_product is String:
+		_product.text = old_product
+	# api-allow: the dock pre-fills from the removed option
+	var old_pins = opts.removed_value("pinned_trust_keys")
+	if _pins.text.strip_edges() == "" and old_pins is Dictionary and not old_pins.is_empty():
+		_pins.text = JSON.stringify(old_pins, "  ", true)
+	_confirm.button_pressed = false
+	_say("Old values are pre-filled. Compare the pins with `pkey trust` or the console, tick the confirmation, then Save.")
 
 
 func _on_pins_changed() -> void:
@@ -189,7 +216,7 @@ func _on_save() -> void:
 			_say("[color=red]%s[/color]" % p["message"])
 			return
 		pins = p["pins"]
-	var r := Check.save(CONFIG_PATH, _product.text.strip_edges(), _base_url.text.strip_edges(), pins, _channel.text.strip_edges(), _confirm.button_pressed)
+	var r := Check.save(config_path, _product.text.strip_edges(), _base_url.text.strip_edges(), pins, _channel.text.strip_edges(), _confirm.button_pressed)
 	var msg: String = "[color=%s]%s[/color]" % ["green" if r["ok"] else "red", r["message"]]
 	if r["ok"] and DirAccess.dir_exists_absolute(Tools.PACKS_DIR):
 		var f := Tools.ensure_pack_filters()
@@ -197,7 +224,8 @@ func _on_save() -> void:
 			msg += "\n" + f["message"]
 	_say(msg)
 	if r["ok"]:
-		_refresh(CONFIG_PATH)
+		_removed_row.visible = false
+		_refresh(config_path)
 
 
 func _refresh(path: String) -> void:

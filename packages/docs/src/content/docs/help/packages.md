@@ -3,7 +3,7 @@ title: "Install packages with a personal token"
 description: "Create a personal token, find the setup for an app's packages, and what to do when a development build is gone."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-17"
+lastReviewed: "2026-10-22"
 sidebar:
   order: 7
 ---
@@ -12,7 +12,7 @@ Some apps publish packages for people whose license includes them: a library, a 
 
 ## Find the setup
 
-Open **Account → Packages** at polaris.locker. It shows the setup for each app whose license includes private packages.
+Open **Account → Packages** at polaris.locker. It shows the setup for each app whose license includes packages.
 
 ## Create a personal token
 
@@ -26,6 +26,8 @@ Make one per computer.
 **Check it worked.** It is in your list, with its last use after an install.
 
 It only reads, and works while the license is active.
+
+**If an install fails.** `401` means the personal token is missing, expired or revoked: make a new one. `403` or "not found" means your license isn't active or doesn't include the package, or the developer turned the packages off.
 
 ## Use Godot
 
@@ -46,9 +48,7 @@ When the developer publishes a release of a package, such as `1.4.0`, Polaris Lo
 | Development build of `1.4.0` or older | `1.4.0-main.7`, `1.3.2-dev.2` | Removed                   |
 | Development build of a newer version  | `1.4.1-main.2`                | Stays                     |
 
-If you install only releases and betas, cleanup does not affect you.
-
-Cleanup works on one package at a time: the one that was released. It changes only the app's own packages on Locker (`pkg.plrs.im`), and it works the same for packages open to everyone and packages that need a license. It covers container images. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
+Cleanup works on the package that was released, and only on the app's own packages on Locker (`pkg.plrs.im`), open or licensed, container images included. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
 
 ## When cleanup runs
 

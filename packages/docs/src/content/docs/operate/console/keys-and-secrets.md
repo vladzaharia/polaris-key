@@ -151,12 +151,14 @@ The **CI publishing** section holds how your CI proves who it is:
 - **Trusted publisher** — the GitHub repository, workflow, environment and scopes a GitHub Actions
   run must match to exchange its OIDC token for a short-lived publishing token. A linked repo's
   manifest can declare it (_From manifest_); **Edit…** claims it (_Set in console_), after which
-  resyncs leave it alone. Claiming is the only way to grant `release:yank`.
+  resyncs leave it alone. Claiming is the only way to grant `release:yank`. Saving needs a sign-in
+  from the last 5 minutes; the form keeps your entries across it.
   `GET`/`/manage/api/products/<slug>/ci-publisher` (PUT).
 - **CI tokens** — static tokens for a CI that is not GitHub Actions, and the short-lived tokens
   trusted runs were issued, with their scopes, status and expiry. **Issue token…** shows a new
-  token once (only its hash is stored); it lasts 1 to 90 days. **Revoke…** refuses it from then on,
-  together with any upload tickets it bought and has not used.
+  token once (only its hash is stored); it lasts 1 to 90 days (1 to 365 with only the read scope `packages:read`), and issuing needs a sign-in from the
+  last 5 minutes. **Revoke…** needs none: it refuses the token from then on, together with any upload
+  tickets it bought and has not used.
   `GET`/`/manage/api/products/<slug>/ci-tokens` (POST), `DELETE .../ci-tokens/<tokenId>`.
 
 See [CI publishing](/docs/build/ci/) for the workflow side.

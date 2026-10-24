@@ -1,0 +1,212 @@
+extends RefCounted
+# GENERATED FILE — do not edit by hand. Source: conformance/parity/api.json; regenerate with `pnpm gen api`.
+# The api_surface suite (SP-35.3): every api.json row the Godot SDK ships exists under its own name,
+# checked on the scripts (methods, properties, signals), and every `removed` name is gone.
+
+const SDK := preload("res://addons/polaris_key/polaris_key.gd")
+
+## [concept, script, kind, name]
+const ROWS := [
+	["client.create", SDK, "method", "configure"],
+	["client.boot", SDK, "method", "boot"],
+	["options.productSlug", "res://addons/polaris_key/core/options.gd", "property", "product_slug"],
+	["options.pinnedKeys", "res://addons/polaris_key/core/options.gd", "property", "pinned_keys"],
+	["options.pinnedReleaseKeys", "res://addons/polaris_key/core/options.gd", "property", "pinned_release_keys"],
+	["options.baseUrl", "res://addons/polaris_key/core/options.gd", "property", "base_url"],
+	["options.expectedServices", "res://addons/polaris_key/core/options.gd", "property", "expected_services"],
+	["config.get", "res://addons/polaris_key/services/config.gd", "method", "get_value"],
+	["config.getConfigSource", "res://addons/polaris_key/services/config.gd", "method", "get_config_source"],
+	["config.getSecret", "res://addons/polaris_key/services/config.gd", "method", "get_secret"],
+	["config.mintToken", "res://addons/polaris_key/services/config.gd", "method", "mint_token"],
+	["config.set", "res://addons/polaris_key/services/config.gd", "method", "set_value"],
+	["config.clear", "res://addons/polaris_key/services/config.gd", "method", "clear"],
+	["config.clearAll", "res://addons/polaris_key/services/config.gd", "method", "clear_all"],
+	["config.onConfigChange", "res://addons/polaris_key/services/config.gd", "signal", "config_changed"],
+	["config.setting", "res://addons/polaris_key/services/config.gd", "method", "setting"],
+	["config.setting.value", "res://addons/polaris_key/services/config/setting.gd", "property", "value"],
+	["config.setting.source", "res://addons/polaris_key/services/config/setting.gd", "property", "source"],
+	["config.setting.locked", "res://addons/polaris_key/services/config/setting.gd", "property", "locked"],
+	["config.setting.visibility", "res://addons/polaris_key/services/config/setting.gd", "property", "visibility"],
+	["config.setting.set", "res://addons/polaris_key/services/config/setting.gd", "method", "set_value"],
+	["config.setting.clear", "res://addons/polaris_key/services/config/setting.gd", "method", "clear"],
+	["config.setting.on", "res://addons/polaris_key/services/config/setting.gd", "signal", "changed"],
+	["license.activateWithKey", "res://addons/polaris_key/services/license.gd", "method", "activate_with_key"],
+	["entitlements.has", "res://addons/polaris_key/services/entitlements.gd", "method", "has"],
+	["entitlements.value", "res://addons/polaris_key/services/entitlements.gd", "method", "value"],
+	["entitlements.all", "res://addons/polaris_key/services/entitlements.gd", "method", "all"],
+	["identity.signOut", "res://addons/polaris_key/services/identity.gd", "method", "sign_out"],
+	["events", SDK, "signal", "event"],
+	["client.discover", SDK, "method", "discover"],
+	["client.presentation", SDK, "method", "presentation"],
+	["client.presentationIcon", SDK, "method", "presentation_icon"],
+	["client.capabilities", SDK, "method", "capabilities"],
+	["client.supports", SDK, "method", "supports"],
+	["client.caps", SDK, "method", "caps"],
+	["client.sync", SDK, "method", "sync"],
+	["client.getSyncState", SDK, "method", "get_sync_state"],
+	["client.importBundle", SDK, "method", "import_bundle"],
+	["client.crashTags", SDK, "method", "crash_tags"],
+	["client.status", SDK, "method", "status"],
+	["client.storeStatus", SDK, "method", "store_status"],
+	["client.isLicensed", SDK, "method", "is_licensed"],
+	["config.listUserConfig", "res://addons/polaris_key/services/config.gd", "method", "list_user_config"],
+	["config.schemaVersion", "res://addons/polaris_key/services/config.gd", "method", "schema_version"],
+	["config.fetchSchema", "res://addons/polaris_key/services/config.gd", "method", "fetch_schema"],
+	["config.isLocked", "res://addons/polaris_key/services/config.gd", "method", "is_locked"],
+	["license.activation", "res://addons/polaris_key/services/license.gd", "method", "activation"],
+	["license.entitledChannels", "res://addons/polaris_key/services/license.gd", "method", "entitled_channels"],
+	["license.getProfile", "res://addons/polaris_key/services/license.gd", "method", "get_profile"],
+	["license.getLicenseId", "res://addons/polaris_key/services/license.gd", "method", "get_license_id"],
+	["license.enroll", "res://addons/polaris_key/services/license.gd", "method", "enroll"],
+	["license.deactivate", "res://addons/polaris_key/services/license.gd", "method", "deactivate"],
+	["identity.current", "res://addons/polaris_key/services/identity.gd", "method", "current"],
+	["identity.signInWithBrowser", "res://addons/polaris_key/services/identity.gd", "method", "sign_in_with_browser"],
+	["identity.beginSignIn", "res://addons/polaris_key/services/identity.gd", "method", "begin_sign_in"],
+	["identity.pollSignIn", "res://addons/polaris_key/services/identity.gd", "method", "poll_sign_in"],
+	["identity.waitForSignIn", "res://addons/polaris_key/services/identity.gd", "method", "wait_for_sign_in"],
+	["devices.register", "res://addons/polaris_key/services/devices.gd", "method", "register"],
+	["devices.list", "res://addons/polaris_key/services/devices.gd", "method", "list"],
+	["devices.rename", "res://addons/polaris_key/services/devices.gd", "method", "rename"],
+	["devices.deauthorize", "res://addons/polaris_key/services/devices.gd", "method", "deauthorize"],
+	["release.fetch", "res://addons/polaris_key/services/release.gd", "method", "fetch"],
+	["release.changelog", "res://addons/polaris_key/services/release.gd", "method", "changelog"],
+	["release.installUrl", "res://addons/polaris_key/services/release.gd", "method", "install_url"],
+	["release.downloadUrl", "res://addons/polaris_key/services/release.gd", "method", "download_url"],
+	["update.onUpdateAvailable", "res://addons/polaris_key/services/update.gd", "signal", "update_available"],
+	["update.install", "res://addons/polaris_key/services/update.gd", "method", "install"],
+	["update.check", "res://addons/polaris_key/services/update.gd", "method", "check"],
+	["update.appcastUrl", "res://addons/polaris_key/services/update.gd", "method", "appcast_url"],
+	["update.feedUrl", "res://addons/polaris_key/services/update.gd", "method", "feed_url"],
+	["update.decide", "res://addons/polaris_key/services/update.gd", "method", "decide"],
+	["update.feed", "res://addons/polaris_key/services/update.gd", "method", "feed"],
+	["update.releaseRecord", "res://addons/polaris_key/services/update.gd", "method", "release_record"],
+	["update.confirmBoot", "res://addons/polaris_key/services/update.gd", "method", "confirm_boot"],
+	["distribution.downloadModel", "res://addons/polaris_key/services/distribution.gd", "method", "download_model"],
+	["distribution.thisPlatform", "res://addons/polaris_key/services/distribution.gd", "method", "this_platform"],
+	["commerce.binding", "res://addons/polaris_key/services/commerce.gd", "method", "binding"],
+	["commerce.claim", "res://addons/polaris_key/services/commerce.gd", "method", "claim"],
+	["commerce.claimSteam", "res://addons/polaris_key/services/commerce.gd", "method", "claim_steam"],
+	["commerce.claimAppStore", "res://addons/polaris_key/services/commerce.gd", "method", "claim_app_store"],
+	["commerce.claimPlay", "res://addons/polaris_key/services/commerce.gd", "method", "claim_play"],
+	["packs.ensure", "res://addons/polaris_key/services/packs.gd", "method", "ensure"],
+	["packs.state", "res://addons/polaris_key/services/packs.gd", "method", "state"],
+	["packs.path", "res://addons/polaris_key/services/packs.gd", "method", "path"],
+	["packs.registerHandler", "res://addons/polaris_key/services/packs.gd", "method", "register_handler"],
+	["packs.isAvailable", "res://addons/polaris_key/services/packs.gd", "method", "is_available"],
+	["packs.packFor", "res://addons/polaris_key/services/packs.gd", "method", "pack_for"],
+	["packs.rollback", "res://addons/polaris_key/services/packs.gd", "method", "rollback"],
+	["packs.confirm", "res://addons/polaris_key/services/packs.gd", "method", "confirm"],
+	["presentation.subscribe", "res://addons/polaris_key/core/presentation.gd", "signal", "changed"],
+	["presentation.icon", "res://addons/polaris_key/core/presentation.gd", "method", "icon"],
+	["client.currentDevice", SDK, "method", "current_device"],
+	["license.getLicenseUser", "res://addons/polaris_key/services/license.gd", "method", "get_license_user"],
+	["identity.acceptSignIn", "res://addons/polaris_key/services/identity.gd", "method", "accept_sign_in"],
+	["commerce.hiddenHere", "res://addons/polaris_key/services/commerce.gd", "method", "hidden_here"],
+	["commerce.isUnlocked", "res://addons/polaris_key/services/commerce.gd", "method", "is_unlocked"],
+	["presentation.loadCached", "res://addons/polaris_key/core/presentation.gd", "method", "load_cached"],
+	["license.status", "res://addons/polaris_key/services/license.gd", "method", "status"],
+	["license.isLicensed", "res://addons/polaris_key/services/license.gd", "method", "is_licensed"],
+	["presentation.current", "res://addons/polaris_key/core/presentation.gd", "method", "current"],
+	["client.start", SDK, "method", "start"],
+	["devices.attest", "res://addons/polaris_key/services/devices.gd", "method", "attest"],
+	["commerce.purchase", "res://addons/polaris_key/services/commerce.gd", "method", "purchase"],
+	["commerce.restore", "res://addons/polaris_key/services/commerce.gd", "method", "restore"],
+	["packs.progress", "res://addons/polaris_key/services/packs.gd", "signal", "pack_progress"],
+	["client.setChannel", "res://addons/polaris_key/services/update.gd", "method", "set_channel"],
+	["config.catalog", "res://addons/polaris_key/services/config.gd", "method", "catalog"],
+	["backend.origins", "res://addons/polaris_key/services/backend.gd", "method", "origins"],
+	["backend.headers", "res://addons/polaris_key/services/backend.gd", "method", "headers"],
+	["packs.estimate", "res://addons/polaris_key/services/packs.gd", "method", "estimate"],
+	["client.useFriendlyDeviceName", SDK, "method", "use_friendly_device_name"],
+	["client.buildInfo", SDK, "method", "build_info"],
+	["client.toasts", SDK, "method", "toasts"],
+	["client.isInputCaptured", SDK, "method", "is_input_captured"],
+	["client.captureInput", SDK, "method", "capture_input"],
+	["config.enabled", "res://addons/polaris_key/services/config.gd", "method", "enabled"],
+	["config.catalogEntry", "res://addons/polaris_key/services/config.gd", "method", "catalog_entry"],
+	["config.refresh", "res://addons/polaris_key/services/config.gd", "method", "refresh"],
+	["config.bindProperty", "res://addons/polaris_key/services/config.gd", "method", "bind_property"],
+	["config.mintAvailable", "res://addons/polaris_key/services/config.gd", "method", "mint_available"],
+	["config.clearMinted", "res://addons/polaris_key/services/config.gd", "method", "clear_minted"],
+	["config.setting.isLocal", "res://addons/polaris_key/services/config/setting.gd", "method", "is_local"],
+	["identity.isAvailable", "res://addons/polaris_key/services/identity.gd", "method", "is_available"],
+	["identity.isSigningIn", "res://addons/polaris_key/services/identity.gd", "method", "is_signing_in"],
+	["identity.cancel", "res://addons/polaris_key/services/identity.gd", "method", "cancel"],
+	["identity.openInBrowser", "res://addons/polaris_key/services/identity.gd", "method", "open_in_browser"],
+	["identity.copyLink", "res://addons/polaris_key/services/identity.gd", "method", "copy_link"],
+	["identity.signedInIdentity", "res://addons/polaris_key/services/identity.gd", "method", "signed_in_identity"],
+	["identity.requestSignIn", "res://addons/polaris_key/services/identity.gd", "method", "request_sign_in"],
+	["devices.fingerprint", "res://addons/polaris_key/services/devices.gd", "method", "fingerprint"],
+	["update.restartToUpdate", "res://addons/polaris_key/services/update.gd", "method", "restart_to_update"],
+	["update.dropStaged", "res://addons/polaris_key/services/update.gd", "method", "drop_staged"],
+	["update.getChannel", "res://addons/polaris_key/services/update.gd", "method", "get_channel"],
+	["update.preferredChannel", "res://addons/polaris_key/services/update.gd", "method", "preferred_channel"],
+	["update.channelLock", "res://addons/polaris_key/services/update.gd", "method", "channel_lock"],
+	["update.clearChannel", "res://addons/polaris_key/services/update.gd", "method", "clear_channel"],
+	["commerce.currentStore", "res://addons/polaris_key/services/commerce.gd", "method", "current_store"],
+	["commerce.watchAppStoreUpdates", "res://addons/polaris_key/services/commerce.gd", "method", "watch_app_store_updates"],
+	["backend.request", "res://addons/polaris_key/services/backend.gd", "method", "request"],
+	["backend.headersFor", "res://addons/polaris_key/services/backend.gd", "method", "headers_for"],
+	["packs.start", "res://addons/polaris_key/services/packs.gd", "method", "start"],
+	["packs.mount", "res://addons/polaris_key/services/packs.gd", "method", "mount"],
+	["packs.background", "res://addons/polaris_key/services/packs.gd", "method", "background"],
+	["presentation.iconTo", "res://addons/polaris_key/core/presentation.gd", "method", "icon_to"],
+	["client.stateChanged", SDK, "signal", "state_changed"],
+	["client.syncFinished", SDK, "signal", "sync_finished"],
+	["client.storeError", SDK, "signal", "store_error"],
+	["client.bootFinished", SDK, "signal", "boot_finished"],
+	["client.verifyProgress", SDK, "signal", "verify_progress"],
+	["client.inputCaptured", SDK, "signal", "input_captured"],
+	["client.uiSound", SDK, "signal", "ui_sound"],
+	["client.inPlayChanged", SDK, "signal", "in_play_changed"],
+	["identity.signInPending", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_pending"],
+	["identity.signInConfirm", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_confirm"],
+	["identity.signInFinished", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_finished"],
+	["update.updateStaged", "res://addons/polaris_key/services/update.gd", "signal", "update_staged"],
+	["update.downloadProgress", "res://addons/polaris_key/services/update.gd", "signal", "download_progress"],
+	["update.channelChanged", "res://addons/polaris_key/services/update.gd", "signal", "channel_changed"],
+	["commerce.appStoreUpdateClaimed", "res://addons/polaris_key/services/commerce.gd", "signal", "app_store_update_claimed"],
+	["packs.packReady", "res://addons/polaris_key/services/packs.gd", "signal", "pack_ready"],
+	["packs.packFailed", "res://addons/polaris_key/services/packs.gd", "signal", "pack_failed"],
+	["packs.setChanged", "res://addons/polaris_key/services/packs.gd", "signal", "set_changed"],
+]
+
+## [concept, script, name]
+const REMOVED := [
+	["options.product", "res://addons/polaris_key/core/options.gd", "product"],
+	["options.pinned_trust_keys", "res://addons/polaris_key/core/options.gd", "pinned_trust_keys"],
+	["config.get_source", "res://addons/polaris_key/services/config.gd", "get_source"],
+	["license.is_entitled", "res://addons/polaris_key/services/license.gd", "is_entitled"],
+	["license.get_entitlements", "res://addons/polaris_key/services/license.gd", "get_entitlements"],
+	["devices.get_current_device", "res://addons/polaris_key/services/devices.gd", "get_current_device"],
+	["commerce.get_binding", "res://addons/polaris_key/services/commerce.gd", "get_binding"],
+	["update.apply", "res://addons/polaris_key/services/update.gd", "apply"],
+]
+
+
+func _names(script: Script, kind: String) -> PackedStringArray:
+	var list: Array[Dictionary]
+	match kind:
+		"method":
+			list = script.get_script_method_list()
+		"signal":
+			list = script.get_script_signal_list()
+		_:
+			list = script.get_script_property_list()
+	var out := PackedStringArray()
+	for d in list:
+		out.append(String(d["name"]))
+	return out
+
+
+func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
+	for row in ROWS:
+		var script: Script = load(row[1]) if row[1] is String else row[1]
+		t.check("%s: %s %s" % [row[0], row[2], row[3]], script != null and _names(script, row[2]).has(row[3]), str(row[1]))
+	for row in REMOVED:
+		var script: Script = load(row[1]) if row[1] is String else row[1]
+		var present := false
+		for kind in ["method", "signal", "property"]:
+			present = present or _names(script, kind).has(row[2])
+		t.check("removed: %s" % row[0], not present, str(row[1]))
+	return true

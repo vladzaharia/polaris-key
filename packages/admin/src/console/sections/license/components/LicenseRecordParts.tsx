@@ -4,6 +4,8 @@
  */
 
 import * as React from "react";
+import { confirmFor } from "../../../../lib/actions.js";
+import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import {
   type LicenseBatch,
   type LicenseDetail,
@@ -23,7 +25,12 @@ import {
   InvitationCard,
   OriginCard,
 } from "./LicenseRail.js";
-import { LicenseStatus, licenseState, type seatLimitOf } from "./shared.js";
+import {
+  LicenseStatus,
+  licenseState,
+  useInvitations,
+  type seatLimitOf,
+} from "./shared.js";
 
 /**
  * ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
@@ -59,6 +66,22 @@ export function useFocusTitleAfterUndo(
   return focusAfterUndo;
 }
 
+/** Closing the invite dialog from a button that has unmounted must not drop focus to <body>. */
+export function useFocusTitleAfterInvite(dialog: RecordDialog): void {
+  const prev = React.useRef<RecordDialog>(null);
+  React.useEffect(() => {
+    const was = prev.current;
+    prev.current = dialog;
+    if (was !== "invite" || dialog !== null) return;
+    const t = window.setTimeout(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body) return;
+      document.querySelector<HTMLElement>("h1[data-page-title]")?.focus();
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [dialog]);
+}
+
 export type RecordDialog =
   | "holder"
   | "assign"
@@ -71,6 +94,7 @@ export type RecordDialog =
   | "expiry"
   | "profiles"
   | "send"
+  | "invite"
   | "disable"
   | "enable"
   | "delete"
@@ -103,12 +127,15 @@ export function StatusTab({
   const holder = holderOf(license);
   const floating = holder.kind === "floating";
   const waiting = holder.kind === "assigned" && !holder.inAccount;
+  const canInvite = useInvitations(slug).invitations;
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
         {waiting ? (
           <InvitationCard
             email={license.email?.trim() ?? ""}
+            invitedAt={license.invitedAt ?? null}
+            canInvite={canInvite}
             onChangeEmail={() => onDialog("reassign")}
           />
         ) : null}
@@ -206,5 +233,45 @@ export function RecordFacts({
         </span>
       ) : null}
     </span>
+  );
+}
+
+/** Disable and Enable: the two confirms of the record's status toggle. */
+export function ToggleLicenseDialogs({
+  license,
+  dialog,
+  onClose,
+  onToggle,
+}: {
+  license: LicenseDetail;
+  dialog: RecordDialog;
+  onClose: () => void;
+  onToggle: (enable: boolean) => Promise<void>;
+}): React.ReactElement {
+  const name = license.name || "this license";
+  return (
+    <>
+      <ConfirmDialog
+        open={dialog === "disable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.disable").intent as "caution"}
+        title={`Disable ${name}?`}
+        consequences={[
+          "Its devices stop authenticating right away: their cached tokens are purged.",
+          "Keys, devices and terms are kept. Enabling the license restores access.",
+        ]}
+        confirmLabel="Disable license"
+        onConfirm={() => onToggle(false)}
+      />
+      <ConfirmDialog
+        open={dialog === "enable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.enable").intent as "caution"}
+        title={`Enable ${name}?`}
+        consequences={["Its devices regain access at their next check-in."]}
+        confirmLabel="Enable license"
+        onConfirm={() => onToggle(true)}
+      />
+    </>
   );
 }

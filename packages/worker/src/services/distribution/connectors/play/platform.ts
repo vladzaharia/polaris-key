@@ -17,6 +17,7 @@
  *     admin who asked (the platform audit's actor). A product's connector never uses this path.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
 import {
@@ -396,7 +397,7 @@ export async function checkPlayServiceAccount(
       headers: { authorization: `Bearer ${token}`, accept: "application/json" },
     });
   } catch {
-    return storeUnavailable("Google Play", 0);
+    return storeUnavailable(channelLabel("google-play"), 0);
   }
   const facts: CheckFact[] = [{ label: "Service account", value: email }];
   if (res.status === 401 || res.status === 403) {
@@ -421,7 +422,7 @@ export async function checkPlayServiceAccount(
   }
   if (!res.ok || isRedirect(res)) {
     await res.body?.cancel().catch(() => undefined);
-    return storeUnavailable("Google Play", res.status);
+    return storeUnavailable(channelLabel("google-play"), res.status);
   }
   let doc: { apps?: unknown; nextPageToken?: unknown };
   try {
@@ -431,7 +432,7 @@ export async function checkPlayServiceAccount(
     if (!doc || typeof doc !== "object" || Array.isArray(doc))
       throw new Error("not an object");
   } catch {
-    return storeUnavailable("Google Play", 502);
+    return storeUnavailable(channelLabel("google-play"), 502);
   }
   const apps = (Array.isArray(doc.apps) ? doc.apps : [])
     .map((a) => a as { packageName?: unknown; displayName?: unknown })

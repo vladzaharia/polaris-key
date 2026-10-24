@@ -15,6 +15,7 @@
  * - The store is polled while the panel is up; ReleasesPage announces the release that ends it.
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { BookOpen, Check, Copy, Pencil, Plus } from "lucide-react";
 import type { ReleaseHealth } from "../../../../api.js";
@@ -86,6 +87,7 @@ export function FirstReleasePanel({
   const tokens = useCiTokens(slug);
   const [editingPublisher, setEditingPublisher] = React.useState(false);
   const [issuing, setIssuing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [linking, setLinking] = React.useState(false);
   const { copy, state: copyState } = useCopy();
   const policy = publisher.data ?? null;
@@ -109,14 +111,14 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="checking"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Checking access to the repository…"
         />
       ) : health.isError || !github ? (
         <CheckRow
           key="app"
           state="todo"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Couldn't check access to the repository."
           action={
             <Button
@@ -132,7 +134,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="done"
-          title="Polaris Key app installed"
+          title="Polaris Key GitHub App installed"
           detail={
             policy?.repository ? (
               <span className="font-mono">{policy.repository}</span>
@@ -145,7 +147,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="failed"
-          title="Polaris Key app can't read the repository"
+          title="Polaris Key GitHub App can't read the repository"
           detail="Install the Polaris Key GitHub App on the repository, then check again."
           action={
             <Button
@@ -218,6 +220,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Edit…
           </Button>
@@ -234,6 +237,7 @@ export function FirstReleasePanel({
             variant="outline"
             size="sm"
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Allow workflow…
           </Button>
@@ -263,6 +267,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={active ? <Plus aria-hidden /> : undefined}
             onClick={() => setIssuing(true)}
+            disabledReason={noMint}
           >
             {active ? "Issue another…" : "Issue a CI token…"}
           </Button>
@@ -352,6 +357,7 @@ export function FirstReleasePanel({
         open={editingPublisher}
         policy={policy}
         onClose={() => setEditingPublisher(false)}
+        onOpen={() => setEditingPublisher(true)}
       />
       <IssueCiTokenFlow slug={slug} open={issuing} onOpenChange={setIssuing} />
       {!linked ? (

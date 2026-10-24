@@ -12,16 +12,12 @@
  * - Search is a prefix on the device id or label, as the server matches (DEV-6).
  */
 
+import { deviceSummaryQuery, devicesQuery } from "../data.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Download, MonitorSmartphone } from "lucide-react";
-import {
-  api,
-  type ProductDevicePage,
-  type ProductDeviceQuery,
-  type ProductDeviceSummary,
-} from "../../../../api.js";
+import { type ProductDeviceQuery } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { formatCount, formatIso, fromSeconds } from "../../../../lib/format.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
@@ -42,7 +38,6 @@ import {
 } from "../../../components/DeviceTable.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { Link, navigate, useLocation } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
@@ -51,12 +46,6 @@ import { intentOf } from "./confirmGate.js";
 
 const PAGE_SIZE = 50;
 const FACETS = ["status", "platform"] as const;
-
-export function fetchDeviceSummary(
-  slug: string,
-): Promise<ProductDeviceSummary> {
-  return api.productDeviceSummary(slug);
-}
 
 /** The server query for the table's state. Two status values (or none) read as all. */
 export function deviceQuery(
@@ -91,19 +80,9 @@ export function DevicesPage({
   const status = state.filters.status ?? [];
   const platform = state.filters.platform ?? [];
   const query = deviceQuery(status, platform, license, state.q);
-  const queryKey = JSON.stringify(query);
 
-  const summary = useQuery({
-    queryKey: qk.devicesSummary(slug),
-    queryFn: () => fetchDeviceSummary(slug),
-  });
-  const list = useInfiniteQuery({
-    queryKey: [...qk.devices(slug), "list", queryKey],
-    queryFn: ({ pageParam }) =>
-      api.productDevices(slug, { ...query, cursor: pageParam }),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: ProductDevicePage) => last.nextCursor ?? undefined,
-  });
+  const summary = useQuery(deviceSummaryQuery(slug));
+  const list = useInfiniteQuery(devicesQuery(slug, query));
   useLoadingAnnouncement("devices", list.isPending);
 
   const rows = React.useMemo(
@@ -310,12 +289,12 @@ export function DevicesPage({
           deauth?.licenseId
             ? [
                 "The device loses access and its token is revoked.",
-                "Its seat on the license is freed.",
+                "It stops counting toward the license's device limit.",
                 "To use the license again it must re-activate.",
               ]
             : [
                 "The device loses access and its token is revoked.",
-                "It holds no license, so no seat is freed.",
+                "It holds no license, so no device limit is affected.",
                 "Under open registration it can register again on its next start.",
               ]
         }

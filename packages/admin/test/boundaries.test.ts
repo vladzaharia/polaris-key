@@ -12,7 +12,7 @@
  *   4. The customer bundle carries no console code: no module reachable from `portal/main.tsx`
  *      (static and dynamic imports; `import type` is erased and does not count) is under
  *      `console/` or is `api.ts`, the console's API client with every `/manage/api` path in it.
- *      An offence is named after the import that crosses in (`lib/errorCopy.ts -> api.ts`), so
+ *      An offence is named after the import that crosses in (`ui/toast.tsx -> api.ts`), so
  *      every new way in fails on its own, even while a listed one still exists.
  *
  * Rules 1 and 2 count `import type` too: a type import still ties the kit to an app's shapes.
@@ -44,16 +44,10 @@ const UI_MAY_IMPORT = new Set([
 
 /**
  * Edges that break a rule today, as `from -> to` (paths under `src/`), each with its owner. One
- * entry covers every rule the edge breaks: `lib/errorCopy.ts -> api.ts` is both a `lib/` import
- * of an app module (rule 1) and the portal's one way into `api.ts` (rule 4, through
- * `ui/toast.tsx`).
+ * entry covers every rule the edge breaks: a `lib/` or `ui/` import of `api.ts` is both an app
+ * module import (rules 1, 2) and, when the portal reaches it, a rule 4 crossing.
  */
 const KNOWN: Record<string, string> = {
-  // P0-32 (one data layer): errorCopy words HttpError, not the console's ApiError.
-  "lib/errorCopy.ts -> api.ts": "P0-32",
-  "ui/form.tsx -> api.ts": "P0-32",
-  // P0-34 (shared router core): the guard blocks navigation through the core, not the console's.
-  "ui/useUnsavedChangesGuard.tsx -> console/router.tsx": "P0-34",
   // P0-33 (Worker-owned DTO types): the shapes come from @polaris-key/worker/dto, not api.ts.
   "lib/products.ts -> api.ts": "P0-33",
   "lib/secretUsage.ts -> api.ts": "P0-33",
@@ -246,7 +240,6 @@ describe("admin layer boundaries", () => {
     const reached = ALL.find(
       (e) => e.from === PORTAL_ENTRY && top(e.to) === "portal" && !e.typeOnly,
     )!.to;
-    expect(portalReach().has("lib/errorCopy.ts -> api.ts")).toBe(true);
     const probe: Edge = { from: reached, to: "api.ts", typeOnly: false };
     expect(unknownPortalReach([...ALL, probe])).toEqual([
       `${PORTAL_ENTRY} -> ${reached} -> api.ts`,

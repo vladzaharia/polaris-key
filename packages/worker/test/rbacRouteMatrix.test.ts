@@ -25,11 +25,7 @@ import { handleAdminApi } from "../src/console/api.js";
 import { STEP_UP_ROUTES } from "../src/console/stepUp.js";
 import { ADMIN_ROUTES, isProductRoute } from "../src/console/routes.js";
 import { routeKey, type Method } from "../src/console/routeMatch.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -38,6 +34,7 @@ import {
   PRINCIPALS,
   type PrincipalName,
 } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 // ── The principal seam ──────────────────────────────────────────────────────────────────────
 
@@ -185,8 +182,9 @@ async function call(
   };
   const p = PRINCIPALS[name];
   if (p) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       e,
+      db,
       {
         sub: p.memberId,
         name: name,
@@ -198,6 +196,8 @@ async function call(
       },
       opts.stepUpAt ?? NOW,
     );
+    // The console resolves the member id from the account; the seam is keyed by it.
+    SYNTHETIC.set(session.sub, p);
     headers.cookie = `${ADMIN_COOKIE}=${token}`;
     if (opts.csrf !== false) headers[CSRF_HEADER] = session.csrf;
   }
@@ -237,6 +237,17 @@ const PRODUCT_ROWS = ADMIN_ROUTES.filter((r) => isProductRoute(r));
 
 /** The only rows a session that resolves to no grant may call. */
 const STRANGER_OPEN = new Set(["GET /me", "POST /logout"]);
+/** Open to a no-grant session too (34.4 review). The matrix's stranger is a v2 session of a real
+ *  account (ST-30c.7), so past the grant gate the rows answer for that account: its own (empty) list,
+ *  and a 404 for a token id it does not hold. */
+const STRANGER_OWN_TOKENS = new Map<string, number>([
+  ["GET /me/personal-tokens", 200],
+  ["DELETE /me/personal-tokens/:id", 404],
+]);
+
+/** A no-grant row since the 34.7 review, but personal-token only: a cookie stranger is past the grant
+ *  gate and refused by the row's own 403, not by "no access". */
+const STRANGER_PERSONAL_ONLY = new Set(["DELETE /me/personal-tokens/current"]);
 
 describe("the route × principal matrix", () => {
   it("covers every row of the route table", () => {
@@ -265,6 +276,11 @@ describe("the route × principal matrix", () => {
           // `GET /me` and `POST /logout` stay open to a session with no grant (ST-29 review).
           if (STRANGER_OPEN.has(routeKey(r))) {
             if (o.status !== 200) wrong.push(what);
+          } else if (STRANGER_OWN_TOKENS.has(routeKey(r))) {
+            if (o.status !== STRANGER_OWN_TOKENS.get(routeKey(r)))
+              wrong.push(what);
+          } else if (STRANGER_PERSONAL_ONLY.has(routeKey(r))) {
+            if (o.status !== 403 || isNoAccess(o)) wrong.push(what);
           } else if (!isNoAccess(o) || o.area !== "console") wrong.push(what);
         } else if (allowed) {
           if (o.status === 401 || isNoAccess(o)) wrong.push(what);
@@ -352,7 +368,6 @@ describe("negative controls", () => {
         "POST /products/kek",
         "POST /platform/migrations/apply",
         "POST /platform/migrations/down",
-        "POST /platform/override-migration/run",
         "POST /tokens",
         "GET /products/:slug/users/:subject/export",
         "POST /products/:slug/users/:subject/data/delete",
@@ -373,6 +388,13 @@ describe("negative controls", () => {
         "DELETE /platform/alerts/:id",
         "DELETE /products/:slug/alerts/:id",
         "POST /products/:slug/alerts",
+        "POST /bindings",
+        "POST /me/methods/:id/strong",
+        "POST /me/passkeys",
+        "POST /me/passkeys/options",
+        "POST /products/:slug/members",
+        "PUT /products/:slug/ci-publisher",
+        "POST /products/:slug/ci-tokens",
       ].sort(),
     );
     for (const r of steps) {
@@ -411,8 +433,9 @@ describe("negative controls", () => {
   it("a session the real resolver roots (the platform group) is a Superadmin; dropping the group drops it", async () => {
     const e = freshEnv();
     const mint = async (groups: string[]) => {
-      const { token } = await issueSession(
+      const { token } = await consoleTestSession(
         e,
+        db,
         { sub: "op-real", name: "Op", email: "op@example.test", groups },
         NOW,
       );
@@ -434,8 +457,9 @@ describe("negative controls", () => {
     const e = freshEnv();
     const nope = await call(e, "root", "GET", "/products/alpha/nope");
     expect(nope.status).toBe(404);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       e,
+      db,
       { sub: "m-root", name: "r", email: "r@x", groups: [] },
       NOW,
     );
@@ -463,8 +487,9 @@ describe("negative controls", () => {
   it("answers no session 401, and an expired one too", async () => {
     const e = freshEnv();
     expect((await call(e, "none", "GET", "/me")).status).toBe(401);
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       e,
+      db,
       { sub: "m-root", name: "r", email: "r@x", groups: [] },
       NOW - 9 * 60 * 60,
     );

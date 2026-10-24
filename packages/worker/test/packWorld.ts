@@ -43,11 +43,8 @@ import { loadProduct } from "../src/core/products.js";
 import { buildHooks, type ServiceHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -236,22 +233,28 @@ export async function packWorld(
   await db.batch(
     manifestDeliverableStatements(SLUG, rel.app, NOW, rel.packDeliverables),
   );
-  const token = (
-    await issueStaticCiToken(env, db, {
-      product: SLUG,
-      scopes: [
-        "release:publish",
-        "release:promote",
-        "release:yank",
-        "distribution:report",
-        "distribution:rollout",
-      ],
-      expiresAt: NOW + 10 * 365 * 86400,
-      label: null,
-      createdBy: "u1",
-      now: NOW,
-    })
-  ).token;
+  const issued = await issueStaticCiToken(env, db, {
+    product: SLUG,
+    scopes: [
+      "release:publish",
+      "release:promote",
+      "release:yank",
+      "distribution:report",
+      "distribution:rollout",
+    ],
+    expiresAt: NOW + 90 * 86400,
+    label: null,
+    createdBy: "u1",
+    now: NOW,
+  });
+  const token = issued.token;
+  // The issuer caps a static token at 90 days (F-33b.2); the GC suites run past the 180-day lock
+  // age, so the fixture's token outlives them.
+  await db.run(
+    "UPDATE ci_tokens SET expires_at = ? WHERE token_id = ?",
+    NOW + 10 * 365 * 86400,
+    issued.tokenId,
+  );
   const seqs = new Map<string, number>();
 
   const post = (path: string, body: unknown) =>
@@ -486,8 +489,9 @@ export async function packWorld(
 
   async function admin(method: string, path: string, body?: unknown) {
     const now = Math.floor(Date.now() / 1000);
-    const { token: cookie, session } = await issueSession(
+    const { token: cookie, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

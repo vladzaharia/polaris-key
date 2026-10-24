@@ -18,6 +18,7 @@ import {
   API,
   axe,
   bootLicense,
+  DEFAULT_TIER,
   failing,
   LICENSES,
   writes,
@@ -259,6 +260,19 @@ describe("Licenses list", () => {
       (screen.getByPlaceholderText(/Search licenses/) as HTMLInputElement)
         .value,
     ).toBe("charge");
+  });
+
+  it("has no No tier filter (LX-33.7)", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/tiers`]: { tiers: [DEFAULT_TIER] } },
+    });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^Filter by tier/ }),
+    );
+    expect((await screen.findAllByText("Default")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("No tier")).toBeNull();
   });
 
   it("searches the email and the id, not only the name", async () => {

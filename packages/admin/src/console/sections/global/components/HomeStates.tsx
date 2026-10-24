@@ -77,7 +77,8 @@ export function AllClear(): React.ReactElement {
   return (
     <p
       data-all-clear=""
-      className="flex items-center gap-2 text-sm text-fg-muted"
+      tabIndex={-1}
+      className="flex items-center gap-2 text-sm text-fg-muted outline-hidden focus-visible:outline-2 focus-visible:outline-focus"
     >
       <Check aria-hidden className="size-4 text-success" />
       Nothing needs attention.

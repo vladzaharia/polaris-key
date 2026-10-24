@@ -38,7 +38,7 @@ async def _create(handler, **kw):
     return await AsyncClient.create(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=InMemoryStore(PRODUCT),
         client=mock_client(handler),
@@ -53,7 +53,7 @@ def test_methods_are_coroutines_over_the_shared_core() -> None:
         r = await c.license.activate_with_key("k")
         assert r.kind == "ok"
         assert (await c.status()).status == "ok"
-        assert await c.config.get_config("run.concurrency") == 4
+        assert await c.config.get("run.concurrency") == 4
         out = await c.boot(auto_confirm=False)
         assert out.ready
         assert c.supports("license.gate").supported  # cheap reads stay synchronous
@@ -176,12 +176,12 @@ def test_if_aclient_is_licensed_without_await_raises() -> None:
             if c.license.is_licensed():
                 pass
         with pytest.raises(TypeError):
-            if c.license.is_entitled("pro"):
+            if c.entitlements.has("pro"):
                 pass
         with pytest.raises(TypeError):
             bool(c.status())
         with pytest.raises(TypeError):
-            assert not c.license.is_entitled("pro")  # `not` is a truth test too
+            assert not c.entitlements.has("pro")  # `not` is a truth test too
         await c.aclose()
 
     asyncio.run(main())
@@ -197,7 +197,7 @@ def test_guarded_coroutines_still_work_everywhere_a_coroutine_does() -> None:
         assert await coro is False
         task = asyncio.create_task(c.is_licensed())
         assert await task is False
-        got = await asyncio.gather(c.is_licensed(), c.license.is_entitled("pro"))
+        got = await asyncio.gather(c.is_licensed(), c.entitlements.has("pro"))
         assert got == [False, False]
         assert await asyncio.wait_for(c.is_licensed(), 5) is False
         if hasattr(inspect, "markcoroutinefunction"):

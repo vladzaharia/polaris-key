@@ -22,6 +22,18 @@ export interface PackageNamespaceField {
   readonly pattern: RegExp;
 }
 
+/** What {@link PackageEcosystemRules.namespace}`.derive` answers. */
+export interface DerivedNamespace {
+  readonly namespace: Record<string, unknown>;
+  /** Why the names have no one namespace (the feed then needs an operator), else null. */
+  readonly ambiguous: string | null;
+}
+
+/** Sorted, de-duplicated (code-unit order, so the output never depends on the locale). */
+export function sortedUnique(values: Iterable<string>): string[] {
+  return [...new Set(values)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
 /** Everything ingest and the console know about one ecosystem's packages. */
 export interface PackageEcosystemRules<E extends string = string> {
   readonly ecosystem: E;
@@ -45,6 +57,14 @@ export interface PackageEcosystemRules<E extends string = string> {
     /** Why `name` falls outside the namespace `ns`, or `null` when it is inside. An empty
      *  namespace is a problem: a feed takes no packages before its operator sets one. */
     problem(name: string, ns: Readonly<Record<string, unknown>>): string | null;
+    /**
+     * The narrowest namespace this ecosystem's fields can express for exactly the declared
+     * `names` (F-34), so a feed a manifest provisions takes those packages and nothing wider.
+     * `owner` is the product slug (the Godot publisher). Pure and deterministic: lists are
+     * sorted and unique. When no single namespace covers the names, `namespace` is `{}` and
+     * `ambiguous` says why; with no names it is `{}` and `null`.
+     */
+    derive(names: readonly string[], owner: string): DerivedNamespace;
   };
 }
 

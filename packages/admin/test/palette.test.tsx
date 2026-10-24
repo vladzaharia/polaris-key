@@ -61,20 +61,17 @@ describe("the sources", () => {
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
     expect(labels).toContain("App sign-in");
-    // F-11: Distribution → Package feeds is offered while the product has package feeds on.
-    const off = navigationSource(
-      "djdl",
-      "DJDL",
-      { ...ALL_ON },
-      { packageFeeds: false },
+    // F-34.7: Ship builds → Packages is offered whenever Distribution is on, the switch aside, and
+    // "package feeds" still finds it.
+    for (const features of [{}, null]) {
+      const src = navigationSource("djdl", "DJDL", ALL_ON, features);
+      const feeds = src.find((i) => i.href === "#/p/djdl/distribution/feeds");
+      expect(feeds?.label).toBe("Packages");
+    }
+    const packages = navigationSource("djdl", "DJDL", ALL_ON, {});
+    expect(filterItems(packages, "package feeds").map((i) => i.label)[0]).toBe(
+      "Packages",
     );
-    expect(
-      off.filter((i) => i.href.startsWith("#/p/")).map((i) => i.label),
-    ).not.toContain("Package feeds");
-    const on = navigationSource("djdl", "DJDL", ALL_ON, { packageFeeds: true });
-    expect(
-      on.find((i) => i.href === "#/p/djdl/distribution/feeds"),
-    ).toBeTruthy();
     expect(items.find((i) => i.label === "Licenses")!.href).toBe(
       "#/p/djdl/license/licenses",
     );
@@ -88,6 +85,7 @@ describe("the sources", () => {
       "Personal tokens",
       // The Platform section's built pages (notes/S-13 §9.1).
       "Settings",
+      "Members",
       "Status",
       "Connections",
       "Store connections",

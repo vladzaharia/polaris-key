@@ -45,8 +45,8 @@ export const FEED_CAPABILITIES: Readonly<
 
 /**
  * Every ecosystem's extension settings (`ext_json` keys its adapter accepts), which the console's
- * ecosystem panel renders (F-12). `yankHidesFromIndex` is the Yank policy section's, not the
- * panel's, so it is listed in `capabilities.yankPolicy` instead.
+ * ecosystem panel renders (F-12). A legacy `yankHidesFromIndex` is filtered out of the list
+ * for any adapter that still declared it.
  */
 export const FEED_EXTENSIONS: Readonly<
   Record<PackageEcosystem, readonly string[]>
@@ -95,7 +95,11 @@ export function feedBaseUrl(
 export interface FeedSettingsView {
   enabled: boolean;
   accessMode: string;
+  /** `accessMode` as the console shows it: public, customers, or customers gated per package. */
+  accessDisplay: string;
   namespace: Record<string, unknown>;
+  /** Where the namespace came from: provisioned from `.pkey/release`, or set by an operator. */
+  namespaceSource: "manifest" | "console";
   maxPackageBytes: number;
   upstream: "none";
   ext: Record<string, unknown>;
@@ -105,14 +109,36 @@ export interface FeedSettingsView {
   updatedBy: string | null;
 }
 
-/** The access modes, in the ladder's order. Every one can be set since registry auth (F-21). */
+/** The access modes the registry still enforces, in the ladder's order (stored rows may hold any). */
 export const FEED_ACCESS_MODES = [
   "public",
   "authenticated",
   "licensed",
   "entitled",
 ] as const;
-export const SETTABLE_ACCESS_MODES: readonly string[] = FEED_ACCESS_MODES;
+/** A feed write accepts two options (F-34.5); `authenticated` and `entitled` only remain as stored rows. */
+export const SETTABLE_ACCESS_MODES: readonly string[] = ["public", "licensed"];
+
+/** What a new feed starts as (E12). */
+export const DEFAULT_ACCESS_MODE = "licensed";
+
+/** How a stored mode reads in the console: two options, and the one stored `entitled` leftover. */
+export function accessDisplay(mode: string): string {
+  if (mode === "public") return "public";
+  if (mode === "entitled") return "customers, packages gated individually";
+  return "customers";
+}
+
+/** Drop the ext keys the ecosystem's adapter no longer accepts (a legacy key is tolerated on read). */
+export function dropUnknownExt(
+  ecosystem: PackageEcosystem,
+  ext: Record<string, unknown>,
+): Record<string, unknown> {
+  const known = requireFeedAdapter(ecosystem).settings.ext;
+  return Object.fromEntries(
+    Object.entries(ext).filter(([k]) => Object.hasOwn(known, k)),
+  );
+}
 
 const MAX_LIST = 32;
 const MAX_ITEM = 128;

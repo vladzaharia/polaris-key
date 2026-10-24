@@ -41,7 +41,9 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
-import { QUERY, useAccess, useCatalog, useDeliverables } from "../data.js";
+import { QUERY, useAccess } from "../data.js";
+import { useDeliverables } from "../../release/data.js";
+import { useCatalog } from "../../config/data.js";
 import { serverFieldErrors, SubmitError } from "../components/forms.js";
 
 const MODES: ReleaseAccess[] = [

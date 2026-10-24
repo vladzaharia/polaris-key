@@ -31,6 +31,7 @@ import {
   type LegacyChoiceView,
 } from "../licenseChoice.js";
 import { freeAccountDevice } from "../portal/freeDevice.js";
+import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
 import {
   artefactRef,
@@ -113,7 +114,7 @@ export function choicePage(
  *  a different binder, an expired or finished flow. Generic, and nothing is minted. */
 export function startAgainPage(): Response {
   return choicePage(403, {
-    title: "Start again",
+    title: "This page has expired",
     heading: "This page has expired",
     body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
@@ -635,7 +636,13 @@ export async function completeChoice(
     licenseId = result.licenseId;
     // I-17: a licence this choice minted joins the account the callback's claim signed in to.
     if (flow.claimAccount)
-      await attachClaimedLicenses(db, flow.claimAccount, now);
+      await attachClaimedLicenses(
+        env,
+        db,
+        flow.claimAccount,
+        now,
+        noticeOrigin(env, req),
+      );
   } else {
     licenseId = (choice as LegacyChoiceRow).id;
   }

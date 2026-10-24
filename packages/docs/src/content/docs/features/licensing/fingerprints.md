@@ -59,13 +59,13 @@ Drift is the number of components that differ between the stored and the present
 
 The anchor adds 1 when the base tolerance isn't zero. The effective mode is the tier's, else the product's `defaultMode`, else `normal`. A product with `enabled: false` forces `off`, which suits customers who run several instances on one host, such as containers that share a device UUID.
 
-Reconciliation runs before the seat check, so a swapped device gets `hardware_mismatch`, not `device_limit`.
+Reconciliation runs before the device-limit check, so a swapped device gets `hardware_mismatch`, not `device_limit`.
 
 - **Exact.** Nothing extra is recorded.
 - **Drift within tolerance.** The binding stands, `last_drift_at` and `last_drift_count` are stamped and a `device.fingerprint.drift` audit entry is written.
-- **Mismatch.** The binding is retired: the device is deauthorized, its token evicted and a `device.fingerprint.mismatch` entry records the changed components. The answer is `409 hardware_mismatch`. The retry binds the new hardware as a new authorization, and the old device doesn't keep its seat.
+- **Mismatch.** The binding is retired: the device is deauthorized, its token evicted and a `device.fingerprint.mismatch` entry records the changed components. The answer is `409 hardware_mismatch`. The retry binds the new hardware as a new authorization, and the old device doesn't keep counting toward the limit.
 
-A new authorization that presents hardware an authorized sibling on the same license already holds retires that sibling (`device.seat.coalesced`). The newest device id wins, because a reinstall legitimately produces a fresh one. One device may hold a free enrolled license and a purchased one, which are separate seat pools.
+A new authorization that presents hardware an authorized sibling on the same license already holds retires that sibling (`device.seat.coalesced`). The newest device id wins, because a reinstall legitimately produces a fresh one. One device may hold a free enrolled license and a purchased one, which are separate device pools.
 
 ## Unverified
 

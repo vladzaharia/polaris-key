@@ -9,23 +9,22 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { stmtProvisionFeed } from "../src/services/distribution/registryFeeds.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   FEED_CAPABILITIES,
   feedBaseUrl,
   parseNamespace,
   verbSupported,
 } from "../src/console/lib/feedModel.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 let db: Db;
 let env: Env;
@@ -48,15 +47,28 @@ interface JsonResponse extends Response {
   json(): Promise<Loose>;
 }
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function admin(
   method: string,
   path: string,
   body?: unknown,
   groups = ["platform-admins"],
 ): Promise<JsonResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+    db,
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups,
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const full = `/api${path}`;
@@ -175,7 +187,7 @@ describe("the feed model", () => {
     expect(verbSupported("npm", "deprecate")).toBe(true);
     expect(verbSupported("pypi", "yank")).toBe(true);
     expect(verbSupported("pypi", "deprecate")).toBe(false);
-    expect(FEED_CAPABILITIES.maven.yankPolicy).toBe(true);
+    expect(FEED_CAPABILITIES.maven.yankPolicy).toBe(false);
   });
 
   it("builds each feed's base URL on the registry host", () => {
@@ -268,7 +280,9 @@ describe("product scope", () => {
       feed: { ecosystem: "pypi", configured: false },
       settings: {
         enabled: false,
-        accessMode: "public",
+        // E12: a new feed starts as customers-only, not public.
+        accessMode: "licensed",
+        accessDisplay: "customers",
         version: 0,
         maxPackageBytes: 52428800,
       },
@@ -278,9 +292,9 @@ describe("product scope", () => {
       extensions: ["htmlFallback"],
       accessModes: [
         { mode: "public", available: true },
-        { mode: "authenticated", available: true },
+        { mode: "authenticated", available: false },
         { mode: "licensed", available: true },
-        { mode: "entitled", available: true },
+        { mode: "entitled", available: false },
       ],
     });
     expect((await admin("GET", product("/nuget"))).status).toBe(404);
@@ -398,16 +412,10 @@ describe("product scope", () => {
     const ok = await put({
       expectedVersion: 1,
       enabled: true,
-      ext: { yankHidesFromIndex: true },
       maxPackageBytes: 1000,
     });
     expect(await ok.json()).toMatchObject({
-      settings: {
-        enabled: true,
-        version: 2,
-        maxPackageBytes: 1000,
-        ext: { yankHidesFromIndex: true },
-      },
+      settings: { enabled: true, version: 2, maxPackageBytes: 1000, ext: {} },
     });
     expect(await auditActions(OWNER)).toEqual([
       "feed.settings.update",
@@ -424,6 +432,39 @@ describe("product scope", () => {
         OWNER,
       ),
     ).toEqual([{ deliverable_id: "*", reason: "settings" }]);
+  });
+
+  it("namespaceSource: manifest until an operator's namespace write changes the namespace (F-34.6)", async () => {
+    await db.batch([stmtProvisionFeed(OWNER, "npm", { scope: "@acme" }, NOW)]);
+    const source = async (): Promise<string> =>
+      (await (await admin("GET", product("/npm"))).json()).settings
+        .namespaceSource;
+    const put = (body: unknown) => admin("PUT", product("/npm/settings"), body);
+    expect(await source()).toBe("manifest");
+    // The feed that was never saved reads as a console namespace.
+    expect(
+      (await (await admin("GET", product("/pypi"))).json()).settings
+        .namespaceSource,
+    ).toBe("console");
+    // An unrelated save, and the same namespace sent again, keep it.
+    expect(
+      (await put({ expectedVersion: 1, maxPackageBytes: 1000 })).status,
+    ).toBe(200);
+    expect(await source()).toBe("manifest");
+    expect(
+      (await put({ expectedVersion: 2, namespace: { scope: "@acme" } })).status,
+    ).toBe(200);
+    expect(await source()).toBe("manifest");
+    // A different namespace is the operator's.
+    expect(
+      (await put({ expectedVersion: 3, namespace: { scope: "@other" } }))
+        .status,
+    ).toBe(200);
+    expect(await source()).toBe("console");
+    expect((await put({ expectedVersion: 4, enabled: false })).status).toBe(
+      200,
+    );
+    expect(await source()).toBe("console");
   });
 
   it("has no policy route: the platform policy is the platform's", async () => {
@@ -656,11 +697,15 @@ describe("platform scope", () => {
     expect(await res.json()).toMatchObject({
       error: { reason: "system_feeds_pipeline_only" },
     });
+    // F-33b.3: no owner read token anywhere, and no service token on the platform scope.
     const read = await admin("POST", platform("/tokens"), {
       label: "x",
       binding: "owner",
     });
-    expect(read.status).toBe(201);
+    expect(read.status).toBe(422);
+    expect(await read.json()).toMatchObject({
+      error: { reason: "owner_read_retired" },
+    });
   });
 
   it("after the bootstrap: the system product's feeds, every owner, and its packages", async () => {
@@ -814,6 +859,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     let res = await admin("POST", tokens(), {
       label: "CI pull",
       binding: "owner",
+      scopes: ["publish"],
       ecosystems: ["npm", "oci"],
       expiresInDays: 30,
     });
@@ -829,17 +875,36 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
       expiresAt: NOW + 30 * 86_400,
       createdBy: "admin:ada@x.io",
     });
-    await admin("POST", tokens(), {
-      label: "Editor",
-      binding: "owner",
-      presentation: "url",
-    });
+    // A token minted before F-33b.3 (an owner read token) is listed as legacy.
+    await mintCompat(
+      env,
+      db,
+      {
+        product: OWNER,
+        label: "Editor",
+        binding: "owner",
+        createdBy: "admin:a",
+      },
+      NOW,
+    );
     res = await admin("GET", tokens());
     expect(res.status).toBe(200);
     const listed = await res.json();
     expect(listed.tokens.map((t: { label: string }) => t.label).sort()).toEqual(
       ["CI pull", "Editor"],
     );
+    expect(
+      listed.tokens.map((t: { label: string; legacy: boolean }) => [
+        t.label,
+        t.legacy,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["CI pull", false],
+        ["Editor", true],
+      ]),
+    );
+    expect(listed.serviceTokens).toEqual([]);
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
     expect(listed.feeds).toHaveLength(8);
@@ -863,7 +928,6 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
         .sort(),
     ).toEqual(
       [
-        "registry_token.create",
         "registry_token.create",
         "registry_token.revoke",
         "registry_token.revoke_all",
@@ -957,7 +1021,11 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
         })
       ).status,
     ).toBe(201);
-    await admin("POST", tokens(), { label: "owner", binding: "owner" });
+    const ownerRead = await admin("POST", tokens(), {
+      label: "owner",
+      binding: "owner",
+    });
+    expect(ownerRead.status).toBe(422);
     const one = await (await admin("GET", tokens("?license=lic_1"))).json();
     expect(one.tokens.map((t: { label: string }) => t.label)).toEqual(["seat"]);
     expect(
@@ -986,26 +1054,120 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(detail.ungatedPackages).toEqual([
       { id: "npm.sdk", name: "@acme/sdk" },
     ]);
+    for (const mode of ["authenticated", "entitled"]) {
+      res = await admin("PUT", product("/npm/settings"), {
+        expectedVersion: 1,
+        accessMode: mode,
+      });
+      expect(res.status).toBe(422);
+      expect(await res.json()).toMatchObject({
+        error: { reason: "access_mode_unavailable" },
+      });
+    }
     res = await admin("PUT", product("/npm/settings"), {
       expectedVersion: 1,
-      accessMode: "entitled",
+      accessMode: "public",
     });
     expect(res.status).toBe(200);
+  });
+
+  it("a new feed defaults to licensed; a stored entitled row reads as per-package and survives a write without accessMode", async () => {
+    await turnOnPackageFeeds();
+    let res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 0,
+      enabled: true,
+      namespace: { scope: "@acme" },
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings).toMatchObject({
+      accessMode: "licensed",
+      accessDisplay: "customers",
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET access_mode = 'entitled' WHERE product = ? AND ecosystem = 'npm'`,
+      OWNER,
+    );
+    res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 1,
+      maxPackageBytes: 1000,
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings).toMatchObject({
+      accessMode: "entitled",
+      accessDisplay: "customers, packages gated individually",
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET access_mode = 'authenticated' WHERE product = ? AND ecosystem = 'npm'`,
+      OWNER,
+    );
+    const detail = await (await admin("GET", product("/npm"))).json();
+    expect(detail.settings.accessDisplay).toBe("customers");
+    expect(detail.feed.accessDisplay).toBe("customers");
+  });
+
+  it("tolerates a legacy ext key on read and drops it on the next write (F10)", async () => {
+    await turnOnPackageFeeds();
+    await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 0,
+      namespace: {},
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET ext_json = '{"retainUntaggedDays":30}' WHERE product = ? AND ecosystem = 'oci'`,
+      OWNER,
+    );
+    const read = await (await admin("GET", product("/oci"))).json();
+    expect(read.settings.ext).toEqual({ retainUntaggedDays: 30 });
+    expect(read.extensions).toEqual([]);
+    const res = await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 1,
+      maxPackageBytes: 1000,
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings.ext).toEqual({});
+    const bad = await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 2,
+      ext: { retainUntaggedDays: 5 },
+    });
+    expect(bad.status).toBe(422);
   });
 
   it("the platform's tokens live under the platform scope and audit to platform_audit", async () => {
     expect((await admin("GET", platform("/tokens"))).status).toBe(409);
     expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
-    const res = await admin("POST", platform("/tokens"), {
-      label: "mirror",
-      binding: "owner",
-    });
-    expect(res.status).toBe(201);
+    // No token can be minted on the platform scope (a service token is refused, D-F3) ...
+    for (const body of [
+      { label: "mirror", binding: "service" },
+      { label: "mirror", binding: "owner" },
+    ])
+      expect((await admin("POST", platform("/tokens"), body)).status).toBe(422);
+    expect(await db.all("SELECT action FROM platform_audit")).toEqual([
+      { action: "feed.bootstrap" },
+    ]);
+    // ... but a legacy one is listed and revoked here, audited to platform_audit.
+    const legacy = await mintCompat(
+      env,
+      db,
+      {
+        product: SYSTEM_PRODUCT_SLUG,
+        label: "mirror",
+        binding: "owner",
+        createdBy: "admin:a",
+      },
+      NOW,
+    );
+    if (!legacy.ok) throw new Error("fixture");
+    const listed = await (await admin("GET", platform("/tokens"))).json();
+    expect(listed.tokens).toHaveLength(1);
+    expect(listed.tokens[0]).toMatchObject({ legacy: true });
+    expect(
+      (await admin("POST", platform(`/tokens/${legacy.view.tokenId}/revoke`)))
+        .status,
+    ).toBe(200);
     expect(
       await db.all(
         "SELECT action FROM platform_audit WHERE action LIKE 'registry_token.%'",
       ),
-    ).toEqual([{ action: "registry_token.create" }]);
+    ).toEqual([{ action: "registry_token.revoke" }]);
     // The system product's access mode cannot change from a product scope.
     const sys = `/products/${SYSTEM_PRODUCT_SLUG}/distribution/feeds/npm/settings`;
     const put = await admin("PUT", sys, {
@@ -1013,5 +1175,46 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
       accessMode: "licensed",
     });
     expect([403, 404]).toContain(put.status);
+  });
+});
+
+describe("every durable mint needs a fresh step-up (F-33b.7)", () => {
+  const tokens = (rest = "") => product(`/tokens${rest}`);
+  const publish = {
+    label: "p",
+    binding: "owner",
+    scopes: ["publish"],
+    ecosystems: ["npm"],
+    expiresInDays: 7,
+  };
+  const licence = { label: "seat", binding: "license", licenseId: "lic_1" };
+
+  it("a publish mint and a licence-bound mint refuse without one, write nothing, then succeed with one", async () => {
+    await db.run(
+      `INSERT INTO licenses (product, id, status, activated_at, modified_at) VALUES (?, 'lic_1', 'active', ?, ?)`,
+      OWNER,
+      NOW,
+      NOW,
+    );
+    stale = true;
+    for (const body of [publish, licence]) {
+      const res = await admin("POST", tokens(), body);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({
+        error: { code: "step_up_required" },
+      });
+    }
+    expect(await db.all("SELECT 1 FROM registry_tokens")).toEqual([]);
+    stale = false;
+    expect((await admin("POST", tokens(), publish)).status).toBe(201);
+    expect((await admin("POST", tokens(), licence)).status).toBe(201);
+  });
+
+  it("revoking needs none", async () => {
+    const minted = await (await admin("POST", tokens(), publish)).json();
+    stale = true;
+    const res = await admin("POST", tokens(`/${minted.view.tokenId}/revoke`));
+    expect(res.status).toBe(200);
+    expect((await admin("POST", tokens("/revoke-all"), {})).status).toBe(200);
   });
 });

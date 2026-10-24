@@ -268,6 +268,24 @@ export const DOCS_TIERS: ReadonlyArray<
   ...SEARCH_BUNDLES,
 ];
 
+/**
+ * `/docs/_astro/<name>.<hash>.<ext>` -> `/docs/_astro/<name>.<ext>`: the key form of
+ * `DOCS_ASSET_TIERS`, which leaves the build's content hash out so the generated file does not
+ * depend on the machine. Only a direct child of `/docs/_astro/` is rewritten, and the hash is
+ * exactly 8 base64url characters before the last extension; any other path comes back unchanged
+ * (and so is looked up as is). Pinned to the generator's copy by `docsTiersParity.test.ts`.
+ */
+export function stripAstroHash(assetPath: string): string {
+  const prefix = "/docs/_astro/";
+  if (!assetPath.startsWith(prefix)) return assetPath;
+  return (
+    prefix +
+    assetPath
+      .slice(prefix.length)
+      .replace(/^([^/]+)\.[A-Za-z0-9_-]{8}(\.[A-Za-z0-9]+)$/, "$1$2")
+  );
+}
+
 /** The tier of a resolved asset path (`docsAssetPath`'s output); `null` (unsafe) is `admin`. */
 export function docsTierOf(assetPath: string | null): DocsTier {
   if (assetPath === null) return "admin";
@@ -281,7 +299,11 @@ export function docsTierOf(assetPath: string | null): DocsTier {
 export function docsTierRow(assetPath: string): DocsTier | null {
   // Per-file tiers the prefixes cannot say (`docsTiers.generated.ts`): a file only gated pages
   // load, and a moved-page redirect page at its target's tier.
-  const file = DOCS_ASSET_TIERS[assetPath] ?? DOCS_REDIRECT_TIERS[assetPath];
+  // The asset table is keyed without the build hash, so a request is looked up by its stable name.
+  const file =
+    DOCS_ASSET_TIERS[assetPath] ??
+    DOCS_ASSET_TIERS[stripAstroHash(assetPath)] ??
+    DOCS_REDIRECT_TIERS[assetPath];
   if (file !== undefined) return file;
   let best: (typeof DOCS_TIERS)[number] | null = null;
   for (const row of DOCS_TIERS) {

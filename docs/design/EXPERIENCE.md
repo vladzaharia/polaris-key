@@ -550,7 +550,7 @@ This journey is S-18's, and this document follows it:
   [mockup](experience/07-console-settings-desktop-dark.png)).
 - **ST-16's fan-out preview** and L2 confirm cover platform defaults that products inherit live.
 - **Save model:** scalar rows save per row with the registry's confirm level (L0 undo toast, L1
-  confirm, L2 typed); rich sections keep one sticky save bar with a pre-save diff (AO J4.3).
+  confirm, L3 typed); rich sections keep one sticky save bar with a pre-save diff (AO J4.3).
 - **History:** every row's clock opens ST-07's history drawer, with before → after from S-18's
   audit columns; the save toast offers **View change** (AO J4.2).
 - Platform settings show label and value; provenance (env var, deploy var, default) is the

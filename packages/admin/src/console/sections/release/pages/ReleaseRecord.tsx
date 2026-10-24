@@ -17,7 +17,7 @@ import {
 import {
   ACCESS_LABELS,
   label,
-  OUTLET_KIND_LABELS,
+  outletKindName,
 } from "../../../../lib/labels.js";
 import { statusOf } from "../../../../lib/status.js";
 import { Button } from "../../../../ui/Button.js";
@@ -417,7 +417,7 @@ function DistributionTab({
               className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm"
             >
               <span className="min-w-40 font-medium text-fg-strong">
-                {label(OUTLET_KIND_LABELS, o.kind)}{" "}
+                {outletKindName(o.kind)}{" "}
                 <span className="font-mono text-xs font-normal text-fg-muted">
                   {o.outletId}
                 </span>
@@ -507,7 +507,7 @@ export function rolloutRowsOf(
       (c) => c.releaseId === releaseId && c.outletId === o.outletId,
     );
     for (const rollout of cell?.rollouts ?? [])
-      rows.push({ rollout, outletName: label(OUTLET_KIND_LABELS, o.kind) });
+      rows.push({ rollout, outletName: outletKindName(o.kind) });
   }
   return rows;
 }

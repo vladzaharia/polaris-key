@@ -18,6 +18,24 @@ Filed from [F-33](F-33-personal-tokens-pkeyp-packages-read.md) by the program tr
 
 On staging already: F-33 slices 1 and 2 on staging (2db897218, 9e2ae1609): `core/accounts/personalTokens.ts`, migration 0120, `/api/me/tokens`, `personMayRead`, the portal Packages card and the console Personal tokens page.
 
+## Verified against the code (F-33b.1)
+
+Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code is the fact.
+
+- **(b) List documents already filter per deliverable.** Each listed package runs `authorizeFeedRead` with its own deliverable id, so person and licence principals are judged per package: PyPI simple index `services/distribution/registry/pypi/routes.ts:180-215`, Godot `listedPackages` `godot/routes.ts:168-190`, Swift identifiers `swift/routes.ts:460-500`. Cargo `config.json` names no package; npm, Maven, Go and OCI have no owner-level list. Item (b) becomes a cross-adapter conformance pin (F-33b.5), not new code; it fixes only a leak the pin finds.
+- **(d) Account-minted licence-bound tokens are already revoked** on detach, relink and account deletion (`onLicenseOwnershipEnded`, `core/accounts/subjectHooks.ts`), and re-checked at serve time (B-155, `registryTokens.ts` `resolveRow`). The gap was operator-minted ones (`portal_account_id IS NULL`), which outlived an ownership change. F-33b.1 closes it: the hook also revokes those, as `system`.
+- **Merge undo (deviation, B2).** Undo revokes every operator-minted token of each licence handed back, including ones minted for the returning account before the join (the hook cannot tell them apart). Decision: keep the over-revoke; it fails closed and the operator can re-mint. Pinned in `portalLinkAccounts.test.ts` (pre-join and window). The plan said merge undo was unchanged; that was wrong.
+- **One batch, an audit row, a skip flag.** The hook's two statements run in one `db.batch`; the operator half writes a `registry_token.revoke_all` audit row (platform actor, licence and count, no token); `settleLoser` passes `operatorTokens: false` because the winner keeps the licence. The revoke still runs after the move's own batch commits; folding it into that batch is a follow-up.
+- **(a) `pkeyci_` already reads with `release:publish`** (`CI_FEED_READ_SCOPE`). F-33b.2 adds the read-only `packages:read` scope.
+- **C4.** Role-granted access in `personMayRead` is ST-31.9's. No root-only Superadmin hook is added (D-F7).
+
+## Closeout (F-33b.7, 2026-10-22)
+
+- **Lead decision: minting a durable credential needs a fresh step-up.** The service-token mint (`binding: "service"`, a `(body)` row checked in the handler), `POST …/ci-tokens` and `PUT …/ci-publisher` (table rows with `stepUp: true`) refuse with 403 `step_up_required` without a console sign-in from the last 5 minutes. Revokes stay without one. The three dialogs (New token, Issue token…, the trusted-publisher drawer) turn into "Sign in again" and reopen with their entries.
+- **Correction:** ST-30c's break-glass realm is not in this tree, so the "break-glass is refused first" test waits for ST-30c.1.
+- **Docs:** `features/ship-builds/packages/index.md`, `build/install.mdx`, `start/concepts.md` (Service token row), `operate/console/keys-and-secrets.md`. `help/packages.md` names no per-product token. THREAT-MODEL: one "Service tokens (F-33b)" subsection.
+- Security review signed: REV-F33b PASS on 4270116a7. Lead fix list after it: `…/ci-tokens` `packages:read` joins the 500 cap; the revoke-all audit lists at most 100 ids. Owed when ST-30c.1 merges: see THREAT-MODEL "Service tokens (F-33b)".
+
 ## Goal
 
 `pkeyci_` packages:read, serve-time list filtering, the registry-clients two-owner row, revoke licence-bound tokens on unlink. Done when every acceptance criterion holds and the green gate passes.
@@ -44,13 +62,13 @@ On staging already: F-33 slices 1 and 2 on staging (2db897218, 9e2ae1609): `core
 
 ## Acceptance criteria
 
-- [ ] New product service tokens are `pkeyci_` with `packages:read`; `registry_tokens` keeps only licence-bound tokens
-- [ ] List documents are filtered at serve time per ecosystem adapter
-- [ ] The `registry-clients.yml` row over two owners exists
-- [ ] Unlinking a licence revokes its licence-bound tokens (test; threat-model row)
-- [ ] Existing `pkeyr_` tokens keep working until expiry
-- [ ] Security review signed
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] New product service tokens are `pkeyci_` with `packages:read`; `registry_tokens` keeps only licence-bound tokens
+- [x] List documents are filtered at serve time per ecosystem adapter
+- [x] The `registry-clients.yml` row over two owners exists
+- [x] Unlinking a licence revokes its licence-bound tokens (test; threat-model row)
+- [x] Existing `pkeyr_` tokens keep working until expiry
+- [x] Security review signed (REV-F33b, 2026-10-22, PASS on 4270116a7 after one fix round)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. (Scoped suites, typecheck, docs lint/build/links and `gen --check` ran; the full local gate, ui:lint, workerd and native SDK lanes did not: CI runs them.)
 
 ## Verify
 

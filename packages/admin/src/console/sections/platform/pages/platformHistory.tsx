@@ -13,17 +13,10 @@ import { fromSeconds } from "../../../../lib/format.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
-import {
-  fetchSettingsHistory,
-  formatPlatformValue,
-  type HistoryPage,
-} from "./platformSettingRow.js";
-import { qk } from "../../../data/queries.js";
+import { formatPlatformValue } from "./platformSettingRow.js";
+import { fetchSettingsHistory, type HistoryPage } from "../data.js";
+import { platformReads } from "../data.js";
 import { SettingsSection } from "../../../templates/Settings.js";
-
-function fetchFirstHistoryPage(): Promise<HistoryPage> {
-  return fetchSettingsHistory(null);
-}
 
 function snapshotValue(raw: unknown): unknown {
   return raw && typeof raw === "object" && "effective" in raw
@@ -36,10 +29,7 @@ export function HistorySection({
 }: {
   settings: PlatformSetting[];
 }): React.ReactElement {
-  const history = useQuery({
-    queryKey: qk.platformSettingsHistory(),
-    queryFn: fetchFirstHistoryPage,
-  });
+  const history = useQuery(platformReads.settingsHistory());
   const [extra, setExtra] = React.useState<HistoryPage | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);

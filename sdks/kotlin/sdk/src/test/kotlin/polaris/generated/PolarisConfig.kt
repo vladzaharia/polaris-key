@@ -15,6 +15,8 @@ import im.plrs.key.update.UpdateClientOptions
  * Polaris Key configuration for acme:
  *
  *     val client = PolarisKeyClient.create(PolarisConfig.clientOptions(version = BuildConfig.VERSION_NAME))
+ *
+ * Config reads use the 0.9 names: `client.config.get(key, default)`, `getConfigSource(key)`, `getSecret(key)`.
  */
 public object PolarisConfig {
     public const val PRODUCT_SLUG: String = "acme"

@@ -82,3 +82,20 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set LX-33 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set LX-33 done`.
+
+## Corrections (2026-10-22)
+
+Verified against the code by the LX-33 slice plan (`_lead/plans/LX-33-slices.md` §0); the code is the fact.
+
+1. `core/authz.ts:150` has moved. The intersect is `tighterMin`/`tighterMax` in `packages/worker/src/core/licensing/entitlements.ts:72-90`; LX-32's resolver calls it (`core/licensing/terms.ts:152-161`) and `injectAdminPolicy` stamps the result (`entitlements.ts:200-245`).
+2. The console Limits form with **Override** already exists (`packages/admin/src/console/sections/license/components/LimitsTable.tsx`). LX-33 changes its sources, not its shape.
+3. "dev includes beta" is already applied by the server-side tier and licence write paths (`withIncludedChannels`, `core/channels.ts:119`; P2-08) and WIRE-CONTRACT-V4 §5.1 says so. Missing: the manifest path (tier channels are stored as declared: `shared-manifest/src/index.ts:5292` plus ingest) and the console showing it.
+4. The owner note (2026-10-07) overrides the "rule-9 warnings": a removed manifest field is an error that names its replacement (the ST-38 precedent, `shared-manifest/src/index.ts:2996-3008`). Each field has three spellings (`/product/*`, root, `/licensing/*`; `spellings.ts:172-199`).
+5. Tier offline days exist (`tiers.policy_offline_grace_days`, LX-08; manifest `policyOfflineGraceDays`), but the tier admin API, `upsertTier` and TierForm do not write them.
+6. The keepVersion clamp does not exist yet (LX-41). LX-33 adds an identity clamp seam in its place.
+7. Seat packs do not exist yet (LX-35/LX-14). "Seat packs add" becomes an `extraSeats` input that is 0 until LX-35.
+8. The platform constants are `DEFAULT_DEVICE_LIMIT = 5` and `DEFAULT_MAX_OFFLINE_DAYS = 30` (`core/settings/platform.ts:47-52`). djdl's defaults equal them (`products/djdl/product.json:9-10`) and its only tier sets `policyDeviceLimit: 5`.
+9. The P0-49 job belongs to License (`licenses` and `tiers` are owned by `license`, `db/owners.ts`). It is contributed through `services/license/index.ts` `contributes.migrations`, like identity's `platformConnectionSeedJob`. The operator runs it with `pkey migrate list|dry-run|report` (`cli/src/migrate.ts`) and applies from the console session.
+10. DOC-12a is still todo, so there is no changelog collection with `replaces` yet. The Upgrade row follows ST-38's hand-written section in `packages/docs/src/content/docs/build/upgrade-to-0-9.md`.
+
+Also recorded by LX-33.1: the schema files are `0129_a_default_tier.sql` and `0129_b_index_assertion.sql`. The assertion must sort after the file that creates `idx_tiers_implicit`, and `0129_b` sorts before `0129_default_tier`, hence the `_a` (the 0105_g/0105_h precedent). The lead renumbers both at merge time and keeps the `_a`/`_b` order.

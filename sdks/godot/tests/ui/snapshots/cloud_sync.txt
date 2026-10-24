@@ -1,0 +1,20 @@
+== synced ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Synced 2 minutes ago"
+== syncing ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Syncing…"
+== offline ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Offline · changes sync when you reconnect"
+== conflict, Review offered ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Some changes conflict."
+Card/Body/Action: Button "Review" [focus 1]
+== error ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Couldn't sync. Try again later."
+== error: signed out ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "You're signed out."
+Card/Body/Action: Button "Sign in to sync" [focus 1]

@@ -1323,6 +1323,8 @@ jobs:
           export PKEY_TEST_TIMEOUT=900
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
+          # The newest editor runs the UI matrix on both presentation paths (scrim and opaque page).
+          if [ "${{ matrix.godot }}" = 4.7.2 ]; then export PKEY_UI_MATRIX_PATHS=both; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"

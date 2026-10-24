@@ -13,11 +13,7 @@ import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   parseSentryRelease,
   sentrySignature,
@@ -35,6 +31,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 /** A placeholder — never a real Sentry client secret. */
 const CLIENT_SECRET = "sentry-test-client-secret-0000";
@@ -51,8 +48,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -409,8 +407,11 @@ describe("confirming and dismissing a candidate", () => {
       ].includes(r.action),
     );
     expect(audits.map((a) => [a.action, a.actor_sub])).toEqual([
-      ["distribution.rollout.halt", "u1"],
-      ["distribution.sentry.candidate.confirm", "u1"],
+      ["distribution.rollout.halt", await consoleActor(w.env, w.db, "u1")],
+      [
+        "distribution.sentry.candidate.confirm",
+        await consoleActor(w.env, w.db, "u1"),
+      ],
     ]);
     const again = await admin(
       w,

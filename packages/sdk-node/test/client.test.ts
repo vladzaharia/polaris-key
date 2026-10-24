@@ -257,17 +257,17 @@ describe("PolarisKeyClient — activation + reads", () => {
     expect(client.isLicensed()).toBe(true);
 
     // …from the LICENSE document
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
-    expect(client.license.isEntitled("notAThing")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({ polarisVpn: true });
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("notAThing")).toBe(false);
+    expect(client.entitlements.all()).toEqual({ polarisVpn: true });
     expect(client.license.getProfile()?.firstName).toBe("Ada");
     expect(client.license.getLicenseId()).toBe("lic_1");
     expect(client.license.activation()).toBe("token");
 
     // …from the CONFIG document
-    expect(client.getConfig("quality.floor", "any")).toBe("flac");
-    expect(client.config.getConfig("quality.floor", "any")).toBe("flac");
-    expect(client.getConfig("missing.key", "fallback")).toBe("fallback");
+    expect(client.config.get("quality.floor", "any")).toBe("flac");
+    expect(client.config.get("quality.floor", "any")).toBe("flac");
+    expect(client.config.get("missing.key", "fallback")).toBe("fallback");
     expect(client.config.getConfigSource("quality.floor")).toBe("enforced");
     expect(client.config.getSecret("serviceA.oauth")).toBe("tok");
     expect(client.config.getSecret("nope")).toBeNull();
@@ -284,11 +284,11 @@ describe("PolarisKeyClient — activation + reads", () => {
       store: new InMemoryStore(PRODUCT),
       fetchImpl: mockFetch().impl,
     });
-    expect(client.getConfig("quality.floor", "def")).toBe("def");
+    expect(client.config.get("quality.floor", "def")).toBe("def");
     expect(client.config.getSecret("x")).toBeNull();
     expect(client.config.schemaVersion()).toBeNull();
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
     expect(client.license.getLicenseId()).toBeNull();
     expect(client.license.activation()).toBeNull();
@@ -328,9 +328,9 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(cache).not.toHaveProperty("etag");
 
     // …and the derived state still round-trips through the public surface.
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
-    expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
+    expect(typeof client.currentDevice().lastVerifiedAt).toBe("number");
 
     // §6 — the report goes to `POST /<p>/devices/report` (not `/config/report`), bearing the
     // `pkeyt_` device token.
@@ -423,8 +423,8 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(m.count("/license/token")).toBe(1);
     // BOTH documents recovered on the shared re-acquire.
     expect(client.status().status).toBe("ok");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     const cache = await store.readCache();
     expect(cache?.docs?.license).toBeDefined();
     expect(cache?.docs?.config).toBeDefined();
@@ -477,7 +477,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
       allowedRange: { min: "2.0.0" },
     });
     // …and the CONFIG service is untouched by a license block (§2.2, D-08).
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
   });
 
   it("403 {error:{code:'channel_not_allowed'}} → channel-not-entitled, with no allowedRange", async () => {
@@ -508,7 +508,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
       fetchImpl: m.impl,
     });
     await client.license.activateWithKey(KEY);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
 
     // A build gate closes…
     m.opts.licenseBlocked = true;
@@ -527,7 +527,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     m.opts.notModified = true;
     const res = await client.sync();
     expect(res.documents.config?.kind).toBe("unchanged");
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
     expect(client.getSyncState().blocked).toBeNull();
     expect(client.status().status).toBe("needs-activation");
 
@@ -535,7 +535,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     m.opts.notModified = false;
     const res2 = await client.sync({ force: true });
     expect(res2.documents.license?.kind).toBe("applied");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.status().status).toBe("ok");
   });
 });
@@ -582,8 +582,8 @@ describe("PolarisKeyClient — offline-first init", () => {
     });
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
-    expect(client.getConfig("quality.floor", "x")).toBe("flac");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.config.get("quality.floor", "x")).toBe("flac");
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.license.getLicenseId()).toBe("lic_cached");
     // §4.2 — every counter is recomputed from what just re-verified, not read off the file.
     expect(client.getSyncState().highWaterMark).toBe(now);
@@ -658,7 +658,7 @@ describe("PolarisKeyClient — device management surface", () => {
         new Response("{}", { status: 200 })) as typeof fetch,
     });
 
-    expect(client.getCurrentDevice()).toMatchObject({
+    expect(client.currentDevice()).toMatchObject({
       id: deviceId,
       current: true,
       status: "needs-activation",

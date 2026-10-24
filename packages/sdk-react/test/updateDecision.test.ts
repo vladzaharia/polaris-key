@@ -362,7 +362,7 @@ describe("BrowserAdapter.boot() — the guard's skipVersion (update.bootguard, S
     ]);
     // An update-only product (no licence gate to stop the boot), so the boot reaches `decide`.
     const adapter = adapterFor(srv, memoryStore({ deviceId: "dev_1" }), {
-      expectServices: services("update"),
+      expectedServices: ["update"],
       bootGuard: {
         storage: {
           getItem: (k) => slots.get(k) ?? null,
@@ -736,9 +736,10 @@ describe("BrowserAdapter.decideUpdate() — the effective clock", () => {
 describe("desktop decideUpdate() — the host decides", () => {
   function desktop(invoke?: PolarisBridge["invoke"], update = true) {
     const caps = update ? services("update") : services();
+    const expected: Array<"update"> = update ? ["update"] : [];
     const bridge = makeFakeBridge(okBridgeState({ capabilities: caps }));
     if (invoke) bridge.invoke = invoke;
-    return desktopAdapter({ bridge, expectServices: caps });
+    return desktopAdapter({ bridge, expectedServices: expected });
   }
 
   it("forwards only the arguments given", async () => {

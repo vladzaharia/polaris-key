@@ -67,6 +67,14 @@ public object ErrorCode {
     public const val licenseOwned: String = "license_owned"
     public const val licenseEmailBound: String = "license_email_bound"
     public const val accountRequired: String = "account_required"
+    public const val cursorExpired: String = "cursor_expired"
+    public const val clientMismatch: String = "client_mismatch"
+    public const val valueInvalid: String = "value_invalid"
+    public const val opInvalidForPolicy: String = "op_invalid_for_policy"
+    public const val settingNotSynced: String = "setting_not_synced"
+    public const val collectionUnknown: String = "collection_unknown"
+    public const val quotaExceeded: String = "quota_exceeded"
+    public const val writesPaused: String = "writes_paused"
     public const val emailMismatch: String = "email_mismatch"
     public const val linkConflict: String = "link_conflict"
     public const val lastLink: String = "last_link"
@@ -246,6 +254,14 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "license_owned",
     "license_email_bound",
     "account_required",
+    "cursor_expired",
+    "client_mismatch",
+    "value_invalid",
+    "op_invalid_for_policy",
+    "setting_not_synced",
+    "collection_unknown",
+    "quota_exceeded",
+    "writes_paused",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -425,6 +441,14 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "license_owned" to "wire",
     "license_email_bound" to "wire",
     "account_required" to "wire",
+    "cursor_expired" to "wire",
+    "client_mismatch" to "wire",
+    "value_invalid" to "wire",
+    "op_invalid_for_policy" to "wire",
+    "setting_not_synced" to "wire",
+    "collection_unknown" to "wire",
+    "quota_exceeded" to "wire",
+    "writes_paused" to "wire",
     "email_mismatch" to "wire",
     "link_conflict" to "wire",
     "last_link" to "wire",
@@ -1317,6 +1341,42 @@ public val ACTIVATION_RESULT_VALUES: List<String> = listOf(
     "error",
 )
 
+/** How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it. */
+public object SettingVisibility {
+    public const val editable: String = "editable"
+    public const val readonly: String = "readonly"
+    public const val hidden: String = "hidden"
+}
+
+/** Every `SettingVisibility` value, in source order. */
+public val SETTING_VISIBILITY_VALUES: List<String> = listOf(
+    "editable",
+    "readonly",
+    "hidden",
+)
+
+/** The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21. */
+public object EventKind {
+    public const val license: String = "license"
+    public const val entitlement: String = "entitlement"
+    public const val config: String = "config"
+    public const val updateavailable: String = "updateAvailable"
+    public const val packs: String = "packs"
+    public const val store: String = "store"
+    public const val cloudsync: String = "cloudSync"
+}
+
+/** Every `EventKind` value, in source order. */
+public val EVENT_KIND_VALUES: List<String> = listOf(
+    "license",
+    "entitlement",
+    "config",
+    "updateAvailable",
+    "packs",
+    "store",
+    "cloudSync",
+)
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 public object HeaderName {
     public const val arch: String = "X-PKey-Arch"
@@ -1478,6 +1538,72 @@ public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
 
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
+
+/** Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`). */
+public const val SYNC_CLIENT_ID_PATTERN: String = "^c_[A-Za-z0-9_-]{22}\$"
+
+/** Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
+public const val SYNC_DEBOUNCE_MS: Int = 2000
+
+/** Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`). */
+public const val SYNC_HLC_PATTERN: String = "^[0-9a-f]{12}:[0-9a-f]{4}\$"
+
+/** Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_IMPORT_HLC: String = "000000000000:0000"
+
+/** Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_KEY_PATTERN: String = "^[A-Za-z0-9._:-]{1,128}\$"
+
+/** Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_CLOCK_SKEW_MS: Int = 300000
+
+/** Cloud Sync: `SYNC_MAX_MERGE_MEMBERS` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_MERGE_MEMBERS: Int = 256
+
+/** Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_MUTATIONS: Int = 100
+
+/** Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_PUSH_BYTES: Int = 262144
+
+/** Cloud Sync: `SYNC_MAX_RECORD_BYTES` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_RECORD_BYTES: Int = 65536
+
+/** Cloud Sync: `SYNC_MAX_SETTINGS` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_SETTINGS: Int = 256
+
+/** Cloud Sync: `SYNC_MAX_SETTINGS_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_SETTINGS_BYTES: Int = 65536
+
+/** Cloud Sync: `SYNC_MAX_UNION_ELEMENT_BYTES` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_UNION_ELEMENT_BYTES: Int = 1024
+
+/** Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_VALUE_BYTES: Int = 8192
+
+/** Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
+public const val SYNC_PENDING_DAYS: Int = 30
+
+/** Cloud Sync: `SYNC_PULL_PAGE_CHANGES` (WIRE-CONTRACT-V4 §13.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_PULL_PAGE_CHANGES: Int = 500
+
+/** Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_QUOTA_BYTES: Int = 268435456
+
+/** Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`). */
+public const val SYNC_SAVE_SLOTS: Int = 16
+
+/** Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
+public const val SYNC_SIGNOUT_FLUSH_MS: Int = 5000
+
+/** Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`). */
+public const val SYNC_TOMBSTONE_DAYS: Int = 90
+
+/** Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_UNLICENSED_QUOTA_BYTES: Int = 1048576
+
+/** Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`). */
+public const val SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS: Int = 300
 
 /** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
 public const val PAIRWISE_SUBJECT_PATTERN: String = "^ps_[A-Za-z0-9_-]{22}\$"

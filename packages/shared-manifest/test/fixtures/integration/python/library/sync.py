@@ -7,6 +7,6 @@ client = PolarisKeyClient.create(**polaris_config.CONFIG, version="1.4.2")  # yo
 
 # A catalog key with a `user.sync` block roams once the person signs in. The routes ship
 # later: today the value stays on this device.
-volume = client.config.setting("audio.musicVolume", 0.8)
+volume = client.config.setting("audio.musicVolume")
 volume.set(0.8)
 print(volume.value)

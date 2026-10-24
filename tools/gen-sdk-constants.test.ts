@@ -48,6 +48,7 @@ import {
   words,
   type CopyDoc,
   type Sources,
+  syncExports,
 } from "./gen-sdk-constants.js";
 import { capabilityDigest } from "./capabilities.js";
 
@@ -66,6 +67,50 @@ const RENDERERS = {
 const withSources = (patch: Partial<Sources>): Sources => ({
   ...SOURCES,
   ...patch,
+});
+
+describe("the Cloud Sync constants (U-05.2)", () => {
+  it("syncExports lists every SYNC_* export with the subsection from its doc comment", () => {
+    const names = Object.keys(SOURCES.protocol).filter((n) =>
+      n.startsWith("SYNC_"),
+    );
+    const found = syncExports(SOURCES.protocol, SOURCES.protocolSyncSource!);
+    expect(found.map((f) => f.name).sort()).toEqual(names.sort());
+    expect(found.length).toBe(22);
+    expect(
+      found.find((f) => f.name === "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS")
+        ?.section,
+    ).toBe("§13.9");
+  });
+
+  it("throws on a non-scalar export, a missing doc comment and an empty module", () => {
+    const doc = "/** §13.1: x. */\nexport const SYNC_A = 1;\n";
+    expect(syncExports({ SYNC_A: 1 }, doc)).toEqual([
+      { name: "SYNC_A", section: "§13.1" },
+    ]);
+    expect(() => syncExports({ SYNC_A: 1.5 }, doc)).toThrow(/SYNC_A/);
+    expect(() => syncExports({ SYNC_A: [1] }, doc)).toThrow(/SYNC_A/);
+    expect(() =>
+      syncExports({ SYNC_A: 1 }, "export const SYNC_A = 1;"),
+    ).toThrow(/doc comment/);
+    expect(() => syncExports({}, doc)).toThrow(/no SYNC_/);
+  });
+
+  it("the seven U-05 codes are wire codes of the sync service", () => {
+    for (const code of [
+      "cursor_expired",
+      "client_mismatch",
+      "value_invalid",
+      "op_invalid_for_policy",
+      "setting_not_synced",
+      "quota_exceeded",
+      "writes_paused",
+    ]) {
+      const e = SOURCES.errors.find((x) => x.code === code);
+      expect(e?.kind, code).toBe("wire");
+      expect(e?.service, code).toBe("sync");
+    }
+  });
 });
 
 describe("the sources", () => {
@@ -231,6 +276,9 @@ describe("the sources", () => {
     // PX-W13: the identity subpath's constants ride along with core's.
     expect(SOURCES.protocol.DEVICE_LABEL_MAX_CODEPOINTS).toBe(64);
     expect(SOURCES.protocol.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
+    // U-05.2: the sync subpath's constants ride along (WIRE-CONTRACT-V4 §13).
+    expect(SOURCES.protocol.SYNC_MAX_MUTATIONS).toBe(100);
+    expect(SOURCES.protocol.SYNC_QUOTA_BYTES).toBe(268_435_456);
     expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
     expect(SOURCES.protocol.MAX_JSON_DEPTH).toBe(64);
     expect(SOURCES.protocol.MAX_RECORD_JWS_BYTES).toBe(88844);

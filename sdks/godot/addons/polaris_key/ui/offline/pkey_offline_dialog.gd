@@ -113,6 +113,7 @@ func _build() -> void:
 			_paste.accept_event()
 			_on_import())
 	_step2.add_child(_paste)
+	PKeyFocusRing.attach(_paste)
 	_drop = label(_step2, "DropHint", "PKeyMuted")
 	_message = label(_stack, "Message")
 	loading_bar(_stack)
@@ -269,6 +270,7 @@ func _render() -> void:
 	show_text(_drop, t.text("offline_drop_hint") if not web and OS.has_feature("pc") else "")
 	show_text(_message, message)
 	_message.theme_type_variation = "PKeyMuted" if message_ok else "PKeyError"
+	fx_error(message if message != "" and not message_ok else "")
 	_import.text = t.text("offline_import")
 	set_loading(busy)
 	set_process(busy)
@@ -292,8 +294,9 @@ func _cancel() -> bool:
 
 
 func _close_dialog() -> void:
-	closed.emit()
-	restore_opener()
+	close_then(func() -> void:
+		closed.emit()
+		restore_opener())
 
 
 func _on_copy() -> void:

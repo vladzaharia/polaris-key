@@ -10,7 +10,7 @@ import { HelpCard } from "../components/product/HelpCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
 import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveEntryConfirm } from "../components/RemoveEntryConfirm.js";
-import { portalKeys, useProductDownloads } from "../data.js";
+import { useProductDownloads } from "../data.js";
 import { consumeHeadingFocus } from "../focus.js";
 import {
   quickAction,
@@ -23,6 +23,7 @@ import {
   resolveDevice,
 } from "../model/product.js";
 import { focusPageHeading, href, navigate } from "../router.js";
+import { qk } from "../queries.js";
 
 /**
  * The product page of an open product in the library through an entry (PS-04, notes/S-21 §6.4,
@@ -99,7 +100,7 @@ export function EntryProductBody({
             setAsk(0);
             void qc
               .refetchQueries(
-                { queryKey: portalKeys.library },
+                { queryKey: qk.library() },
                 { cancelRefetch: false },
               )
               .then(() => focusPageHeading());

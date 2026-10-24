@@ -35,7 +35,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { ActivityPage } =
   await import("../src/console/sections/core/pages/Activity.js");
 
@@ -195,7 +195,7 @@ describe("Core → Activity", () => {
 
   it("surfaces a load error with a working retry", async () => {
     const user = userEvent.setup();
-    activity.mockRejectedValueOnce(new ApiError(500));
+    activity.mockRejectedValueOnce(new HttpError(500));
     mount();
     await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Ada Lovelace")).toBeTruthy();

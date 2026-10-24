@@ -25,6 +25,36 @@ The channel a build came from also sets what an install may do. See [Channel cap
 
 [Release](/docs/features/ship-builds/releases/) says what exists; [Update](/docs/features/ship-builds/updates/) tells an installed copy what to do next; Distribution sits between them and owns delivery.
 
+## Which channels a product sees
+
+The console shows a product only the channels it can use. A channel is in scope when its platforms and deliverable kinds meet the product's. The full catalogue is on [Channels](/docs/reference/channels/).
+
+A product's platforms come from, firmest first:
+
+1. its **builds**: the newest non-yanked app release on each release channel;
+2. the artifacts `.pkey/release` **declares** in `deliverables.app.artifacts`, published or not;
+3. a `direct` channel that names its platforms;
+4. the platforms planned in `distribution.intendedPlatforms`, before any build exists.
+
+Each platform carries the CPU architectures and file formats it ships. Architecture is a fact beside the OS: an arm64-only Windows build offers no x64 download and no x64 winget installer, and the Mac App Store takes only a `universal` or `arm64` macOS build.
+
+A Windows-only product sees no Apple channel in the console, the portal or `pkey validate`. A product with no platform facts yet hides nothing.
+
+A channel the product declared stays listed even when out of scope, with an **Out of scope** pill. A direct link to a hidden channel opens a page that says so.
+
+Each channel in scope has one of four states:
+
+| State        | Means                                                                                |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `not_set_up` | Nothing declared yet. It offers **one click** when the credentials are already held. |
+| `ready`      | Set up, with a fitting build, not yet live.                                          |
+| `live`       | Customers can get a build through it.                                                |
+| `attention`  | A build exists but none fits, or a credential is expiring.                           |
+
+**Not using** is a choice you record in Core's setup: that channel stops asking for setup. **Setting up** is not a state; it is progress shown while a run is under way.
+
+The read model is `GET /manage/api/products/<slug>/distribution/channels`, the same data the product summary carries as `platforms` and `channels`. A credential appears in it only as a yes or no, never as a key or an id.
+
 ## The chain: release ← distribution ← update
 
 The release, distribution and update services split everything a product delivers — its app and and its content packs —

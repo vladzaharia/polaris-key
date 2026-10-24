@@ -330,14 +330,14 @@ The kit has a clock you move with `kit.clock.advance(seconds)`. For a Hono app, 
 
 ## Read managed config on the server
 
-A server reads managed config as a device with its own license, so it never takes a customer's seat. Give it a license key whose tier has a high device limit. `serverClient()` is the normal client with a memory store, a device id that survives a restart, the key from `PKEY_LICENSE_KEY`, no device reports and a background refresh.
+A server reads managed config as a device with its own license, so it never counts against a customer's device limit. Give it a license key whose tier has a high device limit. `serverClient()` is the normal client with a memory store, a device id that survives a restart, the key from `PKEY_LICENSE_KEY`, no device reports and a background refresh.
 
 Set the key and a stable device id in the server's environment:
 
 - `PKEY_LICENSE_KEY` is the server's license key.
 - `PKEY_DEVICE_ID` is a 32-character id you generate once. Or set `PKEY_DEVICE_ID_FILE` to a file on a volume, and the first start writes an id there.
 
-A server with neither refuses to start, because a new id on each restart would take a new seat each time.
+A server with neither refuses to start, because a new id on each restart would count as a new device each time.
 
 ```ts title="Node: config.ts"
 import { serverClient } from "@polaris-key/node";
@@ -346,7 +346,7 @@ import { polarisConfig } from "./polaris.config";
 const client = await serverClient({ ...polarisConfig, version: "1.4.2" });
 
 export const runConcurrency = (): number =>
-  client.config.getConfig("run.concurrency", 3);
+  client.config.get("run.concurrency", 3);
 ```
 
 `serverClient()` resolves once the key is activated and the first sync is done. A refused key throws the server's code, for example `device_limit`. Per-user config is not offered: the device's config document carries secrets, so never forward it to a browser.

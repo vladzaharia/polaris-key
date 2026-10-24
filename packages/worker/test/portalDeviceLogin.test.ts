@@ -364,6 +364,24 @@ describe("approving a new device", () => {
     expect(sent[0]!.text).toContain("Open Polaris Locker: ");
   });
 
+  it("sends the library notice when the approved device's sign-in sweep joins a waiting license (LX-27c.3)", async () => {
+    const { env, db, sent } = await setup();
+    const me = await signIn(env, db, "ana@example.com");
+    await db.run(
+      `INSERT INTO licenses (product, id, status, email, activated_at, origin, modified_at)
+       VALUES ('djdl', 'lic_wait', 'active', 'ana@example.com', 1, 'admin', 1)`,
+    );
+    const s = await start(env, db);
+    expect((await decide(env, db, me, s.code, "approve")).status).toBe(200);
+    expect((await poll(env, db, s)).status).toBe(200);
+    const owner = await db.first<{ account_id: string | null }>(
+      "SELECT account_id FROM licenses WHERE id = 'lic_wait'",
+    );
+    expect(owner?.account_id).toBe(me.accountId);
+    const notices = sent.filter((m) => m.subject.includes("library"));
+    expect(notices.map((m) => m.to)).toEqual(["ana@example.com"]);
+  });
+
   it("denies: the poll answers denied and nobody is signed in", async () => {
     const { env, db, sent } = await setup();
     const me = await signIn(env, db, "ana@example.com");

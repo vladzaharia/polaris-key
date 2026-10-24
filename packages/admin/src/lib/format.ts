@@ -86,6 +86,37 @@ export function formatDateTime(ms: number, opts: FormatOptions = {}): string {
   }).format(ms);
 }
 
+/**
+ * When something began, in the viewer's zone and with no zone name: the time of day for today
+ * ("1:14 PM"), the date and time for an earlier day ("Oct 19, 3:07 PM"), with the year only when
+ * it is not the current one ("Sep 17, 2025, 3:07 PM").
+ */
+export function formatSince(
+  ms: number,
+  now: number = Date.now(),
+  opts: FormatOptions = {},
+): string {
+  const clock = new Intl.DateTimeFormat(opts.locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: opts.timeZone,
+  }).format(ms);
+  const part = (t: number, o: Intl.DateTimeFormatOptions): string =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: opts.timeZone, ...o }).format(
+      t,
+    );
+  if (part(ms, {}) === part(now, {})) return clock;
+  const sameYear =
+    part(ms, { year: "numeric" }) === part(now, { year: "numeric" });
+  const date = new Intl.DateTimeFormat(opts.locale, {
+    day: "numeric",
+    month: "short",
+    year: sameYear ? undefined : "numeric",
+    timeZone: opts.timeZone,
+  }).format(ms);
+  return `${date}, ${clock}`;
+}
+
 /** Tables: relative under 7 days ("3 hr. ago"), else the date ("3 Sep 2026"). */
 export function formatTableTime(
   ms: number,

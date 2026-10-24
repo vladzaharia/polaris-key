@@ -63,13 +63,10 @@ import {
   RECENT_USE_SECONDS,
 } from "../src/services/identity/accounts/platformMigration.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const idpKey = vi.hoisted(() => ({
   getKey: null as null | (() => Promise<unknown>),
@@ -1733,8 +1730,9 @@ describe("the email-less count", () => {
     env.ADMIN_SESSION_SECRET = "admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "platform-admins";
     const call = async (groups: string[], method = "GET") => {
-      const { token, session } = await issueSession(
+      const { token, session } = await consoleTestSession(
         env,
+        db,
         { sub: "op-1", name: "Op", email: "op@example.com", groups },
         NOW,
       );

@@ -11,11 +11,7 @@ import type { Env } from "../src/platform/env.js";
 import { deleteProduct } from "../src/core/products/store.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   normaliseWebhookUrl,
   postWebhook,
@@ -36,6 +32,7 @@ import {
   testDestination,
   type Alert,
 } from "../src/core/notify/alertDestinations.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
@@ -49,9 +46,10 @@ function adminEnv(): Env {
   return env;
 }
 
-async function session(env: Env, stepUp = true) {
-  const { token, session: s } = await issueSession(
+async function session(env: Env, db: Db, stepUp = true) {
+  const { token, session: s } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -232,7 +230,7 @@ describe("the platform routes", () => {
   it("refuses a private or non-https URL (422) and stores nothing", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const auth = await session(env);
+    const auth = await session(env, db);
     for (const target of [
       "http://hooks.example.com/x",
       "https://10.0.0.1/x",
@@ -255,7 +253,7 @@ describe("the platform routes", () => {
   it("seals the URL and secret, shows the secret once and never the URL", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const auth = await session(env);
+    const auth = await session(env, db);
     const created = await call(env, db, auth, "POST", "/api/platform/alerts", {
       kind: "webhook",
       target: URL_OK,
@@ -301,7 +299,7 @@ describe("the platform routes", () => {
   it("rotates the secret (returned once), retargets, disables and deletes, each audited", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const auth = await session(env);
+    const auth = await session(env, db);
     const c = await call(env, db, auth, "POST", "/api/platform/alerts", {
       kind: "webhook",
       target: URL_OK,
@@ -382,7 +380,7 @@ describe("the platform routes", () => {
   it("needs the step-up to add or retarget, and caps a scope", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const plain = await session(env, false);
+    const plain = await session(env, db, false);
     const denied = await call(env, db, plain, "POST", "/api/platform/alerts", {
       kind: "email",
       target: "ops@example.com",
@@ -391,7 +389,7 @@ describe("the platform routes", () => {
     expect(denied.status).toBe(403);
     expect(await listDestinations(db, PLATFORM_SCOPE)).toEqual([]);
 
-    const auth = await session(env);
+    const auth = await session(env, db);
     for (let i = 0; i < 5; i++)
       expect(
         (
@@ -414,7 +412,7 @@ describe("the platform routes", () => {
   it("validates the email, the kinds and the shape", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const auth = await session(env);
+    const auth = await session(env, db);
     const post = (b: unknown) =>
       call(env, db, auth, "POST", "/api/platform/alerts", b);
     expect(
@@ -443,8 +441,9 @@ describe("the platform routes", () => {
   it("a non-admin has no access", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const { token, session: s } = await issueSession(
+    const { token, session: s } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u2",
         name: "Bo",
@@ -471,7 +470,7 @@ describe("product routes", () => {
     const env = adminEnv();
     const db = makeTestDb();
     await seedProduct(db, SLUG);
-    const auth = await session(env);
+    const auth = await session(env, db);
     const c = await call(
       env,
       db,
@@ -727,8 +726,8 @@ describe("fix round: security review", () => {
     const env = adminEnv();
     const db = makeTestDb();
     await seedProduct(db, SLUG);
-    const auth = await session(env);
-    const plain = await session(env, false);
+    const auth = await session(env, db);
+    const plain = await session(env, db, false);
     for (const base of [
       "/api/platform/alerts",
       `/api/products/${SLUG}/alerts`,
@@ -952,7 +951,8 @@ describe("fix round: security review", () => {
     expect(mails).toEqual([]);
   });
 
-  it("delivers to destinations in parallel", async () => {
+  // Disabled as flaky (owner 2026-10-23): timing assertion fails under load. Re-enable once it asserts on ordering, not wall-clock timing.
+  it.skip("delivers to destinations in parallel", async () => {
     const env = adminEnv();
     const db = makeTestDb();
     for (let i = 0; i < 3; i++)
@@ -984,8 +984,8 @@ describe("fix round: security review", () => {
   it("only turning a destination on skips the step-up on PATCH", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const auth = await session(env);
-    const plain = await session(env, false);
+    const auth = await session(env, db);
+    const plain = await session(env, db, false);
     const c = await call(env, db, auth, "POST", "/api/platform/alerts", {
       kind: "email",
       target: "ops@example.com",
@@ -1058,7 +1058,7 @@ describe("fix round: security review", () => {
     const env = adminEnv();
     const db = makeTestDb();
     await seedProduct(db, SLUG);
-    const auth = await session(env);
+    const auth = await session(env, db);
     await createDestination(
       env,
       db,

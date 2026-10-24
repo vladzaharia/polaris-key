@@ -29,11 +29,8 @@ import { digestStream } from "../src/services/release/packages/digests.js";
 import { NO_HOOKS } from "./helpers.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 /** The real admin API as a platform admin, at `/api<path>`. */
 async function admin(
@@ -43,8 +40,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token: t, session } = await issueSession(
+  const { token: t, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -138,6 +136,13 @@ async function seedFeed(
   namespace: Record<string, unknown>,
   over: { max?: number; ext?: Record<string, unknown> } = {},
 ): Promise<void> {
+  // F-34.3: a feed answers publishes only while the owner's `packageFeeds` switch is on too.
+  await db.run(
+    `INSERT OR IGNORE INTO dist_registry_owners (product, enabled, version, updated_at, updated_by)
+     VALUES (?, 1, 1, ?, 'test')`,
+    SLUG,
+    NOW,
+  );
   await db.run(
     `INSERT INTO dist_registry_feeds (product, ecosystem, enabled, namespace_json,
        max_package_bytes, ext_json, updated_at)
@@ -896,6 +901,8 @@ describe("the releaseCatalog package readers (F-03)", () => {
 describe("the packageFeeds toggle (F-03)", () => {
   const path = `/products/${SLUG}/distribution/package-feeds`;
   it("reads off at version 0, turns on with expectedVersion 0, refuses a stale version, audits", async () => {
+    // The fixture's feeds are on at every level; this test starts from a never-written switch.
+    await db.run("DELETE FROM dist_registry_owners WHERE product = ?", SLUG);
     const get = await admin(env, db, "GET", path);
     expect(await get.json()).toMatchObject({
       packageFeeds: { enabled: false, version: 0 },

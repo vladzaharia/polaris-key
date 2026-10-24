@@ -6,12 +6,13 @@ import { AuthNotice, AuthTitle, useStepFocus } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   type PortalDeviceLoginStart,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
-import { portalKeys } from "../../data.js";
 import { announceSignedIn } from "../../session.js";
+import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * Sign in with another device (SIGN-IN.md §3.11; PX-W14's wire): this browser shows a QR and an
@@ -60,7 +61,7 @@ export function DeviceStep({
             if (!alive) return;
             if (out.status === "approved") {
               announceSignedIn();
-              await qc.invalidateQueries({ queryKey: portalKeys.me });
+              await qc.invalidateQueries({ queryKey: qk.me() });
               return;
             }
             if (out.status === "denied") return setState({ kind: "denied" });
@@ -68,7 +69,7 @@ export function DeviceStep({
             poll(start, endsAt);
           } catch (err) {
             if (!alive) return;
-            if (err instanceof PortalApiError) {
+            if (err instanceof HttpError) {
               if (err.status === 410) return setState({ kind: "expired" });
               if (err.status === 403) return setState({ kind: "disabled" });
               // Slow down, never stop: a 429 is the network's, not the request's.
@@ -84,7 +85,7 @@ export function DeviceStep({
     };
     void (async () => {
       try {
-        const start = await portalApi.deviceLoginStart();
+        const start = await mutate("deviceLoginStart");
         if (!alive) return;
         const endsAt = Date.now() + start.expiresIn * 1000;
         setState({ kind: "waiting", start, endsAt });
@@ -167,7 +168,7 @@ export function DeviceStep({
       ) : (
         <AuthNotice>
           {state.kind === "error"
-            ? state.error instanceof PortalApiError &&
+            ? state.error instanceof HttpError &&
               (state.error.status === 429 ||
                 state.error.code === "rate_limited")
               ? t("signin.rateLimitedFew")

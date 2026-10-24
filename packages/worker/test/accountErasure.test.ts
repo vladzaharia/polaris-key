@@ -6,6 +6,7 @@
  * it after the back-off and the final batch removes every row; a double invoke is harmless; a
  * subject minted while the hooks ran is not orphaned.
  */
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,7 +27,6 @@ import {
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
-  mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import {
   PACKAGES_READ_SCOPE,
@@ -372,7 +372,7 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
 describe("closing the account closes its credentials", () => {
   it("a portal (licence-bound) registry token stops authenticating at once, while erasing", async () => {
     const w = await world();
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       w.env,
       w.db,
       {
@@ -407,6 +407,40 @@ describe("closing the account closes its credentials", () => {
     expect(after.resolved).toBeNull();
   });
 
+  it("F-33b.1: an operator-minted token on the account's licence is revoked by the erasure itself", async () => {
+    const w = await world();
+    const res = await mintCompat(
+      w.env,
+      w.db,
+      {
+        product: "acme",
+        label: "ops",
+        binding: "license",
+        licenseId: "lic-1",
+        createdBy: "admin:op",
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toMatchObject({
+      ok: true,
+    });
+    forgetRegistryTokens();
+    expect(
+      (
+        await lookupRegistryCredential(w.env, w.db, res.token, {
+          nowMs: NOW * 1000 + 1000,
+        })
+      ).resolved,
+    ).toBeNull();
+    expect(
+      await w.db.first(
+        "SELECT revoked_by, revoke_reason FROM registry_tokens WHERE token_id = ?",
+        res.view.tokenId,
+      ),
+    ).toEqual({ revoked_by: "system", revoke_reason: "account_deleted" });
+  });
+
   it("F-33: a personal token stops at once while erasing, and its row is gone once the erasure completes", async () => {
     const w = await world();
     const res = await mintAccountToken(
@@ -421,6 +455,19 @@ describe("closing the account closes its credentials", () => {
       NOW,
     );
     if (!res.ok) throw new Error(JSON.stringify(res));
+    // ST-34: an admin token goes the same way (revoked first, then deleted).
+    const adminTok = await mintAccountToken(
+      w.env,
+      w.db,
+      {
+        accountId: w.id,
+        label: "pkey login",
+        scope: "admin",
+        createdBy: `portal:${w.id}`,
+      },
+      NOW,
+    );
+    if (!adminTok.ok) throw new Error(JSON.stringify(adminTok));
     forgetRegistryTokens();
     expect(
       (
@@ -449,6 +496,13 @@ describe("closing the account closes its credentials", () => {
       await count(
         w.db,
         "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ?",
+        w.id,
+      ),
+    ).toBe(2);
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ? AND scope = 'admin' AND revoked_at IS NOT NULL AND revoke_reason = 'account_deleted'",
         w.id,
       ),
     ).toBe(1);

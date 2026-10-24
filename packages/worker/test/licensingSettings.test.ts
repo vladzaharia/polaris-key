@@ -23,11 +23,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { planRepoManifest } from "../src/services/release/linkExisting.js";
@@ -45,6 +41,7 @@ import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { withDefaultHead } from "./githubHead.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -134,8 +131,9 @@ async function linked(d: Decl = {}, at = NOW) {
     ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     at,
   );
@@ -390,7 +388,7 @@ describe("a console edit survives a resync, and Revert restores the manifest val
 
     const claim = await audits(ctx, "setting.claim");
     expect(claim.map((a) => [a.target_id, a.actor_sub])).toEqual([
-      ["licensing.anchorPolicy", "u1"],
+      ["licensing.anchorPolicy", await consoleActor(ctx.env, ctx.db, "u1")],
     ]);
     expect((await audits(ctx, "setting.revert"))[0]!.summary).toBe(
       'Reverted licensing.anchorPolicy to the manifest: "most-free-seats" → "rank-first"',

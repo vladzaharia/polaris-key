@@ -26,6 +26,7 @@ import {
   resolveTheme,
   watchProductIdentity,
   type Scheme,
+  platformVariant,
 } from "../src/theme/index.js";
 
 /** A fake source built from HA-12's type, as the brief asks. */
@@ -273,5 +274,27 @@ describe("Themes: every product accent stays readable (resolveAccent, DL13)", ()
     expect(
       contrastRatio(yellowLight.onPrimary, yellowLight.primary),
     ).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("platformVariant (UK-06.6)", () => {
+  it("names linux gnome, keeps the variants the web kits draw, and falls back to web", () => {
+    expect(platformVariant({ platform: "linux" })).toBe("gnome");
+    expect(platformVariant({ platform: "windows" })).toBe("windows");
+    expect(platformVariant({ platform: "macos" })).toBe("macos");
+    expect(platformVariant({ platform: null })).toBe("web");
+    expect(platformVariant("linux")).toBe("gnome");
+    expect(platformVariant(undefined)).toBe("web");
+  });
+
+  it("is what an auto theme resolves to under the platform the host reports", () => {
+    const t = resolveTheme(
+      { platform: "auto" },
+      { kit: "react", platform: { os: "linux", formFactor: "computer" } },
+    );
+    expect(platformVariant(t)).toBe("gnome");
+    expect(
+      platformVariant(resolveTheme({ platform: "auto" }, { kit: "react" })),
+    ).toBe("web");
   });
 });

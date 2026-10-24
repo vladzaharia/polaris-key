@@ -6,8 +6,7 @@
  * go back to it.
  *
  * Offline days, Release tracks and Versions are edited in the dialog below; Devices opens the
- * device-limit sheet, and Fingerprint mode is the tier's (**Open tier**). A license on an older
- * Worker, without `terms`, is resolved here with the same resolver.
+ * device-limit sheet, and Fingerprint mode is the tier's (**Open tier**).
  */
 
 import * as React from "react";
@@ -51,7 +50,6 @@ import {
 import {
   MAX_OFFLINE_DAYS,
   MIN_OFFLINE_DAYS,
-  termsOnTier,
   useManualChannels,
 } from "./shared.js";
 
@@ -94,21 +92,16 @@ function versionsText(min: string | null, max: string | null): string {
     .join(" · ");
 }
 
-/** The rows, from the Worker's `terms` (else the same resolver run here). */
+/** The rows, from the Worker's `terms`. */
 export function limitRows(
   license: LicenseDetail,
   tiers: readonly TierSummary[],
-  product: Pick<
-    ProductDetail,
-    "defaultDeviceLimit" | "defaultMaxOfflineDays"
-  > | null,
+  product: Pick<ProductDetail, "defaultMaxOfflineDays"> | null,
 ): LimitRow[] {
   const tier = license.tier
     ? tiers.find((t) => t.id === license.tier)
     : undefined;
-  const t =
-    license.terms ??
-    termsOnTier(license, license.tier ?? null, tiers, product ?? undefined);
+  const t = license.terms;
   const name = tierName(tier);
   const fromTier = tier ? name : "the tier";
 

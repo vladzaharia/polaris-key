@@ -21,14 +21,11 @@ import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { attachLicenseAccount } from "../src/core/accounts/accountSubjects.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { RELINK_UNDO_SECONDS } from "../src/services/identity/accounts/productUsers.js";
+import { consoleActor, consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const OTHER = "other";
@@ -61,8 +58,9 @@ async function call(
   opts: { authAt?: number; now?: number; product?: string } = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const now = opts.now ?? NOW;
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "op-1",
       name: "Ada Operator",
@@ -313,7 +311,8 @@ describe("Make floating", () => {
       return realDelete(key);
     }) as typeof env.HOT.delete;
     const prior = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = ?",
+      await consoleActor(env, db, "op-1"),
     );
     const res = await call("POST", floatPath(id), {
       reason: "Leaked key",
@@ -336,7 +335,8 @@ describe("Make floating", () => {
     ).toMatchObject({ kind: "floating", devicesSignedOut: signedOut });
     // The move's row is there (the undo works), counted towards the alert, and audited.
     const after = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = ?",
+      await consoleActor(env, db, "op-1"),
     );
     expect(after!.n).toBe(prior!.n + 1);
     const audited = await db.all<{ action: string }>(

@@ -30,16 +30,13 @@ import {
 import { handleEnroll } from "../src/services/license/enroll.js";
 import { configService } from "../src/services/config/index.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { seal } from "../src/platform/keyvault.js";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { listAudit } from "../src/core/audit.js";
 import { invalidateWidenedEdgeMintApprovals } from "../src/core/edgeMintApproval.js";
 import type { Env } from "../src/platform/env.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 // A throwaway ES256 (P-256 PKCS#8) private key for tests only.
 const ES_PEM =
@@ -325,8 +322,9 @@ async function admin(
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   // Approving a recipe needs a sign-in proven in the last five minutes (U-31); every call here
   // has one unless it says otherwise.
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "op-1",
       name: "Op",

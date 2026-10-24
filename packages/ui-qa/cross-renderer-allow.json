@@ -8,6 +8,10 @@
     "Paywall.purchasing": {
       "reason": "The busy spinner is caught at a different frame: one 390 render differs by 0.102 %.",
       "maxRatio": 0.0015
+    },
+    "SignIn.code": {
+      "reason": "The waiting indicator is caught at a different frame: the narrow Windows and GNOME renders (390, 480x640) differ by 0.11 to 0.14 %.",
+      "maxRatio": 0.002
     }
   }
 }

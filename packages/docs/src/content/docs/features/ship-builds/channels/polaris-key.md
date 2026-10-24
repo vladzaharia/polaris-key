@@ -124,16 +124,31 @@ changes the shared listing. Nothing in it is signed or sent to devices.
 
 ## In the console
 
-**Ship builds → Listing** edits the model, with five tabs:
+**Settings → Presentation → Listing** is the home. The **Storefront** switcher in its header picks
+**Every storefront** (the whole listing) or one storefront. The page is also reached from
+**Edit listing** on Storefronts, and the old Ship builds → Listing address shows Page moved. Edits
+here show in Polaris Locker, on the download page and on every storefront.
 
-- **Text**: the app's fields and each locale's (switch locale, or add one), saved together, and the
-  import with its field-by-field diff;
+For every storefront there are five tabs:
+
+- **Text**: the app's fields and each locale's (switch locale, or add one), saved together, each
+  field with the place it came from (Console, `.pkey/distribution`, a store import, or From
+  Presentation; **Revert to manifest** and **Use Presentation** per field), and the import with its
+  field-by-field diff;
 - **Fit report**: every store's fit, with **Override…** on each field that does not fit;
 - **Images**: the [slot board](/docs/features/ship-builds/channels/storefronts/#the-slot-board), where every derived or
   composed image is accepted before any store receives it;
 - **Release notes**: each release's store notes per locale, with the proposed short form;
 - **Push**: **Push listing** for each store whose adapter writes listings (see
   [Storefronts](/docs/features/ship-builds/channels/storefronts/#listing-push)).
+
+With one storefront chosen, the page shows that storefront's view: its **Overrides** (Edit and
+Remove each; shared text is edited under Every storefront), its fit row, its image slots and its
+Push. Polaris Locker has nothing to push: it reads the listing directly.
+
+The listing's name, developer name, accent and icon default to
+Presentation (Settings → Presentation): a field you leave empty follows it, and a
+field you set wins.
 
 The same fit report, import and slot board are steps of
 [Add to storefronts](/docs/features/ship-builds/channels/storefronts/).
@@ -241,8 +256,8 @@ mismatch is visible.
 ### From a Godot project
 
 ```sh title="Terminal"
-# the console session: pkey bundle's admin API token cannot reach the import
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+# sign in once; the import uses that sign-in (an API token cannot reach it)
+pkey login
 # prints the diff
 pkey listing import --godot path/to/project --product <slug>
 # writes it

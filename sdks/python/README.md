@@ -74,7 +74,7 @@ TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.0.0",                 # the HOST APPLICATION's version
-    trust=TRUST,                     # pinned signing keys
+    pinned_keys=TRUST,               # pinned signing keys
     base_url="https://key.plrs.im",  # must be https: (or http://localhost)
 )
 
@@ -89,9 +89,9 @@ client.devices.register()
 
 # Offline-first gate.
 if client.is_licensed():
-    concurrency = client.config.get_config("run.concurrency", 4)
+    concurrency = client.config.get("run.concurrency", 4)
     vpn_url = client.config.get_secret("proxy.subscriptionUrl")
-    if client.license.is_entitled("polarisVpn"):
+    if client.entitlements.has("polarisVpn"):
         ...
 
 # One Core pass: trust refresh -> enabled documents -> verify -> cache -> floor -> report.
@@ -275,7 +275,7 @@ Everything below hangs off one `PolarisKeyClient`; the same surface is on `Async
 ```python
 import polaris_key
 
-client = polaris_key.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+client = polaris_key.create(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
 outcome = client.boot(on_stage=lambda state, emits: print(state.stage))
 if outcome.needs_activation:
     ...  # show key entry or sign-in; client.ensure_activated() covers the keyless policies
@@ -309,7 +309,7 @@ per key; any other tag adds a locale that falls back to English.
 
 ### Entitlements
 
-`license.is_entitled(name)` is false, and `entitlement_value(name)` is `None`, whenever the gate
+`entitlements.has(name)` is false, and `entitlements.value(name)` is `None`, whenever the gate
 is `revoked` or `expired`, whatever the cached document still says (S-19 G11).
 `license.license_info()` returns a `LicenseInfo` (`licenseId`, `tier`, `tierLabel`,
 `deviceLimit`, `profile`, `entitledChannels`; `deviceCount` and `expiresAt` stay `None` until
@@ -320,7 +320,7 @@ can show which license was revoked.
 
 ```python
 unsubscribe = client.subscribe(lambda e: print(e.kind, e.data), kinds=["license", "config"])
-client.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))  # your own function
+client.config.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))  # your own function
 client.config.set("ui.theme", "dark")    # a persisted local override (config.local)
 client.config.clear("ui.theme")
 ```
@@ -383,7 +383,7 @@ import polaris_key
 
 
 async def main(prompt: polaris_key.SignInPrompt) -> None:
-    client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+    client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
     outcome = await client.boot()
     result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
     async for progress in client.update.packs.progress(until_done=True):
@@ -436,10 +436,10 @@ terminal kit's `tidewater` demo) and `examples/python-renpy/` (a Ren'Py boot sni
 no license to be missing, so it boots **usable** rather than sitting on `needs-activation`
 forever.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation or enrolment returns `ActivationDeviceLimit(limit, deviceCount, manage_url)`.
-`manage_url` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manage_url` is the customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 the product's portal is on and already validated. It is never an auth failure.
 
 ```python
@@ -448,7 +448,7 @@ from polaris_key import ActivationDeviceLimit, with_manage_key, with_manage_retu
 r = client.license.activate_with_key(user_entered_key)
 if isinstance(r, ActivationDeviceLimit) and r.manage_url:
     link = with_manage_return(with_manage_key(r.manage_url, user_entered_key), "myapp://activated")
-    print(f"Every seat is taken. Free one up at {link}")
+    print(f"The device limit is reached. Free one up at {link}")
 ```
 
 `with_manage_key` adds `#key=` only to an `/activate` link; `with_manage_return` adds `return=`,
@@ -570,7 +570,7 @@ Django and DRF, is [Gate a Python route with the license](https://key.plrs.im/do
 
 ## Layered config
 
-`client.config.get_config(key, fallback)` resolves a value through the **same precedence**
+`client.config.get(key, fallback)` resolves a value through the **same precedence**
 as every Polaris Key SDK; `get_config_source(key)` returns which layer won:
 
 ```
@@ -579,14 +579,14 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 
 `enforced`/`hidden` remote values are **locked to the server** — `local_overrides` and env
 vars are ignored for those keys; `hidden` keys are additionally withheld from
-`list_user_config()` (but still applied by `get_config`). A `default` (or absent) key falls
+`list_user_config()` (but still applied by `get`). A `default` (or absent) key falls
 through local → env → remote value → your `fallback`.
 
 ```python
 from polaris_key import PolarisKeyClient
 
 client = PolarisKeyClient.create(
-    product_slug="djdl", version="1.0.0", trust=TRUST,
+    product_slug="djdl", version="1.0.0", pinned_keys=TRUST,
     local_overrides={"run.concurrency": 6},  # beats a `default`, never an `enforced`/`hidden`
     env_prefix="PKEY_CONFIG_",               # the default
 )
@@ -635,9 +635,9 @@ Three depths:
    ```python
    from polaris_key.local import create_local_client, create_bundle_client
 
-   client = create_local_client(product_slug="djdl", version="1.0.0", trust=TRUST)
+   client = create_local_client(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
    client, imported = create_bundle_client(bundle=jws, product_slug="djdl",
-                                           version="1.0.0", trust=TRUST)
+                                           version="1.0.0", pinned_keys=TRUST)
    ```
 
    Every network-requiring call raises `PolarisError` with code `local-only` at the DIAL,
@@ -773,7 +773,7 @@ from polaris_key import PolarisKeyClient, UpdateClientOptions, is_undismissable
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.2.0",                       # the installed version
-    trust=TRUST,
+    pinned_keys=TRUST,
     expected_services=["release", "distribution", "update"],
     update=UpdateClientOptions(
         # kid -> raw Ed25519 release key (base64url). PLACEHOLDER: your product's release key.
@@ -855,7 +855,7 @@ from polaris_key import EmbeddedPack, PacksOptions
 client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.2.0",
-    trust=TRUST,
+    pinned_keys=TRUST,
     expected_services=["release", "distribution", "update"],
     update=UpdateClientOptions(
         pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
@@ -985,7 +985,7 @@ code extension. The pure functions (`verify_release_record(..., delegation=)`,
 
 The SDK follows the wire contract (v4):
 
-- **Pinned keys are terminal.** The `trust=` map you compile into your application is the
+- **Pinned keys are terminal.** The `pinned_keys=` map you compile into your application is the
   only root. Keys learned from a signed trust manifest are merged _under_ it, and a
   manifest that presents a pinned `kid` with different key bytes is rejected whole.
 - **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent from
@@ -1048,7 +1048,7 @@ the seven test keys does, a config change arriving as an event, a device-code si
 the fake identity provider's page, and an update decision before and after a release. It skips
 unless `PKEY_DEV_BASE_URL` is set, so a plain `pytest` needs no server; naming the file on the
 command line asks for the live run, and an unset variable then fails it. The run changes the
-server it talks to (device seats, key entries, a published `1.2.0`), so start a fresh one each time:
+server it talks to (devices, key entries, a published `1.2.0`), so start a fresh one each time:
 
 ```sh
 pkey dev --builtin --auto-approve --port 8787 &

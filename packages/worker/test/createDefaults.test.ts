@@ -15,11 +15,8 @@ import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
@@ -36,8 +33,9 @@ async function post(
   path: string,
   body: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
     NOW,
   );
@@ -84,10 +82,12 @@ describe("manual create with defaults", () => {
     expect(
       await rows(
         db,
-        "SELECT id, profile_id, rank, source FROM tiers WHERE product = ?",
+        "SELECT id, profile_id, rank, source FROM tiers WHERE product = ? ORDER BY id",
         "tonebox",
       ),
     ).toEqual([
+      // LX-33.7: the implicit Default tier is seeded beside the Free starter.
+      { id: "default", profile_id: null, rank: 0, source: "console" },
       { id: "free", profile_id: "default", rank: 0, source: "console" },
     ]);
   });
@@ -143,7 +143,7 @@ describe("manual create with defaults", () => {
     expect(body.defaults.tier).toBeNull();
     expect(
       await rows(db, "SELECT id FROM tiers WHERE product = ?", "tonebox"),
-    ).toEqual([]);
+    ).toEqual([{ id: "default" }]); // LX-33.7: no starter tier, but the Default tier exists
     const setting = await rows(
       db,
       "SELECT value_json, source FROM product_settings WHERE product = ? AND key = ?",

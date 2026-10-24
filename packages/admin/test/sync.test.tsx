@@ -10,7 +10,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ConfigEntry, ProductCatalog, ProductDetail } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import {
   catalogDiagnostics,
@@ -58,6 +58,7 @@ const services = (sync: boolean): ProductDetail["services"] => ({
 
 const PRODUCT = (sync: boolean): ProductDetail => ({
   slug: "djdl",
+  manifestAuthoritative: { value: false, locked: false },
   name: "DJDL",
   signingKid: "kid-2026",
   releaseSource: "github",
@@ -193,7 +194,7 @@ describe("Cloud Sync → Data", () => {
   });
 
   it("before the first catalog publish, declares nothing rather than failing", async () => {
-    schema.mockRejectedValue(new ApiError(404));
+    schema.mockRejectedValue(new HttpError(404));
     renderPage();
     expect(await screen.findByText("No catalog key syncs.")).toBeTruthy();
     expect(screen.getByText("No collections are declared.")).toBeTruthy();

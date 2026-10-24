@@ -1,7 +1,7 @@
 import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalAvatar,
   type PortalProfile,
   type PortalProfileChange,
@@ -422,7 +422,7 @@ export const UPLOAD_TYPES: readonly string[] = ["image/png", "image/jpeg"];
  * upload's rate limit and outage, its status. Anything else falls back to the portal's copy.
  */
 export function profileErrorCopy(err: unknown, op: "save" | "upload"): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     switch (err.reason) {
       case "invalid_name":
         return PROFILE_COPY["profile.error.invalidName"];

@@ -6,7 +6,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type ConnectionDomain } from "../../../../api.js";
+import { HttpError, type ConnectionDomain } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -24,7 +24,8 @@ import { toast } from "../../../../ui/toast.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { platformReads } from "../data.js";
+import { reads } from "../../../data/reads.js";
 import { Link, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { StepUpCallout, useStepUp } from "../../core/pages/UserRelink.js";
@@ -36,23 +37,15 @@ import {
   newDraftId,
   textCodec,
 } from "./platformConnectionParts.js";
-import {
-  connectionStatus,
-  fetchPlatformConnections,
-  hostOf,
-} from "./platformConnections.js";
+import { connectionStatus, hostOf } from "./platformConnections.js";
 import { useConnectionTest } from "./useConnectionTest.js";
 
 export function ConnectionPage({ id }: { id: string }): React.ReactElement {
   const q = useQuery({
-    queryKey: qk.platformConnection(id),
-    queryFn: () => api.platformConnection(id).then((x) => x.connection),
-    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 2,
+    ...platformReads.connection(id),
+    retry: (n, e) => !(e instanceof HttpError && e.status === 404) && n < 2,
   });
-  const page = useQuery({
-    queryKey: qk.platformConnections(),
-    queryFn: fetchPlatformConnections,
-  });
+  const page = useQuery(reads.platformConnections());
   const gate = useWriteGate("platform");
   const { fresh, markStale } = useStepUp(true);
   const [add] = useSearchParam("add", textCodec);
@@ -93,14 +86,14 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
     try {
       await fn();
     } catch (e) {
-      if (e instanceof ApiError && e.code === "step_up_required") markStale();
+      if (e instanceof HttpError && e.code === "step_up_required") markStale();
       throw e;
     }
     await Promise.all([q.refetch(), page.refetch()]);
   };
 
   if (q.isError && !c) {
-    const missing = q.error instanceof ApiError && q.error.status === 404;
+    const missing = q.error instanceof HttpError && q.error.status === 404;
     return missing ? (
       <div className="space-y-6">
         <PageHeader

@@ -10,6 +10,7 @@
  */
 
 import * as React from "react";
+import { channelLabel } from "@polaris-key/manifest";
 import type { ProductRef } from "../../api.js";
 import { Logo } from "../../components/brand/Logo.js";
 import { Button } from "../../ui/Button.js";
@@ -17,6 +18,7 @@ import { EmptyState } from "../../ui/EmptyState.js";
 import { Spinner } from "../../ui/Spinner.js";
 import {
   SETTINGS_HUB_PAGES,
+  SETTINGS_TAB_OF,
   featureOfSection,
   pageOf,
   sectionOf,
@@ -150,9 +152,12 @@ export function MovedPage({
   const section = moved.page ? sectionOf(moved.page) : undefined;
   const record = moved.id !== undefined ? target?.record : undefined;
   // The hub's tabs are reached from Settings, whatever section the page sits in.
+  const tab = moved.page
+    ? SETTINGS_TAB_OF[moved.page as ProductPageId]
+    : undefined;
   const home =
     moved.page && SETTINGS_HUB_PAGES.includes(moved.page as ProductPageId)
-      ? "Settings\u00a0\u2192\u00a0"
+      ? `Settings\u00a0\u2192\u00a0${tab ? `${pageOf(tab).label}\u00a0\u2192\u00a0` : ""}`
       : section
         ? `${section.label}\u00a0\u2192\u00a0`
         : "";
@@ -337,6 +342,43 @@ export function ServiceOffPage({
               <Link to={r.services(slug)}>Open Features</Link>
             </Button>
           )
+        }
+        docs={section.docs}
+        docsFor={signIn ? "App sign-in" : feature}
+      />
+    </section>
+  );
+}
+
+/** A link to a page whose store is not one of the product's channels (A-20.7). */
+export function ChannelOutOfScopePage({
+  section,
+  title,
+  slug,
+  channel,
+}: {
+  section: NavSection;
+  /** The page's own label (App Store), not its section's. */
+  title: string;
+  slug: string;
+  /** The catalogue channel id the page needs. */
+  channel: string;
+}): React.ReactElement {
+  return (
+    <section
+      className="space-y-6 animate-pk-enter"
+      data-service={section.accent}
+    >
+      <StateHeading>{title}</StateHeading>
+      <EmptyState
+        kind="not-found"
+        headingLevel={2}
+        title={`${channelLabel(channel)} isn't one of this product's channels`}
+        description="Its platforms and builds don't fit this store."
+        primaryAction={
+          <Button asChild>
+            <Link to={r.storefronts(slug)}>Open Storefronts</Link>
+          </Button>
         }
         docs={section.docs}
       />

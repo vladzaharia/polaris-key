@@ -42,3 +42,25 @@ describe("ChannelPicker locked stable", () => {
     ).toBe(false);
   });
 });
+
+describe("ChannelPicker dev includes beta", () => {
+  it("draws beta ticked and locked with the catalog reason when dev is chosen", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ChannelPicker value={["dev"]} onChange={onChange} />);
+    const beta = screen.getByRole("checkbox", { name: "beta" });
+    expect(beta.getAttribute("aria-checked")).toBe("true");
+    expect((beta as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Included with dev.")).toBeTruthy();
+    await user.click(beta);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("choosing dev returns beta with it", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ChannelPicker value={[]} onChange={onChange} held={["dev"]} />);
+    await user.click(screen.getByRole("checkbox", { name: "dev" }));
+    expect(onChange).toHaveBeenCalledWith(["beta", "dev"]);
+  });
+});

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api, type SlugCheck } from "../../../../api.js";
+import { HttpError, type SlugCheck } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -9,7 +9,6 @@ import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { Wizard } from "../../../../ui/wizard/index.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
-import { qk } from "../../../data/queries.js";
 import { mutate } from "../../../data/mutations.js";
 import { codecs, Link, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -50,6 +49,7 @@ import {
 } from "../model/newProduct.js";
 import { checkFailure, nameFieldErrors } from "../model/newProductChecks.js";
 import { focusField, focusSoon, useSettled } from "../model/newProductDom.js";
+import { globalReads } from "../data.js";
 
 // The pure helpers keep their old home for the callers and tests that import them from here.
 export {
@@ -145,8 +145,7 @@ export function ProductNew(): React.ReactElement {
   const local = slugVerdict(slug, new Set());
   const settledSlug = useSettled(slug);
   const slugQuery = useQuery({
-    queryKey: qk.slugCheck(settledSlug),
-    queryFn: () => api.slugCheck(settledSlug),
+    ...globalReads.slugCheck(settledSlug),
     enabled:
       via === "manual" &&
       settledSlug !== "" &&
@@ -174,8 +173,7 @@ export function ProductNew(): React.ReactElement {
   // W22: the repositories the app can read, searched as you type.
   const search = useSettled(repo ? "" : draft.repo.trim());
   const repos = useQuery({
-    queryKey: qk.githubRepositories(search),
-    queryFn: () => api.githubRepositories(search),
+    ...globalReads.githubRepositories(search),
     enabled: via === "github" && (current === "repo" || current === "check"),
     staleTime: 30_000,
     retry: false,
@@ -189,8 +187,7 @@ export function ProductNew(): React.ReactElement {
 
   // W23: what `.pkey/` says, read when the step opens and again on demand.
   const check = useQuery({
-    queryKey: qk.createCheck(repo ?? ""),
-    queryFn: () => mutate("checkRepoCreate", draft.repo.trim()),
+    ...globalReads.createCheck(repo ?? "", draft.repo.trim()),
     enabled: via === "github" && current === "check" && repo !== null,
     staleTime: 0,
     gcTime: 0,
@@ -263,7 +260,7 @@ export function ProductNew(): React.ReactElement {
   const failWith = (err: unknown, at: Via) => {
     setSubmitting(false);
     // `.pkey/` changed after the check: read it again; Create waits for that.
-    if (at === "github" && err instanceof ApiError && err.status === 409) {
+    if (at === "github" && err instanceof HttpError && err.status === 409) {
       setStale(true);
       setChanged(true);
       void checkAgain();
@@ -329,8 +326,7 @@ export function ProductNew(): React.ReactElement {
     setAdvancing(true);
     try {
       const answer = await client.fetchQuery({
-        queryKey: qk.slugCheck(slug),
-        queryFn: () => api.slugCheck(slug),
+        ...globalReads.slugCheck(slug),
         staleTime: 15_000,
       });
       if (answer.status !== "available") return focusField("slug");

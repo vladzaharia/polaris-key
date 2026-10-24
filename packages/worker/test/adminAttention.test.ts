@@ -9,7 +9,14 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { listProducts } from "../src/core/products/store.js";
+import { platformReady } from "../src/console/lib/platformReady.js";
+import { attentionAcross } from "../src/console/lib/attention.js";
+import { canSeeProduct } from "../src/console/authz.js";
+import { PRINCIPALS } from "./rbacFixtures.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const DAY = 86_400;
@@ -36,8 +43,9 @@ async function get(
   method = "GET",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const env = adminEnv();
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -123,6 +131,189 @@ describe("GET /manage/api/attention", () => {
   });
 });
 
+describe("Cloud Sync writes paused (U-05.21)", () => {
+  const setPaused = async (value: "on" | "off") => {
+    await db.run(
+      `INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by)
+       VALUES ('cloudSync.writesPaused', ?, 1, ?, 'test')`,
+      JSON.stringify(value),
+      NOW,
+    );
+    invalidatePlatformSettings(adminEnv(), db);
+  };
+  const syncOn = (slug: string) =>
+    db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        config: { enabled: true },
+        identity: { enabled: true },
+        sync: { enabled: true },
+      }),
+      slug,
+    );
+
+  const auditOn = (actor: string | null, reason: string | null, at = NOW) =>
+    db.run(
+      `INSERT INTO platform_audit (id, at, actor_sub, actor_name, action, summary, after_json, reason, setting_key)
+       VALUES (?, ?, 'mbr_x', ?, 'setting.update', 's', '{"value":"on"}', ?, 'cloudSync.writesPaused')`,
+      `a-${Math.random()}`,
+      at,
+      actor,
+      reason,
+    );
+  type PItem = Omit<Item, "product"> & {
+    product: { slug: string } | null;
+    action: { label: string; page: string; query?: Record<string, string> };
+    area: string;
+    since?: number | null;
+    by?: string | null;
+    reason?: string | null;
+  };
+  const across = async (name: keyof typeof PRINCIPALS) => {
+    const all = (await listProducts(db)).filter((p) => !p.system);
+    const seen = all.filter((p) => canSeeProduct(PRINCIPALS[name], p));
+    return (await attentionAcross(
+      db,
+      seen,
+      PRINCIPALS[name],
+      NOW,
+      adminEnv(),
+      all,
+    )) as PItem[];
+  };
+  const platformOf = (items: PItem[]) =>
+    items.filter((i) => i.product === null);
+
+  it("appears only while paused, once, with the platform page as its action, and goes on resume", async () => {
+    await syncOn("djdl");
+    expect((await get("/api/attention")).json).toEqual({ items: [] });
+
+    await setPaused("on");
+    await auditOn("Ana Lima", "Provider maintenance");
+    const items = (await get("/api/attention")).json.items as PItem[];
+    expect(items.map((i) => [i.id, i.kind, i.tone, i.product])).toEqual([
+      ["@platform:sync.paused", "sync.paused", "warning", null],
+    ]);
+    expect(items[0]!.lines[0]).toBe(
+      "Cloud Sync writes are paused for every product.",
+    );
+    expect(items[0]!.action).toEqual({
+      label: "Resume writes",
+      page: "platform-settings",
+      query: { setting: "cloudSync.writesPaused" },
+    });
+    expect(items[0]!.area).toBe("platform");
+
+    await setPaused("off");
+    expect((await get("/api/attention")).json).toEqual({ items: [] });
+  });
+
+  it("1: one item with product null for Superadmin and Platform admin, however many products have Cloud Sync", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("djdl");
+    await syncOn("alpha");
+    await setPaused("on");
+    for (const name of ["root", "platformAdmin"] as const) {
+      const items = await across(name);
+      expect(platformOf(items)).toHaveLength(1);
+      expect(items.filter((i) => i.kind === "sync.paused")).toHaveLength(1);
+    }
+  });
+
+  it("2: a Platform admin with no product grant gets it", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    const items = await across("platformAdmin");
+    expect(items.map((i) => i.id)).toEqual(["@platform:sync.paused"]);
+  });
+
+  it("3: a Product admin of a Cloud Sync product gets no platform item and keeps their own", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("alpha");
+    await setPaused("on");
+    await db.run(
+      `INSERT INTO product_sync_state (product, source, status, last_checked_at, message)
+            VALUES ('alpha', 'manual', 'error', ?, 'x')`,
+      NOW,
+    );
+    for (const name of ["alphaAdmin", "allProducts", "alphaShip"] as const) {
+      const items = await across(name);
+      expect(platformOf(items)).toEqual([]);
+    }
+    expect((await across("alphaAdmin")).map((i) => i.id)).toEqual([
+      "alpha:sync.failed",
+    ]);
+  });
+
+  it("4: a Console-access-only member gets nothing", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    expect(await across("consoleOnly")).toEqual([]);
+    expect(await across("stranger")).toEqual([]);
+  });
+
+  it("5: not paused, no item", async () => {
+    await syncOn("djdl");
+    await setPaused("off");
+    expect(await across("root")).toEqual([]);
+  });
+
+  it("6: paused with no product on Cloud Sync, no item", async () => {
+    await setPaused("on");
+    expect(await across("root")).toEqual([]);
+  });
+
+  it("7: since, by and reason come from the audit row; a row with no name answers by null", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    await auditOn("Ana Lima", "Provider maintenance", NOW - 600);
+    let [item] = platformOf(await across("platformAdmin"));
+    expect(item).toMatchObject({
+      since: NOW - 600,
+      by: "Ana Lima",
+      reason: "Provider maintenance",
+    });
+    await db.run("DELETE FROM platform_audit");
+    await auditOn(null, null, NOW - 300);
+    [item] = platformOf(await across("platformAdmin"));
+    expect(item).toMatchObject({ since: NOW - 300, by: null, reason: null });
+  });
+
+  it("8 and 9: no product item has kind sync.paused, and the id never looks like a slug id", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("djdl");
+    await syncOn("alpha");
+    await setPaused("on");
+    const items = await across("root");
+    expect(
+      items.filter((i) => i.product !== null && i.kind === "sync.paused"),
+    ).toEqual([]);
+    for (const i of platformOf(items)) expect(i.id).not.toMatch(/^[a-z0-9-]+:/);
+  });
+
+  it("counts a Cloud Sync product the caller cannot see, and reveals none", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("alpha");
+    await setPaused("on");
+    const platformOnly = {
+      memberId: "m-p",
+      grants: PRINCIPALS.platformAdmin.grants,
+    };
+    const all = (await listProducts(db)).filter((p) => !p.system);
+    const items = await attentionAcross(
+      db,
+      [],
+      platformOnly,
+      NOW,
+      adminEnv(),
+      all,
+    );
+    expect(JSON.stringify(items)).not.toContain("alpha");
+    expect(items.map((i) => i.id)).toEqual(["@platform:sync.paused"]);
+  });
+});
+
 describe("a failed resync's message", () => {
   it("is never repeated: a token or body in it cannot reach Home", async () => {
     const secret = "ghs_16C7e42F292c6912E7710c838347Ae178B4a";
@@ -186,6 +377,94 @@ describe("GET /manage/api/platform/ready", () => {
     );
     expect(row.action?.label).toBe("Connect Steam");
     expect((row.action as { store?: string }).store).toBe("steam");
+  });
+
+  describe("names only the products the caller can see (ST-44b.3)", () => {
+    async function steamOn(...slugs: string[]): Promise<void> {
+      for (const slug of slugs) {
+        await seedProduct(db, slug);
+        await db.run(
+          `UPDATE products SET name = ? WHERE slug = ?`,
+          `Name ${slug}`,
+          slug,
+        );
+        await db.run(
+          `INSERT INTO dist_outlets (product, outlet_id, kind, created_at, modified_at)
+            VALUES (?, 'o1', 'steam', ?, ?)`,
+          slug,
+          NOW,
+          NOW,
+        );
+      }
+    }
+    const detail = async (
+      principal: Parameters<typeof platformReady>[3],
+    ): Promise<string> =>
+      (await platformReady(adminEnv(), db, NOW, principal)).rows.find(
+        (r) => r.id === "store-accounts",
+      )!.detail!;
+
+    it("a Platform admin with no product grant gets counts only: no name or slug anywhere", async () => {
+      await steamOn("dice", "roll");
+      const ready = await platformReady(
+        adminEnv(),
+        db,
+        NOW,
+        PRINCIPALS.platformAdmin,
+      );
+      const text = JSON.stringify(ready);
+      for (const x of ["dice", "roll", "Name ", "djdl", "acme"])
+        expect(text).not.toContain(x);
+      expect(ready.rows.find((r) => r.id === "store-accounts")!.detail).toBe(
+        "2 other products' Steam uploads need a Steamworks publisher key.",
+      );
+    });
+
+    it("one hidden product is said in the singular", async () => {
+      await steamOn("dice");
+      expect(await detail(PRINCIPALS.platformAdmin)).toBe(
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      );
+    });
+
+    it("a partial grant sees only its own product named, the rest counted", async () => {
+      await steamOn("dice", "roll");
+      const diceAdmin = {
+        memberId: "m-dice",
+        grants: [
+          {
+            role: "platform_admin",
+            scope: "platform",
+            areas: null,
+            source: "grant",
+          },
+          {
+            role: "product_admin",
+            scope: "product:dice",
+            areas: null,
+            source: "grant",
+          },
+        ],
+      } as const;
+      const text = await detail(diceAdmin);
+      expect(text).toBe(
+        "Steam uploads for Name dice and 1 other product need a Steamworks publisher key.",
+      );
+      expect(text).not.toContain("roll");
+    });
+
+    it("a Superadmin's answer names every product, as before", async () => {
+      await steamOn("dice", "roll");
+      expect(await detail(PRINCIPALS.root)).toBe(
+        "Steam uploads for Name dice and Name roll need a Steamworks publisher key.",
+      );
+      const viaRoute = (await get("/api/platform/ready")).json as {
+        rows: { id: string; detail?: string }[];
+      };
+      expect(viaRoute.rows.find((r) => r.id === "store-accounts")!.detail).toBe(
+        "Steam uploads for Name dice and Name roll need a Steamworks publisher key.",
+      );
+    });
   });
 
   it("is the platform's: a product member is refused", async () => {

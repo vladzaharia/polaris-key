@@ -484,7 +484,7 @@ public final class PolarisKeyGateModel {
         pending = .activate
         rebuild()
         let key = keyText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let result = await client.activate(key: key)
+        let result = await client.license.activateWithKey(key)
         pending = nil
         activation = Self.kitActivation(result)
         rebuild()

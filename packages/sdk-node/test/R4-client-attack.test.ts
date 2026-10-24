@@ -259,14 +259,14 @@ describe("R4-01: unauthenticated offline cache", () => {
 
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
-    expect(client.license.isEntitled("pro")).toBe(false);
-    expect(client.license.isEntitled("enterprise")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("pro")).toBe(false);
+    expect(client.entitlements.has("enterprise")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.license.getLicenseId()).toBeNull();
     // No secret injection: the SDK's config-delivery channel now only carries values that
     // arrived inside a signature the pinned key produced.
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
-    expect(client.getConfig("quality.floor", "mp3")).toBe("mp3");
+    expect(client.config.get("quality.floor", "mp3")).toBe("mp3");
     expect(client.license.getProfile()).toBeNull();
     client.close();
   });
@@ -309,8 +309,8 @@ describe("R4-01: unauthenticated offline cache", () => {
     const client = clientOn(configDir);
     await client.init();
     expect(client.status().status).toBe("needs-activation");
-    expect(client.getCurrentDevice().licenseId).toBeUndefined();
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.currentDevice().licenseId).toBeUndefined();
+    expect(client.entitlements.all()).toEqual({});
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
     client.close();
   });
@@ -388,9 +388,9 @@ describe("R4-02: trust-set injection via the cache file", () => {
     expect(r.applied).toBe(false);
     expect(r.documents.license?.kind).toBe("error");
     expect(r.documents.config?.kind).toBe("error");
-    expect(client.license.isEntitled("pro")).toBe(false);
+    expect(client.entitlements.has("pro")).toBe(false);
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
-    expect(client.getCurrentDevice().licenseId).toBeUndefined();
+    expect(client.currentDevice().licenseId).toBeUndefined();
     // The planted file is still sitting there untouched — and completely inert: no document
     // was ever accepted from it, and no v3 record was produced from its contents.
     const onDisk = readCacheFile(configDir);
@@ -459,8 +459,8 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
 
     expect(r.applied).toBe(true); // the legitimate update LANDS
     expect(r.documents.license?.kind).toBe("applied");
-    expect(client.license.isEntitled("pro")).toBe(false); // …and revokes the entitlement
-    expect(client.getCurrentDevice().licenseId).toBe("lic_REVOKED");
+    expect(client.entitlements.has("pro")).toBe(false); // …and revokes the entitlement
+    expect(client.currentDevice().licenseId).toBe("lic_REVOKED");
     client.close();
   });
 
@@ -577,7 +577,7 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
     const c2 = clientOn(configDir, { fetchImpl });
     await c2.init();
     expect((await c2.sync()).applied).toBe(false);
-    expect(c2.license.isEntitled("pro")).toBe(false);
+    expect(c2.entitlements.has("pro")).toBe(false);
     expect(c2.status().status).toBe("needs-activation");
     c2.close();
   });
@@ -708,7 +708,7 @@ describe("R4-04: clock rollback / grace extension", () => {
     expect(anchored.status(issued + 60).status).toBe("expired");
     expect(anchored.isLicensed(issued + 60)).toBe(false);
     // The doc parsed, and the GATE refuses — so its grants are not read either (S-19 G11).
-    expect(anchored.license.isEntitled("pro", issued + 60)).toBe(false);
+    expect(anchored.entitlements.has("pro", issued + 60)).toBe(false);
     // An honest clock is unaffected — the floor is a minimum, never a substitute.
     expect(anchored.status(realNow).status).toBe("expired");
     anchored.close();
@@ -1006,8 +1006,8 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
     expect(onDisk?.docs?.config).toBeUndefined();
     // …and the live client is untouched too.
     expect(client.license.getLicenseId()).toBe("lic_PRIOR");
-    expect(client.license.isEntitled("pro")).toBe(false);
-    expect(client.license.isEntitled("enterprise")).toBe(false);
+    expect(client.entitlements.has("pro")).toBe(false);
+    expect(client.entitlements.has("enterprise")).toBe(false);
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
     client.close();
 
@@ -1024,8 +1024,8 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
     expect(c2.license.activation()).toBe("bundle");
     expect(c2.status().status).toBe("ok");
     expect(c2.license.getLicenseId()).toBe("lic_air_gapped");
-    expect(c2.license.isEntitled("pro")).toBe(true);
-    expect(c2.license.isEntitled("enterprise")).toBe(false);
+    expect(c2.entitlements.has("pro")).toBe(true);
+    expect(c2.entitlements.has("enterprise")).toBe(false);
     expect(c2.config.getSecret("beatport.apiKey")).toBe("sk_from_bundle");
     const after = readCacheFile(configDir);
     expect(after?.v).toBe(CACHE_VERSION);
@@ -1133,7 +1133,7 @@ describe("the unsigned blocked hint's vocabulary", () => {
       await client.init();
       expect(client.isLicensed()).toBe(false);
       expect(client.status().status).not.toBe("ok");
-      expect(client.license.isEntitled("pro")).toBe(false);
+      expect(client.entitlements.has("pro")).toBe(false);
     }
   });
 

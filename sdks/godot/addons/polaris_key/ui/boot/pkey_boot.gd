@@ -122,6 +122,7 @@ var _wait_status := ""
 var _consent_bytes := 0
 var _consent_metered := false
 var _consent_open := false
+var _art: TextureRect
 var _background_done := 0
 var _background_total := 0
 var _background_running := false
@@ -179,6 +180,9 @@ func _apply_width(_width: float) -> void:
 func _build() -> void:
 	name = "PKeyBoot"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The game's key art, the boot ground (ProductIdentity.art); behind everything else.
+	_art = PKeyUiTheme.art_ground("Art")
+	add_child(_art)
 	_center = CenterContainer.new()
 	_center.name = "Center"
 	add_child(_center)
@@ -688,6 +692,7 @@ func _render() -> void:
 	self_modulate.a = 1.0 if show_default_view and not _background_running else 0.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if _background_running else Control.MOUSE_FILTER_STOP
 	_center.visible = show_default_view and not waiting_gate and not _background_running and not (outcome == BLOCKED and _block_reason != "content-declined" and _block_reason != "update-required")
+	PKeyUiTheme.show_art(_art, show_default_view and not _background_running)
 	_logo.texture = logo
 	_logo.visible = logo != null
 	_product.visible = logo == null

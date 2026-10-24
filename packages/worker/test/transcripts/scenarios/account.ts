@@ -455,7 +455,7 @@ export const identitySubjectSignout: Scenario = {
       const { key, licenseId } = await seedLicense(world);
       const ada = await seedAccount(world, "ada@example.com");
       await holdLicense(world, licenseId, ada.id);
-      // The device signed in and chose Ada's licence: a seat bound by the sign-in.
+      // The device signed in and chose Ada's licence: a device counted by the sign-in.
       const product = (await loadProduct(world.env, world.db, PRODUCT))!;
       const bound = await bindSignedInDevice(world.env, world.db, product, {
         accountId: ada.id,
@@ -469,7 +469,7 @@ export const identitySubjectSignout: Scenario = {
       const r = new TranscriptRecorder({
         id: "identity-subject-signout",
         description:
-          "Subject and sign-out (I-09, WIRE-CONTRACT-V4 §12.3). The device starts signed in, on a seat its sign-in took on the account's licence: subject() is the product's pairwise subject, and signOut() releases that seat (released: true), so the token stops working. The key is then entered on the device (refusals are off, so a licence in an account is still admitted and counted) and the person signs in again on the key-activated device: signOut() now keeps the licence and the token (released: false) and subject() is null.",
+          "Subject and sign-out (I-09, WIRE-CONTRACT-V4 §12.3). The device starts signed in, counted against the account's licence: subject() is the product's pairwise subject, and signOut() stops counting that device (released: true), so the token stops working. The key is then entered on the device (refusals are off, so a licence in an account is still admitted and counted) and the person signs in again on the key-activated device: signOut() now keeps the licence and the token (released: false) and subject() is null.",
         features: ACCOUNT,
         requires: ["license.activate"],
         product: PRODUCT,
@@ -496,7 +496,7 @@ export const identitySubjectSignout: Scenario = {
         {
           action: "signOut",
           now: T0 + 60,
-          note: "The sign-in bound the seat: signing out releases it.",
+          note: "The sign-in counted the device: signing out releases it.",
         },
         async (s) => {
           const res = await signOut(s);

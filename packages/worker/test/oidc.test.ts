@@ -25,11 +25,6 @@ import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import type { Env } from "../src/platform/env.js";
 import { subjectFor } from "../src/core/accounts/accountSubjects.js";
-import {
-  runOverrideMigration,
-  setOverrideMigrationPrerequisite,
-  startOverrideMigrationNotice,
-} from "../src/core/ops/overrideMigration.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 
 async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
@@ -575,9 +570,9 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
   });
 });
 
-// ── U-03: provisioned secrets follow the account override layer from the migration's run on ──
-describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8 U-03 row)", () => {
-  it("the run moves the provisioned secret to the owner's row, and later sign-ins write it there, sealed", async () => {
+// ── U-27.2: provisioned secrets follow the account override layer, per licence (L-U1) ──
+describe("OIDC provisioning target (U-27.2, L-U1)", () => {
+  it("an unowned licence keeps the secret in the column; once owned and linked, a sign-in writes the owner's row, sealed", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
     env.EMAIL = { send: async () => {} } as unknown as Env["EMAIL"];
@@ -637,14 +632,17 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
     };
     expect(await secretOf(NOW)).toBe("https://vpn.example.com/abc123");
 
-    const actor = { sub: "op", name: null, email: null };
     const runAt = NOW + 31 * 86_400;
-    await setOverrideMigrationPrerequisite(db, "loginCard", true, actor, NOW);
-    await setOverrideMigrationPrerequisite(db, "library", true, actor, NOW);
-    await startOverrideMigrationNotice(db, actor, NOW);
-    const run = await runOverrideMigration(env, db, actor, runAt);
-    expect(run.ok && run.progress.done).toBe(true);
-    // Moved, and sealed on the way (the licence column held it in plaintext).
+    // The licence was minted before it had an owner: the secret sits in the column, in the
+    // clear of the document but sealed at rest.
+    const colBefore = await db.first<{ overrides_json: string }>(
+      "SELECT overrides_json FROM licenses WHERE product = 'djdl' AND id = ?",
+      r.licenseId,
+    );
+    expect(colBefore!.overrides_json).toContain("proxy.subscriptionUrl");
+    expect(colBefore!.overrides_json).not.toContain("vpn.example.com");
+    // The owner's next sign-in moves it to the account row (sealed), off the column.
+    await activateFromIdentity(db, product, identity(), runAt, { env });
     expect(await secretOf(runAt)).toBe("https://vpn.example.com/abc123");
     const subject = await subjectFor(db, ada.account.id, "djdl", NOW);
     const accountRow = () =>
@@ -690,7 +688,7 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
   });
 });
 
-describe("OIDC claim of an enrolled licence after the migration's run (U-03, N8)", () => {
+describe("OIDC claim of an enrolled licence owned by a linked account (U-27.2, N8)", () => {
   it("clears a declared secret whose claim is absent from the owner's row, keeping an operator's keys", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
@@ -734,12 +732,14 @@ describe("OIDC claim of an enrolled licence after the migration's run (U-03, N8)
       }),
       NOW,
     );
-    const actor = { sub: "op", name: null, email: null };
     const runAt = NOW + 31 * 86_400;
-    await setOverrideMigrationPrerequisite(db, "loginCard", true, actor, NOW);
-    await setOverrideMigrationPrerequisite(db, "library", true, actor, NOW);
-    await startOverrideMigrationNotice(db, actor, NOW);
-    expect((await runOverrideMigration(env, db, actor, runAt)).ok).toBe(true);
+    await db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, display_name, amr_json, created_at, last_used_at)
+       VALUES ('lnk-oidc', ?, 'iss', '', 'user-123', 'oidc', NULL, 0, NULL, '[]', ?, ?)`,
+      ada.account.id,
+      NOW,
+      NOW,
+    );
 
     // The identity signs in WITHOUT the claim the secret's hook reads, claiming the enrolled row.
     const r = await activateFromIdentity(

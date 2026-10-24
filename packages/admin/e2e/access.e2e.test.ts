@@ -54,6 +54,7 @@ function product(slug: string, name: string): Record<string, unknown> {
     compatMax: "2.0.0",
     defaultMaxOfflineDays: 14,
     defaultDeviceLimit: 3,
+    manifestAuthoritative: { value: false, locked: false },
     adminGroup: null,
     createdAt: NOW - 86400,
     modifiedAt: NOW - 3600,

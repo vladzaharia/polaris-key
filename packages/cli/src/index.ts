@@ -1,10 +1,11 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  ADMIN_TOKEN_ENV,
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
+  maskTokens,
   mintBundle,
+  type TokenSource,
 } from "./bundle.js";
 import {
   internalMessage,
@@ -38,13 +39,31 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
+import {
+  block,
+  cmdLogout,
+  cmdWhoami,
+  envelope,
+  guarded,
+  originFor,
+  text,
+  type AccountIo,
+} from "./account.js";
+import { withAdminCredential, type AdminIo } from "./adminAuth.js";
+import { cmdLogin, type LoginSeams } from "./login.js";
+import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
-  doctorCounts,
-  doctorOk,
-  gatherDoctor,
-  type DoctorFact,
-  type DoctorModel,
+  buildReport,
+  checkConfigFiles,
+  checkRemote,
+  DOCTOR_TIMEOUT_MS,
+  gatherSession,
+  hostOf,
+  renderReport,
+  reportJson,
+  sessionJson,
+  type ManifestInput,
 } from "./doctor.js";
 import { nearest } from "./suggest.js";
 import {
@@ -136,12 +155,7 @@ import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
-import {
-  ADMIN_COOKIE_ENV,
-  formatImport,
-  listingImport,
-  LISTING_USAGE,
-} from "./listing.js";
+import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import { ASSETS_PUSH_USAGE, pushAssets } from "./assets.js";
 import {
@@ -459,9 +473,6 @@ export {
   type SteamVdfResult,
 } from "./transportSteam.js";
 export {
-  ADMIN_COOKIE_ENV,
-  ADMIN_COOKIE_NAME,
-  CSRF_HEADER,
   formatImport,
   listingImport,
   LISTING_USAGE,
@@ -536,8 +547,10 @@ export interface CliIo {
   fetchImpl?: typeof fetch;
   /** The back-off seam (tests pass an instant one). */
   sleep?: (ms: number) => Promise<void>;
-  /** How long `pkey doctor` waits for discovery (default 10 s; tests pass a short one). */
-  doctorTimeoutMs?: number;
+  /** The credential store behind login, whoami and logout (tests pass `memoryStore()`). */
+  credentialStore?: () => Promise<CredentialStore>;
+  /** The browser, clipboard, keys and clock behind `pkey login` (tests pass fakes). */
+  login?: LoginSeams;
 }
 
 interface ParsedArgs {
@@ -621,7 +634,6 @@ async function runCommand(
     env: io.env,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
-    doctorTimeoutMs: io.doctorTimeoutMs,
   };
   const g: TermFlags = { color: global.flags.color, ascii: global.flags.ascii };
   const term = (out: TermOut): Term => termFor(out, ci.env, g);
@@ -665,7 +677,16 @@ async function runCommand(
       return 2;
     }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
-    return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
+    return await handler(parsed, {
+      cwd,
+      stdout,
+      stderr,
+      ci,
+      g,
+      term,
+      store: io.credentialStore ?? defaultStore,
+      login: io.login,
+    });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
     // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
@@ -693,6 +714,8 @@ interface Runtime {
   ci: CiIo & { env: CiEnv };
   g: TermFlags;
   term: (out: TermOut) => Term;
+  store: () => Promise<CredentialStore>;
+  login?: LoginSeams;
 }
 
 type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
@@ -703,6 +726,15 @@ type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
  * listed without running, or run without being listed.
  */
 export const HANDLERS: Readonly<Record<string, Handler>> = {
+  login: (p, rt) =>
+    cmdLogin({
+      ...accountIo(p, rt),
+      noBrowser: flagBool(p, "no-browser"),
+      flags: rt.g,
+      seams: { sleep: rt.ci.sleep, ...rt.login },
+    }),
+  whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
+  logout: (p, rt) => cmdLogout(accountIo(p, rt)),
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
   validate: (p, rt) =>
     cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
@@ -710,9 +742,33 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   distribution: (p, rt) =>
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   doctor: (p, rt) =>
-    cmdDoctor(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout), rt.ci, rt.g),
-  bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
-  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
+    guarded(accountIo(p, rt), "doctor", () =>
+      cmdDoctor(
+        p,
+        rt.cwd,
+        rt.stdout,
+        rt.stderr,
+        rt.term(rt.stdout),
+        rt.ci,
+        adminIo(p, rt),
+      ),
+    ),
+  bundle: (p, rt) =>
+    withAdminCredential(adminIo(p, rt), "bundle", (token) =>
+      cmdBundle(
+        p,
+        rt.cwd,
+        rt.stdout,
+        rt.term(rt.stdout),
+        rt.ci.env,
+        token,
+        rt.ci.fetchImpl,
+      ),
+    ),
+  migrate: (p, rt) =>
+    withAdminCredential(adminIo(p, rt), "migrate", (token) =>
+      cmdMigrate(p, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl),
+    ),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -721,7 +777,8 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
   manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
   feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  listing: (p, rt) => cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
+  listing: (p, rt) =>
+    cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g, adminIo(p, rt)),
   assets: (p, rt) => cmdAssets(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   transport: (p, rt) => cmdTransport(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   storefront: (p, rt) =>
@@ -730,6 +787,38 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
       { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
     ),
 };
+
+/** The OS credential store, opened on first use and only by the account commands. */
+let osStore: Promise<CredentialStore> | undefined;
+const defaultStore = (): Promise<CredentialStore> =>
+  (osStore ??= keyringStore());
+
+function accountIo(parsed: ParsedArgs, rt: Runtime): AccountIo {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    baseUrlGiven: flagString(parsed, "base-url") !== undefined,
+    json: flagBool(parsed, "json"),
+    env: rt.ci.env,
+    stdout: rt.stdout,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl,
+  };
+}
+
+function adminIo(parsed: ParsedArgs, rt: Runtime): AdminIo {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    env: rt.ci.env,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl,
+    json: flagBool(parsed, "json"),
+    stdout: rt.stdout,
+  };
+}
 
 /**
  * `✗  Unknown command "bogus". Run pkey help to see every command.` and nothing else: the hundred
@@ -1260,11 +1349,11 @@ async function cmdDistributionCi(
 }
 
 /**
- * `pkey doctor [--product slug] [--base-url url] [--json]`: validate the `.pkey/` at or above
- * here (the one `pkey help` names), then, when a product is known (the flag, else that manifest's),
- * check its live discovery at the base URL (the flag, else `PKEY_BASE_URL`, else production). The
- * facts are gathered once (`doctor.ts`); the text answer renders them, `--json` prints them in one
- * result line.
+ * `pkey doctor [--product slug] [--base-url url] [--json]`: validate `.pkey/`, then, when a
+ * product is known (the flag, else the nearest `.pkey/product`), check its live discovery at the
+ * base URL (the flag, else `PKEY_BASE_URL`, else production), who is signed in and the product's
+ * Integration. Every step runs whatever the one before found, and the text and `--json` are drawn
+ * from one report (`doctor.ts`): the summary and the exit code are the same count.
  */
 async function cmdDoctor(
   parsed: ParsedArgs,
@@ -1273,7 +1362,7 @@ async function cmdDoctor(
   stderr: TermOut,
   term: Term,
   ci: CiIo & { env: CiEnv },
-  g: TermFlags,
+  admin: AdminIo,
 ): Promise<number> {
   const bad = checkFlags(
     parsed,
@@ -1285,177 +1374,74 @@ async function cmdDoctor(
     stderr.write(bad);
     return 2;
   }
-  const json = flagBool(parsed, "json");
+  const started = performance.now();
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url"),
   });
-  // The progress line goes to stderr, only on a terminal, and never into `--json`.
-  const spinner = new Spinner(stderr, ci.env, g);
-  let model: DoctorModel;
+  // An address that is not https (http works on localhost) is a ▲ usage line, not a report.
+  originFor({ baseUrl: ctx.baseUrl.url }, "doctor");
+  // One deadline for discovery, /me and the Integration view.
+  const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
+  const io: AdminIo = { ...admin, baseUrl: ctx.baseUrl.url, signal };
+
+  let manifest: ManifestInput;
   try {
-    model = await gatherDoctor({
-      ctx,
-      cwd,
-      fetchImpl: ci.fetchImpl,
-      timeoutMs: ci.doctorTimeoutMs,
-      onStage: (label) => (json ? undefined : spinner.stage(label)),
-    });
-  } finally {
-    spinner.stop();
+    const loaded = await loadManifest(cwd);
+    manifest = {
+      state: "read",
+      result: validateLoadedManifest(loaded),
+      fileWarnings: loaded.fileWarnings ?? [],
+    };
+  } catch (e) {
+    manifest = { state: "missing", problem: (e as Error).message };
   }
-  const exit = doctorOk(model.facts) ? 0 : 1;
-  if (json) {
-    stdout.write(doctorJson(model, exit));
-    return exit;
-  }
-  writeDoctorText(model, cwd, stdout, term, ci.env);
-  return exit;
-}
-
-/** `pkey doctor --json`: one result line, the facts beside the envelope's fields. */
-function doctorJson(model: DoctorModel, exit: number): string {
-  return `${untrustedJson({
-    v: 1,
-    command: "doctor",
-    event: "result",
-    ok: exit === 0,
-    exit,
-    product: model.product?.slug ?? null,
-    baseUrl: model.baseUrl,
-    facts: model.facts,
-    services: model.services,
-    signing: model.signing,
-  }).replace(
-    /[\u007f-\uffff]/g,
-    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
-  )}\n`;
-}
-
-const FACT_LABEL: Record<DoctorFact["id"], string> = {
-  manifest: "Manifest",
-  discovery: "Live product",
-  services: "Live features",
-  "signing-keys": "Signing key",
-  "in-sync": "Features differ",
-};
-
-/**
- * The text answer, from the facts: a header naming the product and origin, a row per fact (the
- * manifest's rows are `pkey validate`'s), a `→` fix row after each to do, and a closing count.
- * Everything the server said is cleaned on its way out.
- */
-function writeDoctorText(
-  model: DoctorModel,
-  cwd: string,
-  stdout: TermOut,
-  term: Term,
-  env: CiEnv,
-): void {
-  const { painter, symbols } = term;
-  const u = (v: unknown) => untrusted(v, env);
-  const origin = shortUrl(model.baseUrl);
-  const who = model.product
-    ? model.product.name
-      ? `${model.product.name} (${model.product.slug})`
-      : model.product.slug
-    : "no product";
-  const rows: Row[] = [];
-  const fix = (text: string) =>
-    rows.push({
-      mark: " ",
-      spans: [
-        { text: `${term.caps.unicode ? "→" : "->"} ${text}`, style: ["muted"] },
-      ],
-    });
-  const mark = (state: DoctorFact["state"]) =>
-    painter.style(
-      state === "ok"
-        ? symbols.ok
-        : state === "warn"
-          ? symbols.warn
-          : symbols.fail,
-      [state === "ok" ? "success" : state === "warn" ? "warning" : "danger"],
+  const remote = ctx.product
+    ? await checkRemote({
+        baseUrl: ctx.baseUrl.url,
+        product: ctx.product.slug,
+        fetchImpl: ci.fetchImpl,
+        signal,
+      })
+    : null;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product?.slug ?? null,
+    signal,
+  });
+  const reached = remote?.facts[0]?.state === "ok";
+  const config = await checkConfigFiles({
+    cwd,
+    host: hostOf(ctx.baseUrl.url),
+    exposed: reached ? remote!.pinned : null,
+  });
+  const report = buildReport({
+    product: ctx.product,
+    baseUrl: ctx.baseUrl.url,
+    manifest,
+    remote,
+    session,
+    config,
+    env: ci.env,
+  });
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("doctor", report.exit, {
+        product: ctx.product?.slug ?? null,
+        baseUrl: maskTokens(ctx.baseUrl.url),
+        ...reportJson(report),
+        services: remote?.services ?? [],
+        signing: remote?.signing ?? null,
+        keys: remote?.keys ?? [],
+        ...sessionJson(session),
+      }),
     );
-  stdout.write(
-    `${wrapSpans(
-      [
-        { text: u(who), style: ["strong"] },
-        { text: ` ${symbols.separator} ${u(origin)}`, style: ["muted"] },
-      ],
-      term.caps.columns,
-    )
-      .map((l) => painter.line(l))
-      .join("\n")}\n`,
-  );
-  for (const f of model.facts) {
-    if (f.id === "manifest" && model.loaded && model.result) {
-      rows.push(...validateRows(model.loaded, model.result, cwd, term));
-      if (f.fix) fix(f.fix);
-      continue;
-    }
-    const label = FACT_LABEL[f.id];
-    if (f.id === "signing-keys" && model.signing?.length) {
-      model.signing.forEach((k, i) =>
-        rows.push({
-          mark: i === 0 ? mark("ok") : " ",
-          spans:
-            i === 0
-              ? [
-                  { text: `${label}  ` },
-                  { text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] },
-                ]
-              : [{ text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }],
-        }),
-      );
-      continue;
-    }
-    if (f.id === "services" && f.state === "ok")
-      rows.push({
-        mark: mark("ok"),
-        spans: [
-          { text: `${label}  ` },
-          { text: model.services.map(u).join(", "), style: ["muted"] },
-        ],
-      });
-    else if (f.state === "ok")
-      rows.push({
-        mark: mark("ok"),
-        spans: [
-          { text: `${label}  ` },
-          { text: u(f.detail), style: ["muted"] },
-        ],
-      });
-    else {
-      const role = f.state === "warn" ? "warning" : "danger";
-      const word = f.state === "warn" ? "warning" : "error";
-      rows.push({
-        mark: mark(f.state),
-        spans:
-          f.id === "manifest"
-            ? [{ text: `${word} `, style: [role] }, { text: u(f.detail) }]
-            : [
-                { text: `${word} `, style: [role] },
-                { text: `${label}: ${u(f.detail)}` },
-              ],
-      });
-    }
-    if (f.fix) fix(u(f.fix));
+    return report.exit;
   }
-  writeRows(rows, stdout, term);
-  const { todo, warnings } = doctorCounts(model);
-  const secs = `${(model.ms / 1000).toFixed(1)} s`;
-  const role = todo ? "danger" : warnings ? "warning" : "success";
-  stdout.write(
-    `\n${painter.line([
-      {
-        text: `${todo} to do ${symbols.separator} ${warnings} warning${warnings === 1 ? "" : "s"} ${symbols.separator} ${secs}`,
-        style: [role],
-      },
-    ])}\n`,
-  );
+  stdout.write(renderReport(report, term, performance.now() - started));
+  return report.exit;
 }
 
 /**
@@ -1493,8 +1479,11 @@ function checkFlags(
 async function cmdBundle(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  term: Term,
   env: UntrustedEnv,
+  token: TokenSource,
+  fetchImpl?: typeof fetch,
 ): Promise<number> {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
@@ -1512,20 +1501,39 @@ async function cmdBundle(
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    token: env[ADMIN_TOKEN_ENV],
+    token,
+    ...(fetchImpl ? { fetchImpl } : {}),
   });
 
   const rel = path.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}\n`);
-  stdout.write(`- File: ${rel}\n`);
-  stdout.write(`- Device: ${result.deviceId}\n`);
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("bundle", 0, {
+        bundleId: untrusted(result.bundleId, env),
+        file: result.file,
+        deviceId: result.deviceId,
+        graceDays: result.graceDays,
+        documents: result.documents,
+      }),
+    );
+    return 0;
+  }
+  // Which documents rode along is read from the bundle itself; if it cannot be read, say nothing.
+  const carries = result.documents.length
+    ? `${result.documents.join(" and ")}, `
+    : "";
   stdout.write(
-    `- Grace window: ${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline\n`,
-  );
-  // Which documents rode along is decided server-side by the product's enabled services, and
-  // the mint response does not say — so claim nothing rather than guess.
-  stdout.write(
-    "\nNext: transfer this file to the offline device and import it there.\n",
+    block(term, "ok", [
+      [
+        text("Wrote "),
+        text(rel, { break: "url" }),
+        text(
+          ` (${carries}${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline)`,
+        ),
+      ],
+      [text("Bundle "), text(untrusted(result.bundleId, env), { unit: true })],
+      [text("Take it to the offline device and import it there.")],
+    ]),
   );
   return 0;
 }
@@ -1539,6 +1547,7 @@ async function cmdMigrate(
   parsed: ParsedArgs,
   stdout: Pick<NodeJS.WriteStream, "write">,
   env: UntrustedEnv,
+  token: TokenSource,
   fetchImpl?: typeof fetch,
 ): Promise<number> {
   const [verb, target, ...extra] = parsed.positional;
@@ -1552,12 +1561,12 @@ async function cmdMigrate(
     verb,
     target,
     baseUrl: flagString(parsed, "base-url"),
-    token: env[ADMIN_TOKEN_ENV],
+    token,
     fetchImpl,
   });
   stdout.write(
     flagBool(parsed, "json")
-      ? `${untrustedJson(result, 2)}\n`
+      ? envelope("migrate", 0, { ...result })
       : formatMigrate(result, env),
   );
   return 0;
@@ -1918,7 +1927,6 @@ interface CiIo {
   env: CiEnv;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
-  doctorTimeoutMs?: number;
 }
 
 const AUTH_USAGE =
@@ -2413,10 +2421,19 @@ async function cmdListing(
   stderr: TermOut,
   ci: CiIo,
   g: TermFlags,
+  admin: AdminIo,
 ): Promise<number> {
   switch (parsed.positional[0]) {
     case "import":
-      return cmdListingImport(parsed, cwd, stdout, ci);
+      // A dry run reads the project and contacts nothing, so it needs no credential.
+      return flagBool(parsed, "dry-run")
+        ? cmdListingImport(parsed, cwd, stdout, ci, undefined)
+        : withAdminCredential(
+            admin,
+            "listing import",
+            (token) => cmdListingImport(parsed, cwd, stdout, ci, token),
+            true,
+          );
     case "assets": {
       // One spinner line per stage, on stderr, only on an interactive terminal (`terminal.ts`).
       const spinner = new Spinner(stderr, ci.env, g);
@@ -2671,14 +2688,15 @@ function titleize(slug: string): string {
 
 /**
  * `pkey listing import --godot <project>` (A-18c): read the Godot project and import it into the
- * product's shared listing — the diff first, written only with `--apply`. The cookie is read from
- * the environment here, as `pkey bundle` does, so `listing.ts` never touches `process.env`.
+ * product's shared listing — the diff first, written only with `--apply`. The credential is
+ * resolved by the caller (`adminAuth.ts`), so `listing.ts` never touches `process.env`.
  */
 async function cmdListingImport(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
   ci: CiIo,
+  token: TokenSource,
 ): Promise<number> {
   const godot = flagString(parsed, "godot");
   if (parsed.positional[0] !== "import" || !godot)
@@ -2701,13 +2719,16 @@ async function cmdListingImport(
       : {}),
     dryRun: flagBool(parsed, "dry-run"),
     baseUrl: flagString(parsed, "base-url"),
-    cookie: (ci.env as Record<string, string | undefined>)[ADMIN_COOKIE_ENV],
+    ...(token ? { token } : {}),
     ...(ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}),
   });
+  // `--json` is one envelope line like every other command's; a bare `--dry-run` prints the upload.
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run")
-      ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}\n`
-      : `${formatImport(result, ci.env)}\n`,
+    flagBool(parsed, "json")
+      ? envelope("listing import", 0, { ...result })
+      : flagBool(parsed, "dry-run")
+        ? `${untrustedJson(result.upload, 2)}\n`
+        : `${formatImport(result, ci.env)}\n`,
   );
   return 0;
 }

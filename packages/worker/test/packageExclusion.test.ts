@@ -29,12 +29,9 @@ import {
 import { simulate, SimulateNotFound } from "../src/services/update/simulate.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { NO_HOOKS } from "./helpers.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -188,8 +185,9 @@ describe("the download page and the storefront feeds never show a package (F-03)
   });
 
   async function distAdmin(path: string): Promise<Response> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       w.env,
+      w.db,
       {
         sub: "u1",
         name: "Ada",

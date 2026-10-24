@@ -31,7 +31,7 @@ import {
 import { Form, FormField, useAdminForm } from "../../../../ui/form.js";
 import { toast } from "../../../../ui/toast.js";
 import { licenseTitle } from "./holders.js";
-import { termsOnTier, tierSummary } from "./shared.js";
+import { defaultTierOf, termsOnTier, tierSummary } from "./shared.js";
 
 const DAY_MS = 86_400_000;
 
@@ -187,10 +187,12 @@ function ChangeTierForm({
 }): React.ReactElement {
   const [now] = React.useState(() => Date.now());
   const form = useAdminForm<TierValues>({
-    values: { tier: license.tier ?? null },
+    // A tierless license is on the Default tier (LX-33.7).
+    values: { tier: license.tier ?? defaultTierOf(tiers)?.id ?? null },
     onSubmit: async (draft) => {
+      if (!draft.tier) return;
       const res = await mutate("patchLicense", slug, license.id, {
-        tier: draft.tier ?? null,
+        tier: draft.tier,
       });
       const target = tiers.find((t) => t.id === draft.tier);
       if (res.overLimit) {
@@ -198,9 +200,7 @@ function ChangeTierForm({
           description: `${res.overLimit.deviceCount} devices are authorized and the new limit is ${res.overLimit.deviceLimit}. They keep working; new devices can't activate until the count drops.`,
         });
       } else {
-        toast.success(
-          target ? `Moved to ${target.label || target.id}` : "Tier removed",
-        );
+        toast.success(`Moved to ${target?.label || draft.tier}`);
       }
       onDone();
     },
@@ -208,7 +208,7 @@ function ChangeTierForm({
   useDismissGuard(form.isDirty && !form.isSubmitting);
   const draft = form.rhf.watch("tier") as string | null | undefined;
   const to = draft ?? null;
-  const same = to === (license.tier ?? null);
+  const same = to === (license.tier ?? defaultTierOf(tiers)?.id ?? null);
   const target = to ? tiers.find((t) => t.id === to) : undefined;
   const diff = React.useMemo(
     () => tierDiff(license, to, tiers, product ?? null, now),
@@ -222,8 +222,7 @@ function ChangeTierForm({
           {(f) => (
             <Combobox
               {...f}
-              clearable
-              placeholder="No tier"
+              placeholder="Choose a tier"
               searchPlaceholder="Search tiers"
               emptyText="No tiers match."
               options={tiers.map((t, i) => ({
@@ -307,12 +306,12 @@ function ChangeTierForm({
         <Button variant="ghost" onClick={onDone} disabled={form.isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" loading={form.isSubmitting} disabled={same}>
-          {target
-            ? `Move to ${target.label || target.id}`
-            : same
-              ? "Move"
-              : "Remove tier"}
+        <Button
+          type="submit"
+          loading={form.isSubmitting}
+          disabled={same || !to}
+        >
+          {target ? `Move to ${target.label || target.id}` : "Move"}
         </Button>
       </DialogFooter>
     </Form>

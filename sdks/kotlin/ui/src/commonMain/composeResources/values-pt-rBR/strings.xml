@@ -21,14 +21,14 @@
     <!-- Shared verb used across the kit's screens. -->
     <string name="common_continue">Continuar</string>
     <!-- Shared verb used across the kit's screens. -->
-    <string name="common_done">Concluído</string>
+    <string name="common_done">OK</string>
     <!-- Shared verb used across the kit's screens. -->
     <string name="common_save">Salvar</string>
     <!-- Shared verb used across the kit's screens. Dismisses an offer without doing it. -->
     <string name="common_notNow">Agora não</string>
     <string name="common_notNow__macos">Agora não</string>
     <!-- Shared verb used across the kit's screens. Postpones an action. -->
-    <string name="common_later">Mais tarde</string>
+    <string name="common_later">Depois</string>
     <!-- Shared verb used across the kit's screens. Repeats the action that failed. -->
     <string name="common_tryAgain">Tentar novamente</string>
     <string name="common_tryAgain__macos">Tentar novamente</string>
@@ -193,7 +193,7 @@
     <!-- PolarisKeyGate and Boot: shown while the license is checked at start. -->
     <string name="gate_checking">Verificando sua licença…</string>
     <!-- PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="gate_error_title">Não foi possível iniciar %1$s</string>
+    <string name="gate_error_title">Falha ao iniciar %1$s</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_starting">Iniciando…</string>
     <!-- Boot screen, shown while the product starts. -->
@@ -230,10 +230,10 @@
     <string name="boot_consent_bodyMetered">%1$s precisa de %2$s de conteúdo novo, e você está em uma conexão limitada.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Baixar</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
-    <string name="boot_error_body">Se o problema continuar, reinicie o app.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_error_body">Se o problema continuar, reinicie %1$s.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="welcome_title">Boas-vindas ao %1$s</string>
+    <string name="welcome_title">Boas-vindas a %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
     <string name="common_welcomeNoProductTitle">Boas-vindas</string>
     <!-- Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}. -->
@@ -242,8 +242,8 @@
     <string name="welcome_lede">Entre ou use uma chave de licença para continuar.</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->
     <string name="welcome_ledeKeyOnly">Digite uma chave de licença para continuar.</string>
-    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="welcome_ledeSignInOnly">Entre para usar %1$s.</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product. -->
+    <string name="welcome_ledeSignInOnly">Entre para continuar.</string>
     <!-- Welcome screen, the gate's first screen. Primary button. -->
     <string name="welcome_signIn">Entrar</string>
     <string name="welcome_signIn__macos">Entrar</string>
@@ -263,7 +263,7 @@
     <string name="welcome_offline">Ativar offline</string>
     <string name="welcome_offline__macos">Ativar offline</string>
     <!-- SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signIn_title">Entrar no %1$s</string>
+    <string name="signIn_title">Entrar em %1$s</string>
     <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signIn_noMethods">Nenhum método de acesso está disponível para %1$s. Use uma chave de licença.</string>
     <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
@@ -307,8 +307,8 @@
     <!-- OfflineActivation: step 2; the kit's number marker carries the order. -->
     <string name="offlineActivation_loadHint">Carregue o arquivo de ativação que você receber ou cole o texto dele.</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
-    <string name="offlineActivation_loadFile">Carregar arquivo…</string>
-    <string name="offlineActivation_loadFile__macos">Carregar arquivo…</string>
+    <string name="offlineActivation_loadFile">Abrir arquivo…</string>
+    <string name="offlineActivation_loadFile__macos">Abrir arquivo…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box. -->
     <string name="offlineActivation_paste">Cole o texto de ativação aqui</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
@@ -345,7 +345,7 @@
     <string name="deviceLimit_primary">Substituir e continuar</string>
     <string name="deviceLimit_primary__macos">Substituir e continuar</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated). Arguments: 1=device, 2=product. -->
-    <string name="deviceLimit_removed">%1$s foi substituído. %2$s está continuando.</string>
+    <string name="deviceLimit_removed">%1$s foi substituído. %2$s vai continuar.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_failed">Não foi possível substituir %1$s. Tente novamente.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode: the device list is only in the browser. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -362,7 +362,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">Dispositivos que usam esta licença.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · usado por último %2$s</string>
+    <string name="devices_meta">%1$s · último uso %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="one">%1$d dispositivo</item>
@@ -397,18 +397,22 @@
     <!-- UpdatePrompt: an app update. Used when the version is unknown. -->
     <string name="update_availableTitle">Há uma atualização disponível</string>
     <!-- UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=version, 2=size. -->
-    <string name="update_current">Você tem a %1$s · download de %2$s</string>
+    <string name="update_current">Você tem a versão %1$s · download de %2$s</string>
+    <!-- UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateCurrentNoSize">Você tem a versão %1$s</string>
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Novidades</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
+    <string name="part_hint_select">Selecionar</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">Todas as mudanças da %1$s</string>
     <string name="update_allChanges__macos">Todas as mudanças da %1$s</string>
     <!-- UpdatePrompt: an app update. Dismisses the prompt. -->
-    <string name="update_later">Mais tarde</string>
-    <string name="update_later__macos">Mais tarde</string>
+    <string name="update_later">Depois</string>
+    <string name="update_later__macos">Depois</string>
     <!-- UpdatePrompt: an app update. Queues the restart after the download. -->
-    <string name="update_restartWhenReady">Reiniciar quando estiver pronto</string>
-    <string name="update_restartWhenReady__macos">Reiniciar quando estiver pronto</string>
+    <string name="update_restartWhenReady">Reiniciar quando terminar</string>
+    <string name="update_restartWhenReady__macos">Reiniciar quando terminar</string>
     <!-- UpdatePrompt: an app update. The update is downloaded. -->
     <string name="update_restartNow">Reiniciar agora</string>
     <string name="update_restartNow__macos">Reiniciar agora</string>
@@ -418,20 +422,26 @@
     <!-- UpdatePrompt: an app update. -->
     <string name="update_install">Atualizar agora</string>
     <string name="update_install__macos">Atualizar agora</string>
+    <!-- UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateDownload">Baixar %1$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
     <string name="update_downloading">Baixando · %1$s de %2$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
     <string name="update_timeLeft">Cerca de %1$s restantes</string>
+    <!-- UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more. Arguments: 1=minutes. -->
+    <string name="common_updateTimeMinutes">Cerca de %1$s min</string>
+    <!-- UpdatePrompt: an app update. Time left on the download when under a minute remains. -->
+    <string name="common_updateTimeLessThanMinute">Menos de um minuto</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="update_readyTitle">%1$s %2$s está pronto</string>
-    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_readyBody">Reinicie %1$s para concluir a atualização.</string>
+    <!-- UpdatePrompt: an app update. The title already names the product. -->
+    <string name="update_readyBody">Reinicie para concluir a atualização.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Atualize para continuar usando %1$s</string>
     <!-- UpdatePrompt: an app update. Mandatory update. -->
-    <string name="update_mandatoryBody">Esta versão não é mais compatível.</string>
+    <string name="update_mandatoryBody">Esta versão não tem mais suporte.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
-    <string name="update_blockedTitle">Esta versão não é mais compatível</string>
+    <string name="update_blockedTitle">Esta versão não tem mais suporte</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_blockedBody">Ainda não há atualização disponível aqui. Você pode continuar usando %1$s por enquanto.</string>
     <!-- UpdatePrompt: an app update. -->
@@ -468,12 +478,23 @@
     <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_platform_generic">A atualização é instalada pela loja ou plataforma onde você obteve %1$s.</string>
     <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_revokedContent">Parte do conteúdo de %1$s foi retirada e não pode ser usada. Atualize %1$s para continuar.</string>
+    <string name="update_revokedContent">Parte do conteúdo de %1$s foi retirada e não pode ser usada. Atualize para continuar.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Você está atualizado</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Verificar atualizações</string>
     <string name="update_checkNow__macos">Verificar atualizações</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">Gerenciar a licença</string>
+    <string name="menu_manageLicense__macos">Gerenciar a licença</string>
+    <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_title">Atualização pronta</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_body">Reinicie para concluir a atualização.</string>
+    <!-- Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_title">Login concluído</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_body">Você entrou neste dispositivo.</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">Baixando conteúdo</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
@@ -514,7 +535,7 @@
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
     <string name="status_allowedRange">Versões permitidas: %1$s a %2$s</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version. Arguments: 1=min. -->
-    <string name="status_allowedMin">Versões permitidas: %1$s ou posterior</string>
+    <string name="status_allowedMin">Versões permitidas: %1$s ou posteriores</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version. Arguments: 1=max. -->
     <string name="status_allowedMax">Versões permitidas: até %1$s</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
@@ -609,8 +630,8 @@
     <string name="paywall_purchasing">Concluindo a compra…</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="paywall_purchased">%1$s desbloqueado</string>
-    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="paywall_notAvailable">Compras não estão disponíveis nesta versão de %1$s.</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="paywall_notAvailable">Compras não estão disponíveis nesta versão.</string>
     <!-- Paywall: what a tier adds, and how to get it. -->
     <string name="paywall_portal">Comprar no navegador</string>
     <string name="paywall_portal__macos">Comprar no navegador</string>
@@ -666,8 +687,8 @@
     <string name="signin_methods_title">Entrar no Polaris Locker</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Entrar</string>
-    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">Use o e-mail da sua compra de %1$s ou um e-mail de trabalho ou escola.</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="signin_methods_ledeApp">Use o e-mail com que você comprou ou um e-mail de trabalho ou escola.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">E-mail</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -706,7 +727,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="signin_header_codePanel">Código · %1$s · Confira se é igual ao da tela</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
-    <string name="signin_footer">O Polaris Locker faz seu acesso ao %1$s. %2$s nunca vê seus códigos nem suas chaves de acesso.</string>
+    <string name="signin_footer">O Polaris Locker cuida do seu acesso a %1$s. %2$s nunca vê seus códigos nem suas chaves de acesso.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
     <string name="signin_off_product">O acesso está desativado para %1$s. Contate %2$s.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
@@ -776,7 +797,7 @@
     <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_gate_ledeApp">Falta uma etapa para %1$s. Enviamos códigos de acesso, recibos e avisos de segurança para cá.</string>
     <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
-    <string name="signin_gate_steam">O Steam não compartilha e-mail. Adicione um para poder voltar sem o Steam.</string>
+    <string name="signin_gate_steam">O Steam não compartilha e-mail. Adicione um para poder entrar de novo sem o Steam.</string>
     <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
     <string name="signin_gate_verify">Verificar e continuar</string>
     <string name="signin_gate_verify__macos">Verificar e continuar</string>
@@ -790,10 +811,10 @@
     <string name="signin_gate_join">Unir em uma só conta</string>
     <string name="signin_gate_join__macos">Unir em uma só conta</string>
     <!-- Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
-    <string name="signin_profile_source">Nome e foto do %1$s.</string>
+    <string name="signin_profile_source">Nome e imagem importados de %1$s.</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
-    <string name="signin_profile_applePicture">A Apple não compartilha foto. Adicione uma</string>
-    <string name="signin_profile_applePicture__macos">A Apple não compartilha foto. Adicione uma</string>
+    <string name="signin_profile_applePicture">A Apple não compartilha imagem. Adicione uma</string>
+    <string name="signin_profile_applePicture__macos">A Apple não compartilha imagem. Adicione uma</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_title">Escolha uma licença para este dispositivo</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
@@ -878,8 +899,8 @@
     <string name="signin_choice_keyInstead">Usar uma chave de licença</string>
     <string name="signin_choice_keyInstead__macos">Usar uma chave de licença</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_freeDevice">Liberar um dispositivo</string>
-    <string name="signin_choice_freeDevice__macos">Liberar um dispositivo</string>
+    <string name="signin_choice_freeDevice">Liberar dispositivo</string>
+    <string name="signin_choice_freeDevice__macos">Liberar dispositivo</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_continue">Usar esta licença e continuar</string>
     <string name="signin_choice_continue__macos">Usar esta licença e continuar</string>
@@ -906,7 +927,7 @@
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
     <string name="signin_replace_openSystem">Substituir…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="signin_replace_meta">%1$s · usado por último %2$s</string>
+    <string name="signin_replace_meta">%1$s · último uso %2$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_leastRecent">Menos recente</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -923,8 +944,7 @@
     <string name="signin_replace_confirm">Substituir e continuar</string>
     <string name="signin_replace_confirm__macos">Substituir e continuar</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_confirmNamed">Substituir %1$s e continuar</string>
-    <string name="signin_replace_confirmNamed__macos">Substituir %1$s e continuar</string>
+    <string name="signin_replace_confirmNamed">Substituir %1$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">Voltar</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -948,7 +968,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · substitui %2$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_consent_licenseInApp">Você vai escolher uma licença no %1$s.</string>
+    <string name="signin_consent_licenseInApp">Você vai escolher uma licença em %1$s.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_change">Alterar</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
@@ -958,7 +978,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">Seu perfil e e-mail</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">Ele recebe um id próprio para você e não verá seus outros produtos nem como você entra.</string>
+    <string name="signin_consent_pairwise">Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">Não é você?</string>
     <string name="signin_notYou__macos">Não é você?</string>
@@ -981,7 +1001,7 @@
         <item quantity="other">%1$d usos da chave restantes</item>
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntries">Esta chave não tem mais usos em %1$s. Adicione-a à sua conta e %1$s faz seu acesso no lugar dela.</string>
+    <string name="signin_key_noEntries">Esta chave não tem mais usos em %1$s. Adicione-a à sua conta e entre em %1$s com sua conta.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Pular por enquanto</string>
     <string name="signin_key_skip__macos">Pular por enquanto</string>
@@ -996,7 +1016,7 @@
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_return_product">%1$s · na sua biblioteca</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_return_signedIn">Você entrou no %1$s</string>
+    <string name="signin_return_signedIn">Você entrou em %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_button">Voltar para %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds. Arguments: 1=s. -->
@@ -1005,8 +1025,8 @@
     <string name="signin_return_stay">Ficar aqui</string>
     <string name="signin_return_stay__macos">Ficar aqui</string>
     <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="signin_done_start">Começar a usar o %1$s</string>
-    <string name="signin_done_start__macos">Começar a usar o %1$s</string>
+    <string name="signin_done_start">Começar a usar %1$s</string>
+    <string name="signin_done_start__macos">Começar a usar %1$s</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_device_title">Entre para concluir em %1$s</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
@@ -1043,7 +1063,7 @@
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_desktop_notifyBody">%1$s está pronto.</string>
     <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_desktop_notifyChoose">Escolha uma licença · O %1$s está pronto para concluir o acesso.</string>
+    <string name="signin_desktop_notifyChoose">Escolha uma licença · %1$s está pronto para concluir o acesso.</string>
     <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
     <string name="signin_menu_signIn">Entrar…</string>
     <string name="signin_menu_signIn__macos">Entrar…</string>
@@ -1078,11 +1098,11 @@
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_closeTab">Você pode fechar esta aba e voltar para %1$s.</string>
     <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_return_chooseInApp">Volte ao %1$s para escolher uma licença. Você pode fechar esta aba.</string>
+    <string name="signin_return_chooseInApp">Volte a %1$s para escolher uma licença. Você pode fechar esta aba.</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">Você entrou</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_return_cancelled">O acesso foi cancelado em %1$s. Comece de novo pelo %1$s.</string>
+    <string name="signin_return_cancelled">O acesso foi cancelado em %1$s. Comece de novo a partir de %1$s.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_library">Abrir sua biblioteca</string>
     <string name="signin_return_library__macos">Abrir sua biblioteca</string>
@@ -1124,9 +1144,9 @@
     <string name="signin_approve_approve">Aprovar e conectar</string>
     <string name="signin_approve_approve__macos">Aprovar e conectar</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_deny">Recusar</string>
+    <string name="signin_approve_deny">Negar</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_denied">Essa solicitação foi recusada. Use outra forma de entrar.</string>
+    <string name="signin_approve_denied">Essa solicitação foi negada. Use outra forma de entrar.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_expired">Esse código expirou. Obtenha um novo código.</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
@@ -1150,16 +1170,16 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
     <string name="signin_expired_sendTo">Um novo código será enviado para %1$s.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
-    <string name="signin_again">Entre novamente</string>
-    <string name="signin_again__macos">Entre novamente</string>
+    <string name="signin_again">Entrar novamente</string>
+    <string name="signin_again__macos">Entrar novamente</string>
     <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_identityOff_notice">%1$s não usa o acesso do Polaris Locker. Abra %1$s e digite sua chave de licença nele.</string>
+    <string name="signin_identityOff_notice">%1$s não usa o acesso do Polaris Locker. Abra %1$s e digite sua chave de licença lá.</string>
     <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_lede">Entre aqui para ver %1$s na sua biblioteca.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">Sair de %1$s neste dispositivo?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">%1$s deixa de usar sua licença %2$s aqui e libera a vaga.</string>
+    <string name="signin_signout_released">%1$s deixa de usar sua licença %2$s aqui e libera espaço para outro dispositivo.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="one">%1$d alteração ainda não foi sincronizada.</item>
@@ -1179,16 +1199,16 @@
     <string name="signin_provider_manage">Gerenciar métodos de acesso no Polaris Locker</string>
     <string name="signin_provider_manage__macos">Gerenciar métodos de acesso no Polaris Locker</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
-    <string name="signin_profile_changePicture">Alterar foto</string>
-    <string name="signin_profile_changePicture__macos">Alterar foto</string>
+    <string name="signin_profile_changePicture">Alterar imagem</string>
+    <string name="signin_profile_changePicture__macos">Alterar imagem</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s foi desconectado em %2$s</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%1$s foi substituído por %2$s quando você entrou no %3$s em %4$s. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.</string>
+    <string name="signin_mail_replaced_body">%1$s foi substituído por %2$s em %4$s, quando você entrou em %3$s. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">Um novo dispositivo entrou na sua conta do Polaris Locker</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%1$s entrou em %2$s de %3$s. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado.</string>
+    <string name="signin_mail_newDevice_body">%1$s entrou em %2$s, a partir de %3$s. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_open">Abrir o Polaris Locker</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
@@ -1228,7 +1248,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Obter a licença gratuita, se %1$s oferecer uma</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">Parar de usar a licença neste dispositivo e liberar a vaga</string>
+    <string name="cli_verb_deactivate">Parar de usar a licença neste dispositivo e abrir espaço para outro</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">Licença, dispositivos e tempo offline</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1246,7 +1266,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">Renomear um dispositivo (sem nome, o nome é apagado)</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">Remover um dispositivo e liberar a vaga</string>
+    <string name="cli_verb_devicesRemove">Remover um dispositivo e abrir espaço para outro</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">Mostrar uma configuração e a origem do valor</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1331,7 +1351,7 @@
     <string name="cli_fix_signIn">Usar a licença da sua conta</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">Você saiu de %1$s neste dispositivo.</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
     <string name="cli_deactivate_done">%1$s não usa mais sua licença neste dispositivo. A vaga está livre.</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">Nada foi alterado.</string>
@@ -1515,11 +1535,11 @@
     <!-- Approve dialog: a decision that failed. -->
     <string name="signin_approve_failed">Não foi possível concluir. Tente novamente.</string>
     <!-- Passkey prompt closed or timed out. -->
-    <string name="signin_passkey_cancelled">Sua passkey não foi usada. Tente novamente ou use outra forma.</string>
+    <string name="signin_passkey_cancelled">Sua chave de acesso não foi usada. Tente novamente ou use outra forma.</string>
     <!-- Passkey not usable in this browser. -->
-    <string name="signin_passkey_unsupported">Este navegador não pode usar sua passkey aqui. Use outra forma.</string>
+    <string name="signin_passkey_unsupported">Este navegador não pode usar sua chave de acesso aqui. Use outra forma.</string>
     <!-- Passkey refused. -->
-    <string name="signin_passkey_failed">Sua passkey não funcionou. Tente novamente ou use outra forma.</string>
+    <string name="signin_passkey_failed">Sua chave de acesso não funcionou. Tente novamente ou use outra forma.</string>
     <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
     <string name="signin_gate_stripNoIdentity">Conectado com %1$s</string>
     <!-- Finish step title when only the terms are asked. -->
@@ -1534,10 +1554,10 @@
     <string name="signin_gate_pictureInitials">Usar minhas iniciais</string>
     <string name="signin_gate_pictureInitials__macos">Usar minhas iniciais</string>
     <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
-    <string name="signin_gate_pictureProvider">Usar minha imagem do %1$s</string>
-    <string name="signin_gate_pictureProvider__macos">Usar minha imagem do %1$s</string>
+    <string name="signin_gate_pictureProvider">Usar minha imagem de %1$s</string>
+    <string name="signin_gate_pictureProvider__macos">Usar minha imagem de %1$s</string>
     <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
-    <string name="signin_gate_birthdate">Adicionar minha data de nascimento de %1$s</string>
+    <string name="signin_gate_birthdate">Adicionar minha data de nascimento informada por %1$s</string>
     <!-- Finish step: under the birth date choice. -->
     <string name="signin_gate_birthdateHelp">Só você pode ver. Os apps nunca a recebem.</string>
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
@@ -1545,29 +1565,29 @@
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
     <string name="signin_gate_platformTerms">Concordo com %1$s</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
-    <string name="signin_gate_expired">Esse login expirou. Entre novamente.</string>
+    <string name="signin_gate_expired">Esse acesso expirou. Entre novamente.</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
     <string name="signin_gate_joinTitle">Juntar suas contas</string>
     <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
-    <string name="signin_gate_joinLede">%1$s já pertence a uma conta do Polaris Locker. Una este login a ela ou use outro e-mail.</string>
+    <string name="signin_gate_joinLede">%1$s já pertence a uma conta do Polaris Locker. Una este acesso a ela ou use outro e-mail.</string>
     <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
-    <string name="signin_gate_joinProve">Para juntar, entre primeiro nessa conta neste navegador e depois adicione este login em Conta.</string>
+    <string name="signin_gate_joinProve">Para unir, entre primeiro nessa conta neste navegador e depois adicione este acesso em Conta.</string>
     <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_codeSent">Enviamos um código para %1$s.</string>
     <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
-    <string name="signin_hint_when">Neste navegador, na última vez %1$s</string>
+    <string name="signin_hint_when">Neste navegador, último acesso %1$s</string>
     <!-- HintStep title when the browser kept no name. -->
     <string name="signin_hint_welcomeNoName">Bem-vindo de volta</string>
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
-    <string name="signin_hint_method_passkey">uma passkey</string>
+    <string name="signin_hint_method_passkey">uma chave de acesso</string>
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">um código por e-mail</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">Usar uma passkey</string>
-    <string name="signin_hint_usePasskey__macos">Usar uma passkey</string>
+    <string name="signin_hint_usePasskey">Usar chave de acesso</string>
+    <string name="signin_hint_usePasskey__macos">Usar chave de acesso</string>
     <!-- HintStep: sends a sign-in code. -->
-    <string name="signin_hint_emailCode">Enviar um código por e-mail</string>
-    <string name="signin_hint_emailCode__macos">Enviar um código por e-mail</string>
+    <string name="signin_hint_emailCode">Enviar código por e-mail</string>
+    <string name="signin_hint_emailCode__macos">Enviar código por e-mail</string>
     <!-- HintStep: back to the email field. -->
     <string name="signin_hint_change">Alterar</string>
     <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
@@ -1580,11 +1600,11 @@
     <!-- Have a license key? step, under the title. -->
     <string name="signin_key_onrampLede">Cole a chave do seu e-mail de recibo. Entre em seguida e ela entra na sua biblioteca.</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
-    <string name="signin_code_expiredRestart">Esse login expirou. Continue para receber um novo código.</string>
+    <string name="signin_code_expiredRestart">Esse acesso expirou. Continue para receber um novo código.</string>
     <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
     <string name="signin_sso_expiredRestart">Demorou demais. Continue para começar de novo.</string>
     <!-- Code step: the per-sign-in resend cap. -->
-    <string name="signin_code_noMore">Não é possível enviar mais códigos para este login. O último código ainda funciona.</string>
+    <string name="signin_code_noMore">Não é possível enviar mais códigos para este acesso. O último código ainda funciona.</string>
     <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
     <string name="signin_sso_title">Entrar com %1$s</string>
     <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
@@ -1600,7 +1620,7 @@
     <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_refused_lede">%1$s pertence a uma conta que não pode entrar. Tente outro e-mail ou outra forma de entrar.</string>
     <!-- Sign-in card: no way to sign in is enabled. -->
-    <string name="signin_off_title">O login está desativado</string>
+    <string name="signin_off_title">O acesso está desativado</string>
     <!-- Sign-in card: the bot check refused. -->
     <string name="signin_turnstile_failed">A verificação de segurança não foi aprovada. Tente novamente.</string>
     <!-- Code step: the verify's 429. -->
@@ -1612,7 +1632,7 @@
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">Esse código expirou. Peça um novo no outro dispositivo.</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
-    <string name="signin_approve_notFound">Nenhum login está aguardando esse código. Confira-o no outro dispositivo.</string>
+    <string name="signin_approve_notFound">Nenhum acesso está aguardando esse código. Confira-o no outro dispositivo.</string>
     <!-- Placeholder of the email field on the sign-in card. Not translated. -->
     <string name="signin_email_placeholder">you@example.com</string>
     <!-- Names the platform's single sign-on in 'Continue with {provider}' when it has no display name. -->
@@ -1649,7 +1669,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
     <string name="signin_choice_replacedBody">%1$s saiu de %2$s. %3$s está conectado.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_request_goneTitle">Este login foi encerrado</string>
+    <string name="signin_request_goneTitle">Este acesso foi encerrado</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_request_gone">Volte ao app e entre de novo.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name. Arguments: 1=device. -->
@@ -1660,13 +1680,13 @@
     <string name="signin_consent_deny">Não permitir</string>
     <string name="signin_consent_deny__macos">Não permitir</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Cloud Sync</string>
+    <string name="signin_consent_cloudSync">Sincronização na nuvem</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">Nova: licença %1$s, criada ao continuar</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">Guarde %1$s em uma conta</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">Em uma conta, você a recupera e a move para um novo dispositivo sozinho.</string>
+    <string name="signin_key_upgradeLede">Em uma conta, você pode recuperá-la e passá-la para um novo dispositivo por conta própria.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">Criar conta</string>
     <string name="signin_key_createAccount__macos">Criar conta</string>
@@ -1678,11 +1698,11 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntriesKeeps">%1$s continua funcionando nos dispositivos em que já está. Só digitar a chave de novo exige uma conta.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers. Arguments: 1=used, 2=limit. -->
-    <string name="signin_key_meter">%1$s de %2$s entradas da chave usadas</string>
+    <string name="signin_key_meter">%1$s de %2$s usos da chave</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_keyWorks">A chave funciona</string>
+    <string name="signin_key_keyWorks">Chave válida</string>
     <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_footerNoDeveloper">O Polaris Locker conecta você ao %1$s.</string>
+    <string name="signin_footerNoDeveloper">O Polaris Locker cuida do seu acesso a %1$s.</string>
     <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
     <plurals name="signin_replace_rateLimitedMinutes">
         <item quantity="one">Muitas trocas de dispositivo. Tente de novo em %1$d minuto.</item>
@@ -1716,12 +1736,12 @@
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
     <string name="signin_gate_pictureInvalid">Escolha um PNG ou JPEG de até 5 MB.</string>
     <!-- Finish: the step after the account exists, offering one passkey. -->
-    <string name="signin_gate_passkeyTitle">Adicionar uma chave de acesso</string>
+    <string name="signin_gate_passkeyTitle">Criar chave de acesso</string>
     <!-- Finish: under the passkey step title. -->
     <string name="signin_gate_passkeyLede">Da próxima vez, basta um toque.</string>
     <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
-    <string name="signin_gate_passkeyAdd">Adicionar uma chave de acesso</string>
-    <string name="signin_gate_passkeyAdd__macos">Adicionar uma chave de acesso</string>
+    <string name="signin_gate_passkeyAdd">Criar chave de acesso</string>
+    <string name="signin_gate_passkeyAdd__macos">Criar chave de acesso</string>
     <!-- Finish: passkey outcome, success. -->
     <string name="signin_gate_passkeyAdded">Chave de acesso adicionada.</string>
     <!-- Finish: passkey outcome, none added. -->
@@ -1729,7 +1749,7 @@
     <!-- Finish: leaves the passkey step. -->
     <string name="signin_gate_passkeySkip">Pular</string>
     <!-- Finish: the tile of a picture the person picked from their device. -->
-    <string name="signin_gate_pictureYours">Seu envio</string>
+    <string name="signin_gate_pictureYours">Enviada por você</string>
     <!-- Finish: shown on arrival when the picked picture could not be saved. -->
     <string name="signin_gate_uploadFailed">Sua imagem não foi salva. Adicione uma em Conta.</string>
     <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
@@ -1783,7 +1803,7 @@
     <!-- Link dialog: join undone. -->
     <string name="signin_join_undone">União desfeita.</string>
     <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
-    <string name="signin_join_undoable">%1$s unida. Desfazer até %2$s.</string>
+    <string name="signin_join_undoable">Conta %1$s unida. Desfazer até %2$s.</string>
     <!-- Link dialog: the link flow is gone. -->
     <string name="signin_join_expired">A vinculação demorou demais. Comece de novo.</string>
     <!-- Link dialog: confirm before the second sign-in. -->
@@ -1829,8 +1849,8 @@
     <!-- Link dialog: the join cannot be undone any more. -->
     <string name="signin_join_noUndo">Esta união não pode mais ser desfeita.</string>
     <!-- Link dialog: a link to Account → Sign-in methods. -->
-    <string name="signin_join_methodsLink">Métodos de entrada</string>
-    <string name="signin_join_methodsLink__macos">Métodos de entrada</string>
+    <string name="signin_join_methodsLink">Métodos de acesso</string>
+    <string name="signin_join_methodsLink__macos">Métodos de acesso</string>
     <!-- Link dialog: an undo failed. -->
     <string name="signin_join_undoFailed">Não foi possível desfazer a união. Tente de novo.</string>
     <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
@@ -1868,15 +1888,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_forbidden_message">Você não tem permissão para fazer isso.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_required_title">Verificação do dispositivo necessária</string>
+    <string name="core_codes_attestation_required_title">Verificação necessária</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_attestation_required_message">Isso exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_rejected_title">Falha na verificação do dispositivo</string>
+    <string name="core_codes_attestation_rejected_title">Dispositivo não verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_attestation_rejected_message">Não foi possível verificar este dispositivo. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_unavailable_title">Verificação do dispositivo indisponível</string>
+    <string name="core_codes_attestation_unavailable_title">Verificação indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_attestation_unavailable_message">A verificação de dispositivo não está disponível para este app agora. Tente novamente em alguns minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1944,7 +1964,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_message">O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_fingerprint_required_title">Falha na verificação do dispositivo</string>
+    <string name="core_codes_fingerprint_required_title">Dispositivo não verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_fingerprint_required_message">Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1996,29 +2016,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unknown_app_message">O acesso não está disponível para este app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_request_title">Solicitação de login inválida</string>
+    <string name="core_codes_invalid_request_title">Solicitação de acesso inválida</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">O app enviou uma solicitação que não conseguimos ler. Tente de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">Não foi possível concluir o login</string>
+    <string name="core_codes_invalid_client_title">Acesso não concluído</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
+    <string name="core_codes_invalid_client_message">O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Login não é mais válido</string>
+    <string name="core_codes_invalid_grant_title">Acesso não é mais válido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_message">Este login expirou ou já foi usado. Entre de novo.</string>
+    <string name="core_codes_invalid_grant_message">Este acesso expirou ou já foi usado. Entre de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_grant_type_title">Solicitação de login inválida</string>
+    <string name="core_codes_unsupported_grant_type_title">Solicitação de acesso inválida</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_grant_type_message">O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor.</string>
+    <string name="core_codes_unsupported_grant_type_message">O app pediu um tipo de acesso que não aceitamos. Fale com o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_title">Acesso indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_scope_message">O app pediu um acesso que este login não oferece. Fale com o desenvolvedor.</string>
+    <string name="core_codes_invalid_scope_message">O app pediu um tipo de acesso que esta forma de entrar não oferece. Fale com o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">O login não consegue voltar ao app</string>
+    <string name="core_codes_redirect_uri_mismatch_title">Não foi possível voltar ao app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Escolha uma licença</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2042,7 +2062,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_title">Código incorreto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_message">Esse código não funcionou. Confira o e-mail e digite de novo.</string>
+    <string name="core_codes_invalid_code_message">Esse código está incorreto. Confira o e-mail e tente de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_code_expired_title">Código expirado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2050,7 +2070,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">E-mail já em uso</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.</string>
+    <string name="core_codes_email_in_use_message">Outra conta do Polaris Locker já usa este e-mail. Una este acesso a essa conta ou use outro e-mail.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_terms_required_title">Termos não aceitos</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2068,6 +2088,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_message">Entre na sua conta do Polaris Locker neste dispositivo e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_title">Sincronização desatualizada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_message">Este dispositivo ficou tempo demais sem sincronizar. Ele vai recomeçar com seus dados salvos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_title">Sincronização incompatível</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_message">Esta sincronização pertence a outro dispositivo. Reinicie o app e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_title">Configuração não salva</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_message">Esse valor não é válido para esta configuração.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_title">Alteração não permitida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_message">Essa alteração não é permitida para esta configuração.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_title">Não sincronizada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_message">Esta configuração não é sincronizada com sua conta.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_title">Coleção desconhecida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_message">Esta coleção não está disponível.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_title">Armazenamento cheio</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_message">Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_title">Sincronização pausada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_message">A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">E-mail não verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente.</string>
@@ -2076,7 +2128,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_conflict_message">Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_last_link_title">Não é possível remover</string>
+    <string name="core_codes_last_link_title">Impossível remover</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_message">Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2088,7 +2140,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_removable_title">Não é possível remover</string>
+    <string name="core_codes_not_removable_title">Impossível remover</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_removable_message">Esta licença não pode ser adicionada de novo com uma chave de licença, então ela continua na sua biblioteca.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2100,7 +2152,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_delivery_gate_missing_message">Este download ainda não está configurado. Contate o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_upstream_rate_limited_title">Downloads sobrecarregados</string>
+    <string name="core_codes_upstream_rate_limited_title">Servidor ocupado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upstream_rate_limited_message">Os downloads estão sobrecarregados agora. Tente novamente em alguns minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2122,9 +2174,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_asset_unreachable_title">Imagem não atualizada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_asset_unreachable_message">Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.</string>
+    <string name="core_codes_asset_unreachable_message">Não foi possível obter uma imagem na origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_not_composable_title">Verificação de atualizações indisponível</string>
+    <string name="core_codes_feed_not_composable_title">Atualizações indisponíveis</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">Não é possível verificar atualizações agora. Tente novamente em alguns minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2172,11 +2224,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_transport_message">Verifique sua conexão e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_title">Não é possível conectar</string>
+    <string name="core_codes_network_title">Sem conexão</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_message">Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_refresh_failed_title">Não foi possível atualizar</string>
+    <string name="core_codes_refresh_failed_title">Falha ao atualizar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_message">Não foi possível atualizar sua licença e suas configurações. Verifique sua conexão e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2198,7 +2250,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_refused_title">Não incluído</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_refused_message">Sua licença não inclui este lançamento.</string>
+    <string name="core_codes_release_refused_message">Sua licença não inclui esta versão.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_bundle_rejected_title">Arquivo de ativação inválido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2216,15 +2268,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_list_failed_title">Não foi possível carregar os dispositivos</string>
+    <string name="core_codes_device_list_failed_title">Falha ao carregar dispositivos</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_rename_failed_title">Não foi possível renomear</string>
+    <string name="core_codes_device_rename_failed_title">Falha ao renomear</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_rename_failed_message">Não foi possível renomear o dispositivo. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_deauthorize_failed_title">Não foi possível remover o dispositivo</string>
+    <string name="core_codes_device_deauthorize_failed_title">Falha ao remover dispositivo</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_deauthorize_failed_message">Não foi possível remover o dispositivo. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2244,7 +2296,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_bad_response_message">O serviço enviou uma resposta que o app não pôde usar. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_title">Não é possível conectar</string>
+    <string name="core_codes_network_error_title">Sem conexão</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_message">Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2316,7 +2368,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_response_message">O serviço enviou uma resposta que o app não pôde usar. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_title">Problema de armazenamento</string>
+    <string name="core_codes_store_failed_title">Erro de armazenamento</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2332,11 +2384,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_mint_unavailable_message">Isso não está disponível para este app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rejected_title">Falha na verificação de atualizações</string>
+    <string name="core_codes_feed_rejected_title">Falha ao verificar atualizações</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_rejected_message">Não foi possível verificar as informações de atualização, então nada foi instalado.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rollback_title">Falha na verificação de atualizações</string>
+    <string name="core_codes_feed_rollback_title">Falha ao verificar atualizações</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_rollback_message">As informações de atualização eram mais antigas do que as que este dispositivo já tem, então foram recusadas.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2352,13 +2404,13 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_payload_mismatch_message">A atualização não foi baixada corretamente, então não foi instalada. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_refused_title">Não é possível atualizar aqui</string>
+    <string name="core_codes_swap_refused_title">Impossível atualizar aqui</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_swap_refused_message">Esta instalação não pode se atualizar sozinha. Atualize-a da mesma forma que você a instalou.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_swap_failed_title">Atualização não concluída</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_failed_message">Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização.</string>
+    <string name="core_codes_swap_failed_message">Não foi possível aplicar a atualização. Uma nova tentativa será feita na próxima inicialização.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_files_index_invalid_title">Conteúdo inválido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2484,7 +2536,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_plan_insufficient_disk_message">Não há espaço livre suficiente para este conteúdo. Libere espaço e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_no_strategy_title">Não é possível instalar o conteúdo</string>
+    <string name="core_codes_plan_no_strategy_title">Impossível instalar conteúdo</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_plan_no_strategy_message">Este conteúdo não pode ser instalado neste dispositivo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2508,7 +2560,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pack_not_entitled_message">Sua licença não inclui este conteúdo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_state_unreadable_title">Problema de armazenamento</string>
+    <string name="core_codes_pack_state_unreadable_title">Erro de armazenamento</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pack_state_unreadable_message">Não foi possível ler o conteúdo instalado, então nada novo foi instalado. Reinicie o app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2573,8 +2625,8 @@
     <string name="core_gate_needs_activation_message">Digite uma chave de licença ou entre para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_old_title">Atualização necessária</string>
-    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_old_message">Esta versão não é mais compatível. Atualize o app para continuar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). Arguments: 1=product. -->
+    <string name="core_gate_version_too_old_message">Esta versão não tem mais suporte. Atualize %1$s para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_new_title">Indisponível nesta licença</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2596,7 +2648,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_device_limit_message">Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_fingerprint_required_title">Falha na verificação do dispositivo</string>
+    <string name="core_activation_fingerprint_required_title">Dispositivo não verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_fingerprint_required_message">Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
@@ -2616,7 +2668,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_expired_message">Esta licença expirou. Renove-a para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_attestation_required_title">Verificação do dispositivo necessária</string>
+    <string name="core_activation_attestation_required_title">Verificação necessária</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_attestation_required_message">Esta licença exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

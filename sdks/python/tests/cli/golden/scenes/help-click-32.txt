@@ -19,8 +19,8 @@ License:
     devices and offline time
   deactivate
     Stop using your license
-    on this device and free
-    its seat
+    on this device and make
+    room for another
   login
     Sign in with your
     account in the browser
@@ -33,8 +33,8 @@ License:
     Rename a device (no name
     clears it)
   devices deauthorize <deviceId>
-    Remove a device and free
-    its seat
+    Remove a device and make
+    room for another
   update check
     Check for a newer
     version

@@ -15,6 +15,7 @@
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { checkDisplayName } from "@polaris-key/manifest";
+import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
@@ -539,12 +540,10 @@ async function approvalApp(
     artUrl: null,
   }));
   const developer = await listingDeveloper(hooks);
+  const check = await displayCheckOptions(env, db, product.slug);
   const named = {
     ...raw,
-    name:
-      checkDisplayName(raw.name, { slug: product.slug }) === null
-        ? raw.name
-        : product.slug,
+    name: checkDisplayName(raw.name, check) === null ? raw.name : product.slug,
   };
   const shown = pageApp(named);
   return {
@@ -554,7 +553,7 @@ async function approvalApp(
       artUrl: shown.app.artUrl ?? null,
     },
     developer:
-      developer && checkDisplayName(developer, { slug: product.slug }) === null
+      developer && checkDisplayName(developer, check) === null
         ? developer
         : null,
     imgOrigin: shown.imgOrigin,

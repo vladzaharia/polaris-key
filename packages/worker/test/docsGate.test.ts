@@ -45,9 +45,13 @@ import {
 } from "../src/console/auth.js";
 import {
   ADMIN_COOKIE,
-  issueSession,
   type SessionIdentity,
 } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
+import type { Db } from "../src/db/types.js";
+
+// One database for the file: the console sessions the gate resolves live in it.
+const db = makeTestDb();
 
 const ADMIN_SECRET = "docs-test-admin-secret";
 const PLATFORM_GROUP = "admins";
@@ -150,8 +154,8 @@ function docsEnv(opts: { assets?: boolean } = {}): Env {
   return env;
 }
 
-async function adminCookie(env: Env): Promise<string> {
-  const { token } = await issueSession(env, OPERATOR, NOW);
+async function adminCookie(env: Env, db: Db): Promise<string> {
+  const { token } = await consoleTestSession(env, db, OPERATOR, NOW);
   return `${ADMIN_COOKIE}=${token}`;
 }
 
@@ -188,6 +192,7 @@ describe("handleDocs: the platform-admin gate", () => {
       get("/docs/operate/console/members/"),
       docsEnv(),
       NOW,
+      db,
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(
@@ -202,6 +207,7 @@ describe("handleDocs: the platform-admin gate", () => {
       get("/docs/access/?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"),
       env,
       NOW,
+      db,
     );
     expect(await ok.text()).toContain(
       'href="/manage/login?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"',
@@ -216,11 +222,12 @@ describe("handleDocs: the platform-admin gate", () => {
         get(`/docs/access/?returnTo=${bad}`),
         env,
         NOW,
+        db,
       );
       expect(await res.text(), bad).toContain('href="/manage/login"');
     }
     expect(
-      await (await handleDocs(get("/docs/access/"), env, NOW)).text(),
+      await (await handleDocs(get("/docs/access/"), env, NOW, db)).text(),
     ).toContain('href="/manage/login"');
   });
 
@@ -231,17 +238,20 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/sitemap-0.xml",
       "/docs/users/activation/",
     ])
-      expect((await handleDocs(get(path), env, NOW)).status, path).toBe(200);
+      expect((await handleDocs(get(path), env, NOW, db)).status, path).toBe(
+        200,
+      );
   });
 
   it("gives a signed-in reader without the admin area the access page's admin wording, under 403", async () => {
     const env = docsEnv();
-    const cookie = await adminCookie(env);
+    const cookie = await adminCookie(env, db);
     env.PLATFORM_ADMIN_GROUP = "someone-else";
     const res = await handleDocs(
       get("/docs/operate/platform/runbook/", cookie),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(403);
     expect(await res.text()).toContain("platform admins only");
@@ -252,6 +262,7 @@ describe("handleDocs: the platform-admin gate", () => {
           get("/docs/pagefind-admin/pagefind.js", cookie),
           env,
           NOW,
+          db,
         )
       ).status,
     ).toBe(403);
@@ -265,12 +276,12 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/pagefind/index/en_abc123.pf_index",
       "/docs/access/",
     ]) {
-      const res = await handleDocs(get(path, undefined), env, NOW);
+      const res = await handleDocs(get(path, undefined), env, NOW, db);
       expect(res.status, path).not.toBe(302);
       expect(res.status, path).not.toBe(403);
     }
     expect(
-      (await handleDocs(get("/docs/help/activate/"), env, NOW)).status,
+      (await handleDocs(get("/docs/help/activate/"), env, NOW, db)).status,
     ).toBe(200);
   });
 
@@ -282,7 +293,7 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/_astro/app.abc123.css",
       "/docs/schemas/v1/product.schema.json",
     ]) {
-      const res = await handleDocs(get(path), env, NOW);
+      const res = await handleDocs(get(path), env, NOW, db);
       expect(res.status, path).toBe(200);
     }
   });
@@ -328,37 +339,39 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/operate/console/members/",
       "/docs/a-new-directory/",
     ]) {
-      const res = await handleDocs(get(path), env, NOW);
+      const res = await handleDocs(get(path), env, NOW, db);
       expect(res.status, path).toBe(302);
     }
   });
 
   it("rejects a tampered session cookie", async () => {
     const env = docsEnv();
-    const cookie = (await adminCookie(env)).slice(0, -4) + "AAAA";
+    const cookie = (await adminCookie(env, db)).slice(0, -4) + "AAAA";
     const res = await handleDocs(
       get("/docs/operate/platform/runbook/", cookie),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(302);
   });
 
   it("rejects an expired session", async () => {
     const env = docsEnv();
-    const cookie = await adminCookie(env);
+    const cookie = await adminCookie(env, db);
     const later = NOW + 9 * 60 * 60; // past the 8h session TTL
     const res = await handleDocs(
       get("/docs/operate/platform/runbook/", cookie),
       env,
       later,
+      db,
     );
     expect(res.status).toBe(302);
   });
 
   it("refuses (403) a session whose principal lacks the tier's area", async () => {
     const env = docsEnv();
-    const cookie = await adminCookie(env);
+    const cookie = await adminCookie(env, db);
     // The platform group moves away: the same cookie now resolves to no grant.
     env.PLATFORM_ADMIN_GROUP = "someone-else";
     for (const path of [
@@ -366,21 +379,22 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/operate/platform/runbook/",
       "/docs/pagefind-member/pagefind.js",
     ]) {
-      const res = await handleDocs(get(path, cookie), env, NOW);
+      const res = await handleDocs(get(path, cookie), env, NOW, db);
       expect(res.status, path).toBe(403);
     }
     // The public tier does not ask.
     expect(
-      (await handleDocs(get("/docs/start/", cookie), env, NOW)).status,
+      (await handleDocs(get("/docs/start/", cookie), env, NOW, db)).status,
     ).toBe(200);
   });
 
   it("serves a signed-in operator the hash-carrying CSP, public HTML revalidating and gated HTML no-store", async () => {
     const env = docsEnv();
     const res = await handleDocs(
-      get("/docs/", await adminCookie(env)),
+      get("/docs/", await adminCookie(env, db)),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("docs home");
@@ -388,9 +402,10 @@ describe("handleDocs: the platform-admin gate", () => {
       "public, max-age=300, must-revalidate",
     );
     const gated = await handleDocs(
-      get("/docs/operate/platform/runbook/", await adminCookie(env)),
+      get("/docs/operate/platform/runbook/", await adminCookie(env, db)),
       env,
       NOW,
+      db,
     );
     expect(gated.headers.get("cache-control")).toBe("no-store");
     const csp = res.headers.get("content-security-policy") ?? "";
@@ -404,10 +419,11 @@ describe("handleDocs: the platform-admin gate", () => {
     const res = await handleDocs(
       new Request("https://key.plrs.im/docs/", {
         method: "POST",
-        headers: { cookie: await adminCookie(env) },
+        headers: { cookie: await adminCookie(env, db) },
       }),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(405);
     expect(res.headers.get("allow")).toBe("GET, HEAD");
@@ -419,9 +435,9 @@ describe("handleDocs: the platform-admin gate", () => {
 describe("handleDocs: asset resolution", () => {
   it("resolves extension-less deep links to the directory index", async () => {
     const env = docsEnv();
-    const cookie = await adminCookie(env);
+    const cookie = await adminCookie(env, db);
     for (const path of ["/docs/services/license", "/docs/services/license/"]) {
-      const res = await handleDocs(get(path, cookie), env, NOW);
+      const res = await handleDocs(get(path, cookie), env, NOW, db);
       expect(res.status, path).toBe(200);
       expect(await res.text()).toContain("license service");
     }
@@ -429,11 +445,12 @@ describe("handleDocs: asset resolution", () => {
 
   it("marks public content-hashed assets public+immutable and gated ones private", async () => {
     const env = docsEnv();
-    const cookie = await adminCookie(env);
+    const cookie = await adminCookie(env, db);
     const res = await handleDocs(
       get("/docs/_astro/app.abc123.css", cookie),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe(
@@ -445,12 +462,14 @@ describe("handleDocs: asset resolution", () => {
       get("/docs/pagefind/pagefind.js", cookie),
       env,
       NOW,
+      db,
     );
     expect(loader.headers.get("cache-control")).toBe("public, no-cache");
     const shard = await handleDocs(
       get("/docs/pagefind/index/en_abc123.pf_index", cookie),
       env,
       NOW,
+      db,
     );
     expect(shard.headers.get("cache-control")).toBe(
       "public, max-age=31536000, immutable",
@@ -460,6 +479,7 @@ describe("handleDocs: asset resolution", () => {
       get("/docs/pagefind-member/index/en_m1.pf_index", cookie),
       env,
       NOW,
+      db,
     );
     expect(member.headers.get("cache-control")).toBe(
       "private, max-age=31536000, immutable",
@@ -468,6 +488,7 @@ describe("handleDocs: asset resolution", () => {
       get("/docs/pagefind-admin/pagefind.js", cookie),
       env,
       NOW,
+      db,
     );
     expect(memberLoader.headers.get("cache-control")).toBe("private, no-cache");
   });
@@ -475,9 +496,10 @@ describe("handleDocs: asset resolution", () => {
   it("serves the site's styled 404 for a miss", async () => {
     const env = docsEnv();
     const res = await handleDocs(
-      get("/docs/no/such/page/", await adminCookie(env)),
+      get("/docs/no/such/page/", await adminCookie(env, db)),
       env,
       NOW,
+      db,
     );
     expect(res.status).toBe(404);
     expect(await res.text()).toContain("docs 404");
@@ -485,12 +507,13 @@ describe("handleDocs: asset resolution", () => {
 
   it("still gates (with a placeholder) when no assets binding exists", async () => {
     const env = docsEnv({ assets: false });
-    const anon = await handleDocs(get("/docs/operate/"), env, NOW);
+    const anon = await handleDocs(get("/docs/operate/"), env, NOW, db);
     expect(anon.status).toBe(302);
     const authed = await handleDocs(
-      get("/docs/operate/", await adminCookie(env)),
+      get("/docs/operate/", await adminCookie(env, db)),
       env,
       NOW,
+      db,
     );
     expect(authed.status).toBe(200);
     expect(await authed.text()).toContain("has not been built");
@@ -720,7 +743,7 @@ describe("the per-file tiers (docsTiers.generated.ts)", () => {
   it("refuse a gated-only asset to a sessionless reader", async () => {
     const [path] = Object.keys(DOCS_ASSET_TIERS);
     if (path === undefined) return;
-    const res = await handleDocs(get(path), docsEnv(), NOW);
+    const res = await handleDocs(get(path), docsEnv(), NOW, db);
     expect(res.status).toBe(302);
   });
 });

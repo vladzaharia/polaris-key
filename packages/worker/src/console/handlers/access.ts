@@ -1,104 +1,63 @@
 /**
- * `GET /api/access/admins?scope=&area=` (ST-29; ST-28 plan §5.2): who can give the caller access
- * to an area in a scope. NoAccessPage and every disabled write control's reason name these people.
+ * `GET /api/access/admins?scope=&area=` (ST-29; ST-28 plan §5.2; ST-31.5): who can give the caller
+ * access to an area in a scope. NoAccessPage and every disabled write control's reason name these
+ * people.
  *
- * Up to three people, narrowest first: the product's admins who hold the area (ST-31 adds them),
- * then Superadmins, who can give any role. Each is a name, a role and an address to copy; never an
+ * Up to three people, narrowest first: the product's admins who hold the area and `members`, then
+ * Superadmins, who can give any role. Each is a name, a role and an address to copy; never an
  * account id or a subject (`accountIdBoundary.test.ts`).
  *
  * What a member may learn here (PRIVACY.md, "What an admin can see"):
  *   - Platform admins are never listed: they cannot give a product role to someone else, and
- *     naming the products they hold would reveal product names.
+ *     naming the products they hold would reveal product names. `products:*` admins are not listed
+ *     either: this answer is about the one scope asked.
  *   - A product's own admins are listed only to a caller who already holds an area of that
  *     product. Anyone else gets the Superadmins alone, the same answer for a product that does not
- *     exist, so the route is no oracle for product slugs.
+ *     exist, so the route is no oracle for product slugs. The product is never looked up.
+ *   - Narrowest first: an admin narrowed to fewer areas comes before one narrowed to more, and an
+ *     admin of every area comes last among them; ties go to the earlier grant.
  *
- * Today's Superadmins are the root rule's holders: the platform admin group at the console IdP.
- * Nothing stores that list, so it is read from the sign-ins that proved it, the `admin.signin`
- * rows of the last session lifetime (8 h, the same freshness ST-30 gives the root rule), each
- * named by that operator's latest audited action. ST-30 and ST-31 replace the source with
- * accounts and bindings; the response keeps its shape.
+ * The Superadmins are the root rule's current holders (`consoleRootHolders`) and the stored
+ * Superadmin bindings of active accounts. The caller is never on their own list.
  */
 
-import type { Db } from "../../db/types.js";
-import { ADMIN_SESSION_TTL_SECONDS } from "../../core/console/session.js";
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import { adminJson, err } from "../../core/console/respond.js";
+import { PRODUCT_AREAS, type AreaId } from "../../core/rbac/areas.js";
+import {
+  listProductAdminBindings,
+  mergeAreas,
+  rowToGrant,
+} from "../../core/rbac/bindings.js";
+import { can } from "../../core/rbac/can.js";
+import { consoleDirectoryPeople } from "../../services/identity/public.js";
 import { isAreaId } from "../authz.js";
 import type { AdminCtx } from "../routes.js";
+import { superadminAccountIds } from "./accessShared.js";
+import { byPerson } from "./productMembers.js";
 
 /** One person who can help. */
 export interface AccessAdmin {
   name: string;
   email: string;
-  /** The role that lets them give the access: `superadmin` today; `product_admin` with ST-31. */
+  /** The role that lets them give the access. */
   role: "superadmin" | "product_admin";
 }
 
 /** At most this many are named. */
 export const ACCESS_ADMINS_LIMIT = 3;
 
-/** How far back a signed-in operator's name is looked for in the audit trail. */
-const NAME_LOOKBACK_SECONDS = 90 * 24 * 60 * 60;
+const isScope = (s: string) =>
+  s === "platform" ||
+  (s.startsWith("product:") &&
+    PRODUCT_SLUG_RE.test(s.slice("product:".length)));
 
-const SCOPE_RE = /^(platform|product:[a-z0-9][a-z0-9-]{0,62})$/;
-
-/**
- * The Superadmins who signed in within the root rule's freshness window, latest first, named as
- * their own audited actions name them. A sign-in row carries no name or address (security events
- * never do), so a member who signed in but has acted on nothing yet is not listed.
- */
-async function recentSuperadmins(
-  db: Db,
-  excludeSub: string,
-  now: number,
-): Promise<AccessAdmin[]> {
-  const signedIn = await db.all<{ actor_sub: string }>(
-    `SELECT actor_sub, MAX(at) AS last_at FROM platform_audit
-      WHERE action = 'admin.signin' AND at > ? AND actor_sub IS NOT NULL AND actor_sub != ?
-      GROUP BY actor_sub
-      ORDER BY last_at DESC
-      LIMIT 20`,
-    now - ADMIN_SESSION_TTL_SECONDS,
-    excludeSub,
+/** Does the caller hold any area of this product? Only then are its admins named. */
+function holdsAreaOf(c: AdminCtx, slug: string): boolean {
+  const p = c.session.principal;
+  return PRODUCT_AREAS.some((a) =>
+    can(p, { kind: "product", slug, system: false }, a, "view"),
   );
-  if (signedIn.length === 0) return [];
-  const subs = signedIn.map((r) => r.actor_sub);
-  const marks = subs.map(() => "?").join(", ");
-  const named = await db.all<{
-    actor_sub: string;
-    actor_name: string | null;
-    actor_email: string;
-  }>(
-    `SELECT actor_sub, actor_name, actor_email, at FROM (
-       SELECT actor_sub, actor_name, actor_email, at FROM platform_audit
-        WHERE at > ? AND actor_sub IN (${marks}) AND actor_email IS NOT NULL AND actor_email != ''
-       UNION ALL
-       SELECT actor_sub, actor_name, actor_email, at FROM audit
-        WHERE at > ? AND actor_sub IN (${marks}) AND actor_email IS NOT NULL AND actor_email != ''
-     )
-     ORDER BY at DESC`,
-    now - NAME_LOOKBACK_SECONDS,
-    ...subs,
-    now - NAME_LOOKBACK_SECONDS,
-    ...subs,
-  );
-  const latest = new Map<string, { name: string; email: string }>();
-  for (const r of named)
-    if (!latest.has(r.actor_sub))
-      latest.set(r.actor_sub, {
-        name: r.actor_name || r.actor_email,
-        email: r.actor_email,
-      });
-  const out: AccessAdmin[] = [];
-  const emails = new Set<string>();
-  for (const sub of subs) {
-    const who = latest.get(sub);
-    if (!who || emails.has(who.email)) continue;
-    emails.add(who.email);
-    out.push({ ...who, role: "superadmin" });
-    if (out.length === ACCESS_ADMINS_LIMIT) break;
-  }
-  return out;
 }
 
 export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
@@ -106,13 +65,79 @@ export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
   const scope = url.searchParams.get("scope") ?? "platform";
   const area = url.searchParams.get("area") ?? "console";
   const fields: string[] = [];
-  if (!SCOPE_RE.test(scope)) fields.push("scope");
+  if (!isScope(scope)) fields.push("scope");
   if (!isAreaId(area)) fields.push("area");
   if (fields.length)
     return err(400, "bad_request", "invalid scope or area", { fields });
 
-  // ST-31: the product's own admins who hold `area` come first, for a caller who holds an area of
-  // that product. No product-scope bindings exist before it, so only Superadmins are named.
-  const admins = await recentSuperadmins(c.db, c.session.sub, c.now);
-  return adminJson({ scope, area, admins });
+  const isSelf = (accountId: string, memberId: string) =>
+    (c.session.aid !== undefined && c.session.aid === accountId) ||
+    c.session.sub === memberId;
+
+  // Product admins: bindings on exactly this product that hold `area` and `members`.
+  const candidates: { accountId: string; rank: number; at: number }[] = [];
+  if (
+    scope.startsWith("product:") &&
+    (PRODUCT_AREAS as readonly string[]).includes(area) &&
+    holdsAreaOf(c, scope.slice("product:".length))
+  ) {
+    const rows = await listProductAdminBindings(c.db, scope, 200);
+    // One person's bindings on this product add up: their areas are the union (NULL = every area).
+    const union = new Map<string, { areas: AreaId[] | null; at: number }>();
+    for (const row of rows) {
+      const g = rowToGrant(row);
+      if (!g) continue;
+      const have = union.get(row.account_id!);
+      union.set(row.account_id!, {
+        areas: have ? mergeAreas(have.areas, g.areas) : g.areas && [...g.areas],
+        at: have ? Math.min(have.at, row.granted_at) : row.granted_at,
+      });
+    }
+    for (const [accountId, v] of union) {
+      const holds = (a: string) =>
+        v.areas === null || (v.areas as readonly string[]).includes(a);
+      if (holds(area) && holds("members"))
+        candidates.push({
+          accountId,
+          rank: v.areas === null ? 99 : v.areas.length,
+          at: v.at,
+        });
+    }
+    candidates.sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        a.at - b.at ||
+        a.accountId.localeCompare(b.accountId),
+    );
+  }
+
+  const supers = await superadminAccountIds(c.env, c.db, c.now);
+  const { people: dir, incomplete } = await consoleDirectoryPeople(
+    c.env,
+    c.db,
+    [...candidates.map((x) => x.accountId), ...supers.map((s) => s.id)],
+    c.now,
+  );
+  const admins: AccessAdmin[] = [];
+  const seen = new Set<string>();
+  const push = (accountId: string, role: AccessAdmin["role"]) => {
+    const e = dir.get(accountId);
+    if (!e || !e.email || seen.has(accountId) || isSelf(accountId, e.memberId))
+      return;
+    seen.add(accountId);
+    admins.push({ name: e.name || e.email, email: e.email, role });
+  };
+  for (const x of candidates) push(x.accountId, "product_admin");
+  // A Superadmin who also holds the product is named once, as the narrower role.
+  const people = supers
+    .map((s) => ({ id: s.id, e: dir.get(s.id) }))
+    .filter((p) => p.e)
+    .sort((a, b) => byPerson(a.e!, b.e!));
+  for (const p of people) push(p.id, "superadmin");
+  return adminJson({
+    scope,
+    area,
+    incomplete,
+    admins: admins.slice(0, ACCESS_ADMINS_LIMIT),
+  });
 }

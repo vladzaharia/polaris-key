@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../lib/copy.js";
-import { portalApi, PortalApiError } from "../../api.js";
-import { portalKeys } from "../../data.js";
+import { portalApi, HttpError } from "../../api.js";
+import { isUnknownCredential } from "../../errors.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import {
@@ -12,6 +12,8 @@ import {
   passkeysSupported,
   signalUnknownPasskey,
 } from "../../webauthn.js";
+import { qk } from "../../queries.js";
+import { mutate } from "../../mutations.js";
 
 /** What a failed passkey sign-in says, from the catalog (never the Worker's prose). */
 function passkeyText(err: unknown): string {
@@ -19,7 +21,7 @@ function passkeyText(err: unknown): string {
     ? t("signin.passkey.cancelled")
     : err instanceof PasskeyError && err.reason === "unsupported"
       ? t("signin.passkey.unsupported")
-      : err instanceof PortalApiError && err.status === 403
+      : err instanceof HttpError && err.status === 403
         ? t("signin.approve.disabled")
         : t("signin.passkey.failed");
 }
@@ -55,7 +57,7 @@ export function usePasskeySignIn(returnTo: () => string): {
       signal: AbortSignal | undefined,
       onAsserted: () => void,
     ): Promise<void> => {
-      const { options } = await portalApi.passkeySignInOptions(returnTo());
+      const { options } = await mutate("passkeySignInOptions", returnTo());
       const response = await passkeyAssertion(options, [], {
         mediation,
         signal,
@@ -63,16 +65,16 @@ export function usePasskeySignIn(returnTo: () => string): {
       onAsserted();
       let out: Awaited<ReturnType<typeof portalApi.passkeySignInVerify>>;
       try {
-        out = await portalApi.passkeySignInVerify(response);
+        out = await mutate("passkeySignInVerify", response);
       } catch (err) {
-        if (err instanceof PortalApiError && err.unknownCredential)
+        if (isUnknownCredential(err))
           signalUnknownPasskey(options, response.id);
         throw err;
       }
       rememberVia("passkey");
       if (out.nudge) rememberNudge();
       announceSignedIn();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
+      await qc.invalidateQueries({ queryKey: qk.me() });
     },
     [qc, returnTo],
   );

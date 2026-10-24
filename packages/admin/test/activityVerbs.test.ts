@@ -30,3 +30,19 @@ describe("activity verbs for store writes", () => {
     expect(values).toContain("distribution.commerce.");
   });
 });
+
+describe("activity verbs for emailed keys and invitations (LX-27c.2)", () => {
+  it("words each send and its failure, not the raw code", () => {
+    for (const code of [
+      "license.key.send",
+      "license.key.send.failed",
+      "license.key.send.revoked",
+      "license.invite.send",
+      "license.invite.send.failed",
+    ])
+      expect(verbFor(code), code).not.toContain("license.");
+    expect(verbFor("license.invite.send")).toBe(
+      "emailed an invitation for license",
+    );
+  });
+});

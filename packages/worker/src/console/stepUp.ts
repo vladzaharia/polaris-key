@@ -28,6 +28,21 @@ export interface StepUpRoute {
 export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   {
     method: "POST",
+    path: "/me/passkeys/options",
+    why: "starts adding a passkey that will open the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/passkeys",
+    why: "adds a passkey that opens the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/methods/:id/strong",
+    why: "sets a passkey to open the console (SM-3(d))",
+  },
+  {
+    method: "POST",
     path: "/platform/alerts",
     why: "aims the platform's alerts at a new address or URL",
   },
@@ -115,11 +130,6 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
-    path: "/platform/override-migration/run",
-    why: "rewrites every product's licence overrides",
-  },
-  {
-    method: "POST",
     path: "/products/:slug/config/mint/:id/approve",
     why: "lets the product's signing key mint tokens for its devices",
   },
@@ -160,8 +170,48 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/bindings",
+    why: "gives someone console access, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/members",
+    why: "gives someone console access to a product, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "PATCH",
+    path: "/bindings/:id (body)",
+    why: "widens a Product admin's areas (narrowing skips it)",
+  },
+  {
+    method: "PATCH",
+    path: "/products/:slug/members/:bindingId (body)",
+    why: "widens a Product admin's areas on a product (narrowing skips it)",
+  },
+  {
+    method: "POST",
     path: "/tokens",
     why: "mints an admin API credential that outlives the session",
+  },
+  {
+    method: "PUT",
+    path: "/products/:slug/ci-publisher",
+    why: "claims or edits the trusted publisher, which decides who may publish",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/ci-tokens",
+    why: "issues a static CI token that outlives the session",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/distribution/feeds/tokens (body)",
+    why: "mints a registry credential: a service token, a publish token or a license-bound token (every binding)",
+  },
+  {
+    method: "POST",
+    path: "/platform/feeds/tokens (body)",
+    why: "mints a registry credential on the platform's feeds",
   },
 ];
 

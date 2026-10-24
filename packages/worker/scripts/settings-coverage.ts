@@ -205,6 +205,23 @@ export function declaredByRegistry(
  */
 export const NOT_A_SETTING: readonly NotASetting[] = [
   {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+    covers: {
+      ids: [
+        "table:dist_listings",
+        "column:dist_listings.source",
+        "column:dist_listing_assets.source",
+        "column:dist_listing_locales.source",
+        "column:dist_listing_overrides.source",
+        "column:dist_listing_release_notes.source",
+        "manifest:distribution:listing",
+      ],
+    },
+  },
+  {
     thing: "Refund, void and chargeback handling",
     reason:
       "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
@@ -387,6 +404,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing: "Feed access migration records (what the F-34.4 job overwrote)",
+    reason:
+      "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",
+    shows: "Ship builds → Package feeds",
+    covers: { ids: ["column:dist_registry_access_moves.prior_source"] },
+  },
+  {
     thing: "Connection records (where a connection row came from)",
     reason:
       "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",
@@ -399,6 +423,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
     covers: { ids: ["column:portal_license_links.source"] },
+  },
+  {
+    thing: "Console role binding provenance (ST-31)",
+    reason:
+      "Records how a binding came to exist (an operator gave it, an invite, or the creator of a product): a fact about who has access, not Polaris behaviour.",
+    shows: "Platform → Access",
+    covers: { ids: ["column:console_role_bindings.source"] },
   },
   {
     thing: "An account's birth date and where it came from (I-33)",
@@ -469,18 +500,10 @@ export const PENDING: readonly PendingEntry[] = [
     owner: "ST-12",
     note: "stores.appStore.teamId",
   },
-  // Storefront listing (S-18 D11).
-  { target: "table:dist_listings", owner: "ST-13" },
-  { target: "column:dist_listings.source", owner: "ST-13" },
-  { target: "column:dist_listing_assets.source", owner: "ST-13" },
-  { target: "column:dist_listing_locales.source", owner: "ST-13" },
-  { target: "column:dist_listing_overrides.source", owner: "ST-13" },
-  { target: "column:dist_listing_release_notes.source", owner: "ST-13" },
-  { target: "manifest:distribution:listing", owner: "ST-13" },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 13;
+export const PENDING_CEILING = 6;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

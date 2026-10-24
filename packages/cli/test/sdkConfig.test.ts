@@ -339,12 +339,18 @@ describe("pkey sdk --lang", () => {
       expect(io.out()).toContain("polaris_key.tres");
     });
 
-    it("writes the five facts and keeps every other property, twice the same", async () => {
+    it("writes the five facts, drops the pre-0.9 names and keeps every other property, twice the same", async () => {
       const cwd = await project(DOCK_FILE);
       const target = path.join(cwd, "polaris_key.tres");
       expect((await run(cwd, ["--write", ...release])).code).toBe(0);
       const once = await readFile(target, "utf8");
-      expect(once).toContain('product = "acme"');
+      expect(once).toContain('product_slug = "acme"');
+      expect(once).toContain("pinned_keys = {");
+      // The pre-0.9 names are dropped, never kept beside the new ones.
+      expect(once).not.toMatch(/^product = /m);
+      expect(once).not.toContain("pinned_trust_keys");
+      expect(once).toContain("; 0.9 names (product_slug, pinned_keys)");
+      expect(once.split("; 0.9 names").length).toBe(2);
       expect(once).toContain('base_url = "https://key.plrs.im"');
       expect(once).toContain(`"${TRUST_KID}": "${TRUST_KEY}"`);
       expect(once).not.toContain("stale");
@@ -369,7 +375,7 @@ describe("pkey sdk --lang", () => {
       const { code, io } = await run(cwd, release);
       expect(code).toBe(0);
       expect(io.out()).toContain('default_channel = "beta"');
-      expect(io.out()).toContain('product = "acme"');
+      expect(io.out()).toContain('product_slug = "acme"');
       expect(await readFile(path.join(cwd, "polaris_key.tres"), "utf8")).toBe(
         DOCK_FILE,
       );

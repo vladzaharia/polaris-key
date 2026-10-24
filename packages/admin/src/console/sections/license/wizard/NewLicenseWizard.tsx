@@ -10,7 +10,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { CheckCircle2, TriangleAlert } from "lucide-react";
-import { ApiError } from "../../../../api.js";
+import { HttpError } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { announce } from "../../../../ui/LiveRegion.js";
@@ -18,7 +18,9 @@ import { momentSeen } from "../../../../ui/motion/index.js";
 import { FormStep, Wizard } from "../../../../ui/wizard/index.js";
 import { NEW_LICENSE_FLOW } from "../../../wizard/flows.js";
 import { useProduct } from "../../../data/hooks.js";
+import { useQueryClient } from "@tanstack/react-query";
 import { mutate } from "../../../data/mutations.js";
+import { qk } from "../../../data/queries.js";
 import { momentKey } from "../../../components/Moment.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -26,12 +28,19 @@ import { focusWhenReady } from "../../../shell/palette/focus.js";
 import {
   effectivePolicy,
   useHasLicenses,
+  useInvitations,
   useManualChannels,
   useTiers,
 } from "../components/shared.js";
 import { ErrorBlock } from "../components/InlineFailure.js";
-import { sendKeyRefusal } from "../components/SendKeyDialog.js";
-import { DoneBody, doneTitle, needsKeep, type Result } from "./DoneStep.js";
+import { useRetrySend } from "./useRetrySend.js";
+import {
+  DoneBody,
+  doneTitle,
+  needsKeep,
+  singleResult,
+  type Result,
+} from "./DoneStep.js";
 import {
   EMPTY,
   FIELD_STEP,
@@ -41,6 +50,7 @@ import {
   deliverySkipped,
   dirty as isDirty,
   firstInvalid,
+  invitesPerson,
   isBatch,
   loadDraft,
   saveDraft,
@@ -65,6 +75,7 @@ import {
   STEP_TITLES,
   focusHeading,
   focusPageTitle,
+  refusedWords,
   retryable,
 } from "./helpers.js";
 import { useNewLicenseRoute, type Step } from "./route.js";
@@ -79,23 +90,26 @@ export function NewLicenseWizard({
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
   const hasLicenses = useHasLicenses(slug);
+  const queryClient = useQueryClient();
+  const invitations = useInvitations(slug);
+  const canInvite = invitations.invitations;
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   // A 404 means the service has nothing to give: not a failure.
   const tiersError =
-    tiersQ.error instanceof ApiError && tiersQ.error.status === 404
+    tiersQ.error instanceof HttpError && tiersQ.error.status === 404
       ? null
       : tiersQ.error;
 
-  const [draft, setDraft] = React.useState<Draft>(() => loadDraft(slug));
+  const [draft, setDraft] = React.useState<Draft>(() => ({
+    ...loadDraft(slug),
+    invites: canInvite,
+  }));
   const [errors, setErrors] = React.useState<Errors>({});
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<unknown>(null);
   const [result, setResult] = React.useState<Result | null>(null);
   const [kept, setKept] = React.useState(false);
-  const [retrying, setRetrying] = React.useState(false);
-  const [retryError, setRetryError] = React.useState<unknown>(null);
-  const [retryUntil, setRetryUntil] = React.useState(0);
   /** A step was entered from Review (Change, the stepper): its primary goes back there. */
   const [toReview, setToReview] = React.useState(false);
   /** A refused value with no control of its own on its step: said above the step's fields. */
@@ -108,7 +122,7 @@ export function NewLicenseWizard({
   const wasOpen = React.useRef(open);
   React.useEffect(() => {
     if (open && !wasOpen.current) {
-      setDraft(loadDraft(slug));
+      setDraft({ ...loadDraft(slug), invites: canInvite });
       setErrors({});
       setSubmitError(null);
       setResult(null);
@@ -118,12 +132,18 @@ export function NewLicenseWizard({
     if (!open && wasOpen.current) focusPageTitle();
     wasOpen.current = open;
   }, [open, slug]);
+  // Where invitations work, "Someone specific" is invited by default (L5); never stored.
+  React.useEffect(() => {
+    setDraft((d) =>
+      d.invites === canInvite ? d : { ...d, invites: canInvite },
+    );
+  }, [canInvite]);
   React.useEffect(() => {
     if (open && step !== "done" && !result) saveDraft(slug, draft);
   }, [open, step, result, slug, draft]);
 
-  // The first tier is preselected, unless "No tier" was chosen on purpose. A product with no tier
-  // has only "No tier", so that is the choice; a tier deleted since the draft was made is dropped.
+  // The Default tier is preselected, else the first. A product with no tier yet has nothing to
+  // choose (`noTier`): the Worker uses its Default tier. A tier deleted since the draft is dropped.
   React.useEffect(() => {
     if (!open || result || !tiersQ.isSuccess) return;
     if (draft.tier !== null && !tiers.some((t) => t.id === draft.tier))
@@ -131,7 +151,7 @@ export function NewLicenseWizard({
     else if (draft.tier === null && !draft.noTier)
       setDraft((d) =>
         tiers.length > 0
-          ? { ...d, tier: tiers[0]!.id }
+          ? { ...d, tier: (tiers.find((t) => t.implicit) ?? tiers[0]!).id }
           : { ...d, noTier: true },
       );
   }, [open, result, tiersQ.isSuccess, tiers, draft.tier, draft.noTier]);
@@ -234,7 +254,7 @@ export function NewLicenseWizard({
       hasLicenses === false && !momentSeen(momentKey("first-license", slug));
     const summary = summaryOf(
       draft,
-      tier ? tierName(tier) : "No tier",
+      tier ? tierName(tier) : "Default",
       limitLine,
     );
     try {
@@ -254,41 +274,33 @@ export function NewLicenseWizard({
         });
       } else {
         const res = await mutate("createLicense", slug, createBody(draft));
-        const failed = res.delivered?.email === "failed";
-        const delivery = deliveryOf(draft);
-        setResult({
-          kind: "single",
-          id: res.licenseId,
-          key: res.key,
-          email: draft.who === "person" ? draft.email.trim() : null,
-          // "Email the key" alone never shows it, unless the email did not go out.
-          showKey: delivery !== "email" || failed,
-          // Only then is this screen the one copy: Show it once, or an email that failed.
-          onlyCopy: delivery === "show" || failed,
-          delivered: res.delivered ?? null,
-          first,
-          summary,
-        });
+        setResult(singleResult(res, draft, first, summary));
       }
       saveDraft(slug, EMPTY);
       setKept(false);
-      setRetryError(null);
+      clearRetryError();
       go("done", { replace: true });
     } catch (err) {
       const fields =
-        err instanceof ApiError && err.status === 422 ? err.fields : undefined;
+        err instanceof HttpError && err.status === 422 ? err.fields : undefined;
       const field = fields?.find((f) => f in FIELD_STEP);
       if (field) {
         // A refused value goes back to its own step, in words.
-        const words =
-          field === "tier"
-            ? "That tier no longer exists. Choose another."
-            : "This value isn't accepted. Check it and try again.";
+        const reason =
+          err instanceof HttpError && field === "delivery" ? err.reason : null;
+        const words = refusedWords(field, reason);
+        // The product can't invite after all: stop offering it.
+        if (reason === "identity_off" || reason === "auto_link_off") {
+          setDraft((d) => ({ ...d, invites: false, delivery: null }));
+          // The list is stale: the next license must not offer the invitation again.
+          void queryClient.invalidateQueries({
+            queryKey: qk.licensesFirst(slug),
+          });
+        }
         if (field === "tier") void tiersQ.refetch();
         announce(words);
         goStep(FIELD_STEP[field]!);
-        // After goStep, which clears the note; the field's own message, and a step-level one for
-        // a refusal on something with no control here (tier, delivery, an inherited limit).
+        // After goStep (which clears the note): the field's message, and a step-level one.
         setErrors({ [field]: words });
         setStepNote(words);
         setToReview(true);
@@ -307,46 +319,16 @@ export function NewLicenseWizard({
     }
   };
 
-  const tryAgain = async (): Promise<void> => {
-    if (result?.kind !== "single" || !result.email) return;
-    setRetrying(true);
-    setRetryError(null);
-    try {
-      // A retry never revokes: the key on screen may already be copied.
-      const res = await mutate("sendLicenseKey", slug, result.id, false);
-      if (res.delivered.email === "sent") {
-        setResult({
-          ...result,
-          onlyCopy: false,
-          retried: true,
-          delivered: { email: "sent" },
-        });
-        announce(`License created. Key sent to ${result.email}.`);
-        focusHeading();
-      } else {
-        setResult({
-          ...result,
-          key: res.key,
-          showKey: true,
-          onlyCopy: true,
-          delivered: res.delivered,
-        });
-        setKept(false);
-        focusHeading();
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 429)
-        setRetryUntil(Date.now() + (err.retryAfter ?? 600) * 1000);
-      setRetryError(err);
-    } finally {
-      setRetrying(false);
-    }
-  };
-  const retryWait = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
-  const refusal =
-    retryError && result?.kind === "single"
-      ? sendKeyRefusal(retryError, result.email ?? "", retryWait || 600)
-      : null;
+  const {
+    retrying,
+    retryWait,
+    refusal,
+    inviteNote,
+    tryAgain,
+    makeKey,
+    makingKey,
+    clearRetryError,
+  } = useRetrySend({ slug, result, setResult, setKept });
 
   // ── Footer and body per step ─────────────────────────────────────────────────────────────────
   const cancel = (
@@ -380,7 +362,9 @@ export function NewLicenseWizard({
     title = doneTitle(result);
     why = result.summary;
     titleIcon =
-      result.kind === "single" && result.delivered?.email === "failed" ? (
+      result.kind === "single" &&
+      (result.delivered?.email === "failed" ||
+        result.invite?.outcome === "failed") ? (
         <TriangleAlert aria-hidden className="size-5 shrink-0 text-warning" />
       ) : (
         <CheckCircle2 aria-hidden className="size-5 shrink-0 text-success" />
@@ -400,8 +384,11 @@ export function NewLicenseWizard({
             </Callout>
           ) : null
         }
+        refusal={inviteNote}
         retryWait={retryWait}
         onRetry={() => void tryAgain()}
+        onMakeKey={() => void makeKey()}
+        makingKey={makingKey}
         onTryIt={() => {
           finished();
           if (window.location.hash.startsWith(r.integration(slug))) {
@@ -463,7 +450,7 @@ export function NewLicenseWizard({
       (tiersQ.isPending
         ? "Loading tiers…"
         : tiersError && !draft.noTier
-          ? "Try the tiers again, or choose No tier."
+          ? "Try the tiers again."
           : undefined);
     footer = {
       later: cancel,
@@ -533,16 +520,23 @@ export function NewLicenseWizard({
         />,
       );
     } else if (at === "delivery") {
-      why = "The key is shown here only once either way.";
+      why = invitesPerson(draft)
+        ? `How ${draft.name.trim() || draft.email.trim() || "they"} gets the license.`
+        : "The key is shown here only once either way.";
       body = form(
-        <DeliveryStep {...common} productName={product?.name ?? slug} />,
+        <DeliveryStep
+          {...common}
+          productName={product?.name ?? slug}
+          invitationsOff={invitations.off}
+          loading={invitations.pending}
+        />,
       );
     } else {
       body = (
         <ReviewStep
           rows={reviewRows(
             draft,
-            tier ? tierName(tier) : "No tier",
+            tier ? tierName(tier) : "Default",
             tier?.policyExpiryDays ?? null,
             limitLine,
           )}

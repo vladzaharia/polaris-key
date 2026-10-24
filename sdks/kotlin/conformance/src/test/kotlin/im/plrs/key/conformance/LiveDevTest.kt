@@ -167,7 +167,7 @@ class LiveDevTest : ConformanceSuite() {
     fun b1_firstActivation() = scenario {
         val device = device("ok")
         val client = device.client
-        // The quickstart, as written: `if (!isUsable(client.status())) client.activate(userEnteredKey)`.
+        // The quickstart, as written: `if (!isUsable(client.status())) client.license.activateWithKey(userEnteredKey)`.
         assertFalse("a new install is not usable", isUsable(client.status()))
         assertEquals(LicenseStatus.needsActivation, client.status().status)
         activate(client, "ok")
@@ -176,8 +176,8 @@ class LiveDevTest : ConformanceSuite() {
         assertTrue(isUsable(client.status()))
         assertEquals(LicenseStatus.ok, client.status().status)
         assertEquals(ActivationSource.token, client.license.activation())
-        assertNotNull(client.license.licenseId())
-        assertTrue("the ok licence carries exportPro", client.license.isEntitled("exportPro"))
+        assertNotNull(client.license.getLicenseId())
+        assertTrue("the ok licence carries exportPro", client.entitlements.has("exportPro"))
         assertTrue(device.transport.sent.any { it.startsWith("POST ${live.origin}/${live.quickstart.productSlug}/license/activate") })
     }
 
@@ -220,7 +220,7 @@ class LiveDevTest : ConformanceSuite() {
         client.sync()
 
         // A value other than the one in force, so a rerun against the same server still changes something.
-        val next = JsonPrimitive(if (client.config(CONFIG_KEY, JsonPrimitive("draft")) == JsonPrimitive("high")) "standard" else "high")
+        val next = JsonPrimitive(if (client.config.get(CONFIG_KEY, JsonPrimitive("draft")) == JsonPrimitive("high")) "standard" else "high")
 
         // Listening before the change, on the multi-subscriber stream a UI layer reads.
         val event = CompletableDeferred<PolarisEvent.Config>()
@@ -245,7 +245,7 @@ class LiveDevTest : ConformanceSuite() {
         assertEquals(CONFIG_KEY, change.key)
         assertEquals(next, change.value)
         assertEquals(ConfigSource.enforced, change.source)
-        assertEquals(next, client.config(CONFIG_KEY, JsonPrimitive("draft")))
+        assertEquals(next, client.config.get(CONFIG_KEY, JsonPrimitive("draft")))
     }
 
     // ── b4 ───────────────────────────────────────────────────────────────────────────────────
@@ -270,7 +270,7 @@ class LiveDevTest : ConformanceSuite() {
         // The licence it brought is the signed-in person's: the fake identity provider's, named in the signed document.
         assertEquals(LicenseStatus.ok, client.status().status)
         val person = live.server.info().obj("idp").obj("person")
-        val profile = client.syncState().doc?.profile
+        val profile = client.getSyncState().doc?.profile
         assertEquals(person.string("name"), profile?.name)
         assertEquals(person.string("email"), profile?.email)
     }
@@ -318,7 +318,7 @@ class LiveDevTest : ConformanceSuite() {
 
     /** [client] takes the seeded key [state], which must activate it. */
     private suspend fun activate(client: PolarisKeyClient, state: String) {
-        val result = client.activate(key(state))
+        val result = client.license.activateWithKey(key(state))
         assertTrue("the $state key activates, got $result", result is ActivationResult.Ok)
     }
 
@@ -346,7 +346,7 @@ class LiveDevTest : ConformanceSuite() {
     /** A new device's attempt with [state]'s key: the answer, and the device left as it was. */
     private suspend fun refused(state: String): ActivationResult {
         val client = device().client
-        val result = client.activate(key(state))
+        val result = client.license.activateWithKey(key(state))
         assertFalse("$state must not activate", result is ActivationResult.Ok)
         assertEquals(LicenseStatus.needsActivation, client.status().status)
         assertNull(client.license.activation())

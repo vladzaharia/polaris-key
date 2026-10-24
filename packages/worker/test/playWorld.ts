@@ -17,11 +17,7 @@ import type { Env } from "../src/platform/env.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { upsertBuild } from "../src/services/release/model.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { makeTestDb } from "./helpers.js";
 import {
@@ -41,6 +37,7 @@ import {
   type PlayFixtures,
 } from "./playFake.js";
 import { addOutlet, audits, availability, rollouts } from "./ascWorld.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const PLAY_FIXTURES = join(HERE, "fixtures", "play");
@@ -194,8 +191,9 @@ export async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

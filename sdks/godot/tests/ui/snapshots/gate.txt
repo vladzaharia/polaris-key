@@ -176,7 +176,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScrol
 Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Meta: Label "From \u2068Fennick Studio\u2069 · Until 2027-01-01"
 Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Tags/Full: Label "All devices in use"
 Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Replace: Button "Replace a device" [focus 6]
-Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 7]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Actions/Continue: Button "Use this license" [focus 7]
 Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 8]
 == device limit ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"

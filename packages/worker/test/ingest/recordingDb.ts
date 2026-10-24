@@ -43,8 +43,8 @@ export function mask(v: unknown): unknown {
   return s;
 }
 
-/** Columns that hold a per-run random value (a token hash, a token id). */
-const RANDOM_COLUMNS = new Set(["token_hash", "token_id", "jti"]);
+/** Columns that hold a per-run random value (a token hash, a token id, its last four characters). */
+const RANDOM_COLUMNS = new Set(["token_hash", "token_id", "jti", "hint"]);
 
 export class RecordingDb implements Db {
   readonly writes: Write[] = [];

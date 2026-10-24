@@ -44,7 +44,10 @@ import {
   checkDisplayName,
   type ReservedDisplayNamesMode,
 } from "@polaris-key/manifest";
-import { reservedDisplayNamesMode } from "../../../core/accounts/reservedDisplayNames.js";
+import {
+  displayCheckOptions,
+  reservedDisplayNamesMode,
+} from "../../../core/accounts/reservedDisplayNames.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import { adminJson, err, readBody } from "../../../core/console/respond.js";
@@ -97,6 +100,7 @@ import {
   upsertReleaseNotes,
   type StoredListing,
 } from "./store.js";
+import { inheritStored, inheritedFields } from "./inherit.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
@@ -107,14 +111,14 @@ type AdminCtx = ServiceContext & { session: AdminSession };
  * product is exempt from the reserved check.
  */
 function displayNameProblems(
-  slug: string,
+  check: Parameters<typeof checkDisplayName>[1],
   reserved: ReservedDisplayNamesMode,
   fields: Record<string, unknown>,
 ): { field: string; message: string }[] {
   const out: { field: string; message: string }[] = [];
   for (const [field, v] of Object.entries(fields)) {
     if (typeof v !== "string" || v === "") continue;
-    const verdict = checkDisplayName(v, { slug });
+    const verdict = checkDisplayName(v, check);
     if (verdict === "invalid")
       out.push({
         field,
@@ -152,6 +156,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 async function view(ctx: AdminCtx, stored: StoredListing | null) {
   const { db, product } = ctx;
   const precedence = precedenceOf(stored?.row ?? null);
+  const assets = await listAssets(db, product.slug);
   return {
     listing: stored
       ? {
@@ -180,7 +185,9 @@ async function view(ctx: AdminCtx, stored: StoredListing | null) {
       modifiedAt: r.modified_at,
       modifiedBy: r.modified_by,
     })),
-    assets: (await listAssets(db, product.slug)).map((a) => ({
+    // A-27.9: which fields a projection fills from the product (name, accents, icon).
+    inherited: await inheritedFields(ctx.env, db, product.slug, stored, assets),
+    assets: assets.map((a) => ({
       slot: a.slot,
       locale: a.locale === "" ? null : a.locale,
       blob: a.blob,
@@ -270,10 +277,14 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
   const reserved = await reservedDisplayNamesMode(ctx.env, db);
   const problems = [
     ...appProblems(app, existing === null),
-    ...displayNameProblems(slug, reserved, {
-      name: app.name,
-      developerName: app.developerName,
-    }),
+    ...displayNameProblems(
+      await displayCheckOptions(ctx.env, db, slug),
+      reserved,
+      {
+        name: app.name,
+        developerName: app.developerName,
+      },
+    ),
   ];
   const locales = body.locales === undefined ? {} : body.locales;
   if (!isRecord(locales))
@@ -298,9 +309,13 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
     }
     problems.push(...localeTextProblems(locale, patch));
     problems.push(
-      ...displayNameProblems(slug, reserved, {
-        [`locales.${locale}.name`]: patch.name,
-      }),
+      ...displayNameProblems(
+        await displayCheckOptions(ctx.env, db, slug),
+        reserved,
+        {
+          [`locales.${locale}.name`]: patch.name,
+        },
+      ),
     );
   }
   if (body.precedence !== undefined)
@@ -566,7 +581,11 @@ async function getFit(ctx: AdminCtx): Promise<Response> {
         message: `store must be one of ${LISTING_STORES.join(", ")}`,
       },
     ]);
-  const stored = await readListing(ctx.db, ctx.product.slug);
+  const stored = await inheritStored(
+    ctx.db,
+    ctx.product.slug,
+    await readListing(ctx.db, ctx.product.slug),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

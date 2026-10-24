@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
-import { ApiError } from "../../src/api.js";
+import { HttpError } from "../../src/api.js";
 import {
   ConfirmDialog,
   type ConfirmDialogProps,
@@ -171,7 +171,7 @@ describe("ConfirmDialog", () => {
   });
 
   describe("step-up (D11)", () => {
-    const stepUpError = () => new ApiError(403, undefined, "step_up_required");
+    const stepUpError = () => new HttpError(403, { code: "step_up_required" });
 
     afterEach(() => sessionStorage.clear());
 

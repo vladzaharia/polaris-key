@@ -61,6 +61,7 @@ import {
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { knownChannels } from "../src/services/release/resolve.js";
 import { checkPackAgainstDeclaration } from "../src/services/release/packs/ingest.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -1922,11 +1923,14 @@ describe("console pack views (P4-09)", () => {
         };
       },
     });
+    // The operator signs in on the real database: the count is the request's own reads.
     const out = await admin(
       env,
       counting,
       "GET",
       `/deliverables/${encodeURIComponent(CORE)}/releases`,
+      undefined,
+      db,
     );
     expect(out.status).toBe(200);
     const body = (await out.json()) as Record<string, any>;
@@ -2015,7 +2019,7 @@ describe("console pack views (P4-09)", () => {
     )!;
     expect(row.yank).toMatchObject({
       reason: "corrupt textures",
-      by: "admin:u1",
+      by: `admin:${await consoleActor(env, db, "u1")}`,
     });
     const unyank = await admin(
       env,

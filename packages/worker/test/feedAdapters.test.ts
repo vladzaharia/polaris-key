@@ -33,7 +33,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
   FEED_SETUP,
@@ -91,7 +91,25 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
+import { asR2, R2Mock } from "./r2Mock.js";
+import { envFor, seedReleaseProduct } from "./releaseRoutesFixture.js";
+import { mintAccountToken } from "../src/core/accounts/personalTokens.js";
+import {
+  getOrCreateAccountByEmail,
+  linkLicense,
+} from "../src/services/identity/portal/repo.js";
+import { issueStaticCiToken } from "../src/core/publisher.js";
+import { blobKey, recordObject } from "../src/core/assets/blobs.js";
+import { PACKAGES_READ_SCOPE } from "../src/core/accounts/personalTokens.js";
+import {
+  forgetRegistryTokens,
+  mintRegistryToken,
+} from "../src/core/registry/registryTokens.js";
+import { forgetLicenceHolds } from "../src/services/distribution/registry/authorize.js";
+import { stmtUpsertDeliverable } from "../src/services/release/model.js";
+import { ingestPackageDescriptor } from "../src/services/release/packages/ingest.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, "..");
@@ -358,12 +376,10 @@ const FEED_B: RenderFeed = {
   ext: {
     supportLevel: "testing",
     license: "MIT",
-    yankHidesFromIndex: false,
   },
 };
 
-// B-097: Maven's metadata shows a yank only when the feed's switch is explicitly false (absent
-// and true hide it), so its sample has one: FEED_A (absent) hides it, FEED_B (false) lists it.
+// F-34.5: Maven's metadata always hides a yank, whatever the feed stores; its sample has one.
 Object.assign(SAMPLES.maven!.versions[1]!, { state: "yanked" });
 
 /** Sample values for the OpenAPI path parameters, per ecosystem where one differs. */
@@ -886,17 +902,511 @@ describe("feed adapters: the harness", () => {
   });
 });
 
-describe("maven yank policy default (B-097)", () => {
-  it("hides a yanked version when the key is absent or true, lists it only for false", async () => {
+describe("maven yanked versions are always hidden (F-34.5)", () => {
+  it("hides a yanked version whatever the feed stores, a legacy false included", async () => {
     const a = FEED_ADAPTERS.find((x) => x.ecosystem === "maven")!;
     const sample = SAMPLES.maven!;
     const text = async (ext: Record<string, unknown>) =>
       asText(await render(a, sample, { namespace: {}, ext }));
     const absent = await text({});
     expect(absent).not.toContain("<version>1.1.0</version>");
+    expect(await text({ yankHidesFromIndex: false })).toBe(absent);
     expect(await text({ yankHidesFromIndex: true })).toBe(absent);
-    expect(await text({ yankHidesFromIndex: false })).toContain(
-      "<version>1.1.0</version>",
+  });
+});
+
+// ── Owner-level list documents: a per-principal conformance pin (F-33b.5) ─────────────────────
+//
+// A list document runs the ladder with `deliverableId: () => null`, so only the feed's mode
+// decides the request; the names it lists must then be filtered to what the PRESENTING principal
+// may read, or one reader sees (and caches) packages another may not. Every route the adapters
+// mark `listDocument: true` is run over the principals below against a feed holding one open and
+// one `entitled` package.
+
+const markedRoutes = FEED_ADAPTERS.flatMap((a) =>
+  a.routes.filter((r) => r.listDocument).map((r) => ({ a, r })),
+);
+
+/** The routes that run the ladder with `deliverableId: () => null` but are not list documents
+ *  because their body names no package. Each is checked by the matrix below; the list only
+ *  shrinks. */
+const NULL_DELIVERABLE_WITHOUT_NAMES: Record<string, string> = {
+  "cargo.config":
+    "config.json carries the download and API URLs only, never a crate name",
+};
+
+describe("feed adapters: list documents", () => {
+  it("the marked routes are exactly the list documents of pypi, swift and godot", () => {
+    expect(markedRoutes.map(({ r }) => r.name).sort()).toEqual(
+      [
+        "godotIndex",
+        "godotLegacyConfigure",
+        "godotLegacySearch",
+        "godotStoreLicenses",
+        "godotStoreOverview",
+        "godotStoreSearch",
+        "godotStoreTags",
+        "pypi.simple.index",
+        "swift.identifiers",
+      ].sort(),
     );
+  });
+
+  it("every route that answers a null deliverable is marked, or named as carrying no package name", () => {
+    const routesDir = join(
+      WORKER,
+      "src",
+      "services",
+      "distribution",
+      "registry",
+    );
+    const nullRoutes: Array<{ eco: string; file: string; count: number }> = [];
+    for (const a of FEED_ADAPTERS) {
+      const file = join(routesDir, a.ecosystem, "routes.ts");
+      const src = readFileSync(file, "utf8");
+      const count = src.split("deliverableId: () => null").length - 1;
+      if (count > 0) nullRoutes.push({ eco: a.ecosystem, file, count });
+    }
+    // Every adapter that answers a null deliverable owns at least one marked route or one named
+    // exception (a new unmarked list document in a fresh adapter fails here).
+    for (const { eco } of nullRoutes) {
+      const marked = markedRoutes.filter(({ a }) => a.ecosystem === eco);
+      const named = Object.keys(NULL_DELIVERABLE_WITHOUT_NAMES).filter((n) =>
+        n.startsWith(`${eco}.`),
+      );
+      expect(
+        marked.length + named.length,
+        `${eco} answers a null deliverable but marks no list document`,
+      ).toBeGreaterThan(0);
+    }
+    // Godot builds all of its list routes through one helper (`listRoute`): every call is marked.
+    const godot = readFileSync(join(routesDir, "godot", "routes.ts"), "utf8");
+    const calls = (godot.match(/\n {2}listRoute\(/g) ?? []).length;
+    expect(
+      markedRoutes.filter(({ a }) => a.ecosystem === "godot"),
+    ).toHaveLength(calls);
+    // Within an adapter the unmarked null routes are only the named ones, and each name exists.
+    for (const name of Object.keys(NULL_DELIVERABLE_WITHOUT_NAMES)) {
+      const route = FEED_ADAPTERS.flatMap((a) => a.routes).find(
+        (r) => r.name === name,
+      );
+      expect(route, `${name} no longer exists: delete its entry`).toBeDefined();
+      expect(route!.listDocument, `${name} is marked: delete its entry`).toBe(
+        undefined,
+      );
+    }
+    const pypi = nullRoutes.find((n) => n.eco === "pypi");
+    expect(pypi?.count).toBe(1);
+    const unmarkedPypi = FEED_ADAPTERS.find(
+      (a) => a.ecosystem === "pypi",
+    )!.routes.filter((r) => !r.listDocument && r.name === "pypi.simple.index");
+    expect(unmarkedPypi).toEqual([]);
+    const cargo = nullRoutes.find((n) => n.eco === "cargo");
+    expect(cargo?.count).toBe(1);
+  });
+});
+
+const LIST_PKG = "https://pkg.example.test";
+const LIST_KEY = "registry-token-key-for-tests";
+const OPEN = "zzopen";
+const GATED = "zzgated";
+/** The names each ecosystem's two packages go by (matched case-insensitively in a body). */
+const LIST_NAMES: Record<string, { open: string; gated: string }> = {
+  pypi: { open: `${OPEN}-sdk`, gated: `${GATED}-sdk` },
+  swift: { open: `acme.${OPEN}`, gated: `acme.${GATED}` },
+  godot: { open: `${OPEN}_addon`, gated: `${GATED}_addon` },
+};
+const SWIFT_URL = "https://github.com/acme/sdk";
+
+interface ListWorld {
+  db: Db;
+  env: Env;
+  tokens: Record<string, string | null>;
+}
+
+const lw = {} as ListWorld;
+
+async function listBlob(r2: R2Mock, data: Uint8Array): Promise<string> {
+  const digest = hex(new TextDecoder().decode(data));
+  await r2.put(blobKey(digest), data, { sha256: digest });
+  await recordObject(
+    lw.db,
+    {
+      storageKey: blobKey(digest),
+      sha256: digest,
+      size: data.length,
+      kind: "blob",
+      gated: false,
+    },
+    NOW,
+  );
+  return digest;
+}
+
+async function setListFeeds(mode: "public" | "licensed"): Promise<void> {
+  const rows: Array<[string, object, object]> = [
+    ["pypi", { prefixes: [OPEN, GATED] }, {}],
+    [
+      "swift",
+      { scope: "acme" },
+      {
+        repositoryUrls: {
+          [LIST_NAMES.swift!.open]: [SWIFT_URL],
+          [LIST_NAMES.swift!.gated]: [SWIFT_URL],
+        },
+      },
+    ],
+    [
+      "godot",
+      { publisher: "acme" },
+      { categoryId: "6", license: "MIT", minGodotVersion: "4.4" },
+    ],
+  ];
+  for (const [eco, namespace, ext] of rows)
+    await lw.db.run(
+      `INSERT INTO dist_registry_feeds (product, ecosystem, enabled, access_mode, namespace_json,
+         max_package_bytes, ext_json, updated_at)
+       VALUES (?, ?, 1, ?, ?, 52428800, ?, ?)
+       ON CONFLICT(product, ecosystem) DO UPDATE SET access_mode = excluded.access_mode`,
+      OWNER,
+      eco,
+      mode,
+      JSON.stringify(namespace),
+      JSON.stringify(ext),
+      NOW,
+    );
+  forgetRegistrySettings();
+}
+
+/** Two packages per ecosystem: `<eco>.open` (the feed's mode) and `<eco>.gated` (`entitled`,
+ *  needing the `pro` flag), published through Release's real package ingest. */
+async function seedListWorld(): Promise<void> {
+  lw.db = makeTestDb();
+  lw.env = envFor({ kv: new KvMock() });
+  lw.env.KEY_HASH_PEPPER = "pepper";
+  lw.env.PKG_ORIGIN = LIST_PKG;
+  lw.env.REGISTRY_TOKEN_KEY = LIST_KEY;
+  const r2 = new R2Mock();
+  lw.env.BLOBS = asR2(r2);
+  await seedReleaseProduct(lw.db, {}, OWNER);
+  await lw.db.run(
+    "INSERT INTO dist_registry_owners (product, enabled, updated_at) VALUES (?, 1, ?)",
+    OWNER,
+    NOW,
+  );
+  await setListFeeds("licensed");
+  for (const [eco, names] of Object.entries(LIST_NAMES))
+    for (const [kind, name] of Object.entries(names)) {
+      const id = `${eco}.${kind}`;
+      const artifacts =
+        eco === "pypi"
+          ? { wheel: { match: "*.whl" } }
+          : eco === "godot"
+            ? { zip: { match: "*.zip" } }
+            : { "source-archive": { match: "*.zip" } };
+      const st = stmtUpsertDeliverable(
+        {
+          product: OWNER,
+          deliverableId: id,
+          kind: "package",
+          defJson: JSON.stringify({
+            kind: "package",
+            id,
+            ecosystem: eco,
+            name,
+            artifacts,
+          }),
+          ecosystem: eco,
+          packageName: name,
+        },
+        NOW,
+      );
+      await lw.db.run(st.sql, ...st.params);
+      if (kind === "gated")
+        await lw.db.run(
+          `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+           VALUES (?, ?, 'entitled', 'pro', 'admin', ?)`,
+          OWNER,
+          id,
+          NOW,
+        );
+      if (eco === "swift") continue; // the identifiers route reads only the deliverables
+      const bytes = new TextEncoder().encode(`${eco} ${name} 1.0.0`);
+      const sha = await listBlob(r2, bytes);
+      const file =
+        eco === "pypi"
+          ? {
+              name: `${name.replace(/-/g, "_")}-1.0.0-py3-none-any.whl`,
+              type: "wheel",
+            }
+          : { name: `${name}-1.0.0.zip`, type: "godot-zip" };
+      const res = await ingestPackageDescriptor(
+        lw.db,
+        lw.env,
+        OWNER,
+        {
+          descriptorVersion: 1,
+          product: OWNER,
+          deliverable: id,
+          kind: "package",
+          version: "1.0.0",
+          channel: "stable",
+          package: {
+            ecosystem: eco,
+            name,
+            files: [
+              {
+                ...file,
+                role: "payload",
+                sha256: sha,
+                size: bytes.length,
+                locations: [{ provider: "r2", key: blobKey(sha) }],
+              },
+            ],
+            metadata:
+              eco === "pypi"
+                ? { name, version: "1.0.0" }
+                : {
+                    name,
+                    version: "1.0.0",
+                    displayName: name,
+                    author: "Acme",
+                    description: "Sample",
+                  },
+          },
+        },
+        {
+          now: NOW,
+          promoted: [blobKey(sha)],
+          feed: {
+            ecosystem: eco,
+            enabled: true,
+            ownerEnabled: true,
+            policyEnabled: true,
+            namespace:
+              eco === "pypi"
+                ? { prefixes: [OPEN, GATED] }
+                : { publisher: "acme" },
+            maxPackageBytes: 52428800,
+            ext: {},
+          },
+          source: { kind: "static" },
+          digests: async () => new Map(),
+        } as never,
+      );
+      expect(res.ok, JSON.stringify(res)).toBe(true);
+    }
+}
+
+async function seedListPrincipals(): Promise<void> {
+  const { db, env } = lw;
+  const person = async (email: string, withFlag: boolean) => {
+    const acct = (await getOrCreateAccountByEmail(db, email, NOW)).id;
+    const { licenseId } = await seedLicenseWithKey(db, OWNER, {
+      id: `lic_${withFlag ? "pro" : "plain"}`,
+      ...(withFlag
+        ? {
+            entitlements: {
+              pro: { state: "enforced", value: true, updatedAt: NOW },
+            },
+          }
+        : {}),
+    });
+    await linkLicense(db, acct, OWNER, licenseId, "admin", NOW);
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+      acct,
+      OWNER,
+      licenseId,
+    );
+    const res = await mintAccountToken(
+      env,
+      db,
+      {
+        accountId: acct,
+        label: "laptop",
+        scope: PACKAGES_READ_SCOPE,
+        createdBy: `portal:${acct}`,
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    return { token: res.token, licenseId };
+  };
+  const plain = await person("plain@example.com", false);
+  const pro = await person("pro@example.com", true);
+  const bound = await mintRegistryToken(
+    env,
+    db,
+    {
+      product: OWNER,
+      label: "bound",
+      binding: "license",
+      licenseId: plain.licenseId,
+      createdBy: "admin:test",
+    },
+    NOW,
+  );
+  if (!bound.ok) throw new Error(JSON.stringify(bound));
+  const legacy = await mintCompat(
+    env,
+    db,
+    {
+      product: OWNER,
+      label: "legacy",
+      binding: "owner",
+      createdBy: "admin:test",
+    },
+    NOW,
+  );
+  if (!legacy.ok) throw new Error(JSON.stringify(legacy));
+  const ci = (scopes: string[]) =>
+    issueStaticCiToken(env, db, {
+      product: OWNER,
+      scopes,
+      expiresAt: NOW + 3600,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
+    }).then((t) => t.token);
+  lw.tokens = {
+    anonymous: null,
+    "person, usable licence, no flag": plain.token,
+    "person, usable licence, holds the flag": pro.token,
+    "licence-bound pkeyr_, no flag": bound.token,
+    "legacy owner pkeyr_": legacy.token,
+    "pkeyci_ packages:read": await ci(["packages:read"]),
+    "pkeyci_ without a read scope": await ci(["distribution:report"]),
+  };
+  forgetRegistryTokens();
+}
+
+describe("feed adapters: what a list document names (per principal)", () => {
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+    forgetRegistrySettings();
+    forgetRegistryTokens();
+    forgetLicenceHolds();
+    await seedListWorld();
+    await seedListPrincipals();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  /** Which of an ecosystem's two package names a response body mentions. */
+  async function listed(
+    eco: string,
+    res: Response,
+  ): Promise<{ status: number; names: string[] }> {
+    const body = (await res.text()).toLowerCase();
+    const n = LIST_NAMES[eco]!;
+    const names = (["open", "gated"] as const).filter((k) =>
+      body.includes(n[k].toLowerCase()),
+    );
+    return { status: res.status, names };
+  }
+
+  function pathOf(a: FeedAdapter, route: string): string {
+    const row = a.openapi.find(
+      ([path, , owner]) => owner === route && !path.includes("{token}"),
+    );
+    if (!row) throw new Error(`${route}: no tokenless openapi row`);
+    return sampleRequestPath(a.ecosystem, row[0]);
+  }
+
+  async function read(
+    a: FeedAdapter,
+    route: string,
+    token: string | null,
+  ): Promise<{ status: number; names: string[] }> {
+    const res = await dispatchRegistryHost(
+      new Request(`${LIST_PKG}${pathOf(a, route)}`, {
+        headers: {
+          accept: "application/vnd.pypi.simple.v1+json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+      }),
+      lw.env,
+      lw.db,
+      REGISTRY_ROUTES,
+      SERVICES,
+      undefined,
+      REGISTRY_OWNERLESS_ROUTES,
+    );
+    return listed(a.ecosystem, res);
+  }
+
+  const REFUSED = ["anonymous", "pkeyci_ without a read scope"] as const;
+  const OPEN_ONLY = [
+    "person, usable licence, no flag",
+    "licence-bound pkeyr_, no flag",
+  ] as const;
+  const ALL = [
+    "person, usable licence, holds the flag",
+    "legacy owner pkeyr_",
+    "pkeyci_ packages:read",
+  ] as const;
+
+  /** The routes that name packages at all, per route: what the full reader (`pro`) sees. */
+  async function fullView(a: FeedAdapter, route: string): Promise<string[]> {
+    const got = await read(
+      a,
+      route,
+      lw.tokens["person, usable licence, holds the flag"]!,
+    );
+    expect(got.status, route).toBe(200);
+    return got.names;
+  }
+
+  it("on a licensed feed each principal sees only the packages it may read", async () => {
+    const naming = new Set<string>();
+    for (const { a, r } of markedRoutes) {
+      if (LIST_NAMES[a.ecosystem] === undefined)
+        throw new Error(`${r.name}: add ${a.ecosystem} to the list world`);
+      const full = await fullView(a, r.name);
+      // A list that names packages names both to the reader who holds the flag.
+      if (full.length > 0) {
+        expect(full, r.name).toEqual(["open", "gated"]);
+        naming.add(a.ecosystem);
+      }
+      const at = (who: string) => read(a, r.name, lw.tokens[who] ?? null);
+      for (const who of REFUSED) {
+        // No credential, or a CI token with no read scope (anonymous): refused, nothing named.
+        const got = await at(who);
+        expect(got.names, `${r.name} / ${who}`).toEqual([]);
+        expect(got.status, `${r.name} / ${who}`).not.toBe(200);
+      }
+      for (const who of OPEN_ONLY) {
+        const got = await at(who);
+        expect(got.status, `${r.name} / ${who}`).toBe(200);
+        expect(got.names, `${r.name} / ${who}`).toEqual(
+          full.length > 0 ? ["open"] : [],
+        );
+      }
+      for (const who of ALL) {
+        const got = await at(who);
+        expect(got.status, `${r.name} / ${who}`).toBe(200);
+        expect(got.names, `${r.name} / ${who}`).toEqual(full);
+      }
+    }
+    // The pin is not vacuous: every ecosystem with a marked route has one that names packages.
+    expect([...naming].sort()).toEqual(["godot", "pypi", "swift"]);
+  });
+
+  it("on a public feed every principal, anonymous included, sees only what is public", async () => {
+    const naming = new Set<string>();
+    for (const { a, r } of markedRoutes)
+      if ((await fullView(a, r.name)).length > 0) naming.add(r.name);
+    await setListFeeds("public");
+    for (const { a, r } of markedRoutes)
+      for (const who of Object.keys(lw.tokens)) {
+        const got = await read(a, r.name, lw.tokens[who] ?? null);
+        expect(got.status, `${r.name} / ${who}`).toBe(200);
+        // The answer is public-cached for every reader, so the entitled package is in none of
+        // them, whoever asked (a swift list once named it for a credentialed reader).
+        expect(got.names, `${r.name} / ${who}`).toEqual(
+          naming.has(r.name) ? ["open"] : [],
+        );
+      }
+    expect(naming.size).toBeGreaterThan(0);
   });
 });

@@ -313,6 +313,16 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(artifacts[0]!.source_url).toBe(
       "https://github.com/acme/djdl/releases/download/v1.1.0/djdl-v1.1.0-arm64.dmg",
     );
+    // The webhook's sync records what GitHub listed (P2-12 D3), never the payload's assets.
+    const synced = (await listReleaseMetadata(db, SLUG)).find(
+      (r) => r.release_id === "v1.1.0",
+    )!;
+    expect(Object.keys(JSON.parse(synced.metadata_json!).listedAssets)).toEqual(
+      artifacts.map((a) => a.artifact_id),
+    );
+    expect(JSON.parse(synced.metadata_json!).listedAssets).not.toHaveProperty(
+      "666",
+    );
     expect(
       (await listReleaseChannels(db, SLUG)).find((c) => c.channel === "stable")
         ?.release_id,

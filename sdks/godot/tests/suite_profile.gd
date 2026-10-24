@@ -62,9 +62,9 @@ func _bundle(t: PKeyTestContext) -> void:
 		PKeyJws.mode = modes[name]
 		var sdk := PKeyTestFixtures.new_sdk()
 		var opts := PKeyOptions.new()
-		opts.product = "djdl"
+		opts.product_slug = "djdl"
 		opts.version = "1.0.0"
-		opts.pinned_trust_keys = c["trust"]
+		opts.pinned_keys = c["trust"]
 		opts.store = PKeyMemoryStore.new("dev_7c1e2d")
 		opts.local_only = true
 		var cl := [1700001000]

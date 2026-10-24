@@ -47,6 +47,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 const PROMOTER = "pkeyci_promoter";
 const YANKER = "pkeyci_yanker";
@@ -473,7 +474,7 @@ describe("admin routes", () => {
       source: "admin",
       minSupported: "1.0.0",
       critical: true,
-      modifiedBy: "admin:u1",
+      modifiedBy: `admin:${await consoleActor(env, db, "u1")}`,
       resolved: "v1.1.0",
     });
   });
@@ -554,19 +555,20 @@ describe("admin routes", () => {
     await admin(env, db, "POST", "/channels/stable/revert", {});
     await admin(env, db, "POST", "/releases/v1.1.0/yank", { reason: "bad" });
     await admin(env, db, "DELETE", "/releases/v1.1.0/yank");
+    const actor = await consoleActor(env, db, "u1");
     expect(await auditRows(db)).toEqual([
       {
         action: "release.channel.update",
-        actor_sub: "u1",
+        actor_sub: actor,
         target_id: "app/stable",
       },
       {
         action: "release.channel.revert",
-        actor_sub: "u1",
+        actor_sub: actor,
         target_id: "app/stable",
       },
-      { action: "release.yank", actor_sub: "u1", target_id: "v1.1.0" },
-      { action: "release.unyank", actor_sub: "u1", target_id: "v1.1.0" },
+      { action: "release.yank", actor_sub: actor, target_id: "v1.1.0" },
+      { action: "release.unyank", actor_sub: actor, target_id: "v1.1.0" },
     ]);
     const yank = await db.first<{ n: number }>(
       "SELECT COUNT(*) AS n FROM release_yanks WHERE product = ?",
@@ -614,7 +616,10 @@ describe("admin routes", () => {
       }>;
     };
     const v1 = body.releases.find((r) => r.releaseId === "v1.0.0")!;
-    expect(v1.yank).toMatchObject({ reason: "old", by: "admin:u1" });
+    expect(v1.yank).toMatchObject({
+      reason: "old",
+      by: `admin:${await consoleActor(env, db, "u1")}`,
+    });
     expect(v1.builds).toEqual([
       {
         buildId: "cli-arm64",

@@ -214,7 +214,8 @@ const ROLE_MODELS = {
 const tracked = execFileSync(
   "git",
   ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-  { cwd: ROOT },
+  // The file list passed the 1 MiB default (1.05 MB at 16.5k files); lift it, not the repo.
+  { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 },
 )
   .toString()
   .split("\0")

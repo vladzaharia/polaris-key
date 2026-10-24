@@ -614,7 +614,7 @@ describe("the Node SDK against a live pkey dev server", () => {
       expect(result.token, key).toMatch(/^pkeyt_/);
       expect(client.hasToken, key).toBe(true);
       expect(client.isLicensed(), key).toBe(true);
-      expect(client.license.isEntitled("exportPro"), key).toBe(want.exportPro);
+      expect(client.entitlements.has("exportPro"), key).toBe(want.exportPro);
     }
   });
 
@@ -649,7 +649,7 @@ describe("the Node SDK against a live pkey dev server", () => {
       "ok",
     );
     await client.sync();
-    expect(client.config.getConfig("render.quality", "draft")).toBe("draft");
+    expect(client.config.get("render.quality", "draft")).toBe("draft");
     // Signed documents carry whole-second timestamps; a change in the same second is not newer.
     await sleep(1100);
     const seen: unknown[] = [];
@@ -664,7 +664,7 @@ describe("the Node SDK against a live pkey dev server", () => {
       message: expect.stringMatching(/render\.quality/),
     });
     await client.sync();
-    expect(client.config.getConfig("render.quality", "draft")).toBe("high");
+    expect(client.config.get("render.quality", "draft")).toBe("high");
     expect(seen).toEqual(["high"]);
   });
 

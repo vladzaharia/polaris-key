@@ -15,14 +15,11 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
-import { qk } from "../../../data/queries.js";
+import { coreBReads } from "../data.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 
 export function StorageSection({ slug }: { slug: string }): React.ReactElement {
-  const gc = useQuery({
-    queryKey: qk.blobGc(slug),
-    queryFn: () => api.blobGc(slug),
-  });
+  const gc = useQuery(coreBReads.blobGc(slug));
   return (
     <SettingsSection
       id="settings-storage"

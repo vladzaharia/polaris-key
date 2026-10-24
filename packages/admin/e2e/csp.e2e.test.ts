@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { feedRoutes } from "../test/feedsFixture.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * Every overlay of the console under the Worker's real CSP (`style-src 'self'`, no inline style).
@@ -33,13 +34,14 @@ const row = (slug: string, name: string) => ({
   compatMax: "2.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
+  manifestAuthoritative: { value: false, locked: false },
   adminGroup: null,
   createdAt: 1,
   modifiedAt: 1,
   services,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
-  // F-11: Distribution → Package feeds is listed while the product has package feeds on.
+  // F-11: the product's package feeds (F-34.7: Ship builds → Packages, listed whenever Distribution is on).
   packageFeeds: true,
 });
 const ROUTES: Record<string, unknown> = {
@@ -66,7 +68,7 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/license/licenses": { licenses: [] },
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
   // LX-14a: a licence record for the Device limit… sheet.
-  "/manage/api/products/djdl/license/licenses/lic_1": {
+  "/manage/api/products/djdl/license/licenses/lic_1": workerFields({
     id: "lic_1",
     name: "Ada Lovelace",
     email: "ada@x.io",
@@ -93,7 +95,7 @@ const ROUTES: Record<string, unknown> = {
     overrides: { config: {}, secrets: {}, entitlements: {} },
     keys: [],
     devices: [],
-  },
+  }),
   "/manage/api/products/djdl/config/profiles": { profiles: [] },
   "/manage/api/products/djdl/release/releases": { releases: [] },
   "/manage/api/platform/version": {
@@ -749,10 +751,10 @@ describe("overlays under the Worker's CSP", () => {
         "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit",
         "Add to storefronts",
       ],
-      ["#/p/djdl/distribution/listing", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=fit", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=images", "Listing"],
-      ["#/p/djdl/distribution/listing?tab=push", "Listing"],
+      ["#/p/djdl/settings/presentation/listing", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=fit", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=images", "Settings"],
+      ["#/p/djdl/settings/presentation/listing?tab=push", "Settings"],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -789,7 +791,10 @@ describe("overlays under the Worker's CSP", () => {
     await violations(page);
     for (const [hash, title] of [
       ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Locker"],
-      ["#/p/djdl/distribution/listing?tab=fit&store=polaris-key", "Listing"],
+      [
+        "#/p/djdl/settings/presentation/listing?tab=fit&store=polaris-key",
+        "Settings",
+      ],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -837,7 +842,7 @@ describe("overlays under the Worker's CSP", () => {
         "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
         "@polaris-key/node",
       ],
-      ["#/p/djdl/distribution/feeds", "Package feeds"],
+      ["#/p/djdl/distribution/feeds", "Packages"],
       ["#/p/djdl/distribution/feeds/npm", "npm"],
       ["#/p/djdl/distribution/feeds/maven/settings", "Maven / Gradle"],
       ["#/p/djdl/distribution/feeds/oci/packages/djdl-server", "djdl-server"],
@@ -877,12 +882,12 @@ describe("overlays under the Worker's CSP", () => {
       location.hash = "#/p/djdl/distribution/feeds/tokens";
     });
     await page
-      .locator("[data-page-title]", { hasText: "Registry tokens" })
+      .locator("[data-page-title]", { hasText: "Service tokens" })
       .first()
       .waitFor();
-    await check(page, "new registry token dialog", async () => {
+    await check(page, "new service token dialog", async () => {
       await page.getByRole("button", { name: "New token…" }).click();
-      await page.getByRole("dialog", { name: "New registry token" }).waitFor();
+      await page.getByRole("dialog", { name: "New service token" }).waitFor();
     });
     await check(page, "registry token revoke", async () => {
       await page.getByRole("button", { name: "Actions for CI pull" }).click();
@@ -897,7 +902,7 @@ describe("overlays under the Worker's CSP", () => {
       .first()
       .waitFor();
     await check(page, "leaving public access", async () => {
-      const access = page.getByRole("form", { name: "Access" });
+      const access = page.getByRole("form", { name: "General" });
       // P0-47: Token and Licensed are one choice, Customers.
       await access.getByRole("radio", { name: /Customers/ }).click();
       await access.getByRole("button", { name: /^Save/ }).click();

@@ -44,12 +44,12 @@ def kit() -> Any:
         (lambda: PolarisKey(), "pkey sdk --lang python --write"),
         (lambda: PolarisKey(products=[]), "pkey sdk --lang python --write"),
         (lambda: PolarisKey(config="polaris_config"), "import the module"),
-        (lambda: PolarisKey(config={"base_url": "https://key.plrs.im", "trust": {"k": PIN}}), "product_slug"),
+        (lambda: PolarisKey(config={"base_url": "https://key.plrs.im", "pinned_keys": {"k": PIN}}), "product_slug"),
         (lambda: PolarisKey(config={"product_slug": "acme"}), "pkey sdk --lang python --write"),
-        (lambda: PolarisKey(config={"product_slug": "acme", "trust": {}}), "empty"),
-        (lambda: PolarisKey(config={"product_slug": "acme", "trust": {"k": "short"}}), "43 base64url"),
-        (lambda: PolarisKey(config={"product_slug": "acme", "trust": {"k": PIN}, "base_url": "key.plrs.im"}), "an http"),
-        (lambda: PolarisKey(config={"product_slug": "acme", "trust": {"k": PIN}}, preflight="skip"), "preflight"),
+        (lambda: PolarisKey(config={"product_slug": "acme", "pinned_keys": {}}), "empty"),
+        (lambda: PolarisKey(config={"product_slug": "acme", "pinned_keys": {"k": "short"}}), "43 base64url"),
+        (lambda: PolarisKey(config={"product_slug": "acme", "pinned_keys": {"k": PIN}, "base_url": "key.plrs.im"}), "an http"),
+        (lambda: PolarisKey(config={"product_slug": "acme", "pinned_keys": {"k": PIN}}, preflight="skip"), "preflight"),
     ],
 )
 def test_bad_config_fails_at_start_with_the_fix(build: Any, needle: str) -> None:
@@ -61,13 +61,13 @@ def test_a_setup_error_is_still_a_type_and_value_error() -> None:
     with pytest.raises(TypeError):
         PolarisKey()
     with pytest.raises(ValueError):
-        PolarisKey(config={"product_slug": "acme", "trust": {"k": PIN}}, errors="nope")
+        PolarisKey(config={"product_slug": "acme", "pinned_keys": {"k": PIN}}, errors="nope")
 
 
 def test_base_url_is_optional_and_the_same_product_twice_is_refused() -> None:
-    polaris = PolarisKey(config={"product_slug": "acme", "trust": {"k": PIN}}, trust_refresh=False)
+    polaris = PolarisKey(config={"product_slug": "acme", "pinned_keys": {"k": PIN}}, trust_refresh=False)
     assert polaris._trust["acme"].base_url == "https://key.plrs.im"
-    cfg = {"product_slug": "acme", "trust": {"k": PIN}}
+    cfg = {"product_slug": "acme", "pinned_keys": {"k": PIN}}
     with pytest.raises(PolarisKeySetupError, match="configured twice"):
         PolarisKey(products=[cfg, cfg])
 

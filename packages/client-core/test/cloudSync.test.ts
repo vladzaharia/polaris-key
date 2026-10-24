@@ -4,8 +4,16 @@
 // scenario by scenario; these are the unit-level checks, each with a negative control.
 
 import { describe, expect, it } from "vitest";
+import * as protocolSync from "@polaris-key/protocol/sync";
 import {
   CloudSyncMachine,
+  SYNC_CLIENT_ID_PATTERN,
+  SYNC_DEBOUNCE_MS,
+  SYNC_HLC_PATTERN,
+  SYNC_MAX_CLOCK_SKEW_MS,
+  SYNC_MAX_MUTATIONS,
+  SYNC_PENDING_DAYS,
+  SYNC_SIGNOUT_FLUSH_MS,
   SYNC_IMPORT_HLC,
   SYNC_MAX_VALUE_BYTES,
   jsonBytes,
@@ -612,5 +620,33 @@ describe("record field policies (D4)", () => {
       ok: false,
       error: "collection-unknown",
     });
+  });
+});
+
+describe("the constants are @polaris-key/protocol/sync's (U-05.1)", () => {
+  it("each client-core constant equals its protocol counterpart", () => {
+    expect(SYNC_DEBOUNCE_MS).toBe(protocolSync.SYNC_DEBOUNCE_MS);
+    expect(SYNC_MAX_VALUE_BYTES).toBe(protocolSync.SYNC_MAX_VALUE_BYTES);
+    expect(SYNC_IMPORT_HLC).toBe(protocolSync.SYNC_IMPORT_HLC);
+    expect(SYNC_SIGNOUT_FLUSH_MS).toBe(protocolSync.SYNC_SIGNOUT_FLUSH_MS);
+    expect(SYNC_PENDING_DAYS).toBe(protocolSync.SYNC_PENDING_DAYS);
+    expect(SYNC_MAX_MUTATIONS).toBe(protocolSync.SYNC_MAX_MUTATIONS);
+    expect(SYNC_MAX_CLOCK_SKEW_MS).toBe(protocolSync.SYNC_MAX_CLOCK_SKEW_MS);
+    expect(SYNC_HLC_PATTERN).toBeInstanceOf(RegExp);
+    expect(SYNC_HLC_PATTERN.source).toBe(protocolSync.SYNC_HLC_PATTERN);
+    expect(SYNC_CLIENT_ID_PATTERN).toBeInstanceOf(RegExp);
+    expect(SYNC_CLIENT_ID_PATTERN.source).toBe(
+      protocolSync.SYNC_CLIENT_ID_PATTERN,
+    );
+  });
+
+  it("pins the pre-move values", () => {
+    expect(SYNC_DEBOUNCE_MS).toBe(2000);
+    expect(SYNC_MAX_VALUE_BYTES).toBe(8192);
+    expect(SYNC_SIGNOUT_FLUSH_MS).toBe(5000);
+    expect(SYNC_PENDING_DAYS).toBe(30);
+    expect(SYNC_MAX_MUTATIONS).toBe(100);
+    expect(SYNC_MAX_CLOCK_SKEW_MS).toBe(300_000);
+    expect(SYNC_HLC_PATTERN.source).toBe("^[0-9a-f]{12}:[0-9a-f]{4}$");
   });
 });

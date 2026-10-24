@@ -28,7 +28,7 @@ import {
  * group of the licences, the server's order and preselection (a Create row is never preselected,
  * and with every row full nothing is, unless one row is all there is); a full row says **No free
  * devices** in text and, among free rows, carries its own **Replace a device**. One ink primary:
- * **Use this license and continue**, or **Replace a device** while a full row is chosen. A
+ * **Use this license**, or **Replace a device** while a full row is chosen. A
  * primary pressed with nothing chosen is not disabled: the error sits under the group.
  */
 export function LicenseChoiceStep({

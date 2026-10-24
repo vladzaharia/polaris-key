@@ -62,22 +62,27 @@ Each screen is a scene under `addons/polaris_key/ui/`, with a view script and a 
 controller. The class is the name to use in code; the gate's scene file is `pkey_gate.tscn` and
 its class is `PKeyGateView`.
 
-| Class                  | Scene                                     | Shows                                                                    |
-| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
-| `PKeyBoot`             | `boot/pkey_boot.tscn`                     | The stages from start to ready, and a card with Try again on a stop      |
-| `PKeyGateView`         | `gate/pkey_gate.tscn`                     | The license gate: activation, grace, expired, blocked                    |
-| `PKeyActivationPanel`  | `activation/pkey_activation_panel.tscn`   | Key entry, sign-in, free tier, offline activation, Replace a device      |
-| `PKeySignInDialog`     | `sign_in/pkey_sign_in_dialog.tscn`        | The device code, its QR code and the countdown                           |
-| `PKeyOfflineDialog`    | `offline/pkey_offline_dialog.tscn`        | The request code, and the import of an activation file                   |
-| `PKeyUpdatePrompt`     | `update/pkey_update_prompt.tscn`          | An update offer, with the action the install's outlet allows             |
-| `PKeyStatusBanner`     | `banner/pkey_status_banner.tscn`          | Offline grace, an expired check, an available update                     |
-| `PKeySettingsPanel`    | `settings/pkey_settings_panel.tscn`       | The product's settings, with a lock on each managed value                |
-| `PKeyDeviceList`       | `devices/pkey_device_list.tscn`           | The devices using the license, with Rename and Remove in place           |
-| `PKeyLicenseChoice`    | `license_choice/pkey_license_choice.tscn` | Which license this device uses, when an account holds several            |
-| `PKeyAccountTab`       | `settings/pkey_account_tab.tscn`          | The Account and license pane, embedded in settings or opened as a page   |
-| `PKeyToast`            | `toast/pkey_toast.tscn`                   | A brief message over the game, with at most two actions                  |
-| `PKeyUpdateProgress`   | `progress/pkey_update_progress.tscn`      | Download and install progress for an update or content packs             |
-| `PKeyEntitlementBadge` | `badge/pkey_entitlement_badge.tscn`       | "Included with" chips for the user-facing entitlements the license holds |
+| Class                  | Scene                                     | Shows                                                                                     |
+| ---------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `PKeyBoot`             | `boot/pkey_boot.tscn`                     | The stages from start to ready, and a card with Try again on a stop                       |
+| `PKeyGateView`         | `gate/pkey_gate.tscn`                     | The license gate: activation, grace, expired, blocked                                     |
+| `PKeyActivationPanel`  | `activation/pkey_activation_panel.tscn`   | Key entry, sign-in, free tier, offline activation, Replace a device                       |
+| `PKeySignInDialog`     | `sign_in/pkey_sign_in_dialog.tscn`        | The device code, its QR code and the countdown                                            |
+| `PKeyOfflineDialog`    | `offline/pkey_offline_dialog.tscn`        | The request code, and the import of an activation file                                    |
+| `PKeyUpdatePrompt`     | `update/pkey_update_prompt.tscn`          | An update offer, with the action the install's outlet allows                              |
+| `PKeyStatusBanner`     | `banner/pkey_status_banner.tscn`          | Offline grace, an expired check, an available update                                      |
+| `PKeySettingsPanel`    | `settings/pkey_settings_panel.tscn`       | The product's settings, with a lock on each managed value                                 |
+| `PKeyDeviceList`       | `devices/pkey_device_list.tscn`           | The devices using the license, with Rename and Remove in place                            |
+| `PKeyLicenseChoice`    | `license_choice/pkey_license_choice.tscn` | Which license this device uses, when an account holds several                             |
+| `PKeyAccountTab`       | `settings/pkey_account_tab.tscn`          | The Account and license pane, embedded in settings or opened as a page                    |
+| `PKeyToast`            | `toast/pkey_toast.tscn`                   | A brief message over the game, with at most two actions                                   |
+| `PKeyUpdateProgress`   | `progress/pkey_update_progress.tscn`      | Download and install progress for an update or content packs                              |
+| `PKeyPaywall`          | `paywall/pkey_paywall.tscn`               | An upsell for a tier: Upgrade (store) or Buy in your browser, Redeem, Restore             |
+| `PKeyDeviceLimit`      | `device_limit/pkey_device_limit.tscn`     | "Your license is on 3 of 3 devices": replace the least recent, or open the manage page    |
+| `PKeyCloudSyncStatus`  | `cloud_sync/pkey_cloud_sync_status.tscn`  | A small Cloud Sync status: synced, syncing, offline, conflict (Review), error, signed out |
+| `PKeyAbout`            | `about/pkey_about.tscn`                   | The product and version, Privacy and Get help, licenses, Copy diagnostics                 |
+| `PKeyReleaseNotes`     | `release_notes/pkey_release_notes.tscn`   | The changelog, newest first: loading, list, empty, error with Try again                   |
+| `PKeyEntitlementBadge` | `badge/pkey_entitlement_badge.tscn`       | "Included with" chips for the user-facing entitlements the license holds                  |
 
 A scene finds the `PolarisKey` autoload by itself and follows its `state_changed` signal. To place
 one in your own layout, instance it and add it as a child:
@@ -109,17 +114,17 @@ interactive control is in one wrapping focus chain, so `ui_up`, `ui_down`, `ui_a
 Each scene reads a controller, and a game that draws its own screens can read the same ones. They
 are in `addons/polaris_key/ui/` and are pure functions of the state they are given:
 
-| Class                         | Answers                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `PKeyGateController`          | Which screen a license status renders, with its copy keys and its controls     |
-| `PKeyActivationController`    | Which ways to activate this build offers, and the copy key for each refusal    |
-| `PKeySignInController`        | The copy key for how a sign-in ended, the countdown and the identity line      |
-| `PKeyUpdatePromptController`  | Whether an update answer shows, its copy keys, its action and whether it locks |
-| `PKeyDevicesController`       | The roster as rows, how long ago each device was last used, which is this one  |
-| `PKeyLicenseChoiceController` | The rows the license step offers, the selected one and what each says          |
-| `PKeyAccountController`       | What the Account and license pane knows: tier, holder, seats, update rows      |
-| `PKeyToastController`         | A toast's model view, its status glyph and its actions                         |
-| `PKeyProgressController`      | The model input for a download, the time left and the sizes as one unit        |
+| Class                         | Answers                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `PKeyGateController`          | Which screen a license status renders, with its copy keys and its controls       |
+| `PKeyActivationController`    | Which ways to activate this build offers, and the copy key for each refusal      |
+| `PKeySignInController`        | The copy key for how a sign-in ended, the countdown and the identity line        |
+| `PKeyUpdatePromptController`  | Whether an update answer shows, its copy keys, its action and whether it locks   |
+| `PKeyDevicesController`       | The roster as rows, how long ago each device was last used, which is this one    |
+| `PKeyLicenseChoiceController` | The rows the license step offers, the selected one and what each says            |
+| `PKeyAccountController`       | What the Account and license pane knows: tier, holder, device count, update rows |
+| `PKeyToastController`         | A toast's model view, its status glyph and its actions                           |
+| `PKeyProgressController`      | The model input for a download, the time left and the sizes as one unit          |
 
 [Your own UI](/docs/build/sdks/godot/your-own-ui/#gate-status-screen-and-copy-key) maps every status
 to its screen and copy keys.
@@ -150,6 +155,21 @@ follows the game's own theme. The options are on `PKeyOptions` (`ui_brand_scheme
 `ui_theme`, `ui_density`, `ui_product_name`, `ui_product_icon`); the fields are on
 [Theming](/docs/build/ui/theming/). `ui_reduce_motion` and `ui_reduce_transparency` follow the
 system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or `off`.
+
+## Game look
+
+A dialog over your game (sign in, the update prompt, settings, offline activation) is glass on a dimmed frame: its card is nearly opaque (94 % dark, 96 % light) until the blur ships, and the scrim is 42 % dark and 35 % light. It is fully opaque on a phone's docked sheet, under `ui_reduce_transparency`, on the web and under the `gl_compatibility` renderer. A dialog fades in from 98 % scale and a pressed button settles to 98 %; neither moves under `ui_reduce_motion`, and neither depends on `Engine.time_scale`. The focus ring has a glow.
+
+| Option                         | Does                                                                                                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui_brand_scheme = "system"`   | Follows the OS: re-checked when the game regains focus and when a dialog opens, dark where the OS has no preference. The kit never takes your system-theme callback.       |
+| `ui_sound_hook`                | A Callable taking one event. The kit plays no sound itself.                                                                                                                |
+| `PolarisKey.ui_sound` (signal) | The same events, and it survives `configure()`. Use it when the options cannot carry a Callable.                                                                           |
+| `ui_haptics`                   | Off by default. A short vibration on a handheld (Android needs the `VIBRATE` permission) and a weak rumble on the pad last used, for confirm, back, error, open and close. |
+
+The events are `open` and `close` (a dialog; `open` alone, with no focus sound), `focus` (moved by the keyboard or a pad, never by a mouse click), `confirm` (a button that acts), `back` (Cancel, Later, Close, Dismiss, Escape or the pad's back button) and `error` (a refusal shown).
+
+`PKeyInputGlyphs` draws the confirm or back control of the last input device: the keyboard key bound to `ui_accept` or `ui_cancel`, and on a pad the button bound to it (A and B on an Xbox pad, a cross and a circle on a PlayStation pad, B and A on a Nintendo pad). A game that remaps those actions is followed. `PKeyHintBar` pairs each glyph with a bare verb from the catalog in the running locale ("Select", "Activate", the screen's own Cancel or Later, or Back): one footer at the bottom right of the title-safe area, outside the panel, on every screen that offers a choice; on a phone, or where a card fills the screen, it is the last row of the panel. It shows for a keyboard or a pad (a mouse that moves counts as the keyboard), never for touch.
 
 ## Powered by Polaris Locker
 

@@ -75,9 +75,9 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## device_limit
 
-**Cause** Sign-in tried to seat a device on a license with no free seat.
+**Cause** Sign-in tried to register a device on a license with no room for another device.
 
-**Fix** Free a seat. See [Handle the device limit](/docs/features/licensing/device-limit/).
+**Fix** Make room for another device. See [Handle the device limit](/docs/features/licensing/device-limit/).
 
 **Check it works** The sign-in returns a token.
 

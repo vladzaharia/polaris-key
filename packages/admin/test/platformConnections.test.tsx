@@ -13,7 +13,7 @@ import { TestResultView } from "../src/console/sections/platform/pages/platformC
 import { claimMapOf } from "../src/console/sections/platform/pages/platformConnectionParts.js";
 import { CONNECTION_FLOW } from "../src/console/wizard/flows.js";
 import { lintFlow } from "../src/ui/wizard/index.js";
-import { ApiError, type PlatformConnection } from "../src/api.js";
+import { HttpError, type PlatformConnection } from "../src/api.js";
 import { failureOf } from "../src/console/sections/platform/pages/connectionErrors.js";
 
 /**
@@ -467,11 +467,11 @@ describe("claims preview", () => {
 
 describe("error words", () => {
   it("never shows a bare status, names a duplicate and an unsealable secret", () => {
-    const bare = new ApiError(500);
+    const bare = new HttpError(500);
     expect(failureOf(bare)?.description ?? "").not.toMatch(/api 500/);
-    const dup = new ApiError(409, undefined, "exists");
+    const dup = new HttpError(409, { code: "exists" });
     expect(failureOf(dup)?.title).toBe("Already connected");
-    const kek = new ApiError(409, undefined, "no_kek");
+    const kek = new HttpError(409, { code: "no_kek" });
     expect(failureOf(kek)?.title).toBe("Secrets can't be sealed yet");
     expect(failureOf(kek)?.link?.href).toContain("/runbook/");
   });

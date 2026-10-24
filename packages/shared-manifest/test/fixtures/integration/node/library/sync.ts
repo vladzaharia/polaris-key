@@ -11,4 +11,4 @@ const client = await PolarisKeyClient.create({
 // later: today the value stays on this device.
 const volume = client.config.setting<number>("audio.musicVolume");
 await volume.set(0.8);
-console.log(volume.get(0.8));
+console.log(volume.value);

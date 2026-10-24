@@ -115,10 +115,7 @@ export function LibraryTile({
           // (never a wall of empty colour, M9); with a cover the icon overlaps its lower edge.
           letter={noArt && !pres.iconUrl}
           liftArt
-          // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, edge to edge,
-          // contained over a blurred copy of itself where the cap (280 px tall) is lower than the
-          // column's 16:9, so a single wide column never crops it.
-          fit="contain"
+          // The cover fills the banner edge to edge (cropped to the box), never letterboxed.
           // The same 16:9 box with or without a cover, so names and pills line up across a row.
           className="aspect-[5/2] w-full"
         >

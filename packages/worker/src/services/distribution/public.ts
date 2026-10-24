@@ -34,6 +34,7 @@ export {
 } from "./connectors/play/platform.js";
 export { listingSlotMirror } from "./listing/hostedMirror.js";
 export { readListing } from "./listing/store.js";
+export { inheritStored } from "./listing/inherit.js";
 export {
   feedCapabilityView,
   type FeedCapabilityView,
@@ -50,8 +51,25 @@ export {
   stmtSetPackageFeeds,
 } from "./registryFeeds.js";
 export {
+  outletIdentityMismatches,
+  type OutletIdentityMismatch,
+} from "./outletIdentity.js";
+export {
   expiringCredentials,
   type ExpiringCredential,
   type MissingStoreAccount,
   storesMissingAccount,
 } from "./attentionFacts.js";
+export {
+  liveBuilds,
+  productPlatforms,
+  type LiveBuild,
+  type ProductPlatform,
+  type ProductPlatforms,
+} from "./facts.js";
+export {
+  channelFacts,
+  type DeliveryAttention,
+  type DeliveryFacet,
+  type DeliveryState,
+} from "./channels.js";

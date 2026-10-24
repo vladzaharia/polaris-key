@@ -1,0 +1,177 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-hlc-clamp",
+  "description": "A client clock an hour fast. An editedHlc later than serverNow plus 300 seconds is stored as serverNow with a zero counter (§13.3), so the value is accepted but can never pin the key in the future; the pull shows the clamped stamp.",
+  "features": ["sync.settings"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_qK4pzCBPi3bwaOmbrcMLgVlHLDwZGqUWg6Rh8l6OPds",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "An editedHlc one hour ahead.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_gdXFtzEsmQfca1PJR8BHiw",
+                "serverNow": 1700000000000,
+                "cursor": 1,
+                "more": false,
+                "lastMutationId": 1,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 14,
+                  "settings": 1,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "ui.theme",
+                    "scope": "user",
+                    "value": "dark",
+                    "version": 1,
+                    "editedHlc": "018bcfe56800:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 1, "status": "ok", "version": 1 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 1,
+        "more": false,
+        "empty": false,
+        "settings": ["ui.theme"],
+        "lastMutationId": 1,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The stored stamp is serverNow.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"1.0\""
+              },
+              "body": {
+                "subject": "ps_gdXFtzEsmQfca1PJR8BHiw",
+                "serverNow": 1700000000000,
+                "cursor": 1,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 14,
+                  "settings": 1,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "ui.theme",
+                    "scope": "user",
+                    "value": "dark",
+                    "version": 1,
+                    "editedHlc": "018bcfe56800:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 1,
+        "more": false,
+        "empty": false,
+        "settings": ["ui.theme"]
+      }
+    }
+  ]
+}

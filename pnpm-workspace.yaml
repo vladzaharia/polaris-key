@@ -49,3 +49,6 @@ overrides:
   "postcss-nested@^6": ^8.0.1
   "http-cache-semantics@^4": ^4.3.0
   "source-map-js@^1": ^1.2.2
+  # zod < 4.6.6: GHSA-mrhx-c7xc-m3w5 (oversized constrained collections exhaust memory; parents are
+  # astro and @astrojs/sitemap, docs tooling only).
+  "zod@^4": ^4.6.6

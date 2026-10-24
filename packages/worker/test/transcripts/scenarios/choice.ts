@@ -49,7 +49,7 @@ const OTHER = "OTHER0DEVICE00000000000000000001";
 type Who = Awaited<ReturnType<typeof world>>;
 type Json = Record<string, JsonValue>;
 
-/** A licence for the account (limit seats), with its key; no email, so no sweep claims it. */
+/** A licence for the account (a device limit), with its key; no email, so no sweep claims it. */
 async function ownedLicense(
   w: World,
   who: Who,
@@ -67,7 +67,7 @@ async function ownedLicense(
   return seeded;
 }
 
-/** Setup: another device takes a seat on the licence with its key. */
+/** Setup: another device takes a place on the licence with its key. */
 async function occupy(w: World, key: string, device = OTHER): Promise<void> {
   const res = await setup(w, "POST", `/${PRODUCT}/license/activate`, {
     authorization: `Bearer ${key}`,
@@ -201,7 +201,7 @@ export const redirectWebChoose: Scenario = {
         w,
         pin,
         "redirect-web-choose",
-        "The licence is chosen on the card (I-08b, WIRE-CONTRACT-V4 §12.4.1; plans/I-04.md §C). The account holds a Pro licence with a free seat and a Team licence whose only seat is taken. The card lists both (`licenses`), and Continue without a choice is refused with license_choice_required and consumes nothing. The person picks Pro; the code carries the choice; the SDK redeems it at token and the device is bound to Pro, seat-checked.",
+        "The licence is chosen on the card (I-08b, WIRE-CONTRACT-V4 §12.4.1; plans/I-04.md §C). The account holds a Pro licence with room for another device and a Team licence at its device limit. The card lists both (`licenses`), and Continue without a choice is refused with license_choice_required and consumes nothing. The person picks Pro; the code carries the choice; the SDK redeems it at token and the device is bound to Pro, limit-checked.",
       );
       let binder = "";
       let handle = "";
@@ -357,7 +357,7 @@ export const choiceReplaceApp: Scenario = {
         w,
         pin,
         "choice-replace-app",
-        "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its single seat is held by another device. The SDK reads the licence (state full, Replace offered), lists the seat-holding devices with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its seat in one batch; the answer is token's shape on the licence.",
+        "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its one-device limit is used by another device. The SDK reads the licence (state full, Replace offered), lists the devices using the licence with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its place in one batch; the answer is token's shape on the licence.",
       );
       const redirect = await browserTo(
         r,
@@ -390,7 +390,7 @@ export const choiceReplaceApp: Scenario = {
       await r.step(
         {
           action: "choiceDevices",
-          note: "choice.devices(grant, licenseId): the seat-holding devices.",
+          note: "choice.devices(grant, licenseId): the devices using the licence.",
           args: { grant: pending.grant, licenseId: "lic_djdl_team" },
         },
         async (s) => {
@@ -454,7 +454,7 @@ export const choiceKeyApp: Scenario = {
         w,
         pin,
         "choice-key-app",
-        "A key entered in the app's sign-in form (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §G.5). The account holds nothing and the product grants nothing, so the exchange answers a grant with state none and a getLicense member that accepts keys. The SDK completes with a key: PX-W9's app key entry, counted once with the seat claim, then the account is signed in on the device. The answer is token's shape plus keyEntries.",
+        "A key entered in the app's sign-in form (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §G.5). The account holds nothing and the product grants nothing, so the exchange answers a grant with state none and a getLicense member that accepts keys. The SDK completes with a key: PX-W9's app key entry, counted once with the device claim, then the account is signed in on the device. The answer is token's shape plus keyEntries.",
       );
       const redirect = await browserTo(
         r,

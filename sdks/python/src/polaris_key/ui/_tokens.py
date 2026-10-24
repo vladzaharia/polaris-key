@@ -476,15 +476,15 @@ TYPE_SCALE = {
     },
     "windows": {
         "display": {
-            "size": 40,
-            "line_height": 52,
+            "size": 28,
+            "line_height": 36,
             "weight": 600,
             "tracking": 0,
             "mono": False,
         },
         "title": {
-            "size": 28,
-            "line_height": 36,
+            "size": 20,
+            "line_height": 28,
             "weight": 600,
             "tracking": 0,
             "mono": False,

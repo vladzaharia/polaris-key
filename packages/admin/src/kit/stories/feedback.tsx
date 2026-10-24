@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
-import { ApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import { Callout } from "../../ui/Callout.js";
 import { EmptyState } from "../../ui/EmptyState.js";
@@ -46,7 +46,7 @@ function ToastButtons(): React.ReactElement {
       <Button
         variant="outline"
         onClick={() =>
-          toast.error(new ApiError(404), { context: { thing: "Tier" } })
+          toast.error(new HttpError(404), { context: { thing: "Tier" } })
         }
       >
         Error (stays until dismissed)
@@ -178,7 +178,7 @@ export const stories: Story[] = [
         </Card>
         <Card>
           <ErrorState
-            error={new ApiError(404)}
+            error={new HttpError(404)}
             context={{ thing: "License", collectionHref: "#/__kit" }}
           />
         </Card>
@@ -186,7 +186,7 @@ export const stories: Story[] = [
           <Card>
             <ErrorState
               compact
-              error={new ApiError(503)}
+              error={new HttpError(503)}
               onRetry={() => undefined}
             />
           </Card>

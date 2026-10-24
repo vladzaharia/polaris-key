@@ -9,6 +9,7 @@
 import { flushSync } from "react-dom";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useInsertionEffect,
@@ -22,15 +23,23 @@ import {
   type ReactNode,
 } from "react";
 import {
+  activateView,
+  BareViewModel,
+  contextOf,
   focusOnMount,
+  gateView,
+  graceBannerView,
   renewTarget,
-  ViewModel,
-  viewOf,
+  signInHandoffView,
+  statusScreenView,
+  welcomeView,
   type ComponentName,
+  type Model,
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
 import {
+  platformVariant,
   resolveProductIdentity,
   type BundleProduct,
   type ResolvedIdentity,
@@ -58,16 +67,12 @@ import {
 import { PolarisContext } from "../react/context.js";
 import { text, type Chrome, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
-import { adoptKitStyles } from "./styles.js";
 import {
-  adaptHandoff,
-  adaptPane,
-  adaptUpdate,
-  oneVerb,
-  withoutLede,
-  HANDOFF_WAITING,
-} from "./adapt.js";
-import { withChoice } from "./licenseRows.js";
+  adoptDesktopStyles,
+  adoptKitStyles,
+  hasDesktopStyles,
+} from "./styles.js";
+import { adaptHandoff, HANDOFF_WAITING } from "./adaptBase.js";
 import { onLazyLoaded } from "./lazy.js";
 import { renderView, withBase } from "./views.js";
 
@@ -142,6 +147,12 @@ export interface KitProps {
   onSelect?: (id: string) => void;
   /** Extra classes on the kit root (`pk-root` stays). */
   className?: string;
+  /** `Settings` and `UpdatePrompt`, opened by the host (a native menu item): draw as a modal
+   *  dialog over the app, and call this when the person closes it (Escape, the scrim or Later).
+   *  The dialog hands focus back to what held it. */
+  onDismiss?: () => void;
+  /** `Settings`, opened by the host: the account pane drawn above its rows (the drop-in's). */
+  account?: ReactNode;
 }
 
 const ThemeContext = createContext<KitTheme | null>(null);
@@ -237,6 +248,8 @@ export interface KitHooks {
 /** Everything one kit component resolves and holds: the model, the theme, the identity. */
 export function useKit(
   component: ComponentName,
+  /** The component's model, handed in so the gate's entry carries only the models it draws. */
+  modelOf: Model,
   props: KitProps,
   /** The view drawn for a view (the gate hands to Welcome, StatusScreen…): focus follows it. */
   drawnOf?: (view: View, input: UiInput) => View,
@@ -287,12 +300,20 @@ export function useKit(
     );
     let url: string | null = null;
     let live = true;
-    if (source)
+    // The icon is fetched again whenever the member changes: a desktop host's member arrives with
+    // its first state push, after this kit has mounted.
+    let loaded: string | null | undefined;
+    const load = () => {
+      if (!source) return;
+      const sha = source.current()?.icon?.sha256 ?? null;
+      if (sha === loaded) return;
+      loaded = sha;
       void source
         .icon(96, typeof devicePixelRatio === "number" ? devicePixelRatio : 2)
         .then((bytes) => {
           if (!bytes || !live) return;
           const made = URL.createObjectURL(new Blob([bytes as BlobPart]));
+          if (url) URL.revokeObjectURL(url);
           url = made;
           // Bytes that do not decode as an image leave the monogram, not a broken picture.
           const probe = new Image();
@@ -305,9 +326,13 @@ export function useKit(
         .catch(() => {
           // A failed icon leaves the monogram: never an error state.
         });
+    };
+    load();
+    const unwatch = source?.subscribe(load);
     return () => {
       live = false;
       stop();
+      unwatch?.();
       if (url) URL.revokeObjectURL(url);
       setIconUrl(null);
     };
@@ -343,6 +368,16 @@ export function useKit(
     };
   }, []);
 
+  // UK-06: the desktop host's OS facts (the chrome, the system accent, contrast, transparency).
+  const watchHost = useCallback(
+    (cb: () => void) => adapter?.subscribe?.(cb) ?? (() => undefined),
+    [adapter],
+  );
+  const hostFacts = useSyncExternalStore(
+    watchHost,
+    () => adapter?.hostFacts?.() ?? null,
+    () => null,
+  );
   const resolved = resolveFor(
     rootRef.current,
     options,
@@ -353,6 +388,14 @@ export function useKit(
         preset: options.preset,
       }),
     options.iconSrc ?? iconUrl,
+    props.input?.platform ??
+      (hostFacts
+        ? {
+            os: hostFacts.os,
+            formFactor: hostFacts.os === "macos" ? "mac" : "computer",
+          }
+        : undefined),
+    hostFacts?.accentColor,
   );
 
   // The input: the host's over what the person did here (a typed key, a picked row), with the
@@ -375,10 +418,12 @@ export function useKit(
   };
 
   // The model: created once, its view read in render; the loading timer redraws through it.
-  const modelRef = useRef<ViewModel | null>(null);
+  const modelRef = useRef<BareViewModel | null>(null);
   const deliver = (fn: () => void) => queueMicrotask(fn);
   if (!modelRef.current)
-    modelRef.current = new ViewModel(component, input, { deliver });
+    modelRef.current = new BareViewModel(component, modelOf, input, {
+      deliver,
+    });
   const model = modelRef.current;
   if (JSON.stringify(model.snapshot) !== JSON.stringify(input))
     model.update(() => input);
@@ -388,7 +433,9 @@ export function useKit(
   useEffect(() => {
     // StrictMode unmounts and mounts again: a disposed model is replaced, never reused.
     if (!modelRef.current) {
-      modelRef.current = new ViewModel(component, input, { deliver });
+      modelRef.current = new BareViewModel(component, modelOf, input, {
+        deliver,
+      });
       force();
     }
     const m = modelRef.current;
@@ -408,6 +455,8 @@ export function useKit(
   // would read a short landscape window as portrait.
   const [shape, setShape] = useState<Shape>("portrait");
   const [tight, setTight] = useState(false);
+  // The window is wider than a docked sheet (35 rem): a dialog is then a floating box.
+  const [wide, setWide] = useState(false);
   const fill = props.fill === true;
   useIsoLayoutEffect(() => {
     const el = rootRef.current;
@@ -428,9 +477,11 @@ export function useKit(
         wh > 0 && wh / rem < 34 && (next !== "short" || wh / rem < 18);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
+      const isWide = w / rem > 35;
       frame = requestAnimationFrame(() => {
         setShape(next);
         setTight(snug);
+        setWide(isWide);
       });
     };
     const ro = new ResizeObserver(([entry]) => {
@@ -473,9 +524,15 @@ export function useKit(
     () => keyboard,
     () => false,
   );
+  // The desktop chrome's rules load on demand (a web page never needs them); until they are in,
+  // a desktop root is not drawn, so no frame shows the web chrome.
+  const desktopVariant = platformVariant(resolved.theme) !== "web";
+  const doc = typeof document === "undefined" ? undefined : document;
+  const desktopPending = desktopVariant && !hasDesktopStyles(doc);
   useInsertionEffect(() => {
-    adoptKitStyles(typeof document === "undefined" ? undefined : document);
-  }, []);
+    adoptKitStyles(doc);
+    if (desktopVariant) void adoptDesktopStyles(doc).then(force);
+  }, [desktopVariant]);
 
   const copy = copyFor(
     resolved.locale,
@@ -488,6 +545,8 @@ export function useKit(
     copy,
     resolved,
     input,
+    shape,
+    wide,
     headingLevel:
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),
@@ -595,20 +654,35 @@ export function useKit(
     tight,
     kb,
     fontless,
+    hostFacts,
+    desktopPending,
   };
 }
 
 export type Kit = ReturnType<typeof useKit>;
 
+/** The platform's UI face per chrome (UI-KITS.md §3.4): Segoe UI Variable on Windows, Adwaita Sans
+ *  (Cantarell before it) on GNOME, the San Francisco system face on a Mac. */
+const NATIVE_FONT_STACKS: Record<string, string> = {
+  windows: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+  gnome:
+    '"Adwaita Sans", Cantarell, "Noto Sans", "Helvetica Neue", system-ui, sans-serif',
+  macos:
+    '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+};
+
 /** The platform's UI face for every type role, for `native` on a page that sets no font. */
-const SYSTEM_FONT_VARS: Record<string, string> = {
-  fontFamily: SYSTEM_FONT_STACK,
-  ...Object.fromEntries(
-    ["body", "title", "display", "label", "button", "meta"].map((role) => [
-      `--pk-kit-type-${role}-family`,
-      SYSTEM_FONT_STACK,
-    ]),
-  ),
+const systemFontVars = (variant: string): Record<string, string> => {
+  const stack = NATIVE_FONT_STACKS[variant] ?? SYSTEM_FONT_STACK;
+  return {
+    fontFamily: stack,
+    ...Object.fromEntries(
+      ["body", "title", "display", "label", "button", "meta"].map((role) => [
+        `--pk-kit-type-${role}-family`,
+        stack,
+      ]),
+    ),
+  };
 };
 
 /** The `.pk-root` every component draws in: the elements' attributes, the theme's variables. */
@@ -631,6 +705,7 @@ export function KitRoot(props: {
     tight,
     kb,
     fontless,
+    hostFacts,
   } = props.kit;
   return (
     <div
@@ -645,15 +720,20 @@ export function KitRoot(props: {
       data-motion={r.theme.motion}
       data-shape={shape}
       data-tight={tight ? "" : undefined}
-      data-pk-platform={r.theme.platform ?? "web"}
+      data-pk-platform={platformVariant(r.theme)}
+      data-contrast={hostFacts?.highContrast ? "more" : undefined}
+      data-transparency={hostFacts?.reducedTransparency ? "reduce" : undefined}
       data-keyboard={kb ? "" : undefined}
       data-bare={props.bare ? "" : undefined}
       data-fill={props.fill ? "" : undefined}
       lang={copy.locale}
       style={
-        (fontless
-          ? { ...themeVars(r), ...SYSTEM_FONT_VARS }
-          : themeVars(r)) as CSSProperties
+        {
+          ...(fontless
+            ? { ...themeVars(r), ...systemFontVars(platformVariant(r.theme)) }
+            : themeVars(r)),
+          ...(props.kit.desktopPending ? { visibility: "hidden" } : null),
+        } as CSSProperties
       }
       onKeyDown={
         props.onEscape
@@ -671,140 +751,6 @@ export function KitRoot(props: {
   );
 }
 
-/** One §4.1 component as a React component: its view, drawn in the kit's look. */
-/** States of an update that own the window; every other is a dialog over the running app (DL2). */
-const UPDATE_BLOCKING: ReadonlySet<string> = new Set([
-  "mandatory",
-  "blocked",
-  "revoked-required-content",
-]);
-
-/** An optional update prompt: a modal `<dialog>` over the host on the scrim (a bottom sheet on a
- *  phone), the host inert. Escape and the scrim answer Later; focus returns to what held it. It
- *  stays closed until the state changes. */
-function UpdateDialog(props: {
-  state: string;
-  hasLater: boolean;
-  later: () => void;
-  dismissed: string | null;
-  close: () => void;
-  children: ReactNode;
-}): ReactNode {
-  const ref = useRef<HTMLDialogElement | null>(null);
-  const opener = useRef<HTMLElement | null>(null);
-  const open = props.dismissed !== props.state;
-  useEffect(() => {
-    const d = ref.current;
-    if (!d || d.open) return;
-    opener.current ??=
-      document.activeElement && document.activeElement !== document.body
-        ? (document.activeElement as HTMLElement)
-        : null;
-    if (typeof d.showModal === "function") d.showModal();
-    else d.setAttribute("open", "");
-  });
-  useEffect(() => {
-    if (open) return;
-    const o = opener.current;
-    opener.current = null;
-    if (o?.isConnected) o.focus({ preventScroll: true });
-  }, [open]);
-  if (!open) return null;
-  const dismiss = () => (props.hasLater ? props.later() : props.close());
-  return (
-    <dialog
-      ref={ref}
-      className="sheet"
-      data-part="sheet"
-      aria-labelledby="pk-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        dismiss();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) dismiss();
-      }}
-    >
-      {props.children}
-    </dialog>
-  );
-}
-
-export function kitComponent(component: ComponentName) {
-  function KitComponent(props: KitProps): ReactNode {
-    // The state the person dismissed: the update dialog stays closed until the state changes.
-    const [dismissed, setDismissed] = useState<string | null>(null);
-    const stateRef = useRef("");
-    const kit = useKit(
-      component,
-      component === "UpdatePrompt"
-        ? {
-            ...props,
-            onAction: (a) => {
-              if (a.key === "update.later") setDismissed(stateRef.current);
-              props.onAction?.(a);
-            },
-          }
-        : props,
-    );
-    stateRef.current = kit.view.state;
-    useEffect(() => {
-      if (dismissed !== null && dismissed !== kit.view.state)
-        setDismissed(null);
-    });
-    if (kit.view.state === "hidden") return null;
-    // A host that handles input keeps a pane's title and rows through its transient states.
-    let view =
-      props.onInput !== undefined ? adaptPane(kit.view, kit.input) : kit.view;
-    // The driven prompt on the web: one Download action (the page cannot install), and Later.
-    const download = props.driven && component === "UpdatePrompt";
-    const version = kit.input.update?.version;
-    view = oneVerb(view);
-    if (download) view = adaptUpdate(view);
-    view = withoutLede(view);
-    const labels =
-      download &&
-      version &&
-      view.state === "available" &&
-      kit.copy.has("boot.consent.download")
-        ? {
-            "update.install": `${kit.copy.format("boot.consent.download", {})} ${version}`,
-          }
-        : undefined;
-    const ctx = withChoice(kit.ctxFor(view, labels ? { labels } : undefined));
-    const body = renderView(ctx);
-    const asDialog =
-      component === "UpdatePrompt" &&
-      !props.embedded &&
-      props.asWindow !== true &&
-      !UPDATE_BLOCKING.has(view.state);
-    return (
-      <KitRoot
-        kit={kit}
-        bare={props.bare}
-        fill={props.fill}
-        className={props.className}
-      >
-        {asDialog ? (
-          <UpdateDialog
-            state={view.state}
-            hasLater={view.copy.includes("update.later")}
-            later={() => ctx.act("update.later")}
-            dismissed={dismissed}
-            close={() => setDismissed(view.state)}
-          >
-            {body}
-          </UpdateDialog>
-        ) : (
-          body
-        )}
-      </KitRoot>
-    );
-  }
-  KitComponent.displayName = component;
-  return KitComponent;
-}
-
 /** The props of `<PolarisKeyGate>`: a kit component's, and the app it gates. */
 export interface PolarisKeyGateProps extends KitProps {
   /** The app, drawn once the license holds (and under the grace banner while offline grace runs). */
@@ -812,6 +758,17 @@ export interface PolarisKeyGateProps extends KitProps {
   /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
   returnUrl?: string;
 }
+
+/** The models of the screens the gate draws; the rest of ui-core's models stay out of its entry. */
+const GATE_SCREENS: Partial<Record<ComponentName, Model>> = {
+  GraceBanner: graceBannerView,
+  Activate: activateView,
+  SignInHandoff: signInHandoffView,
+  Welcome: welcomeView,
+  StatusScreen: statusScreenView,
+};
+const viewOf = (component: ComponentName, input: UiInput): View =>
+  GATE_SCREENS[component]!(contextOf(input));
 
 /** The component the gate draws for its state and the sign-in step it is on. */
 function gateScreen(view: View, step: GateStep): ComponentName | null {
@@ -857,6 +814,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const lastFocus = useRef<View | null>(null);
   const kit = useKit(
     "PolarisKeyGate",
+    gateView,
     {
       ...props,
       input: driven ? sdk.input : props.input,

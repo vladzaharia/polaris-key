@@ -4,6 +4,8 @@
 // property logical (RTL-safe, §1.5), type in rem (DL11); the cascade layer `polaris-key` lets a
 // host's own rule win without `!important`.
 
+import { DESKTOP_CSS } from "./desktopStyles.js";
+import { platformTokenCss } from "./desktopTokens.js";
 import { tokenCss } from "./tokens.js";
 
 const KIT_CSS = String.raw`
@@ -374,6 +376,14 @@ const KIT_CSS = String.raw`
   position: static;
   margin-block: 0;
   padding-block: 0;
+}
+/* A split's docked bar stays in the end column: its band never spans the window, which would cut
+   through the identity panel beside it. The window-filling stage centres the card. */
+.pk-root[data-shape="short"] .stage[data-split][data-kind="screen"] .card > .actions::before {
+  content: none;
+}
+.pk-root[data-shape="short"][data-fill] .stage {
+  align-content: center;
 }
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
@@ -1074,6 +1084,19 @@ bdi {
   transition: inline-size var(--pk-duration-base) var(--pk-ease-standard);
 }
 
+/* Unknown size (a desktop install whose driver reports no total): a sweep, never a percentage.
+   Standing still, centred, under reduced motion. */
+.progress[data-indeterminate] > span {
+  position: relative;
+  inline-size: 40%;
+  transition: none;
+  animation: pk-sweep var(--pk-duration-shimmer) var(--pk-ease-standard) infinite;
+}
+.pk-root[data-motion="reduced"] .progress[data-indeterminate] > span {
+  animation: none;
+  inset-inline-start: 30%;
+}
+
 /* §1.5 rule 4: the indeterminate 2 px shimmer along the container's top edge. */
 .shimmer {
   position: absolute;
@@ -1627,6 +1650,23 @@ dialog.sheet .identity {
     forced-color-adjust: none;
     background: CanvasText;
   }
+  /* A switch's track and thumb are backgrounds, which forced colours drop: draw them in system colours. */
+  .switch {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+  .switch[aria-checked="true"] {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  .switch-thumb {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .switch[aria-checked="true"] .switch-thumb {
+    background: HighlightText;
+  }
   .row[aria-checked="true"] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
@@ -1641,7 +1681,7 @@ dialog.sheet .identity {
   }
 }
 @media (prefers-contrast: more) {
-  .pk-root {
+  .pk-root[data-theme] {
     --pk-border-subtle: var(--pk-border-strong);
     --pk-text-muted: var(--pk-text-default);
     --pk-text-subtle: var(--pk-text-default);
@@ -1656,6 +1696,13 @@ dialog.sheet .identity {
     backdrop-filter: none;
     background: var(--pk-surface-page);
   }
+}
+/* The desktop host's own report (the bridge host facts, UK-06) draws what the media features draw:
+   Increase Contrast, and Reduce Transparency, which makes the glass sheet and the scrim opaque. */
+.pk-root[data-contrast="more"][data-theme] {
+  --pk-border-subtle: var(--pk-border-strong);
+  --pk-text-muted: var(--pk-text-default);
+  --pk-text-subtle: var(--pk-text-default);
 }
 .visually-hidden {
   position: absolute;
@@ -1675,9 +1722,21 @@ dialog.sheet .identity {
 `;
 
 /** The whole stylesheet: tokens, then the kit's rules, all in the `polaris-key` layer (an
- *  unlayered token block would outrank every layered rule, `native`'s surfaces included). */
+ *  unlayered token block would outrank every layered rule, `native`'s surfaces included). The
+ *  desktop chrome's rules come last. */
 export function stylesCss(): string {
-  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${KIT_CSS.trim()}\n`;
+  const kit = KIT_CSS.trim();
+  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${kit.slice(0, -1)}${DESKTOP_CSS}}\n`;
+}
+
+/** Everything but the desktop chrome (UK-06): what a web page draws. */
+export function webStylesCss(): string {
+  return `@layer polaris-key {\n${tokenCss(false)}\n}\n\n${KIT_CSS.trim()}\n`;
+}
+
+/** The desktop chrome's tokens and rules, to follow `webStylesCss()`. */
+export function desktopStylesCss(): string {
+  return `@layer polaris-key {\n${platformTokenCss()}\n}\n\n@layer polaris-key {${DESKTOP_CSS}}\n`;
 }
 
 let shared: CSSStyleSheet | null = null;

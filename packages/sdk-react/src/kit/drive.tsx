@@ -21,8 +21,10 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 import type { DeviceInfo, PolarisAdapter } from "../core/index.js";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
-import { kitComponent, type KitAction, type KitProps } from "./component.js";
+import type { KitAction, KitProps } from "./component.js";
+import { kitComponent } from "./kitComponent.js";
 import { openLink, safeLink } from "./links.js";
+import { installProgressInput } from "./adapt.js";
 import type { SettingsRow } from "./views.js";
 
 type Props = KitProps;
@@ -31,6 +33,7 @@ const Devices_ = kitComponent("Devices");
 const Settings_ = kitComponent("Settings");
 const UpdatePrompt_ = kitComponent("UpdatePrompt");
 const About_ = kitComponent("About");
+const AccountAndLicense_ = kitComponent("AccountAndLicense");
 
 /** The adapter and what the provider knows, or `null` outside `<PolarisKeyProvider>`. */
 function useSdk() {
@@ -251,8 +254,75 @@ function parseSetting(row: SettingsRow, raw: string): JSONValue | undefined {
   return raw;
 }
 
-function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
-  const { adapter, ...rest } = props;
+/** The account pane a host-opened Settings carries (the menu's "Manage License…"): the license,
+ *  its devices, the version, the update controls and Sign Out, from what the SDK knows. */
+function OpenedAccount(props: {
+  adapter: PolarisAdapter;
+  version?: string;
+  theme?: KitProps["theme"];
+  onCheckUpdates?: () => void;
+  onSignedOut: () => void;
+}): ReactNode {
+  const { adapter } = props;
+  const state = useAdapterState(adapter);
+  const [used, setUsed] = useState<number | null>(null);
+  const licenseOn = state.capabilities.license.enabled;
+  useEffect(() => {
+    if (!licenseOn) return;
+    let live = true;
+    adapter
+      .listDevices()
+      .then((l) => live && setUsed(l.length))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [adapter, licenseOn]);
+  const caps = state.capabilities;
+  const name = state.profile?.name ?? state.profile?.email;
+  const tier = state.entitlements.tier;
+  // "Manage" opens the page a refusal handed over (the device-limit `manageUrl`); the SDK has
+  // no other account page, so without one the button is left out.
+  const manageUrl = safeLink(state.error?.license?.manageUrl);
+  const input: UiInput = {
+    services: (Object.keys(caps) as (keyof typeof caps)[]).filter(
+      (s) => caps[s].enabled,
+    ),
+    gate: { status: state.status },
+    account: {
+      signedIn: caps.identity.enabled && name !== undefined,
+      ...(name !== undefined ? { holder: name } : {}),
+      ...(typeof tier === "string" ? { tier } : {}),
+      canManage: manageUrl !== null,
+      ...(used !== null ? { devices: { used, limit: null } } : {}),
+    },
+    ...(props.version ? { bundle: { slug: "", version: props.version } } : {}),
+  };
+  return (
+    <AccountAndLicense_
+      bare
+      headingLevel={3}
+      driven
+      {...(props.theme ? { theme: props.theme } : {})}
+      input={input}
+      onAction={(a: KitAction) => {
+        if (a.key === "common.signOut")
+          void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
+        else if (a.key === "update.checkNow") props.onCheckUpdates?.();
+        else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
+      }}
+    />
+  );
+}
+
+export function DrivenSettings(
+  props: Props & {
+    adapter: PolarisAdapter;
+    version?: string;
+    onCheckUpdates?: () => void;
+  },
+): ReactNode {
+  const { adapter, version, onCheckUpdates, ...rest } = props;
   // Re-read whenever the SDK's state moves (a local write lands there).
   const state = useAdapterState(adapter);
   const [catalog, setCatalog] = useState<ProductCatalog | null>(null);
@@ -305,6 +375,19 @@ function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
     <Settings_
       {...rest}
       driven
+      {...(props.onDismiss
+        ? {
+            account: (
+              <OpenedAccount
+                adapter={adapter}
+                {...(version !== undefined ? { version } : {})}
+                {...(props.theme ? { theme: props.theme } : {})}
+                {...(onCheckUpdates ? { onCheckUpdates } : {})}
+                onSignedOut={props.onDismiss}
+              />
+            ),
+          }
+        : {})}
       input={input}
       onAction={both((a: KitAction) => {
         if (a.key === "common.tryAgain" && last.current)
@@ -327,26 +410,56 @@ function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
 
 // ── UpdatePrompt ─────────────────────────────────────────────────────────────────────────────
 
-function DrivenUpdate(
-  props: Props & { adapter: PolarisAdapter; version?: string },
+/** A host-opened update (a native menu item): the prompt is a modal dialog, an up-to-date answer
+ *  is shown rather than left out, and `onClose` runs when the person closes it. */
+interface Opened {
+  onClose: () => void;
+}
+
+type Found = {
+  version: string;
+  url: string;
+  notes?: NonNullable<UiInput["releaseNotes"]>;
+  more?: string;
+};
+
+export function DrivenUpdate(
+  props: Props & {
+    adapter: PolarisAdapter;
+    version?: string;
+    opened?: Opened;
+  },
 ): ReactNode {
-  const { adapter, version, ...rest } = props;
-  const [found, setFound] = useState<{
-    version: string;
-    url: string;
-    notes?: NonNullable<UiInput["releaseNotes"]>;
-    more?: string;
-  } | null>(null);
+  const { adapter, version, opened, ...rest } = props;
+  // `undefined`: not answered yet; `null`: nothing newer.
+  const [found, setFound] = useState<Found | null | undefined>(undefined);
   const [skipped, setSkipped] = useState(false);
+  // The install in flight (desktop): real bytes, then a restart to offer.
+  const [install, setInstall] = useState<
+    | { kind: "running"; progress?: ReturnType<typeof installProgressInput> }
+    | { kind: "ready"; restart: () => Promise<void> }
+    | null
+  >(null);
+  const [recheck, setRecheck] = useState(0);
   // Asked once the SDK knows the product publishes updates (not at first paint).
-  const updatesOn = useAdapterState(adapter).capabilities.update.enabled;
+  const state = useAdapterState(adapter);
+  const updatesOn = state.capabilities.update.enabled;
+  const desktop = state.mode === "desktop";
+  const close = opened?.onClose;
   useEffect(() => {
-    if (!updatesOn) return;
+    if (!updatesOn) {
+      if (close) close();
+      return;
+    }
     let live = true;
     adapter
       .checkUpdate()
       .then(async (v) => {
-        if (!live || !v.updateAvailable) return;
+        if (!live) return;
+        if (!v.updateAvailable) {
+          setFound(null);
+          return;
+        }
         setFound(v);
         // The changelog entry supplies "What's new" and the release page; without one, neither.
         const e = (await adapter.changelog().catch(() => [])).find(
@@ -367,33 +480,96 @@ function DrivenUpdate(
             ...(safeLink(e.url) ? { more: e.url } : {}),
           });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        // The adapter holds the error (`error.update`); a host-opened dialog has nothing to show.
+        if (live && close) close();
+      });
     return () => {
       live = false;
     };
-  }, [adapter, updatesOn]);
-  // Nothing newer, or put off: the part draws nothing (it never says "up to date" unasked).
-  if (!found || skipped) return null;
+  }, [adapter, updatesOn, recheck]);
+  const done = (): void => {
+    setSkipped(true);
+    close?.();
+  };
+  // Install through the host's driver and draw its real bytes; anything it cannot install (or
+  // refuses) falls back to the download page, as before.
+  const installNow = async (url: string): Promise<void> => {
+    const fallback = (): void => {
+      const safe = safeLink(url);
+      if (safe) openLink(safe);
+    };
+    if (!desktop) return fallback();
+    setInstall({ kind: "running" });
+    try {
+      const { decision } = await adapter.decideUpdate();
+      const out = await adapter.installUpdate(decision, {
+        onProgress: (d, t) =>
+          setInstall({
+            kind: "running",
+            progress: installProgressInput(
+              d,
+              t,
+              typeof navigator !== "undefined" ? navigator.language : undefined,
+            ),
+          }),
+      });
+      if (out.kind === "restartRequired")
+        setInstall({ kind: "ready", restart: out.restart });
+      else if (out.kind === "unsupported") {
+        setInstall(null);
+        fallback();
+      } else {
+        // Handed off or opened a store: the installer or the store owns it now.
+        setInstall(null);
+        done();
+      }
+    } catch {
+      setInstall(null);
+      fallback();
+    }
+  };
+  // Nothing newer, or put off: an inline part draws nothing (it never says "up to date"
+  // unasked); a host-opened dialog says so.
+  if (found === undefined || skipped) return null;
+  if (found === null && !opened) return null;
   const input: UiInput = {
-    update: { action: "binary", version: found.version },
+    update:
+      found === null
+        ? { action: "none" }
+        : install?.kind === "ready"
+          ? { action: "code-ready", version: found.version }
+          : install?.kind === "running"
+            ? {
+                action: "binary",
+                version: found.version,
+                progress: install.progress ?? { phase: "download" },
+              }
+            : { action: "binary", version: found.version },
     ...(version ? { bundle: { slug: "", version } } : {}),
-    ...(found.notes ? { releaseNotes: found.notes } : {}),
+    ...(found?.notes ? { releaseNotes: found.notes } : {}),
   };
   return (
     <UpdatePrompt_
-      embedded
+      {...(opened ? { onDismiss: opened.onClose } : { embedded: true })}
       driven
       {...rest}
       input={input}
       onAction={both((a: KitAction) => {
-        if (a.key === "update.install" || a.key === "update.restartWhenReady") {
-          const url = safeLink(found.url);
-          if (url) openLink(url);
-        } else if (a.key === "update.allChanges") {
+        if (a.key === "update.checkNow") {
+          setRecheck((n) => n + 1);
+        } else if (found && a.key === "update.restartNow") {
+          if (install?.kind === "ready") void install.restart().catch(() => {});
+        } else if (
+          found &&
+          (a.key === "update.install" || a.key === "update.restartWhenReady")
+        ) {
+          void installNow(found.url);
+        } else if (found && a.key === "update.allChanges") {
           const url = safeLink(found.more ?? found.url);
           if (url) openLink(url);
         } else if (a.key === "update.later" || a.key === "update.skipVersion")
-          setSkipped(true);
+          done();
       }, props.onAction)}
     />
   );

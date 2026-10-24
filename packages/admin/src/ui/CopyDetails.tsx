@@ -1,22 +1,28 @@
 import * as React from "react";
-import { CopyButton } from "./CopyButton.js";
+import { CopyButton, type CopyButtonProps } from "./CopyButton.js";
 
 /**
  * The "Copy details" button a refusal's words promise ("Copy the details for a report"), for a
- * callout that shows the copy itself. Renders only when the copy's action is `copy-details`.
+ * callout that shows the copy itself. Renders only when the copy's action is `copy-details`, or
+ * when `always` is set by a callout that promises it whatever the cause (a failed publish).
  */
 export function CopyDetails({
   copy,
+  always = false,
+  variant,
 }: {
   copy: { action?: string; details?: Record<string, unknown> };
+  always?: boolean;
+  variant?: CopyButtonProps["variant"];
 }): React.ReactElement | null {
-  if (copy.action !== "copy-details") return null;
+  if (!always && copy.action !== "copy-details") return null;
   return (
     <CopyButton
       value={JSON.stringify(copy.details ?? {}, null, 2)}
       label="Copy details"
       showLabel
       text="Copy details"
+      variant={variant}
     />
   );
 }

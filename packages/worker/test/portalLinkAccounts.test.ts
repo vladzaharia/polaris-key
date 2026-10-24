@@ -31,6 +31,10 @@ import type { Db } from "../src/db/types.js";
 import { EMAIL_ISSUER } from "../src/services/identity/accounts/repo.js";
 import { putArtefact, artefactRef } from "../src/core/singleUse.js";
 import { hashKey } from "../src/platform/crypto.js";
+import {
+  mintAccountToken,
+  resolvePersonalToken,
+} from "../src/core/accounts/personalTokens.js";
 
 const LINK = "/api/me/link";
 
@@ -744,6 +748,124 @@ describe("undo within 72 hours", () => {
       { token_id: "rtok_a", portal_account_id: a.accountId, revoked_at: null },
       { token_id: "rtok_s", portal_account_id: b.accountId, revoked_at: NOW },
     ]);
+  });
+
+  it("revokes the operator-minted tokens of each licence handed back, pre-join and during the window", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    await seedLicense(w, "acme", "lic-a", a.accountId);
+    await seedLicense(w, "acme", "lic-other", b.accountId);
+    const opToken = (id: string, lic: string) =>
+      w.db.run(
+        `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+           binding, license_id, created_by, portal_account_id, created_at, expires_at)
+         VALUES ('acme', ?, ?, 'abcd', ?, '["read"]', 'license', ?, 'admin:op', NULL, ?, ?)`,
+        id,
+        `h-${id}`,
+        id,
+        lic,
+        NOW,
+        NOW + 86400,
+      );
+    await opToken("rtok_op_before", "lic-a"); // minted for A before the join
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    await opToken("rtok_op_window", "lic-a"); // minted during the window
+    await opToken("rtok_op_kept", "lic-other"); // a licence the survivor keeps
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    const rows = await w.db.all(
+      "SELECT token_id, revoked_by, revoke_reason FROM registry_tokens ORDER BY token_id",
+    );
+    // The over-revoke of the pre-join token is deliberate: it fails closed, the operator re-mints.
+    expect(rows).toEqual([
+      {
+        token_id: "rtok_op_before",
+        revoked_by: "system",
+        revoke_reason: "link_removed",
+      },
+      { token_id: "rtok_op_kept", revoked_by: null, revoke_reason: null },
+      {
+        token_id: "rtok_op_window",
+        revoked_by: "system",
+        revoke_reason: "link_removed",
+      },
+    ]);
+  });
+
+  it("ST-34: a join revokes the absorbed account's admin tokens and moves its packages tokens; the undo moves back only the moved", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    const mint = async (accountId: string, scope: string) => {
+      const r = await mintAccountToken(
+        w.env,
+        w.db,
+        { accountId, label: scope, scope, createdBy: `portal:${accountId}` },
+        NOW,
+      );
+      if (!r.ok) throw new Error(JSON.stringify(r));
+      return r;
+    };
+    const adminA = await mint(a.accountId, "admin");
+    const pkgA = await mint(a.accountId, "packages:read");
+    const adminS = await mint(b.accountId, "admin");
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    type Row = {
+      id: string;
+      account_id: string;
+      revoked_at: number | null;
+      revoke_reason: string | null;
+      revoked_by: string | null;
+    };
+    const rows = async () =>
+      Object.fromEntries(
+        (
+          await w.db.all<Row>(
+            "SELECT id, account_id, revoked_at, revoke_reason, revoked_by FROM account_tokens",
+          )
+        ).map((r) => [r.id, r]),
+      );
+    let r = await rows();
+    expect(r[adminA.view.id]).toMatchObject({
+      account_id: a.accountId,
+      revoked_at: NOW,
+      revoke_reason: "access_removed",
+      revoked_by: "merge",
+    });
+    expect(r[pkgA.view.id]).toMatchObject({
+      account_id: b.accountId,
+      revoked_at: null,
+    });
+    // The survivor's own admin token is untouched.
+    expect(r[adminS.view.id]).toMatchObject({
+      account_id: b.accountId,
+      revoked_at: null,
+    });
+    expect(
+      await resolvePersonalToken(w.env, w.db, adminA.token, "admin", NOW),
+    ).toBeNull();
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    r = await rows();
+    expect(r[pkgA.view.id]!.account_id).toBe(a.accountId);
+    expect(r[adminA.view.id]).toMatchObject({
+      account_id: a.accountId,
+      revoke_reason: "access_removed",
+    });
+    expect(r[adminA.view.id]!.revoked_at).not.toBeNull();
+    expect(r[adminS.view.id]).toMatchObject({
+      account_id: b.accountId,
+      revoked_at: null,
+    });
   });
 
   it("keeps the survivor's passkey user handle while it holds a passkey created under it", async () => {

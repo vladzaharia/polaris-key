@@ -95,6 +95,14 @@ const FR: CopyBundle = {
     enroll_claimed: "Connectez-vous pour continuer",
     rateLimited: "Trop de tentatives",
     rate_limited: "Trop de tentatives",
+    cursor_expired: "Synchronisation obsolète",
+    client_mismatch: "Synchronisation incompatible",
+    value_invalid: "Réglage non enregistré",
+    op_invalid_for_policy: "Modification non autorisée",
+    setting_not_synced: "Non synchronisé",
+    collection_unknown: "Collection inconnue",
+    quota_exceeded: "Stockage plein",
+    writes_paused: "Synchronisation en pause",
     unauthorized: "Non connecté",
     network: "Connexion impossible",
     "network-error": "Connexion impossible",
@@ -140,6 +148,19 @@ const FR: CopyBundle = {
     attestation_unavailable:
       "La vérification des appareils n’est pas disponible pour cette app pour le moment. Réessayez dans quelques minutes.",
     rate_limited: "Trop de tentatives. Patientez un instant, puis réessayez.",
+    cursor_expired:
+      "Cet appareil ne s'est pas synchronisé depuis trop longtemps. Il repartira de vos données enregistrées.",
+    client_mismatch:
+      "Cette synchronisation appartient à un autre appareil. Redémarrez l'app et réessayez.",
+    value_invalid: "Cette valeur n'est pas valide pour ce réglage.",
+    op_invalid_for_policy:
+      "Cette modification n'est pas autorisée pour ce réglage.",
+    setting_not_synced: "Ce réglage n'est pas synchronisé avec votre compte.",
+    collection_unknown: "Cette collection n'est pas disponible.",
+    quota_exceeded:
+      "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
+    writes_paused:
+      "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
     body_too_large: "Cet élément est trop volumineux pour être envoyé.",
     method_not_allowed:
       "La requête n’était pas valide. Mettez l’app à jour, puis réessayez.",
@@ -311,7 +332,7 @@ const FR: CopyBundle = {
     "needs-activation":
       "Saisissez une clé de licence ou connectez-vous pour continuer.",
     "version-too-old":
-      "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.",
+      "Cette version n’est plus prise en charge. Mettez {product} à jour pour continuer.",
     "version-too-new":
       "Ce build est plus récent que ce que votre licence autorise.",
     "channel-not-entitled": "Votre licence n’inclut pas ce canal.",

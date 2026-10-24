@@ -38,6 +38,7 @@ import { getProduct } from "../../core/products/store.js";
 import {} from "../../core/manifestSnapshot.js";
 import {} from "../../core/rowSettings.js";
 import {} from "../../core/services.js";
+import { displayNameOptions } from "../../core/accounts/reservedDisplayNames.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import {} from "../../core/publisher.js";
 import { getReleaseConfig } from "./config.js";
@@ -106,6 +107,10 @@ export type LinkExistingResult =
       updated: string[];
       refused?: Extract<ResyncResult, { ok: true }>["refused"];
       packSets?: Extract<ResyncResult, { ok: true }>["packSets"];
+      feedProvisionSkipped?: Extract<
+        ResyncResult,
+        { ok: true }
+      >["feedProvisionSkipped"];
       remainingSecrets: string[];
     }
   | LinkRefusal;
@@ -199,6 +204,7 @@ export async function prepareLink(
   // The same reserved-name severity link, resync and the deploy hook parse with (LX-05).
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
+    ...(await displayNameOptions(env, db, slug)),
   });
   if (!result.ok)
     return refuse("manifest", "manifest validation failed", result.errors);
@@ -399,6 +405,9 @@ export async function linkExistingProduct(
     updated: applied.updated,
     ...(applied.refused ? { refused: applied.refused } : {}),
     ...(applied.packSets ? { packSets: applied.packSets } : {}),
+    ...(applied.feedProvisionSkipped
+      ? { feedProvisionSkipped: applied.feedProvisionSkipped }
+      : {}),
     remainingSecrets: prepared.remainingSecrets,
   };
 }

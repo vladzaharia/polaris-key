@@ -74,7 +74,7 @@ export const CORS_ALLOW_HEADERS = [
  * also have to touch CORS.
  */
 export const CORS_EXPOSE_HEADERS =
-  "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest";
+  "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After";
 
 /** Preflight cache lifetime, seconds. Short enough that removing an origin takes effect soon. */
 export const CORS_MAX_AGE = "600";

@@ -30,7 +30,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { PortalPage, draftOf, patchOf, validatePortal } =
   await import("../src/console/sections/core/pages/Portal.js");
 
@@ -176,7 +176,7 @@ describe("Settings → Polaris Locker", () => {
   it("names a refused branding field and keeps the draft", async () => {
     const user = userEvent.setup();
     fns.updatePortalSettings.mockRejectedValue(
-      new ApiError(422, ["branding.supportEmail"]),
+      new HttpError(422, { fields: ["branding.supportEmail"] }),
     );
     mount();
     const email = await screen.findByLabelText("Support email");
@@ -203,7 +203,7 @@ describe("Settings → Polaris Locker", () => {
   });
 
   it("shows Try again when the settings do not load", async () => {
-    fns.portalSettings.mockRejectedValue(new ApiError(500));
+    fns.portalSettings.mockRejectedValue(new HttpError(500));
     mount();
     expect(await screen.findByRole("alert")).toBeTruthy();
   });

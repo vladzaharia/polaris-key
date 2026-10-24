@@ -62,11 +62,8 @@ import { blobKey, recordRef } from "../src/core/assets/blobs.js";
 import { buildMatrix } from "../src/services/distribution/matrix.js";
 import { hashKey } from "../src/platform/crypto.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -403,8 +400,9 @@ describe("pack transports (P4-05)", () => {
       `${SKINS} web pkey-cdn`,
     ]);
 
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

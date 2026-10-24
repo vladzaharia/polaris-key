@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { atRest } from "./atRest.js";
 import { h1, type Override } from "./portalHarness.js";
 import { REQUEST_STATES } from "./portalRequestStates.js";
 import {
@@ -1366,9 +1367,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Product");
       const alert = p.getByRole("alert");
-      await alert
-        .getByText("Couldn't load this product. Try again in a moment.")
-        .waitFor();
+      await alert.getByText("Couldn't load this product.").waitFor();
       await alert.getByRole("link", { name: "Library" }).waitFor();
     },
   },
@@ -1720,6 +1719,9 @@ export const SHIPPED: ShippedState[] = [
           name: "Schedule your Polaris Locker account for deletion?",
         })
         .waitFor();
+      // At 390 px the dialog is a bottom sheet that slides up (pk-sheet): the baseline is the
+      // sheet at rest, not a frame of its rise (CI's fast runner caught it 1-2 px low).
+      await atRest(p);
     },
   },
   // §4.30 Account → Profile (PX-22).
@@ -1845,7 +1847,7 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Your library");
       await p
         .getByRole("alert")
-        .getByText("Couldn't load your library. Try again in a moment.")
+        .getByText("Couldn't load your library.")
         .waitFor();
     },
   },

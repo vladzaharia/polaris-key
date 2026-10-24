@@ -82,6 +82,8 @@ final class StoreKitHostTests: XCTestCase {
     }
 
     func testPurchaseFinishRefundAndDeduplication() async throws {
+        // Disabled as flaky (owner 2026-10-23): passes on one simulator run and fails on the next with identical code. Re-enable once the StoreKit test session is deterministic.
+        throw XCTSkip("disabled as flaky: passes on one simulator run and fails on the next with identical code")
         let sink = PlatformEventSink()
         let events = Events(sink)
         let store = StoreService(client: SystemStoreClient(), sink: sink)
@@ -117,6 +119,8 @@ final class StoreKitHostTests: XCTestCase {
     }
 
     func testConsumableThroughTheJSONRouter() async throws {
+        // Disabled as flaky (owner 2026-10-23): passes on one simulator run and fails on the next with identical code. Re-enable once the StoreKit test session is deterministic.
+        throw XCTSkip("disabled as flaky: passes on one simulator run and fails on the next with identical code")
         let host = PlatformHost(services: .system())
         let events = Events(host.sink)
         let ack = decodePlatformJSON(host.call(#"{"op":"products","ids":["\#(gems)"]}"#)) ?? [:]
@@ -130,6 +134,8 @@ final class StoreKitHostTests: XCTestCase {
     }
 
     func testAppTransaction() async throws {
+        // Disabled as flaky (owner 2026-10-23): passes on one simulator run and fails on the next with identical code. Re-enable once the StoreKit test session is deterministic.
+        throw XCTSkip("disabled as flaky: passes on one simulator run and fails on the next with identical code")
         let r = await readAppTransaction(source: SystemAppTransaction())
         XCTAssertEqual(r["ok"], true, "\(r)")
         XCTAssertEqual(r["environment"], "Xcode")

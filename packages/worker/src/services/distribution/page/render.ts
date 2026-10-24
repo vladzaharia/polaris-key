@@ -41,6 +41,7 @@ import {
   type PageBuild,
   type PagePlatformGroup,
 } from "./model.js";
+import { BRAND_LOCKUP_HEIGHT } from "../../../core/brandHtml.js";
 import { qrSvg } from "../../../core/qr.js";
 import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
 
@@ -594,7 +595,7 @@ export function renderDownloadPage(
     `<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`,
     `<style>${PAGE_CSS}</style>`,
     "</head><body>",
-    `<div class="topbar"><div class="top">${lockerLockup(44, "lockup", true)}</div></div>`,
+    `<div class="topbar"><div class="top">${lockerLockup(BRAND_LOCKUP_HEIGHT.lockerBar, "lockup", true)}</div></div>`,
     `<header><p class="crumbs">${esc(name)} / Download</p>${coverTag(
       extras.coverUrl ?? null,
     )}<div class="identity">${iconTag(

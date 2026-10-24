@@ -133,7 +133,7 @@ final class PkeyDevLiveTests: XCTestCase {
             let recorder = DevLiveEvents(client.events)
             defer { recorder.stop() }
 
-            let result = await client.activate(key: try env.key(name))
+            let result = await client.license.activateWithKey(try env.key(name))
             guard case .ok(let token, let schemaVersion) = result else {
                 return XCTFail("\(name): expected an activation, got \(result)")
             }
@@ -161,7 +161,7 @@ final class PkeyDevLiveTests: XCTestCase {
 
             // `ok` is the key with `exportPro` entitled (docs: Run Polaris Key locally, Test keys).
             if name == "ok" {
-                let pro = await client.isEnabled(flag: "exportPro")
+                let pro = await client.entitlements.has("exportPro")
                 XCTAssertTrue(pro, "ok: exportPro is entitled")
             }
 
@@ -184,7 +184,7 @@ final class PkeyDevLiveTests: XCTestCase {
             let client = try await makeClient(env, device: "refusals")
             let recorder = DevLiveEvents(client.events)
             defer { recorder.stop() }
-            let result = await client.activate(key: try env.key(name))
+            let result = await client.license.activateWithKey(try env.key(name))
 
             switch name {
             case "expired", "disabled", "revoked":
@@ -243,7 +243,7 @@ final class PkeyDevLiveTests: XCTestCase {
     func testB3AConfigChangeReachesTheEventStreamOnTheNextSync() async throws {
         let env = try await DevLiveEnvironment.load()
         let client = try await makeClient(env, device: "app")
-        let activated = await client.activate(key: try env.key("ok"))
+        let activated = await client.license.activateWithKey(try env.key("ok"))
         guard case .ok = activated else { return XCTFail("ok did not activate: \(activated)") }
 
         // The baseline: what this run's client holds before the operator acts. (A server that
@@ -291,7 +291,7 @@ final class PkeyDevLiveTests: XCTestCase {
         XCTAssertEqual(afterState.value, .string(value))
         XCTAssertEqual(afterState.source, .enforced)
         XCTAssertTrue(afterState.locked, "the operator's value cannot be overridden locally")
-        let read = await client.config.config(setting, default: .string("unset"))
+        let read = await client.config.get(setting, default: .string("unset"))
         XCTAssertEqual(read, .string(value))
 
         // The same document again: nothing changed, nothing is announced.
@@ -382,7 +382,7 @@ final class PkeyDevLiveTests: XCTestCase {
         let next = try DevLiveVersion.nextMinor(after: installed)
 
         let client = try await makeClient(env, device: "app", version: installed)
-        let activated = await client.activate(key: try env.key("ok"))
+        let activated = await client.license.activateWithKey(try env.key("ok"))
         guard case .ok = activated else { return XCTFail("ok did not activate: \(activated)") }
         // The quickstart's note: `PolarisConfig.pinnedReleaseKeys` feeds `UpdateClientOptions`.
         let update = try client.configureUpdate(

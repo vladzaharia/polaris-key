@@ -618,10 +618,10 @@ msgstr "{product} needs {size} of new content, and you're on a metered connectio
 msgid "boot.consent.download"
 msgstr "Download"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "If this keeps happening, restart the app."
+msgstr "If this keeps happening, restart {product}."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -648,10 +648,10 @@ msgstr "Sign in or use a license key to continue."
 msgid "welcome.ledeKeyOnly"
 msgstr "Enter a license key to continue."
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "Sign in to use {product}."
+msgstr "Sign in to continue."
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -1079,10 +1079,20 @@ msgstr "An update is available"
 msgid "update.current"
 msgstr "You have {version} · {size} download"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "You have {version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
 msgstr "What's new"
+
+#. Select
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
+msgid "part.hint.select"
+msgstr "Select"
 
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
@@ -1139,10 +1149,15 @@ msgstr "Skip This Version"
 msgid "update.install"
 msgstr "Update now"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
-msgstr "Update Now"
+msgstr "Install and Relaunch"
+
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "Download {version}"
 
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
@@ -1154,15 +1169,25 @@ msgstr "Downloading · {size} of {total}"
 msgid "update.timeLeft"
 msgstr "About {time} left"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "About {minutes} min"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "Less than a minute"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version} is ready"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "Restart {product} to finish updating."
+msgstr "Restart to finish updating."
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1269,10 +1294,10 @@ msgstr "Your package manager installs it."
 msgid "update.platform.generic"
 msgstr "It installs through the store or platform you got {product} from."
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going."
+msgstr "Some of {product}'s content was withdrawn and can't be used. Update to keep going."
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1288,6 +1313,36 @@ msgstr "Check for updates"
 msgctxt "macos"
 msgid "update.checkNow"
 msgstr "Check for Updates…"
+
+#. Manage license
+#. App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.
+msgid "menu.manageLicense"
+msgstr "Manage license"
+
+#. macos: Manage License…
+msgctxt "macos"
+msgid "menu.manageLicense"
+msgstr "Manage License…"
+
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr "Update ready"
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr "Restart to finish updating."
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr "Signed in"
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
+msgstr "You're signed in on this device."
 
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
@@ -1637,10 +1692,10 @@ msgstr "Completing purchase…"
 msgid "paywall.purchased"
 msgstr "{tier} is unlocked"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "Purchases aren't available in this version of {product}."
+msgstr "Purchases aren't available in this version."
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1792,10 +1847,10 @@ msgstr "Sign in to Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "Sign in"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "Use your {product} purchase email or a work or school email."
+msgstr "Use your purchase email or a work or school email."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2363,15 +2418,15 @@ msgctxt "macos"
 msgid "signin.choice.freeDevice"
 msgstr "Free a Device"
 
-#. Use this license and continue
+#. Use this license
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.continue"
-msgstr "Use this license and continue"
+msgstr "Use this license"
 
-#. macos: Use This License and Continue
+#. macos: Use This License
 msgctxt "macos"
 msgid "signin.choice.continue"
-msgstr "Use This License and Continue"
+msgstr "Use This License"
 
 #. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2478,15 +2533,10 @@ msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr "Replace and Continue"
 
-#. Replace {device} and continue
+#. Replace {device}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.confirmNamed"
-msgstr "Replace {device} and continue"
-
-#. macos: Replace {device} and Continue
-msgctxt "macos"
-msgid "signin.replace.confirmNamed"
-msgstr "Replace {device} and Continue"
+msgstr "Replace {device}"
 
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -3104,10 +3154,10 @@ msgstr "Sign in here to see {product} in your library."
 msgid "signin.signout.title"
 msgstr "Sign out of {product} on this device?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product} stops using your {tier} license here and frees its seat."
+msgstr "{product} stops using your {tier} license on this device and frees room for another device."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3167,10 +3217,10 @@ msgstr "Change Picture"
 msgid "signin.mail.replaced.subject"
 msgstr "{product} signed out on {device}"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices."
+msgstr "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3277,10 +3327,10 @@ msgstr "Add a license key (prompted, or piped on stdin)"
 msgid "cli.verb.enroll"
 msgstr "Get the free license, when {product} offers one"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Stop using your license on this device and free its seat"
+msgstr "Stop using your license on this device and make room for another"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3322,10 +3372,10 @@ msgstr "List the devices using your license"
 msgid "cli.verb.devicesRename"
 msgstr "Rename a device (no name clears it)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Remove a device and free its seat"
+msgstr "Remove a device and make room for another"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3537,10 +3587,10 @@ msgstr "Use the license on your account"
 msgid "cli.logout.done"
 msgstr "Signed out of {product} on this device."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
-msgstr "{product} no longer uses your license on this device. Its seat is free."
+msgstr "{product} no longer uses your license on this device. It no longer counts toward your limit."
 
 #. Nothing changed.
 #. Terminal: the person answered no to a confirmation.
@@ -3562,10 +3612,10 @@ msgstr "Renamed to {device}."
 msgid "cli.devices.nameCleared"
 msgstr "{device} has no name now."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
-msgstr "{device} was removed. Its seat is free."
+msgstr "{device} was removed. It no longer counts toward your limit."
 
 #. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
@@ -5411,6 +5461,86 @@ msgstr "Sign-in needed"
 msgid "core.codes.account_required.message"
 msgstr "Sign in to your Polaris Locker account on this device, then try again."
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr "Sync out of date"
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr "This device hasn't synced in too long. It will start over from your saved data."
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr "Sync mismatch"
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr "This sync belongs to another device. Restart the app and try again."
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr "Setting not saved"
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr "That value isn't valid for this setting."
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr "Change not allowed"
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr "That change isn't allowed for this setting."
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr "Not synced"
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr "This setting isn't synced to your account."
+
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr "Unknown collection"
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr "This collection isn't available."
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr "Storage full"
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr "Your synced storage is full. Free some space, then try again."
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr "Sync paused"
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr "Syncing is paused for a moment. Your changes are kept and will sync later."
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
@@ -6676,10 +6806,10 @@ msgstr "Enter a license key or sign in to continue."
 msgid "core.gate.version-too-old.title"
 msgstr "Update required"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "This version is no longer supported. Update the app to continue."
+msgstr "This version is no longer supported. Update {product} to continue."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).

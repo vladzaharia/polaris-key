@@ -70,7 +70,9 @@ An account override is the operator's managed config for one account on one prod
 
 Edit it on **Users**, in a user's **Overview**. The layer exists on every product, with Identity on or off.
 
-A license's own config and secret overrides are moving onto its owner's account overrides in one platform-wide run the owner schedules, after a 30-day notice. Several licenses of one product on one account collapse to the value of the license updated last. From the run's start the license route accepts entitlements only, and the license page says where its values went.
+A license's own config and secret overrides stay: they are layer 4 of the merge, read for every license, floating or owned, and writable on every license. An account override sits above them, so on an owned license the owner's account row wins for the same key.
+
+Provisioned secrets, the keys a product's sign-in hooks set, live on the owner's account row. A sign-in by an identity linked to the license's owner writes them there, sealed. A floating license, or an identity that isn't linked to the owner, keeps them on the license. Only a device signed in as the owner receives them.
 
 ## On the client
 

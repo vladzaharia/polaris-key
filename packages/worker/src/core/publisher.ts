@@ -61,6 +61,7 @@ import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import {
   CI_SCOPES,
   CI_TOKEN_PREFIX,
+  PACKAGES_READ_CI_SCOPE,
   type CiPrincipal,
 } from "./ciVocabulary.js";
 import { sha256Hex } from "../platform/hash.js";
@@ -88,6 +89,15 @@ const MAX_JWKS_BYTES = 64 * 1024;
 export const OIDC_CI_TOKEN_TTL_SECONDS = 30 * 60;
 /** An operator-issued static token expires at most this far out. */
 export const STATIC_CI_TOKEN_MAX_TTL_SECONDS = 90 * 24 * 60 * 60;
+/** A static token whose only scope is `packages:read` (F-33b.2, D-F1) may live this long. */
+export const STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS = 365 * 24 * 60 * 60;
+
+/** The longest a static token with `scopes` may live: 365 days read-only, otherwise 90. */
+export function staticCiTokenMaxTtl(scopes: readonly string[]): number {
+  return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE
+    ? STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS
+    : STATIC_CI_TOKEN_MAX_TTL_SECONDS;
+}
 
 /** The scopes a new policy grants. `release:yank` is opt-in (an operator edits `scopes_json`). */
 export const DEFAULT_CI_SCOPES: readonly string[] = [
@@ -639,6 +649,8 @@ export interface CiTokenRecord extends CiPrincipal {
   readonly tokenHash: string;
   readonly kind: "oidc" | "static";
   readonly expiresAt: number;
+  /** When the registry host last accepted this token (F-33b.2); null before its first use. */
+  readonly lastUsedAt: number | null;
 }
 
 export function mintCiToken(): string {
@@ -665,6 +677,8 @@ interface CiTokenRow {
   expires_at: number;
   revoked_at: number | null;
   created_by: string;
+  last_used_at?: number | null;
+  hint?: string | null;
 }
 
 /**
@@ -695,6 +709,7 @@ export async function lookupCiToken(
     tokenHash: r.token_hash,
     kind: r.kind === "static" ? "static" : "oidc",
     expiresAt: r.expires_at,
+    lastUsedAt: r.last_used_at ?? null,
   };
 }
 
@@ -847,14 +862,16 @@ export async function issueStaticCiToken(
     now: number;
   },
 ): Promise<IssuedCiToken> {
+  if (input.expiresAt - input.now > staticCiTokenMaxTtl(input.scopes))
+    throw new RangeError("static CI token expiry is beyond its scopes' limit");
   const token = mintCiToken();
   const tokenHash = await hashCiCredential(env, token);
   const tokenId = randomId("cit");
   await db.run(
     `INSERT INTO ci_tokens
        (token_hash, token_id, product, kind, scopes_json, subject, label, jti, issued_at,
-        expires_at, revoked_at, created_by)
-     VALUES (?, ?, ?, 'static', ?, ?, ?, NULL, ?, ?, NULL, ?)`,
+        expires_at, revoked_at, created_by, hint)
+     VALUES (?, ?, ?, 'static', ?, ?, ?, NULL, ?, ?, NULL, ?, ?)`,
     tokenHash,
     tokenId,
     input.product,
@@ -864,6 +881,7 @@ export async function issueStaticCiToken(
     input.now,
     input.expiresAt,
     input.createdBy,
+    token.slice(-4),
   );
   return {
     token,
@@ -883,6 +901,10 @@ export interface CiTokenListing {
   expiresAt: number;
   revokedAt: number | null;
   createdBy: string;
+  /** Last accepted on the registry host, at hourly resolution; null if never. */
+  lastUsedAt: number | null;
+  /** The token's last four characters; null for a token made before F-33b.4 and for OIDC tokens. */
+  hint: string | null;
 }
 
 /** A product's tokens, newest first — never a hash, never a token. */
@@ -897,7 +919,11 @@ export async function listCiTokens(
     product,
     limit,
   );
-  return rows.map((r) => ({
+  return rows.map(listingOf);
+}
+
+function listingOf(r: CiTokenRow): CiTokenListing {
+  return {
     tokenId: r.token_id,
     kind: r.kind === "static" ? "static" : "oidc",
     scopes: parseScopes(r.scopes_json),
@@ -907,7 +933,127 @@ export async function listCiTokens(
     expiresAt: r.expires_at,
     revokedAt: r.revoked_at,
     createdBy: r.created_by,
-  }));
+    lastUsedAt: r.last_used_at ?? null,
+    hint: r.hint ?? null,
+  };
+}
+
+/** True for a read service token's scopes: exactly `["packages:read"]` (F-33b.3). */
+export function isServiceTokenScopes(scopes: readonly string[]): boolean {
+  return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE;
+}
+
+// An exact match is enough only because `issueStaticCiToken` is the one writer of `scopes_json`
+// (always `JSON.stringify`); the JS re-filter below keeps the two definitions in step.
+const SERVICE_TOKEN_SCOPES_JSON = JSON.stringify([PACKAGES_READ_CI_SCOPE]);
+
+/** Every live (unrevoked, unexpired) read service token of the product: no window, no limit. */
+export async function liveServiceTokens(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<CiTokenListing[]> {
+  const rows = await db.all<CiTokenRow>(
+    `SELECT * FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND revoked_at IS NULL AND expires_at > ?
+      ORDER BY issued_at DESC, token_id DESC`,
+    product,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
+  );
+  return rows.map(listingOf).filter((t) => isServiceTokenScopes(t.scopes));
+}
+
+/**
+ * A product's read service tokens (F-33b.3), newest first: every live one, plus the `recent`
+ * newest revoked or expired ones. Static `ci_tokens` whose scopes are exactly
+ * `["packages:read"]`. Never a hash, never a token.
+ */
+export async function listServiceTokens(
+  db: Db,
+  product: string,
+  now: number,
+  recent = 100,
+): Promise<CiTokenListing[]> {
+  const live = await liveServiceTokens(db, product, now);
+  const rows = await db.all<CiTokenRow>(
+    `SELECT * FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND NOT (revoked_at IS NULL AND expires_at > ?)
+      ORDER BY issued_at DESC, token_id DESC LIMIT ?`,
+    product,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
+    recent,
+  );
+  const past = rows
+    .map(listingOf)
+    .filter((t) => isServiceTokenScopes(t.scopes));
+  return [...live, ...past].sort(
+    (a, b) => b.issuedAt - a.issuedAt || (a.tokenId < b.tokenId ? 1 : -1),
+  );
+}
+
+/**
+ * Revoke one of the product's read service tokens. `null` when no such token exists in the
+ * product or it is not a `packages:read`-only static token (a publish token is not listed on
+ * the page that calls this); otherwise the token as it now stands (already revoked included).
+ */
+export async function revokeServiceToken(
+  db: Db,
+  product: string,
+  tokenId: string,
+  now: number,
+): Promise<CiTokenListing | null> {
+  const row = await db.first<CiTokenRow>(
+    "SELECT * FROM ci_tokens WHERE product = ? AND token_id = ? AND kind = 'static'",
+    product,
+    tokenId,
+  );
+  if (!row || !isServiceTokenScopes(parseScopes(row.scopes_json))) return null;
+  if (row.revoked_at === null) await revokeCiToken(db, product, tokenId, now);
+  const after = await db.first<CiTokenRow>(
+    "SELECT * FROM ci_tokens WHERE product = ? AND token_id = ?",
+    product,
+    tokenId,
+  );
+  return after ? listingOf(after) : null;
+}
+
+/**
+ * Revoke every live read service token of the product, however many there are (no window), and
+ * expire their unredeemed tickets; answers their token ids.
+ */
+export async function revokeAllServiceTokens(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<string[]> {
+  const live = await liveServiceTokens(db, product, now);
+  if (live.length === 0) return [];
+  const hashes = await db.all<{ token_hash: string; token_id: string }>(
+    `SELECT token_hash, token_id FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+        AND revoked_at IS NULL AND expires_at > ?`,
+    product,
+    SERVICE_TOKEN_SCOPES_JSON,
+    now,
+  );
+  const stmts: DbStatement[] = [];
+  for (const h of hashes) {
+    stmts.push(
+      {
+        sql: "UPDATE ci_tokens SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL",
+        params: [now, h.token_hash],
+      },
+      {
+        sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
+               WHERE token_hash = ? AND redeemed_at IS NULL`,
+        params: [now, h.token_hash],
+      },
+    );
+  }
+  for (let k = 0; k < stmts.length; k += 100)
+    await db.batch(stmts.slice(k, k + 100));
+  return hashes.map((h) => h.token_id);
 }
 
 /** Revoke a token (and every unredeemed ticket it holds). False if no live token had that id. */

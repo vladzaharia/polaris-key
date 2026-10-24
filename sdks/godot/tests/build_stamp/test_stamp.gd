@@ -148,7 +148,7 @@ func _read(t: PKeyTestContext) -> void:
 
 func _opts(stamp: String) -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = "djdl"
+	o.product_slug = "djdl"
 	o.version = "1.0.0"
 	o.local_only = true
 	o.store = PKeyMemoryStore.new()

@@ -90,19 +90,19 @@ func _config_file(t: PKeyTestContext) -> void:
 	var path := TMP.path_join("polaris_key.tres")
 	t.check("config: no file, no fields", PKeySetupTools.config_fields(path).is_empty())
 	var o := PKeyOptions.new()
-	o.product = "acme"
+	o.product_slug = "acme"
 	o.base_url = "https://key.plrs.im"
 	o.default_channel = "beta"
 	ResourceSaver.save(o, path)
 	var before := PKeySetupTools.config_fields(path)
-	t.check("config: the CLI-owned fields are read", before["product"] == "acme" and before.size() == PKeySetupTools.CLI_FIELDS.size(), str(before))
+	t.check("config: the CLI-owned fields are read", before["product_slug"] == "acme" and before.size() == PKeySetupTools.CLI_FIELDS.size(), str(before))
 	t.check("config: unchanged fields are reported as such", PKeySetupTools.fields_report(before, before, path).contains("already had"))
-	o.pinned_trust_keys = {"k": "v"}
+	o.pinned_keys = {"k": "v"}
 	o.default_channel = "dev"
 	ResourceSaver.save(o, path)
 	var after := PKeySetupTools.config_fields(path)
 	var report := PKeySetupTools.fields_report(before, after, path)
-	t.check("config: only the changed CLI fields are named", report.contains("pinned_trust_keys") and not report.contains("product") and not report.contains("default_channel"), report)
+	t.check("config: only the changed CLI fields are named", report.contains("pinned_keys") and not report.contains("product_slug") and not report.contains("default_channel"), report)
 	t.check("config: a file the CLI did not write is reported", PKeySetupTools.fields_report(before, {}, path).contains("not written"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	var legacy := TMP.path_join("polaris_key_config.gd")

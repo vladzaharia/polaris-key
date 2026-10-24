@@ -67,6 +67,18 @@ Compact download and install progress for app updates and content packs, as a to
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<UpdateProgress />` from `@polaris-key/react/kit`, given an `input`. The bar follows the progress the main process pushes to the window that started the install.
+
+    **Styled part.** The React kit's `<UpdateProgress />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("UpdateProgress", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

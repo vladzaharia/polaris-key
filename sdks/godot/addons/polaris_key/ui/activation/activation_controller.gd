@@ -56,6 +56,49 @@ static func capabilities_from(sdk: Node, offer_enrollment: bool, web := OS.has_f
 	return capabilities(core.enabled("license"), sdk.identity.is_available(), offer_enrollment, web, store)
 
 
+const _Activate := preload("res://addons/polaris_key/ui/model/activate.gd")
+
+
+## The live verdict under the key field (UI-KITS.md §4.3, the ui-matrix `activate` rows): as the key
+## parses, "Key for <Product>" from its prefix once it is whole (state `parsed`), and, when it is
+## submitted cut short, the count of characters it has (`cut-short`). Anything else, nothing: a key
+## still being typed is not scolded, and the tier follows only the server's answer (`done_verdict`).
+## Returns {copy, args, danger} or {} for none.
+static func key_verdict(text: String, submitted := false) -> Dictionary:
+	var p: Dictionary = _Activate.parse_key(text, submitted)
+	match p.get("kind", ""):
+		"parsed":
+			return {"copy": "key_for_product", "args": null, "danger": false}
+		"short":
+			return {"copy": "key_cut_short", "args": [p["prefix"], p["used"], p["limit"]], "danger": true}
+	return {}
+
+
+## What the server's answer adds once a key is accepted: "<Product> <Tier>" and the device limit
+## when the licence document names them. {} while the tier is unknown (never before the answer).
+static func done_verdict(sdk: Node) -> Dictionary:
+	if sdk == null or sdk.get("license") == null:
+		return {}
+	var f := PKeyAccountController.facts(sdk)
+	var tier := String(f["tier"])
+	if tier == "":
+		return {}
+	if f["devices_limit"] != null and int(f["devices_limit"]) > 0:
+		return {"copy": "activation_verdict_devices", "args": [PKeyUiTheme.isolate(tier), int(f["devices_limit"])]}
+	return {"copy": "activation_verdict", "args": PKeyUiTheme.isolate(tier)}
+
+
+## The input hint under the key field for the last kind of input: the keyboard's Enter, the pad's A,
+## nothing for touch (the button is the hint) or before any input is known. Copy key or "".
+static func input_hint(kind: StringName) -> String:
+	match kind:
+		&"keyboard":
+			return "core.gate.needs-activation.title"
+		&"pad":
+			return "part.hint.select"
+	return ""
+
+
 ## [copy key, args] for an activation result: activation_ok, or the error copy for its kind.
 static func message_for(r: PKeyActivationResult) -> Array:
 	if r == null:

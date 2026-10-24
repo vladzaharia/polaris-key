@@ -6,12 +6,15 @@
  * manifest field reaches it — a repo push must never decide which app's purchases unlock a flag,
  * or whose push messages are believed.
  *
- *   appStore: { bundleId, appAppleId?, acceptSandbox? }
- *   play:     { packageName, pushAudience, pushServiceAccount, acceptTestPurchases? }
- *   steam:    { appId }
+ *   appStore: { bundleId?, appAppleId?, acceptSandbox? }
+ *   play:     { packageName?, pushAudience, pushServiceAccount, acceptTestPurchases? }
+ *   steam:    { appId? }
  *
- * A store whose block is absent (or invalid on read) is OFF: its claim answers Core's not-found
- * and its hook answers not-found, exactly like a product without Distribution.
+ * The identity fields (`bundleId`, `packageName`, `appId`) are optional (A-28.2, CM-20 D12): left
+ * out, they come from the app the product is assigned on that store (`identity.ts`); a typed
+ * value wins. A store whose block is absent (or invalid on read) is OFF: its claim answers Core's
+ * not-found and its hook answers not-found, exactly like a product without Distribution. So is a
+ * block with no typed identity and no assignment.
  *
  * `acceptSandbox` / `acceptTestPurchases` default to false: a production deployment refuses App
  * Store `Sandbox` transactions and Play licence-tester purchases (`purchaseType` 0), so a sandbox
@@ -26,6 +29,28 @@ import {
 } from "../../core/stores/settings.js";
 
 export const COMMERCE_SETTINGS = "commerce";
+
+/** What is stored: the identity fields may be absent (`null`). `AppStoreSettings` and the others
+ *  below are the EFFECTIVE shapes every reader downstream takes (`effectiveCommerceSettings`). */
+export interface StoredAppStoreSettings {
+  bundleId: string | null;
+  appAppleId: number | null;
+  acceptSandbox: boolean;
+}
+export interface StoredPlaySettings {
+  packageName: string | null;
+  pushAudience: string | null;
+  pushServiceAccount: string | null;
+  acceptTestPurchases: boolean;
+}
+export interface StoredSteamSettings {
+  appId: string | null;
+}
+export interface StoredCommerceSettings {
+  appStore: StoredAppStoreSettings | null;
+  play: StoredPlaySettings | null;
+  steam: StoredSteamSettings | null;
+}
 
 export interface AppStoreSettings {
   bundleId: string;
@@ -74,10 +99,14 @@ function obj(v: unknown): Record<string, unknown> | null {
 
 function parseAppStore(
   v: unknown,
-): { value: AppStoreSettings } | { field: string; message: string } {
+): { value: StoredAppStoreSettings } | { field: string; message: string } {
   const o = obj(v);
   if (!o) return { field: "appStore", message: "appStore must be an object" };
-  if (typeof o.bundleId !== "string" || !BUNDLE_ID.test(o.bundleId))
+  const bundleId = o.bundleId ?? null;
+  if (
+    bundleId !== null &&
+    (typeof bundleId !== "string" || !BUNDLE_ID.test(bundleId))
+  )
     return {
       field: "appStore.bundleId",
       message: "bundleId must be the app's bundle id",
@@ -102,7 +131,7 @@ function parseAppStore(
     };
   return {
     value: {
-      bundleId: o.bundleId,
+      bundleId,
       appAppleId,
       acceptSandbox: o.acceptSandbox === true,
     },
@@ -111,10 +140,14 @@ function parseAppStore(
 
 function parsePlay(
   v: unknown,
-): { value: PlaySettings } | { field: string; message: string } {
+): { value: StoredPlaySettings } | { field: string; message: string } {
   const o = obj(v);
   if (!o) return { field: "play", message: "play must be an object" };
-  if (typeof o.packageName !== "string" || !PACKAGE_NAME.test(o.packageName))
+  const packageName = o.packageName ?? null;
+  if (
+    packageName !== null &&
+    (typeof packageName !== "string" || !PACKAGE_NAME.test(packageName))
+  )
     return {
       field: "play.packageName",
       message: "packageName must be the app's package name",
@@ -151,7 +184,7 @@ function parsePlay(
     };
   return {
     value: {
-      packageName: o.packageName,
+      packageName,
       pushAudience,
       pushServiceAccount,
       acceptTestPurchases: o.acceptTestPurchases === true,
@@ -161,11 +194,15 @@ function parsePlay(
 
 function parseSteam(
   v: unknown,
-): { value: SteamSettings } | { field: string; message: string } {
+): { value: StoredSteamSettings } | { field: string; message: string } {
   const o = obj(v);
   if (!o) return { field: "steam", message: "steam must be an object" };
-  const appId = typeof o.appId === "number" ? String(o.appId) : o.appId;
-  if (typeof appId !== "string" || !STEAM_APP_ID.test(appId))
+  const raw = o.appId ?? null;
+  const appId = typeof raw === "number" ? String(raw) : raw;
+  if (
+    appId !== null &&
+    (typeof appId !== "string" || !STEAM_APP_ID.test(appId))
+  )
     return {
       field: "steam.appId",
       message: "appId must be the game's Steam app id",
@@ -176,14 +213,18 @@ function parseSteam(
 /** Validate a full settings object from the admin API. `null` for a store turns it off. */
 export function validateCommerceSettings(
   raw: unknown,
-): { ok: true; value: CommerceSettings } | (Field & { ok: false }) {
+): { ok: true; value: StoredCommerceSettings } | (Field & { ok: false }) {
   const o = obj(raw);
   if (!o)
     return { ok: false, field: "body", message: "settings must be an object" };
   for (const k of Object.keys(o))
     if (k !== "appStore" && k !== "play" && k !== "steam")
       return { ok: false, field: k, message: `unknown store ${k}` };
-  const out: CommerceSettings = { appStore: null, play: null, steam: null };
+  const out: StoredCommerceSettings = {
+    appStore: null,
+    play: null,
+    steam: null,
+  };
   if (o.appStore !== undefined && o.appStore !== null) {
     const r = parseAppStore(o.appStore);
     if (!("value" in r)) return { ok: false, ...r };
@@ -202,11 +243,12 @@ export function validateCommerceSettings(
   return { ok: true, value: out };
 }
 
-/** The stored settings, normalised: a block that no longer validates reads as off. */
-export async function readCommerceSettings(
+/** The stored settings, normalised: a block that no longer validates reads as off. The identity
+ *  fields are as typed; readers that act on a store use `effectiveCommerceSettings`. */
+export async function readStoredCommerceSettings(
   db: Db,
   product: string,
-): Promise<CommerceSettings> {
+): Promise<StoredCommerceSettings> {
   const stored = await readConnectorSettings(db, product, COMMERCE_SETTINGS);
   const v = stored?.value ?? {};
   const pick = <T>(
@@ -222,7 +264,7 @@ export async function readCommerceSettings(
 export function writeCommerceSettings(
   db: Db,
   product: string,
-  value: CommerceSettings,
+  value: StoredCommerceSettings,
   by: string,
   now: number,
 ): Promise<void> {

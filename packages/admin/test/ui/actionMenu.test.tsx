@@ -31,6 +31,12 @@ describe("ActionMenu", () => {
     const item = await screen.findByRole("menuitem", { name: /Yank/ });
     expect(item.textContent).toContain("Already yanked");
     expect(item.getAttribute("aria-disabled")).toBe("true");
+    // Only the label is dimmed: the item keeps full opacity and the reason is readable muted text.
+    expect(item.className).toContain("data-[disabled]:opacity-100");
+    expect(screen.getByText("Yank…").className).toContain("opacity-50");
+    expect(screen.getByText("Already yanked").className).not.toContain(
+      "opacity",
+    );
     await user.click(item);
     expect(yank).not.toHaveBeenCalled();
     expect(screen.getByRole("separator")).toBeTruthy();

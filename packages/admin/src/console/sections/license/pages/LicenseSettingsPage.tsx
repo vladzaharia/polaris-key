@@ -58,7 +58,7 @@ export const LICENSING_COPY: Record<string, SettingCopy> = {
   "licensing.anchorPolicy": {
     values: {
       "rank-first": "Highest-ranked tier",
-      "most-free-seats": "Most free seats",
+      "most-free-seats": "Most room for devices",
       oldest: "Oldest license",
     },
     consequences: () => [

@@ -138,7 +138,7 @@ export const KIT_COMPONENTS: Record<KitPlatform, KitComponentTokens> = {
     cardPad: { default: 44 },
     focus: { width: 3, offset: 2, glow: 8 },
     scrim: {
-      light: { opacity: 0.2, blur: 0 },
+      light: { opacity: 0.35, blur: 0 },
       dark: { opacity: 0.42, blur: 0 },
     },
   },
@@ -265,8 +265,8 @@ export const KIT_TYPE_SCALE: Record<
     code: role(32, 40, 500, 0.06, "mono"),
   },
   windows: {
-    display: role(40, 52, 600),
-    title: role(28, 36, 600),
+    display: role(28, 36, 600),
+    title: role(20, 28, 600),
     body: role(14, 20, 400),
     label: role(14, 20, 500),
     button: role(14, 20, 500),

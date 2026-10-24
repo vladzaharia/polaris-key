@@ -53,6 +53,7 @@ import {
   tryResolve,
   withSetIds,
 } from "../src/services/release/packs/sets.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -563,7 +564,7 @@ describe("re-resolution on floor changes, pointer moves and yanks (P4-12)", () =
         contentApi: 3,
         minSupported: "1.0.1",
         modifiedAt: NOW,
-        modifiedBy: "admin:u1",
+        modifiedBy: `admin:${await consoleActor(env, db, "u1")}`,
       },
     ]);
     expect(await setAt(3)).toEqual({

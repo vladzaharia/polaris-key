@@ -12,13 +12,10 @@ import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { ensureSystemProduct } from "../src/console/systemProduct.js";
 import { getPublisherPolicy } from "../src/core/publisher.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 let db: Db;
 let env: Env;
@@ -36,9 +33,17 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    db,
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: ["platform-admins"],
+      authTime: NOW,
+      stepUp: true,
+    },
     NOW,
   );
   const full = `/api${path}`;

@@ -130,9 +130,7 @@ export function DiscoverTile({
           variant="tile"
           letter={noArt && !offer.iconUrl}
           liftArt
-          // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
-          // copy of itself where the column is wider), as on Library tiles.
-          fit="contain"
+          // The cover fills the band edge to edge, as on Library tiles.
           className="aspect-[5/2] w-full"
         >
           {noArt && offer.iconUrl ? (
@@ -195,6 +193,7 @@ export function DiscoverTile({
                 // Below the art, in the caption: B6 keeps text off customer art (ux-name-over-art).
                 <p className="mt-1.5">
                   <span
+                    data-plate
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-success",
                       pop && "pk-pop-in",

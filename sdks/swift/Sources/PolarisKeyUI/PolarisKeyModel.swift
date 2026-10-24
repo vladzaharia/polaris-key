@@ -111,7 +111,7 @@ public final class PolarisKeyModel {
         let client = self.client
         state = await client.status()
         info = await client.licenseInfo()
-        profile = await client.license.profile()
+        profile = await client.license.getProfile()
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
         licenseEnabled = await client.core.licenseGateEnabled()
@@ -179,7 +179,7 @@ public final class PolarisKeyModel {
         guard !trimmed.isEmpty else { return }
         if showsWork { isWorking = true }
         defer { if showsWork { isWorking = false } }
-        let result = await client.activate(key: trimmed)
+        let result = await client.license.activateWithKey(trimmed)
         if case .deviceLimit = result { lastKey = trimmed } else { lastKey = nil }
         lastActivation = result
         lastError = copy.activationMessage(result)
@@ -213,9 +213,9 @@ public final class PolarisKeyModel {
         await reload()
     }
 
-    /// Whether `flag` is on (`isEnabled(flag:)`; false whenever the gate is not usable).
+    /// Whether `flag` is on (`entitlements.has`; false whenever the gate is not usable).
     public func isEnabled(flag: String) async -> Bool {
-        await client.isEnabled(flag: flag)
+        await client.entitlements.has(flag)
     }
 
     /// The portal link that frees a seat after the last activation was refused with `device_limit`

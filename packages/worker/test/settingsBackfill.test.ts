@@ -33,11 +33,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { parseManifest } from "@polaris-key/manifest";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
@@ -67,6 +63,7 @@ import {
   type BackfillReport,
 } from "../src/core/ops/settingsBackfill.js";
 import type { ProductSettingRow } from "../src/core/settingsClaims.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -221,8 +218,9 @@ async function linked(d: Decl = {}) {
     ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -309,7 +307,8 @@ const productRow = (db: Db, slug = SLUG) =>
 
 const rows = (db: Db, table: "tiers" | "profiles") =>
   db.all<{ id: string; source: string; label?: string; name?: string }>(
-    `SELECT * FROM ${table} WHERE product = ? ORDER BY id`,
+    // LX-33.7: the implicit Default tier is neither the manifest's nor the console's row.
+    `SELECT * FROM ${table} WHERE product = ? AND ${table === "tiers" ? "implicit = 0" : "1 = 1"} ORDER BY id`,
     SLUG,
   );
 
@@ -455,7 +454,9 @@ describe("classification over fixtures", () => {
     expect(item(report, "setting", "core.name")).toMatchObject({
       class: "differs",
       owner: "console",
-      claim: { by: "u1" },
+      claim: {
+        by: await consoleActor(ctx.env, ctx.db, "u1"),
+      },
       action: "revert",
       evidence: { verdict: "console-edit" },
     });
@@ -1263,8 +1264,9 @@ describe("the apply", () => {
 
   it("the routes refuse a non-admin session (403) and a write without the CSRF header (403)", async () => {
     const ctx = await linked();
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       ctx.env,
+      ctx.db,
       { sub: "u9", name: "Eve", email: "eve@x.io", groups: ["users"] },
       NOW,
     );

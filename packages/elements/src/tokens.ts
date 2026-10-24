@@ -8,6 +8,7 @@
 // `[data-theme]`, which the element always sets to the resolved scheme. Nothing is set on `:root`.
 
 import { KIT_TOKENS, THEME_TOKENS } from "@polaris-key/brand";
+import { platformTokenCss } from "./desktopTokens.js";
 import { ELEVATION, FONT, MOTION, RADIUS, SPACE } from "@polaris-key/brand";
 
 type Scheme = "dark" | "light";
@@ -19,7 +20,7 @@ export function rem(px: number | string): string {
   return `${+(n / 16).toFixed(4)}rem`;
 }
 
-const decl = (vars: Record<string, string | number>) =>
+export const decl = (vars: Record<string, string | number>) =>
   Object.entries(vars)
     .map(([k, v]) => `  ${k}: ${v};`)
     .join("\n");
@@ -102,17 +103,19 @@ function colours(scheme: Scheme): Record<string, string> {
   return out;
 }
 
-function rgba(hex: string, alpha: number): string {
+export function rgba(hex: string, alpha: number): string {
   const n = Number.parseInt(hex.slice(1), 16);
   return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${alpha})`;
 }
 
-/** The token sheet's text: scales on `:host`, colours per `[data-theme]`. */
-export function tokenCss(): string {
+/** The token sheet's text: scales on `:host`, colours per `[data-theme]`, then the desktop
+ *  variants' blocks on the kit root's `[data-pk-platform]`. */
+export function tokenCss(withPlatform = true): string {
   return [
     `:host {\n${decl(scales())}\n}`,
     `[data-theme="dark"] {\n  color-scheme: dark;\n${decl(colours("dark"))}\n}`,
     `[data-theme="light"] {\n  color-scheme: light;\n${decl(colours("light"))}\n}`,
+    ...(withPlatform ? [platformTokenCss()] : []),
     // Reduced motion (DL16): every duration 0, no fade; the delay of DL7 is a model timer.
     `[data-motion="reduced"] {\n${decl(
       Object.fromEntries(

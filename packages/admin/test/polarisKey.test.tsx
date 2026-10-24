@@ -637,38 +637,41 @@ describe("Who can see this? (a persona, never a person)", () => {
 
 describe("the fit report's store switcher", () => {
   it("shows one store's row from the URL", async () => {
-    bootWith("#/p/djdl/distribution/listing?tab=fit&store=polaris-key", {
-      ...routes(),
-      [P("/distribution/listing")]: {
-        listing: null,
-        locales: [],
-        overrides: [],
-        limits: {},
-        stores: [],
-        overrideStores: [],
-        modelFields: [],
+    bootWith(
+      "#/p/djdl/settings/presentation/listing?tab=fit&store=polaris-key",
+      {
+        ...routes(),
+        [P("/distribution/listing")]: {
+          listing: null,
+          locales: [],
+          overrides: [],
+          limits: {},
+          stores: [],
+          overrideStores: [],
+          modelFields: [],
+        },
+        [P("/distribution/listing/fit")]: {
+          exists: true,
+          release: null,
+          stores: [
+            {
+              store: "play",
+              label: "Google Play",
+              status: "green",
+              issues: [],
+              cells: [],
+            },
+            {
+              store: "polaris-key",
+              label: "Polaris Key",
+              status: "green",
+              issues: [],
+              cells: [],
+            },
+          ],
+        },
       },
-      [P("/distribution/listing/fit")]: {
-        exists: true,
-        release: null,
-        stores: [
-          {
-            store: "play",
-            label: "Google Play",
-            status: "green",
-            issues: [],
-            cells: [],
-          },
-          {
-            store: "polaris-key",
-            label: "Polaris Key",
-            status: "green",
-            issues: [],
-            cells: [],
-          },
-        ],
-      },
-    });
+    );
     const report = await screen.findByRole("list", { name: "Fit report" });
     expect(
       [...report.querySelectorAll("[data-fit]")].map((li) =>

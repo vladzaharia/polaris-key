@@ -52,7 +52,9 @@ const NARRATIVE_ONLY = new Set([
   "adminSpa",
   "adminApi",
   "adminLogin",
+  "adminDevice",
   "adminCallback",
+  "adminPasskey",
   "portalSpa",
   "portalApi",
   "portalLogin",
@@ -203,6 +205,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/search", ["post"]],
     ["/manage/api/support-codes/{code}", ["get"]],
     ["/manage/api/platform/ready", ["get"]],
+    // ST-29, ST-31.5: who can give the caller access to an area.
+    ["/manage/api/access/admins", ["get"]],
+    // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
+    ["/manage/api/me/methods", ["get"]],
+    ["/manage/api/me/methods/{id}/strong", ["post"]],
+    ["/manage/api/me/passkeys", ["post"]],
+    ["/manage/api/me/passkeys/options", ["post"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],
@@ -210,12 +219,6 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/migrations/dry-run", ["post"]],
     ["/manage/api/platform/migrations/apply", ["post"]],
     ["/manage/api/platform/migrations/down", ["post"]],
-    ["/manage/api/platform/override-migration", ["get"]],
-    ["/manage/api/platform/override-migration/prerequisites", ["put"]],
-    ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
-    ["/manage/api/platform/override-migration/dry-run", ["post"]],
-    ["/manage/api/platform/override-migration/run", ["post"]],
-    ["/manage/api/platform/override-migration/report", ["get"]],
     // The admin API-token roster: the credential a PROGRAM presents (`pkey bundle`, from a
     // terminal and from CI, sends `Authorization: Bearer pkeya_…` to the bundle mint), documented
     // here, machine-readable, and not only in prose. The roster itself stays session-only: no
@@ -228,6 +231,17 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
+    // ST-31.4: the Platform Members roster (platform scope, area `members`).
+    ["/manage/api/members", ["get"]],
+    ["/manage/api/members/{memberId}", ["get"]],
+    // ST-31.6: grant, edit and take back a console role (area `members`; Superadmin-only cases are
+    // the handler's, through the grant rules).
+    ["/manage/api/bindings", ["post"]],
+    ["/manage/api/bindings/{id}", ["patch", "delete"]],
+    // ST-34.4: the caller's own personal tokens, and the one row that ends the presenting token.
+    ["/manage/api/me/personal-tokens", ["get"]],
+    ["/manage/api/me/personal-tokens/{id}", ["delete"]],
+    ["/manage/api/me/personal-tokens/current", ["delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -237,6 +251,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // ST-40: the Integration read model (prerequisites, facts, Verified per platform).
     ["/manage/api/products/{product}/integration", ["get"]],
+    // A-20.4: the channel read model (delivery and commerce facets per channel).
+    ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // ST-34.4: the store-listing import `pkey listing import` calls (session or admin token).
+    ["/manage/api/products/{product}/distribution/listing/import", ["post"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
@@ -249,6 +267,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-31.5: who holds this product (Members area at product scope).
+    ["/manage/api/products/{product}/members", ["get", "post"]],
+    // ST-31.6 (D-d): the product twins of the grant writes.
+    ["/manage/api/products/{product}/members/{bindingId}", ["patch", "delete"]],
     // ST-27: a product's alert destinations (the override of the platform's).
     ["/manage/api/products/{product}/alerts", ["get", "post"]],
     ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
@@ -262,6 +284,11 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // LX-27: a new key emailed to the licence's address.
     [
       "/manage/api/products/{product}/license/licenses/{licenseId}/send-key",
+      ["post"],
+    ],
+    // LX-27c: an invitation (no key) emailed to a waiting licence.
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}/send-invite",
       ["post"],
     ],
     // LX-28: bulk floating keys, the batch reads and Disable unused keys.
@@ -492,7 +519,7 @@ describe("router → spec", () => {
   it("every mounted service declares a surface", () => {
     // A service with no HTTP route yet declares `[]` (and is listed here, so the day it gains a
     // route its surface must be declared with it).
-    const ROUTELESS = new Set(["sync"]);
+    const ROUTELESS = new Set<string>();
     for (const [slug, descriptor] of SERVICES) {
       expect(
         Array.isArray(descriptor.surface),
@@ -512,7 +539,7 @@ describe("router → spec", () => {
           );
         if (storeHook) continue;
         expect(route.path, `${slug}: ${route.path}`).toMatch(
-          new RegExp(`^/\\{product\\}/${slug}/`),
+          new RegExp(`^/\\{product\\}/${slug}(/|$)`),
         );
         expect(route.methods.length, `${slug}: ${route.path}`).toBeGreaterThan(
           0,
@@ -860,6 +887,8 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    memberId: "mbr_AAAAAAAAAAAAAAAAAAAAAA",
+    bindingId: "crb_AAAAAAAAAAAAAAAAAAAAAA",
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",

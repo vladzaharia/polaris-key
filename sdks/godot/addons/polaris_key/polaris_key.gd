@@ -18,7 +18,7 @@ extends Node
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
 ## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync),
-## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
+## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitled
 ## channels, and the 401 re-acquire it installs into Core), `identity` (PKeyIdentity:
 ## device-code sign-in with a QR code; a `ready` stores the token and runs a forced sync),
 ## `update` (PKeyUpdate: the signed decision and acting on it — apply, restart_to_update,
@@ -32,7 +32,7 @@ extends Node
 ## developerName, accent, accentDark, icon) as a Dictionary, {} for none; `presentation_icon(px,
 ## scale)` its verified icon as a texture; `presentation_source` (PKeyPresentationSource) the seam
 ## the UI kit reads, with its `changed` signal.
-## `config`, `identity`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
+## `config`, `identity`, `entitlements`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
 ## exist before `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
@@ -54,6 +54,18 @@ signal verify_progress(fraction: float)
 ## and input: the kit never sets `SceneTree.paused`, so a game that wants to pause its own
 ## simulation or mute its action map listens to this.
 signal input_captured(captured: bool)
+## The kit has a sound to play: `open`, `close`, `focus` (navigation only), `confirm`, `back` or
+## `error` (PKeyUiFeedback). The game plays its own sound. Survives `configure()`.
+signal ui_sound(event: StringName)
+## One stream of what changed (the `events` stream every SDK has), emitted beside the signals above
+## once `configure()` has run. `kind` is a `PKeyConstants.EventKind` value; `data` has snake_case keys:
+##   license          {status, previous}                      beside `state_changed`
+##   config           {key, value, previous, source}          one per key of `config.config_changed`
+##   updateAvailable  {version, action, mandatory, channel}   beside `update.update_available` (decide())
+##   packs            {pack, phase, done, total}              pack progress, every phase
+##   store            {reason, detail}                        beside `store_error`
+## `entitlement` and `cloudSync` follow with their features. Payloads carry no token or raw hardware value.
+signal event(kind: String, data: Dictionary)
 ## `in_play` changed.
 signal in_play_changed(playing: bool)
 
@@ -65,6 +77,9 @@ var core: PKeyCore = null
 var devices: PKeyDevices = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
+## The licence's grants: has, value, all (services/entitlements.gd). Present before `configure()`
+## (false, null, {}).
+var entitlements := PKeyEntitlements.new()
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
@@ -166,7 +181,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
-	commerce.attach(core, license)
+	entitlements.attach(license)
+	commerce.attach(core, entitlements)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
@@ -237,6 +253,14 @@ func use_friendly_device_name() -> void:
 
 func _on_boot_finished(r: PKeyBootResult) -> void:
 	boot_finished.emit(r)
+
+
+## This device from local state, no network: {id, current: true, status, license_id?,
+## last_verified_at?}. {} before configure().
+func current_device() -> Dictionary:
+	if devices == null:
+		return {}
+	return devices._current_device()
 
 
 ## The offline load: device id, token, cached documents re-verified. No network. A coroutine.
@@ -403,6 +427,9 @@ func _init() -> void:
 	# The kit's nodes keep running while the game pauses the tree (a sign-in opened from a pause
 	# menu must not freeze). Children inherit it; a game overrides it by setting `process_mode`.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	config.config_changes.connect(_on_config_changes)
+	update.update_available.connect(_on_update_available)
+	update.packs.pack_phase.connect(_on_pack_phase)
 
 
 ## The one toast host the kit's screens share (the update prompt in play, the gate's and boot's
@@ -475,13 +502,46 @@ func _on_verify_progress(fraction: float) -> void:
 func _on_store_error(err: Dictionary) -> void:
 	last_store_error = err
 	store_error.emit(err)
+	_emit_event(PKeyConstants.EventKind.STORE, {"reason": PKeyConstants.ErrorCode.STORE_FAILED, "detail": str(err.get("message", ""))})
+
+
+## Raise `event` once the SDK is configured.
+func _emit_event(kind: String, data: Dictionary) -> void:
+	if core != null:
+		event.emit(kind, data)
+
+
+func _on_config_changes(changes: Array) -> void:
+	for c in changes:
+		_emit_event(PKeyConstants.EventKind.CONFIG, c)
+
+
+func _on_update_available(result: PKeyResult) -> void:
+	if not (result is PKeyUpdateCheck):
+		return
+	var d: Dictionary = result.decision
+	var release = d.get("release")
+	_emit_event(PKeyConstants.EventKind.UPDATEAVAILABLE, {
+		"version": release["version"] if release is Dictionary and release.get("version") is String else "",
+		"action": String(d.get("action", "")),
+		"mandatory": d.get("mandatory") == true,
+		"channel": result.channel,
+	})
+
+
+func _on_pack_phase(info: Dictionary) -> void:
+	_emit_event(PKeyConstants.EventKind.PACKS, info)
 
 
 func _emit_state() -> void:
 	var s := status()
 	if s != _last_state:
+		var previous = _last_state.get("status")
 		_last_state = s
 		state_changed.emit(s)
+		# `license` is a STATUS change only (as Swift and Node); state_changed fires on any change.
+		if s.get("status") != previous:
+			_emit_event(PKeyConstants.EventKind.LICENSE, {"status": s.get("status"), "previous": previous})
 
 
 func _start_timer() -> void:

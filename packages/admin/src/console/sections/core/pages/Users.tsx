@@ -12,14 +12,11 @@
  * - The record is a page (`users/:subject[/:tab]`, `UserRecord`).
  */
 
+import { usersQuery } from "../data.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  api,
-  type ProductUserSummary,
-  type ProductUsersPage,
-} from "../../../../api.js";
+import { type ProductUserSummary } from "../../../../api.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import {
   DataTable,
@@ -30,7 +27,6 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
 import { openPaletteWith, paletteShortcutLabel } from "../../../shortcuts.js";
 import { Button } from "../../../../ui/Button.js";
@@ -45,8 +41,6 @@ import {
   parseSupportCode,
 } from "../../../../lib/supportCode.js";
 import { UserRecord } from "./UserRecord.js";
-
-const PAGE_SIZE = 50;
 
 /** Where a contact email came from, said once in the cell. */
 export function contactNote(
@@ -74,17 +68,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
   const [state, setState] = useTableUrlState("users", { facets: [] });
   const q = state.q.trim();
 
-  const list = useInfiniteQuery({
-    queryKey: [...qk.users(slug), "list", q],
-    queryFn: ({ pageParam }) =>
-      api.productUsers(slug, {
-        ...(q ? { q } : {}),
-        limit: PAGE_SIZE,
-        cursor: pageParam,
-      }),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: ProductUsersPage) => last.nextCursor ?? undefined,
-  });
+  const list = useInfiniteQuery(usersQuery(slug, q));
   useLoadingAnnouncement("users", list.isPending);
 
   const rows = React.useMemo(

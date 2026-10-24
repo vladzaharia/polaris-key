@@ -67,6 +67,18 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<PolarisKeyGate theme={{ platform: "auto" }}>` in the renderer, inside `<PolarisKeyProvider>`. Menu requests from the main process open Settings and the update prompt over the app.
+
+    **Styled part.** The React kit's `<PolarisKeyGate>`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("PolarisKeyGate", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

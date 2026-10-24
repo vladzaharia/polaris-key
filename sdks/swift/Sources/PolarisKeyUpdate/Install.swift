@@ -249,7 +249,7 @@ extension UpdateClient {
         version: String, buildId: String, size: Int?, sha256: String, to destination: URL,
         onProgress: (@Sendable (Int, Int?) -> Void)? = nil
     ) async throws -> ReleaseFetchResult {
-        guard let url = await buildURL(version: version, buildId: buildId) else {
+        guard let url = await buildUrl(version: version, buildId: buildId) else {
             throw PolarisError(
                 code: ErrorCode.notConfigured,
                 message: "Discovery names no builds template; run discover() first.")

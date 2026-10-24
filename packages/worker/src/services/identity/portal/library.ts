@@ -57,6 +57,7 @@ import {
 import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
 import { existingSupportCode } from "../../../core/accounts/supportCodes.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { seatActiveSince } from "../../../core/devices/store.js";
 import type { DeviceRow } from "../../../core/repo.js";
 import {
@@ -134,6 +135,8 @@ interface ShapedLicense {
   devices: DeviceRow[];
   seats: Seats;
   status: LibraryStatus;
+  /** The tier a customer sees (null for none and for the implicit Default tier). */
+  tier: string | null;
 }
 
 function str(v: unknown): string | null {
@@ -295,7 +298,13 @@ async function shapeLicense(
     deviceCount: authorized.length,
     dormantCount,
   };
-  return { row, devices, seats, status: licenseStatus(row, seats, now) };
+  return {
+    row,
+    devices,
+    seats,
+    status: licenseStatus(row, seats, now),
+    tier: await customerTierId(db, row),
+  };
 }
 
 /** Best first: status rank, then no expiry, then the later expiry, then the newer activation. */
@@ -311,7 +320,7 @@ function compareLicenses(a: ShapedLicense, b: ShapedLicense): number {
 function licenseSummary(l: ShapedLicense): Record<string, unknown> {
   return {
     id: l.row.id,
-    tier: l.row.tier_id,
+    tier: l.tier,
     status: l.status,
     licenseStatus: l.row.status,
     activatedAt: l.row.activated_at,

@@ -239,15 +239,15 @@ describe("the subject store registry guard", () => {
 
   it("fails on an unclassified Durable Object class and passes once a complete store claims it", async () => {
     const schema = await readSchema(makeTestDb());
-    const doClasses = [...durableObjectClasses(), "CloudSyncDO"];
+    const doClasses = [...durableObjectClasses(), "FixtureDO"];
     expect(
       guardFindings({ schema, doClasses, stores: subjectStores() }),
-    ).toEqual([expect.stringContaining('class "CloudSyncDO" is unclassified')]);
+    ).toEqual([expect.stringContaining('class "FixtureDO" is unclassified')]);
     registerSubjectStore("guard-fixture", {
       merge: noop,
       delete: noop,
       export: async () => null,
-      durableObjects: ["CloudSyncDO"],
+      durableObjects: ["FixtureDO"],
     });
     expect(
       guardFindings({ schema, doClasses, stores: subjectStores() }),

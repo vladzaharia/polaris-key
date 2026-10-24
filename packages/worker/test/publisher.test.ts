@@ -51,6 +51,7 @@ import {
   r2Parent,
   releaseUploadTicket,
   revokeCiToken,
+  staticCiTokenMaxTtl,
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
   ticketPrefix,
@@ -61,6 +62,7 @@ import {
   type PublisherPolicy,
 } from "../src/core/publisher.js";
 import { requireCiScope } from "../src/core/ciScope.js";
+import { CI_SCOPES } from "../src/core/ciVocabulary.js";
 import { deleteProduct } from "../src/core/products/store.js";
 
 const SLUG = "diceroll";
@@ -628,6 +630,73 @@ describe("pkeyci_ tokens", () => {
       NOW,
     );
     expect(ok).toMatchObject({ product: SLUG });
+  });
+
+  it("a packages:read-only token passes no /ci/* guard, whatever scope the route asks (F-33b.2)", async () => {
+    const t = await staticToken(["packages:read"]);
+    const req = new Request(`${ORIGIN}/x`, {
+      headers: { authorization: `Bearer ${t.token}` },
+    });
+    for (const scope of CI_SCOPES.filter((s) => s !== "packages:read")) {
+      const res = await requireCiScope(req, env, db, SLUG, scope, NOW);
+      expect(res, scope).toBeInstanceOf(Response);
+      expect((res as Response).status, scope).toBe(403);
+      expect(await (res as Response).clone().json()).toMatchObject({
+        reason: "missing_scope",
+      });
+    }
+    // Every list a route guard accepts, too.
+    const list = await requireCiScope(
+      req,
+      env,
+      db,
+      SLUG,
+      [
+        "release:publish",
+        "distribution:feeds",
+        "distribution:listing",
+        "assets:write",
+      ],
+      NOW,
+    );
+    expect((list as Response).status).toBe(403);
+  });
+
+  it("a static token lives up to 365 days read-only and 90 days otherwise (F-33b.2, D-F1)", async () => {
+    const day = 86_400;
+    expect(staticCiTokenMaxTtl(["packages:read"])).toBe(365 * day);
+    expect(staticCiTokenMaxTtl(["release:publish"])).toBe(90 * day);
+    expect(staticCiTokenMaxTtl(["packages:read", "release:publish"])).toBe(
+      90 * day,
+    );
+    await expect(
+      staticToken(["packages:read"], SLUG, NOW + 365 * day),
+    ).resolves.toMatchObject({
+      expiresAt: NOW + 365 * day,
+    });
+    await expect(
+      staticToken(["packages:read"], SLUG, NOW + 365 * day + 1),
+    ).rejects.toThrow(RangeError);
+    await expect(
+      staticToken(["release:publish"], SLUG, NOW + 90 * day),
+    ).resolves.toBeDefined();
+    await expect(
+      staticToken(["release:publish"], SLUG, NOW + 90 * day + 1),
+    ).rejects.toThrow(RangeError);
+    await expect(
+      staticToken(["packages:read", "release:promote"], SLUG, NOW + 91 * day),
+    ).rejects.toThrow(RangeError);
+  });
+
+  it("lastUsedAt is null until the registry host first accepts the token, and listCiTokens returns it", async () => {
+    const t = await staticToken(["packages:read"]);
+    expect((await listCiTokens(db, SLUG))[0]).toMatchObject({
+      tokenId: t.tokenId,
+      lastUsedAt: null,
+    });
+    // The CI-route lookup never writes it.
+    await lookupCiToken(env, db, t.token, NOW);
+    expect((await listCiTokens(db, SLUG))[0]!.lastUsedAt).toBeNull();
   });
 
   it("the nightly prune drops tokens and tickets a day past expiry", async () => {

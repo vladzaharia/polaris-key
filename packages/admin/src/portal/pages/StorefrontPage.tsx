@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Compass, ExternalLink, LayoutGrid } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -7,16 +8,14 @@ import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalObtainPath,
   type PortalStorefrontProduct,
 } from "../api.js";
 import { ProductArt } from "../components/ProductArt.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { SectionCard } from "../components/product/Card.js";
-import { ErrorPanel } from "../components/States.js";
 import {
-  portalKeys,
   useClaimDiscover,
   useLibraryView,
   useStorefrontProduct,
@@ -34,6 +33,7 @@ import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
 import { t } from "../../lib/copy.js";
 import { platformConsumerName } from "../../lib/vocab/platforms.js";
+import { qk } from "../queries.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -76,7 +76,15 @@ export function StorefrontPage({
   if (notFound) return <NotOffered />;
   if (q.error || !q.data)
     return (
-      <ErrorPanel error={q.error} onRetry={() => void q.refetch()} asPage />
+      <ErrorState
+        error={q.error}
+        onRetry={() => void q.refetch()}
+        asPage
+        page={t("locker.error.productFallback")}
+        message={t("locker.error.loadFailedName", {
+          name: t("locker.error.thisProduct"),
+        })}
+      />
     );
   return <StorefrontBody product={q.data} />;
 }
@@ -160,8 +168,7 @@ function StorefrontBody({
     } catch (err) {
       const failed = addError(product, err);
       // The offer is gone: Discover stops listing it.
-      if (failed.ended)
-        void qc.invalidateQueries({ queryKey: portalKeys.discover });
+      if (failed.ended) void qc.invalidateQueries({ queryKey: qk.discover() });
       setError(failed);
     } finally {
       inFlight.current = false;
@@ -608,7 +615,7 @@ function siteOf(product: PortalStorefrontProduct): string | null {
 /** An Add that didn't go through, in the person's words (§6.4). */
 function addError(product: PortalStorefrontProduct, err: unknown): AddError {
   if (
-    err instanceof PortalApiError &&
+    err instanceof HttpError &&
     err.status === 409 &&
     err.code === "not_eligible"
   )
@@ -620,7 +627,7 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
       ended: true,
     };
   // The words PX-34 settled on Discover's tile.
-  const offline = err instanceof PortalApiError && err.status === 0;
+  const offline = err instanceof HttpError && err.status === 0;
   const copy = portalErrorCopy(err);
   return {
     text: `${t("locker.discover.addFailed", { product: product.name })} ${offline ? t("core.codes.transport.message") : copy.description}`,

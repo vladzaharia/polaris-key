@@ -138,8 +138,8 @@ Maven, the coordinate table and the other SDKs:
 ## The services and PolarisKeyClient
 
 `polaris-key-sdk` is the one-line dependency: `PolarisKeyClient` composes `:core` with one
-sub-client per service, and every public call is `suspend` (license changes stream as a `Flow`,
-`licenseChanges`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
+sub-client per service, and every public call is `suspend` (licence changes stream as `events`, a
+`SharedFlow<PolarisEvent>`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
 service the product does not run throws `service-unavailable` before any request.
 
 ```kotlin
@@ -155,9 +155,9 @@ suspend fun start(key: String) {
             core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
         ),
     )
-    client.activate(key)                       // license: stores the token, then syncs (forced)
+    client.license.activateWithKey(key)                       // license: stores the token, then syncs (forced)
     if (!isUsable(client.status())) showGate()
-    val theme = client.config("ui.theme", JsonPrimitive("dark"))
+    val theme = client.config.get("ui.theme", JsonPrimitive("dark"))
     val notes = client.release.changelog()
     val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
     client.identity.waitForSignIn(prompt)
@@ -165,10 +165,10 @@ suspend fun start(key: String) {
 ```
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
-  floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
-  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (license id, tier, tier label,
-  device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
-  `["stable"]`). **`isEntitled` answers `false` whenever the gate is not usable** (revoked,
+  floor), `activateWithKey`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
+  `licenseInfo` (license id, tier, tier label,
+  device limit, profile, channels), `getProfile`, `getLicenseId`, `getLicenseUser`, `entitledChannels` (the grants, raw, or
+  `["stable"]`). The `entitlements` namespace (`has`, `value`, `all`, in `EntitlementsClient`) reads the held document; **`entitlements.has` answers `false` whenever the gate is not usable** (revoked,
   expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
   the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the
   server's registry `code`: `DeviceLimit`, `Unauthorized`, `FingerprintRequired`,
@@ -177,8 +177,8 @@ suspend fun start(key: String) {
   other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
   `DeviceLimit` (notes/SDK-PARITY-PASS.md §3.1). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
   for a registered-without-license device (P1b-06).
-- **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
-  local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
+- **`:config`**: `ConfigClient.get(key, default)` and `getConfigSource` (enforced or hidden, then
+  local, environment, remote default, fallback), `listUserConfig`, `getSecret`, `fetchSchema` (null
   on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
   `ConfigResolution` is the pure resolver `config-matrix.json` pins. **Local overrides**
   (notes/SDK-PARITY-PASS.md §3.11): `set(key, value)` persists one (it beats a remote default,
@@ -197,10 +197,10 @@ suspend fun start(key: String) {
   (so the trailing lambda still binds `onAcquired`); a caller passing the listener positionally must
   now pass it by name or swap the order. `OkHttpTransport` has two constructors, `()` (owns its client,
   `close()` shuts it down) and `(client)` (shares the host's, `close()` leaves it alone).
-- **Live license state**: `licenseChanges`, `events` and the `licenseState` StateFlow emit on
+- **Live license state**: `events` (as `PolarisEvent.License`) and the `licenseState` StateFlow emit on
   every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
   expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not
-  repeated. `entitlementValue()` and `entitlements()` answer nothing while the gate is not usable
+  repeated. `entitlements.value()` answers nothing while the gate is not usable
   (`licenseInfo()` stays the diagnostic). A 401 on `/license/token` is final for that token and at
   most 5 token requests go out a minute; boot retries back off from 1 s to 30 s; concurrent `sync()`
   calls share one pass; `close()` cancels the client's scope and shuts OkHttp down so a JVM `main`
@@ -215,7 +215,7 @@ suspend fun start(key: String) {
   `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
   the license does not grant it, then syncs so documents and decisions follow.
 - **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
-  `CompletableFuture`s (`start`, `sync`, `status`, `isEntitled`, `licenseInfo`, `activate`,
+  `CompletableFuture`s (`start`, `sync`, `status`, `hasEntitlement`, `licenseInfo`, `activateWithKey`,
   `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
   `PolarisKeyFutures.create(options)` builds the client), and every options class has
   `@JvmOverloads` constructors.
@@ -259,10 +259,10 @@ onProgress)` downloads one build of a verified release record (a `binary` decisi
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation returns `ActivationResult.DeviceLimit(limit, deviceCount, manageUrl)`.
-`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manageUrl` is the customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 the product's portal is on and already validated by `ManageLink.read`. It defaults to null, so the
 class stays source-compatible. It is never an auth failure.
 
@@ -271,7 +271,7 @@ import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
 
 suspend fun replaceDevice(key: String) {
-    val r = client.activate(key)
+    val r = client.license.activateWithKey(key)
     if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
         val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
         // offer "Replace a device", opening `link`
@@ -613,7 +613,7 @@ quickstart against a real `pkey dev` ([Run Polaris Key locally](https://key.plrs
 backend only. It drives the `PolarisConfig.kt` that `pkey sdk` generated, the SDK's own client over
 its OkHttp transport and the dev server's approval script (Node on PATH): first activation, what
 each of the seven test keys does, a config change event, a device-code sign-in and an update
-decision. It needs a fresh server (it spends device seats and key entries) and three variables:
+decision. It needs a fresh server (it spends devices and key entries) and three variables:
 `PKEY_DEV_BASE_URL` (the server's origin), `PKEY_DEV_CONFIG` (the absolute path of the generated
 file, which Gradle compiles into the test sources) and `PKEY_DEV_APPROVE`
 (`packages/cli/scripts/dev-approve.mjs`).

@@ -7,11 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   invalidatePlatformSettings,
   LAZY_DELTA_MAX_BYTES_CEILING,
@@ -40,6 +36,7 @@ import { makeTestDb } from "./helpers.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, TEST_KEK } from "./seed.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -154,8 +151,9 @@ async function call(
     csrf?: boolean;
   } = {},
 ): Promise<{ status: number; body: Record<string, any>; text: string }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "admin-1",
       name: "Ada Admin",
@@ -825,7 +823,9 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       value: 7,
       source: "runtime",
       version: 1,
-      stored: { updatedBy: "admin-1" },
+      stored: {
+        updatedBy: await consoleActor(env, db, "admin-1"),
+      },
     });
     // The writer's isolate sees its own write at once.
     expect(await platformSetting(env, db, "BLOB_GC_GRACE_DAYS")).toBe(7);
@@ -859,7 +859,7 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       // The registry key and the column `setting_key` name the entry (ST-05a), not its A-13 alias.
       target_id: "blobs.gc.graceDays",
       setting_key: "blobs.gc.graceDays",
-      actor_sub: "admin-1",
+      actor_sub: await consoleActor(env, db, "admin-1"),
       actor_email: "admin@example.com",
     });
     expect(JSON.parse(latest.before_json!)).toEqual({
@@ -1285,5 +1285,113 @@ describe("A-13 hardening", () => {
       "expected_version_required",
     );
     expect(await listPlatformAudit(db, { limit: 10 })).toHaveLength(0);
+  });
+});
+
+describe("identity.reservedDisplayTerms (PX-W13c): the list kind", () => {
+  const path = "/api/platform/settings/identity.reservedDisplayTerms";
+
+  it("is listed as a list with its bounds, empty by default", async () => {
+    const { body } = await call(
+      adminEnv(),
+      makeTestDb(),
+      "/api/platform/settings",
+    );
+    const row = (body.settings as any[]).find(
+      (s) => s.key === "identity.reservedDisplayTerms",
+    );
+    expect(row).toMatchObject({
+      kind: "list",
+      max: 64,
+      maxLength: 64,
+      value: [],
+      default: [],
+      source: "default",
+      confirm: { change: "L1" },
+    });
+  });
+
+  it("adds terms (trimmed, de-duplicated by skeleton), audits, and reads them back", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    const res = await call(env, db, path, {
+      method: "PATCH",
+      body: {
+        value: ["  Steam Deck ", "steam  deck", "Acme Store"],
+        expectedVersion: 0,
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      value: ["Steam Deck", "Acme Store"],
+      source: "runtime",
+      version: 1,
+    });
+    expect(
+      await platformSetting(env, db, "identity.reservedDisplayTerms"),
+    ).toEqual(["Steam Deck", "Acme Store"]);
+    const audit = await listPlatformAudit(db, { limit: 10 });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      action: "platform.setting.set",
+      setting_key: "identity.reservedDisplayTerms",
+    });
+    expect(JSON.parse(audit[0]!.after_json!).effective).toEqual([
+      "Steam Deck",
+      "Acme Store",
+    ]);
+  });
+
+  it("removing every extra term leaves the built-in floor in force", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    await call(env, db, path, {
+      method: "PATCH",
+      body: { value: ["Acme Store"], expectedVersion: 0 },
+    });
+    const cleared = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: [], expectedVersion: 1 },
+    });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.value).toEqual([]);
+    const { reservedDisplayTerm } = await import("@polaris-key/manifest");
+    const extra = (await platformSetting(
+      env,
+      db,
+      "identity.reservedDisplayTerms",
+    )) as string[];
+    expect(reservedDisplayTerm("Acme Store", extra)).toBeNull();
+    expect(reservedDisplayTerm("Steam Deck Companion", extra)).not.toBeNull();
+  });
+
+  it("refuses a term with no letter or digit, a non-list and an over-long term or list", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    for (const value of [
+      ["!!!"],
+      "Steam",
+      [1],
+      ["x".repeat(65)],
+      Array(65).fill("a"),
+    ]) {
+      const r = await call(env, db, path, {
+        method: "PATCH",
+        body: { value, expectedVersion: 0 },
+      });
+      expect(r.status).toBe(422);
+    }
+    // The term and the list are named, not the generic "not a valid value".
+    const long = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: ["x".repeat(65)], expectedVersion: 0 },
+    });
+    expect(JSON.stringify(long.body)).toContain("is over 64 characters");
+    const many = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: Array(66).fill("a"), expectedVersion: 0 },
+    });
+    expect(JSON.stringify(many.body)).toContain("remove 2 (limit 64)");
+    expect((await listPlatformAudit(db, { limit: 10 })).length).toBe(0);
   });
 });

@@ -7,13 +7,10 @@ import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
 import { PORTAL_FMT } from "../date.js";
 import { t } from "../../lib/copy.js";
-import {
-  portalApi,
-  PortalApiError,
-  type PortalDeviceLoginRequest,
-} from "../api.js";
+import { HttpError, type PortalDeviceLoginRequest } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { StepUpInline } from "./account/StepUpInline.js";
+import { mutate } from "../mutations.js";
 
 /**
  * Approve a new device (SIGN-IN.md §3.11, PORTAL.md §4.24): the signed-in side of "Sign in with
@@ -79,20 +76,20 @@ export function ApproveDeviceDialog({
   const look = React.useCallback(async (value: string): Promise<void> => {
     setPhase({ kind: "looking" });
     try {
-      const { request } = await portalApi.deviceLoginLookup(value);
+      const { request } = await mutate("deviceLoginLookup", value);
       setPhase({ kind: "review", request });
     } catch (err) {
       setPhase({
         kind: "enter",
         error:
-          err instanceof PortalApiError && err.status === 410
+          err instanceof HttpError && err.status === 410
             ? t("signin.approve.expiredCode")
-            : err instanceof PortalApiError &&
+            : err instanceof HttpError &&
                 (err.status === 404 || err.status === 422)
               ? t("signin.approve.notFound")
-              : err instanceof PortalApiError && err.status === 429
+              : err instanceof HttpError && err.status === 429
                 ? t("signin.approve.tooMany")
-                : err instanceof PortalApiError && err.status === 0
+                : err instanceof HttpError && err.status === 0
                   ? portalErrorCopy(err).title
                   : t("signin.approve.failed"),
       });
@@ -112,18 +109,18 @@ export function ApproveDeviceDialog({
   ): Promise<void> => {
     setPhase({ kind: "deciding", request });
     try {
-      const out = await portalApi.deviceLoginDecide(request.code, decision);
+      const out = await mutate("deviceLoginDecide", request.code, decision);
       setPhase({ kind: "done", request, status: out.status });
     } catch (err) {
       if (isStepUpRequired(err))
         return setPhase({ kind: "stepup", request, decision });
-      if (err instanceof PortalApiError && err.status === 410)
+      if (err instanceof HttpError && err.status === 410)
         return setPhase({
           kind: "enter",
           error: t("signin.approve.expiredCode"),
         });
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.status === 404 || err.status === 422)
       )
         return setPhase({ kind: "enter", error: t("signin.approve.notFound") });

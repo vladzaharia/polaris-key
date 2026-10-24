@@ -65,6 +65,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | Family           | Here it          | Run                                        |
 | ---------------- | ---------------- | ------------------------------------------ |
 | `readme-work`    | writes           | `pnpm gen readme-work`                     |
+| `parity`         | reads            | `pnpm gen parity`                          |
 | `ux-rows`        | reads            | `pnpm gen ux-rows`                         |
 | `graph-index`    | reads and writes | `pnpm gen graph-index`                     |
 | `route-ledger`   | writes           | `pnpm gen route-ledger`                    |

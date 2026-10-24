@@ -35,8 +35,6 @@ import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   isSteppedUp,
-  issueSession,
-  verifySession,
 } from "../src/core/console/session.js";
 import {
   handleAdminCallback,
@@ -52,6 +50,7 @@ import {
   RELINK_UNDO_SECONDS,
   consentedClaims,
 } from "../src/services/identity/accounts/productUsers.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const ISSUER = "https://idp.example";
@@ -113,12 +112,14 @@ async function world(): Promise<World> {
   const bodies: string[] = [];
   const call: World["call"] = async (method, path, body, opts = {}) => {
     const now = opts.now ?? NOW;
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: opts.sub ?? "op-1",
         name: "Ada Operator",
-        email: "ada@studio.example",
+        // One address per operator: a shared verified address joins one account (SM-3).
+        email: opts.sub ? `${opts.sub}@studio.example` : "ada@studio.example",
         groups: [PLATFORM_GROUP],
         authTime: opts.authAt ?? now,
         stepUp: true,
@@ -412,8 +413,12 @@ describe("Users list and row", () => {
     await w.call("GET", `/alpha/users/${f.bobAlpha}`);
     await w.call("GET", `/alpha/users/${f.adaAlpha}`);
     await w.call("GET", "/alpha/activity");
+    // The customers' links. The operator's own account (and its address, which the activity feed
+    // names as the actor) is not what this pins.
     const links = await w.db.all<{ id: string; subject: string }>(
-      "SELECT id, subject FROM account_links",
+      "SELECT id, subject FROM account_links WHERE account_id IN (?, ?)",
+      f.ada.accountId,
+      f.bob.accountId,
     );
     expect(links.length).toBeGreaterThan(0);
     const forbidden = [
@@ -631,8 +636,11 @@ describe("actions", () => {
     // U-03's account override layer and LX-08's entitlement-event feed are registered stores
     // too: they hold nothing for Ada yet.
     expect(doc.stores).toEqual({
-      "config.accountOverrides": { overrides: null, migrationReport: [] },
+      "config.accountOverrides": { overrides: null },
       "core.entitlementEvents": [],
+      "core.provisionedSecretMoves": [],
+      // U-05.8: Cloud Sync's store answers for a person who never synced.
+      "sync.cloudSync": { settings: null, directory: null },
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });
     const del = await w.json("POST", `/alpha/users/${f.adaAlpha}/data/delete`);
@@ -641,6 +649,8 @@ describe("actions", () => {
       stores: [
         "config.accountOverrides",
         "core.entitlementEvents",
+        "core.provisionedSecretMoves",
+        "sync.cloudSync",
         "test-store",
       ],
     });
@@ -1030,23 +1040,29 @@ describe("operator step-up", () => {
   it("issues sessions with authAt from auth_time, never from the future", async () => {
     const env = makeEnv(new KvMock(), []);
     env.ADMIN_SESSION_SECRET = "s";
+    const db = makeTestDb();
     const base = { sub: "op", groups: ["g"] };
-    const a = await issueSession(
+    const a = await consoleTestSession(
       env,
+      db,
       { ...base, authTime: NOW - 100, stepUp: true },
       NOW,
     );
     expect(a.session.authAt).toBe(NOW - 100);
     expect(isSteppedUp(a.session, NOW)).toBe(true);
-    const b = await issueSession(
+    const b = await consoleTestSession(
       env,
+      db,
       { ...base, authTime: NOW + 999, stepUp: true },
       NOW,
     );
     expect(b.session.authAt).toBe(NOW);
     expect(isSteppedUp(b.session, NOW + 301)).toBe(false);
-    const verified = await verifySession(env, a.token, NOW);
-    expect(verified?.authAt).toBe(NOW - 100);
+    // The cookie body carries the same authAt.
+    const body = JSON.parse(
+      Buffer.from(a.token.split(".")[0]!, "base64url").toString("utf8"),
+    ) as { authAt: number };
+    expect(body.authAt).toBe(NOW - 100);
     expect(isSteppedUp({ ...a.session, stepUpAt: undefined }, NOW)).toBe(false);
   });
 

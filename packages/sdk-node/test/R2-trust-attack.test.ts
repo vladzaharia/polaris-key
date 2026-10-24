@@ -325,7 +325,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
     expect(r.documents.license?.kind).toBe("error");
     expect(r.documents.config?.kind).toBe("error");
     expect(client.isLicensed()).toBe(false);
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     expect(client.license.getProfile()).toBeNull();
     client.close();
@@ -479,7 +479,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
 
     // Sync #1 learns the key and the documents it signs are applied…
     expect((await client.sync({ force: true })).applied).toBe(true);
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     // …sync #2 sees the revocation manifest and prunes it, so the same signer's documents are
     // no longer accepted. Every served doc carries a strictly newer `issuedAt`, so the refusal
     // is the pruned key and not the §3 anti-replay floor.
@@ -649,7 +649,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     const client = await PolarisKeyClient.create(offline);
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     client.close();
 
@@ -679,7 +679,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     );
     const c2 = await PolarisKeyClient.create(offline);
     expect(c2.status().status).toBe("needs-activation");
-    expect(c2.license.getEntitlements()).toEqual({});
+    expect(c2.entitlements.all()).toEqual({});
     expect(c2.config.getSecret("serviceA.oauth")).toBeNull();
     c2.close();
   });
@@ -834,10 +834,10 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     // Nothing to read: an unverifiable document is not a document.
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(client.getConfig("quality.floor", 1)).toBe(1);
+    expect(client.config.get("quality.floor", 1)).toBe(1);
     client.close();
   });
 
@@ -1133,11 +1133,11 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
 
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(client.getConfig("quality.floor", "mp3")).toBe("mp3");
+    expect(client.config.get("quality.floor", "mp3")).toBe("mp3");
     // Never read ⇒ never rewritten: the v2 record is still sitting there verbatim, and no v3
     // record was synthesised from it.
     const persisted = JSON.parse(readFileSync(cachePath, "utf8")) as {
@@ -1186,7 +1186,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     writeFileSync(cachePath, JSON.stringify({ v: 2, docs }));
     const stale = await PolarisKeyClient.create(offline);
     expect(stale.status().status).toBe("needs-activation");
-    expect(stale.license.isEntitled("polarisVpn")).toBe(false);
+    expect(stale.entitlements.has("polarisVpn")).toBe(false);
     expect(stale.config.getSecret("serviceA.oauth")).toBeNull();
     expect(stale.getSyncState().highWaterMark).toBe(0); // not even the clock floor moved
     stale.close();
@@ -1198,7 +1198,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     );
     const current = await PolarisKeyClient.create(offline);
     expect(current.status().status).toBe("ok");
-    expect(current.license.isEntitled("polarisVpn")).toBe(true);
+    expect(current.entitlements.has("polarisVpn")).toBe(true);
     expect(current.config.getSecret("serviceA.oauth")).toBe("STOWAWAY");
     current.close();
   });
@@ -1241,9 +1241,9 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
     expect(client.license.getLicenseId()).toBeNull();
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.all()).toEqual({});
     // …and the honest config slice is unaffected.
-    expect(client.getConfig("quality.floor", 1)).toBe(9999);
+    expect(client.config.get("quality.floor", 1)).toBe(9999);
     expect(client.config.getSecret("serviceA.oauth")).toBe("REAL-SECRET");
     client.close();
 
@@ -1270,9 +1270,9 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
         new Response("", { status: 503 })) as typeof fetch,
     });
     expect(mirrored.status().status).toBe("ok");
-    expect(mirrored.license.isEntitled("polarisVpn")).toBe(true);
+    expect(mirrored.entitlements.has("polarisVpn")).toBe(true);
     expect(mirrored.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(mirrored.getConfig("quality.floor", 1)).toBe(1);
+    expect(mirrored.config.get("quality.floor", 1)).toBe(1);
     expect(mirrored.config.schemaVersion()).toBeNull();
     mirrored.close();
   });

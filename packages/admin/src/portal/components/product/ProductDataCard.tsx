@@ -3,7 +3,7 @@ import * as React from "react";
 import { LifeBuoy, Trash2 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
-import { PortalApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import {
   YOUR_DATA_COPY,
   productCopyBody,
@@ -113,7 +113,7 @@ function SupportCodeRow({
     setAnnounced(t("locker.productData.supportCode", { detail: asked }));
   }, [asked]);
   const limited =
-    create.error instanceof PortalApiError && create.error.status === 429;
+    create.error instanceof HttpError && create.error.status === 429;
   const failure = create.error
     ? limited
       ? t("signin.code.rateLimited")

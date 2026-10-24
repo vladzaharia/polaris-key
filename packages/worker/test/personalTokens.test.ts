@@ -20,8 +20,10 @@ import {
   mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import {
+  ADMIN_SCOPE,
   MAX_LIVE_PERSONAL_TOKENS,
   PACKAGES_READ_SCOPE,
+  resolvePersonalTokenById,
   hashPersonalToken,
   listAccountTokens,
   mintAccountToken,
@@ -32,6 +34,7 @@ import {
   stmtMoveAccountTokens,
   stmtRevokeAccountTokens,
 } from "../src/core/accounts/personalTokens.js";
+import { exportAccountData } from "../src/services/identity/portal/dataExport.js";
 import { erasureKey } from "../src/core/accounts/erasureFence.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import {
@@ -100,14 +103,17 @@ async function seedOwner(slug: string): Promise<void> {
     );
 }
 
-async function mint(accountId: string, over: { days?: number } = {}) {
+async function mint(
+  accountId: string,
+  over: { days?: number; scope?: string } = {},
+) {
   const res = await mintAccountToken(
     env,
     db,
     {
       accountId,
       label: "laptop",
-      scope: PACKAGES_READ_SCOPE,
+      scope: over.scope ?? PACKAGES_READ_SCOPE,
       createdBy: `portal:${accountId}`,
       ...(over.days !== undefined ? { expiresInDays: over.days } : {}),
     },
@@ -179,7 +185,7 @@ describe("personal tokens: the store", () => {
   it("refuses an unknown or compound scope, a bad label and a bad lifetime", async () => {
     const base = { accountId: ada, createdBy: "portal:x" };
     for (const [over, field] of [
-      [{ label: "a", scope: "admin" }, "scope"],
+      [{ label: "a", scope: "admin2" }, "scope"],
       [{ label: "a", scope: ["packages:read"] as unknown as string }, "scope"],
       [{ label: "a", scope: "packages:read,admin" }, "scope"],
       [{ label: "", scope: PACKAGES_READ_SCOPE }, "label"],
@@ -198,6 +204,89 @@ describe("personal tokens: the store", () => {
       if (!res.ok) expect(res.fields).toContain(field);
     }
     expect(await db.all("SELECT 1 FROM account_tokens")).toEqual([]);
+  });
+
+  it("mints an admin token: 7 days by default, 30 at most, the same label and cap rules", async () => {
+    const def = await mint(ada, { scope: ADMIN_SCOPE });
+    expect(def.view).toMatchObject({
+      scope: "admin",
+      expiresAt: NOW + 7 * 86_400,
+      status: "active",
+    });
+    expect(
+      (await mint(ada, { scope: ADMIN_SCOPE, days: 30 })).view.expiresAt,
+    ).toBe(NOW + 30 * 86_400);
+    for (const expiresInDays of [31, 0, 1.5]) {
+      const res = await mintAccountToken(
+        env,
+        db,
+        {
+          accountId: ada,
+          label: "a",
+          scope: ADMIN_SCOPE,
+          createdBy: "x",
+          expiresInDays,
+        },
+        NOW,
+      );
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.fields).toEqual(["expiresInDays"]);
+    }
+    const bad = await mintAccountToken(
+      env,
+      db,
+      { accountId: ada, label: " ", scope: ADMIN_SCOPE, createdBy: "x" },
+      NOW,
+    );
+    expect(bad.ok === false && bad.fields).toEqual(["label"]);
+    // The 25-live cap counts both scopes (2 admin so far).
+    for (let i = 0; i < MAX_LIVE_PERSONAL_TOKENS - 2 - 1; i++) await mint(ada);
+    await mint(ada, { scope: ADMIN_SCOPE });
+    const over = await mintAccountToken(
+      env,
+      db,
+      {
+        accountId: ada,
+        label: "a",
+        scope: PACKAGES_READ_SCOPE,
+        createdBy: "x",
+      },
+      NOW,
+    );
+    expect(over).toMatchObject({ ok: false, reason: "token_limit" });
+  });
+
+  it("an admin row never resolves for packages:read, and a packages row never for admin", async () => {
+    const admin = await mint(ada, { scope: ADMIN_SCOPE });
+    const pkg = await mint(ada);
+    expect(
+      await resolvePersonalToken(
+        env,
+        db,
+        admin.token,
+        PACKAGES_READ_SCOPE,
+        NOW,
+      ),
+    ).toBeNull();
+    expect(
+      await resolvePersonalTokenById(
+        env,
+        db,
+        admin.view.id,
+        PACKAGES_READ_SCOPE,
+        NOW,
+      ),
+    ).toBeNull();
+    expect(
+      await resolvePersonalToken(env, db, pkg.token, ADMIN_SCOPE, NOW),
+    ).toBeNull();
+    expect(
+      await resolvePersonalTokenById(env, db, pkg.view.id, ADMIN_SCOPE, NOW),
+    ).toBeNull();
+    // The store itself does resolve it for the scope the (future) admin API will name.
+    expect(
+      await resolvePersonalToken(env, db, admin.token, ADMIN_SCOPE, NOW),
+    ).toMatchObject({ accountId: ada, scope: "admin" });
   });
 
   it("holds an account to its live-token limit, and expired or revoked ones do not count", async () => {
@@ -222,6 +311,33 @@ describe("personal tokens: the store", () => {
     const [first] = await listAccountTokens(db, ada, NOW);
     await revokeAccountToken(db, ada, first!.id, "portal:x", "manual", NOW);
     expect((await mint(ada)).ok).toBe(true);
+  });
+
+  it("lists live tokens first, then newest, revoked and expired ones after", async () => {
+    const old = await mint(ada);
+    const mid = await mint(ada);
+    const newest = await mint(ada);
+    await revokeAccountToken(
+      db,
+      ada,
+      newest.view.id,
+      "portal:x",
+      "manual",
+      NOW,
+    );
+    await db.run(
+      "UPDATE account_tokens SET created_at = created_at + ? WHERE id = ?",
+      10,
+      newest.view.id,
+    );
+    await db.run(
+      "UPDATE account_tokens SET created_at = created_at + ? WHERE id = ?",
+      5,
+      old.view.id,
+    );
+    const ids = (await listAccountTokens(db, ada, NOW)).map((t) => t.id);
+    // Live (old is newer than mid) before the revoked one, though the revoked one is newest.
+    expect(ids).toEqual([old.view.id, mid.view.id, newest.view.id]);
   });
 
   it("resolves only a live token of the scope the caller accepts, and writes last_used at most hourly", async () => {
@@ -316,6 +432,18 @@ describe("personal tokens: the store", () => {
     await revokeAccountToken(db, ada, a.view.id, "portal:ada", "manual", NOW);
     expect(await purgeAccountTokens(db, NOW + 89 * 86_400)).toBe(0);
     expect(await purgeAccountTokens(db, NOW + 91 * 86_400)).toBe(1);
+  });
+
+  it("the account export lists an admin token's scope, with no plaintext or hash", async () => {
+    const admin = await mint(ada, { scope: ADMIN_SCOPE });
+    const out = await exportAccountData({ db, env, now: NOW }, ada, null);
+    const tokens = (out as unknown as { personalTokens: { scope: string }[] })
+      .personalTokens;
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0]).toMatchObject({ id: admin.view.id, scope: "admin" });
+    const text = JSON.stringify(out);
+    expect(text).not.toContain(admin.token);
+    expect(text).not.toContain(await hashPersonalToken(env, admin.token));
   });
 
   it("the erasure fence: an account on the ledger resolves to nothing, an unreadable ledger too", async () => {
@@ -474,6 +602,9 @@ describe("personal tokens: Account → Packages (portal API)", () => {
     for (const scope of ["admin", "packages:read admin", 1]) {
       const r = await call("POST", "/api/me/tokens", { label: "x", scope });
       expect(r.status).toBe(422);
+      expect(((await r.json()) as { fields?: string[] }).fields).toEqual([
+        "scope",
+      ]);
     }
     expect(await db.all("SELECT 1 FROM account_tokens")).toEqual([]);
   });
@@ -609,6 +740,33 @@ describe("personal tokens: the registry host", () => {
     });
     expect([401, 403, 404]).toContain(res.status);
     expect(res.status).not.toBe(200);
+  });
+
+  it("an admin token is refused on every presentation exactly as an unknown token is", async () => {
+    await licence(ada, OWNER);
+    const { token } = await mint(ada, { scope: ADMIN_SCOPE });
+    const unknown = `pkeyp_${"z".repeat(43)}`;
+    const shape = async (r: Response) => ({
+      status: r.status,
+      www: r.headers.get("www-authenticate"),
+      body: await r.text(),
+    });
+    const bearer = (t: string) =>
+      get(tags, { headers: { authorization: `Bearer ${t}` } });
+    const basic = (t: string) =>
+      get(tags, {
+        headers: { authorization: `Basic ${btoa(`__token__:${t}`)}` },
+      });
+    for (const via of [bearer, basic, pull]) {
+      const got = await shape(await via(token));
+      expect(got.status).toBe(401);
+      expect(got).toEqual(await shape(await via(unknown)));
+    }
+    const swift = await get(`/swift/${OWNER}/login`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(swift.status).toBe(401);
   });
 
   it("an OCI pull token for a personal token covers several owners, dies with the token, and cannot push", async () => {

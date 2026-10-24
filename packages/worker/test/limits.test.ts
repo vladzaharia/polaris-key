@@ -39,6 +39,8 @@ const INTERNAL: Record<string, string[]> = {
     "SEARCH_QUERY_MAX",
   ],
   "console/handlers/supportCodes.ts": ["SUPPORT_CODE_LOOKUPS_PER_MINUTE"],
+  "console/lib/operatorNotices.ts": ["NOTICE_CAP"],
+  "console/passkeySignin.ts": ["CONSOLE_PASSKEY_PER_NETWORK_MINUTE"],
   "console/settingsBackfill.ts": ["BATCH_LIMIT"],
   "core/accounts/accountSubjects.ts": ["MERGE_REDIRECT_SECONDS"],
   "core/accounts/erasureFence.ts": ["ERASURE_CLEAR_TTL_SECONDS"],
@@ -79,7 +81,10 @@ const INTERNAL: Record<string, string[]> = {
   "core/assets/imgHost.ts": ["IMG_MAX_SCREENSHOT"],
   "core/assets/sniff.ts": ["SNIFF_BYTES"],
   "core/cappedBody.ts": ["DEFAULT_BODY_CAP"],
-  "core/console/session.ts": ["STEP_UP_MAX_AGE_SECONDS"],
+  "core/console/session.ts": [
+    "STEP_UP_MAX_AGE_SECONDS",
+    "BREAK_GLASS_TTL_SECONDS",
+  ],
   "core/console/writeChecks.ts": ["MIN_OFFLINE_DAYS", "MAX_OFFLINE_DAYS"],
   "core/integration/sightings.ts": ["SIGHTING_WRITE_INTERVAL_SECONDS"],
   "core/licensing/licenseDelete.ts": ["LICENSE_IDS_PER_QUERY"],
@@ -103,10 +108,6 @@ const INTERNAL: Record<string, string[]> = {
   "core/oidc/client.ts": ["OIDC_MAX_BYTES", "OIDC_TIMEOUT_MS"],
   "core/oidc/connections.ts": ["CLAIM_MAP_MAX_CLAIMS"],
   "core/ops/operations.ts": ["PROBE_TIMEOUT_MS"],
-  "core/ops/overrideMigration.ts": [
-    "OVERRIDE_MIGRATION_NOTICE_DAYS",
-    "OVERRIDE_MIGRATION_REPORT_DAYS",
-  ],
   "core/ops/platformOps.ts": [
     "ERROR_SUMMARY_MAX",
     "SUMMARY_NAMES_MAX",

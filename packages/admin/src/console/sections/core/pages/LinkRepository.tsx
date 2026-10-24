@@ -17,7 +17,7 @@ import { PlanWarnings } from "../../../components/ResyncDialog.js";
 import * as React from "react";
 import { GitBranch } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type LinkCheckResult,
   type LinkExistingResult,
   type ManifestPlanItem,
@@ -48,9 +48,9 @@ export function linkRefusal(
   error: unknown,
   ctx: { slug: string; repository: string },
 ): Refusal {
-  const api = error instanceof ApiError ? error : null;
+  const api = error instanceof HttpError && error.status !== 0 ? error : null;
   const message =
-    api?.message && api.message !== `api ${api.status}` ? api.message : "";
+    api?.message && api.message !== `http ${api.status}` ? api.message : "";
   const problems = api?.errors ?? [];
   const repo = ctx.repository || "the repository";
   if (api?.status === 409)
@@ -125,7 +125,7 @@ const capitalize = (s: string): string =>
 
 const CHECK_TITLE: Record<CheckId, string> = {
   repository: "Repository",
-  app: "Polaris Key app installed",
+  app: "Polaris Key GitHub App installed",
   manifest: "Manifest valid",
   slug: "Manifest slug matches",
   policy: "Applies to this product",

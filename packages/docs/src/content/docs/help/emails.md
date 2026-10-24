@@ -11,7 +11,7 @@ sidebar:
 Account emails come from Polaris Locker, sent from `noreply@auth.plrs.im` or `noreply@plrs.im`.
 None asks for your full license key.
 
-If you did not ask for an email, leave it unused. A sign-in code that does not arrive: see [Your
+If you didn't ask, ignore it. Code didn't arrive? See [Your
 sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 
 ## Your library
@@ -19,6 +19,10 @@ sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 ### <a id="license-key"></a>Your <var>App</var> license
 
 Enter the key in the app. Keep it private.
+
+### <a id="license-invited"></a><var>App</var> license is ready
+
+Sign in at Polaris Locker with this address. No key.
 
 ### <a id="license-added"></a><var>App</var> is in your library
 

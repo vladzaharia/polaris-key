@@ -35,11 +35,7 @@ import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../../src/services/release/deliverables.js";
 import { handleAdmin } from "../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../../src/core/console/session.js";
 import { dispatchRegistryHost } from "../../src/core/registry/registryHost.js";
 import { REGISTRY_ROUTES, SERVICES } from "../../src/mount.js";
 import {
@@ -63,6 +59,7 @@ import {
 } from "../../src/services/distribution/registry/npm/render.js";
 import { wantsAbbreviated } from "../../src/services/distribution/registry/npm/routes.js";
 import { channelTag } from "../../src/services/distribution/registry/catalogSource.js";
+import { consoleTestSession } from "../consoleSessionHelper.js";
 
 installDigestStream();
 
@@ -378,8 +375,9 @@ let r2: R2Mock;
 let token: string;
 
 async function admin(method: string, path: string, body?: unknown) {
-  const { token: t, session } = await issueSession(
+  const { token: t, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

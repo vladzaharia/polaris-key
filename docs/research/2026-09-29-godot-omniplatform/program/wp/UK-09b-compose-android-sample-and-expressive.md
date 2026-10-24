@@ -18,6 +18,10 @@ Filed from [UK-09](UK-09-compose-android.md) by the program triage (`/Users/vlad
 
 On staging already: UK-09 on staging: KMP `:ui` / `:ui-core`, MatrixSnapshotTest, Compose UK-59 gaps closed. The 10 `ui.*` parity rows are flipped in UK-09 itself (45 min) before it is set done.
 
+## Progress
+
+- Slice 1 done: V-1 + list-detail. One shared two-pane layout (`PolarisTwoPane` in `PolarisScreen.kt`): art or icon alone on a `surfaceContainerLow` panel in the start pane, title, lede, detail and actions top-aligned in the end pane (TV keeps its split). `PolarisAccountScreen` / `PolarisAccount` is the tablet list-detail (list in the start pane, the chosen Settings or Devices screen in the end pane at 840 dp and wider; list, then item, with predictive Back on a phone). Left for later slices: the compose-android example, Compose tabs, M3 Expressive, nav graph and deep links, the self-starting gate.
+
 ## Goal
 
 Compose kit: Android sample, tabs, M3 Expressive, navigation, tablet list-detail, ChannelPicker, BUILT UX. Done when every acceptance criterion holds and the green gate passes.

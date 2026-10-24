@@ -5,7 +5,14 @@
 
 import type { ReactNode } from "react";
 import { withRenew, type View } from "@polaris-key/ui-core";
-import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
+import {
+  LAYOUTS,
+  dialogControls,
+  placeKeys,
+  platformLabel,
+  type Layout,
+} from "./contract.js";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import { rowsOf } from "./lazy.js";
 export type { SettingsRow } from "./contract.js";
 
@@ -145,7 +152,14 @@ function contentFor(c: KitCtx): ReactNode {
     case "ReleaseNotes":
       return rowsOf()?.releaseNotes(c) ?? null;
     case "Settings":
-      return rowsOf()?.settingsRows(c) ?? null;
+      return c.account ? (
+        <>
+          {c.account}
+          {rowsOf()?.settingsRows(c) ?? null}
+        </>
+      ) : (
+        (rowsOf()?.settingsRows(c) ?? null)
+      );
     case "OfflineActivation":
       return rowsOf()?.offlineSteps(c) ?? null;
     case "UpdatePrompt": {
@@ -194,9 +208,8 @@ function progressFor(c: KitCtx): ReactNode {
     (view.component === "UpdateProgress" &&
       (view.state === "downloading" || view.state === "paused"))
   )
-    return progressBar(c, p?.fraction ?? 0);
-  if (view.copy.includes("a11y.progress"))
-    return progressBar(c, p?.fraction ?? 0);
+    return progressBar(c, p?.fraction);
+  if (view.copy.includes("a11y.progress")) return progressBar(c, p?.fraction);
   // A counted download draws its bar wherever its line shows (a toast, the inline progress).
   if (
     p?.fraction !== undefined &&
@@ -385,9 +398,17 @@ export function withBase(c: KitCtx): View {
       ...(rows.some((r) => r.source === "local") ? [] : ["settings.reset"]),
       ...(rows.some((r) => r.advanced) ? [] : ["settings.advanced"]),
     ]);
-    return gone.size === 0
-      ? titled
-      : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
+    const trimmed =
+      gone.size === 0
+        ? titled
+        : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
+    // The dialog the host opened closes on Done (the scrim and Escape answer too).
+    if (!c.dialog || !c.copy.has("common.done")) return trimmed;
+    return {
+      ...trimmed,
+      copy: [...trimmed.copy, "common.done"],
+      decisions: { ...trimmed.decisions, primary: "common.done" },
+    };
   }
   return view;
 }
@@ -503,8 +524,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {progressFor(c)}
         {percentFor(c)}
         {callout(c, errorKeys)}
-        {actions(c, p.controls)}
-        {links(c, p.links)}
+        {controlsAndLinks(c, p)}
         {a11yOnly(c)}
         {p.footnote.length ? paragraphs(c, p.footnote, "footnote") : null}
         {attribution(c, p.meta)}
@@ -804,6 +824,36 @@ function deviceLimitContent(c: KitCtx): ReactNode {
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+}
+
+/** The controls and links of a screen. In a modal dialog under the Windows or GNOME chrome the footer is
+ *  drawn last, so the links come before it in the DOM and Tab follows the eye (WCAG 2.4.3), and
+ *  the sign-in methods are choices in the body with Cancel the one command in the footer. */
+function controlsAndLinks(
+  c: KitCtx,
+  p: { controls: string[]; links: string[] },
+): ReactNode {
+  const variant = platformVariant(c.resolved.theme);
+  if (
+    !(
+      c.dialog &&
+      (variant === "windows" || variant === "gnome" || variant === "macos")
+    )
+  )
+    return (
+      <>
+        {actions(c, p.controls)}
+        {links(c, p.links)}
+      </>
+    );
+  const { choices, footer } = dialogControls(p.controls, c.view);
+  return (
+    <>
+      {actions(c, choices, false, "choices")}
+      {links(c, p.links)}
+      {actions(c, footer, false, undefined, variant === "macos")}
     </>
   );
 }

@@ -75,7 +75,7 @@ export const toast = {
   success: (title: string, opts?: ToastOptions) => show("success", title, opts),
   info: (title: string, opts?: ToastOptions) => show("info", title, opts),
   warning: (title: string, opts?: ToastOptions) => show("warning", title, opts),
-  /** An `ApiError` (or any thrown value) is worded by `errorCopy`; a string is the title. */
+  /** An `HttpError` (or any thrown value) is worded by `errorCopy`; a string is the title. */
   error: (errorOrTitle: unknown, opts?: ToastOptions) => {
     if (typeof errorOrTitle === "string")
       return show("error", errorOrTitle, opts);
@@ -91,6 +91,51 @@ export const toast = {
   },
   dismiss: (id?: string | number) => sonner.dismiss(id),
 };
+
+/**
+ * An open drawer keeps toasts off its footer: from `lg` up the toaster sits beside the panel, below
+ * `lg` (the drawer is full screen) it moves to the top. `Drawer` reports its width while open.
+ */
+let drawerRem: number | null = null;
+const drawerSubs = new Set<() => void>();
+export function useToastClearsDrawer(open: boolean, rem: number): void {
+  React.useEffect(() => {
+    if (!open) return;
+    drawerRem = rem;
+    drawerSubs.forEach((f) => f());
+    return () => {
+      drawerRem = null;
+      drawerSubs.forEach((f) => f());
+    };
+  }, [open, rem]);
+}
+function useDrawerRem(): number | null {
+  return React.useSyncExternalStore(
+    (f) => {
+      drawerSubs.add(f);
+      return () => drawerSubs.delete(f);
+    },
+    () => drawerRem,
+    () => null,
+  );
+}
+
+function useMatches(query: string): boolean {
+  const [on, setOn] = React.useState(
+    () =>
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(query).matches,
+  );
+  React.useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setOn(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+  return on;
+}
 
 /** Is the viewport phone-sized? (Toasts move to the top there.) */
 function usePhone(): boolean {
@@ -136,6 +181,8 @@ export function AppToaster({
 } = {}): React.ReactElement {
   const { theme } = useTheme();
   const phone = usePhone();
+  const wide = useMatches("(min-width: 1024px)");
+  const drawer = useDrawerRem();
   React.useEffect(() => {
     mounted++;
     return () => {
@@ -150,24 +197,47 @@ export function AppToaster({
     <Sonner
       theme={theme}
       position={
-        phone ? (phoneBottom ? "bottom-center" : "top-center") : "bottom-right"
+        phone
+          ? phoneBottom
+            ? "bottom-center"
+            : "top-center"
+          : drawer !== null && !wide
+            ? "top-center"
+            : "bottom-right"
       }
-      {...(phoneBottom
+      {...(drawer !== null && wide
         ? {
-            // The portal's toasts sit inside its content column (82rem, 1.5rem gutters), not the window's edge.
             offset: {
-              bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
-              right: "max(1.5rem, calc((100% - 82rem) / 2 + 1.5rem))",
+              bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+              right: `calc(${drawer}rem + 24px)`,
             },
-            mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
           }
-        : {
-            // Above a sticky save bar while one is up.
-            offset: { bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))` },
-            mobileOffset: {
-              bottom: `calc(16px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
-            },
-          })}
+        : drawer !== null
+          ? {
+              // The full-screen drawer's header stays clear.
+              offset: { top: "5.5rem" },
+              mobileOffset: { top: "5.5rem" },
+            }
+          : phoneBottom
+            ? {
+                // The portal's toasts sit inside its content column (82rem, 1.5rem gutters), not the window's edge.
+                offset: {
+                  bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
+                  right: "max(1.5rem, calc((100% - 82rem) / 2 + 1.5rem))",
+                },
+                mobileOffset: {
+                  bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)`,
+                },
+              }
+            : {
+                // Above a sticky save bar while one is up.
+                offset: {
+                  bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+                },
+                mobileOffset: {
+                  bottom: `calc(16px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+                },
+              })}
       visibleToasts={3}
       // Sonner's own sheet sets ui-sans-serif on the toaster; the toast reads in the app's face.
       style={{ fontFamily: "inherit" }}

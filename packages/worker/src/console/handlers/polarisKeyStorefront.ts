@@ -52,7 +52,10 @@ import {
 } from "../../core/storefront/projection.js";
 import { GROUP_NAME_MAX } from "../../core/storefront/polarisKeyListing.js";
 import { SERVICES } from "../../mount.js";
-import { readListing } from "../../services/distribution/public.js";
+import {
+  inheritStored,
+  readListing,
+} from "../../services/distribution/public.js";
 import { storefrontTileView } from "../../services/identity/public.js";
 import { storefrontAnalytics } from "../../services/identity/public.js";
 import { polarisKeyStatus } from "../../services/identity/public.js";
@@ -206,7 +209,11 @@ export async function polarisKeyListingFit(
   db: Db,
   product: string,
 ): Promise<FitStatus | null> {
-  const stored = await readListing(db, product);
+  const stored = await inheritStored(
+    db,
+    product,
+    await readListing(db, product),
+  );
   if (!stored) return null;
   const locale = stored.model.app.defaultLocale;
   const [row] = fitReport({ model: stored.model }, [POLARIS_KEY_STORE]);
@@ -233,11 +240,12 @@ export function polarisKeyPorts(ctx: Omit<Ctx, "req">): FirstPartyPorts {
   return {
     async readListing(slug) {
       const stored = await readListing(db, slug);
-      return stored
+      const shown = await inheritStored(db, slug, stored);
+      return stored && shown
         ? {
             model: stored.model,
             projection: projectListing(
-              { model: stored.model },
+              { model: shown.model },
               POLARIS_KEY_STORE,
             ),
           }

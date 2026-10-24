@@ -29,11 +29,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   isSealedEnvelope,
   openManagedValue,
@@ -44,6 +40,7 @@ import { planResync } from "../src/services/release/linkExisting.js";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -212,8 +209,9 @@ async function linked(profiles: ProfileDecl[], opts: PushOptions = {}) {
     ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

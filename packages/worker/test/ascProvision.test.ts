@@ -16,11 +16,7 @@ import type { AscResource } from "../src/core/stores/apple/client.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { APP_STORE_EVENTS } from "../src/services/commerce/bridge.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import {
@@ -32,6 +28,7 @@ import {
   audits,
   type AscWorld,
 } from "./ascWorld.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -312,8 +309,9 @@ async function call(
   key: string | null = freshKey(),
   method = "POST",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -422,7 +420,7 @@ describe("setup/notifications-url", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       action: "distribution.asc.app.notifications_url",
-      actor_sub: "u1",
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
       target_id: APPLE_ID,
     });
     const [row] = await ledger(w);
@@ -964,7 +962,7 @@ describe("setup/checklist and the provisioning view", () => {
     expect(list.find((c) => c.item === "app_privacy")).toMatchObject({
       done: true,
       doneAt: NOW,
-      doneBy: "u1",
+      doneBy: await consoleActor(w.env, w.db, "u1"),
       link: `https://appstoreconnect.apple.com/apps/${APPLE_ID}/distribution/privacy`,
     });
     await call(w, "/setup/availability");

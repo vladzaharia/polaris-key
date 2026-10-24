@@ -271,6 +271,41 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "Sign in to your Polaris Locker account on this device, then try again.",
   },
+  cursor_expired: {
+    title: "Sync out of date",
+    message:
+      "This device hasn't synced in too long. It will start over from your saved data.",
+  },
+  client_mismatch: {
+    title: "Sync mismatch",
+    message:
+      "This sync belongs to another device. Restart the app and try again.",
+  },
+  value_invalid: {
+    title: "Setting not saved",
+    message: "That value isn't valid for this setting.",
+  },
+  op_invalid_for_policy: {
+    title: "Change not allowed",
+    message: "That change isn't allowed for this setting.",
+  },
+  setting_not_synced: {
+    title: "Not synced",
+    message: "This setting isn't synced to your account.",
+  },
+  collection_unknown: {
+    title: "Unknown collection",
+    message: "This collection isn't available.",
+  },
+  quota_exceeded: {
+    title: "Storage full",
+    message: "Your synced storage is full. Free some space, then try again.",
+  },
+  writes_paused: {
+    title: "Sync paused",
+    message:
+      "Syncing is paused for a moment. Your changes are kept and will sync later.",
+  },
   email_mismatch: {
     title: "Email not verified",
     message:
@@ -840,7 +875,8 @@ export const COPY_GATE: Readonly<Record<string, CopyEntry>> = {
   },
   "version-too-old": {
     title: "Update required",
-    message: "This version is no longer supported. Update the app to continue.",
+    message:
+      "This version is no longer supported. Update {product} to continue.",
   },
   "version-too-new": {
     title: "Not available on this license",

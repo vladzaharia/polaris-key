@@ -28,7 +28,8 @@
  *     cautious direction. What the survivor had before the join stays, and so does anything added
  *     to it since. A licence the survivor detached since the join stays floating (it is added
  *     again by its key, under the claim rules). A licence that goes back revokes every registry
- *     token the survivor minted on it during the window (F-21, `onLicenseOwnershipEnded`), and its
+ *     token the survivor minted on it during the window (F-21, `onLicenseOwnershipEnded`) and every
+ *     operator-minted token of it (F-33b.1, pre-join ones too: fail closed, re-mint), and its
  *     devices' bindings go.
  *   - Details the survivor took from the absorbed account (a name, a picture, a primary email, the
  *     passkey user handle) are cleared again where they are still the absorbed account's values.
@@ -809,7 +810,8 @@ export async function undoMerge(
   }
 
   // F-21: a licence that went back stops every registry token the survivor minted on it during
-  // the window (the absorbed account's own tokens moved back above, untouched), and its devices'
+  // the window (the absorbed account's own tokens moved back above, untouched), F-33b.1: and
+  // every operator-minted token of it, pre-join ones too (fails closed), and its devices'
   // bindings to the survivor go; each binds again at its next sign-in.
   for (const [product, id] of snap.licenses) {
     const owner = await db.first<{ account_id: string | null }>(

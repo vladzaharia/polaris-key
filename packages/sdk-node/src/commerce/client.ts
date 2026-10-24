@@ -106,7 +106,7 @@ export class CommerceClient {
    * Claim one store purchase. `payload` is the store's own fields, sent beside `store`:
    * App Store `{ signedTransaction }`, Play `{ productId, purchaseToken }`, Steam
    * `{ ticket, dlcAppId }`. With `sync: true`, an `ok` syncs before resolving, so
-   * `license.isEntitled(flag)` answers the new grant.
+   * `entitlements.has(flag)` answers the new grant.
    */
   async claim(
     store: CommerceStore,

@@ -87,7 +87,16 @@ export interface AppSecurityOptions {
    * console's own pages. Only `brandedHtmlSecurityHeaders` reads it.
    */
   brand?: BrandPageBrand;
+  /**
+   * One inline script's `'sha256-…'` source (the console sign-in card's, `console/signinScript.ts`).
+   * It adds `script-src <hash>` and `connect-src 'self'` (the script posts to this origin), and
+   * nothing else: never `'unsafe-inline'`. Anything that is not a single sha256 source is dropped.
+   * Only `brandedHtmlSecurityHeaders` reads it.
+   */
+  scriptHash?: string;
 }
+
+const SCRIPT_HASH = /^'sha256-[A-Za-z0-9+/]{43}='$/;
 
 /**
  * Static-page policy: script-free server-rendered HTML. `default-src 'none'` covers
@@ -112,7 +121,12 @@ const STATIC_HTML_CSP = [
 function brandedHtmlCsp(
   imgOrigin: string | null = null,
   brand?: BrandPageBrand,
+  scriptHash?: string,
 ): string {
+  const script =
+    scriptHash !== undefined && SCRIPT_HASH.test(scriptHash)
+      ? [`script-src ${scriptHash}`, "connect-src 'self'"]
+      : [];
   return [
     "default-src 'none'",
     "base-uri 'none'",
@@ -121,6 +135,7 @@ function brandedHtmlCsp(
     `img-src 'self' data:${imgOrigin ? ` ${imgOrigin}` : ""}`,
     `style-src ${brandPageStyleSource(brand)}`,
     "font-src 'self'",
+    ...script,
   ].join("; ");
 }
 
@@ -178,7 +193,7 @@ export function brandedHtmlSecurityHeaders(
   commonHeaders(headers);
   headers.set(
     "content-security-policy",
-    brandedHtmlCsp(cspImageOrigin(opts.imgOrigin), opts.brand),
+    brandedHtmlCsp(cspImageOrigin(opts.imgOrigin), opts.brand, opts.scriptHash),
   );
   return headers;
 }

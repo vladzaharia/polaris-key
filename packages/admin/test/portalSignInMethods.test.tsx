@@ -91,6 +91,7 @@ function maraMethods(over: Partial<PortalMethods> = {}): PortalMethods {
         methodId: "lnk_mail1",
         email: ACCOUNT.email,
         primary: true,
+        productCount: 0,
         connectedAt: NOW_S - 90 * DAY,
         lastUsedAt: NOW_S - 14 * DAY,
         canRemove: true,
@@ -100,6 +101,7 @@ function maraMethods(over: Partial<PortalMethods> = {}): PortalMethods {
         methodId: "lnk_mail2",
         email: "mara.f@proton.me",
         primary: false,
+        productCount: 0,
         connectedAt: NOW_S - 20 * DAY,
         lastUsedAt: null,
         canRemove: true,
@@ -116,6 +118,7 @@ function maraMethods(over: Partial<PortalMethods> = {}): PortalMethods {
         synced: true,
         aaguid: ICLOUD,
         addedFrom: "Safari on macOS",
+        name: null,
         canRemove: true,
         reason: null,
       },
@@ -258,10 +261,6 @@ describe("Sign-in methods (PX-13)", () => {
         `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${ACCOUNT.email}.`,
       ),
     ).toBeTruthy();
-    // A Worker without PX-W19's fields (`productCount`, `name`) offers neither Make primary nor Rename.
-    expect(
-      within(region).queryByRole("button", { name: /Make primary|Rename/ }),
-    ).toBeNull();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await axeViolations()).toEqual([]);
   });
@@ -1119,23 +1118,29 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
 
 describe("Sign-in methods model (PX-13)", () => {
   it("names a passkey by its provider, else where it was added, else Passkey", () => {
-    expect(passkeyName({ aaguid: ICLOUD, addedFrom: "Safari on macOS" })).toBe(
-      "iCloud Keychain",
-    );
+    expect(
+      passkeyName({ name: null, aaguid: ICLOUD, addedFrom: "Safari on macOS" }),
+    ).toBe("iCloud Keychain");
     expect(
       passkeyName({
+        name: null,
         aaguid: "BADA5566-A7AA-401F-BD96-45619A55120D",
         addedFrom: null,
       }),
     ).toBe("1Password");
     expect(
       passkeyName({
+        name: null,
         aaguid: "00000000-0000-0000-0000-000000000000",
         addedFrom: "Firefox on Windows",
       }),
     ).toBe("Firefox on Windows");
-    expect(passkeyName({ aaguid: null, addedFrom: null })).toBe("Passkey");
-    expect(passkeyName({ aaguid: null, addedFrom: "  " })).toBe("Passkey");
+    expect(passkeyName({ name: null, aaguid: null, addedFrom: null })).toBe(
+      "Passkey",
+    );
+    expect(passkeyName({ name: null, aaguid: null, addedFrom: "  " })).toBe(
+      "Passkey",
+    );
     expect(passkeyProvider(ICLOUD)?.glyph).toBe("apple");
   });
 
@@ -1366,7 +1371,11 @@ describe("Make primary and Rename (PX-W19)", () => {
 
   it("names a passkey by what its holder called it first", () => {
     expect(
-      passkeyName({ aaguid: ICLOUD, addedFrom: "Safari", name: "Work laptop" }),
+      passkeyName({
+        aaguid: ICLOUD,
+        addedFrom: "Safari",
+        name: "Work laptop",
+      }),
     ).toBe("Work laptop");
     expect(passkeyName({ aaguid: null, addedFrom: null, name: null })).toBe(
       "Passkey",

@@ -24,6 +24,7 @@ import {
   settingsRegistryFor,
   type SettingsRegistry,
 } from "./core/settings/registry.js";
+import { setDisplayNameRegistry } from "./core/accounts/reservedDisplayNames.js";
 import type { ByteRoute } from "./core/assets/bytesHost.js";
 import type {
   OwnerlessRegistryRoute,
@@ -70,6 +71,8 @@ bindServiceRegistry(SERVICES);
  * It is the same object Core's dispatchers hand service handlers (`settingsRegistryFor`, ST-04).
  */
 export const SETTINGS: SettingsRegistry = settingsRegistryFor(SERVICES);
+// PX-W13b: Core's display-name check reads Identity's product approval through this registry.
+setDisplayNameRegistry(SETTINGS);
 
 /**
  * The bytes-host allowlist (P2-01, `core/assets/bytesHost.ts`): the only routes that can answer on

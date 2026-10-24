@@ -16,6 +16,11 @@
  * - The columns follow the grid's own width (4 from 1488 px, 3 from 976, 2 from 680, else 1).
  */
 
+import { deviceSummaryQuery, integrationQuery, coreBReads } from "../data.js";
+import { licensesQuery } from "../../license/data.js";
+import { catalogQuery, profilesQuery } from "../../config/data.js";
+import { releaseStoreQuery } from "../../release/data.js";
+import { storefrontsQuery } from "../../storefronts/data.js";
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
@@ -25,8 +30,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import {
-  ApiError,
-  api,
+  HttpError,
   type LicenseSummary,
   type ProductDetail,
   type ReleaseDto,
@@ -53,7 +57,6 @@ import {
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
 import { Link, navigate } from "../../../router.js";
 import {
@@ -76,7 +79,6 @@ import {
 } from "./overviewAttention.js";
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "../model/activityVerbs.js";
-import { fetchDeviceSummary } from "./Devices.js";
 import { declaresSaves, noCatalog, userSettings } from "../../sync/data.js";
 import { IntegrationSteps } from "../components/IntegrationSteps.js";
 import { IntegrationPane, OverviewHero } from "../components/OverviewHero.js";
@@ -148,13 +150,11 @@ function OverviewBody({
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
   const features = runningFeatures(p);
   const licenses = useQuery({
-    queryKey: qk.licenses(slug),
-    queryFn: () => api.licenses(slug),
+    ...licensesQuery(slug),
     enabled: on(p, "license"),
   });
   const integration = useQuery({
-    queryKey: qk.integration(slug),
-    queryFn: () => api.integration(slug),
+    ...integrationQuery(slug),
     enabled: enabled.length > 0,
   });
   const view = integration.data;
@@ -395,7 +395,7 @@ export function catalogMoment(
 ): MomentObservation {
   if (!enabled) return UNKNOWN;
   if (catalog.isError)
-    return catalog.error instanceof ApiError && catalog.error.status === 404
+    return catalog.error instanceof HttpError && catalog.error.status === 404
       ? BEFORE
       : UNKNOWN;
   if (!catalog.data) return UNKNOWN;
@@ -433,19 +433,16 @@ function OverviewMoments({
   launched: MomentObservation;
 }): React.ReactElement {
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     enabled: on(p, "config"),
     retry: false,
   });
   const store = useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
+    ...releaseStoreQuery(slug),
     enabled: on(p, "release"),
   });
   const stores = useQuery({
-    queryKey: qk.storefronts(slug),
-    queryFn: () => api.storefronts(slug),
+    ...storefrontsQuery(slug),
     enabled: on(p, "distribution"),
     retry: false,
   });
@@ -628,10 +625,7 @@ function LicenseTile({
   licenses: LicensesQuery;
   attention: number;
 }): React.ReactElement {
-  const devices = useQuery({
-    queryKey: qk.devicesSummary(slug),
-    queryFn: () => fetchDeviceSummary(slug),
-  });
+  const devices = useQuery(deviceSummaryQuery(slug));
   const list = licenses.data?.licenses ?? [];
   const now = Date.now() / 1000;
   const active = list.filter(
@@ -674,16 +668,12 @@ function ConfigTile({
   attention: number;
 }): React.ReactElement {
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     retry: false,
   });
-  const profiles = useQuery({
-    queryKey: qk.profiles(slug),
-    queryFn: () => api.profiles(slug),
-  });
+  const profiles = useQuery(profilesQuery(slug));
   const missing =
-    catalog.error instanceof ApiError && catalog.error.status === 404;
+    catalog.error instanceof HttpError && catalog.error.status === 404;
   const entries = catalog.data?.entries ?? [];
   const secrets = entries.filter(
     (e) => (e as { kind?: string }).kind === "secret",
@@ -725,10 +715,7 @@ function IdentityTile({
   slug: string;
   attention: number;
 }): React.ReactElement {
-  const portal = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const portal = useQuery(coreBReads.portal(slug));
   const s = portal.data;
   return (
     <FeatureCard
@@ -757,8 +744,7 @@ function SyncTile({
   attention: number;
 }): React.ReactElement {
   const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
+    ...catalogQuery(slug),
     retry: false,
   });
   const empty = noCatalog(catalog.error);

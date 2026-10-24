@@ -18,9 +18,12 @@
 import {
   ADMIN_TOKEN_ENV,
   DEFAULT_BASE_URL,
-  adminToken,
-  httpError,
+  adminTokenFrom,
+  type TokenSource,
+  failureOf,
+  hostLabel,
   normalizeBaseUrl,
+  statusHint,
   readJson,
   request,
 } from "./bundle.js";
@@ -37,7 +40,8 @@ export interface MigrateOptions {
   target?: string;
   baseUrl?: string;
   /** `process.env.PKEY_ADMIN_TOKEN`, read by the caller. */
-  token?: string;
+  /** The bearer token, or a function that resolves it once the local checks have passed. */
+  token?: TokenSource;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
 }
@@ -69,14 +73,11 @@ export type MigrateResult =
 
 /** These routes take a `migrations:report` token only; a 403 means it is not one. */
 function hint(status: number): string | undefined {
-  if (status === 401)
-    return `The token in ${ADMIN_TOKEN_ENV} was refused (unknown, revoked or expired). Mint a replacement in the console: /manage -> API tokens.`;
+  if (status === 401) return "Run pkey login.";
   if (status === 403)
-    return "Not allowed. The token needs the `migrations:report` scope, and its identity must be a platform admin.";
-  if (status === 404) return "No such job or run.";
-  if (status === 429)
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  return undefined;
+    return "An API token needs the migrations:report scope, and its owner must be a platform admin.";
+  if (status === 404) return "Check the job or run id.";
+  return statusHint(status);
 }
 
 export async function runMigrate(opts: MigrateOptions): Promise<MigrateResult> {
@@ -85,7 +86,7 @@ export async function runMigrate(opts: MigrateOptions): Promise<MigrateResult> {
     throw new Error(
       `${opts.verb === "dry-run" ? "A job id" : "A run id"} is required.\n${MIGRATE_USAGE}`,
     );
-  const token = adminToken(opts.token, "migrate");
+  const token = await adminTokenFrom(opts.token, "migrate");
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV,
@@ -108,16 +109,28 @@ export async function runMigrate(opts: MigrateOptions): Promise<MigrateResult> {
     ...(post ? { body: JSON.stringify({ job: target }) } : {}),
     signal: opts.signal,
   });
-  if (!res.ok) throw await httpError(res, `Reading ${url}`, hint);
+  if (!res.ok)
+    throw await failureOf(
+      res,
+      url,
+      opts.verb === "list"
+        ? "read the migration jobs"
+        : opts.verb === "report"
+          ? "read the report"
+          : "run the dry run",
+      hint,
+    );
   const payload = await readJson(res, url);
   if (opts.verb === "list") {
     if (!Array.isArray(payload.jobs))
-      throw new Error(`${url} answered ${res.status} without a job list.`);
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without a job list.`,
+      );
     return { verb: "list", jobs: payload.jobs as never };
   }
   const run = payload.run as MigrationRun | undefined;
   if (!run || typeof run.id !== "string")
-    throw new Error(`${url} answered ${res.status} without a run.`);
+    throw new Error(`${hostLabel(url)} answered ${res.status} without a run.`);
   return { verb: opts.verb, run };
 }
 

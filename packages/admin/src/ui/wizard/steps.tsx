@@ -19,6 +19,8 @@ export interface Choice<V extends string = string> {
   /** Marks the card "Recommended", with this reason beside it ("" for no reason). */
   recommended?: string;
   disabled?: boolean;
+  /** A control that modifies this choice, shown inside its card while it is selected. */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -48,6 +50,7 @@ export function ChoiceStep<V extends string = string>({
       options={choices.map((c) => ({
         value: c.value,
         disabled: c.disabled,
+        ...(c.footer ? { footer: c.footer } : {}),
         label:
           c.recommended !== undefined ? (
             <span className="inline-flex flex-wrap items-center gap-2">

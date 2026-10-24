@@ -8,8 +8,8 @@ import { type LicenseSummary } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { type DataColumn } from "../../../../ui/data-table/index.js";
+import { DevicesCell } from "./DevicesCell.js";
 import {
-  DevicesCell,
   DurationCell,
   HolderPill,
   LicenseCell,

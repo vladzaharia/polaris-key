@@ -19,7 +19,12 @@ import {
   IMG_ORIGIN,
   LONG_SLUG,
   PACK_ID,
+  PLATFORM_ONLY_ME,
+  PLATFORM_ONLY_READY,
+  PRODUCT_ROLE_ME,
+  PLATFORM_PAUSE_ITEM,
   resolve,
+  SYNC_USAGE,
 } from "./layoutFixtures.js";
 import {
   columnBreaches,
@@ -32,6 +37,7 @@ import {
   unlabelledScrollers,
 } from "./pageChecks.js";
 import { reduceTransparency } from "../../ui-qa/src/index.ts";
+import { pausedPlatformSettings } from "./layoutData.js";
 import { staleUxDebt, uxBarChecked } from "./uxBar.js";
 import {
   probeLayout,
@@ -108,8 +114,224 @@ interface Case {
   hash: string;
   /** Opens a drawer or dialog after the page settles. */
   act?: (page: Page) => Promise<void>;
+  /** Answers for these API paths in place of the fixtures (a different member, a paused product). */
+  override?: Record<string, unknown>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
+  /** Replaces what `resolve` answers for a path (ST-31.15: who the member is, who can help). */
+  api?: Record<string, unknown>;
+}
+
+const LONG_NAME =
+  "Starfall Chronicles Remastered Definitive Collector's Edition of the Long Night, Part Two: The Reckoning of the Seven Moons and the Ninefold Tide, Anniversary Re-release";
+
+/** ST-31.15: the no-access cases; the 200 %-text and small-phone rows open every one. */
+const NO_ACCESS_CASES = [
+  "no-access:product",
+  "no-access:two-products",
+  "no-access:unknown-role",
+  "no-access:nobody",
+  "no-access:home",
+  "no-access:long-name",
+  "no-access:long-address",
+];
+
+/** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
+function noAccessCases(): Case[] {
+  const me = (
+    email: string,
+    roles: unknown[],
+    products: { slug: string; name: string; schemaVersion: number }[],
+    productAreas: Record<string, string[]> = {},
+  ) => ({
+    sub: "m-x",
+    name: "Lucía Ortega",
+    email,
+    csrf: "c",
+    platformAdmin: false,
+    sessionExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    products,
+    permissions: {
+      roles,
+      platform: { view: ["console"], edit: ["console"] },
+      products: Object.fromEntries(
+        Object.entries(productAreas).map(([k, v]) => [k, { view: v, edit: v }]),
+      ),
+    },
+  });
+  const djdl = [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }];
+  const narrowed = {
+    role: "product_admin",
+    scope: "product:djdl",
+    areas: ["ship", "commerce"],
+    source: "grant",
+  };
+  const admins = (list: unknown[]) => ({
+    "/manage/api/access/admins": {
+      scope: "product:djdl",
+      area: "license",
+      admins: list,
+    },
+  });
+  const people = [
+    { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
+    { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
+    { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },
+  ];
+  const lucia = me("lucia@example.com", [narrowed], djdl, {
+    djdl: ["ship", "commerce"],
+  });
+  const list: Case[] = [
+    {
+      name: "no-access:product",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins(people) },
+    },
+    {
+      name: "no-access:two-products",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            narrowed,
+            {
+              role: "product_admin",
+              scope: "product:acme",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          [...djdl, { slug: "acme", name: "Acme", schemaVersion: 2 }],
+          {
+            djdl: ["ship", "commerce"],
+            acme: ["core", "license", "ship", "commerce"],
+          },
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:unknown-role",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            {
+              role: "workspace_auditor",
+              scope: "platform",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          djdl,
+          {},
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:nobody",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins([]) },
+    },
+    {
+      name: "no-access:home",
+      hash: "#/",
+      api: {
+        "/manage/api/me": me(
+          "noor@studio.example.com",
+          [
+            {
+              role: "console_access",
+              scope: "platform",
+              areas: null,
+              source: "rule",
+            },
+          ],
+          [],
+        ),
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: people.slice(1),
+        },
+      },
+    },
+    {
+      name: "no-access:long-address",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          email: "lucia.ortega@studio-operations.example.com",
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:long-name",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+      // No title is cut: the h1 shows every line it wraps to (ST-31.15 B1).
+      act: async (page) => {
+        const h1 = page.getByRole("heading", { level: 1 });
+        await h1.waitFor();
+        const clipped = await h1.evaluate(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 1 ||
+            getComputedStyle(el).webkitLineClamp !== "none",
+        );
+        expect(clipped, "the h1 is clipped").toBe(false);
+      },
+    },
+  ];
+  // Each case's `/products` is the member's own, so the switcher and sidebar are what they see.
+  return list.map((c) => {
+    const m = c.api!["/manage/api/me"] as { products: { slug: string }[] };
+    const all = (
+      resolve("/manage/api/products") as {
+        products: { slug: string; name: string }[];
+      }
+    ).products;
+    const own = new Set(m.products.map((p) => p.slug));
+    const names = new Map(
+      m.products.map((p) => [p.slug, (p as { name?: string }).name]),
+    );
+    return {
+      ...c,
+      api: {
+        ...c.api,
+        "/manage/api/products": {
+          products: all
+            .filter((p) => own.has(p.slug))
+            .map((p) => ({ ...p, name: names.get(p.slug) ?? p.name })),
+        },
+      },
+    };
+  });
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -167,6 +389,7 @@ function cases(): Case[] {
         hash: `#/p/djdl/license/licenses/${id}/${tab}`,
       });
   list.push({ name: `long:overview`, hash: `#/p/${LONG_SLUG}` });
+  list.push({ name: `long:sync-usage`, hash: `#/p/${LONG_SLUG}/sync/usage` });
   list.push({ name: `long:settings`, hash: `#/p/${LONG_SLUG}/settings` });
   for (const p of GLOBAL_PAGES) {
     list.push({ name: `global:${p.page}`, hash: `#/${p.path}` });
@@ -200,11 +423,220 @@ function cases(): Case[] {
           .waitFor();
       },
     },
+    // ST-44b: Home while Cloud Sync writes are paused. Superadmin is `global:home` (the platform
+    // row among the product rows); a Platform admin with no product grant sees the row and the
+    // first-run state; a product admin never gets the item from the server.
+    {
+      name: "home:paused-platform-only",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PLATFORM_ONLY_ME,
+        "/manage/api/products": { products: [] },
+        "/manage/api/platform/ready": PLATFORM_ONLY_READY,
+        "/manage/api/attention": { items: [PLATFORM_PAUSE_ITEM] },
+        "/manage/api/platform/settings": pausedPlatformSettings(),
+      },
+    },
+    {
+      name: "home:paused-product-role",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/attention": {
+          items: (
+            (resolve("/manage/api/attention") as { items: { id: string }[] })
+              .items ?? []
+          ).filter((i) => i.id !== PLATFORM_PAUSE_ITEM.id),
+        },
+      },
+    },
+    {
+      name: "dialog:resume-from-home",
+      hash: "#/",
+      override: { "/manage/api/platform/settings": pausedPlatformSettings() },
+      act: async (page) => {
+        await page.getByRole("button", { name: "Resume writes" }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
+    {
+      name: "waiting:package-feeds",
+      hash: "#/p/waiting/distribution/feeds",
+    },
+    // F-34.7: a deep link to an ecosystem the product does not declare (the guided panel).
+    {
+      name: "djdl:package-feeds?undeclared",
+      hash: "#/p/djdl/distribution/feeds/swift",
+    },
+    // F-33b.4: Service tokens (product) and Registry tokens (platform, no Create), and the mint dialog.
+    {
+      name: "djdl:feeds/tokens",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+    },
+    { name: "global:platform-feeds/tokens", hash: "#/platform/feeds/tokens" },
+    {
+      name: "dialog:new-service-token",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+      act: async (page) => {
+        await page.getByRole("button", { name: "New token…" }).click();
+        await page.getByRole("dialog", { name: "New service token" }).waitFor();
+      },
+    },
+    // U-05.20: Cloud Sync's Usage tab is a route tab, not a nav row: its empty twin by hand.
+    { name: "empty:sync-usage", hash: "#/p/empty/sync/usage" },
+    // U-05.21: Setup as a product admin while writes are paused (the access line, no Resume).
+    {
+      name: "djdl:sync-setup?role",
+      hash: "#/p/djdl/sync/setup",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/products/djdl/sync/usage": {
+          ...SYNC_USAGE,
+          paused: {
+            since: Math.floor(Date.now() / 1000) - 3600,
+            by: null,
+            reason: null,
+          },
+        },
+      },
+    },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
     },
+    // ST-31.11/12: Platform → Members' overlays: the Invite drawer (empty, and filled to its
+    // tallest), a member's roles, and the drawer's Add a role and Edit areas views. Each checks
+    // that the primary action is in view whatever the window.
+    {
+      name: "global:platform-members?invite",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?invite-filled",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /^Product admin/ }).click();
+        await drawer.getByRole("combobox").click();
+        await page.getByRole("option").first().click();
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
+      },
+    },
+    // ST-31.14: no name or short address breaks inside a word in the Member cell.
+    {
+      name: "djdl:settings-members?words",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const broken = await page.evaluate(() => {
+          const out: string[] = [];
+          for (const el of document.querySelectorAll<HTMLElement>(
+            'table[aria-label="Admins"] td:first-child p',
+          )) {
+            const node =
+              el.firstChild?.nodeType === 3
+                ? el.firstChild
+                : el.querySelector("span")?.firstChild;
+            if (!node || node.nodeType !== 3) continue;
+            const text = node.textContent ?? "";
+            if (text.length > 24) continue;
+            let at = 0;
+            for (const word of text.split(/\s+/)) {
+              const i = text.indexOf(word, at);
+              at = i + word.length;
+              const r = document.createRange();
+              r.setStart(node, i);
+              r.setEnd(node, i + word.length);
+              const tops = new Set(
+                [...r.getClientRects()].map((x) => Math.round(x.top)),
+              );
+              if (tops.size > 1) out.push(`${text}: ${word}`);
+            }
+          }
+          return out;
+        });
+        if (broken.length > 0)
+          throw new Error(`broken words: ${broken.join("; ")}`);
+      },
+    },
+    // ST-31.14: the Invite drawer from the product's Members tab (role fixed, product fixed).
+    {
+      name: "djdl:settings-members?invite",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "djdl:settings-members?invite-filled",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
+      },
+    },
+    // ST-31.13: the Roles tab, and on a phone the tile that picks the matrix column.
+    {
+      name: "global:platform-members?tab=roles",
+      hash: "#/platform/members?tab=roles",
+      act: async (page) => {
+        const tile = page.getByRole("button", { name: /^Console access/ });
+        if (await tile.isVisible()) await tile.click();
+      },
+    },
+    {
+      name: "global:platform-members?edit-roles",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await openEditDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?add-role",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        await drawer.getByRole("button", { name: "Add a role" }).click();
+        // The drawer's title changes with the view.
+        await page
+          .getByRole("dialog", { name: /Add a role for Sam Okoye/ })
+          .getByRole("radio", { name: /^Product admin/ })
+          .waitFor();
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "global:platform-members?edit-areas",
+      hash: "#/platform/members",
+      act: async (page) => {
+        const drawer = await openEditDrawer(page);
+        const edit = drawer
+          .getByRole("button", { name: /Edit areas of/ })
+          .first();
+        if ((await edit.count()) > 0 && (await edit.isEnabled())) {
+          await edit.click();
+          await page
+            .getByRole("dialog", { name: /Areas for Sam Okoye/ })
+            .getByRole("button", { name: "Save areas" })
+            .waitFor();
+          await primaryInView(page);
+        }
+      },
+    },
+
     {
       name: "djdl:rollouts?view=matrix&cell",
       hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
@@ -235,6 +667,11 @@ function cases(): Case[] {
       name: `djdl:storefronts?flow=${step}`,
       hash: `#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=${step}`,
     })),
+    // A-27.11: the listing editor scoped to a store (the page's switcher), on the fit tab.
+    {
+      name: "djdl:presentation-listing?store",
+      hash: "#/p/djdl/settings/presentation/listing?tab=fit&store=google-play",
+    },
     // B-216: the New license wizard's segments at 200 % text (they read "Lim…" and "Deli…").
     {
       name: "dialog:new-license",
@@ -242,6 +679,68 @@ function cases(): Case[] {
       act: async (page) => {
         await page.getByRole("button", { name: "New license" }).click();
         await page.getByRole("dialog").first().waitFor();
+      },
+    },
+    // F-34.8: the off page, and the Turn off package feeds dialog over the Packages cards.
+    { name: "feedsoff:package-feeds", hash: "#/p/feedsoff/distribution/feeds" },
+    {
+      name: "dialog:turn-off-feeds",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    // M6: the Services switch opens the same typed dialog.
+    {
+      name: "dialog:turn-off-feeds-services",
+      hash: "#/p/djdl/settings/features",
+      act: async (page) => {
+        await page.getByRole("switch", { name: /Packages/ }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      name: "dialog:turn-off-feeds-409",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByRole("textbox").fill("djdl");
+        await dialog
+          .getByRole("button", { name: "Turn off package feeds" })
+          .click();
+        await dialog.getByText(/changed since you opened this/).waitFor();
+      },
+    },
+    // LX-27c.4: the wizard's Delivery step with the invitation, its key box and the email preview.
+    {
+      name: "dialog:new-license-delivery",
+      hash: "#/p/djdl/license/licenses",
+      act: async (page) => {
+        await page.getByRole("button", { name: "New license" }).click();
+        const dialog = page.getByRole("dialog").first();
+        await dialog.waitFor();
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByLabel(/^Email/).fill("grace@example.com");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog
+          .getByRole("radio", { name: /Email an invitation/ })
+          .waitFor();
+      },
+    },
+    // LX-27c.5: the record of a waiting licence that was invited.
+    {
+      name: "djdl:license-waiting",
+      hash: "#/p/djdl/license/licenses/lic_wait",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Resend invitation" }).waitFor();
+        await page.getByRole("region", { name: "Invitation" }).waitFor();
       },
     },
     {
@@ -264,14 +763,21 @@ function cases(): Case[] {
       },
     },
   );
-  return list;
+  return [...list, ...noAccessCases()];
 }
 
 const CASES = cases();
+const PAUSED_HOME_CASES = [
+  "home:paused-platform-only",
+  "home:paused-product-role",
+  "dialog:resume-from-home",
+];
 /** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
 const ZOOM_CASES = [
   "global:home",
   "home:table",
+  // ST-44b.2: Home while Cloud Sync writes are paused, and the Resume dialog opened from it.
+  ...PAUSED_HOME_CASES,
   "djdl:overview",
   "djdl:licenses",
   "djdl:licenses/record/overview",
@@ -283,19 +789,35 @@ const ZOOM_CASES = [
   "djdl:releases",
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
+  "djdl:sync-usage",
+  "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
+  "djdl:presentation-listing?store",
   "dialog:new-license",
   "long:overview",
   "dialog:set-secret",
 ];
 /** Home (Cards and Table) and a product's Overview. */
-const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
+const HOME_CASES = [
+  "global:home",
+  "home:table",
+  "djdl:overview",
+  ...PAUSED_HOME_CASES,
+];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  "djdl:sync-usage",
+  // ST-31.13: the Roles tab's tiles and one-column matrix.
+  "global:platform-members?tab=roles",
+  ...NO_ACCESS_CASES,
   "djdl:settings",
+  // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
+  "djdl:sync-setup",
+  "djdl:sync-setup?role",
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
@@ -323,6 +845,30 @@ const TEXT200_CASES = [
   "djdl:activity",
   "global:platform-status",
   "djdl:settings-members",
+  // F-34.7: the Packages cards (the access chip beside a long title) at 200 % text.
+  "djdl:package-feeds",
+  "empty:package-feeds",
+  "feedsoff:package-feeds",
+  "djdl:package-feeds?undeclared",
+  "waiting:package-feeds",
+  "djdl:settings-members?invite-filled",
+  // ST-31.12: the Members drawer, at its tallest views.
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
+];
+/** The product Members tab, with the check that no name breaks inside a word (ST-31.14). */
+const MEMBERS_TAB = ["djdl:settings-members", "djdl:settings-members?words"];
+/** The Members drawer's views (ST-31.12). */
+const DRAWER_CASES = [
+  "djdl:settings-members?invite",
+  "djdl:settings-members?invite-filled",
+  "global:platform-members?invite",
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -382,7 +928,17 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
+        only: [
+          ...ZOOM_CASES,
+          "djdl:health",
+          "djdl:rollouts",
+          // F-34.7: the URL breaks at separators and the publish command scrolls, not splits.
+          "djdl:package-feeds",
+          "empty:package-feeds",
+          "djdl:package-feeds?undeclared",
+          "waiting:package-feeds",
+          "no-access:long-name",
+        ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
@@ -407,12 +963,32 @@ const VIEWPORTS: {
       // 200 % text on a phone (WCAG 1.4.4; a text-only zoom keeps the window): Home, and the
       // Settings tabs and a licence record, where a word broke into letters, a control ran off
       // the screen and a date input spilled.
+      // ST-31.12: the Members drawer at 150 % text on the two small phones (the areas grid once
+      // overlapped its labels there).
+      ...[
+        { label: "phone-text150-390", width: 390, height: 844 },
+        { label: "phone-text150-360", width: 360, height: 780 },
+      ].map((v) => ({
+        ...v,
+        rootFontPercent: 150,
+        only: DRAWER_CASES,
+      })),
+      // ST-31.14 B1: the product Members tab at a small tablet's width (large text on a desktop is
+      // e2e/productMembers.e2e.test.ts).
+      { label: "tablet-700", width: 700, height: 900, only: MEMBERS_TAB },
+
       {
         label: "phone-text200",
         width: 390,
         height: 844,
         rootFontPercent: 200,
-        only: ["global:home", "home:table", "djdl:overview", ...TEXT200_CASES],
+        only: [
+          "global:home",
+          "home:table",
+          "djdl:overview",
+          ...PAUSED_HOME_CASES,
+          ...TEXT200_CASES,
+        ],
       },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
@@ -598,9 +1174,32 @@ async function open(
         },
       });
     if (url.pathname.startsWith("/manage/api/")) {
+      // F-34.8: the switch's PUT meets a newer owner row (the 409 `version_conflict` case).
+      if (
+        route.request().method() === "PUT" &&
+        url.pathname.endsWith("/distribution/package-feeds")
+      )
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "bad_request",
+            reason: "version_conflict",
+            packageFeeds: {
+              enabled: true,
+              version: 4,
+              updatedAt: Math.floor(Date.now() / 1000) - 60,
+              updatedBy: "mbr_01J9ZANALIMA",
+            },
+          },
+        });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = resolve(url.pathname);
+      const body =
+        c.override && url.pathname in c.override
+          ? c.override[url.pathname]
+          : c.api && url.pathname in c.api
+            ? c.api[url.pathname]
+            : resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });
@@ -686,184 +1285,241 @@ async function shoot(page: Page, file: string): Promise<void> {
 
 /** `PK_LAYOUT_ONLY=desktop/dark` narrows a local run to one combination. */
 const ONLY = process.env.PK_LAYOUT_ONLY;
+/** The Members drawer, opened from the header's Invite people. */
+async function openInviteDrawer(page: Page) {
+  await page.getByRole("button", { name: "Invite people" }).click();
+  const drawer = page.getByRole("dialog", { name: "Invite people" });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The Members drawer, opened from Sam Okoye's row menu. */
+async function openEditDrawer(page: Page) {
+  await page
+    .getByRole("button", { name: "Actions for Sam Okoye" })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: /Edit roles/ }).click();
+  const drawer = page.getByRole("dialog", { name: /Edit roles for Sam Okoye/ });
+  await drawer.waitFor();
+  return drawer;
+}
+
+/** The drawer's last footer button is fully inside the window (the primary action is in view). */
+async function primaryInView(page: Page): Promise<void> {
+  const ok = await page.evaluate(() => {
+    const d = document.querySelector("[role=dialog]");
+    const footer = d?.querySelector("[data-drawer-footer]");
+    const buttons = footer ? [...footer.querySelectorAll("button")] : [];
+    if (buttons.length === 0) return "no footer button";
+    // Both buttons of the footer row (Cancel and the primary) are fully inside the window.
+    for (const b of buttons.slice(-2)) {
+      const r = b.getBoundingClientRect();
+      if (!(r.top >= 0 && r.bottom <= window.innerHeight + 0.5 && r.width > 0))
+        return `"${b.textContent}" out of view (${Math.round(r.top)}..${Math.round(r.bottom)} of ${window.innerHeight})`;
+    }
+    // Nothing scrolls sideways inside the drawer body.
+    const body = d?.querySelector<HTMLElement>(".pk-scroll");
+    if (body && body.scrollWidth > body.clientWidth + 1)
+      return `the drawer body scrolls sideways by ${body.scrollWidth - body.clientWidth}px`;
+    return "ok";
+  });
+  if (ok !== "ok") throw new Error(ok);
+}
+
 /** `PK_LAYOUT_CASES=overview,settings` narrows a local run to cases whose name contains one. */
 const ONLY_CASES = process.env.PK_LAYOUT_CASES?.split(",");
 
 for (const vp of VIEWPORTS) {
   for (const theme of THEMES) {
     if (ONLY && ONLY !== `${vp.label}/${theme}`) continue;
-    describe(`layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`, () => {
-      for (const c of CASES) {
-        if (vp.only && !vp.only.includes(c.name)) continue;
-        if (vp.accept && !vp.accept(c.name)) continue;
-        if (c.minWidth && vp.width < c.minWidth) continue;
-        if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n))) continue;
-        it(c.name, async () => {
-          const { page, gaps, errors } = await open(c, theme, vp);
-          try {
-            const { violations, scrollers } = await page.evaluate(probeLayout, {
-              // The page's bottom padding is in rem, so it grows with the text.
-              trailingSlack:
-                TRAILING_SLACK * ((vp.rootFontPercent ?? 100) / 100),
-              rows: vp.width >= 1024,
-            });
-            const csp = await page.evaluate(() =>
-              (window as unknown as { __v: string[] }).__v.splice(0),
-            );
-            const errorState =
-              (await page.locator("#content [data-error-action]").count()) > 0;
-            const found = withoutDebt(c.name, violations);
-            report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
-              violations: found,
-              scrollers,
-              gaps: [...new Set(gaps)],
-              errors,
-              errorState,
-            };
-            if (SHOTS)
-              await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
-            expect(csp, "CSP violations").toEqual([]);
-            expect(
-              await page.evaluate(
-                () => document.documentElement.scrollWidth - window.innerWidth,
-              ),
-              "page-level horizontal scroll",
-            ).toBeLessThanOrEqual(0);
-            expect(
-              await unlabelledScrollers(page),
-              "sideways tables outside a labelled region",
-            ).toEqual([]);
-            if (vp.label === "wide" || vp.label.startsWith("zoom")) {
-              // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
-              // Every rule, with 24 px touch targets (WCAG 2.5.8) at every size.
-              expect(
-                await lintFindings(page, { minTouch: 24 }),
-                "ui:lint findings",
-              ).toEqual([]);
-            }
-            if (
-              [
-                "desktop",
-                "phone",
-                "landscape-small",
-                "reduced-transparency",
-              ].includes(vp.label)
-            )
-              // B6, B7, B17 over the render (UK-63); the focus-ring walk once per page.
-              expect(
-                await uxBarChecked(page, c.name, {
-                  focus: vp.label === "desktop" && theme === "dark",
-                }),
-                "UX bar (B6, B7, B17)",
-              ).toEqual([]);
-            if (
-              ["desktop", "phone", "rail"].includes(vp.label) &&
-              (await page.locator("header[data-masthead]").count()) > 0
-            )
-              // axe zero over the masthead and any workbench (ST-48): landmarks, names, contrast.
-              expect(
-                [
-                  ...(await axeWithin(page, "header[data-masthead]")),
-                  ...((await page.locator("[data-workbench]").count()) > 0
-                    ? await axeWithin(page, "[data-workbench]")
-                    : []),
-                ],
-                "axe: masthead and workbench",
-              ).toEqual([]);
-            expect(
-              await shellStateBreaches(page),
-              "shell state colours (B2, B4, B17)",
-            ).toEqual([]);
-            expect(
-              await pillTextBreaches(page),
-              "status text escapes its pill or chip (N1)",
-            ).toEqual([]);
-            expect(
-              await rowMenuOverlaps(page),
-              "a row menu sits on the row's text (T1)",
-            ).toEqual([]);
-            expect(
-              await emptyStateStarBreaches(page),
-              "stationary star (BRAND.md §7.7)",
-            ).toEqual([]);
-            if (vp.forcedColors)
-              expect(
-                await forcedColourBreaches(page),
-                "forced-colour boundaries",
-              ).toEqual([]);
-            if (vp.forcedColors) {
-              // B-009: a sidebar group header is a row, not a control box. It and the single-page
-              // link opt out with data-forced-flat, so neither is drawn with a 1 px border.
-              const boxed = await page.evaluate(() =>
-                [
-                  ...document.querySelectorAll<HTMLElement>(
-                    "[data-section-header]",
-                  ),
-                ]
-                  // The current page's row keeps its 2 px selected border (the non-colour cue).
-                  .filter(
-                    (el) =>
-                      el.checkVisibility() && !el.hasAttribute("aria-current"),
-                  )
-                  .map((el) => ({
-                    flat: el.hasAttribute("data-forced-flat"),
-                    border: getComputedStyle(el).borderTopWidth,
-                    label: (el.textContent ?? "").trim().slice(0, 30),
-                  }))
-                  .filter((h) => !h.flat || h.border !== "0px")
-                  .map((h) => `${h.label}: flat=${h.flat} border=${h.border}`),
+    describe.concurrent(
+      `layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`,
+      () => {
+        for (const c of CASES) {
+          if (vp.only && !vp.only.includes(c.name)) continue;
+          if (vp.accept && !vp.accept(c.name)) continue;
+          if (c.minWidth && vp.width < c.minWidth) continue;
+          if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n)))
+            continue;
+          it(c.name, async () => {
+            const { page, gaps, errors } = await open(c, theme, vp);
+            try {
+              const { violations, scrollers } = await page.evaluate(
+                probeLayout,
+                {
+                  // The page's bottom padding is in rem, so it grows with the text.
+                  trailingSlack:
+                    TRAILING_SLACK * ((vp.rootFontPercent ?? 100) / 100),
+                  rows: vp.width >= 1024,
+                },
               );
+              const csp = await page.evaluate(() =>
+                (window as unknown as { __v: string[] }).__v.splice(0),
+              );
+              const errorState =
+                (await page.locator("#content [data-error-action]").count()) >
+                0;
+              const found = withoutDebt(c.name, violations);
+              report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
+                violations: found,
+                scrollers,
+                gaps: [...new Set(gaps)],
+                errors,
+                errorState,
+              };
+              if (SHOTS)
+                await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
+              expect(csp, "CSP violations").toEqual([]);
+              // F-34.7: the Packages page passes axe (contrast included) in both themes.
+              if (c.name.includes("package-feeds"))
+                expect(await axeWithin(page, "#content"), "axe").toEqual([]);
               expect(
-                boxed,
-                "sidebar group headers are flat in forced colours",
+                await page.evaluate(
+                  () =>
+                    document.documentElement.scrollWidth - window.innerWidth,
+                ),
+                "page-level horizontal scroll",
+              ).toBeLessThanOrEqual(0);
+              expect(
+                await unlabelledScrollers(page),
+                "sideways tables outside a labelled region",
               ).toEqual([]);
-            }
-            if (vp.forcedColors && c.name === "djdl:services") {
-              // State never rests on colour alone: in forced colours an on switch must draw
-              // differently from an off one (track fill and knob). The fixture has every
-              // switch on, so an off twin is a clone with the unchecked state attributes.
-              const looks = await page.evaluate(() => {
-                const sw = document.querySelector<HTMLElement>(
-                  '[role="switch"][data-state="checked"]',
-                );
-                if (!sw) return null;
-                const draw = (el: HTMLElement) =>
-                  `${getComputedStyle(el).backgroundColor}|${getComputedStyle(el.firstElementChild!).backgroundColor}`;
-                const on = draw(sw);
-                const twin = sw.cloneNode(true) as HTMLElement;
-                for (const el of [twin, twin.firstElementChild!])
-                  el.setAttribute("data-state", "unchecked");
-                sw.after(twin);
-                const off = draw(twin);
-                twin.remove();
-                return { on, off };
-              });
-              expect(looks, "an on switch is drawn").not.toBeNull();
+              if (vp.label === "wide" || vp.label.startsWith("zoom")) {
+                // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
+                // Every rule, with 24 px touch targets (WCAG 2.5.8) at every size.
+                expect(
+                  await lintFindings(page, { minTouch: 24 }),
+                  "ui:lint findings",
+                ).toEqual([]);
+              }
+              if (
+                [
+                  "desktop",
+                  "phone",
+                  "landscape-small",
+                  "reduced-transparency",
+                ].includes(vp.label)
+              )
+                // B6, B7, B17 over the render (UK-63); the focus-ring walk once per page.
+                expect(
+                  await uxBarChecked(page, c.name, {
+                    focus: vp.label === "desktop" && theme === "dark",
+                  }),
+                  "UX bar (B6, B7, B17)",
+                ).toEqual([]);
+              if (
+                ["desktop", "phone", "rail"].includes(vp.label) &&
+                (await page.locator("header[data-masthead]").count()) > 0
+              )
+                // axe zero over the masthead and any workbench (ST-48): landmarks, names, contrast.
+                expect(
+                  [
+                    ...(await axeWithin(page, "header[data-masthead]")),
+                    ...((await page.locator("[data-workbench]").count()) > 0
+                      ? await axeWithin(page, "[data-workbench]")
+                      : []),
+                  ],
+                  "axe: masthead and workbench",
+                ).toEqual([]);
               expect(
-                looks!.on,
-                "on and off switches look the same in forced colours",
-              ).not.toBe(looks!.off);
+                await shellStateBreaches(page),
+                "shell state colours (B2, B4, B17)",
+              ).toEqual([]);
+              expect(
+                await pillTextBreaches(page),
+                "status text escapes its pill or chip (N1)",
+              ).toEqual([]);
+              expect(
+                await rowMenuOverlaps(page),
+                "a row menu sits on the row's text (T1)",
+              ).toEqual([]);
+              expect(
+                await emptyStateStarBreaches(page),
+                "stationary star (BRAND.md §7.7)",
+              ).toEqual([]);
+              if (vp.forcedColors)
+                expect(
+                  await forcedColourBreaches(page),
+                  "forced-colour boundaries",
+                ).toEqual([]);
+              if (vp.forcedColors) {
+                // B-009: a sidebar group header is a row, not a control box. It and the single-page
+                // link opt out with data-forced-flat, so neither is drawn with a 1 px border.
+                const boxed = await page.evaluate(() =>
+                  [
+                    ...document.querySelectorAll<HTMLElement>(
+                      "[data-section-header]",
+                    ),
+                  ]
+                    // The current page's row keeps its 2 px selected border (the non-colour cue).
+                    .filter(
+                      (el) =>
+                        el.checkVisibility() &&
+                        !el.hasAttribute("aria-current"),
+                    )
+                    .map((el) => ({
+                      flat: el.hasAttribute("data-forced-flat"),
+                      border: getComputedStyle(el).borderTopWidth,
+                      label: (el.textContent ?? "").trim().slice(0, 30),
+                    }))
+                    .filter((h) => !h.flat || h.border !== "0px")
+                    .map(
+                      (h) => `${h.label}: flat=${h.flat} border=${h.border}`,
+                    ),
+                );
+                expect(
+                  boxed,
+                  "sidebar group headers are flat in forced colours",
+                ).toEqual([]);
+              }
+              if (vp.forcedColors && c.name === "djdl:services") {
+                // State never rests on colour alone: in forced colours an on switch must draw
+                // differently from an off one (track fill and knob). The fixture has every
+                // switch on, so an off twin is a clone with the unchecked state attributes.
+                const looks = await page.evaluate(() => {
+                  const sw = document.querySelector<HTMLElement>(
+                    '[role="switch"][data-state="checked"]',
+                  );
+                  if (!sw) return null;
+                  const draw = (el: HTMLElement) =>
+                    `${getComputedStyle(el).backgroundColor}|${getComputedStyle(el.firstElementChild!).backgroundColor}`;
+                  const on = draw(sw);
+                  const twin = sw.cloneNode(true) as HTMLElement;
+                  for (const el of [twin, twin.firstElementChild!])
+                    el.setAttribute("data-state", "unchecked");
+                  sw.after(twin);
+                  const off = draw(twin);
+                  twin.remove();
+                  return { on, off };
+                });
+                expect(looks, "an on switch is drawn").not.toBeNull();
+                expect(
+                  looks!.on,
+                  "on and off switches look the same in forced colours",
+                ).not.toBe(looks!.off);
+              }
+              expect(
+                await columnBreaches(
+                  page,
+                  "#content > div",
+                  CONSOLE_COLUMN_MAX,
+                  false,
+                ),
+                "content column",
+              ).toEqual([]);
+              expect(
+                found.map(
+                  (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
+                ),
+              ).toEqual([]);
+            } finally {
+              await closeContext(page.context());
             }
-            expect(
-              await columnBreaches(
-                page,
-                "#content > div",
-                CONSOLE_COLUMN_MAX,
-                false,
-              ),
-              "content column",
-            ).toEqual([]);
-            expect(
-              found.map(
-                (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
-              ),
-            ).toEqual([]);
-          } finally {
-            await closeContext(page.context());
-          }
-        });
-      }
-    });
+          });
+        }
+      },
+    );
   }
 }
 
@@ -902,6 +1558,57 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
     );
   }, selector);
 }
+
+// ── Needs attention rows keep their shape (ST-44b.3) ───────────────────────────────────────────
+// A grid template the browser drops (it did once: `fit-content()` inside `minmax()`) stacks every
+// row and still passes the overflow checks, so the shape itself is pinned: at a laptop width the
+// pill, the subject and the action share one line.
+describe("Needs attention rows are one line at 1440 and stack on a phone (ST-44b.3)", () => {
+  const HOME: Case = { name: "global:home", hash: "#/" };
+  for (const theme of THEMES) {
+    it(`${theme}`, async () => {
+      const desk = await open(HOME, theme, { width: 1440, height: 900 });
+      try {
+        const rows = desk.page.locator("[data-attention-list] ul > li");
+        const n = await rows.count();
+        expect(n).toBeGreaterThan(1);
+        for (let i = 0; i < n; i++) {
+          const row = rows.nth(i);
+          const tops = await row.evaluate((li) => {
+            const top = (el: Element | null) =>
+              el ? el.getBoundingClientRect().top : NaN;
+            return [
+              top(li.querySelector("[class*=pill], [data-tone], span")),
+              top(li.querySelector("[title]")),
+              top([...li.querySelectorAll("a[href], button")].pop() ?? null),
+              li.getBoundingClientRect().height,
+            ];
+          });
+          const [pill, subject, action] = tops as number[];
+          expect(Math.abs(subject! - pill!), `row ${i} subject`).toBeLessThan(
+            8,
+          );
+          expect(Math.abs(action! - pill!), `row ${i} action`).toBeLessThan(10);
+        }
+      } finally {
+        await closeContext(desk.page.context());
+      }
+      const phone = await open(HOME, theme, { width: 390, height: 844 });
+      try {
+        const li = phone.page.locator("[data-attention-list] ul > li").first();
+        const [pill, action] = await li.evaluate((el) => [
+          el.querySelector("span")!.getBoundingClientRect().top,
+          [...el.querySelectorAll("a[href], button")]
+            .pop()!
+            .getBoundingClientRect().top,
+        ]);
+        expect(action! - pill!).toBeGreaterThan(20);
+      } finally {
+        await closeContext(phone.page.context());
+      }
+    });
+  }
+});
 
 describe("Home's product card (owner polish 2026-10-07)", () => {
   const HOME: Case = { name: "global:home", hash: "#/" };
@@ -1013,6 +1720,16 @@ describe("?setting= deep links", () => {
       "a platform setting row",
       "#/platform/settings?setting=LAZY_DELTAS",
       "platform-setting-LAZY_DELTAS",
+    ],
+    [
+      "the extra reserved display terms list",
+      "#/platform/settings?setting=identity.reservedDisplayTerms",
+      "platform-setting-identity.reservedDisplayTerms",
+    ],
+    [
+      "the display name approval",
+      "#/p/djdl/identity/app-sign-in?setting=identity.displayNameApproved",
+      "setting-identity.displayNameApproved",
     ],
   ];
   for (const [what, hash, id] of LINKS) {

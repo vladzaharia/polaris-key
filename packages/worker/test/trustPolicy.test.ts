@@ -10,18 +10,18 @@ import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   DEFAULT_TRUST_POLICY,
   parseTrustPolicy,
+  relaxesTrustPolicy as relaxes,
+  trustRefusal,
+  type TrustPolicy,
 } from "../src/core/trust/deviceTrust.js";
 import { loadProduct } from "../src/core/products.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 
@@ -42,8 +42,9 @@ async function call(
     stepUp?: boolean;
   } = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub: "u1",
       name: "Ada",
@@ -148,6 +149,7 @@ const POLICY = {
   mint: "attested",
   gatedDelivery: "basic",
   commerceClaim: "attested",
+  cloudSyncWrite: "basic",
   enforce: true,
   appAttest: { teamId: "ABCDE12345", environment: "development" },
   playIntegrity: { cloudProjectNumber: "123456789012" },
@@ -254,7 +256,7 @@ describe("trust-policy admin resource", () => {
 // with an operation this build does not know still reads with its other members, while the PUT
 // stays strict.
 describe("stored policies from a later build", () => {
-  const LATER = { mint: "attested", enforce: true, cloudSyncWrite: "attested" };
+  const LATER = { mint: "attested", enforce: true, laterOp: "attested" };
 
   it("parse with the unknown operation dropped and every other member kept", () => {
     expect(parseTrustPolicy(JSON.stringify(LATER))).toEqual({
@@ -266,7 +268,6 @@ describe("stored policies from a later build", () => {
       parseTrustPolicy(
         JSON.stringify({
           ...POLICY,
-          cloudSyncWrite: "basic",
           laterOp: "attested",
         }),
       ),
@@ -498,5 +499,90 @@ describe("guarded writes", () => {
     });
     expect(r.status).toBe(403);
     expect(await audits(w.db)).toEqual([]);
+  });
+});
+
+describe("cloudSyncWrite (U-05.11)", () => {
+  const device = (trust_level: string) =>
+    ({ device_id: "dev1", trust_level }) as never;
+  const refuse = async (
+    w: { db: Db; env: Env },
+    policy: Partial<TrustPolicy>,
+    trust: string,
+  ) => {
+    const product = {
+      slug: SLUG,
+      trustPolicy: { ...DEFAULT_TRUST_POLICY, ...policy },
+    } as never;
+    return trustRefusal(
+      w.env,
+      w.db,
+      product,
+      device(trust),
+      "cloudSyncWrite",
+      NOW,
+      "wire",
+    );
+  };
+  const audits = async (w: { db: Db }) =>
+    (
+      await w.db.all<{ action: string; summary: string }>(
+        "SELECT action, summary FROM audit WHERE action LIKE 'device.trust.%'",
+      )
+    ).map((r) => r.action);
+
+  it("defaults to basic, including for a policy stored without it", () => {
+    expect(DEFAULT_TRUST_POLICY.cloudSyncWrite).toBe("basic");
+    expect(
+      parseTrustPolicy(JSON.stringify({ mint: "attested", enforce: true })),
+    ).toMatchObject({ mint: "attested", cloudSyncWrite: "basic" });
+    expect(
+      parseTrustPolicy(JSON.stringify({ cloudSyncWrite: "attested" }))
+        .cloudSyncWrite,
+    ).toBe("attested");
+  });
+
+  it("relaxing it from attested to basic is L2; raising it is not", () => {
+    const A = { ...DEFAULT_TRUST_POLICY, cloudSyncWrite: "attested" } as const;
+    expect(relaxes(A, DEFAULT_TRUST_POLICY)).toBe(true);
+    expect(relaxes(DEFAULT_TRUST_POLICY, A)).toBe(false);
+  });
+
+  it("basic requirement proceeds with no audit row", async () => {
+    const w = await world();
+    expect(await refuse(w, {}, "basic")).toBeNull();
+    expect(await audits(w)).toEqual([]);
+  });
+
+  it("log-only: proceeds and audits once", async () => {
+    const w = await world();
+    const p = { cloudSyncWrite: "attested" } as const;
+    expect(await refuse(w, p, "basic")).toBeNull();
+    expect(await refuse(w, p, "basic")).toBeNull();
+    expect(await audits(w)).toEqual(["device.trust.would_refuse"]);
+  });
+
+  it("enforced: a basic device gets 403 attestation_required; an attested one proceeds", async () => {
+    const w = await world();
+    const p = { cloudSyncWrite: "attested", enforce: true } as const;
+    const r = await refuse(w, p, "basic");
+    expect(r?.status).toBe(403);
+    expect(JSON.stringify(await r!.json())).toContain("attestation_required");
+    expect(await audits(w)).toEqual(["device.trust.refused"]);
+    expect(await refuse(w, p, "attested")).toBeNull();
+  });
+
+  it("the PUT accepts it and the GET returns it", async () => {
+    const w = await world();
+    const put = await call(w, "PUT", {
+      body: {
+        policy: { ...POLICY, cloudSyncWrite: "attested" },
+        ...GUARD(0),
+      },
+      stepUp: true,
+    });
+    expect(put.status).toBe(200);
+    const get = await call(w, "GET");
+    expect((get.body.policy as TrustPolicy).cloudSyncWrite).toBe("attested");
   });
 });

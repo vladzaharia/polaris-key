@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint,
@@ -23,8 +24,7 @@ import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
 import { formatDay } from "../../date.js";
 import {
-  portalApi,
-  PortalApiError,
+  HttpError,
   type PortalAccount,
   type PortalMethod,
   type PortalMethods,
@@ -32,11 +32,7 @@ import {
   type PortalProvider,
 } from "../../api.js";
 import { browser } from "../../browser.js";
-import {
-  refreshAfterMethodChange,
-  useLinkView,
-  useMethods,
-} from "../../data.js";
+import { useLinkView, useMethods } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import {
   PROVIDER_NAME,
@@ -67,7 +63,6 @@ import {
   SteamGlyph,
   WindowsGlyph,
 } from "../../../ui/Glyphs.js";
-import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
 import {
@@ -76,6 +71,7 @@ import {
   type ToolSlots,
 } from "./RowTools.js";
 import { StepUp } from "./StepUp.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * Account → Sign-in methods (PORTAL.md §4.26; G27 on PX-W12's API, passkeys on I-16's).
@@ -97,10 +93,6 @@ import { StepUp } from "./StepUp.js";
  * The last method is guarded (`last_link`), and every change needs a sign-in from the last
  * 5 minutes (`StepUp`). An Apple Hide My Email account gets a notice at the top. The footnote says
  * every change is recorded and emailed.
- *
- * **Make primary**, **Rename** and the product count are PX-W19's (`RowTools`): they read
- * `productCount` on an email and `name` on a passkey, which only a Worker with PX-W19 sends, so
- * an older Worker gets the page without them.
  *
  * Not here yet, for want of an API: the products that know the person through a method (see
  * PX-13's brief). **Link an existing account** (PX-15's `LinkAccountsDialog`) is the button under
@@ -170,7 +162,7 @@ export function SignInMethods({
           <Skeleton className="h-14 w-full" />
         </div>
       ) : methods.error || !methods.data ? (
-        <ErrorPanel
+        <ErrorState
           account
           error={methods.error}
           onRetry={() => void methods.refetch()}
@@ -538,21 +530,20 @@ function MethodGroups({
               name: e.email,
               keepLabel: t("locker.methods.keepIt"),
               guardName: t("locker.methods.thisEmail"),
-              tool:
-                e.primary || e.productCount === undefined
-                  ? undefined
-                  : (render) => (
-                      <MakePrimaryTool
-                        key={m.id}
-                        methodId={e.methodId}
-                        email={e.email}
-                        focusAfter={focusGroup("email")}
-                        {...common}
-                        returnTo={returnTo({})}
-                      >
-                        {render}
-                      </MakePrimaryTool>
-                    ),
+              tool: e.primary
+                ? undefined
+                : (render) => (
+                    <MakePrimaryTool
+                      key={m.id}
+                      methodId={e.methodId}
+                      email={e.email}
+                      focusAfter={focusGroup("email")}
+                      {...common}
+                      returnTo={returnTo({})}
+                    >
+                      {render}
+                    </MakePrimaryTool>
+                  ),
               primary: e.primary,
               meta: [
                 e.productCount
@@ -612,22 +603,21 @@ function MethodGroups({
                 name: which,
                 keepLabel: t("locker.methods.keepIt"),
                 guardName: t("locker.methods.thisPasskey"),
-                tool:
-                  p && p.name !== undefined
-                    ? (render) => (
-                        <RenamePasskeyTool
-                          key={m.id}
-                          passkeyId={p.id}
-                          current={p.name ?? ""}
-                          fallback={passkeyName({ ...p, name: null })}
-                          what={which}
-                          {...common}
-                          returnTo={returnTo({})}
-                        >
-                          {render}
-                        </RenamePasskeyTool>
-                      )
-                    : undefined,
+                tool: p
+                  ? (render) => (
+                      <RenamePasskeyTool
+                        key={m.id}
+                        passkeyId={p.id}
+                        current={p.name ?? ""}
+                        fallback={passkeyName({ ...p, name: null })}
+                        what={which}
+                        {...common}
+                        returnTo={returnTo({})}
+                      >
+                        {render}
+                      </RenamePasskeyTool>
+                    )
+                  : undefined,
                 meta: p ? passkeyMeta(p) : methodMeta(m),
                 verb: "Remove",
                 consequence: t("locker.methods.passkeyRemoveNote", {
@@ -766,9 +756,9 @@ function PasskeyGlyph({
 
 /** The failure of a change that is not "confirm it's you first", in words. */
 function changeErrorText(err: unknown, name?: string): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.code === "link_conflict")
-      return err.message && err.message !== `portal api ${err.status}`
+      return err.message && err.message !== `http ${err.status}`
         ? err.message
         : t("locker.methods.errLinkConflict");
     if (err.code === "auth_method_disabled" || err.status === 404)
@@ -833,7 +823,7 @@ function ConnectRow({
     setBusy(true);
     setError(null);
     try {
-      const out = await portalApi.startProviderMethod(kind);
+      const out = await mutate("startProviderMethod", kind);
       browser.go(out.redirect);
     } catch (err) {
       setBusy(false);
@@ -1003,7 +993,7 @@ function AddEmail({
     setError(null);
     setInvalid(false);
     try {
-      const out = await portalApi.startEmailMethod(value);
+      const out = await mutate("startEmailMethod", value);
       if (out.status === "connected") {
         toast.success(t("locker.methods.emailAlreadyOn", { email: out.email }));
         close();
@@ -1015,12 +1005,11 @@ function AddEmail({
     } catch (err) {
       if (isStepUpRequired(err)) setStep({ kind: "stepUp" });
       else {
-        if (err instanceof PortalApiError && err.status === 422)
-          setInvalid(true);
+        if (err instanceof HttpError && err.status === 422) setInvalid(true);
         setError(
-          err instanceof PortalApiError && err.status === 422
+          err instanceof HttpError && err.status === 422
             ? t("signin.email.invalid")
-            : err instanceof PortalApiError && err.code === "email_unavailable"
+            : err instanceof HttpError && err.code === "email_unavailable"
               ? t("locker.stepUp.noEmail")
               : changeErrorText(err),
         );
@@ -1035,13 +1024,12 @@ function AddEmail({
     setBusy(true);
     setError(null);
     try {
-      const out = await portalApi.verifyEmailMethod(value);
+      const out = await mutate("verifyEmailMethod", value);
       const text = t("locker.methods.emailAdded", { email: out.email });
       toast.success(text, {
         description: t("locker.methods.emailAddedNote"),
       });
       announce(text);
-      refreshAfterMethodChange(qc);
       setStep({ kind: "closed" });
       setEmail("");
       setCode("");
@@ -1049,10 +1037,10 @@ function AddEmail({
     } catch (err) {
       setCode("");
       if (isStepUpRequired(err)) setStep({ kind: "stepUp" });
-      else if (err instanceof PortalApiError && err.code === "invalid_code") {
+      else if (err instanceof HttpError && err.code === "invalid_code") {
         const left = err.triesLeft;
         setError(wrongCodeText(left));
-      } else if (err instanceof PortalApiError && err.code === "signin_expired")
+      } else if (err instanceof HttpError && err.code === "signin_expired")
         setError(expiredCodeText());
       else setError(changeErrorText(err));
     } finally {
@@ -1274,14 +1262,13 @@ function AddPasskey({
     setBusy(true);
     setError(null);
     try {
-      const { options } = await portalApi.passkeyRegistrationOptions();
+      const { options } = await mutate("passkeyRegistrationOptions");
       const response = await createPasskey(options);
-      await portalApi.addPasskey(response);
+      await mutate("addPasskey", response);
       toast.success(t("locker.methods.passkeyAdded"), {
         description: t("locker.methods.passkeyAddedNote"),
       });
       announce(t("locker.methods.passkeyAdded"));
-      refreshAfterMethodChange(qc);
       setStepUp(false);
       setReady(false);
       onAdded();

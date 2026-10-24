@@ -20,11 +20,7 @@ import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { STOREFRONT_ADAPTERS } from "../src/core/storefront/adapter.js";
 import { STOREFRONT_ENABLED_KEY } from "../src/core/storefrontSwitch.js";
 import { isBuiltIn } from "../src/services/distribution/storefronts/plan.js";
@@ -33,6 +29,7 @@ import {
   parsePersona,
 } from "../src/console/handlers/polarisKeyStorefront.js";
 import { storefrontDay } from "../src/services/identity/portal/store/analytics.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ISSUER = "https://id.plrs.im";
 const PLATFORM_GROUP = "platform-admins";
@@ -123,8 +120,9 @@ async function world(): Promise<World> {
   await seedProduct(db, "bare");
   await services(db, "bare", LICENSED);
 
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -204,6 +202,10 @@ const PERSON_TABLES =
  */
 function personRead(r: Read): boolean {
   if (!PERSON_TABLES.test(r.sql)) return false;
+  // The caller's own grants: a console member is an account, and the request resolves its
+  // principal from its stored bindings (ST-30). That is the operator, not the person previewed.
+  if (/^\s*SELECT[\s\S]*FROM console_role_bindings\b/i.test(r.sql))
+    return false;
   const wouldBe =
     /^\s*SELECT[\s\S]*FROM license_(store_grants|profiles)\b[\s\S]*license_id = \?/i.test(
       r.sql,
@@ -512,6 +514,11 @@ describe("POST …/preview shows the tile that person would see", () => {
   it("reads no account row and writes nothing, not even an impression", async () => {
     const w = await world();
     await writeListing(w.db, "openutil", { storeListed: "listed" });
+    // The operator's own session check reads their account once (then it is cached for 30 s):
+    // do it before recording, so what is recorded is the preview alone.
+    expect((await w.call("GET", PANEL("aperture", "/analytics"))).status).toBe(
+      200,
+    );
     for (const [slug, body] of [
       [
         "aperture",
@@ -612,6 +619,10 @@ describe("GET …/analytics (the 28-day card)", () => {
 
   it("says when impressions are not counted (no pepper)", async () => {
     const w = await world();
+    // Warm the console session's 30 s cache: its id is hashed under the pepper too.
+    expect((await w.call("GET", PANEL("aperture", "/analytics"))).status).toBe(
+      200,
+    );
     delete (w.env as Partial<Env>).KEY_HASH_PEPPER;
     const r = await w.call("GET", PANEL("aperture", "/analytics"));
     expect(r.body.impressionsCounted).toBe(false);

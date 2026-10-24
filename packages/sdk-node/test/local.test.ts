@@ -232,9 +232,9 @@ describe("createLocalClient — everything offline still works", () => {
 
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.license.getLicenseId()).toBe("lic-local");
-    expect(client.config.getConfig("run.mode", "??")).toBe("offline");
+    expect(client.config.get("run.mode", "??")).toBe("offline");
     expect(client.config.getSecret("proxy.url")).toBe("https://p/1");
     expect(client.config.schemaVersion()).toBe(9);
 
@@ -409,7 +409,7 @@ describe("createBundleClient — provision from a bundle in one step (§7, D-12)
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
     expect(client.getSyncState().activation).toBe("bundle");
-    expect(client.config.getConfig("run.mode", "??")).toBe("offline");
+    expect(client.config.get("run.mode", "??")).toBe("offline");
     // §7 — no credential is minted for a bundle-activated install.
     expect(await store.getToken()).toBeNull();
   });
@@ -424,7 +424,7 @@ describe("createBundleClient — provision from a bundle in one step (§7, D-12)
     expect(imported.imported).toEqual(["config"]);
     expect(client.getSyncState().activation).toBeNull();
     expect(client.status().status).toBe("needs-activation");
-    expect(client.config.getConfig("run.mode", "??")).toBe("offline");
+    expect(client.config.get("run.mode", "??")).toBe("offline");
   });
 
   it("a refused bundle throws the §7 step code and leaves the store untouched", async () => {

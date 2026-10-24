@@ -32,7 +32,10 @@ import {
   licenseAccountId,
   subjectFor,
 } from "../../../core/accounts/accountSubjects.js";
-import { notAutoAttachBlockedSql } from "../../../core/licensing/licenseHolders.js";
+import {
+  notAutoAttachBlockedSql,
+  type JoinedLicense,
+} from "../../../core/licensing/licenseHolders.js";
 import { catchUpLegacyAccount } from "../accounts/legacy.js";
 import { deleteAccount, type ErasureResult } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
@@ -516,10 +519,28 @@ export async function attachWaitingLicensesByEmail(
   email: string,
   now: number,
 ): Promise<number> {
+  return (await attachWaitingLicensesByEmailRows(db, accountId, email, now))
+    .length;
+}
+
+/** `attachWaitingLicensesByEmail`, answering the licences that joined (LX-27c.3). */
+export async function attachWaitingLicensesByEmailRows(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<JoinedLicense[]> {
   const address = normalizeEmail(email);
-  if (!address) return 0;
-  const rows = await db.all<{ product: string; id: string }>(
-    `SELECT l.product AS product, l.id AS id
+  if (!address) return [];
+  const rows = await db.all<{
+    product: string;
+    id: string;
+    invited_at: number | null;
+    status: string;
+    expires_at: number | null;
+  }>(
+    `SELECT l.product AS product, l.id AS id, l.invited_at AS invited_at,
+            l.status AS status, l.expires_at AS expires_at
        FROM licenses l
        LEFT JOIN portal_product_settings s ON s.product = l.product
        LEFT JOIN oidc_config o ON o.product = l.product
@@ -528,12 +549,19 @@ export async function attachWaitingLicensesByEmail(
     address,
     accountId,
   );
-  let attached = 0;
+  const joined: JoinedLicense[] = [];
   for (const licence of rows) {
     if (await attachAutomatically(db, accountId, licence, "email", now))
-      attached++;
+      joined.push({
+        product: licence.product,
+        id: licence.id,
+        invitedAt: licence.invited_at ?? null,
+        active:
+          licence.status === "active" &&
+          (licence.expires_at === null || licence.expires_at > now),
+      });
   }
-  return attached;
+  return joined;
 }
 
 /**
@@ -569,9 +597,17 @@ export async function syncAccountLicenseLinks(
   db: Db,
   accountId: string,
   now: number,
+  /** LX-27c.3: told which licences joined by address (and that address), for the library notice. */
+  onJoined?: (joined: JoinedLicense[], email: string) => Promise<void>,
 ): Promise<void> {
   for (const email of await verifiedAccountEmails(db, accountId)) {
-    await attachWaitingLicensesByEmail(db, accountId, email, now);
+    const joined = await attachWaitingLicensesByEmailRows(
+      db,
+      accountId,
+      email,
+      now,
+    );
+    if (onJoined && joined.length > 0) await onJoined(joined, email);
   }
   const subjects = await db.all<{ subject: string }>(
     "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'oidc'",

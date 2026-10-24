@@ -961,6 +961,12 @@ export function releaseStoreStatements(
           tag: release.tag_name,
           prerelease: release.prerelease,
           assetCount: release.assets.length,
+          // What GitHub listed at this sync (P2-12 D3): asset id -> its `digest` exactly as
+          // GitHub gave it, else null. The store compute steps offer only these ids. A resync
+          // rewrites it; descriptor ingest's `json_set` of `$.descriptor` leaves it alone.
+          listedAssets: Object.fromEntries(
+            release.assets.map((a) => [String(a.id), a.digest ?? null]),
+          ),
         }),
         created_at: now,
         modified_at: now,

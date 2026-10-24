@@ -43,6 +43,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "setting.manifestAuthoritative",
     "storefront.listing",
     "storefront.waysToAdd",
+    "commerce.useAssigned",
   ],
   2: [
     "key.revoke",

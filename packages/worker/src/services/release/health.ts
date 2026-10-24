@@ -37,8 +37,10 @@ import {
 } from "./config.js";
 import { resolveMovingSelector, type MovingResolution } from "./gateway.js";
 import { legacyPolicyFor } from "./resolve.js";
+import { storeResolution } from "./storeRelease.js";
 import { readAppDeliverable } from "./descriptor.js";
 import {
+  listReleases,
   NotFoundError,
   UpstreamRateLimitedError,
   type ReleaseAsset,
@@ -47,6 +49,7 @@ import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   artifactKind,
   artifactPlatform,
+  getChannelFloor,
   isBelowFloor,
   listChannelFloors,
 } from "./store.js";
@@ -434,6 +437,12 @@ export async function checkReleaseHealth(
   product: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  /**
+   * `legacy` resolves stable and the floors live against GitHub, as every caller does today.
+   * `store` (P2-12.5, not routed in PR 1) reads them from the truth store and keeps GitHub for
+   * the one thing health reports on ingest: one list page for the "GitHub access" check.
+   */
+  step: "legacy" | "store" = "legacy",
 ): Promise<ReleaseHealth> {
   const cfg = await getReleaseConfig(db, product);
   if (!cfg) {
@@ -524,17 +533,20 @@ export async function checkReleaseHealth(
       now,
       fetchImpl,
     );
-    stable = await resolveMovingSelector(
-      env,
-      db,
-      resolved,
-      token,
-      { kind: "stable", raw: "stable" },
-      now,
-      fetchImpl,
-      // The same yanks the live routes apply (P2-05), so health names what they serve.
-      await legacyPolicyFor(db, product, "stable"),
-    );
+    stable =
+      step === "store"
+        ? await storeMoving(env, db, resolved, token, fetchImpl)
+        : await resolveMovingSelector(
+            env,
+            db,
+            resolved,
+            token,
+            { kind: "stable", raw: "stable" },
+            now,
+            fetchImpl,
+            // The same yanks the live routes apply (P2-05), so health names what they serve.
+            await legacyPolicyFor(db, product, "stable"),
+          );
     const releases = stable.listed;
     checks.push(
       check(
@@ -576,6 +588,7 @@ export async function checkReleaseHealth(
       stable,
       now,
       fetchImpl,
+      step,
     )),
   );
 
@@ -685,6 +698,35 @@ export async function checkReleaseHealth(
   };
 }
 
+/**
+ * The store variant of the stable resolution: the list page "GitHub access" reports on (one page,
+ * read here and nowhere else), and the pick, the floor and the regression from the store.
+ */
+async function storeMoving(
+  _env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  token: string,
+  fetchImpl: FetchImpl,
+): Promise<MovingResolution> {
+  const listed = await listReleases(
+    token,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    100,
+    fetchImpl,
+    { maxPages: 1 },
+  );
+  const r = await storeResolution(db, cfg, { kind: "stable", raw: "stable" });
+  return {
+    ...r,
+    floor: r.regressed
+      ? await getChannelFloor(db, cfg.product, "stable")
+      : null,
+    listed,
+  };
+}
+
 /** A regression check for a floor that no longer holds, naming both sides. */
 function regressedCheck(
   res: MovingResolution,
@@ -713,6 +755,7 @@ async function regressionChecks(
   stable: MovingResolution,
   now: number,
   fetchImpl: FetchImpl,
+  step: "legacy" | "store",
 ): Promise<ReleaseHealthCheck[]> {
   const out: ReleaseHealthCheck[] = [];
   if (stable.regressed) out.push(regressedCheck(stable, "stable"));
@@ -722,6 +765,12 @@ async function regressionChecks(
     if (floor.channel === "stable") continue;
     const sel = classifyChannel(floor.channel, manual);
     if (!sel) continue;
+    if (step === "store") {
+      const r = await storeResolution(db, cfg, sel);
+      if (r.regressed)
+        out.push(regressedCheck({ ...r, floor, listed: [] }, floor.channel));
+      continue;
+    }
     // Cheap pre-check over the pages already read; only a channel that LOOKS regressed pays for
     // the full resolution (whose floor lookup is the one extra GitHub call).
     if (

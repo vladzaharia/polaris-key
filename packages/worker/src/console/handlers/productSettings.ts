@@ -60,6 +60,7 @@ import {
   type ResolvedSetting,
 } from "../../core/settings/resolve.js";
 import { snapshotValue } from "../../core/settings/snapshot.js";
+import { forgetRegistrySettings } from "../../services/distribution/public.js";
 import { writeSetting, type WriteRefusal } from "../../core/settings/write.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import { tryParseJson } from "../../platform/json.js";
@@ -126,6 +127,8 @@ export interface ProductSettingDto {
   serviceEnabled: boolean;
   /** The console area a write needs (`SettingDef.rbacArea`): a member without edit sees it read-only. */
   rbacArea: SettingDef["rbacArea"];
+  /** Only platform admins write it (`SettingDef.platformOnly`). */
+  platformOnly: boolean;
   /** Who may write it (`SettingDef.ownership`): a `manifest` or `read-only` key is shown, not edited. */
   ownership: SettingDef["ownership"];
   value: unknown;
@@ -167,6 +170,7 @@ function dto(
     serviceEnabled:
       d.service === "core" || services[d.service]?.enabled === true,
     rbacArea: d.rbacArea,
+    platformOnly: d.platformOnly === true,
     ownership: d.ownership,
     value: view.value,
     source: view.source,
@@ -223,6 +227,14 @@ interface Request_ {
  * The request after a write: the product row is read again, because the resolver decodes a
  * column-backed value from the row it is handed.
  */
+/**
+ * A Distribution registry setting written here (`distribution.packageFeeds` and its kin) is read
+ * through a per-isolate cache; drop it so the write takes effect on this isolate at once.
+ */
+function forgetRegistryOf(key: string, slug: string): void {
+  if (key.startsWith("distribution.")) forgetRegistrySettings(slug);
+}
+
 async function afterWrite(r: Request_): Promise<Request_> {
   return {
     ...r,
@@ -632,6 +644,7 @@ export async function handleProductSettings(
                   value: body.value,
                   ctx: adapterCtx(r),
                   guard,
+                  by: session.sub,
                 }),
             }
           : {}),
@@ -653,6 +666,7 @@ export async function handleProductSettings(
       },
     );
     if (!res.ok) return writeRefusal(r, def, res);
+    forgetRegistryOf(def.key, product.slug);
     return adminJson({
       ok: true,
       claimed: res.written[0]?.claimed === true,
@@ -752,7 +766,11 @@ export async function handleProductSettings(
         ...(def.storage.kind === "rich" && adapter?.reset
           ? {
               statements: (guard) =>
-                adapter.reset!({ ctx: adapterCtx(r), guard }),
+                adapter.reset!({
+                  ctx: adapterCtx(r),
+                  guard,
+                  by: session.sub,
+                }),
             }
           : {}),
       },
@@ -767,6 +785,7 @@ export async function handleProductSettings(
       },
     );
     if (!res.ok) return writeRefusal(r, def, res);
+    forgetRegistryOf(def.key, product.slug);
     return adminJson({
       ok: true,
       applied,

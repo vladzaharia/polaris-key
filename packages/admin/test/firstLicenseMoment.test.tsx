@@ -11,7 +11,11 @@ import { API, bootLicense, LICENSES } from "./licenseFixture.js";
  * whole console, so the license list, the create and the invalidation are the real ones.
  */
 
-beforeEach(resetConsole);
+beforeEach(() => {
+  resetConsole();
+  // A wizard left open keeps its draft; the next test starts clean.
+  window.sessionStorage.clear();
+});
 afterEach(cleanup);
 
 const KEY = "pk-moment:first-license:djdl";
@@ -96,14 +100,30 @@ describe("the first license (EXPERIENCE §0.7)", () => {
     );
   });
 
-  it("licenses still loading when Create is pressed is not an empty list: no moment", async () => {
+  it("licenses still loading is not an empty list: Delivery waits for the list, so there is no moment", async () => {
     bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: PENDING },
     });
     await openDialog(false);
-    const dialog = await createOne("Grace Hopper");
+    const dialog = await screen.findByRole("dialog", { name: "New license" });
+    const next = () =>
+      userEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
+    await within(dialog).findByRole("radio", { name: /Pro/ });
+    await next();
+    await userEvent.type(
+      within(dialog).getByLabelText(/^Name/),
+      "Grace Hopper",
+    );
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "a@x.io");
+    await next();
+    await next();
+    // Whether an invitation can go out comes from the same first read: until it answers, the
+    // wizard offers no way to create (LX-27c), so a license cannot be taken for the first.
+    await within(dialog).findByText(/Checking how Grace Hopper can get it/);
+    expect(
+      within(dialog).queryByRole("radio", { name: /^Show it once/ }),
+    ).toBeNull();
     expect(dialog.querySelector("[data-moment]")).toBeNull();
-    expect(within(dialog).queryByRole("button", { name: "Try it" })).toBeNull();
     expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 

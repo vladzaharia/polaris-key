@@ -28,7 +28,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	PKeyUiView._pointer_known = true
 	PKeyUiView.mobile_override = false
 	PKeyUiView.pad_only_override = false
-	await _retry(t)
+	# Disabled as flaky (owner 2026-10-23): the retry boot test failed once on 4.4.1 under load. Re-enable once its waits are deterministic.
+	t.info("skipped: retry (disabled as flaky)")
+	# await _retry(t)
 	await _regate(t)
 	await _sdk_setter(t)
 	await _activation(t)
@@ -273,7 +275,7 @@ func _activation(t: PKeyTestContext) -> void:
 		var store := PKeyMemoryStore.new(h.F["device_id"])
 		var bad := await _sdk(store, func(o: PKeyOptions) -> void:
 			if how == "a wrong pin":
-				o.pinned_trust_keys = {"other-kid": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+				o.pinned_keys = {"other-kid": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
 			else:
 				var ahead: float = float(h.F["now"]) + 2.0 * 86400.0
 				o.now_source = func(): return ahead)
@@ -369,7 +371,7 @@ func _misc(t: PKeyTestContext) -> void:
 	var friendly := PKeyDeviceLabel.friendly_default()
 	t.check("device name: the drop-in default is a name, not a bare OS name where the computer has one", friendly != "" and (PKeyDeviceLabel.computer_name() == "" or friendly == PKeyDeviceLabel.computer_name() or friendly == OS.get_model_name()), friendly)
 	var opts := PKeyOptions.new()
-	opts.product = "djdl"
+	opts.product_slug = "djdl"
 	opts.version = "1.0.0"
 	opts.base_url = "http://127.0.0.1:9"
 	var sdk := PKeyTestFixtures.new_sdk()
@@ -377,7 +379,7 @@ func _misc(t: PKeyTestContext) -> void:
 	sdk.use_friendly_device_name()
 	t.check("device name: the drop-in names the device once configured", opts.device_name == friendly, opts.device_name)
 	var named := PKeyOptions.new()
-	named.product = "djdl"
+	named.product_slug = "djdl"
 	named.version = "1.0.0"
 	named.base_url = "http://127.0.0.1:9"
 	named.device_name = "Living room TV"

@@ -1163,9 +1163,18 @@ describe("loading, not found and errors", () => {
     go("#/p/orbit-survey/download");
     renderPortal();
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    // The product's name stays the h1, and the panel says what failed, once.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Orbit Survey" }),
+    ).toBeTruthy();
+    expect(within(alert).getByText("Couldn't load Orbit Survey.")).toBeTruthy();
+    expect(alert.textContent).not.toMatch(/Something went wrong/);
     expect(
       within(alert).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
+    expect(
+      within(alert).getByRole("link", { name: "Orbit Survey" }),
     ).toBeTruthy();
   });
 

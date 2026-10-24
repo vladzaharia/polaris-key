@@ -57,7 +57,9 @@ export type Route =
   | { kind: "adminSpa" }
   | { kind: "adminApi" }
   | { kind: "adminLogin" }
+  | { kind: "adminDevice" }
   | { kind: "adminCallback" }
+  | { kind: "adminPasskey" }
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
@@ -171,7 +173,16 @@ export function matchRoute(pathname: string): Route {
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
+  // ST-34.6: the approval card for `pkey login`, before the `/manage/` SPA catch-all. The code may
+  // ride in the query (`?code=`, which the login's `returnTo` sanitizer allows) or in the path.
+  if (path === "/manage/device" || path.startsWith("/manage/device/"))
+    return { kind: "adminDevice" };
   if (path === "/manage/callback") return { kind: "adminCallback" };
+  if (
+    path === "/manage/login/passkey/options" ||
+    path === "/manage/login/passkey/verify"
+  )
+    return { kind: "adminPasskey" };
   if (path === "/manage/api" || path.startsWith("/manage/api/"))
     return { kind: "adminApi" };
   if (path === "/manage" || path.startsWith("/manage/"))

@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "license-device-limit",
-  "description": "The seat refusal's portal link (PX-W8, WIRE-CONTRACT-V4 §5.3). Every seat is taken, so activation is refused with `device_limit`, which carries `manageUrl`: for a floating licence the portal's activate page, then free-device; once the licence is attached to an account, the free-device flow for that licence; and, with the product's portal off, no link at all. `for` is the coarse platform-and-arch label from the request's metadata. The link is never an auth failure: the client holds no token and wipes nothing.",
+  "description": "The device-limit refusal's portal link (PX-W8, WIRE-CONTRACT-V4 §5.3). The device limit is reached, so activation is refused with `device_limit`, which carries `manageUrl`: for a floating licence the portal's activate page, then free-device; once the licence is attached to an account, the free-device flow for that licence; and, with the product's portal off, no link at all. `for` is the coarse platform-and-arch label from the request's metadata. The link is never an auth failure: the client holds no token and wipes nothing.",
   "features": ["license.activate", "license.manage"],
   "requires": ["core.store"],
   "product": "djdl",

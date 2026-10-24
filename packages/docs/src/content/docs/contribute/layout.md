@@ -81,6 +81,24 @@ Core builds them per request from the registry and the
 product's enablement, and each answers `null` — without running the provider's code — while the
 service that provides it is off. Hooks are read-only, and each has exactly one provider.
 
+### Where a store's code lives
+
+A store has two faces, delivery and commerce, and rule 6 keeps Distribution and Commerce from
+importing each other, so a store's code is split by layer:
+
+| Where                                   | Holds                                                                                                                                                             |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/stores/adapter.ts`, `adapters.ts` | The `StoreAdapter` declaration of every store, as data: its facets, identity fields and requirements. One entry per store.                                        |
+| `core/stores/<store>/`                  | What both faces share: the store's gated client, custody and token helpers (`apple/client.ts`, `steam/publisher.ts`).                                             |
+| `core/stores/requirements.ts`           | The one evaluator of a store's declared requirements. Metadata only.                                                                                              |
+| `services/distribution/stores/`         | The `DeliveryFacet` of each store: its connector, flow runtime and storefront admin, registered by store id (`DELIVERY_FACETS`).                                  |
+| `services/commerce/stores/<store>/`     | The `CommerceFacet` of each store: claim parsing and verification, notifications and the recheck, registered by store id (`COMMERCE_FACETS`, `commerceFacetFor`). |
+
+Adding a store is one `StoreAdapter` entry, one facet in each service that has the face, and the
+store's client under `core/stores/<store>/`. `test/storeAdapters.test.ts` binds each declaration
+to its registrations by id. Which files may open a credential is the allowlists of
+`test/outletCredentialReach.test.ts`; a facet reaches a credential only through a token helper.
+
 ### Enforcement: `boundaries.test.ts`
 
 `packages/worker/test/boundaries.test.ts` walks every file actually present under `src/` and

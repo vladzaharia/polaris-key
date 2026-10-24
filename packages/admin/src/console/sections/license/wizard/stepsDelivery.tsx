@@ -11,6 +11,10 @@ import {
 } from "../../../../ui/wizard/index.js";
 // The email's own words (pure, import-free): the preview cannot drift from the template.
 import {
+  INVITE_FOOTERS,
+  inviteEmailIntro,
+  inviteEmailPrimaryLabel,
+  inviteEmailSubject,
   KEY_EMAIL_AFTER,
   KEY_FOOTERS,
   keyEmailIntro,
@@ -21,6 +25,7 @@ import {
   deliveriesFor,
   deliveryOf,
   emailsKey,
+  invitesPerson,
   type Delivery,
   type StepId,
 } from "./draft.js";
@@ -28,8 +33,12 @@ import type { StepProps } from "./steps.js";
 
 const DELIVERY_COPY: Record<
   Delivery,
-  { label: string; hint: (to: string) => string }
+  { label: string; hint: (to: string, email: string) => string }
 > = {
+  invite: {
+    label: "Email an invitation",
+    hint: (to, email) => `${to} signs in with ${email} to use it. No key.`,
+  },
   "email-show": {
     label: "Email the key and show it once",
     hint: (to) => `${to} gets it now. You can copy it too.`,
@@ -49,10 +58,41 @@ export function DeliveryStep({
   draft,
   set,
   productName,
-}: StepProps & { productName: string }): React.ReactElement {
+  invitationsOff,
+  loading = false,
+}: StepProps & {
+  productName: string;
+  /** Why invitations are not offered here, when the product has sign-in but cannot link by email. */
+  invitationsOff?: "identity_off" | "auto_link_off" | "no_mail" | null;
+  /** The list has not said yet whether invitations work: the choices wait for it. */
+  loading?: boolean;
+}): React.ReactElement {
   const fits = deliveriesFor(draft);
   const current = deliveryOf(draft);
-  const to = draft.name.trim() || draft.email.trim() || "They";
+  const email = draft.email.trim();
+  const to = draft.name.trim() || email || "They";
+  if (loading && draft.who === "person")
+    return (
+      <p role="status" className="text-sm text-fg-muted">
+        Checking how {to} can get it…
+      </p>
+    );
+  const alsoKey = (
+    <label className="flex min-h-6 items-start gap-2 pt-2 text-sm text-fg">
+      <input
+        type="checkbox"
+        checked={draft.alsoKey}
+        onChange={(e) => set("alsoKey", e.target.checked)}
+        className="mt-0.5 size-4 accent-(--pk-accent)"
+      />
+      <span>
+        Also create a key
+        <span className="block text-xs text-fg-muted">
+          Shown once here, never emailed.
+        </span>
+      </span>
+    </label>
+  );
   return (
     <div className="space-y-4">
       <ChoiceStep<Delivery>
@@ -63,10 +103,30 @@ export function DeliveryStep({
         choices={fits.map((d, i) => ({
           value: d,
           label: DELIVERY_COPY[d].label,
-          description: DELIVERY_COPY[d].hint(to),
+          description: DELIVERY_COPY[d].hint(to, email),
           ...(i === 0 && draft.who === "person" ? { recommended: "" } : {}),
+          ...(d === "invite" ? { footer: alsoKey } : {}),
         }))}
       />
+      {draft.who === "person" && invitationsOff === "auto_link_off" ? (
+        <p className="text-sm text-fg-muted">
+          Invitations aren&apos;t offered: this product&apos;s sign-in
+          doesn&apos;t add licenses by email.
+        </p>
+      ) : null}
+      {draft.who === "person" && invitationsOff === "no_mail" ? (
+        <p className="text-sm text-fg-muted">
+          Invitations aren&apos;t offered: email isn&apos;t set up on this
+          Polaris Key server.
+        </p>
+      ) : null}
+      {invitesPerson(draft) ? (
+        <InvitePreview
+          productName={productName}
+          to={draft.email.trim()}
+          name={draft.name.trim()}
+        />
+      ) : null}
       {emailsKey(draft) ? (
         <EmailPreview
           productName={productName}
@@ -75,6 +135,47 @@ export function DeliveryStep({
         />
       ) : null}
     </div>
+  );
+}
+
+/** What the invitation looks like, from the template's own strings. It has no key to mask. */
+function InvitePreview({
+  productName,
+  to,
+  name,
+}: {
+  productName: string;
+  to: string;
+  name: string;
+}): React.ReactElement {
+  return (
+    <figure
+      aria-label="Email preview"
+      className="overflow-hidden rounded-lg border border-border bg-surface-sunken text-sm"
+    >
+      <figcaption className="border-b border-border px-3 py-2">
+        <p className="font-medium text-fg-strong">
+          {productName} via Polaris Locker
+        </p>
+        <p className="break-words text-xs text-fg-muted">
+          To <bdi className="break-all">{to}</bdi> ·{" "}
+          {inviteEmailSubject(productName)}
+        </p>
+      </figcaption>
+      <div className="space-y-2 px-3 py-3">
+        <p className="font-semibold text-fg-strong">{productName}</p>
+        {inviteEmailIntro(name, productName, to).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <p
+          aria-hidden
+          className="inline-block rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-on"
+        >
+          {inviteEmailPrimaryLabel(false)}
+        </p>
+        <p className="text-xs text-fg-muted">{INVITE_FOOTERS.created}</p>
+      </div>
+    </figure>
   );
 }
 

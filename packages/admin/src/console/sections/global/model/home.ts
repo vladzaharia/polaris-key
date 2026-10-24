@@ -12,7 +12,8 @@ import type {
 } from "../../../../api.js";
 import { FEATURES, type FeatureRow } from "../../../../services.generated.js";
 import { r } from "../../../routes.js";
-import { productPage } from "../../../routes.js";
+import { globalPage, productPage } from "../../../routes.js";
+import type { GlobalPageId } from "../../../nav.js";
 import type { ProductPageId } from "../../../nav.js";
 
 export type AttentionTone = "danger" | "warning";
@@ -48,8 +49,31 @@ export function featureHref(f: FeatureRow, slug: string): string {
   return SERVICE_HOME[f.primary[0] ?? f.services[0]!](slug);
 }
 
-/** Where an attention item's fix lives. */
+/** An attention item that belongs to a product (the platform's own has `product: null`). */
+export type ProductAttentionItem = AttentionItemDto & {
+  product: { slug: string; name: string };
+};
+
+/**
+ * The server's read split once: a product's items feed its card, pill and facet; the platform's
+ * own (the Cloud Sync pause) never do, so no product count is inflated by it.
+ */
+export function productItems(
+  items: readonly AttentionItemDto[],
+): ProductAttentionItem[] {
+  return items.filter((a): a is ProductAttentionItem => a.product !== null);
+}
+
+export function platformItems(
+  items: readonly AttentionItemDto[],
+): AttentionItemDto[] {
+  return items.filter((a) => a.product === null);
+}
+
+/** Where an attention item's fix lives: a product page, or a global page for a platform item. */
 export function attentionHref(item: AttentionItemDto): string {
+  if (item.product === null)
+    return globalPage(item.action.page as GlobalPageId, item.action.query);
   return productPage(item.product.slug, item.action.page as ProductPageId, {
     query: item.action.query,
   });
@@ -57,7 +81,9 @@ export function attentionHref(item: AttentionItemDto): string {
 
 const RANK: Record<AttentionTone, number> = { danger: 2, warning: 1 };
 
-export function worstTone(items: readonly AttentionItemDto[]): AttentionTone {
+export function worstTone(
+  items: readonly ProductAttentionItem[],
+): AttentionTone {
   return items.reduce<AttentionTone>(
     (t, a) => (RANK[a.tone] > RANK[t] ? a.tone : t),
     "warning",
@@ -65,7 +91,7 @@ export function worstTone(items: readonly AttentionItemDto[]): AttentionTone {
 }
 
 /** The card's pill: the one issue named, or "N need attention". */
-export function pillLabel(items: readonly AttentionItemDto[]): string {
+export function pillLabel(items: readonly ProductAttentionItem[]): string {
   return items.length === 1
     ? items[0]!.short
     : `${items.length} need attention`;
@@ -75,14 +101,14 @@ export function pillLabel(items: readonly AttentionItemDto[]): string {
 export interface CardFeature {
   feature: FeatureRow;
   href: string;
-  issues: AttentionItemDto[];
+  issues: ProductAttentionItem[];
   /** "Managed config: 1 needs attention", or the feature's label. */
   name: string;
 }
 
 export function cardFeatures(
   p: ProductDetail,
-  attention: readonly AttentionItemDto[],
+  attention: readonly ProductAttentionItem[],
 ): CardFeature[] {
   return runningFeatures(p).map((feature) => {
     const issues = attention.filter(
@@ -113,7 +139,7 @@ export interface HomeRow {
   product: ProductDetail;
   slug: string;
   name: string;
-  attention: AttentionItemDto[];
+  attention: ProductAttentionItem[];
   verified: boolean;
   source: "github" | "manual";
 }

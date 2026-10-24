@@ -18,7 +18,6 @@ import { handleAdminLogin } from "../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   verifySession,
   type SessionIdentity,
 } from "../src/core/console/session.js";
@@ -47,8 +46,9 @@ import type { FusedSessionDoc } from "../src/services/identity/doc.js";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
-import { getTokenRecord } from "../src/platform/kv.js";
+import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
 import { hashKey } from "../src/platform/crypto.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -65,10 +65,12 @@ function adminEnv(kv: KvMock, slugs: string[]): Env {
 /** Forge a signed session cookie for the given identity (same scheme the worker verifies). */
 async function sessionCookie(
   env: Env,
+  db: Db,
   identity: SessionIdentity,
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { authTime: NOW, stepUp: true, ...identity },
     NOW,
   );
@@ -140,7 +142,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -158,7 +160,7 @@ describe("admin api", () => {
       platformAdmin: boolean;
       csrf: string;
     };
-    expect(body.sub).toBe("u1");
+    expect(body.sub).toBe(await consoleActor(env, db, "u1"));
     expect(body.platformAdmin).toBe(true);
     expect(typeof body.csrf).toBe("string");
   });
@@ -170,7 +172,7 @@ describe("admin api", () => {
       const db = makeTestDb();
       const env = adminEnv(new KvMock(), []);
       if (environment !== undefined) env.PKEY_ENVIRONMENT = environment;
-      const { cookie } = await sessionCookie(env, {
+      const { cookie } = await sessionCookie(env, db, {
         sub: "u1",
         name: "Ada",
         email: "ada@x.io",
@@ -210,7 +212,8 @@ describe("admin api", () => {
       const env = adminEnv(new KvMock(), []);
       env.CONSOLE_ORIGIN = "https://key.plrs.im";
       if (set) env.CUSTOMER_ORIGIN = "https://polaris.locker";
-      const { cookie } = await sessionCookie(env, {
+      const db = makeTestDb();
+      const { cookie } = await sessionCookie(env, db, {
         sub: "u1",
         name: "Ada",
         email: "ada@x.io",
@@ -219,7 +222,7 @@ describe("admin api", () => {
       const res = await dispatch(
         mkReq("GET", "/api/me", { cookie }),
         env,
-        makeTestDb(),
+        db,
         "/api/me",
       );
       return ((await res.json()) as { customerOrigin?: string | null })
@@ -245,7 +248,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
     // A non-platform admin (no groups) cannot create a product.
-    const weak = await sessionCookie(env, {
+    const weak = await sessionCookie(env, db, {
       sub: "u2",
       name: "Bob",
       email: "b@x.io",
@@ -264,7 +267,7 @@ describe("admin api", () => {
     expect(denied.status).toBe(403);
 
     // A platform admin can.
-    const strong = await sessionCookie(env, {
+    const strong = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -323,7 +326,7 @@ describe("admin api", () => {
       JSON.stringify(["bad manifest"]),
       "manifest validation failed",
     );
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -380,7 +383,7 @@ describe("admin api", () => {
       "UPDATE products SET signing_pub = NULL WHERE slug = ?",
       "djdl",
     );
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -406,7 +409,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -439,7 +442,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -520,7 +523,7 @@ describe("admin api", () => {
       ),
     ).not.toBeNull();
 
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -560,11 +563,60 @@ describe("admin api", () => {
     ).not.toBeNull();
   });
 
+  it("product deletion runs the Cloud Sync purge before the per-device token deletes (SR-1 N6)", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = adminEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, token_hash)
+       VALUES ('djdl', 'dev-1', 'lic-1', 'authorized', ?, ?, 'th-dev-1')`,
+      NOW,
+      NOW,
+    );
+    await putTokenRecord(env, "djdl", "th-dev-1", {
+      product: "djdl",
+      deviceId: "dev-1",
+      licenseId: "lic-1",
+    });
+    // More objects than one run erases, so the first attempt answers purge_incomplete.
+    await db.batch(
+      Array.from({ length: 405 }, (_, i) => ({
+        sql: `INSERT INTO sync_directory (product, subject, bytes, settings, records, files, revision_bytes,
+                quota_bytes, tier_id, platform, last_active_at, updated_at)
+              VALUES (?, ?, 0, 0, 0, 0, 0, 0, NULL, NULL, 1, 1)`,
+        params: ["djdl", `ps_${String(i).padStart(4, "0")}`],
+      })),
+    );
+    const { cookie, csrf } = await sessionCookie(env, db, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const del = () =>
+      dispatch(
+        mkReq("DELETE", "/api/products/djdl", {
+          cookie,
+          csrf,
+          body: { confirmSlug: "djdl" },
+        }),
+        env,
+        db,
+        "/api/products/djdl",
+      );
+    expect((await del()).status).toBe(409);
+    // The bounded purge ran first and was not finished: no token was spent on yet.
+    expect(await getTokenRecord(env, "djdl", "th-dev-1")).not.toBeNull();
+    expect((await del()).status).toBe(200);
+    expect(await getTokenRecord(env, "djdl", "th-dev-1")).toBeNull();
+  });
+
   it("creates a license and mints a key returned exactly once", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -603,7 +655,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -625,7 +677,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -733,7 +785,7 @@ describe("admin api", () => {
     );
 
     // Product admin groups are reserved metadata in v1; only platform admins can read.
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u3",
       name: "Cy",
       email: "c@x.io",
@@ -780,7 +832,7 @@ describe("admin api", () => {
     expect(await getTokenRecord(env, "djdl", tokenHash)).not.toBeNull();
 
     // Disable the license via the admin API.
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -822,7 +874,7 @@ describe("admin api", () => {
     );
 
     // A djdl-only admin (NOT platform) reaches for product acme.
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u3",
       name: "Cy",
       email: "c@x.io",
@@ -840,7 +892,7 @@ describe("admin api", () => {
     const rows = await listAudit(db, "acme", {});
     const row = rows.find((r) => r.action === "access.denied");
     expect(row).toBeDefined();
-    expect(row?.actor_sub).toBe("u3");
+    expect(row?.actor_sub).toBe(await consoleActor(env, db, "u3"));
     expect(row?.target_id).toBe("acme");
   });
 
@@ -848,7 +900,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -868,7 +920,7 @@ describe("admin api", () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]?.action).toBe("license.create");
     // Actor is the verified session subject, never a request field.
-    expect(rows[0]?.actor_sub).toBe("u1");
+    expect(rows[0]?.actor_sub).toBe(await consoleActor(env, db, "u1"));
   });
 
   it("fails closed: with NO ADMIN_SESSION_SECRET, issuing a session throws and verifying returns null (D1)", async () => {
@@ -876,8 +928,9 @@ describe("admin api", () => {
     // Remove the secret — the worker must NOT fall back to a guessable signing key.
     delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
     await expect(
-      issueSession(
+      consoleTestSession(
         env,
+        makeTestDb(),
         { sub: "u1", name: "Ada", email: "a@x.io", groups: [] },
         NOW,
       ),
@@ -889,7 +942,7 @@ describe("admin api", () => {
   it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -984,7 +1037,7 @@ describe("admin api", () => {
   it("manual create atomically yields BOTH a products row AND an active product_keys row", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1058,7 +1111,7 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1124,7 +1177,7 @@ describe("admin api", () => {
       null,
     );
     await seedProductSecret(db, "djdl", "OIDC_SECRET", "oidc-value");
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1173,7 +1226,7 @@ describe("admin api", () => {
     );
     // Configured, but as a GENERAL secret: the recipe could not sign with it.
     await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem");
-    const { cookie } = await sessionCookie(env, {
+    const { cookie } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1214,7 +1267,7 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const before = await getActiveProductKey(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1285,7 +1338,7 @@ describe("admin api", () => {
   it("a manual product has NO release/mint capability (mint route 404s)", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -1393,7 +1446,7 @@ describe("admin services enablement", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "ada@x.io",
@@ -1471,7 +1524,11 @@ describe("admin services enablement", () => {
       services: { identity: { enabled: true } },
     });
     expect(patched.status).toBe(200);
-    expect(patched.body.facts).toEqual(expected);
+    // LX-33.7: a services write seeds the Default tier of a License product that has none.
+    expect(patched.body.facts).toEqual({
+      ...expected,
+      licensing: { tiers: 3, licenses: 3 },
+    });
 
     const dry = await call(w, "PATCH", "?dryRun=1", {
       services: { identity: { enabled: false } },
@@ -1482,7 +1539,10 @@ describe("admin services enablement", () => {
       (await loadProduct(w.env, w.db, "djdl"))?.services.identity.enabled,
     ).toBe(true);
 
-    expect((await call(w, "POST", "/revert")).body.facts).toEqual(expected);
+    expect((await call(w, "POST", "/revert")).body.facts).toEqual({
+      ...expected,
+      licensing: { tiers: 3, licenses: 3 },
+    });
   });
 
   it("PATCH merges, claims the row, and is visible to loadProduct", async () => {
@@ -1497,7 +1557,7 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     expect(body.source).toBe("admin");
     expect(body.facts).toMatchObject({
-      licensing: { tiers: 0, licenses: 0 },
+      licensing: { tiers: 1, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
       commerce: { storefronts: 0, storeGrants: 0 },
@@ -1803,7 +1863,7 @@ describe("admin services enablement", () => {
       config: { enabled: false },
     });
     expect(reverted.body.facts).toMatchObject({
-      licensing: { tiers: 0, licenses: 0 },
+      licensing: { tiers: 1, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
       commerce: { storefronts: 0, storeGrants: 0 },
@@ -1832,7 +1892,7 @@ describe("admin services enablement", () => {
     const row = (await listAudit(w.db, "djdl", { limit: 20 })).find(
       (r) => r.action === "product.services.update",
     );
-    expect(row?.actor_sub).toBe("u1");
+    expect(row?.actor_sub).toBe(await consoleActor(w.env, w.db, "u1"));
   });
 
   it("requires a session, a platform admin, and CSRF on the mutation", async () => {
@@ -1841,7 +1901,7 @@ describe("admin services enablement", () => {
     // No session at all.
     expect((await dispatch(mkReq("GET", p), w.env, w.db, p)).status).toBe(401);
     // Signed in, but not a platform admin.
-    const weak = await sessionCookie(w.env, {
+    const weak = await sessionCookie(w.env, w.db, {
       sub: "u9",
       name: "Bob",
       email: "b@x.io",
@@ -1902,7 +1962,7 @@ describe("device-limit ceiling on the product registry", () => {
   }> {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
-    const { cookie, csrf } = await sessionCookie(env, {
+    const { cookie, csrf } = await sessionCookie(env, db, {
       sub: "u1",
       name: "Ada",
       email: "a@x.io",
@@ -2068,8 +2128,9 @@ describe("signing-key rotation mints distinct kids", () => {
     db: Db,
     at: number,
   ): Promise<{ status: number; body: { kid?: string; message?: string } }> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

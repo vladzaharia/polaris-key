@@ -10,8 +10,8 @@
  * The platform two live in Core's platform slice (`core/settings/platform.ts`), because a service
  * slice contributes product-scope entries only.
  *
- * Every Cloud Sync entry is `pending` on U-05, which adds the readers (the Durable Object, the
- * directory totals and the `syncAccess` quota they enforce).
+ * U-05.13 adds the readers: the push compares the product's aggregate with the ceiling
+ * (`handlers/push.ts`), and reads the platform pause beside it.
  */
 
 import { CLOUD_SYNC_CEILINGS } from "@polaris-key/catalog";
@@ -20,7 +20,6 @@ import type { ServiceSettingsSlice } from "../../core/settings/types.js";
 
 const VISIBLE = { service: "sync", offBehaviour: "hide" } as const;
 const DOCS = "/docs/features/cloud-sync/";
-const PENDING = { wp: "U-05" } as const;
 
 /** The largest product ceiling the registry accepts (1 PiB); the bound only keeps it an integer. */
 const CEILING_MAX_BYTES = 1024 ** 5;
@@ -55,7 +54,7 @@ export const SYNC_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
       since: "U-01b",
-      pending: PENDING,
+      readers: ["services/sync/handlers/push.ts"],
     }),
   ],
 };

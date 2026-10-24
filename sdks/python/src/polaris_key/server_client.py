@@ -14,7 +14,7 @@ settings made for a container, not a second client:
 * no device reports (``device_reports=False``): a server has nothing a customer's device list
   should show;
 * a background refresh (``refresh_interval_seconds``, default 3600), so
-  ``client.config.get_config()`` follows the console.
+  ``client.config.get()`` follows the console.
 
 Per-user config is not offered: the device's config document carries ``secrets`` and is never
 forwarded (§13 Q8).
@@ -97,7 +97,7 @@ def server_client(
     *,
     product_slug: str,
     version: str,
-    trust: Mapping[str, str],
+    pinned_keys: Mapping[str, str],
     device_id: Optional[str] = None,
     device_id_file: Optional[str] = None,
     license_key: Optional[str] = None,
@@ -107,7 +107,7 @@ def server_client(
 ) -> PolarisKeyClient:
     """The normal client for a server: memory store, stable device id, ``PKEY_LICENSE_KEY``, no
     device reports and a background refresh. Returns once the key is activated and the first
-    sync is done; read config with ``client.config.get_config()``. ``close()`` (or ``with``)
+    sync is done; read config with ``client.config.get()``. ``close()`` (or ``with``)
     stops the refresh.
 
     Raises ``PolarisError`` ``invalid-options`` for a missing or malformed id or key, and one
@@ -127,7 +127,7 @@ def server_client(
     client = PolarisKeyClient.create(
         product_slug=product_slug,
         version=version,
-        trust=dict(trust),
+        pinned_keys=dict(pinned_keys),
         store=InMemoryStore(product_slug, dev),
         device_reports=False,
         refresh_interval_seconds=refresh_interval_seconds,

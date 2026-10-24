@@ -43,6 +43,7 @@ import {
   SLUG,
   type AscWorld,
 } from "./ascWorld.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -247,7 +248,10 @@ describe("the pin decides whether the connector runs", () => {
       (a) => a.action === "outlet_credential.pin",
     );
     expect(pins).toHaveLength(1);
-    expect(pins[0]).toMatchObject({ actor_sub: "u1", target_id: "asc" });
+    expect(pins[0]).toMatchObject({
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
+      target_id: "asc",
+    });
     expect(pins[0]!.summary).toBe(
       `Pinned channel credential asc (asc-api-key) to appleId ${OTHER_APP} (was ${APPLE_ID})`,
     );

@@ -165,7 +165,7 @@ export function ProductConnectionSection({
                 Auto-issue is set by the{" "}
                 <a
                   className={linkClass}
-                  href={`${docsUrl("autoIssue")}#auto-issue`}
+                  href={docsUrl("autoIssue")}
                   target="_blank"
                   rel="noreferrer"
                 >

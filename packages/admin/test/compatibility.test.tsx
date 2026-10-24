@@ -21,7 +21,7 @@ import type {
   SimulateParams,
   SimulateResponse,
 } from "../src/api.js";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { sha } from "./releaseFixture.js";
 import {
   expectNoAxeViolations,
@@ -687,7 +687,7 @@ describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
   it("says the overlay is unavailable when Distribution does not answer", async () => {
     distributionMatrix
       .mockReset()
-      .mockRejectedValue(new ApiError(404, undefined, "not_found"));
+      .mockRejectedValue(new HttpError(404, { code: "not_found" }));
     mountMatrix();
     await row("1.5.0");
     expect(
@@ -834,7 +834,7 @@ describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
   });
 
   it("shows the worker's refusal when a simulation fails", async () => {
-    const refusal = new ApiError(404, undefined, "not_found");
+    const refusal = new HttpError(404, { code: "not_found" });
     refusal.message = "nowhere is no live outlet of this product";
     simulateUpdate.mockReset().mockRejectedValue(refusal);
     mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);

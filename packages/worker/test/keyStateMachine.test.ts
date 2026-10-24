@@ -6,11 +6,7 @@ import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getProduct } from "../src/core/products/store.js";
 import { appendAudit, listAudit } from "../src/core/audit.js";
 
@@ -30,8 +26,9 @@ async function world(): Promise<World> {
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
   // A proven step-up: the transitions below use `breakGlass`, which is gated on one.
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -75,6 +72,7 @@ import {
   type KeyAction,
   type KeyStatus,
 } from "../src/keyTransitions.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const STATUSES: KeyStatus[] = ["active", "staged", "retired", "revoked"];
 const ACTIONS: KeyAction[] = ["activate", "retire", "revoke"];

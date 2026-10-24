@@ -344,6 +344,14 @@ export interface CatalogPackFile {
   blob: { sha256: string; bytes: number; codec: string; key: string };
 }
 
+/** One build the app declaration promises (`ReleaseCatalog.declaredBuilds`, A-20.2). */
+export interface CatalogDeclaredBuild {
+  buildId: string;
+  platform: string;
+  arch: string;
+  format: string;
+}
+
 /** One build of an app release with its `embeds` (`ReleaseCatalog.embedsOf`, P4-05). */
 export interface CatalogBuildEmbeds {
   releaseId: string;
@@ -597,6 +605,12 @@ export interface ReleaseCatalog {
    * Core's report path bounds update telemetry with it.
    */
   knownChannels(): Promise<string[]>;
+  /**
+   * The builds the app declaration promises (`.pkey/release deliverables.app.artifacts[]`,
+   * persisted as the app deliverable's `def_json`), published or not (A-20.2). `[]` when the app
+   * declares none. Read-only.
+   */
+  declaredBuilds(): Promise<CatalogDeclaredBuild[]>;
 
   // ── Packages (F-03): what the package feeds render (F-04 to F-09) and F-11 shows ──
   /** The declared package deliverables, by id. */
@@ -1019,9 +1033,11 @@ export interface Delivery {
   /** The product's live outlets, by id (P3-03, the signed feed's outlet entries). */
   outlets(): Promise<DeliveryOutlet[]>;
   /**
-   * The product's own store listing (PX-W1): the `.pkey/distribution` document's root `listing`,
-   * never an outlet's merged override, or `null` when it declares none. The customer portal's
-   * product presentation (name, developer, tint, website, art URLs, support links) reads this.
+   * The product's own store listing (PX-W1, A-27.1): the shared listing model's default locale
+   * over the `.pkey/distribution` document's root `listing`, field by field (the model wins; art
+   * refs come from the document), never an outlet's merged override, or `null` when neither holds
+   * a value. The customer portal's product presentation (name, developer, tint, website, art
+   * URLs, support links) and discovery's `core.presentation` read this.
    */
   listing(): Promise<ManifestListing | null>;
   /**

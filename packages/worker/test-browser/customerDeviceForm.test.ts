@@ -154,4 +154,27 @@ describe.each(lanes)("typed code on the customer host, %s", (_name, type) => {
       await browser.close();
     }
   });
+
+  // The /tv lockup is the TV size from the TV breakpoint up and the BRAND phone size (36 px) on a
+  // phone, with a gutter of at least 16 px (it filled the 390 px width edge to edge).
+  it.each([
+    [390, 36],
+    [360, 36],
+    [1280, 72],
+  ])("sizes the /tv lockup at %i px wide", async (width, height) => {
+    const browser = await type.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      await page.goto(`${w.hosts.customer}/tv`);
+      const box = await page.locator(".ac-brand svg").first().boundingBox();
+      expect(box).not.toBeNull();
+      expect(Math.round(box!.height)).toBe(height);
+      if (width < 480) {
+        expect(box!.width).toBeLessThanOrEqual(width - 32);
+        expect(box!.x).toBeGreaterThanOrEqual(16);
+      }
+    } finally {
+      await browser.close();
+    }
+  });
 });

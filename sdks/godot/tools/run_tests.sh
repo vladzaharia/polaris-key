@@ -11,6 +11,8 @@
 #   PKEY_TEST_SUITES  the --pkey-test selection (default: ci)
 #   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
 #                     by default only with the `ci` selection
+#   PKEY_TEST_PNG     1 compares the PNG baselines (step 3c, windowed: needs a display; macOS-recorded);
+#                     PKEY_TEST_PNG_UPDATE=1 records them
 #   PKEY_TEST_MATRIX  1 runs the UI resolution matrix (step 3b, the ui_matrix suite) whatever the
 #                     selection; it runs by default only with the `ci` selection
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
@@ -219,9 +221,36 @@ step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "
 # limit, PKEY_UI_MATRIX_TIMEOUT (default 1800 s), and the shared PKEY_TEST_TIMEOUT stays as it was.
 # Layout is the same engine code on a release template, so it runs once.
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
+  # PKEY_UI_MATRIX_PATHS=both runs it once per presentation path (UI-KITS.md DL16): the scrim
+  # (PKEY_UI_REDUCE_TRANSPARENCY=0, the see-through glass card) and the opaque page (=1). The engines
+  # disagree on which one a headless run takes by default (4.4.1 the scrim, 4.7 on macOS the opaque
+  # page, GODOT-441b), so the newest lane asks for both. Unset: one run, the engine's own path.
+  if [ "${PKEY_UI_MATRIX_PATHS:-auto}" = both ]; then
+    MATRIX_PATHS="0 1"
+  else
+    MATRIX_PATHS="auto"
+  fi
+  for path in $MATRIX_PATHS; do
+    (
+      TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+      if [ "$path" != auto ]; then
+        export PKEY_UI_REDUCE_TRANSPARENCY="$path"
+      fi
+      step "ui-matrix$([ "$path" = auto ] || echo "-rt$path")" run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+    ) || exit 1
+  done
+fi
+
+# 3c. The PNG baselines (tests/suite_ui_png.gd): the screens drawn and compared with the committed
+# PNGs, windowed (a headless run has no renderer), as a step of its own. Off by default: CI's Linux
+# jobs run headless, and the baselines were recorded on macOS arm64 with Godot 4.7.2 (record Linux
+# ones before turning it on there). PKEY_TEST_PNG=1 compares, PKEY_TEST_PNG_UPDATE=1 records.
+if [ "${PKEY_TEST_PNG:-0}" = 1 ] || [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ]; then
   (
     TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
-    step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+    UPD=""
+    [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ] && UPD="update"
+    step ui-png run "$GODOT" --path "$PROJECT" -- --pkey-test ui_png $UPD
   ) || exit 1
 fi
 
