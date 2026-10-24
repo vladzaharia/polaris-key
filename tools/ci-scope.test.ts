@@ -151,6 +151,12 @@ describe("lane selection", () => {
     ]);
   });
 
+  it("runs the android lane for the Compose Android sample", () => {
+    expect(
+      on(["examples/ui/compose-android/src/main/AndroidManifest.xml"]),
+    ).toContain("android");
+  });
+
   it("runs nothing for a change no lane reads", () => {
     expect(on(["README.md", "docs/RUNBOOK.md"])).toEqual(["docs"]);
     expect(on(["examples/node-cli/README.md"])).toEqual([]);
