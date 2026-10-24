@@ -86,6 +86,18 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections (2026-10-23)
+
+Source: `_lead/plans/SP-35b-slices.md` §0 (B1-B6). The code is the fact.
+
+- B1. Moved anchors: the plan's line refs come from `e4a527fee`; each was re-located by text (Godot `core/options.gd:21/:35`, `services/config.gd:147`, `services/license.gd:120/:127`, `editor/setup_dock.gd:117-129`; Swift facades `PolarisKeyClient.swift:643/:650/:660`; Kotlin `licenseChanges` `:424`, facades `:735/:737`, ui-core `PolarisGateState.kt:97`). SP-35b edits no `packages/admin` file: the Godot writer is `packages/shared-manifest/src/integration/sdkConfig.ts` (`godotOptionFields`, `mergeGodotOptions`).
+- B2. Godot reads the plan omits. Move: `editor/setup_tools.gd:29` `CLI_FIELDS`, `sdks/godot/polaris_key.tres:7`, the `push_error` text at `license.gd:235`, doc text in `trust.gd:5`, `discovery.gd:12`, `options.gd:38`. Stay (not `PKeyOptions`): `ui/model/theme.gd:33`, `core/bundle.gd:41`, `discovery.gd:38`, `presentation.gd:402`, the build stamp's `product` key, `PKeyCore.product`.
+- B3. The CLI `.tres` merge keeps unknown lines, so renaming alone would leave the old `product` beside `product_slug` and fail `configure`. SP-35b.2 makes it drop `product` and `pinned_trust_keys` (M6); `packages/cli/test/sdkConfig.test.ts:291-305` and `cli.test.ts:458` move with it.
+- B4. Registry vs Appendix A: Kotlin `licenseChanges` and Swift `client.isEnabled(flag:)` are `sdkOnly` rows (delete, add `removed` rows; M3); the D10 facades (Swift `config(_:default:)`, `activate(key:)`; Kotlin `config(key, default)`, `activate(key)`) are hidden by the `client.activate` ignore entry, so each slice deletes the facade, drops that entry and adds a `removed` row (`client.config` stays ignored); Node `getCurrentDevice` becomes `currentDevice` (SP-35b.1; `package: "SP-35"` per M8, so Node breaks once); `devices.attestSupport` changes shape (Kotlin `Unsupported?` becomes `core.Support`, M10); `PolarisKeyFutures` is ignored and stays flat (M4).
+- B5. Generator: `tools/gen-api-surface.ts` needs namespace entries (`GODOT_SCRIPT`, `SWIFT_TYPE`, `KOTLIN_TYPE`) in the slice that adds them: `entitlements` in all three, Godot `events` (to `SDK`) and `options`. Swift handle members are `get async` (no key paths, SE-0310). Removed names are asserted absent only in Godot; rule 2 guards Swift and Kotlin.
+- B6. Eleven docs pages name the old native names (`build/quickstart/{godot,swift,kotlin}.mdx`, `build/sdks/{godot,swift,kotlin}/your-own-ui.md`, `build/sdks/index.md`, `build/servers/index.mdx`, `features/commerce/index.md`, `features/ship-builds/channels/feeds.md`); `features/licensing/server-verification.mdx` stays (L4). READMEs: `sdks/{godot,swift,kotlin}/README.md`, `sdks/godot/addons/polaris_key/README.md`.
+- Lead decisions M1-M12 are accepted as recommended in the slice plan.
+
 ## Acceptance criteria
 
 - [ ] No `planned: SP-35b` entry remains in `api.json`; every removed name has its `removed` row.

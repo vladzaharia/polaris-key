@@ -309,7 +309,7 @@ describe("R4-01: unauthenticated offline cache", () => {
     const client = clientOn(configDir);
     await client.init();
     expect(client.status().status).toBe("needs-activation");
-    expect(client.getCurrentDevice().licenseId).toBeUndefined();
+    expect(client.currentDevice().licenseId).toBeUndefined();
     expect(client.entitlements.all()).toEqual({});
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
     client.close();
@@ -390,7 +390,7 @@ describe("R4-02: trust-set injection via the cache file", () => {
     expect(r.documents.config?.kind).toBe("error");
     expect(client.entitlements.has("pro")).toBe(false);
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
-    expect(client.getCurrentDevice().licenseId).toBeUndefined();
+    expect(client.currentDevice().licenseId).toBeUndefined();
     // The planted file is still sitting there untouched — and completely inert: no document
     // was ever accepted from it, and no v3 record was produced from its contents.
     const onDisk = readCacheFile(configDir);
@@ -460,7 +460,7 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
     expect(r.applied).toBe(true); // the legitimate update LANDS
     expect(r.documents.license?.kind).toBe("applied");
     expect(client.entitlements.has("pro")).toBe(false); // …and revokes the entitlement
-    expect(client.getCurrentDevice().licenseId).toBe("lic_REVOKED");
+    expect(client.currentDevice().licenseId).toBe("lic_REVOKED");
     client.close();
   });
 

@@ -46,7 +46,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.status` | `client.status` | — | `client.status` | `client.status` | `client.status` | `client.status` | — |
 | `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | `client.storeStatus` | `client.storeStatus` | `client.store_status` | — |
 | `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | `client.isLicensed` | `client.isLicensed` | `client.is_licensed` | — |
-| `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
 | `client.listDevices` | `client.listDevices` | — | `client.list_devices` | `client.listDevices` | `client.listDevices` | — | — |
 | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — |
 | `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | `client.renameDevice` | `client.renameDevice` | — | — |
@@ -56,7 +55,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
 | `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
 | `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
-| `client.currentDevice` | — | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
+| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
 | `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
 | `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
 | `client.start` | — | — | — | `client.start` | `client.start` | `client.start` | — |
@@ -408,3 +407,4 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | React | `usePolarisKey().getConfig` | `config.get` | SP-35 |
 | React | `usePolarisKey().isEntitled` | `entitlements.has` | SP-35 |
 | Python | `trust` | `options.pinnedKeys` | SP-35 |
+| Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |

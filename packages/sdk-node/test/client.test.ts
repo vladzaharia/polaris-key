@@ -330,7 +330,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     // …and the derived state still round-trips through the public surface.
     expect(client.config.get("quality.floor", "x")).toBe("flac");
     expect(client.entitlements.has("polarisVpn")).toBe(true);
-    expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
+    expect(typeof client.currentDevice().lastVerifiedAt).toBe("number");
 
     // §6 — the report goes to `POST /<p>/devices/report` (not `/config/report`), bearing the
     // `pkeyt_` device token.
@@ -658,7 +658,7 @@ describe("PolarisKeyClient — device management surface", () => {
         new Response("{}", { status: 200 })) as typeof fetch,
     });
 
-    expect(client.getCurrentDevice()).toMatchObject({
+    expect(client.currentDevice()).toMatchObject({
       id: deviceId,
       current: true,
       status: "needs-activation",
