@@ -616,6 +616,7 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   `pkey trust` or the console. Its tools (`editor/setup_tools.gd`, PKeySetupTools) build the
   `pkey sdk --lang godot --write` and `pkey mirror --lang gdscript` command lines, run them
   through the platform shell and add `pkey_packs/*` to the export presets.
+  A `polaris_key.tres` that still holds the pre-0.9 `product` or `pinned_trust_keys` shows "uses names removed in 0.9. Save rewrites it." and pre-fills the product and the pins from the old lines; the confirmation box stays unticked until you compare the pins, and Save writes only `product_slug` and `pinned_keys`. An export with such a file logs an error and continues.
 
 ## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`)
 
