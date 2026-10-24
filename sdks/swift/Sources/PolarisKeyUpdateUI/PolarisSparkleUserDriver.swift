@@ -122,6 +122,9 @@ import PolarisKeyUpdate
 
         public func attach(updater: SPUUpdater) {
             self.updater = updater
+            // The seam to the kit: the Settings pane's and the app menu's "Check for Updates…"
+            // (UK-08.4) now open this window (UpdateHook.swift).
+            PolarisKeyUpdateHook.present = { [weak updater] in updater?.checkForUpdates() }
             automaticChecks = { [weak updater] in updater?.automaticallyChecksForUpdates ?? true }
         }
 

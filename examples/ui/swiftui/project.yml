@@ -66,7 +66,12 @@ targets:
     platform: iOS
     sources:
       - path: UITests
-        excludes: [KitRenderMacTests.swift, KitKeyboardMacTests.swift, KitSettingsMacTests.swift]
+        excludes:
+          [
+            KitRenderMacTests.swift,
+            KitKeyboardMacTests.swift,
+            KitSettingsMacTests.swift,
+          ]
     dependencies:
       - target: TidewaterKit
       - package: SnapshotTesting

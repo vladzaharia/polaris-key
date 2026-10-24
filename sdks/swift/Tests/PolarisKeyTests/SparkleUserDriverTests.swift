@@ -11,6 +11,8 @@
 
     @testable import PolarisKeyCore
     @testable import PolarisKeyUpdate
+    @testable import PolarisKeyUpdateUI
+    import PolarisKeyUI
 
     @testable import PolarisKey
 
@@ -121,6 +123,19 @@
             try (plist as NSDictionary).write(to: contents.appendingPathComponent("Info.plist"))
             addTeardownBlock { try? FileManager.default.removeItem(at: root) }
             return try XCTUnwrap(Foundation.Bundle(url: root))
+        }
+
+        /// Attaching the kit's driver sets the seam the Settings pane and the app menu call.
+        @MainActor func testAttachingTheKitDriverSetsTheUpdateHook() async throws {
+            PolarisKeyUpdateHook.present = nil
+            defer { PolarisKeyUpdateHook.present = nil }
+            let driver = PolarisSparkleUserDriver(
+                client: try client(), options: .init(presentsWindow: false))
+            XCTAssertNil(PolarisKeyUpdateHook.present)
+            let sparkle = try await PolarisSparkle.start(
+                client: try client(), bundle: try anchoredBundle(), userDriver: driver)
+            XCTAssertNotNil(PolarisKeyUpdateHook.present)
+            sparkle.stop()
         }
 
         func testAUserInitiatedCheckReachesTheInjectedDriver() async throws {
