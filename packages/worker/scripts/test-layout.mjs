@@ -208,7 +208,7 @@ export function rewriteSource(text, oldPath, newPath, moves) {
   const oldDir = path.posix.dirname(oldPath);
   const newDir = path.posix.dirname(newPath);
   const pathsRel = rel(newDir, `${TEST}/paths`).replace(/$/, ".js");
-  let usesTestRoot = false;
+  const aliases = new Set();
 
   const retarget = (spec) => {
     if (!spec.startsWith("./") && !spec.startsWith("../")) return spec;
@@ -242,11 +242,10 @@ export function rewriteSource(text, oldPath, newPath, moves) {
       "gm",
     ),
     (_m, name) => {
-      usesTestRoot = name;
+      aliases.add(name);
       return "";
     },
   );
-  const alias = typeof usesTestRoot === "string" ? usesTestRoot : null;
   let inline = false;
   out = out.replace(
     new RegExp(dirExpr, "g"),
@@ -258,7 +257,7 @@ export function rewriteSource(text, oldPath, newPath, moves) {
   );
 
   const names = [];
-  if (alias) names.push(`TEST_ROOT as ${alias}`);
+  for (const alias of aliases) names.push(`TEST_ROOT as ${alias}`);
   if (inline) names.push("TEST_ROOT");
   if (names.length) {
     const stmt = `import { ${names.join(", ")} } from "${pathsRel}";\n`;
