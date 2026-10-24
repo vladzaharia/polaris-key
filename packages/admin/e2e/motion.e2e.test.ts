@@ -507,6 +507,9 @@ interface NavRun {
   /** Elements still named through the CSSOM, and tiles still marked as a source, at rest. */
   leftNamed: number;
   leftMarked: number;
+  /** `.pk-vt-chrome` elements named during the run, of how many existed (S-23 §6.3). */
+  chromeNamed: number;
+  chromeTotal: number;
 }
 
 interface NavWatch {
@@ -515,6 +518,10 @@ interface NavWatch {
   seen: Map<string, { duration: number; delay: number; easing: string }>;
   focus: string[];
   polling: boolean;
+  /** The most `.pk-vt-chrome` elements named at once while `html[data-vt]` was set, and how many
+   *  `.pk-vt-chrome` elements were on the page then. */
+  chromeNamed: number;
+  chromeTotal: number;
   onFocus: (e: FocusEvent) => void;
 }
 
@@ -544,6 +551,8 @@ async function armNavigation(page: Page): Promise<void> {
       seen: new Map(),
       focus: [],
       polling: true,
+      chromeNamed: 0,
+      chromeTotal: 0,
       onFocus: (e) => nav.focus.push(describe(e.target as Element)),
     };
     w.__nav = nav;
@@ -555,6 +564,16 @@ async function armNavigation(page: Page): Promise<void> {
         return t;
       };
     const poll = (): void => {
+      if (document.documentElement.dataset.vt) {
+        const chrome = [...document.querySelectorAll(".pk-vt-chrome")];
+        const named = chrome.filter(
+          (el) => getComputedStyle(el).viewTransitionName === "match-element",
+        ).length;
+        if (named > nav.chromeNamed) {
+          nav.chromeNamed = named;
+          nav.chromeTotal = chrome.length;
+        }
+      }
       for (const a of document.getAnimations()) {
         const effect = a.effect as KeyframeEffect | null;
         const pseudo = effect?.pseudoElement;
@@ -605,6 +624,8 @@ async function settleNavigation(page: Page, heading: string): Promise<NavRun> {
         (el) => el.style.getPropertyValue("view-transition-name") !== "",
       ).length,
       leftMarked: document.querySelectorAll("[data-vt-source]").length,
+      chromeNamed: nav.chromeNamed,
+      chromeTotal: nav.chromeTotal,
     };
   }, heading);
 }
@@ -1378,6 +1399,50 @@ describe("motion on: the portal under the Worker's CSP", () => {
       expect(deep.scrollY, "scrolled to the section").toBeGreaterThan(0);
       expect(deep.active).toBe("H1 Account");
       expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`at 390 px the chrome (top bar, tab bar, section nav) is named in a forward and a route transition, so the page never paints over it (${theme})`, async () => {
+      const o = await portal.open("three", "/", {
+        theme,
+        reducedMotion: "no-preference",
+        width: 390,
+        height: 844,
+      });
+      const page = o.page;
+      await h1(page, "Your library");
+      await page
+        .locator(
+          "article[aria-labelledby='tile-nightfall'] > [data-art='image'] img:not([data-blur])",
+        )
+        .waitFor();
+      await installProbe(page);
+      await atRest(page);
+      await armNavigation(page);
+      await page
+        .getByRole("article", { name: "Nightfall" })
+        .getByRole("link", { name: "Nightfall", exact: true })
+        .click();
+      const fwd = await settleNavigation(page, "Nightfall");
+      expect(fwd.started, "one View Transition").toBe(1);
+      expect(
+        fwd.chromeTotal,
+        "the top bar and the phone tab bar",
+      ).toBeGreaterThanOrEqual(2);
+      expect(fwd.chromeNamed, "every chrome element has its own group").toBe(
+        fwd.chromeTotal,
+      );
+      await atRest(page);
+      await armNavigation(page);
+      await page
+        .locator("nav.pk-vt-chrome.fixed")
+        .getByRole("link", { name: /^Discover/ })
+        .click();
+      const route = await settleNavigation(page, "Discover");
+      expect(route.started).toBe(1);
+      expect(route.chromeNamed).toBe(route.chromeTotal);
+      expect(route.chromeNamed).toBeGreaterThanOrEqual(2);
       expect(await o.violations()).toEqual([]);
       await o.close();
     });

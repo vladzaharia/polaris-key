@@ -419,7 +419,7 @@ describe("what never gets a pane or art", () => {
 
 /**
  * MO-13.3 (the guide's check on a sign-in): with motion on, the hosted sign-in and consent controls
- * (`signin/RequestFlow.tsx`, `ConsentStep.tsx`) are enabled on their first paint and none has a running animation of its own or on an ancestor, bar the focus ring easing in, a
+ * (`signin/RequestFlow.tsx`, `ConsentStep.tsx`) are enabled on their first paint and none has a running animation of its own or on an ancestor, bar a
  * step slide (`pk-step-*`) and the card's height ease between steps. Nothing is gated behind an entrance.
  */
 describe("sign-in controls on first paint (motion on)", () => {
@@ -454,8 +454,8 @@ describe("sign-in controls on first paint (motion on)", () => {
                     el.getAttribute("aria-disabled") === "true",
                 )
                 .map((el) => (el.textContent ?? "").trim().slice(0, 30)),
-              // Only the focus ring easing in on the autofocused field, and the step-to-step
-              // slide (`pk-step-*`) of a step reached from another, are allowed: both leave the
+              // Only the step-to-step slide (`pk-step-*`) of a step reached from another is
+              // allowed (a focus ring never animates, S-23 §6.5): it leaves the
               // controls usable. Anything else around a control is a gate.
               animating: controls.flatMap((el) => {
                 const names: string[] = [];
@@ -472,7 +472,7 @@ describe("sign-in controls on first paint (motion on)", () => {
                       (frames?.[0] && "height" in frames[0]
                         ? "card-height"
                         : "script");
-                    if (!/^(outline-color|card-height|pk-step-)/.test(name))
+                    if (!/^(card-height|pk-step-)/.test(name))
                       names.push(`${n.tagName.toLowerCase()}.${name}`);
                   }
                 return names.length
