@@ -20,6 +20,7 @@
     "gen": "tsx tools/gen.ts",
     "gate": "node tools/gate.mjs",
     "parity:check": "tsx tools/parity-check.ts",
+    "skills:check": "tsx tools/skills-check.ts",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",

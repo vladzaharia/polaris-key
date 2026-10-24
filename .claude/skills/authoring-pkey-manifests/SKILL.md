@@ -11,8 +11,8 @@ require a worker redeploy. `.pkey/` is the **only** manifest directory — there
 candidate and no fallback between two.
 
 Reference (all now on the docs site, in the repo under `packages/docs/src/content/docs/`):
-`build/manifest/authoring.md` (the `.pkey/` convention), `build/onboarding.md` (the adopter
-guide), `build/registering.md` (getting a product into D1), and `start/concepts.md` (the
+`build/manifest/product.md` (the `.pkey/` convention), `start/first-product.md` (the adopter
+guide), `build/manifest/register.md` (getting a product into D1), and `start/concepts.md` (the
 canonical glossary).
 
 ## Checklist
@@ -37,7 +37,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 - [ ] Scaffolded files point at a **path**, not a URL:
       `../node_modules/@polaris-key/manifest/schemas/v1/<role>.schema.json`. The canonical `$id`
-      URLs (`https://key.plrs.im/docs/schemas/v1/…`) are identifiers on the auth-gated docs site,
+      URLs (`key.plrs.im`, under `schemas/v1/`) are identifiers on the auth-gated docs site,
       not fetch targets — an editor cannot retrieve them.
 - [ ] In this monorepo, `.vscode/settings.json` already wires `json.schemas` and `yaml.schemas`
       for `**/.pkey/{product,schema,release,distribution}.{json,yaml,yml}` and the `products/*`
@@ -57,7 +57,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       document, root `tiers`, `catalog`, `ghOwner`/`ghRepo`, legacy `modules:` names, …) still
       validate with their old precedence, but `pkey validate` warns `deprecated_spelling` (or
       `conflicting_spelling` when both are set). The full table is
-      `build/manifest/authoring.md` → "Deprecated spellings"; the source of truth is
+      `build/manifest/product.md` → "Deprecated spellings"; the source of truth is
       `DEPRECATED_SPELLINGS` in `packages/shared-manifest/src/spellings.ts`.
 - [ ] Keep **one file per document** (`product.yaml` or `product.json`, not both): only the first
       of `json`, `yaml`, `yml` is read, and `pkey validate` warns when there are more.
@@ -124,7 +124,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       label builds through `buildLabel` (`macOS · Apple silicon (arm64)`,
       `Windows · x64 (x86_64)`, `All platforms`), and a file lacking a platform inherits its
       build's or its name's — so give the name something to say. See "How builds are
-      labelled" on `/docs/build/manifest/authoring/`.
+      labelled" on `/docs/build/manifest/release/`.
 - [ ] If the product ships content packs, declare each as `deliverables.<packId>` with
       `kind: pack` (at most 64, `too_many_pack_deliverables`): `type`
       (`godot.pck` | `files.tree`, required), `binding` (`pinned`, the default: each app release
@@ -154,7 +154,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       (`invalid_app_content`); `packChannels` maps a pack id or `prefix.*` to a channel the
       matched packs publish to (`invalid_pack_channels`, `unknown_pack_channels_target`). Holds
       are never declared: an app release holds a compatible pack at publish. `attachable`
-      (P4-28, `invalid_app_attachable`) lists the app scripts (`res://…` paths, `res://…/`
+      (`invalid_app_attachable`) lists the app scripts (`res://…` paths, `res://…/`
       directories) and canonical `uid://` UIDs a `godot.pck` pack may reference outside itself;
       absent, the publish lint refuses any such reference (the device too, except app UIDs it
       resolves to non-script resources). List a script's path and its UID (Godot 4.4+ writes
@@ -166,8 +166,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `invalid_pack_conflicts`, `invalid_pack_channels`, `unknown_pack_channels_target`,
       `invalid_app_attachable`,
       `invalid_pack_patch`, `unknown_entitlement_ref`. Details:
-      `packages/docs/src/content/docs/services/release/packs.md`.
-- [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in
+      `packages/docs/src/content/docs/features/ship-builds/packs/index.md`.
+- [ ] If CI should publish releases (trusted publishing), declare the publisher in
       `release` under `publishing.trustedPublisher` with a `workflow`
       (`.github/workflows/<file>.yml`) and an optional `environment` (default `release`). Those
       two fields are ALL the manifest can say: the repository's numeric ids come from GitHub at
@@ -177,7 +177,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `invalid_trusted_publisher_workflow`, `invalid_trusted_publisher_environment`.
 - [ ] If the product ships signed updates (wire v4), declare `releaseKeys: [{ kid, publicKey }]`
       in `release` (1–4 entries; `publicKey` is the raw Ed25519 key in 43-character base64url,
-      as `pkey release keys generate` prints it). The private key is a CI secret
+      as the release-key generator prints it). The private key is a CI secret
       (`PKEY_RELEASE_KEY`), never committed. Never reuse a product signing key (the sync refuses
       it, `release_key_is_product_key`) or the Sparkle key (`release_key_reused`). Codes:
       `invalid_release_key`, `weak_release_key`, `duplicate_release_key`, `release_key_reused`;
@@ -245,10 +245,10 @@ table, `tools/services.json`.
       slash, query, credentials or wildcard. Plain `http` only for `http://localhost[:port]` and
       `http://127.0.0.1[:port]`. Bad entries are refused, never coerced (`invalid_web_origins`,
       `invalid_web_origin`). Manifest-owned: resync rewrites it and dropping the block clears it.
-      Details: `packages/docs/src/content/docs/build/web-cors.md`.
+      Details: `packages/docs/src/content/docs/build/web-apps.md`.
 - [ ] The `identity:` block is optional and applies only while `identity` is on (declared with
       it off, `pkey validate` warns `identity_block_without_service`). Identity on no longer
-      needs an `oidc` block. Members (I-09; `methods`, `connections` and `claims` come later):
+      needs an `oidc` block. Members (`methods`, `connections` and `claims` come later):
 
       ```yaml
       identity:
