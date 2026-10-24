@@ -3,17 +3,8 @@
  * including the ones that hold no license.
  */
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import type { Env } from "../src/platform/env.js";
-import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  type SessionIdentity,
-} from "../src/core/console/session.js";
+import { NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { adminWorld, type AdminLogin, type AdminWorld } from "./adminWorld.js";
 import { type DeviceRow } from "../src/core/repo.js";
 import {
   getDevice,
@@ -23,71 +14,35 @@ import {
 } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
-import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
+import { consoleActor } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
 
 const id = (n: number): string => `dev_${String(n).padStart(28, "0")}`;
 
-function mkReq(
-  method: string,
-  path: string,
-  opts: { cookie?: string; csrf?: string } = {},
-): Request {
-  const headers: Record<string, string> = {};
-  if (opts.cookie) headers.cookie = opts.cookie;
-  if (opts.csrf) headers[CSRF_HEADER] = opts.csrf;
-  return new Request(`https://key.plrs.im/manage${path}`, {
-    method,
-    headers,
-  }) as unknown as Request;
-}
-
-interface World {
-  db: Db;
-  env: Env;
-  cookie: string;
-  csrf: string;
-  weak: string;
+interface World extends Omit<AdminWorld, "call"> {
+  weak: AdminLogin;
+  /** The unscoped `/manage` call. */
+  raw: AdminWorld["call"];
   call: (method: string, path: string) => Promise<Response>;
 }
 
-async function login(env: Env, db: Db, identity: SessionIdentity) {
-  const { token, session } = await consoleTestSession(env, db, identity, NOW);
-  return { cookie: `${ADMIN_COOKIE}=${token}`, csrf: session.csrf };
-}
-
 async function world(): Promise<World> {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), [SLUG]);
-  env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
-  env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  await seedProduct(db, SLUG);
-  const admin = await login(env, db, {
-    sub: "u1",
-    name: "Ada",
-    email: "ada@x.io",
-    groups: [PLATFORM_GROUP],
+  const w = await adminWorld({
+    products: [SLUG],
+    groups: { platform: PLATFORM_GROUP },
   });
-  const weak = await login(env, db, {
+  const weak = await w.login({
     sub: "u9",
     name: "Bob",
     email: "b@x.io",
     groups: [],
   });
-  const call = (method: string, path: string): Promise<Response> => {
-    const full = `/api/products/${SLUG}${path}`;
-    // The dispatcher is handed the path without its query string; the Request keeps it.
-    return handleAdmin(
-      mkReq(method, full, { cookie: admin.cookie, csrf: admin.csrf }),
-      env,
-      db,
-      full.split("?")[0]!,
-      { now: NOW },
-    );
-  };
-  return { db, env, ...admin, weak: weak.cookie, call };
+  const { call: raw, ...rest } = w;
+  const call = (method: string, path: string): Promise<Response> =>
+    raw(method, `/api/products/${SLUG}${path}`);
+  return { ...rest, raw, weak, call };
 }
 
 function row(n: number, over: Partial<DeviceRow> = {}): DeviceRow {
@@ -460,13 +415,9 @@ describe("device actions", () => {
     const w = await world();
     await fixture(w);
     const p = `/api/products/${SLUG}/devices/${id(3)}/deauthorize`;
-    const res = await handleAdmin(
-      mkReq("POST", p, { cookie: w.cookie }),
-      w.env,
-      w.db,
-      p,
-      { now: NOW },
-    );
+    const res = await w.raw("POST", p, {
+      as: { cookie: w.admin.cookie, csrf: "" },
+    });
     expect(res.status).toBe(403);
     expect((await getDevice(w.db, SLUG, id(3)))?.status).toBe("authorized");
   });
@@ -485,17 +436,11 @@ describe("access control", () => {
     ];
     for (const [method, path] of routes) {
       const full = `/api/products/${SLUG}${path}`;
-      const anon = await handleAdmin(mkReq(method, full), w.env, w.db, full, {
-        now: NOW,
-      });
+      const anon = await w.raw(method, full, { as: null });
       expect(anon.status, `${method} ${path} anon`).toBe(401);
-      const weak = await handleAdmin(
-        mkReq(method, full, { cookie: w.weak }),
-        w.env,
-        w.db,
-        full,
-        { now: NOW },
-      );
+      const weak = await w.raw(method, full, {
+        as: { cookie: w.weak.cookie, csrf: "" },
+      });
       expect(weak.status, `${method} ${path} non-admin`).toBe(403);
     }
     expect((await getDevice(w.db, SLUG, id(3)))?.status).toBe("authorized");

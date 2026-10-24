@@ -92,6 +92,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 - A new route needs a spec entry: `test/routeCoverage.test.ts` checks `openapi/polaris-key.v3.yaml` against the router in three directions. See [AGENTS.md](../../AGENTS.md).
 - Generated files: `test/platformInventory.test.ts`, `test/settings-generated.test.ts` and `test/storefront/ciPlaneGenerated.test.ts` fail on drift; `src/*.generated.ts` is never hand-edited. See [AGENTS.md](../../AGENTS.md).
 - Never hand-edit the recorded transcripts: `test/transcripts.test.ts` records them, `pnpm gen transcripts` rewrites them. See [AGENTS.md](../../AGENTS.md).
+- New admin tests start from `adminWorld()` in `test/adminWorld.ts` (db, env, a signed-in operator, `call` into `/manage`) instead of hand-building the session.
 - A new error code needs an entry in `conformance/parity/errors.json` first: `pnpm gen constants` refuses a Worker code it lacks. See [AGENTS.md](../../AGENTS.md).
 - The docs site is tiered: `DOCS_TIERS` in `src/docs.ts` mirrors `TIER_PREFIXES` in the docs package; `test/docsGate.test.ts` pins it. See [AGENTS.md](../../AGENTS.md).
 - Toolchain constraint (Node 22): see [packages/worker/AGENTS.md](./AGENTS.md).

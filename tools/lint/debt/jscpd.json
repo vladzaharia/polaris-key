@@ -2970,10 +2970,10 @@
       "jscpd:duplicate": 43
     },
     "packages/worker/test/adminCoreInventory.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/adminDevices.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/adminFeeds.test.ts": {
       "jscpd:duplicate": 16
@@ -2985,7 +2985,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/adminSearch.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/adminSessions.test.ts": {
       "jscpd:duplicate": 9
@@ -3483,7 +3483,7 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/identityPerProduct.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/identityPlatformMigration.test.ts": {
       "jscpd:duplicate": 41
@@ -3522,7 +3522,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/keyStateMachine.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 10
     },
     "packages/worker/test/keysOutOfLogs.test.ts": {
       "jscpd:duplicate": 1
@@ -3825,7 +3825,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/portalLibrary.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 7
     },
     "packages/worker/test/portalLicensedDownloads.test.ts": {
       "jscpd:duplicate": 2
@@ -4146,7 +4146,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/supportCodes.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/surfaces.test.ts": {
       "jscpd:duplicate": 19
