@@ -59,16 +59,12 @@ import {
 import { PolarisContext } from "../react/context.js";
 import { text, type Chrome, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
-import { adoptKitStyles } from "./styles.js";
 import {
-  adaptHandoff,
-  adaptPane,
-  adaptUpdate,
-  oneVerb,
-  withoutLede,
-  HANDOFF_WAITING,
-} from "./adapt.js";
-import { withChoice } from "./licenseRows.js";
+  adoptDesktopStyles,
+  adoptKitStyles,
+  hasDesktopStyles,
+} from "./styles.js";
+import { adaptHandoff, HANDOFF_WAITING } from "./adaptBase.js";
 import { onLazyLoaded } from "./lazy.js";
 import { renderView, withBase } from "./views.js";
 
@@ -483,9 +479,15 @@ export function useKit(
     () => keyboard,
     () => false,
   );
+  // The desktop chrome's rules load on demand (a web page never needs them); until they are in,
+  // a desktop root is not drawn, so no frame shows the web chrome.
+  const desktopVariant = platformVariant(resolved.theme) !== "web";
+  const doc = typeof document === "undefined" ? undefined : document;
+  const desktopPending = desktopVariant && !hasDesktopStyles(doc);
   useInsertionEffect(() => {
-    adoptKitStyles(typeof document === "undefined" ? undefined : document);
-  }, []);
+    adoptKitStyles(doc);
+    if (desktopVariant) void adoptDesktopStyles(doc).then(force);
+  }, [desktopVariant]);
 
   const copy = copyFor(
     resolved.locale,
@@ -607,6 +609,7 @@ export function useKit(
     tight,
     kb,
     fontless,
+    desktopPending,
   };
 }
 
@@ -663,9 +666,12 @@ export function KitRoot(props: {
       data-fill={props.fill ? "" : undefined}
       lang={copy.locale}
       style={
-        (fontless
-          ? { ...themeVars(r), ...SYSTEM_FONT_VARS }
-          : themeVars(r)) as CSSProperties
+        {
+          ...(fontless
+            ? { ...themeVars(r), ...SYSTEM_FONT_VARS }
+            : themeVars(r)),
+          ...(props.kit.desktopPending ? { visibility: "hidden" } : null),
+        } as CSSProperties
       }
       onKeyDown={
         props.onEscape
@@ -681,153 +687,6 @@ export function KitRoot(props: {
       {props.children}
     </div>
   );
-}
-
-/** One §4.1 component as a React component: its view, drawn in the kit's look. */
-/** States of an update that own the window; every other is a dialog over the running app (DL2). */
-const UPDATE_BLOCKING: ReadonlySet<string> = new Set([
-  "mandatory",
-  "blocked",
-  "revoked-required-content",
-]);
-
-/** An optional update prompt: a modal `<dialog>` over the host on the scrim (a bottom sheet on a
- *  phone), the host inert. Escape and the scrim answer Later; focus returns to what held it. It
- *  stays closed until the state changes. */
-function UpdateDialog(props: {
-  state: string;
-  hasLater: boolean;
-  later: () => void;
-  dismissed: string | null;
-  close: () => void;
-  children: ReactNode;
-}): ReactNode {
-  const ref = useRef<HTMLDialogElement | null>(null);
-  const opener = useRef<HTMLElement | null>(null);
-  const open = props.dismissed !== props.state;
-  useEffect(() => {
-    const d = ref.current;
-    if (!d || d.open) return;
-    opener.current ??=
-      document.activeElement && document.activeElement !== document.body
-        ? (document.activeElement as HTMLElement)
-        : null;
-    if (typeof d.showModal === "function") d.showModal();
-    else d.setAttribute("open", "");
-  });
-  const giveBack = () => {
-    const o = opener.current;
-    opener.current = null;
-    if (o?.isConnected) o.focus({ preventScroll: true });
-  };
-  useEffect(() => {
-    if (!open) giveBack();
-  }, [open]);
-  // A host that unmounts the dialog on close (onDismiss) gets the same focus return.
-  useEffect(() => giveBack, []);
-  if (!open) return null;
-  const dismiss = () => (props.hasLater ? props.later() : props.close());
-  return (
-    <dialog
-      ref={ref}
-      className="sheet"
-      data-part="sheet"
-      aria-labelledby="pk-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        dismiss();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) dismiss();
-      }}
-    >
-      {props.children}
-    </dialog>
-  );
-}
-
-export function kitComponent(component: ComponentName) {
-  function KitComponent(props: KitProps): ReactNode {
-    // The state the person dismissed: the update dialog stays closed until the state changes.
-    const [dismissed, setDismissed] = useState<string | null>(null);
-    const stateRef = useRef("");
-    const kit = useKit(
-      component,
-      component === "UpdatePrompt"
-        ? {
-            ...props,
-            onAction: (a) => {
-              if (a.key === "update.later") setDismissed(stateRef.current);
-              props.onAction?.(a);
-            },
-          }
-        : props,
-    );
-    stateRef.current = kit.view.state;
-    useEffect(() => {
-      if (dismissed !== null && dismissed !== kit.view.state)
-        setDismissed(null);
-    });
-    if (kit.view.state === "hidden") return null;
-    // A host that handles input keeps a pane's title and rows through its transient states.
-    let view =
-      props.onInput !== undefined ? adaptPane(kit.view, kit.input) : kit.view;
-    // The driven prompt on the web: one Download action (the page cannot install), and Later.
-    const download = props.driven && component === "UpdatePrompt";
-    const version = kit.input.update?.version;
-    view = oneVerb(view);
-    if (download) view = adaptUpdate(view);
-    view = withoutLede(view);
-    const labels =
-      download &&
-      version &&
-      view.state === "available" &&
-      kit.copy.has("common.updateDownload")
-        ? {
-            "update.install": kit.copy.format("common.updateDownload", {
-              version,
-            }),
-          }
-        : undefined;
-    const asDialog =
-      (component === "UpdatePrompt" &&
-        !props.embedded &&
-        props.asWindow !== true &&
-        !UPDATE_BLOCKING.has(view.state)) ||
-      (component === "Settings" && props.onDismiss !== undefined);
-    const ctx = {
-      ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
-      dialog: asDialog,
-    };
-    const body = renderView(ctx);
-    return (
-      <KitRoot
-        kit={kit}
-        bare={props.bare}
-        fill={props.fill}
-        className={props.className}
-      >
-        {asDialog ? (
-          <UpdateDialog
-            state={view.state}
-            hasLater={view.copy.includes("update.later")}
-            later={() => ctx.act("update.later")}
-            dismissed={dismissed}
-            close={() => {
-              setDismissed(view.state);
-              props.onDismiss?.();
-            }}
-          >
-            {body}
-          </UpdateDialog>
-        ) : (
-          body
-        )}
-      </KitRoot>
-    );
-  }
-  KitComponent.displayName = component;
-  return KitComponent;
 }
 
 /** The props of `<PolarisKeyGate>`: a kit component's, and the app it gates. */

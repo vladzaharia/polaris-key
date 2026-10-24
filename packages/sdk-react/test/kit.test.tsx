@@ -286,3 +286,34 @@ describe("focus (DL9)", () => {
     );
   });
 });
+
+// Last in the file: it leaves its stand-in sheets cached in the stylesheet module.
+describe("the desktop chrome's stylesheet", () => {
+  it("keeps the desktop chrome out of the web sheet and adopts it on demand, after it", async () => {
+    const { adoptDesktopStyles, hasDesktopStyles } =
+      await import("../src/kit/styles.js");
+    expect(kitStylesCss()).not.toContain('data-pk-platform="gnome"');
+    const texts: string[] = [];
+    class Sheet {
+      cssRules: unknown[] = [];
+      replaceSync(t: string) {
+        texts.push(t);
+        this.cssRules = [t];
+      }
+    }
+    vi.stubGlobal("CSSStyleSheet", Sheet);
+    try {
+      const doc = { adoptedStyleSheets: [] } as unknown as Document;
+      expect(hasDesktopStyles(doc)).toBe(false);
+      adoptKitStyles(doc);
+      await adoptDesktopStyles(doc);
+      await adoptDesktopStyles(doc);
+      expect(hasDesktopStyles(doc)).toBe(true);
+      expect(doc.adoptedStyleSheets).toHaveLength(2);
+      for (const p of ["windows", "gnome", "macos"])
+        expect(texts.at(-1)).toContain(`[data-pk-platform="${p}"]`);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

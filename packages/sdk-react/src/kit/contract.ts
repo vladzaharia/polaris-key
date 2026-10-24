@@ -14,7 +14,7 @@ export {
   groundPrefersDark,
   inputWithIdentity,
   LAYOUTS,
-  lightDomCss,
+  lightDomWebCss,
   canMorph,
   morph,
   mergeThemes,
