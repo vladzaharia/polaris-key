@@ -23,7 +23,13 @@ import {
 } from "./deviceCodeIndex.js";
 import { methodNotAllowed } from "./errors.js";
 import { clientNetwork, clientWideNetwork, rateLimitOk } from "./rateLimit.js";
-import { callout, icon, note, renderAuthCard } from "./brandHtml.js";
+import {
+  callout,
+  icon,
+  note,
+  renderAuthCard,
+  DEVICE_CARD_LINKS,
+} from "./brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
 const MISS =
@@ -106,6 +112,7 @@ function page(
 ): Response {
   const path = tv ? "/tv" : "/device";
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: "Enter your code",
     heading: "Enter the code from your device",
     ...(tv ? { variant: "tv" as const } : {}),

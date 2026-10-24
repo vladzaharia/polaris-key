@@ -773,6 +773,12 @@ export const LOCKER_CARD_LINKS = [
   { label: "Privacy", href: WORKER_HELP_LINKS.privacy },
 ] as const;
 
+/** The sign-in-on-a-device pages (`/device`, `/tv`, approval): Help opens "Approve a sign-in". */
+export const DEVICE_CARD_LINKS = [
+  { label: "Help", href: WORKER_HELP_LINKS.approveASignIn },
+  { label: "Privacy", href: WORKER_HELP_LINKS.privacy },
+] as const;
+
 /**
  * The AuthCard's Worker twin: a Polaris Locker page (no script, no `style=` attribute) with the
  * same slots as `packages/admin/src/ui/auth/AuthCard.tsx`: the lockup, then one card with an
