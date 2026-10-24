@@ -5,6 +5,9 @@
 //   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off,
 //   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de, -pkeyMaterial (the iOS 18
 //   material fallback on 26)
+//   macOS only: -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
+//   (hands the activation to Finder once the window is up, so the window is on screen but not
+//   active: the inactive look, UK-08.1 S2)
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -15,12 +18,40 @@ import PolarisKeyUI
 import PolarisKeyUICore
 import SwiftUI
 
+#if os(macOS)
+    import AppKit
+
+    /// `-pkeyWindow WxH`: the window's content size in points.
+    enum MacWindow {
+        static let size: CGSize? = {
+            let args = ProcessInfo.processInfo.arguments
+            guard let i = args.firstIndex(of: "-pkeyWindow"), i + 1 < args.count else { return nil }
+            let parts = args[i + 1].lowercased().split(separator: "x").compactMap { Double($0) }
+            return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
+        }()
+
+        /// `-pkeyInactive`: once the window is up, make Finder the active app. The window stays
+        /// on screen, drawn as an inactive window.
+        @MainActor static func deactivateIfAsked() {
+            guard ProcessInfo.processInfo.arguments.contains("-pkeyInactive") else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                NSWorkspace.shared.runningApplications
+                    .first { $0.bundleIdentifier == "com.apple.finder" }?
+                    .activate(options: [])
+            }
+        }
+    }
+#endif
+
 @main
 struct TidewaterKitApp: App {
     var body: some Scene {
         WindowGroup {
             Root()
         }
+        #if os(macOS)
+            .windowResizability(MacWindow.size == nil ? .automatic : .contentSize)
+        #endif
     }
 }
 
@@ -62,6 +93,12 @@ struct Root: View {
         }
         .polarisKeyTheme(theme)
         .environment(\.polarisKeyMaterialFallback, args.contains("-pkeyMaterial"))
+        #if os(macOS)
+            .frame(
+                width: MacWindow.size?.width, height: MacWindow.size?.height
+            )
+            .onAppear { MacWindow.deactivateIfAsked() }
+        #endif
     }
 }
 
@@ -96,7 +133,12 @@ enum TidewaterIcon {
     @MainActor static let png: Data? = {
         let renderer = ImageRenderer(content: TidewaterIconArt())
         renderer.scale = 2
-        return renderer.uiImage?.pngData()
+        #if canImport(UIKit)
+            return renderer.uiImage?.pngData()
+        #else
+            guard let tiff = renderer.nsImage?.tiffRepresentation else { return nil }
+            return NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+        #endif
     }()
 
     struct Wave: Shape {
