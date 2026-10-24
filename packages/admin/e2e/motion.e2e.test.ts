@@ -1,8 +1,23 @@
 import { existsSync } from "node:fs";
 import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Locator, type Page } from "playwright";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type TestContext,
+} from "vitest";
+import {
+  chromium,
+  firefox,
+  webkit,
+  type Browser,
+  type Locator,
+  type Page,
+} from "playwright";
 import { build, preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
@@ -153,9 +168,31 @@ beforeAll(async () => {
     logLevel: "silent",
   });
   base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
-  browser = await chromium.launch();
+  // `PK_MOTION_BROWSER=firefox|webkit` runs the same suite in another engine (MO-13.6; CI runs
+  // Firefox). Chromium stays the default and the only engine with the DevTools protocol.
+  const engine = { chromium, firefox, webkit }[
+    (process.env.PK_MOTION_BROWSER ?? "chromium") as "chromium"
+  ];
+  browser = await engine.launch();
   portal = await startPortal();
 });
+
+/** The running test's context, so a helper can skip it (S-23 §6.3: no View Transitions, no run). */
+let current: TestContext | undefined;
+beforeEach((ctx) => {
+  current = ctx;
+});
+
+/** Skip the running test where the engine has no `document.startViewTransition`. */
+async function skipWithoutViewTransitions(page: Page): Promise<void> {
+  const ok = await page.evaluate(
+    () => typeof document.startViewTransition === "function",
+  );
+  if (!ok)
+    current?.skip(
+      `${browser.browserType().name()} has no document.startViewTransition: the S-23 §6.3 fallback is an instant swap`,
+    );
+}
 
 afterAll(async () => {
   await portal?.stop();
@@ -376,6 +413,7 @@ async function runViewTransition(
   page: Page,
   opts: { type: string; navigate?: string; listSelector?: string },
 ): Promise<VtRun> {
+  await skipWithoutViewTransitions(page);
   const loaded = await page.evaluate(
     () => typeof (window as { __pkMotion?: unknown }).__pkMotion === "object",
   );
@@ -486,6 +524,7 @@ interface NavWatch {
  * the page's CSP is untouched.
  */
 async function armNavigation(page: Page): Promise<void> {
+  await skipWithoutViewTransitions(page);
   await page.evaluate(() => {
     // Evaluated in the page: helpers must be defined inside (and no eval: the CSP forbids it).
     const describe = (el: Element | null): string =>
@@ -619,6 +658,7 @@ interface Started {
  * DevTools protocol, like the probe; the page's own code calls it.
  */
 async function watchTransitions(page: Page): Promise<void> {
+  await skipWithoutViewTransitions(page);
   await page.evaluate(() => {
     const w = window as unknown as { __vt?: Started[] };
     if (w.__vt) return;

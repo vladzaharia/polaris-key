@@ -262,6 +262,16 @@ jobs:
           pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/brand
           --filter=@polaris-key/worker^...
       - run: pnpm --filter @polaris-key/admin test:e2e
+      # The motion smoke in Firefox (MO-13.6; S-23 §11). The image ships Playwright's browsers.
+      # Non-blocking until it has passed once on main (MO-13.6); then remove continue-on-error.
+      - name: Motion smoke (Firefox)
+        continue-on-error: true
+        env:
+          PK_MOTION_BROWSER: firefox
+          HOME: /root
+        run: >-
+          pnpm --filter @polaris-key/admin exec vitest run -c vitest.e2e.config.ts
+          e2e/motion.e2e.test.ts
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
