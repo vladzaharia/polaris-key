@@ -18,7 +18,8 @@ extends RefCounted
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in,gate   # some screens
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in native36   # some looks too
 #
-# Not in the `ci` set (it takes about a minute): tools/run_tests.sh runs it as its own step.
+# Not in the `ci` set: tools/run_tests.sh runs it as its own step, in parallel shards
+# (`-- --pkey-test ui_matrix --pkey-shard 1/3`; `--pkey-list` prints every case id and runs none).
 
 const MATRIX := preload("res://tests/ui/matrix.gd")
 ## The looks and the locales each is checked in: every locale in the Polaris Key look (which must
@@ -30,8 +31,28 @@ const PRESET_LOCALES := {"dark": ["en", "de", "ja"], "native": ["en", "de"], "cu
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	var mx = MATRIX.new()
-	var only: Array = Array(args[0].split(",", false)) if args.size() > 0 and not args[0].begins_with("-") else []
-	var looks: Array = Array(args[1].split(",", false)) if args.size() > 1 and not args[1].begins_with("-") else []
+	# `--pkey-shard <i>/<n>` runs the i-th of n deterministic shares of the cases (run_tests.sh runs the
+	# n shards as parallel processes); `--pkey-list` prints every case id and runs nothing.
+	var shard := Vector2i(0, 1)
+	var list_only := false
+	var positional := PackedStringArray()
+	var ai := 0
+	while ai < args.size():
+		if args[ai] == "--pkey-shard" and ai + 1 < args.size():
+			var parts := args[ai + 1].split("/")
+			shard = Vector2i(int(parts[0]), int(parts[1]) if parts.size() > 1 else 1)
+			ai += 2
+			continue
+		if args[ai] == "--pkey-list":
+			list_only = true
+		elif not args[ai].begins_with("-"):
+			positional.append(args[ai])
+		ai += 1
+	if shard.y < 1 or shard.x < 0 or shard.x >= shard.y:
+		t.check("matrix: a valid --pkey-shard <i>/<n>", false, "%d/%d" % [shard.x, shard.y])
+		return true
+	var only: Array = Array(positional[0].split(",", false)) if positional.size() > 0 else []
+	var looks: Array = Array(positional[1].split(",", false)) if positional.size() > 1 else []
 	var sizes: Array = []
 	for s in MATRIX.SIZES:
 		sizes.append(Array(s))
@@ -56,50 +77,142 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 				if not at.has(l):
 					at.append(l)
 		jobs.append([preset, "en", at])
-	var layouts := 0
+	# Every case, in the order the suite always ran them: {id, kind, weight (a layout's share of the
+	# time), and what it needs}. A case belongs to exactly one shard (_assign).
+	var units: Array = []
 	for job in jobs:
-		var preset: String = job[0]
-		var locale: String = job[1]
-		var at: Array = job[2]
-		mx.use_locale(locale)
 		for entry in MATRIX.SCREENS:
 			if not only.is_empty() and not only.has(entry[0]):
 				continue
-			var failed: Array = []
-			var row_sizes: Array = sizes.filter(func(r): return (at.is_empty() or at.has(r[0])) and MATRIX.applies(r, entry[0]))
-			# A pad-only screen (a TV, a console) is never a phone's size.
-			if entry.size() > 4 and entry[4] == "pad":
-				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
-			# Built once, then resized through every size, as a window is.
-			var first: Array = row_sizes[0]
-			var st: Dictionary = await mx.stage(tree, entry, first[1], first[2], first[3], preset, false, first[4])
-			var v: PKeyUiView = st["view"]
-			for s in row_sizes:
-				await mx.resize(tree, st, s[1], s[2], s[3], s[4])
-				var probs := await _view_problems(tree, v, entry, preset, s)
-				if not probs.is_empty():
-					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
-				layouts += 1
-			(st["vp"] as Node).free()
-			t.check("matrix: %s / %s / %s fits every size" % [entry[0], preset, locale], failed.is_empty(), "; ".join(failed.slice(0, 4)))
-	if not looks.is_empty():
-		mx.drop_locales()
+			units.append({"id": "matrix:%s/%s/%s" % [entry[0], job[0], job[1]], "kind": "matrix", "w": _row_sizes(sizes, entry, job[2]).size(), "job": job, "entry": entry})
+	if looks.is_empty():
+		for preset in ["dark", "native", "custom"]:
+			for entry in MATRIX.SCREENS:
+				if not only.is_empty() and not only.has(entry[0]):
+					continue
+				# (A fresh layout builds the screen's scenario and waits for its first focus: about three
+				# resizes of the screen's cost.)
+				units.append({"id": "fresh:%s/%s" % [entry[0], preset], "kind": "fresh", "w": 3 * _row_sizes(sizes, entry, []).size(), "preset": preset, "entry": entry})
+		for tail in [["pad_flows", 30], ["settings_opened_directly", 40], ["live_resize", 4], ["safe_area", 2], ["refresh_stability", 6], ["offline_qr", 3], ["phone_checks", 25]]:
+			units.append({"id": "tail:" + tail[0], "kind": "tail", "w": tail[1]})
+	var owner := _assign(units, shard.y)
+	if list_only:
+		for i in units.size():
+			print("PKEY-MATRIX-CASE %s" % units[i]["id"])
+		t.check("matrix: listed %d cases" % units.size(), true)
 		return true
-	await _fresh_layouts(t, tree, mx, sizes, only)
-	await _pad_flows(t, tree, mx)
-	await _settings_opened_directly(t, tree, mx)
-	await _live_resize(t, tree, mx)
-	await _safe_area(t, tree, mx)
-	await _refresh_stability(t, tree, mx)
-	await _offline_qr(t, tree, mx)
-	await _phone_checks(t, tree, mx)
+	# Self-check of the partition: every case in exactly one shard, none lost.
+	var per_shard: Array = []
+	per_shard.resize(shard.y)
+	per_shard.fill(0)
+	for o in owner:
+		per_shard[o] += 1
+	var total := 0
+	for c in per_shard:
+		total += c
+	t.check("matrix: the %d shards hold all %d cases exactly once" % [shard.y, units.size()], total == units.size() and owner.all(func(o): return o >= 0 and o < shard.y), str(per_shard))
+	if shard.y > 1:
+		print("PKEY-MATRIX-SHARD %d/%d cases=%d" % [shard.x, shard.y, per_shard[shard.x]])
+	var layouts := 0
+	var planned := 0
+	var spent := {"matrix": 0, "fresh": 0, "tail": 0}
+	var fresh_layouts := 0
+	for i in units.size():
+		if owner[i] != shard.x:
+			continue
+		var u: Dictionary = units[i]
+		var began := Time.get_ticks_msec()
+		print("PKEY-MATRIX-RAN %s" % u["id"])
+		match u["kind"]:
+			"matrix":
+				var n: int = await _matrix_case(t, tree, mx, sizes, u["entry"], u["job"][0], u["job"][1], u["job"][2])
+				layouts += n
+				planned += int(u["w"])
+			"fresh":
+				fresh_layouts += await _fresh_case(t, tree, mx, sizes, u["entry"], u["preset"])
+			"tail":
+				match u["id"]:
+					"tail:pad_flows":
+						await _pad_flows(t, tree, mx)
+					"tail:settings_opened_directly":
+						await _settings_opened_directly(t, tree, mx)
+					"tail:live_resize":
+						await _live_resize(t, tree, mx)
+					"tail:safe_area":
+						await _safe_area(t, tree, mx)
+					"tail:refresh_stability":
+						await _refresh_stability(t, tree, mx)
+					"tail:offline_qr":
+						await _offline_qr(t, tree, mx)
+					"tail:phone_checks":
+						await _phone_checks(t, tree, mx)
+		spent[u["kind"]] += Time.get_ticks_msec() - began
+	t.info("matrix timing: matrix %d ms, fresh %d ms, tail %d ms" % [spent["matrix"], spent["fresh"], spent["tail"]])
 	mx.drop_locales()
 	PKeyUiView.safe_insets_override = null
 	PKeyUiView.mobile_override = null
 	PKeyUiView.pad_only_override = null
 	PKeyUiTheme.reset()
-	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * (sizes.size() - 2) * 7 or not only.is_empty(), "%d layouts" % layouts)
+	if looks.is_empty():
+		if shard.y == 1:
+			t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * (sizes.size() - 2) * 7 or not only.is_empty(), "%d layouts" % layouts)
+			t.check("fresh layout: coverage", fresh_layouts >= MATRIX.SCREENS.size() * 12 * 3 - 200 or not only.is_empty(), "%d layouts" % fresh_layouts)
+		else:
+			# Each shard holds every layout of the cases it ran; the whole run's bound is held by the
+			# unsharded run and by the runner's comparison of the shards' cases with --pkey-list.
+			t.check("matrix: coverage of shard %d/%d" % [shard.x, shard.y], layouts == planned, "%d of %d layouts" % [layouts, planned])
 	return true
+
+
+## Which shard (0..n-1) runs each case: heaviest first onto the lightest shard (ties to the lowest
+## index, the cases' own order breaking equal weights), so the result is the same on every run and
+## every machine. Returns the shard of each case, by position.
+static func _assign(units: Array, n: int) -> Array:
+	var order: Array = range(units.size())
+	order.sort_custom(func(a, b): return int(units[a]["w"]) > int(units[b]["w"]) or (int(units[a]["w"]) == int(units[b]["w"]) and a < b))
+	var load_of: Array = []
+	load_of.resize(n)
+	load_of.fill(0)
+	var owner: Array = []
+	owner.resize(units.size())
+	for i in order:
+		var best := 0
+		for s in n:
+			if load_of[s] < load_of[best]:
+				best = s
+		owner[i] = best
+		load_of[best] += int(units[i]["w"]) + 1
+	return owner
+
+
+## The sizes `entry` is checked at: `at` lists the size labels (empty: all of them).
+static func _row_sizes(sizes: Array, entry: Array, at: Array) -> Array:
+	var row_sizes: Array = sizes.filter(func(r): return (at.is_empty() or at.has(r[0])) and MATRIX.applies(r, entry[0]))
+	# A pad-only screen (a TV, a console) is never a phone's size.
+	if entry.size() > 4 and entry[4] == "pad":
+		row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
+	return row_sizes
+
+
+## One screen in one look and locale, built once, then resized through every size, as a window is.
+## Returns the layouts checked.
+func _matrix_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: Array, preset: String, locale: String, at: Array) -> int:
+	mx.use_locale(locale)
+	var failed: Array = []
+	var row_sizes := _row_sizes(sizes, entry, at)
+	var first: Array = row_sizes[0]
+	var st: Dictionary = await mx.stage(tree, entry, first[1], first[2], first[3], preset, false, first[4])
+	var v: PKeyUiView = st["view"]
+	var layouts := 0
+	for s in row_sizes:
+		await mx.resize(tree, st, s[1], s[2], s[3], s[4])
+		var probs := await _view_problems(tree, v, entry, preset, s)
+		if not probs.is_empty():
+			failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
+		layouts += 1
+	(st["vp"] as Node).free()
+	t.check("matrix: %s / %s / %s fits every size" % [entry[0], preset, locale], failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	return layouts
 
 
 ## Every layout and focus problem of `v`, laid out at the size row `s` in `preset`.
@@ -118,29 +231,22 @@ static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset:
 ## that keeps a squeeze, a column or a width from a size it was laid out at before lays out
 ## differently when it is built at the size.) The Polaris Key look, the native look and a whole
 ## custom theme, in English.
-func _fresh_layouts(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, only: Array) -> void:
+func _fresh_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: Array, preset: String) -> int:
 	mx.use_locale("en")
 	var layouts := 0
-	for preset in ["dark", "native", "custom"]:
-		for entry in MATRIX.SCREENS:
-			if not only.is_empty() and not only.has(entry[0]):
-				continue
-			var failed: Array = []
-			var row_sizes: Array = sizes.filter(func(r): return MATRIX.applies(r, entry[0]))
-			if entry.size() > 4 and entry[4] == "pad":
-				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
-			for s in row_sizes:
-				var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
-				# First, while nothing in the view has the focus yet: the checks after it move the focus.
-				var probs := await MATRIX.first_focus_problems(tree, st["view"], entry[3])
-				probs.append_array(await _view_problems(tree, st["view"], entry, preset, s))
-				if not probs.is_empty():
-					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
-				layouts += 1
-				(st["vp"] as Node).free()
-				await tree.process_frame
-			t.check("fresh layout: %s / %s fits every size laid out at the size" % [entry[0], preset], failed.is_empty(), "; ".join(failed.slice(0, 4)))
-	t.check("fresh layout: coverage", layouts >= MATRIX.SCREENS.size() * 12 * 3 - 200 or not only.is_empty(), "%d layouts" % layouts)
+	var failed: Array = []
+	for s in _row_sizes(sizes, entry, []):
+		var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
+		# First, while nothing in the view has the focus yet: the checks after it move the focus.
+		var probs := await MATRIX.first_focus_problems(tree, st["view"], entry[3])
+		probs.append_array(await _view_problems(tree, st["view"], entry, preset, s))
+		if not probs.is_empty():
+			failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
+		layouts += 1
+		(st["vp"] as Node).free()
+		await tree.process_frame
+	t.check("fresh layout: %s / %s fits every size laid out at the size" % [entry[0], preset], failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	return layouts
 
 
 ## Every control in the focus chain is on screen and focusable.
