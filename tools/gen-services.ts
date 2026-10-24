@@ -394,6 +394,13 @@ ${entries}
 }
 
 export function renderManifestTs(table: ServiceTable): string {
+  const features = featureViews(table);
+  const featureRows = features
+    .map(
+      (f) =>
+        `  { id: ${q(f.id)}, label: ${q(f.label)}, primary: ${list(f.primary)} },`,
+    )
+    .join("\n");
   const legacy = legacyModuleMap(table);
   const legacyNames = [...legacy.keys()];
   const moduleEntries = [
@@ -414,6 +421,21 @@ export type ProductModule = LegacyModule | ServiceSlug;
 export const MODULE_SERVICES: Readonly<Record<ProductModule, readonly ServiceSlug[]>> = {
 ${moduleEntries}
 };
+
+/** The console's features: the grouping of slugs an operator turns on (the wizard's \"What is it for?\"). */
+export type FeatureId = ${union(features.map((f) => f.id))};
+
+export interface FeatureRow {
+  id: FeatureId;
+  label: string;
+  /** What the feature's own switch writes: its slugs, less those a \`service\` switch controls. */
+  primary: readonly ServiceSlug[];
+}
+
+/** The features, in canonical order. */
+export const FEATURES: readonly FeatureRow[] = [
+${featureRows}
+];
 `;
 }
 

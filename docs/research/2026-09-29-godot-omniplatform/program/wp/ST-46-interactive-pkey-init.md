@@ -117,3 +117,14 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-46 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-46 done`.
+
+## Corrections (2026-10-23)
+
+- S1. `pkey init` takes flags only; no CLI command prompts yet. The kit has `promptSecret`, `promptConfirm` and `promptSelect`, but no multi-select and no text input (ST-46.2 adds the multi-select).
+- S2. The wizard's rules lived only in admin. ST-46.1 moved them to `shared-manifest/src/features.ts` (`featureNeeds`, `featureUnlocked`, `toggleFeature`, `servicesForFeatures`), with `FEATURES` (id, label, primary) generated into the manifest package.
+- S3. The console owns platforms (`distribution.intendedPlatforms`); the manifest holds none, so init does not ask (D-S1).
+- S4. The scaffold now uses the wizard's ids: profile `default` "Default"; tier `free` "Free", written only when License is on and `--starter-tier` is not `none`. A License product with no tier validates (tested). Release note: `pkey init` output changed (`standard-defaults`/`standard` to `default`/`free`).
+- S5. The defaults differ: the wizard preselects Licensing and Ship builds, init defaults to `license,config`. Settled in ST-46.3 (D-S3).
+- S6. `pkey agents` (AX-08) and the no-TTY code rule (AX-16) are todo; init cannot offer them yet (D-S6).
+- S7. Fixed: the help said "feature slugs" for service slugs; `build/manifest/index.md` named seven slugs and omitted `commerce`.
+- S8. The manifest is unchanged: `modules` stays, so no validator, schema or rule 9 change.

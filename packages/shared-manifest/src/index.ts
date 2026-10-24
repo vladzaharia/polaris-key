@@ -114,6 +114,19 @@ export {
   type ServiceSlug,
 } from "./services.generated.js";
 
+/** The console's features and their rules (ST-46.1): shared by the New product wizard and `pkey init`. */
+export {
+  FEATURES as MANIFEST_FEATURES,
+  type FeatureId as ManifestFeatureId,
+  type FeatureRow as ManifestFeatureRow,
+} from "./services.generated.js";
+export {
+  featureNeeds,
+  featureUnlocked,
+  servicesForFeatures,
+  toggleFeature,
+} from "./features.js";
+
 /** The distribution-channel catalogue (A-19): generated from `tools/channels.json` by `pnpm gen channels`. */
 export {
   CHANNELS,

@@ -125,7 +125,9 @@ describe("@polaris-key/cli", () => {
         path.join(cwd, ".pkey/product.yaml"),
         "utf8",
       );
-      expect(product).toContain("profileId: standard-defaults");
+      expect(product).toContain("- id: default");
+      if (modules.some((m) => m === "licensing" || m === "license"))
+        expect(product).toContain("profileId: default");
       expect(product).not.toMatch(/^\s+profile:/m);
       expect(
         await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
@@ -134,6 +136,45 @@ describe("@polaris-key/cli", () => {
       expect(result.ok).toBe(true);
       expect(result.warnings).toEqual([]);
     }
+  });
+
+  it("writes the wizard's Free tier with License on, and none with --starter-tier none", async () => {
+    const free = await tempDir();
+    await initManifest({
+      cwd: free,
+      slug: "acme",
+      name: "Acme",
+      modules: ["license"],
+    });
+    const freeYaml = await readFile(
+      path.join(free, ".pkey/product.yaml"),
+      "utf8",
+    );
+    expect(freeYaml).toContain("- id: free");
+    expect(freeYaml).toContain("label: Free");
+    const none = await tempDir();
+    await initManifest({
+      cwd: none,
+      slug: "acme",
+      name: "Acme",
+      modules: ["license"],
+      starterTier: "none",
+    });
+    expect(
+      await readFile(path.join(none, ".pkey/product.yaml"), "utf8"),
+    ).not.toContain("tiers:");
+    const noLicence = await tempDir();
+    await initManifest({
+      cwd: noLicence,
+      slug: "acme",
+      name: "Acme",
+      modules: ["config"],
+    });
+    expect(
+      await readFile(path.join(noLicence, ".pkey/product.yaml"), "utf8"),
+    ).not.toContain("tiers:");
+    for (const cwd of [free, none, noLicence])
+      expect(validateLoadedManifest(await loadManifest(cwd)).ok).toBe(true);
   });
 
   it("validates a flat, djdl-shaped manifest with deprecation warnings and exit 0 (ST-19)", async () => {

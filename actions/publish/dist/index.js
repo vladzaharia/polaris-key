@@ -23971,14 +23971,14 @@ var COMMANDS = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]"
+      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]"
     ],
     about: [
       {
         text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force."
       },
       {
-        text: `--modules takes feature slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
+        text: `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
       }
     ]
   },
@@ -25230,6 +25230,13 @@ oidc:
   provider: platform
   groupRoleMap: {}
 ` : "";
+  const tiers = services.includes("license") && opts.starterTier !== "none" ? `
+  tiers:
+    - id: free
+      label: Free
+      profileId: default
+      policyDeviceLimit: 5
+      channels: ["stable"]` : "";
   return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
 apiVersion: pkey.dev/v1
 product:
@@ -25240,8 +25247,8 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}
 ${moduleLines.join("\n")}
 
 profiles:
-  - id: standard-defaults
-    name: Standard defaults
+  - id: default
+    name: Default
     payload:
       config: {}
       secrets: {}
@@ -25249,13 +25256,7 @@ profiles:
 
 licensing:
   defaultDeviceLimit: 5
-  defaultMaxOfflineDays: 14
-  tiers:
-    - id: standard
-      label: Standard
-      profileId: standard-defaults
-      policyDeviceLimit: 5
-      channels: ["stable"]${oidc}
+  defaultMaxOfflineDays: 14${tiers}${oidc}
 
 secrets:
   required: []
@@ -49697,11 +49698,15 @@ async function cmdInit(parsed, cwd, stdout) {
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
+  const starterTier = flagString(parsed, "starter-tier");
+  if (starterTier !== void 0 && starterTier !== "free" && starterTier !== "none")
+    throw new UsageError("--starter-tier takes free or none.");
   const result = await initManifest({
     cwd,
     slug,
     name,
     modules,
+    starterTier,
     adminGroup: flagString(parsed, "admin-group"),
     releaseOwner: flagString(parsed, "release-owner"),
     releaseRepo: flagString(parsed, "release-repo"),
