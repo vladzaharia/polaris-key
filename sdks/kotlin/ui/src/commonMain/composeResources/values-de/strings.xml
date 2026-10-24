@@ -1555,7 +1555,13 @@
     <string name="signin_approve_look">Suchen</string>
     <string name="signin_approve_look__macos">Suchen</string>
     <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
-    <string name="signin_approve_askPackages">pkey auf %1$s bittet um ein Paket-Token.</string>
+    <string name="signin_approve_askPackages">pkey auf %1$s bittet um ein schreibgeschütztes persönliches Token für Ihre Pakete.</string>
+    <!-- Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it. -->
+    <string name="signin_approve_askPackagesTitle">pkey ein persönliches Token geben?</string>
+    <!-- Approve dialog, confirm button for the pkey packages token. -->
+    <string name="signin_approve_approvePackages">Genehmigen</string>
+    <!-- Approve dialog outcome after approving the pkey packages token. -->
+    <string name="signin_approve_approvedPackages">Genehmigt. Kehren Sie zu Ihrem Terminal zurück.</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">Code %1$s möchte sich bei Ihrem Konto anmelden.</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->

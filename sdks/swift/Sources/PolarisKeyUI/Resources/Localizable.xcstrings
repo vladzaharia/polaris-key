@@ -50389,6 +50389,66 @@
         }
       }
     },
+    "signin.approve.approvePackages": {
+      "comment": "Approve dialog, confirm button for the pkey packages token.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approve"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genehmigen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approuver"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprobar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "承認"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승인"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批准"
+          }
+        }
+      }
+    },
     "signin.approve.approved": {
       "comment": "Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device.",
       "extractionState": "manual",
@@ -50445,6 +50505,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "已批准。%1$@ 已登录。"
+          }
+        }
+      }
+    },
+    "signin.approve.approvedPackages": {
+      "comment": "Approve dialog outcome after approving the pkey packages token.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approved. Go back to your terminal."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genehmigt. Kehren Sie zu Ihrem Terminal zurück."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approuvé. Retournez à votre terminal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprobado. Vuelve a tu terminal."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovado. Volte ao terminal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approvato. Torna al terminale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "承認しました。ターミナルに戻ってください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승인했어요. 터미널로 돌아가세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已批准。请返回终端。"
           }
         }
       }
@@ -50576,55 +50696,115 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey on %1$@ asks for a packages token."
+            "value": "pkey on %1$@ asks for a read-only personal token for your packages."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey auf %1$@ bittet um ein Paket-Token."
+            "value": "pkey auf %1$@ bittet um ein schreibgeschütztes persönliches Token für Ihre Pakete."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey sur %1$@ demande un jeton de paquets."
+            "value": "pkey sur %1$@ demande un jeton personnel en lecture seule pour vos paquets."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey en %1$@ pide un token de paquetes."
+            "value": "pkey en %1$@ pide un token personal de solo lectura para tus paquetes."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O pkey em %1$@ pede um token de pacotes."
+            "value": "O pkey em %1$@ pede um token pessoal somente leitura para os seus pacotes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey su %1$@ chiede un token per i pacchetti."
+            "value": "pkey su %1$@ chiede un token personale di sola lettura per i tuoi pacchetti."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ の pkey がパッケージトークンを求めています。"
+            "value": "%1$@ の pkey が、パッケージ用の読み取り専用の個人用トークンを求めています。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@의 pkey가 패키지 토큰을 요청했어요."
+            "value": "%1$@의 pkey가 패키지용 읽기 전용 개인 토큰을 요청했어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 上的 pkey 请求软件包令牌。"
+            "value": "%1$@ 上的 pkey 请求为你的软件包提供只读个人令牌。"
+          }
+        }
+      }
+    },
+    "signin.approve.askPackagesTitle": {
+      "comment": "Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give pkey a personal token?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey ein persönliches Token geben?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Donner un jeton personnel à pkey ?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Dar a pkey un token personal?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dar um token pessoal ao pkey?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dare a pkey un token personale?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey に個人用トークンを発行しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey에 개인 토큰을 줄까요?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为 pkey 提供个人令牌？"
           }
         }
       }

@@ -1545,7 +1545,13 @@
     <string name="signin_approve_look">찾기</string>
     <string name="signin_approve_look__macos">찾기</string>
     <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
-    <string name="signin_approve_askPackages">%1$s의 pkey가 패키지 토큰을 요청했어요.</string>
+    <string name="signin_approve_askPackages">%1$s의 pkey가 패키지용 읽기 전용 개인 토큰을 요청했어요.</string>
+    <!-- Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it. -->
+    <string name="signin_approve_askPackagesTitle">pkey에 개인 토큰을 줄까요?</string>
+    <!-- Approve dialog, confirm button for the pkey packages token. -->
+    <string name="signin_approve_approvePackages">승인</string>
+    <!-- Approve dialog outcome after approving the pkey packages token. -->
+    <string name="signin_approve_approvedPackages">승인했어요. 터미널로 돌아가세요.</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">코드 %1$s(으)로 계정 로그인을 요청했어요.</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->
