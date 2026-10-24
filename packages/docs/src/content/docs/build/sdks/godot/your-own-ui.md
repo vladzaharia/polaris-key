@@ -230,13 +230,13 @@ func update_model() -> Dictionary:
 
 
 func apply_update(check: PKeyUpdateCheck) -> PKeyResult:
-	return await PolarisKey.update.apply(check)
+	return await PolarisKey.update.install(check)
 ```
 
 A `binary`, `store`, or `platform` answer with a mandatory decision, and every `blocked` answer,
 is locked: keep the notice visible, but do not cover a game that can keep running. `code-ready`
 means the game can offer restart; `none` and `packs` render no update prompt. Let
-`PolarisKey.update.apply()` carry out the controller's action, because the outlet decides whether
+`PolarisKey.update.install()` carry out the controller's action, because the outlet decides whether
 that is a store page, browser link, native updater, staging operation, or restart.
 
 ## Tests

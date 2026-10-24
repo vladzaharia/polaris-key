@@ -11,7 +11,7 @@ extends RefCounted
 ##                        `register`. Refused for four causes with one body
 ##                        (`registration_closed`) and limited to 10 a minute per IP: never retry it
 ##                        in a loop
-##   get_current_device() this device from local state, no network
+##   _current_device() this device from local state, no network
 ##   list()               `GET /devices`: the roster this credential can see
 ##   rename(label)        `PATCH /devices/<this device>`: self-only (server R3-09)
 ##   deauthorize()        `DELETE /devices/<this device>`, then the local wipe (token and cache),
@@ -165,7 +165,7 @@ static func _status(r: PKeyResult) -> int:
 # ── Management ───────────────────────────────────────────────────────────────────────────
 
 ## This device from local state: {id, current: true, status, license_id?, last_verified_at?}.
-func get_current_device() -> Dictionary:
+func _current_device() -> Dictionary:
 	var core := _core()
 	if core == null:
 		return {}
@@ -190,7 +190,7 @@ func list() -> PKeyResult:
 	if core == null or not core.started:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call start() first.")
 	if not core.tokens.has_token():
-		return PKeyResult.success({"current_device_id": core.device_id, "devices": [get_current_device()], "roster": false})
+		return PKeyResult.success({"current_device_id": core.device_id, "devices": [_current_device()], "roster": false})
 	var r := await core.request("GET", "devices", null, true)
 	if not r.ok:
 		return r

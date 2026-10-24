@@ -195,7 +195,7 @@ is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
 ```gdscript
 var check := await PolarisKey.update.decide()        # the signed feed and release record
 if check.ok and check.decision["action"] != "none":
-	await PolarisKey.update.apply(check)             # what the outlet allows: a store link, a download, a swap
+	await PolarisKey.update.install(check)             # what the outlet allows: a store link, a download, a swap
 var notes := await PolarisKey.release.changelog()
 ```
 
@@ -240,7 +240,7 @@ commerce listens to `PKeyApple.transaction_updated` and claims each new transact
 arrives, finishes it after the claim, syncs, and emits `app_store_update_claimed(result)`
 (refunds are not claimed; a failed claim stays unfinished for StoreKit to redeliver).
 `restore()` re-claims App Store current entitlements and owned Steam DLC. The lower-level
-`get_binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
+`binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
 
 ### Distribution and crash tags
 
@@ -1006,7 +1006,7 @@ host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appI
 PolarisKey.update.update_available.connect(func(r):
 	if r is PKeyUpdateCheck: ($PKeyUpdatePrompt as PKeyUpdatePrompt).show_result(r))   # PKeyBoot does this itself
 var check := await PolarisKey.update.decide()
-var applied := await PolarisKey.update.apply(check)    # what the prompt's button does
+var applied := await PolarisKey.update.install(check)    # what the prompt's button does
 await PolarisKey.update.restart_to_update()            # code-ready: "Restart now"
 PolarisKey.update.confirm_boot()                       # optional: the game is clearly running
 ```

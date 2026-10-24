@@ -93,7 +93,7 @@ func _refresh(t: PKeyTestContext, h: PKeyLicenseTestSupport) -> void:
 	var reports := h.requests("POST", "/devices/report")
 	var body = PKeyJson.parse(PKeyLicenseTestSupport.body_text(reports[0]))["value"] if reports.size() == 1 else null
 	t.check("licenseId refresh: one report carrying the new grants", body is Dictionary and body.get("entitlements") == {"polarisVpn": true, "pro": true}, str(body))
-	t.check("licenseId refresh: the current device reports the new licence id", sdk.devices.get_current_device().get("license_id") == PRO_ID, str(sdk.devices.get_current_device()))
+	t.check("licenseId refresh: the current device reports the new licence id", sdk.current_device().get("license_id") == PRO_ID, str(sdk.current_device()))
 
 	# The following refresh revalidates the new licence's document normally.
 	var again: PKeySyncResult = await sdk.sync()

@@ -9,6 +9,8 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
 
 ## Unreleased
 
+- **Device, binding and install renamed (SP-35b).** `PolarisKey.devices.get_current_device()` is `PolarisKey.current_device()`, `PolarisKey.commerce.get_binding()` is `binding()` and `PolarisKey.update.apply(check)` is `install(check)`. There are no aliases. Migrating: rename the three calls; the outlet adapters' own `apply` is unchanged. See https://key.plrs.im/docs/reference/api-names/.
+
 - **Options renamed (SP-35b).** `PKeyOptions.product` is `product_slug` and `pinned_trust_keys` is `pinned_keys`, in the Resource, `res://polaris_key.tres`, the setup dock and `pkey sdk --lang godot --write`. There is no alias. Migrating: a `polaris_key.tres` that still holds either old name makes `configure` fail with `invalid-options` (the message names the new fields, never a value), and the editor warns when it loads one. Run `pkey sdk --lang godot --write` (it drops the old lines) or Save in the setup dock. A new `.tres` read by an older addon fails `configure` with "product must be a lower-case slug". See https://key.plrs.im/docs/reference/api-names/.
 
 - **Three more standalone scenes (UK-11b).** `PKeyCloudSyncStatus` (synced, syncing, offline, conflict with **Review**, error, signed out with **Sign in to sync**; never implies universal backup), `PKeyAbout` (product, version, Privacy and Get help on https pages, Open-source licenses, **Copy diagnostics** of the text your game chose to share) and `PKeyReleaseNotes` (the changelog, newest first, notes drawn as text; loading, empty, error with **Try again**). Same shape as `PKeyPaywall` and `PKeyDeviceLimit`: catalog words in the running locale, signals for what the game does.

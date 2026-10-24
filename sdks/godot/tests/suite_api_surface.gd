@@ -70,7 +70,7 @@ const ROWS := [
 	["release.installUrl", "res://addons/polaris_key/services/release.gd", "method", "install_url"],
 	["release.downloadUrl", "res://addons/polaris_key/services/release.gd", "method", "download_url"],
 	["update.onUpdateAvailable", "res://addons/polaris_key/services/update.gd", "signal", "update_available"],
-	["update.install", "res://addons/polaris_key/services/update.gd", "method", "apply"],
+	["update.install", "res://addons/polaris_key/services/update.gd", "method", "install"],
 	["update.check", "res://addons/polaris_key/services/update.gd", "method", "check"],
 	["update.appcastUrl", "res://addons/polaris_key/services/update.gd", "method", "appcast_url"],
 	["update.feedUrl", "res://addons/polaris_key/services/update.gd", "method", "feed_url"],
@@ -80,7 +80,7 @@ const ROWS := [
 	["update.confirmBoot", "res://addons/polaris_key/services/update.gd", "method", "confirm_boot"],
 	["distribution.downloadModel", "res://addons/polaris_key/services/distribution.gd", "method", "download_model"],
 	["distribution.thisPlatform", "res://addons/polaris_key/services/distribution.gd", "method", "this_platform"],
-	["commerce.binding", "res://addons/polaris_key/services/commerce.gd", "method", "get_binding"],
+	["commerce.binding", "res://addons/polaris_key/services/commerce.gd", "method", "binding"],
 	["commerce.claim", "res://addons/polaris_key/services/commerce.gd", "method", "claim"],
 	["commerce.claimSteam", "res://addons/polaris_key/services/commerce.gd", "method", "claim_steam"],
 	["commerce.claimAppStore", "res://addons/polaris_key/services/commerce.gd", "method", "claim_app_store"],
@@ -95,7 +95,7 @@ const ROWS := [
 	["packs.confirm", "res://addons/polaris_key/services/packs.gd", "method", "confirm"],
 	["presentation.subscribe", "res://addons/polaris_key/core/presentation.gd", "signal", "changed"],
 	["presentation.icon", "res://addons/polaris_key/core/presentation.gd", "method", "icon"],
-	["client.currentDevice", "res://addons/polaris_key/services/devices.gd", "method", "get_current_device"],
+	["client.currentDevice", SDK, "method", "current_device"],
 	["license.getLicenseUser", "res://addons/polaris_key/services/license.gd", "method", "get_license_user"],
 	["identity.acceptSignIn", "res://addons/polaris_key/services/identity.gd", "method", "accept_sign_in"],
 	["commerce.hiddenHere", "res://addons/polaris_key/services/commerce.gd", "method", "hidden_here"],
@@ -172,6 +172,9 @@ const ROWS := [
 const REMOVED := [
 	["options.product", "res://addons/polaris_key/core/options.gd", "product"],
 	["options.pinned_trust_keys", "res://addons/polaris_key/core/options.gd", "pinned_trust_keys"],
+	["devices.get_current_device", "res://addons/polaris_key/services/devices.gd", "get_current_device"],
+	["commerce.get_binding", "res://addons/polaris_key/services/commerce.gd", "get_binding"],
+	["update.apply", "res://addons/polaris_key/services/update.gd", "apply"],
 ]
 
 
