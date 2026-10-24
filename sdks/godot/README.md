@@ -127,16 +127,16 @@ var key := ""
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
 if not r.ok: print(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
 await PolarisKey.license.enroll()                # keyless: the device's free license
-if PolarisKey.license.is_entitled("soundtrack"): print("soundtrack unlocked")
-PolarisKey.license.get_entitlements()            # {name: value}
+if PolarisKey.entitlements.has("soundtrack"): print("soundtrack unlocked")
+PolarisKey.entitlements.all()            # {name: value}
 await PolarisKey.license.deactivate()
 PolarisKey.state_changed.connect(func(s): print(s["status"]))
 ```
 
 `PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
-`is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
-or expired license unlocks nothing, even though `get_entitlements()` still reads the last verified
+`is_licensed()` is true. `entitlements.has(name)` is true only while the gate is usable: a revoked
+or expired license unlocks nothing, even though `entitlements.all()` still reads the last verified
 values. A 401 during a sync re-acquires the token once. `expired` is the cached license document
 outliving its grace window with no successful sync (a device that stayed offline too long): the
 player sees "Connect to keep playing" with Use another license, and Renew when the game sets the gate's `renew_url` (https) or connects `renew_requested`; never Try again. It is not how a license whose term ended

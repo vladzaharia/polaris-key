@@ -18,7 +18,7 @@ extends Node
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
 ## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync),
-## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
+## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitled
 ## channels, and the 401 re-acquire it installs into Core), `identity` (PKeyIdentity:
 ## device-code sign-in with a QR code; a `ready` stores the token and runs a forced sync),
 ## `update` (PKeyUpdate: the signed decision and acting on it — apply, restart_to_update,
@@ -32,7 +32,7 @@ extends Node
 ## developerName, accent, accentDark, icon) as a Dictionary, {} for none; `presentation_icon(px,
 ## scale)` its verified icon as a texture; `presentation_source` (PKeyPresentationSource) the seam
 ## the UI kit reads, with its `changed` signal.
-## `config`, `identity`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
+## `config`, `identity`, `entitlements`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
 ## exist before `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
@@ -68,6 +68,9 @@ var core: PKeyCore = null
 var devices: PKeyDevices = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
+## The licence's grants: has, value, all (services/entitlements.gd). Present before `configure()`
+## (false, null, {}).
+var entitlements := PKeyEntitlements.new()
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
@@ -169,7 +172,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
-	commerce.attach(core, license)
+	entitlements.attach(license)
+	commerce.attach(core, entitlements)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
