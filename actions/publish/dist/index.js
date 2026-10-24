@@ -5189,14 +5189,14 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth: lineWidth2 = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+    function foldFlowLines(text3, indent, mode = "flow", { indentAtStart, lineWidth: lineWidth2 = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
       if (!lineWidth2 || lineWidth2 < 0)
-        return text2;
+        return text3;
       if (lineWidth2 < minContentWidth)
         minContentWidth = 0;
       const endStep = Math.max(1 + minContentWidth, 1 + lineWidth2 - indent.length);
-      if (text2.length <= endStep)
-        return text2;
+      if (text3.length <= endStep)
+        return text3;
       const folds = [];
       const escapedFolds = {};
       let end = lineWidth2 - indent.length;
@@ -5213,14 +5213,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text2, i, indent.length);
+        i = consumeMoreIndentedLines(text3, i, indent.length);
         if (i !== -1)
           end = i + endStep;
       }
-      for (let ch; ch = text2[i += 1]; ) {
+      for (let ch; ch = text3[i += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i;
-          switch (text2[i + 1]) {
+          switch (text3[i + 1]) {
             case "x":
               i += 3;
               break;
@@ -5237,12 +5237,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i = consumeMoreIndentedLines(text2, i, indent.length);
+            i = consumeMoreIndentedLines(text3, i, indent.length);
           end = i + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text2[i + 1];
+            const next = text3[i + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i;
           }
@@ -5254,12 +5254,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text2[i += 1];
+                ch = text3[i += 1];
                 overflow = true;
               }
               const j = i > escEnd + 1 ? i - 2 : escStart - 1;
               if (escapedFolds[j])
-                return text2;
+                return text3;
               folds.push(j);
               escapedFolds[j] = true;
               end = j + endStep;
@@ -5274,39 +5274,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text2;
+        return text3;
       if (onFold)
         onFold();
-      let res = text2.slice(0, folds[0]);
+      let res = text3.slice(0, folds[0]);
       for (let i2 = 0; i2 < folds.length; ++i2) {
         const fold = folds[i2];
-        const end2 = folds[i2 + 1] || text2.length;
+        const end2 = folds[i2 + 1] || text3.length;
         if (fold === 0)
           res = `
-${indent}${text2.slice(0, end2)}`;
+${indent}${text3.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text2[fold]}\\`;
+            res += `${text3[fold]}\\`;
           res += `
-${indent}${text2.slice(fold + 1, end2)}`;
+${indent}${text3.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text2, i, indent) {
+    function consumeMoreIndentedLines(text3, i, indent) {
       let end = i;
       let start = i + 1;
-      let ch = text2[start];
+      let ch = text3[start];
       while (ch === " " || ch === "	") {
         if (i < start + indent) {
-          ch = text2[++i];
+          ch = text3[++i];
         } else {
           do {
-            ch = text2[++i];
+            ch = text3[++i];
           } while (ch && ch !== "\n");
           end = i;
           start = i + 1;
-          ch = text2[start];
+          ch = text3[start];
         }
       }
       return end;
@@ -11717,6 +11717,7 @@ var TERMINAL_LAYOUT = {
 };
 
 // ../sdk-node/dist/cli/term/caps.js
+var MIN_LAYOUT_COLUMNS = 32;
 var MIN_COLUMNS = 10;
 function layoutColumns(columns) {
   return Math.max(MIN_COLUMNS, Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)));
@@ -11804,8 +11805,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
 var EDGE_JOINERS = /^[\u200c\u200d]+|[\u200c\u200d]+$/g;
-function clean(text2) {
-  return text2.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text2.startsWith("::", at + 1) || text2.slice(at - 2, at) === "##" && text2[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
+function clean(text3) {
+  return text3.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text3.startsWith("::", at + 1) || text3.slice(at - 2, at) === "##" && text3[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
 }
 var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 function safeLink(url) {
@@ -11827,11 +11828,11 @@ function safeLink(url) {
 }
 
 // ../sdk-node/dist/cli/term/osc.js
-function osc8(url, text2) {
+function osc8(url, text3) {
   const safe = safeLink(url);
   if (!safe)
-    return text2;
-  return `\x1B]8;;${safe}\x1B\\${text2}\x1B]8;;\x1B\\`;
+    return text3;
+  return `\x1B]8;;${safe}\x1B\\${text3}\x1B]8;;\x1B\\`;
 }
 
 // ../sdk-node/dist/cli/term/paint.js
@@ -11887,17 +11888,17 @@ var Painter = class {
   }
   /** Apply roles to text. */
   style(raw, roles = []) {
-    const text2 = clean(raw);
+    const text3 = clean(raw);
     if (!this.colored) {
-      if (!this.attributes || text2 === "")
-        return text2;
+      if (!this.attributes || text3 === "")
+        return text3;
       const keep = roles.filter((r) => r === "strong" || r === "code" || r === "chip");
       const names = keep.flatMap((r) => r === "chip" ? ["inverse"] : roleStyles(r));
-      return names.length ? styleText([...new Set(names)], text2, { validateStream: false }) : text2;
+      return names.length ? styleText([...new Set(names)], text3, { validateStream: false }) : text3;
     }
-    if (text2 === "" || roles.length === 0)
-      return text2;
-    let out = text2;
+    if (text3 === "" || roles.length === 0)
+      return text3;
+    let out = text3;
     for (const r of roles) {
       const role = this.ink && r === "accent" ? "strong" : r;
       const hex5 = this.caps.color === "truecolor" && role !== "code" && role !== "qr" ? this.overrides[role] : void 0;
@@ -11935,16 +11936,16 @@ var Painter = class {
   }
   /** The chip's colours over already padded text. */
   chipText(raw) {
-    const text2 = clean(raw);
+    const text3 = clean(raw);
     if (!this.colored)
-      return this.attributes && text2 ? styleText("inverse", text2, { validateStream: false }) : text2;
+      return this.attributes && text3 ? styleText("inverse", text3, { validateStream: false }) : text3;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);
       const fg = rgb(this.accent.on);
       if (bg && fg)
-        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text2}\x1B[39m\x1B[49m`;
+        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text3}\x1B[39m\x1B[49m`;
     }
-    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text2, { validateStream: false }) : styleText("inverse", text2, { validateStream: false });
+    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text3, { validateStream: false }) : styleText("inverse", text3, { validateStream: false });
   }
 };
 
@@ -12040,10 +12041,10 @@ function pieces(span) {
   }
   return out;
 }
-function splitAt(text2, after, before) {
+function splitAt(text3, after, before) {
   const out = [];
   let cur = "";
-  for (const ch of text2) {
+  for (const ch of text3) {
     if (before?.test(ch) && cur !== "") {
       out.push(cur);
       cur = "";
@@ -12058,11 +12059,11 @@ function splitAt(text2, after, before) {
     out.push(cur);
   return out;
 }
-function hardSplit(text2, width) {
+function hardSplit(text3, width) {
   const out = [];
   let cur = "";
   let w = 0;
-  for (const ch of text2) {
+  for (const ch of text3) {
     const cw = charWidth(ch);
     if (w + cw > width && cur !== "") {
       out.push(cur);
@@ -12076,9 +12077,9 @@ function hardSplit(text2, width) {
     out.push(cur);
   return out;
 }
-function breakPieces(text2, kind, width) {
+function breakPieces(text3, kind, width) {
   const w = Math.max(1, width);
-  const first = kind === "url" ? splitAt(text2, /\//, /[?&]/) : splitAt(text2, /-/);
+  const first = kind === "url" ? splitAt(text3, /\//, /[?&]/) : splitAt(text3, /-/);
   const second = kind === "url" ? first.flatMap((p) => cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]) : first;
   return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
 }
@@ -12182,11 +12183,11 @@ function wrapPieces(spans, width, ellipsis) {
             w += cellWidth(p.text);
           }
         }
-        for (const text2 of breakPieces(span.text, span.break, width)) {
-          const pw = cellWidth(text2);
+        for (const text3 of breakPieces(span.text, span.break, width)) {
+          const pw = cellWidth(text3);
           if (w > 0 && w + pw > width)
             newLine();
-          cur().push({ ...span, text: text2 });
+          cur().push({ ...span, text: text3 });
           w += pw;
         }
         continue;
@@ -12247,10 +12248,78 @@ function merge(pieces2) {
 function symbolsFor(caps) {
   return caps.unicode ? TERMINAL_SYMBOLS.unicode : TERMINAL_SYMBOLS.ascii;
 }
+var MARKS = {
+  start: { symbol: "railStart", style: ["muted"] },
+  rail: { symbol: "rail", style: ["muted"] },
+  active: { symbol: "stepActive", style: ["accent"] },
+  done: { symbol: "stepDone", style: ["muted"] },
+  ok: { symbol: "ok", style: ["success"] },
+  fail: { symbol: "fail", style: ["danger"] },
+  warn: { symbol: "warn", style: ["warning"] },
+  end: { symbol: "railEnd", style: ["muted"] }
+};
 var GUTTER = TERMINAL_LAYOUT.gutter;
-function keyHints(text2, symbols) {
+function isNarrow(columns) {
+  return columns < MIN_LAYOUT_COLUMNS;
+}
+function contentWidth(columns) {
+  return isNarrow(columns) ? Math.max(5, columns) : columns - 1 - GUTTER;
+}
+function markGlyph(mark, symbols, painter) {
+  const rail = painter.style(symbols.rail, ["muted"]);
+  if (mark === "none")
+    return { first: "", next: "" };
+  if (typeof mark === "object") {
+    const g = painter.style(mark.glyph, mark.style ?? ["muted"]);
+    return { first: g, next: rail };
+  }
+  const m = MARKS[mark];
+  const glyph = painter.style(symbols[m.symbol], m.style);
+  return { first: glyph, next: mark === "end" ? " " : rail };
+}
+function closeRail(rows) {
+  const out = [...rows];
+  const last = out[out.length - 1];
+  const prev = out[out.length - 2];
+  if (last?.mark === "end" && last.spans.length === 0 && prev?.spans.length) {
+    if (prev.mark === "rail")
+      out.splice(out.length - 2, 2, { ...prev, mark: "end" });
+    else if (prev.mark === "ok" || prev.mark === "fail" || prev.mark === "warn" || prev.mark === "done" || prev.mark === "active")
+      out.pop();
+  }
+  return out;
+}
+function railLines(rows, painter, symbols, columns, meta) {
+  const out = [];
+  const gap = " ".repeat(GUTTER);
+  const narrow = isNarrow(columns);
+  for (const row2 of closeRail(rows)) {
+    const { first, next } = markGlyph(row2.mark, symbols, painter);
+    const noRail = row2.mark === "none" || narrow;
+    const marked = narrow && row2.mark !== "none" && row2.mark !== "rail" && row2.mark !== "start" && row2.mark !== "end";
+    const width = marked ? Math.max(5, contentWidth(columns) - 2) : contentWidth(columns);
+    const wrapped = row2.spans.length ? wrapSpans(row2.spans, width, symbols.ellipsis) : [[]];
+    const rail = painter.style(symbols.rail, ["muted"]);
+    const hasBreak = row2.spans.some((sp) => sp.break !== void 0);
+    wrapped.forEach((line, i) => {
+      meta?.keep.push(row2.keep === true && (!hasBreak || line.some((sp) => sp.break)));
+      meta?.header.push(row2.role === "header");
+      const last = i === wrapped.length - 1;
+      const glyph = row2.mark === "end" ? last ? first : rail : i === 0 ? first : next;
+      const body = painter.line(line);
+      if (narrow && row2.mark !== "none") {
+        out.push(marked && body ? `${i === 0 ? first : " "} ${body}` : body);
+      } else if (noRail)
+        out.push(body);
+      else
+        out.push(body ? `${glyph}${gap}${body}` : glyph);
+    });
+  }
+  return out;
+}
+function keyHints(text3, symbols) {
   const sepRe = symbols.separator === "·" ? /\s+·\s+/ : /\s+[·-]\s+/;
-  const segments2 = text2.split(sepRe);
+  const segments2 = text3.split(sepRe);
   const spans = [];
   segments2.forEach((seg, i) => {
     if (i > 0)
@@ -12536,12 +12605,252 @@ function spinnerFrames(unicode) {
   return unicode ? TERMINAL_SPINNER.unicode : TERMINAL_SPINNER.ascii;
 }
 function animate(caps, render, ticker = realTicker, frameMs = TERMINAL_SPINNER.frameMs) {
-  let frame = 0;
-  render(frame);
+  let frame2 = 0;
+  render(frame2);
   if (!caps.animate)
     return () => void 0;
-  const h = ticker.setInterval(() => render(++frame), frameMs);
+  const h = ticker.setInterval(() => render(++frame2), frameMs);
   return () => ticker.clearInterval(h);
+}
+
+// ../sdk-node/dist/cli/term/keys.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { emitKeypressEvents } from "node:readline";
+function toKey(str7, key) {
+  return {
+    name: key?.name ?? str7 ?? "",
+    sequence: key?.sequence ?? str7 ?? "",
+    ctrl: key?.ctrl ?? false,
+    meta: key?.meta ?? false
+  };
+}
+function isInterrupt(k) {
+  return k.ctrl && k.name === "c";
+}
+function isCancel(k) {
+  return k.ctrl && (k.name === "c" || k.name === "d") || k.name === "escape" || k.sequence === "\x1B";
+}
+var KeyReader = class {
+  input;
+  queue = [];
+  waiting = null;
+  started = false;
+  closed = false;
+  cursor = null;
+  onKey = (str7, key) => {
+    const k = toKey(str7, key);
+    const report2 = /^\x1b\[(\d+);(\d+)R$/.exec(k.sequence);
+    if (report2) {
+      const answer = this.cursor;
+      this.cursor = null;
+      answer?.(Number(report2[1]));
+      return;
+    }
+    if (this.waiting) {
+      const w = this.waiting;
+      this.waiting = null;
+      w(k);
+    } else
+      this.queue.push(k);
+  };
+  constructor(input2) {
+    this.input = input2;
+  }
+  start() {
+    if (this.started)
+      return;
+    this.started = true;
+    emitKeypressEvents(input(this.input));
+    this.input.setRawMode?.(true);
+    this.input.on("keypress", this.onKey);
+    this.input.resume?.();
+  }
+  /**
+   * Ask the terminal where the cursor is: `ask` writes the request (ESC [ 6 n) and the answer comes
+   * back through the keys, filtered out of them. Null when it does not answer in `timeoutMs`.
+   */
+  cursorRow(ask, timeoutMs) {
+    if (this.closed)
+      return Promise.resolve(null);
+    this.start();
+    this.cursor?.(null);
+    return new Promise((resolve2) => {
+      const done = (row2) => {
+        clearTimeout(timer);
+        if (this.cursor === done)
+          this.cursor = null;
+        resolve2(row2);
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+      this.cursor = done;
+      ask();
+    });
+  }
+  /** The next key, or null when the reader closed or `signal` aborted. */
+  next(signal) {
+    if (this.closed)
+      return Promise.resolve(null);
+    this.start();
+    const queued = this.queue.shift();
+    if (queued)
+      return Promise.resolve(queued);
+    return new Promise((resolve2) => {
+      const onAbort = () => {
+        this.waiting = null;
+        resolve2(null);
+      };
+      if (signal?.aborted)
+        return resolve2(null);
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.waiting = (k) => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve2(k);
+      };
+    });
+  }
+  /** Leave raw mode and stop listening. Safe to call twice. */
+  close() {
+    if (this.closed)
+      return;
+    this.closed = true;
+    if (!this.started)
+      return;
+    const off = this.input.off ?? this.input.removeListener;
+    off?.call(this.input, "keypress", this.onKey);
+    this.input.setRawMode?.(false);
+    this.input.pause?.();
+    this.waiting?.(null);
+    this.waiting = null;
+    this.cursor?.(null);
+  }
+};
+function input(i) {
+  return i;
+}
+
+// ../sdk-node/dist/cli/term/prompt.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var CANCEL = /* @__PURE__ */ Symbol("pkey.cancel");
+var INTERRUPT = /* @__PURE__ */ Symbol("pkey.interrupt");
+function cancelled(k) {
+  return k !== null && isInterrupt(k) ? INTERRUPT : CANCEL;
+}
+function interactiveRegion(out, host) {
+  return new LiveRegion(out, {
+    get caps() {
+      return { ...host.caps, animate: true };
+    },
+    refreshSize: () => host.refreshSize(),
+    render: (r) => host.render(r),
+    fit: (r) => host.fit(r),
+    cursorRow: () => host.cursorRow?.() ?? Promise.resolve(null)
+  });
+}
+function region(ctx) {
+  return interactiveRegion(ctx.out, ctx.host);
+}
+var frame = (_ctx, rows) => rows;
+async function promptConfirm(ctx, p) {
+  const live = region(ctx);
+  try {
+    live.draw(frame(ctx, [{ mark: "active", spans: p.title }]));
+    for (; ; ) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      const yes = k.name === "y" ? true : k.name === "n" ? false : null;
+      const answer = yes ?? (k.name === "return" || k.name === "enter" ? !!p.initial : null);
+      if (answer !== null) {
+        live.commit(frame(ctx, p.done(answer)));
+        return answer;
+      }
+    }
+  } finally {
+    live.close();
+  }
+}
+function boxes(symbols) {
+  return symbols.rail === "|" ? { on: "[x]", off: "[ ]" } : { on: "◼", off: "◻" };
+}
+async function promptMultiSelect(ctx, p) {
+  const live = region(ctx);
+  const box = boxes(ctx.symbols);
+  let at = 0;
+  let chosen = p.initial ?? [];
+  let note = null;
+  const ordered = () => p.options.map((o) => o.value).filter((v) => chosen.includes(v));
+  const render = () => {
+    const rows = [{ mark: "active", spans: p.title }];
+    p.options.forEach((o, i) => {
+      const focus = i === at;
+      const ticked = chosen.includes(o.value);
+      const lock = p.locked?.(o.value, chosen) ?? null;
+      const label = o.label.map((s) => lock ? { ...s, style: ["muted"] } : focus ? { ...s, style: [...s.style ?? [], "strong"] } : s);
+      rows.push({
+        mark: "rail",
+        spans: [
+          {
+            text: `${ticked ? box.on : box.off} `,
+            style: lock ? ["muted"] : focus || ticked ? ["accent"] : ["muted"]
+          },
+          ...label,
+          ...lock ? [
+            { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
+            ...lock.map((s) => ({ ...s, style: ["muted"] }))
+          ] : []
+        ]
+      });
+      if (o.meta)
+        rows.push({
+          mark: "rail",
+          spans: [
+            { text: "    " },
+            ...o.meta.map((s) => ({ ...s, style: ["muted"] }))
+          ]
+        });
+    });
+    if (note)
+      rows.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
+    rows.push({ mark: "end", spans: p.hints });
+    live.draw(frame(ctx, rows));
+  };
+  try {
+    render();
+    for (; ; ) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      if (k.name === "up" || k.name === "k")
+        at = (at - 1 + p.options.length) % p.options.length;
+      else if (k.name === "down" || k.name === "j")
+        at = (at + 1) % p.options.length;
+      else if (k.name === "space" || k.sequence === " ") {
+        const v = p.options[at].value;
+        const lock = p.locked?.(v, chosen) ?? null;
+        if (lock)
+          note = lock;
+        else {
+          const r = p.toggle(chosen, v);
+          chosen = r.chosen;
+          note = r.note;
+        }
+        render();
+        continue;
+      } else if (k.name === "return" || k.name === "enter") {
+        const out = ordered();
+        live.commit(frame(ctx, p.done(out)));
+        return out;
+      }
+      note = null;
+      render();
+    }
+  } finally {
+    live.close();
+  }
 }
 
 // ../sdk-node/dist/cli/term/progress.js
@@ -12555,6 +12864,70 @@ function progressSpans(fraction, symbols, width = TERMINAL_LAYOUT.barWidth) {
   ];
 }
 
+// ../sdk-node/dist/cli/term/screen.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var widthOf2 = (spans) => cellWidth(spans.map((s) => s.text).join("").trimEnd());
+function inlineHints(rows, columns, separator) {
+  const h = rows.findIndex((r) => r.role === "hints");
+  const s = rows.findIndex((r) => r.role === "spinner");
+  if (h < 0 || s < 0)
+    return [...rows];
+  const joined = [
+    ...rows[s].spans,
+    { text: ` ${separator} `, style: ["muted"] },
+    ...rows[h].spans
+  ];
+  if (widthOf2(joined) > contentWidth(columns))
+    return [...rows];
+  return rows.map((r, i) => i === s ? { ...r, spans: joined, keep: true } : r).filter((_, i) => i !== h);
+}
+function fitScreen(rows, o) {
+  const max = Math.max(1, o.maxRows);
+  const headOf = (r, cut2 = 0) => {
+    let n = 0;
+    while (n < r.length && r[n].role === "header")
+      n++;
+    return Math.max(0, (n ? o.render(r.slice(0, n)).length : 0) - cut2);
+  };
+  let lines4 = o.render(rows);
+  if (lines4.length <= max)
+    return { lines: lines4, head: headOf(rows) };
+  let cur = inlineHints(rows, o.columns, o.separator);
+  lines4 = o.render(cur);
+  const tiers = [
+    ...new Set(cur.map((r) => r.drop).filter((d) => d !== void 0))
+  ].sort((a, b) => a - b);
+  for (const t of tiers) {
+    if (lines4.length <= max)
+      break;
+    cur = cur.filter((r) => r.drop !== t);
+    lines4 = o.render(cur);
+  }
+  while (lines4.length > max) {
+    const i = cur.findIndex((r) => !r.keep);
+    if (i < 0)
+      break;
+    cur = cur.filter((_, j) => j !== i);
+    lines4 = o.render(cur);
+  }
+  const meta = { keep: [], header: [] };
+  lines4 = o.render(cur, meta);
+  while (lines4.length > max) {
+    const j = meta.keep.indexOf(false);
+    if (j < 0)
+      break;
+    lines4.splice(j, 1);
+    meta.keep.splice(j, 1);
+    meta.header.splice(j, 1);
+  }
+  const cut = Math.max(0, lines4.length - max);
+  const head = meta.header.slice(cut).findIndex((h) => !h);
+  return {
+    lines: cut ? lines4.slice(cut) : lines4,
+    head: head < 0 ? meta.header.length - cut : head
+  };
+}
+
 // src/untrusted.ts
 var COMMAND_BREAK = "​";
 function underActions(env) {
@@ -12566,11 +12939,11 @@ function defuse(line) {
   return s.trimStart().startsWith("::") ? `${COMMAND_BREAK}${s}` : s;
 }
 function untrusted(value, env) {
-  const text2 = clean(String(value));
-  return underActions(env) ? defuse(text2) : text2;
+  const text3 = clean(String(value));
+  return underActions(env) ? defuse(text3) : text3;
 }
-function untrustedLines(text2, env) {
-  return String(text2).split("\n").map((line) => untrusted(line, env)).join("\n");
+function untrustedLines(text3, env) {
+  return String(text3).split("\n").map((line) => untrusted(line, env)).join("\n");
 }
 function untrustedJson(value, space) {
   return (JSON.stringify(value, null, space) ?? "null").replace(
@@ -12602,9 +12975,9 @@ function guardOutput(out, env) {
     }
     const complete = pending.slice(0, end);
     pending = pending.slice(end + 1);
-    const text2 = `${complete.split("\n").map(guardLine).join("\n")}
+    const text3 = `${complete.split("\n").map(guardLine).join("\n")}
 `;
-    return cb ? out.write(text2, cb) : out.write(text2);
+    return cb ? out.write(text3, cb) : out.write(text3);
   };
   const stream = {
     write,
@@ -12689,8 +13062,8 @@ function isInternalError(err) {
   return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
 }
 function internalMessage(err) {
-  const text2 = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  return `pkey hit an unexpected error: ${text2}
+  const text3 = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return `pkey hit an unexpected error: ${text3}
 This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
 }
 
@@ -12784,10 +13157,10 @@ async function readCappedText(res, max = MAX_JSON_BYTES) {
   }
 }
 async function readCappedJson(res, max = MAX_JSON_BYTES) {
-  const text2 = await readCappedText(res, max);
-  if (text2 === null) return {};
+  const text3 = await readCappedText(res, max);
+  if (text3 === null) return {};
   try {
-    const v = JSON.parse(text2);
+    const v = JSON.parse(text3);
     return v && typeof v === "object" && !Array.isArray(v) ? v : {};
   } catch {
     return {};
@@ -12922,8 +13295,8 @@ A console session cookie is a DIFFERENT credential and is no longer accepted her
   }
   return value;
 }
-function maskTokens(text2) {
-  return text2.replace(/pkey[a-z]{1,2}t?_[A-Za-z0-9_-]{20,}/g, "[token]");
+function maskTokens(text3) {
+  return text3.replace(/pkey[a-z]{1,2}t?_[A-Za-z0-9_-]{20,}/g, "[token]");
 }
 function normalizeBaseUrl(raw, credentialEnv) {
   let url;
@@ -13014,12 +13387,12 @@ function statusHint(status) {
   return void 0;
 }
 async function errorDetail(res) {
-  const text2 = await readCappedText(res) ?? "";
+  const text3 = await readCappedText(res) ?? "";
   let parsed;
   try {
-    parsed = JSON.parse(text2);
+    parsed = JSON.parse(text3);
   } catch {
-    const trimmed2 = text2.trim();
+    const trimmed2 = text3.trim();
     return trimmed2 ? { message: clip(trimmed2) } : {};
   }
   if (!isRecord(parsed)) return {};
@@ -13041,14 +13414,14 @@ async function errorDetail(res) {
 }
 async function readJson(res, url) {
   const host = hostLabel(url);
-  const text2 = await readCappedText(res);
-  if (text2 === null)
+  const text3 = await readCappedText(res);
+  if (text3 === null)
     throw new Error(
       `${host} answered ${res.status} with a body over ${MAX_JSON_BYTES / 1024} KiB.`
     );
   let parsed;
   try {
-    parsed = JSON.parse(text2);
+    parsed = JSON.parse(text3);
   } catch {
     throw new Error(
       `${host} answered ${res.status} with a body that is not JSON.`
@@ -14218,23 +14591,23 @@ function renderFeedSetup(ecosystem, ctx) {
   const decl = FEED_SETUP[ecosystem];
   const declared = new Set(decl.inputs);
   const origin = noSlash(ctx.origin);
-  const resolve2 = (input) => {
-    if (input === "baseUrl")
+  const resolve2 = (input2) => {
+    if (input2 === "baseUrl")
       return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
-    if (input === "registryHost") return hostOf(origin);
-    if (input === "owner") return ctx.owner;
-    if (input === "package.name") return ctx.package?.name;
-    if (input === "package.version") return ctx.package?.version ?? void 0;
-    return ctx.namespace?.[input.slice("namespace.".length)];
+    if (input2 === "registryHost") return hostOf(origin);
+    if (input2 === "owner") return ctx.owner;
+    if (input2 === "package.name") return ctx.package?.name;
+    if (input2 === "package.version") return ctx.package?.version ?? void 0;
+    return ctx.namespace?.[input2.slice("namespace.".length)];
   };
   const credential = ctx.credential ?? { kind: "none" };
   return decl.render({
-    get(input) {
-      if (!declared.has(input))
+    get(input2) {
+      if (!declared.has(input2))
         throw new Error(
-          `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
+          `renderFeedSetup: ${ecosystem} reads "${input2}", which its setup does not declare`
         );
-      return resolve2(input);
+      return resolve2(input2);
     },
     // A Godot feed authenticates only through its URL; the others never through one.
     credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
@@ -15017,14 +15390,14 @@ var CompiledPattern = class {
     }
     return false;
   }
-  test(input) {
-    if (input.length > MAX_PATTERN_INPUT)
+  test(input2) {
+    if (input2.length > MAX_PATTERN_INPUT)
       return false;
     if (this.generation > 2147483632) {
       this.mark.fill(-1);
       this.generation = 0;
     }
-    const cps = Array.from(input, (c) => c.codePointAt(0));
+    const cps = Array.from(input2, (c) => c.codePointAt(0));
     const len = cps.length;
     let cur = [];
     let next = [];
@@ -15490,9 +15863,9 @@ var CONFUSABLES = {
   "χ": "x",
   "γ": "y"
 };
-function displayNameSkeleton(text2) {
+function displayNameSkeleton(text3) {
   let s = "";
-  for (const ch of text2) {
+  for (const ch of text3) {
     if (new RegExp("\\p{M}", "u").test(ch)) continue;
     if (!/[\p{L}\p{N}]/u.test(ch)) {
       s += " ";
@@ -15510,8 +15883,8 @@ var TERM_WORDS = RESERVED_DISPLAY_TERMS.map(
 function byLength(terms) {
   return terms.sort((a, b) => b.w.length - a.w.length);
 }
-function reservedDisplayTerm(text2, extraTerms = []) {
-  const words2 = displayNameSkeleton(text2);
+function reservedDisplayTerm(text3, extraTerms = []) {
+  const words2 = displayNameSkeleton(text3);
   const terms = byLength([
     ...RESERVED_DISPLAY_TERMS.map((term, i) => ({ term, w: TERM_WORDS[i] })),
     ...extraTerms.map((term) => ({ term, w: displayNameSkeleton(term) }))
@@ -15529,20 +15902,20 @@ function reservedDisplayTerm(text2, extraTerms = []) {
   }
   return null;
 }
-function invalidDisplayText(text2) {
-  if (/^\s|\s$/u.test(text2)) return true;
-  for (const ch of text2) {
+function invalidDisplayText(text3) {
+  if (/^\s|\s$/u.test(text3)) return true;
+  for (const ch of text3) {
     const cp3 = ch.codePointAt(0);
     for (const [lo, hi] of DISPLAY_TEXT_STRIP)
       if (cp3 >= lo && cp3 <= hi) return true;
   }
   return false;
 }
-function checkDisplayName(text2, opts = {}) {
-  if (invalidDisplayText(text2)) return "invalid";
+function checkDisplayName(text3, opts = {}) {
+  if (invalidDisplayText(text3)) return "invalid";
   if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG || opts.approved === true)
     return null;
-  return reservedDisplayTerm(text2, opts.extraTerms) ? "reserved" : null;
+  return reservedDisplayTerm(text3, opts.extraTerms) ? "reserved" : null;
 }
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
 var RESERVED_ENTITLEMENT_KEYS = [
@@ -16563,9 +16936,9 @@ function isPresent(value, how = "value") {
   return value !== void 0 && value !== null;
 }
 function show(value) {
-  const text2 = JSON.stringify(value);
-  if (text2 === void 0) return String(value);
-  return text2.length > 40 ? `${text2.slice(0, 37)}...` : text2;
+  const text3 = JSON.stringify(value);
+  if (text3 === void 0) return String(value);
+  return text3.length > 40 ? `${text3.slice(0, 37)}...` : text3;
 }
 function describeCanonical(s) {
   const [doc, path32] = s.canonical.split(":");
@@ -16812,6 +17185,18 @@ var MODULE_SERVICES = {
   sync: ["sync"],
   commerce: ["commerce"]
 };
+var FEATURES = [
+  { id: "licensing", label: "Licensing", primary: ["license"] },
+  { id: "managed-config", label: "Managed config", primary: ["config"] },
+  {
+    id: "ship-builds",
+    label: "Ship builds",
+    primary: ["release", "distribution"]
+  },
+  { id: "sign-in", label: "Sign-in", primary: ["identity"] },
+  { id: "cloud-sync", label: "Cloud Sync", primary: ["sync"] },
+  { id: "commerce", label: "Commerce", primary: ["commerce"] }
+];
 var ASSET_REF_EXTENSIONS = [
   "png",
   "jpg",
@@ -18114,6 +18499,39 @@ function withIncludedChannels(channels2) {
   }
   return out;
 }
+function featureNeeds(id) {
+  const f = FEATURES.find((x) => x.id === id);
+  const out = /* @__PURE__ */ new Set();
+  for (const s of f.primary)
+    for (const req of SERVICE_REQUIRES[s]) {
+      const owner = FEATURES.find((x) => x.primary.includes(req));
+      if (owner && owner.id !== id) out.add(owner.id);
+    }
+  return FEATURES.filter((x) => out.has(x.id)).map((x) => x.id);
+}
+var featureUnlocked = (id, chosen) => featureNeeds(id).every((n) => chosen.includes(n));
+function toggleFeature(chosen, id, on) {
+  if (on)
+    return {
+      features: featureUnlocked(id, chosen) ? [.../* @__PURE__ */ new Set([...chosen, id])] : [...chosen],
+      cleared: []
+    };
+  let next = chosen.filter((f) => f !== id);
+  const cleared = [];
+  for (; ; ) {
+    const drop = next.filter((f) => !featureUnlocked(f, next));
+    if (drop.length === 0) break;
+    cleared.push(...drop);
+    next = next.filter((f) => !drop.includes(f));
+  }
+  return { features: next, cleared };
+}
+function servicesForFeatures(features) {
+  const own = /* @__PURE__ */ new Set();
+  for (const f of FEATURES)
+    if (features.includes(f.id)) for (const s of f.primary) own.add(s);
+  return { services: SERVICE_SLUGS.filter((s) => own.has(s)) };
+}
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
 var LOCATION_PROVIDERS = [
@@ -19269,13 +19687,13 @@ function archLabel(arch, platform) {
   const a = arch === "any" ? "universal" : arch;
   return ARCH_NAMES[p]?.[a] ?? CONVENTIONAL_ARCH_NAMES[a] ?? arch;
 }
-function buildLabel(input, opts = {}) {
-  const arch = archLabel(input.arch, input.platform);
-  const platform = isAnyPlatform(input.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input.platform, opts);
-  const raw = present(input.arch) ? input.arch : null;
+function buildLabel(input2, opts = {}) {
+  const arch = archLabel(input2.arch, input2.platform);
+  const platform = isAnyPlatform(input2.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input2.platform, opts);
+  const raw = present(input2.arch) ? input2.arch : null;
   const archLong = arch === null ? null : raw !== null && raw !== "any" && arch.toLowerCase() !== raw.toLowerCase() ? `${arch} (${raw})` : arch;
   const short2 = arch === null ? platform : `${platform} ${arch}`;
-  const long = [platform, archLong, present(input.format) ? input.format : null].filter((p) => p !== null).join(" · ");
+  const long = [platform, archLong, present(input2.format) ? input2.format : null].filter((p) => p !== null).join(" · ");
   return { platform, arch, short: short2, long };
 }
 var ASSET_PACK_ID_PATTERN = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
@@ -23177,8 +23595,8 @@ function isReservedIpv6(b) {
   if (b[0] === 255) return true;
   return false;
 }
-function parseIpv6(text2) {
-  const bare = text2.split("%")[0] ?? "";
+function parseIpv6(text3) {
+  const bare = text3.split("%")[0] ?? "";
   const halves = bare.split("::");
   if (halves.length > 2) return null;
   const head = expandIpv6Groups(halves[0] ?? "");
@@ -23652,14 +24070,14 @@ function backoff(attempt, retryAfter) {
   return Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
 }
 async function readBody(res) {
-  const text2 = await res.text().catch(() => "");
+  const text3 = await res.text().catch(() => "");
   try {
-    const parsed = JSON.parse(text2);
+    const parsed = JSON.parse(text3);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
       return parsed;
   } catch {
   }
-  const trimmed2 = text2.trim();
+  const trimmed2 = text3.trim();
   return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
 function renderRefusal(what, target, status, body, env = {}) {
@@ -23975,7 +24393,7 @@ var COMMANDS = [
     ],
     about: [
       {
-        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force."
+        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force. On a terminal it asks what the product is for and whether to start with a Free tier; --modules and --starter-tier answer instead."
       },
       {
         text: `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
@@ -24653,7 +25071,7 @@ function twoColumns(term, rows, column, indent = 2) {
   const descCol = stacked ? indent + 2 : indent + column + 2;
   const width = Math.max(1, caps.columns - descCol);
   const out = [];
-  for (const [t, text2] of rows) {
+  for (const [t, text3] of rows) {
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
     const termLines = fits ? [] : wrapSpans(
@@ -24662,7 +25080,7 @@ function twoColumns(term, rows, column, indent = 2) {
     );
     const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
     const lines4 = wrapSpans(
-      [{ text: text2, style: ["muted"] }],
+      [{ text: text3, style: ["muted"] }],
       Math.max(1, caps.columns - col)
     );
     termLines.forEach(
@@ -24688,13 +25106,13 @@ function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
 function logoHeader(term, art2, block2) {
   const gap = 2;
   const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
-  const text2 = block2.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
-  const top = Math.max(0, Math.floor((art2.length - text2.length) / 2));
-  const rows = Math.max(art2.length, top + text2.length);
+  const text3 = block2.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
+  const top = Math.max(0, Math.floor((art2.length - text3.length) / 2));
+  const rows = Math.max(art2.length, top + text3.length);
   const out = [];
   for (let r = 0; r < rows; r++) {
     const left = art2[r] ?? [];
-    const right = text2[r - top] ?? [];
+    const right = text3[r - top] ?? [];
     const pad2 = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
     const spans = right.length ? [...left, { text: " ".repeat(pad2) }, ...right] : left;
     out.push(term.painter.line(spans));
@@ -24708,8 +25126,8 @@ var LABEL_WIDTH = 7;
 function hereLines(here, width, separator) {
   const product = here.product;
   const room = Math.max(1, width - LABEL_WIDTH);
-  const text2 = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
-  const lines4 = wrapSpans([{ text: text2 }], room);
+  const text3 = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
+  const lines4 = wrapSpans([{ text: text3 }], room);
   const url = shortUrl(here.baseUrl);
   const tail = lines4.at(-1) ?? [];
   const used = cellWidth(tail.map((x) => x.text).join(""));
@@ -24791,11 +25209,11 @@ function renderHelp(term, here) {
   return `${out.join("\n")}
 `;
 }
-function usageUnits(text2) {
+function usageUnits(text3) {
   const raw = [];
   let depth = 0;
   let cur = "";
-  for (const ch of text2) {
+  for (const ch of text3) {
     if (ch === "[" || ch === "(") depth += 1;
     if (ch === "]" || ch === ")") depth -= 1;
     if (ch === " " && depth === 0) {
@@ -24817,10 +25235,10 @@ function usageUnits(text2) {
   }
   return units;
 }
-function usageLines(term, cmd, text2, indent = 2) {
+function usageLines(term, cmd, text3, indent = 2) {
   const { painter, caps } = term;
   const cont = indent + 4;
-  const units = usageUnits(text2);
+  const units = usageUnits(text3);
   const isIn = (word, words2) => word !== void 0 && word.split("|").every((w2) => words2.includes(w2));
   let lead = 2;
   if (cmd.tree && isIn(units[2], Object.keys(cmd.tree))) {
@@ -24845,18 +25263,18 @@ function usageLines(term, cmd, text2, indent = 2) {
     (l, i) => `${" ".repeat(i === 0 ? indent : cont)}${l.join(" ")}`
   );
 }
-function usageSubs(cmd, text2) {
+function usageSubs(cmd, text3) {
   if (!cmd.tree) return null;
-  const word = text2.split(" ")[2] ?? "";
+  const word = text3.split(" ")[2] ?? "";
   const subs = word.split("|");
   return subs.every((s) => s in cmd.tree) ? subs : null;
 }
 function rowSubs(term) {
   return (term.split(" ")[1] ?? "").split("|");
 }
-function paragraph(term, text2, indent = 2) {
+function paragraph(term, text3, indent = 2) {
   const width = Math.max(1, term.caps.columns - indent);
-  return wrapSpans([{ text: text2 }], width).map(
+  return wrapSpans([{ text: text3 }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`
   );
 }
@@ -26681,8 +27099,8 @@ import { hostname as osHostname, platform as osPlatform } from "node:os";
 
 // src/terminal.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function termFor(out, env, flags = {}) {
-  const caps = detectTerminal({ env, stdout: out, flags });
+function termFor(out, env, flags = {}, stdin) {
+  const caps = detectTerminal({ env, stdout: out, stdin, flags });
   return {
     caps,
     painter: new Painter(caps, null, {}, true),
@@ -26739,8 +27157,8 @@ var Spinner = class {
     if (!this.stopTicking)
       this.stopTicking = animate(
         this.term.caps,
-        (frame) => {
-          this.frame = frame;
+        (frame2) => {
+          this.frame = frame2;
           this.draw();
         },
         this.ticker
@@ -26784,10 +27202,10 @@ var Spinner = class {
    * the next frame draws the spinner again below them. Off a terminal `out` comes back as is.
    */
   wrap(out) {
-    const region = this.region;
-    if (!region) return out;
+    const region2 = this.region;
+    if (!region2) return out;
     const write = (chunk, ...rest) => {
-      region.close();
+      region2.close();
       if (typeof chunk === "string" && chunk.length > 0)
         this.atLineStart = chunk.endsWith("\n");
       return out.write(
@@ -26806,9 +27224,9 @@ var Spinner = class {
     if (!this.region || !this.label || !this.atLineStart) return;
     this.region.draw(() => {
       const header = this.header?.(this.term.caps.columns);
-      const row2 = (text2, role) => ({
+      const row2 = (text3, role) => ({
         mark: "none",
-        spans: [{ text: text2 }],
+        spans: [{ text: text3 }],
         ...role ? { role } : {}
       });
       return [
@@ -26883,7 +27301,7 @@ function defaultOpen(url) {
     });
   });
 }
-function defaultCopy(text2) {
+function defaultCopy(text3) {
   const platform = osPlatform();
   const [cmd, args] = platform === "darwin" ? ["pbcopy", []] : platform === "win32" ? ["clip", []] : ["xclip", ["-selection", "clipboard"]];
   return new Promise((resolve2) => {
@@ -26892,7 +27310,7 @@ function defaultCopy(text2) {
     child.stdin.on("error", () => {
     });
     child.once("close", (code) => resolve2(code === 0));
-    child.stdin.end(text2);
+    child.stdin.end(text3);
   });
 }
 function defaultSeams() {
@@ -27033,12 +27451,12 @@ async function flow(io, seams, deferred) {
       );
   }
   const abort = new AbortController();
-  let cancelled = null;
+  let cancelled2 = null;
   let wake;
   const cancelSignal = new Promise((resolve2) => wake = resolve2);
   const cancel = (why) => {
-    if (cancelled) return;
-    cancelled = why;
+    if (cancelled2) return;
+    cancelled2 = why;
     abort.abort();
     wake?.();
   };
@@ -27300,7 +27718,7 @@ async function flow(io, seams, deferred) {
   let failures = 0;
   while (true) {
     await wait(interval);
-    if (cancelled) return cancelReport(cancelled);
+    if (cancelled2) return cancelReport(cancelled2);
     if (now() >= deadline) return expired();
     let res;
     try {
@@ -27318,7 +27736,7 @@ async function flow(io, seams, deferred) {
       );
     } catch (e) {
       if (!(e instanceof Transport)) throw e;
-      if (cancelled) return cancelReport(cancelled);
+      if (cancelled2) return cancelReport(cancelled2);
       sawFailure = true;
       if (++failures >= NETWORK_FAILURES)
         return report2({
@@ -27662,31 +28080,31 @@ ${block(errT, "warn", [
 // src/context.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BASE_URL_ENV = "PKEY_BASE_URL";
-async function resolveContext(input) {
-  const found = await findProductManifest(input.cwd);
-  const env = input.env[BASE_URL_ENV]?.trim();
+async function resolveContext(input2) {
+  const found = await findProductManifest(input2.cwd);
+  const env = input2.env[BASE_URL_ENV]?.trim();
   return {
-    product: input.product ? {
-      slug: input.product,
+    product: input2.product ? {
+      slug: input2.product,
       source: "flag",
       // The name is the manifest's only when the flag names the manifest's own product.
-      ...found?.slug === input.product && found.name ? { name: found.name } : {}
+      ...found?.slug === input2.product && found.name ? { name: found.name } : {}
     } : found ? {
       slug: found.slug,
       ...found.name ? { name: found.name } : {},
       source: "manifest",
       file: found.file
     } : null,
-    baseUrl: input.baseUrl ? { url: input.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
+    baseUrl: input2.baseUrl ? { url: input2.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
   };
 }
-async function applyContext(keys, flags, input) {
+async function applyContext(keys, flags, input2) {
   if (!keys?.length) return;
   const given = (name) => typeof flags[name] === "string" && String(flags[name]).trim() !== "";
   const wantProduct = keys.includes("product") && !given("product");
   const wantBase = keys.includes("baseUrl") && !given("base-url");
   if (!wantProduct && !wantBase) return;
-  const ctx = await resolveContext(input);
+  const ctx = await resolveContext(input2);
   if (wantProduct && ctx.product) flags["product"] = ctx.product.slug;
   if (wantBase && ctx.baseUrl.source === "env")
     flags["base-url"] = ctx.baseUrl.url;
@@ -27696,10 +28114,10 @@ async function applyContext(keys, flags, input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DOCTOR_TIMEOUT_MS = 15e3;
 async function readCapped(res) {
-  const text2 = await readCappedText(res);
-  if (text2 === null) throw new ReadFailure("too large or unreadable");
+  const text3 = await readCappedText(res);
+  if (text3 === null) throw new ReadFailure("too large or unreadable");
   try {
-    return JSON.parse(text2);
+    return JSON.parse(text3);
   } catch {
     throw new ReadFailure("not JSON");
   }
@@ -28110,16 +28528,16 @@ var featureState = (st) => ({
   mark: STATE_MARK[st],
   word: STATE_WORD[st]
 });
-var dim = (text2) => ({ text: text2 });
-var plain3 = (text2) => ({ text: text2, role: "plain" });
-function buildReport(input) {
-  const { session: s, remote, config } = input;
-  const u = (v) => untrusted(v, input.env);
+var dim = (text3) => ({ text: text3 });
+var plain3 = (text3) => ({ text: text3, role: "plain" });
+function buildReport(input2) {
+  const { session: s, remote, config } = input2;
+  const u = (v) => untrusted(v, input2.env);
   const facts = [];
   const sections = [];
-  const hostName = hostOf3(input.baseUrl);
+  const hostName = hostOf3(input2.baseUrl);
   const manifest = [];
-  const m = input.manifest;
+  const m = input2.manifest;
   if (m.state === "missing") {
     facts.push(manifestFact(null, m.problem));
     manifest.push({
@@ -28171,7 +28589,7 @@ function buildReport(input) {
       name: "Signed in",
       parts: [
         ...person,
-        ...signed.endsAt ? [dim(`ends ${day(signed.endsAt, input.env)}`)] : []
+        ...signed.endsAt ? [dim(`ends ${day(signed.endsAt, input2.env)}`)] : []
       ]
     });
   } else
@@ -28374,7 +28792,7 @@ function buildReport(input) {
           {
             lead: "ok",
             name: "First release",
-            parts: i.ci.firstAt ? [dim(day(i.ci.firstAt, input.env))] : []
+            parts: i.ci.firstAt ? [dim(day(i.ci.firstAt, input2.env))] : []
           }
         ]
       });
@@ -28406,8 +28824,8 @@ function buildReport(input) {
     }
   return {
     header: {
-      name: input.product?.name ?? input.product?.slug ?? "Polaris Key",
-      slug: input.product?.name ? input.product.slug : null,
+      name: input2.product?.name ?? input2.product?.slug ?? "Polaris Key",
+      slug: input2.product?.name ? input2.product.slug : null,
       host: hostName
     },
     sections,
@@ -28433,8 +28851,8 @@ var STACK_BELOW2 = 36;
 var WIDE = 60;
 var VALUE_COL = 30;
 var NAME_CAP = 24;
-function breakLink(text2, width) {
-  const parts = text2.match(/[^/#]*[/#]?/g)?.filter(Boolean) ?? [text2];
+function breakLink(text3, width) {
+  const parts = text3.match(/[^/#]*[/#]?/g)?.filter(Boolean) ?? [text3];
   const lines4 = [];
   let cur = "";
   for (let part of parts) {
@@ -28641,8 +29059,8 @@ async function checkConfigFiles(opts) {
   const found = [];
   const tryRead = async (dir, label) => {
     try {
-      const text2 = await readFile26(path32.join(dir, "polaris-key.json"), "utf8");
-      found.push({ dir: label, file: JSON.parse(text2) });
+      const text3 = await readFile26(path32.join(dir, "polaris-key.json"), "utf8");
+      found.push({ dir: label, file: JSON.parse(text3) });
     } catch {
     }
   };
@@ -28707,6 +29125,120 @@ function distance(a, b) {
   return rows[a.length][b.length];
 }
 
+// src/initPrompt.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var INITIAL_FEATURES = [
+  "licensing",
+  "ship-builds"
+];
+var KEYS = "Space toggle · Enter confirm · Esc cancel";
+function mayPrompt(term, stdin) {
+  return term.caps.interactive && stdin.isTTY === true;
+}
+var labelOf = (id) => FEATURES.find((f) => f.id === id).label;
+var text2 = (t, style) => [
+  style ? { text: t, style } : { text: t }
+];
+async function askInit(ask) {
+  const { term, stdout } = ask;
+  const keys = ask.keys ?? new KeyReader(ask.stdin);
+  const caps = { ...term.caps };
+  const render = (rows) => railLines(rows, term.painter, term.symbols, caps.columns);
+  const ctx = {
+    caps,
+    painter: term.painter,
+    symbols: term.symbols,
+    out: stdout,
+    keys,
+    host: {
+      caps,
+      refreshSize: () => {
+        if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
+        if (stdout.rows) caps.rows = stdout.rows;
+      },
+      render,
+      fit: (rows) => fitScreen(rows, {
+        maxRows: caps.rows - 1,
+        columns: caps.columns,
+        separator: term.symbols.separator,
+        render
+      })
+    }
+  };
+  const cancelled2 = () => [
+    { mark: "fail", spans: text2("Cancelled. Nothing written.") }
+  ];
+  const exit = (r) => r === INTERRUPT ? 130 : r === CANCEL ? 1 : null;
+  try {
+    const answers = {};
+    let licensing = false;
+    if (!ask.givenServices) {
+      const r = await promptMultiSelect(ctx, {
+        title: text2("What is it for?"),
+        options: FEATURES.map((f) => ({
+          value: f.id,
+          label: text2(f.label)
+        })),
+        initial: INITIAL_FEATURES,
+        hints: keyHints(KEYS, term.symbols),
+        toggle: (chosen, id) => {
+          const t = toggleFeature(chosen, id, !chosen.includes(id));
+          return {
+            chosen: t.features,
+            note: t.cleared.length ? text2(
+              `Clearing ${labelOf(id)} also clears ${t.cleared.map(labelOf).join(", ")}.`,
+              ["muted"]
+            ) : null
+          };
+        },
+        locked: (id, chosen) => featureUnlocked(id, chosen) ? null : text2(
+          `Needs ${featureNeeds(id).filter((n) => !chosen.includes(n)).map(labelOf).join(", ")}`
+        ),
+        done: (chosen) => [
+          {
+            mark: "done",
+            spans: [
+              ...text2("What is it for?  "),
+              {
+                text: chosen.length ? chosen.map(labelOf).join(", ") : "Nothing",
+                style: ["strong"]
+              }
+            ]
+          }
+        ],
+        cancelled: cancelled2
+      });
+      const code = exit(r);
+      if (code !== null) return code;
+      const features = r;
+      licensing = features.includes("licensing");
+      answers.modules = servicesForFeatures(features).services;
+    } else licensing = ask.givenServices.includes("license");
+    if (licensing && !ask.tierGiven) {
+      const r = await promptConfirm(ctx, {
+        title: text2("Start with a Free tier? (Y/n)"),
+        initial: true,
+        done: (yes) => [
+          {
+            mark: "done",
+            spans: [
+              ...text2("Free tier  "),
+              { text: yes ? "Yes" : "No", style: ["strong"] }
+            ]
+          }
+        ],
+        cancelled: cancelled2
+      });
+      const code = exit(r);
+      if (code !== null) return code;
+      answers.starterTier = r === true ? "free" : "none";
+    }
+    return answers;
+  } finally {
+    keys.close();
+  }
+}
+
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash6 } from "node:crypto";
@@ -28735,9 +29267,9 @@ function encodeSegment(segment) {
 function amzDateOf(date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
-function signV4(input) {
-  const headers = { ...input.headers };
-  if (headers.host === void 0) headers.host = input.url.host;
+function signV4(input2) {
+  const headers = { ...input2.headers };
+  if (headers.host === void 0) headers.host = input2.url.host;
   const names = Object.keys(headers).map((n) => n.toLowerCase()).sort();
   const lower = Object.fromEntries(
     Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
@@ -28745,29 +29277,29 @@ function signV4(input) {
   const canonicalHeaders = names.map((n) => `${n}:${String(lower[n]).trim().replace(/\s+/g, " ")}
 `).join("");
   const signedHeaders = names.join(";");
-  const canonicalUri = input.url.pathname.split("/").map((s) => encodeSegment(decodeURIComponent(s))).join("/") || "/";
+  const canonicalUri = input2.url.pathname.split("/").map((s) => encodeSegment(decodeURIComponent(s))).join("/") || "/";
   const canonicalRequest = [
-    input.method,
+    input2.method,
     canonicalUri,
     "",
     canonicalHeaders,
     signedHeaders,
-    input.payloadHash
+    input2.payloadHash
   ].join("\n");
-  const day2 = input.amzDate.slice(0, 8);
-  const scope = `${day2}/${input.region}/${input.service}/aws4_request`;
+  const day2 = input2.amzDate.slice(0, 8);
+  const scope = `${day2}/${input2.region}/${input2.service}/aws4_request`;
   const stringToSign = [
     "AWS4-HMAC-SHA256",
-    input.amzDate,
+    input2.amzDate,
     scope,
     hex(canonicalRequest)
   ].join("\n");
-  const kDate = hmac(`AWS4${input.secretAccessKey}`, day2);
-  const kRegion = hmac(kDate, input.region);
-  const kService = hmac(kRegion, input.service);
+  const kDate = hmac(`AWS4${input2.secretAccessKey}`, day2);
+  const kRegion = hmac(kDate, input2.region);
+  const kService = hmac(kRegion, input2.service);
   const kSigning = hmac(kService, "aws4_request");
   const signature = createHmac("sha256", kSigning).update(stringToSign, "utf8").digest("hex");
-  return `AWS4-HMAC-SHA256 Credential=${input.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  return `AWS4-HMAC-SHA256 Credential=${input2.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
@@ -28823,8 +29355,8 @@ async function putFile(opts) {
         await res.body?.cancel().catch(() => void 0);
         return;
       }
-      const text2 = (await res.text().catch(() => "")).slice(0, 300);
-      failure = `${res.status}${text2 ? ` ${text2.replace(/\s+/g, " ")}` : ""}`;
+      const text3 = (await res.text().catch(() => "")).slice(0, 300);
+      failure = `${res.status}${text3 ? ` ${text3.replace(/\s+/g, " ")}` : ""}`;
       if (!TRANSIENT.has(res.status))
         throw new Error(
           `Uploading ${opts.file} to ${opts.key} failed: ${failure}`
@@ -28995,8 +29527,8 @@ function unescapeXml(s) {
     }
   );
 }
-function parseXml(text2) {
-  const body = text2.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
+function parseXml(text3) {
+  const body = text3.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
   const tokens = body.match(/<\/?[A-Za-z]+(?:\s[^>]*)?\/?>|[^<]+/g) ?? [];
   let i = 0;
   const skipSpace = () => {
@@ -29703,16 +30235,16 @@ function canonicalJson(value) {
   return JSON.stringify(value) ?? "null";
 }
 async function readJson2(file, what) {
-  let text2;
+  let text3;
   try {
-    text2 = await readFile4(file, "utf8");
+    text3 = await readFile4(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${what} ${file} does not exist.`);
     throw e;
   }
   try {
-    return JSON.parse(text2);
+    return JSON.parse(text3);
   } catch (e) {
     throw new Error(`${what} ${file} is not JSON: ${e.message}`);
   }
@@ -29929,7 +30461,7 @@ var PointerSet = class {
 var StrictJsonRefused = class extends Error {
 };
 var NUMBER_TOKEN_RE = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
-function scanStrictJson(text2) {
+function scanStrictJson(text3) {
   let i = 0;
   const nonWire = new PointerSet();
   const segs = [];
@@ -29948,32 +30480,32 @@ function scanStrictJson(text2) {
     throw new StrictJsonRefused();
   };
   const ws = () => {
-    while (i < text2.length) {
-      const c = text2.charCodeAt(i);
+    while (i < text3.length) {
+      const c = text3.charCodeAt(i);
       if (c === 32 || c === 9 || c === 10 || c === 13) i++;
       else break;
     }
   };
   const hex42 = () => {
-    const h = text2.slice(i, i + 4);
+    const h = text3.slice(i, i + 4);
     if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse2();
     i += 4;
     return parseInt(h, 16);
   };
   const str7 = () => {
-    if (text2.charCodeAt(i) !== 34) refuse2();
+    if (text3.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
     for (; ; ) {
-      if (i >= text2.length) refuse2();
-      const c = text2.charCodeAt(i);
+      if (i >= text3.length) refuse2();
+      const c = text3.charCodeAt(i);
       if (c === 34) {
         i++;
         break;
       }
       if (c < 32) refuse2();
       if (c === 92) {
-        const e = text2[i + 1];
+        const e = text3[i + 1];
         i += 2;
         switch (e) {
           case '"':
@@ -30008,7 +30540,7 @@ function scanStrictJson(text2) {
         }
         continue;
       }
-      out += text2[i];
+      out += text3[i];
       i++;
     }
     for (let k = 0; k < out.length; k++) {
@@ -30026,7 +30558,7 @@ function scanStrictJson(text2) {
   };
   const num = () => {
     NUMBER_TOKEN_RE.lastIndex = i;
-    const m = NUMBER_TOKEN_RE.exec(text2);
+    const m = NUMBER_TOKEN_RE.exec(text3);
     if (!m) refuse2();
     const token = m[0];
     i += token.length;
@@ -30035,13 +30567,13 @@ function scanStrictJson(text2) {
   };
   const value = (depth) => {
     ws();
-    const c = text2[i];
+    const c = text3[i];
     if (c === "{") {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       const names = /* @__PURE__ */ new Set();
       ws();
-      if (text2[i] === "}") {
+      if (text3[i] === "}") {
         i++;
         return;
       }
@@ -30052,7 +30584,7 @@ function scanStrictJson(text2) {
         if (names.has(name)) refuse2();
         names.add(name);
         ws();
-        if (text2[i] !== ":") refuse2();
+        if (text3[i] !== ":") refuse2();
         i++;
         segs.push(name);
         ids.push(-1);
@@ -30060,11 +30592,11 @@ function scanStrictJson(text2) {
         segs.pop();
         ids.pop();
         ws();
-        if (text2[i] === ",") {
+        if (text3[i] === ",") {
           i++;
           continue;
         }
-        if (text2[i] === "}") {
+        if (text3[i] === "}") {
           i++;
           return;
         }
@@ -30075,7 +30607,7 @@ function scanStrictJson(text2) {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       ws();
-      if (text2[i] === "]") {
+      if (text3[i] === "]") {
         i++;
         return;
       }
@@ -30086,11 +30618,11 @@ function scanStrictJson(text2) {
         segs.pop();
         ids.pop();
         ws();
-        if (text2[i] === ",") {
+        if (text3[i] === ",") {
           i++;
           continue;
         }
-        if (text2[i] === "]") {
+        if (text3[i] === "]") {
           i++;
           return;
         }
@@ -30106,7 +30638,7 @@ function scanStrictJson(text2) {
       return;
     }
     for (const lit of ["true", "false", "null"]) {
-      if (text2.startsWith(lit, i)) {
+      if (text3.startsWith(lit, i)) {
         i += lit.length;
         return;
       }
@@ -30115,11 +30647,11 @@ function scanStrictJson(text2) {
   };
   try {
     ws();
-    if (text2[i] !== "{")
+    if (text3[i] !== "{")
       return { ok: false, nonWireIntegers: new PointerSet() };
     value(0);
     ws();
-    if (i !== text2.length)
+    if (i !== text3.length)
       return { ok: false, nonWireIntegers: new PointerSet() };
     return { ok: true, nonWireIntegers: nonWire };
   } catch (e) {
@@ -30129,18 +30661,18 @@ function scanStrictJson(text2) {
   }
 }
 function parseStrictJson(bytes) {
-  let text2;
+  let text3;
   try {
-    text2 = dec.decode(bytes);
+    text3 = dec.decode(bytes);
   } catch {
     return null;
   }
-  if (text2.charCodeAt(0) === 65279) return null;
-  const scan = scanStrictJson(text2);
+  if (text3.charCodeAt(0) === 65279) return null;
+  const scan = scanStrictJson(text3);
   if (!scan.ok) return null;
   try {
     return {
-      value: JSON.parse(text2),
+      value: JSON.parse(text3),
       nonWireIntegers: scan.nonWireIntegers
     };
   } catch {
@@ -30248,8 +30780,8 @@ var StrictJsonError = class extends Error {
   }
   part;
 };
-function assertStrictJson(text2, part) {
-  if (!scanStrictJson(text2).ok) {
+function assertStrictJson(text3, part) {
+  if (!scanStrictJson(text3).ok) {
     throw new StrictJsonError(
       part,
       `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`
@@ -31208,20 +31740,20 @@ var invalid = {
   error: "files-index-invalid"
 };
 function strictParse(bytes) {
-  let text2;
+  let text3;
   try {
-    text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return null;
   }
-  if (text2.charCodeAt(0) === 65279)
+  if (text3.charCodeAt(0) === 65279)
     return null;
-  const scan = scanStrictJson(text2);
+  const scan = scanStrictJson(text3);
   if (!scan.ok)
     return null;
   try {
     return {
-      value: JSON.parse(text2),
+      value: JSON.parse(text3),
       nonWire: scan.nonWireIntegers
     };
   } catch {
@@ -31529,13 +32061,13 @@ var DATA_ONLY_SCRIPT_MARKERS = [
   "script/source",
   "source_code"
 ];
-function asciiEscape(text2) {
-  for (let at = text2.indexOf("\\"); at >= 0; at = text2.indexOf("\\", at + 1)) {
-    const c = text2[at + 1];
+function asciiEscape(text3) {
+  for (let at = text3.indexOf("\\"); at >= 0; at = text3.indexOf("\\", at + 1)) {
+    const c = text3[at + 1];
     if (c !== "u" && c !== "U")
       continue;
     const n = c === "u" ? 4 : 6;
-    const digits = text2.slice(at + 2, at + 2 + n);
+    const digits = text3.slice(at + 2, at + 2 + n);
     if (!new RegExp(`^[0-9A-Fa-f]{${n}}$`).test(digits))
       return true;
     if (parseInt(digits, 16) < 128)
@@ -31544,19 +32076,19 @@ function asciiEscape(text2) {
   return false;
 }
 function dataOnlyTextRefusal(bytes) {
-  let text2;
+  let text3;
   try {
-    text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     return "content";
   }
-  if (text2.includes("\0"))
+  if (text3.includes("\0"))
     return "content";
-  if (asciiEscape(text2))
+  if (asciiEscape(text3))
     return "content";
-  const bare = text2.replaceAll("\\", "");
+  const bare = text3.replaceAll("\\", "");
   for (const m of DATA_ONLY_SCRIPT_MARKERS)
-    if (text2.includes(m) || bare.includes(m))
+    if (text3.includes(m) || bare.includes(m))
       return "content";
   return null;
 }
@@ -31620,27 +32152,27 @@ var invalid2 = {
   ok: false,
   error: "content-stamp-invalid"
 };
-function parseContentStamp(input) {
+function parseContentStamp(input2) {
   try {
-    let text2;
-    if (typeof input === "string")
-      text2 = input;
+    let text3;
+    if (typeof input2 === "string")
+      text3 = input2;
     else {
       try {
-        text2 = new TextDecoder("utf-8", {
+        text3 = new TextDecoder("utf-8", {
           fatal: true,
           ignoreBOM: true
-        }).decode(input);
+        }).decode(input2);
       } catch {
         return invalid2;
       }
     }
-    if (text2.charCodeAt(0) === 65279)
+    if (text3.charCodeAt(0) === 65279)
       return invalid2;
-    const scan = scanStrictJson(text2);
+    const scan = scanStrictJson(text3);
     if (!scan.ok)
       return invalid2;
-    const doc = JSON.parse(text2);
+    const doc = JSON.parse(text3);
     if (!isObject(doc) || doc.format !== CONTENT_STAMP_FORMAT)
       return invalid2;
     if (!contentClaims(doc, { nonWire: scan.nonWireIntegers, pointer: "" }))
@@ -31704,9 +32236,9 @@ function windowLogMax(memBytes, p = 31) {
     n++;
   return Math.max(10, Math.min(p, n));
 }
-function windowAllowed(frame, memBytes, p = 31) {
+function windowAllowed(frame2, memBytes, p = 31) {
   const limit = windowLogMax(memBytes, p);
-  const window = frameWindow(frame);
+  const window = frameWindow(frame2);
   return limit !== null && window !== null && window <= 2 ** limit;
 }
 
@@ -31729,15 +32261,15 @@ function sameLocale(a, b) {
 }
 var fail3 = { ok: false, detail: "table" };
 function parseL10nFile(path32, bytes) {
-  let text2;
+  let text3;
   try {
-    text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return fail3;
   }
-  if (text2.includes("\0"))
+  if (text3.includes("\0"))
     return fail3;
-  const body = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
+  const body = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
   let at = 0;
   while (at < body.length && " 	\n\r".includes(body[at]))
     at++;
@@ -31761,8 +32293,8 @@ function parseL10nFile(path32, bytes) {
   }
   return { ok: true, tables };
 }
-function parseJsonTable(text2) {
-  const parsed = strictParse(new TextEncoder().encode(text2));
+function parseJsonTable(text3) {
+  const parsed = strictParse(new TextEncoder().encode(text3));
   if (parsed === null)
     return null;
   const v = parsed.value;
@@ -31818,12 +32350,12 @@ function poString(s) {
       return null;
   return out;
 }
-function parsePo(text2) {
+function parsePo(text3) {
   const entries = [];
   let cur = null;
   let last = null;
   const complete = (e) => e.id !== null && e.strings.length > 0;
-  for (let line of text2.split("\n")) {
+  for (let line of text3.split("\n")) {
     if (line.endsWith("\r"))
       line = line.slice(0, -1);
     if (/^[ \t]*$/.test(line)) {
@@ -31938,23 +32470,23 @@ function parsePo(text2) {
     return null;
   return [{ locale, messages }];
 }
-function csvRecords(text2) {
+function csvRecords(text3) {
   const records = [];
   let record = [];
   let i = 0;
-  const n = text2.length;
+  const n = text3.length;
   let started = false;
   while (i < n) {
     let field = "";
-    if (text2[i] === '"') {
+    if (text3[i] === '"') {
       started = true;
       i++;
       for (; ; ) {
         if (i >= n)
           return null;
-        const c = text2[i];
+        const c = text3[i];
         if (c === '"') {
-          if (text2[i + 1] === '"') {
+          if (text3[i + 1] === '"') {
             field += '"';
             i += 2;
             continue;
@@ -31965,13 +32497,13 @@ function csvRecords(text2) {
         field += c;
         i++;
       }
-      if (i < n && text2[i] !== "," && text2[i] !== "\n" && !(text2[i] === "\r" && text2[i + 1] === "\n"))
+      if (i < n && text3[i] !== "," && text3[i] !== "\n" && !(text3[i] === "\r" && text3[i + 1] === "\n"))
         return null;
     } else {
-      while (i < n && text2[i] !== "," && text2[i] !== "\n" && !(text2[i] === "\r" && text2[i + 1] === "\n")) {
-        if (text2[i] === '"')
+      while (i < n && text3[i] !== "," && text3[i] !== "\n" && !(text3[i] === "\r" && text3[i + 1] === "\n")) {
+        if (text3[i] === '"')
           return null;
-        field += text2[i];
+        field += text3[i];
         i++;
       }
       if (field.length > 0)
@@ -31980,14 +32512,14 @@ function csvRecords(text2) {
     record.push(field);
     if (i >= n)
       break;
-    if (text2[i] === ",") {
+    if (text3[i] === ",") {
       started = true;
       i++;
       if (i >= n)
         record.push("");
       continue;
     }
-    i += text2[i] === "\r" ? 2 : 1;
+    i += text3[i] === "\r" ? 2 : 1;
     if (started)
       records.push(record);
     record = [];
@@ -31997,8 +32529,8 @@ function csvRecords(text2) {
     records.push(record);
   return records;
 }
-function parseCsv(text2) {
-  const records = csvRecords(text2);
+function parseCsv(text3) {
+  const records = csvRecords(text3);
   if (records === null || records.length === 0)
     return null;
   const header = records[0];
@@ -32332,13 +32864,13 @@ function zstdCli(workDir, bin = "zstd") {
       run2([`-${ZSTD_LEVEL}`, `--patch-from=${b}`, t, "-o", o]);
       return new Uint8Array(readFileSync2(o));
     },
-    decodePatch(frame, base) {
+    decodePatch(frame2, base) {
       const d = fresh("dp");
       const b = path6.join(d, "base");
       const f = path6.join(d, "in.zst");
       const o = path6.join(d, "out");
       writeFileSync(b, base);
-      writeFileSync(f, frame);
+      writeFileSync(f, frame2);
       run2(["-d", "--long=31", `--patch-from=${b}`, f, "-o", o]);
       return new Uint8Array(readFileSync2(o));
     }
@@ -32347,9 +32879,9 @@ function zstdCli(workDir, bin = "zstd") {
 function storeMany(z, datas) {
   const frames = z.compressMany(datas);
   return datas.map((data, i) => {
-    const frame = frames[i];
-    const zstd = frame.byteLength < data.byteLength;
-    const stored = zstd ? frame : data;
+    const frame2 = frames[i];
+    const zstd = frame2.byteLength < data.byteLength;
+    const stored = zstd ? frame2 : data;
     return {
       ref: {
         sha256: sha256Hex2(stored),
@@ -32504,18 +33036,18 @@ function filesRefOf(b) {
   };
 }
 async function selfCheckPayload(z, b) {
-  const decode3 = (frame) => z.decodeMany([frame])[0];
+  const decode3 = (frame2) => z.decodeMany([frame2])[0];
   const parsed = await parseFilesIndex(
     b.indexStored.stored,
     { ...filesRefOf(b) },
     { payload: b.payload },
-    { decode: (frame) => decode3(frame), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
+    { decode: (frame2) => decode3(frame2), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
   );
   if (!parsed.ok)
     throw new Error(
       `Self-check: the files index fails parseFilesIndex (${parsed.error}${parsed.path ? ` at ${parsed.path}` : ""}); nothing was published.`
     );
-  const open2 = (s, frame) => s.ref.codec === "none" ? s.stored : frame;
+  const open2 = (s, frame2) => s.ref.codec === "none" ? s.stored : frame2;
   const zBlobs = [...b.blobs.values()].filter((s) => s.ref.codec === "zstd");
   const decoded = /* @__PURE__ */ new Map();
   z.decodeMany(zBlobs.map((s) => s.stored)).forEach(
@@ -32578,17 +33110,17 @@ function buildPayloadDelta(z, base, target, targetBytes) {
     return {
       skipped: `the base starts with the zstd dictionary magic 37 A4 30 EC (§2.7 rule 5)`
     };
-  const frame = z.patchFrom(base.bytes, targetBytes);
+  const frame2 = z.patchFrom(base.bytes, targetBytes);
   const memBytes = base.bytes.byteLength + targetBytes.byteLength;
-  if (frame.byteLength >= target.full.ref.bytes)
+  if (frame2.byteLength >= target.full.ref.bytes)
     return {
-      skipped: `the delta (${frame.byteLength} B) is not smaller than full`
+      skipped: `the delta (${frame2.byteLength} B) is not smaller than full`
     };
-  if (!windowAllowed(frame, memBytes))
+  if (!windowAllowed(frame2, memBytes))
     throw new Error(
       "Self-check: a payload delta's frame window is above its memBytes limit (§2.7 rule 3)."
     );
-  const back = z.decodePatch(frame, base.bytes);
+  const back = z.decodePatch(frame2, base.bytes);
   if (sha256Hex2(back) !== target.payload.sha256)
     throw new Error(
       "Self-check: the payload delta does not decode to the payload."
@@ -32599,9 +33131,9 @@ function buildPayloadDelta(z, base, target, targetBytes) {
       scope: "payload",
       from: base.sha256,
       memBytes,
-      artifact: { sha256: sha256Hex2(frame), bytes: frame.byteLength }
+      artifact: { sha256: sha256Hex2(frame2), bytes: frame2.byteLength }
     },
-    stored: frame
+    stored: frame2
   };
 }
 function buildFilesDelta(z, base, target) {
@@ -32620,7 +33152,7 @@ function buildFilesDelta(z, base, target) {
     done.add(f.path);
     const b = baseByPath.get(f.path);
     const blob = target.blobs.get(f.sha256);
-    let frame = null;
+    let frame2 = null;
     if (b) {
       if (startsWithDictMagic(b.data)) magicBases.push(f.path);
       else {
@@ -32635,11 +33167,11 @@ function buildFilesDelta(z, base, target) {
             throw new Error(
               `Self-check: ${f.path}'s delta does not decode to the file.`
             );
-          frame = pf;
+          frame2 = pf;
         }
       }
     }
-    if (frame !== null) {
+    if (frame2 !== null) {
       entries.push({
         path: f.path,
         op: "delta",
@@ -32647,10 +33179,10 @@ function buildFilesDelta(z, base, target) {
         to: f.sha256,
         size: f.size,
         offset: off,
-        length: frame.byteLength
+        length: frame2.byteLength
       });
-      parts.push(frame);
-      off += frame.byteLength;
+      parts.push(frame2);
+      off += frame2.byteLength;
       mem = Math.max(mem, b.size + f.size);
     } else {
       entries.push({
@@ -32785,9 +33317,9 @@ async function readMarker(file, ctx) {
   const fail4 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
-  const text2 = await readFile6(file, "utf8");
-  if (!scanStrictJson(text2).ok) fail4("format", "not strict JSON");
-  const m = JSON.parse(text2);
+  const text3 = await readFile6(file, "utf8");
+  if (!scanStrictJson(text3).ok) fail4("format", "not strict JSON");
+  const m = JSON.parse(text3);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
     fail4("format", `not a ${MARKER_FORMAT} document`);
   const jws = m.release;
@@ -33011,13 +33543,13 @@ function stampText(content) {
     expects: content.expects,
     ...holds.length > 0 ? { holds } : {}
   };
-  const text2 = `${JSON.stringify(doc, null, 2)}
+  const text3 = `${JSON.stringify(doc, null, 2)}
 `;
-  if (!parseContentStamp(text2).ok)
+  if (!parseContentStamp(text3).ok)
     throw new Error("Self-check: the content stamp fails parseContentStamp.");
-  if (JSON.stringify(holdsOf(JSON.parse(text2), void 0, "")) !== JSON.stringify(holds))
+  if (JSON.stringify(holdsOf(JSON.parse(text3), void 0, "")) !== JSON.stringify(holds))
     throw new Error("Self-check: the content stamp's holds fail holdsOf.");
-  return text2;
+  return text3;
 }
 async function readContentStamp(file) {
   let bytes;
@@ -33311,9 +33843,9 @@ function provenanceFrom(env) {
     out.workflowRun = `${server.replace(/\/+$/, "")}/${repo}/actions/runs/${run2}`;
   return out.commit || out.workflowRun ? out : void 0;
 }
-function buildDescriptor(input) {
-  const builds = input.builds.map(({ entry, files }) => {
-    const m = input.meta[entry.id] ?? {};
+function buildDescriptor(input2) {
+  const builds = input2.builds.map(({ entry, files }) => {
+    const m = input2.meta[entry.id] ?? {};
     return {
       id: entry.id,
       platform: entry.platform,
@@ -33322,25 +33854,25 @@ function buildDescriptor(input) {
       ...m.buildNumber !== void 0 ? { buildNumber: m.buildNumber } : {},
       ...m.minOS !== void 0 ? { minOS: m.minOS } : {},
       ...m.requires !== void 0 ? { requires: m.requires } : {},
-      ...input.extracted?.[entry.id] ? { metadata: input.extracted[entry.id] } : {},
+      ...input2.extracted?.[entry.id] ? { metadata: input2.extracted[entry.id] } : {},
       artifacts: files.map((f) => ({
         name: f.name,
         role: f.role,
         sha256: f.sha256,
         size: f.size,
-        locations: input.source === "github" ? [{ provider: "github", asset: f.name }] : [{ provider: "r2", key: blobKey(f.sha256) }]
+        locations: input2.source === "github" ? [{ provider: "github", asset: f.name }] : [{ provider: "r2", key: blobKey(f.sha256) }]
       }))
     };
   });
   return {
     descriptorVersion: 1,
-    product: input.product,
-    deliverable: input.deliverable,
+    product: input2.product,
+    deliverable: input2.deliverable,
     kind: "app",
-    version: input.version,
-    ...input.tag !== void 0 ? { tag: input.tag } : {},
-    ...input.channel !== void 0 ? { channel: input.channel } : {},
-    ...input.provenance ? { provenance: input.provenance } : {},
+    version: input2.version,
+    ...input2.tag !== void 0 ? { tag: input2.tag } : {},
+    ...input2.channel !== void 0 ? { channel: input2.channel } : {},
+    ...input2.provenance ? { provenance: input2.provenance } : {},
     builds
   };
 }
@@ -37165,9 +37697,9 @@ async function readTarMember(file, want, maxBytes = 4 * 1024 * 1024) {
 
 // src/package/files.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-async function declaredFiles(input) {
-  const globs = Object.values(input.declaration.artifacts).map((a) => a.match);
-  const all = await scanDir(input.dir);
+async function declaredFiles(input2) {
+  const globs = Object.values(input2.declaration.artifacts).map((a) => a.match);
+  const all = await scanDir(input2.dir);
   const hits = all.filter(
     (f) => globs.some((g) => matchesArtifactGlob(g, f.name))
   );
@@ -37296,10 +37828,10 @@ function cargoFeatures(manifest) {
     out[k] = strings(v, `Cargo.toml's features.${k}`);
   return out;
 }
-function cargoMetadata(text2) {
+function cargoMetadata(text3) {
   let manifest;
   try {
-    manifest = parse(text2);
+    manifest = parse(text3);
   } catch (e) {
     throw new PackageExtractError(
       `the crate's Cargo.toml is not TOML (${e.message}).`
@@ -37324,8 +37856,8 @@ function cargoMetadata(text2) {
   metadata.features = cargoFeatures(manifest);
   return { name: pkg.name, version: pkg.version, metadata };
 }
-async function extractCargo(input) {
-  const crate = exactlyOne(await declaredFiles(input), "crate (.crate)");
+async function extractCargo(input2) {
+  const crate = exactlyOne(await declaredFiles(input2), "crate (.crate)");
   const member = await readTarMember(
     crate.path,
     (p) => /^[^/]+\/Cargo\.toml$/.test(p)
@@ -37337,9 +37869,9 @@ async function extractCargo(input) {
   const { name, version, metadata } = cargoMetadata(
     member.data.toString("utf8")
   );
-  if (name !== input.declaration.name)
+  if (name !== input2.declaration.name)
     throw new PackageExtractError(
-      `${crate.name} packs ${name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `${crate.name} packs ${name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   return {
     version,
@@ -37376,9 +37908,9 @@ function goHash1(files) {
 function goModHash1(data) {
   return goHash1([{ name: "go.mod", data }]);
 }
-function parseGoMod(text2) {
+function parseGoMod(text3) {
   const out = {};
-  for (const raw of text2.split(/\r?\n/)) {
+  for (const raw of text3.split(/\r?\n/)) {
     const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|([^\s"`]+?))\s*(?:\/\/.*)?$/.exec(
       raw.trim()
     );
@@ -37537,10 +38069,10 @@ async function readModuleZip(zipPath, zipName, module) {
     return { version, files };
   });
 }
-async function extractGo(input) {
-  const module = input.declaration.name;
-  const globs = Object.values(input.declaration.artifacts).map((a) => a.match);
-  const found = (await scanDir(input.dir)).filter(
+async function extractGo(input2) {
+  const module = input2.declaration.name;
+  const globs = Object.values(input2.declaration.artifacts).map((a) => a.match);
+  const found = (await scanDir(input2.dir)).filter(
     (f) => globs.some((g) => matchesArtifactGlob(g, f.name))
   );
   const zips = found.filter((f) => f.name.endsWith(".zip"));
@@ -37562,21 +38094,21 @@ async function extractGo(input) {
       throw new PackageExtractError(
         "no module zip and no go.mod under --dir matches the package's artifacts globs."
       );
-    if (!input.version)
+    if (!input2.version)
       throw new PackageExtractError(
         "a Go module's source tree carries no version: pass --version (semver, without the v)."
       );
-    if (!SEMVER_NO_BUILD.test(input.version))
+    if (!SEMVER_NO_BUILD.test(input2.version))
       throw new PackageExtractError(
-        `--version ${input.version} is not a semantic version without the v and without build metadata.`
+        `--version ${input2.version} is not a semantic version without the v and without build metadata.`
       );
-    version = input.version;
+    version = input2.version;
     const depth = (p) => p.split(path10.sep).length;
     const root = path10.dirname(
       [...mods].sort((a, b) => depth(a.path) - depth(b.path))[0].path
     );
     zipFiles = await goZipFromDir(root, module, version);
-    const out = path10.join(input.workDir, `v${version}.zip`);
+    const out = path10.join(input2.workDir, `v${version}.zip`);
     await writeFile7(out, zipStore(zipFiles));
     zipFile = { path: out, name: `v${version}.zip`, type: "go-zip" };
   }
@@ -37594,7 +38126,7 @@ async function extractGo(input) {
     throw new PackageExtractError(
       `go.mod declares module ${parsed.module ?? "(none)"}, not ${module}: the module path is the package name.`
     );
-  const goModPath = path10.join(input.workDir, "go.mod");
+  const goModPath = path10.join(input2.workDir, "go.mod");
   await writeFile7(goModPath, goModEntry.data);
   return {
     version,
@@ -37611,10 +38143,10 @@ async function extractGo(input) {
 
 // src/package/godot.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function parsePluginCfg(text2) {
+function parsePluginCfg(text3) {
   const out = /* @__PURE__ */ new Map();
   let section = "";
-  for (const raw of text2.split(/\r?\n/)) {
+  for (const raw of text3.split(/\r?\n/)) {
     const line = raw.trim();
     const s = /^\[([^\]]+)\]$/.exec(line);
     if (s) {
@@ -37631,8 +38163,8 @@ function parsePluginCfg(text2) {
   }
   return out;
 }
-async function extractGodot(input) {
-  const found = await declaredFiles(input);
+async function extractGodot(input2) {
+  const found = await declaredFiles(input2);
   const zip = exactlyOne(
     found.filter((f) => f.name.endsWith(".zip")),
     "addon zip"
@@ -37644,11 +38176,11 @@ async function extractGodot(input) {
     );
   const cfg = await withZip(zip.path, async (z) => {
     const entry = z.entries.find(
-      (e) => e.name === `addons/${input.declaration.name}/plugin.cfg`
+      (e) => e.name === `addons/${input2.declaration.name}/plugin.cfg`
     );
     if (!entry)
       throw new PackageExtractError(
-        `${zip.name} has no addons/${input.declaration.name}/plugin.cfg (the addon id is the package name).`
+        `${zip.name} has no addons/${input2.declaration.name}/plugin.cfg (the addon id is the package name).`
       );
     return parsePluginCfg((await z.read(entry)).toString("utf8"));
   });
@@ -37660,7 +38192,7 @@ async function extractGodot(input) {
     ...icons[0] ? [{ path: icons[0].path, name: icons[0].name, type: "godot-icon" }] : []
   ];
   const metadata = {
-    name: input.declaration.name,
+    name: input2.declaration.name,
     version
   };
   for (const [k, key] of [
@@ -37689,8 +38221,8 @@ function pomField(xml2, field) {
   );
   return m ? m[1] : null;
 }
-async function extractMaven(input) {
-  const found = (await declaredFiles(input)).filter(
+async function extractMaven(input2) {
+  const found = (await declaredFiles(input2)).filter(
     (f) => !SIDECAR.test(f.name)
   );
   const poms = found.filter((f) => f.name.endsWith(".pom"));
@@ -37707,9 +38239,9 @@ async function extractMaven(input) {
     throw new PackageExtractError(
       `${poms[0].name} carries no groupId, artifactId and version.`
     );
-  if (`${groupId}:${artifactId}` !== input.declaration.name)
+  if (`${groupId}:${artifactId}` !== input2.declaration.name)
     throw new PackageExtractError(
-      `the POM is ${groupId}:${artifactId}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `the POM is ${groupId}:${artifactId}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const stem = `${artifactId}-${version}`;
   const files = [];
@@ -37737,7 +38269,7 @@ async function extractMaven(input) {
     version,
     files,
     metadata: {
-      name: input.declaration.name,
+      name: input2.declaration.name,
       version,
       groupId,
       artifactId,
@@ -37766,8 +38298,8 @@ var KEPT = [
   "homepage",
   "repository"
 ];
-async function extractNpm(input) {
-  const tgz = exactlyOne(await declaredFiles(input), "npm tarball (.tgz)");
+async function extractNpm(input2) {
+  const tgz = exactlyOne(await declaredFiles(input2), "npm tarball (.tgz)");
   const member = await readTarMember(
     tgz.path,
     (p) => p === "package/package.json"
@@ -37786,9 +38318,9 @@ async function extractNpm(input) {
     throw new PackageExtractError(
       `${tgz.name}'s package.json carries no name and version.`
     );
-  if (pkg.name !== input.declaration.name)
+  if (pkg.name !== input2.declaration.name)
     throw new PackageExtractError(
-      `${tgz.name} packs ${pkg.name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `${tgz.name} packs ${pkg.name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const metadata = {
     name: pkg.name,
@@ -37824,8 +38356,8 @@ async function layoutRoot(dir) {
     );
   return path11.dirname(layout.path);
 }
-async function extractOci(input) {
-  const root = await layoutRoot(input.dir);
+async function extractOci(input2) {
+  const root = await layoutRoot(input2.dir);
   const index = JSON.parse(
     await readFile11(path11.join(root, "index.json"), "utf8")
   );
@@ -37834,7 +38366,7 @@ async function extractOci(input) {
     throw new PackageExtractError(
       `the layout's index.json lists ${entries.length} images; publish one (a multi-arch image is one image index).`
     );
-  if (!input.version)
+  if (!input2.version)
     throw new PackageExtractError(
       "an OCI image carries no version: pass --version (it is also the image's tag)."
     );
@@ -37885,11 +38417,11 @@ async function extractOci(input) {
     mediaType: v.mediaType
   }));
   return {
-    version: input.version,
+    version: input2.version,
     files,
     metadata: {
-      name: input.declaration.name,
-      version: input.version,
+      name: input2.declaration.name,
+      version: input2.version,
       root: entries[0].digest,
       mediaType: entries[0].mediaType ?? "application/vnd.oci.image.index.v1+json",
       ...platforms.size ? { platforms: [...platforms].sort() } : {}
@@ -37901,9 +38433,9 @@ async function extractOci(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { writeFile as writeFile8 } from "node:fs/promises";
 import path12 from "node:path";
-function parseCoreMetadata(text2) {
+function parseCoreMetadata(text3) {
   const out = /* @__PURE__ */ new Map();
-  for (const line of text2.split(/\r?\n/)) {
+  for (const line of text3.split(/\r?\n/)) {
     if (line === "") break;
     const m = /^([A-Za-z0-9-]+):\s?(.*)$/.exec(line);
     if (m && !out.has(m[1].toLowerCase()))
@@ -37911,8 +38443,8 @@ function parseCoreMetadata(text2) {
   }
   return out;
 }
-async function extractPypi(input) {
-  const found = await declaredFiles(input);
+async function extractPypi(input2) {
+  const found = await declaredFiles(input2);
   const wheels = found.filter((f) => f.name.endsWith(".whl"));
   const sdists = found.filter((f) => f.name.endsWith(".tar.gz"));
   if (wheels.length + sdists.length === 0)
@@ -37922,7 +38454,7 @@ async function extractPypi(input) {
   const files = [];
   let headers = null;
   for (const w of wheels) {
-    const text2 = await withZip(w.path, async (zip) => {
+    const text3 = await withZip(w.path, async (zip) => {
       const entry = zip.entries.find(
         (e) => /^[^/]+\.dist-info\/METADATA$/.test(e.name)
       );
@@ -37931,13 +38463,13 @@ async function extractPypi(input) {
       return (await zip.read(entry)).toString("utf8");
     });
     const metaName = `${w.name}.metadata`;
-    const metaPath = path12.join(input.workDir, metaName);
-    await writeFile8(metaPath, text2);
+    const metaPath = path12.join(input2.workDir, metaName);
+    await writeFile8(metaPath, text3);
     files.push(
       { path: w.path, name: w.name, type: "wheel" },
       { path: metaPath, name: metaName, type: "core-metadata" }
     );
-    headers ??= parseCoreMetadata(text2);
+    headers ??= parseCoreMetadata(text3);
   }
   for (const s of sdists) {
     files.push({ path: s.path, name: s.name, type: "sdist" });
@@ -37956,12 +38488,12 @@ async function extractPypi(input) {
       "the wheel's METADATA (or the sdist's PKG-INFO) carries no Name and Version."
     );
   const norm = (n) => n.toLowerCase().replace(/[-_.]+/g, "-");
-  if (norm(name) !== norm(input.declaration.name))
+  if (norm(name) !== norm(input2.declaration.name))
     throw new PackageExtractError(
-      `the files are ${name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `the files are ${name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const metadata = {
-    name: input.declaration.name,
+    name: input2.declaration.name,
     version
   };
   const summary = headers?.get("summary");
@@ -37977,12 +38509,12 @@ async function extractPypi(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import path13 from "node:path";
 import { readdir as readdir6 } from "node:fs/promises";
-async function extractSwift(input) {
+async function extractSwift(input2) {
   const zip = exactlyOne(
-    (await declaredFiles(input)).filter((f) => f.name.endsWith(".zip")),
+    (await declaredFiles(input2)).filter((f) => f.name.endsWith(".zip")),
     "Swift source archive (.zip)"
   );
-  if (!input.version)
+  if (!input2.version)
     throw new PackageExtractError(
       "a Swift registry archive carries no version: pass --version."
     );
@@ -38009,11 +38541,11 @@ async function extractSwift(input) {
     files.push({ path: path13.join(dir, m), name: m, type: "manifest" });
   const toolsVersions = manifests.map((m) => /^Package@swift-([0-9.]+)\.swift$/.exec(m)?.[1]).filter((v) => v !== void 0);
   return {
-    version: input.version,
+    version: input2.version,
     files,
     metadata: {
-      name: input.declaration.name,
-      version: input.version,
+      name: input2.declaration.name,
+      version: input2.version,
       ...toolsVersions.length ? { toolsVersions } : {},
       ...sigs[0] ? { signatureFormat: "cms-1.0.0" } : {}
     }
@@ -38021,24 +38553,24 @@ async function extractSwift(input) {
 }
 
 // src/package/extract.ts
-function extractPackage(ecosystem, input) {
+function extractPackage(ecosystem, input2) {
   switch (ecosystem) {
     case "npm":
-      return extractNpm(input);
+      return extractNpm(input2);
     case "pypi":
-      return extractPypi(input);
+      return extractPypi(input2);
     case "swift":
-      return extractSwift(input);
+      return extractSwift(input2);
     case "maven":
-      return extractMaven(input);
+      return extractMaven(input2);
     case "oci":
-      return extractOci(input);
+      return extractOci(input2);
     case "godot":
-      return extractGodot(input);
+      return extractGodot(input2);
     case "cargo":
-      return extractCargo(input);
+      return extractCargo(input2);
     case "go":
-      return extractGo(input);
+      return extractGo(input2);
   }
 }
 
@@ -38309,8 +38841,8 @@ var REFUSALS = {
   [-7]: ["argument", "windowLogMax is outside 10..31"]
 };
 var MAX_SIZE = 2 ** 31;
-function run(module, frame, prefix, size, windowLogMax2) {
-  if (!(frame instanceof Uint8Array))
+function run(module, frame2, prefix, size, windowLogMax2) {
+  if (!(frame2 instanceof Uint8Array))
     throw new ZstdWasmError("argument", "frame must be a Uint8Array");
   if (!Number.isSafeInteger(size) || size < 0 || size > MAX_SIZE)
     throw new ZstdWasmError("argument", `size ${size} is not 0..2^31`);
@@ -38328,12 +38860,12 @@ function run(module, frame, prefix, size, windowLogMax2) {
     new Uint8Array(x.memory.buffer, p, bytes.byteLength).set(bytes);
     return p;
   };
-  const src = put(frame);
+  const src = put(frame2);
   const pre = prefix === null ? 0 : put(prefix);
   const dst = x.zd_alloc(size);
   if (dst === 0)
     throw new ZstdWasmError("memory", "the decoder could not allocate");
-  const r = Number(x.zd_decode(dst, size, src, frame.byteLength, pre, prefix === null ? 0 : prefix.byteLength, prefix === null ? 0 : windowLogMax2));
+  const r = Number(x.zd_decode(dst, size, src, frame2.byteLength, pre, prefix === null ? 0 : prefix.byteLength, prefix === null ? 0 : windowLogMax2));
   if (r < 0) {
     const known = REFUSALS[r];
     if (known)
@@ -38344,8 +38876,8 @@ function run(module, frame, prefix, size, windowLogMax2) {
 }
 function createZstdWasm(module) {
   return {
-    decode: (frame, size) => run(module, frame, null, size, 0),
-    decodeWithPrefix: (frame, prefix, size, windowLogMax2) => run(module, frame, prefix, size, windowLogMax2),
+    decode: (frame2, size) => run(module, frame2, null, size, 0),
+    decodeWithPrefix: (frame2, prefix, size, windowLogMax2) => run(module, frame2, prefix, size, windowLogMax2),
     version: () => new WebAssembly.Instance(module, {}).exports.zd_version()
   };
 }
@@ -38356,7 +38888,7 @@ var zdec_default = __toBinaryNode("AGFzbQEAAAABxwEXYAJ/fwF/YAJ/fwBgAX8Bf2ADf39/A
 // pkey-zstd-wasm:zstd-wasm-embedded
 var decoder = null;
 var get = () => decoder ??= createZstdWasm(new WebAssembly.Module(zdec_default));
-var decode2 = (frame, size) => get().decode(frame, size);
+var decode2 = (frame2, size) => get().decode(frame2, size);
 
 // ../client-core/dist/version.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -38703,7 +39235,7 @@ function readGodotZip(b, name = "the zip") {
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
   const ranges = [];
-  const text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  const text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > e || u32(p) !== CDH)
@@ -38722,7 +39254,7 @@ function readGodotZip(b, name = "the zip") {
     if (end > e) fail4(`central directory entry ${i} runs past the directory.`);
     let entryName;
     try {
-      entryName = text2.decode(b.subarray(p + 46, p + 46 + nameLen));
+      entryName = text3.decode(b.subarray(p + 46, p + 46 + nameLen));
     } catch {
       return fail4(`central directory entry ${i}'s name is not UTF-8.`);
     }
@@ -39279,9 +39811,9 @@ function rsccBody(data, decode3 = decode2, budget) {
     return { why: "without its closing RSCC magic" };
   if (pos + 4 !== n) return { why: "with bytes after its closing RSCC magic" };
   const want = (i) => i === bc - 1 ? total - (bc - 1) * bs : bs;
-  const frame = (i) => data.subarray(starts[i], starts[i] + sizes[i]);
+  const frame2 = (i) => data.subarray(starts[i], starts[i] + sizes[i]);
   for (let i = 0; i < bc; i++)
-    if (!zstdFrameOk(frame(i), want(i)))
+    if (!zstdFrameOk(frame2(i), want(i)))
       return {
         why: `whose block ${i} is not one zstd frame of ${want(i)} bytes`
       };
@@ -39291,7 +39823,7 @@ function rsccBody(data, decode3 = decode2, budget) {
     if (w === 0) continue;
     let out;
     try {
-      out = decode3(frame(i), w);
+      out = decode3(frame2(i), w);
     } catch {
       return { why: `whose block ${i} does not decode to ${w} bytes` };
     }
@@ -39321,9 +39853,9 @@ function uidText(id) {
   } while (v > 0n);
   return `uid://${out}`;
 }
-function canonicalUid(text2) {
-  if (!text2.startsWith("uid://")) return null;
-  const s = text2.slice(6);
+function canonicalUid(text3) {
+  if (!text3.startsWith("uid://")) return null;
+  const s = text3.slice(6);
   if (s.length < 1 || s.length > 13) return null;
   let v = 0n;
   for (const ch of s) {
@@ -39332,7 +39864,7 @@ function canonicalUid(text2) {
     if (v > (UID_MAX - BigInt(d)) / 34n) return null;
     v = v * 34n + BigInt(d);
   }
-  return uidText(v) === text2 ? v : null;
+  return uidText(v) === text3 ? v : null;
 }
 function attachableEntryProblem(s) {
   if (s.startsWith("uid://"))
@@ -39393,8 +39925,8 @@ function refProblem(ref, ctx) {
 var EXT_LINE_RE = /^[ \t]*\[ext_resource((?: [a-z_]+="[^"\\]*")+)\][ \t]*$/;
 var EXT_ATTR_RE = / ([a-z_]+)="([^"\\]*)"/g;
 var EXT_KEYS = ["type", "uid", "path", "id"];
-function textRefs(text2) {
-  const t = text2.replace(/\r/g, "\n");
+function textRefs(text3) {
+  const t = text3.replace(/\r/g, "\n");
   if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
     return { why: RESOURCE_PATH_WHY };
   const lines4 = t.split("\n");
@@ -39481,7 +40013,7 @@ function binaryRefs(b, start) {
     pos += n;
     return s;
   };
-  const text2 = (s) => {
+  const text3 = (s) => {
     const z = s.indexOf(0);
     const cut = z === -1 ? s : s.subarray(0, z);
     if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail4();
@@ -39520,8 +40052,8 @@ function binaryRefs(b, start) {
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
-      const type = text2(str7());
-      const path32 = text2(str7());
+      const type = text3(str7());
+      const path32 = text3(str7());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need2(8);
@@ -39534,7 +40066,7 @@ function binaryRefs(b, start) {
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path32 = text2(str7());
+      const path32 = text3(str7());
       need2(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
@@ -39787,9 +40319,9 @@ function isNative(path32) {
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
 }
-function remapTargets(text2) {
+function remapTargets(text3) {
   const out = /* @__PURE__ */ new Set();
-  for (const v of remapValues(text2)) {
+  for (const v of remapValues(text3)) {
     const p = resPath(v);
     if (p !== null) out.add(p);
   }
@@ -39798,12 +40330,12 @@ function remapTargets(text2) {
 var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
-function lines3(text2) {
-  return text2.replace(/\r/g, "\n").split("\n");
+function lines3(text3) {
+  return text3.replace(/\r/g, "\n").split("\n");
 }
-function remapValues(text2) {
+function remapValues(text3) {
   const out = /* @__PURE__ */ new Set();
-  const ls = lines3(text2);
+  const ls = lines3(text3);
   for (const l of ls) {
     const m = PATH_LINE_RE.exec(l);
     if (m) out.add(m[1]);
@@ -39823,8 +40355,8 @@ function remapProblem(data) {
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
-  const text2 = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
-  for (const l of lines3(text2))
+  const text3 = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
+  for (const l of lines3(text3))
     if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
@@ -39912,7 +40444,7 @@ function lintPck(dir, bytes, opts) {
   const stripped = new Set(PCK_STRIP_PATHS);
   const named = /* @__PURE__ */ new Set();
   const deferred = [];
-  const text2 = new TextDecoder("utf-8", { fatal: false });
+  const text3 = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
   const cache = dir.entries.find((e) => e.path === ".godot/uid_cache.bin");
@@ -39976,7 +40508,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const targets = remapTargets(
-          text2.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text3.decode(bytes.subarray(e.offset, e.offset + e.size))
         );
         const source = p.slice(0, p.lastIndexOf("."));
         const script = targets.find((t) => isScript(t, kinds));
@@ -39987,7 +40519,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const outside = remapValues(
-          text2.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text3.decode(bytes.subarray(e.offset, e.offset + e.size))
         ).find((v) => {
           if (v === "") return false;
           const t = resPath(v);
@@ -40330,10 +40862,10 @@ function writeChunkIndex(doc) {
 function chunkIndexBytes(records, bundles) {
   return HEADER_BYTES2 + RECORD_BYTES2 * (records + bundles);
 }
-function frameContentSize(frame) {
-  if (frame.byteLength < 5 || frame[0] !== 40 || frame[1] !== 181 || frame[2] !== 47 || frame[3] !== 253)
+function frameContentSize(frame2) {
+  if (frame2.byteLength < 5 || frame2[0] !== 40 || frame2[1] !== 181 || frame2[2] !== 47 || frame2[3] !== 253)
     return null;
-  const d = frame[4];
+  const d = frame2[4];
   if ((d & 8) !== 0) return null;
   const single = (d & 32) !== 0;
   const dictBytes = [0, 1, 2, 4][d & 3];
@@ -40341,9 +40873,9 @@ function frameContentSize(frame) {
   const fcsBytes = fcsFlag === 0 ? single ? 1 : 0 : [0, 2, 4, 8][fcsFlag];
   if (fcsBytes === 0) return null;
   const at = 5 + (single ? 0 : 1) + dictBytes;
-  if (frame.byteLength < at + fcsBytes) return null;
+  if (frame2.byteLength < at + fcsBytes) return null;
   let v = 0;
-  for (let i = fcsBytes - 1; i >= 0; i--) v = v * 256 + frame[at + i];
+  for (let i = fcsBytes - 1; i >= 0; i--) v = v * 256 + frame2[at + i];
   if (fcsBytes === 2) v += 256;
   return Number.isSafeInteger(v) ? v : null;
 }
@@ -40457,7 +40989,7 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
     params
   };
   const parsed = await parseChunkIndex(index.stored, ref, payload, {
-    decode: (frame, size) => decode2(frame, size),
+    decode: (frame2, size) => decode2(frame2, size),
     maxBytes: maxIndexBytes
   });
   if (!parsed.ok)
@@ -40725,7 +41257,7 @@ async function chunkChainBase(proven, key, gateClass, warn) {
       continue;
     }
     const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
-      decode: (frame, size) => decode2(frame, size),
+      decode: (frame2, size) => decode2(frame2, size),
       maxBytes: MAX_PUBLISHED_INDEX_BYTES
     });
     if (!parsed.ok) {
@@ -42422,7 +42954,7 @@ var AscApi = class {
         },
         ...body !== void 0 ? { body: JSON.stringify(body) } : {}
       });
-      const text2 = await r.text();
+      const text3 = await r.text();
       if ((r.status === 429 || r.status >= 500) && attempt < 4) {
         await this.sleep(2 ** attempt * 5e3);
         continue;
@@ -42430,9 +42962,9 @@ var AscApi = class {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${untrusted(text2.slice(0, 500), {})}`
+          `${method} ${p} answered ${r.status}: ${untrusted(text3.slice(0, 500), {})}`
         );
-      return text2 ? JSON.parse(text2) : {};
+      return text3 ? JSON.parse(text3) : {};
     }
   }
 };
@@ -42765,31 +43297,31 @@ android {
     }
 }
 `;
-function patchSettingsGradle(text2, name) {
+function patchSettingsGradle(text3, name) {
   const line = `include ':${name}'`;
-  if (text2.split(/\r?\n/).some((l) => l.trim() === line)) return text2;
-  const lines4 = text2.split("\n");
+  if (text3.split(/\r?\n/).some((l) => l.trim() === line)) return text3;
+  const lines4 = text3.split("\n");
   let at = -1;
   lines4.forEach((l, i) => {
     if (/^\s*include\s+['"]:/.test(l)) at = i;
   });
   if (at < 0) {
-    const sep = text2.endsWith("\n") ? "" : "\n";
-    return `${text2}${sep}${line}
+    const sep = text3.endsWith("\n") ? "" : "\n";
+    return `${text3}${sep}${line}
 `;
   }
   lines4.splice(at + 1, 0, line);
   return lines4.join("\n");
 }
-function patchAppGradle(text2, name, textureSplit) {
+function patchAppGradle(text3, name, textureSplit) {
   const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
-  const m = re.exec(text2);
+  const m = re.exec(text3);
   if (!m)
     throw new Error(
       'build.gradle declares no assetPacks = [...] list: --project must be a Godot Android Gradle build (android/build, from "Install Android Build Template").'
     );
   const items = m[2].split(",").map((s) => s.trim()).filter(Boolean);
-  let out = text2;
+  let out = text3;
   if (!items.some((s) => s === `":${name}"` || s === `':${name}'`)) {
     const next = [...items, `":${name}"`].join(", ");
     out = out.replace(re, `$1${next}$3`);
@@ -44101,10 +44633,10 @@ function oarsAttributes(descriptors) {
 function xmlEscape(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function metainfoMarkup(text2, indent) {
+function metainfoMarkup(text3, indent) {
   const out = [];
   const isItem = (l) => /^[-*]\s+/.test(l);
-  for (const block2 of text2.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
+  for (const block2 of text3.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
     const lines4 = block2.split("\n").map((l) => l.trim()).filter(Boolean);
     for (let n = 0; n < lines4.length; ) {
       const list2 = isItem(lines4[n]);
@@ -44408,10 +44940,10 @@ function extraDataSources(modules, out = []) {
   }
   return out;
 }
-function updateFlathubManifest(text2, path32, i) {
+function updateFlathubManifest(text3, path32, i) {
   const builds = new Map(linuxBuilds(i));
   const json = path32.endsWith(".json");
-  const doc = (0, import_yaml4.parseDocument)(text2);
+  const doc = (0, import_yaml4.parseDocument)(text3);
   if (doc.errors.length)
     throw new Error(`${path32} does not parse: ${doc.errors[0].message}`);
   const sources = extraDataSources(doc.get("modules"));
@@ -44479,10 +45011,10 @@ function githubClient(o = {}) {
       ...body !== void 0 ? { body: JSON.stringify(body) } : {}
     });
     if (res.status === 404 && allow404) return null;
-    const text2 = await res.text();
+    const text3 = await res.text();
     let parsed = null;
     try {
-      parsed = text2 ? JSON.parse(text2) : null;
+      parsed = text3 ? JSON.parse(text3) : null;
     } catch {
       parsed = null;
     }
@@ -45333,11 +45865,11 @@ async function planPr(store, i, o, gh) {
         const base = await gh.defaultBranch(repo);
         let found = false;
         for (const name of [`${appId}.yml`, `${appId}.yaml`, `${appId}.json`]) {
-          const text2 = await gh.fileText(repo, name, base);
-          if (text2 === null) continue;
+          const text3 = await gh.fileText(repo, name, base);
+          if (text3 === null) continue;
           files.unshift({
             path: name,
-            content: updateFlathubManifest(text2, name, i)
+            content: updateFlathubManifest(text3, name, i)
           });
           found = true;
           break;
@@ -47100,8 +47632,8 @@ var ConfigParser = class {
     return { $type: type, args: this.list(")") };
   }
 };
-function parseGodotConfig(text2, file = "config") {
-  return new ConfigParser(text2.replace(/^\uFEFF/, ""), file).parse();
+function parseGodotConfig(text3, file = "config") {
+  return new ConfigParser(text3.replace(/^\uFEFF/, ""), file).parse();
 }
 var PLATFORMS = {
   Android: "android",
@@ -49331,9 +49863,9 @@ async function pushAssets(opts) {
   );
   return result;
 }
-function parseAssetMap(input) {
+function parseAssetMap(input2) {
   const out = [];
-  for (const [i, raw] of input.split(/\r?\n/).entries()) {
+  for (const [i, raw] of input2.split(/\r?\n/).entries()) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
     const at = line.lastIndexOf(": ");
@@ -49502,7 +50034,9 @@ async function runCommand(argv2, io) {
       g,
       term,
       store: io.credentialStore ?? defaultStore,
-      login: io.login
+      login: io.login,
+      stdin: io.prompt?.stdin,
+      keys: io.prompt?.keys
     });
   } catch (err) {
     if (err instanceof ManifestSyntaxError) {
@@ -49527,7 +50061,7 @@ var HANDLERS = {
   }),
   whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
   logout: (p, rt) => cmdLogout(accountIo(p, rt)),
-  init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
+  init: (p, rt) => cmdInit(p, rt),
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
@@ -49623,9 +50157,9 @@ function unknownOption(flag, term) {
     term
   );
 }
-function failLine(text2, term) {
+function failLine(text3, term) {
   const { painter, symbols, caps } = term;
-  const lines4 = wrapSpans([{ text: text2 }], Math.max(1, caps.columns - 3));
+  const lines4 = wrapSpans([{ text: text3 }], Math.max(1, caps.columns - 3));
   return `${lines4.map(
     (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
   ).join("\n")}
@@ -49693,14 +50227,32 @@ function parseArgs(argv2) {
   }
   return { command, flags, multi, bare, positional, rest: after };
 }
-async function cmdInit(parsed, cwd, stdout) {
+async function cmdInit(parsed, rt) {
+  const { cwd, stdout } = rt;
   const basename = path30.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
-  const modules = normalizeModules2(flagString(parsed, "modules"));
-  const starterTier = flagString(parsed, "starter-tier");
-  if (starterTier !== void 0 && starterTier !== "free" && starterTier !== "none")
+  const modulesFlag = flagString(parsed, "modules");
+  let modules = normalizeModules2(modulesFlag);
+  const tierFlag = flagString(parsed, "starter-tier");
+  if (tierFlag !== void 0 && tierFlag !== "free" && tierFlag !== "none")
     throw new UsageError("--starter-tier takes free or none.");
+  let starterTier = tierFlag;
+  const stdin = rt.stdin ?? process.stdin;
+  const term = termFor(stdout, rt.ci.env, rt.g, stdin);
+  if (mayPrompt(term, stdin)) {
+    const asked = await askInit({
+      term,
+      stdout,
+      stdin,
+      keys: rt.keys,
+      givenServices: modulesFlag ? modules : void 0,
+      tierGiven: tierFlag !== void 0
+    });
+    if (typeof asked === "number") return asked;
+    if (asked.modules) modules = asked.modules;
+    if (asked.starterTier) starterTier = asked.starterTier;
+  }
   const result = await initManifest({
     cwd,
     slug,
@@ -49803,14 +50355,14 @@ function validateRows(manifest, result, cwd, term) {
         { text: result.requiredSecrets.join(", ") }
       ]
     });
-  const message = (kind, at, text2) => {
+  const message = (kind, at, text3) => {
     const role = kind === "warning" ? "warning" : "danger";
     return {
       mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
       spans: [
         { text: `${kind} `, style: [role] },
         ...at,
-        { text: `: ${text2}` }
+        { text: `: ${text3}` }
       ]
     };
   };
@@ -51174,30 +51726,30 @@ async function runAction(given) {
   }
 }
 async function runActionSteps(io) {
-  const input = (name) => actionInput(io.env, name);
+  const input2 = (name) => actionInput(io.env, name);
   try {
-    const product = input("product");
-    const dir = input("dir");
+    const product = input2("product");
+    const dir = input2("dir");
     if (!product) throw new Error("The product input is required.");
-    const assets = input("assets");
+    const assets = input2("assets");
     if (assets !== void 0) {
-      if (input("storefront") !== void 0 || input("transport") !== void 0)
+      if (input2("storefront") !== void 0 || input2("transport") !== void 0)
         throw new Error(
           "assets is a step of its own: set it without storefront or transport."
         );
-      await runAssetsStep(io, input, product, dir, assets);
+      await runAssetsStep(io, input2, product, dir, assets);
       return 0;
     }
     if (!dir) throw new Error("The dir input is required.");
-    const dryRun = input("dry-run");
+    const dryRun = input2("dry-run");
     if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
       throw new Error(
         `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
       );
-    const deliverable = input("deliverable");
-    const releaseKeyPem = input("release-key");
-    const contentKeyPem = input("content-key");
-    const delegation = input("delegation");
+    const deliverable = input2("deliverable");
+    const releaseKeyPem = input2("release-key");
+    const contentKeyPem = input2("content-key");
+    const delegation = input2("delegation");
     if (contentKeyPem && releaseKeyPem)
       throw new Error(
         "release-key and content-key are exclusive: a pack release is signed by one or the other."
@@ -51206,15 +51758,15 @@ async function runActionSteps(io) {
       throw new Error(
         "content-key and delegation apply only to a pack deliverable: a content key never signs an app record."
       );
-    const transport = input("transport");
-    const given0 = (names) => names.filter((n) => input(n) !== void 0);
-    const storefront = input("storefront");
+    const transport = input2("transport");
+    const given0 = (names) => names.filter((n) => input2(n) !== void 0);
+    const storefront = input2("storefront");
     if (storefront !== void 0) {
       if (transport !== void 0)
         throw new Error(
           "storefront and transport are separate steps: set one per step."
         );
-      await runStorefrontStep(io, input, given0, product, dir, storefront);
+      await runStorefrontStep(io, input2, given0, product, dir, storefront);
       return 0;
     }
     const storefrontOnly = given0(["itch-platform", "storefront-outlet"]);
@@ -51223,7 +51775,7 @@ async function runActionSteps(io) {
         `${storefrontOnly.join(", ")} ${storefrontOnly.length === 1 ? "applies" : "apply"} only with the storefront input.`
       );
     if (transport !== void 0) {
-      await runTransportStep(io, input, given0, product, dir, transport);
+      await runTransportStep(io, input2, given0, product, dir, transport);
       return 0;
     }
     const transportOnly = given0([
@@ -51237,14 +51789,14 @@ async function runActionSteps(io) {
       "steam-setlive",
       "asc-expect-resource"
     ]);
-    if (input("transport-report") === "false")
+    if (input2("transport-report") === "false")
       transportOnly.push("transport-report");
     if (transportOnly.length)
       throw new Error(
         `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`
       );
-    const minSupportedSeq = input("min-supported-seq") !== void 0 ? Number(input("min-supported-seq")) : void 0;
-    const given = (names) => names.filter((n) => input(n) !== void 0);
+    const minSupportedSeq = input2("min-supported-seq") !== void 0 ? Number(input2("min-supported-seq")) : void 0;
+    const given = (names) => names.filter((n) => input2(n) !== void 0);
     if (deliverable && deliverable !== "app" && await isPackageDeliverable(io.cwd, deliverable)) {
       const wrong2 = given([
         "tag",
@@ -51268,9 +51820,9 @@ async function runActionSteps(io) {
         product,
         dir,
         deliverable,
-        version: input("version"),
-        channel: input("channel"),
-        baseUrl: input("base-url"),
+        version: input2("version"),
+        channel: input2("channel"),
+        baseUrl: input2("base-url"),
         dryRun: dryRun === "true",
         env: io.env,
         stdout: io.stdout,
@@ -51283,8 +51835,8 @@ async function runActionSteps(io) {
     }
     if (deliverable && deliverable !== "app") {
       const wrong2 = given(["content-stamp", "embedded", "pins"]);
-      const scriptExtensions = listInput(input("script-extensions"));
-      const scriptTypes = listInput(input("script-types"));
+      const scriptExtensions = listInput(input2("script-extensions"));
+      const scriptTypes = listInput(input2("script-types"));
       if (wrong2.length)
         throw new Error(
           `${wrong2.join(", ")} ${wrong2.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`
@@ -51295,12 +51847,12 @@ async function runActionSteps(io) {
         product,
         dir,
         deliverable,
-        version: input("version"),
-        tag: input("tag"),
-        channel: input("channel"),
-        out: input("out"),
-        bases: input("bases"),
-        baseUrl: input("base-url"),
+        version: input2("version"),
+        tag: input2("tag"),
+        channel: input2("channel"),
+        out: input2("out"),
+        bases: input2("bases"),
+        baseUrl: input2("base-url"),
         ...releaseKeyPem ? { releaseKeyPem } : {},
         ...contentKeyPem ? { contentKeyPem } : {},
         ...delegation ? { delegation } : {},
@@ -51328,22 +51880,22 @@ async function runActionSteps(io) {
       product,
       dir,
       deliverable,
-      version: input("version"),
-      tag: input("tag"),
-      channel: input("channel"),
+      version: input2("version"),
+      tag: input2("tag"),
+      channel: input2("channel"),
       // `r2` unless set. action.yml gives `source` no `default:`: GitHub passes every defaulted
       // input, so a default there would reach the package and transport paths, which refuse it.
-      source: input("source") ?? "r2",
-      meta: input("meta"),
-      baseUrl: input("base-url"),
+      source: input2("source") ?? "r2",
+      meta: input2("meta"),
+      baseUrl: input2("base-url"),
       // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
       // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
       ...releaseKeyPem ? { releaseKeyPem } : {},
       ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
       // P4-03: the packs an app release pins and its builds embed.
-      contentStamp: input("content-stamp"),
-      embedded: input("embedded"),
-      pins: pinsInput(input("pins")),
+      contentStamp: input2("content-stamp"),
+      embedded: input2("embedded"),
+      pins: pinsInput(input2("pins")),
       dryRun: dryRun === "true",
       env: io.env,
       stdout: io.stdout,
@@ -51364,13 +51916,13 @@ async function runActionSteps(io) {
     return 1;
   }
 }
-async function runTransportStep(io, input, given, product, dir, step) {
+async function runTransportStep(io, input2, given, product, dir, step) {
   if (!ACTION_TRANSPORT_STEPS.includes(step))
     throw new Error(
       `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
     );
-  const deliverable = input("deliverable");
-  const version = input("version");
+  const deliverable = input2("deliverable");
+  const version = input2("version");
   if (!deliverable || deliverable === "app")
     throw new Error(
       "transport needs a pack deliverable: set deliverable to the pack id."
@@ -51397,15 +51949,15 @@ async function runTransportStep(io, input, given, product, dir, step) {
     throw new Error(
       `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`
     );
-  const dryRun = input("dry-run");
+  const dryRun = input2("dry-run");
   if (dryRun !== void 0 && dryRun !== "false")
     throw new Error("dry-run does not apply to a transport step.");
-  const report2 = input("transport-report");
+  const report2 = input2("transport-report");
   if (report2 !== void 0 && report2 !== "true" && report2 !== "false")
     throw new Error(
       `transport-report must be true or false (got ${JSON.stringify(report2)}).`
     );
-  const setlive = input("steam-setlive");
+  const setlive = input2("steam-setlive");
   if (setlive !== void 0 && setlive !== "true" && setlive !== "false")
     throw new Error(
       `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`
@@ -51415,7 +51967,7 @@ async function runTransportStep(io, input, given, product, dir, step) {
     deliverable,
     version,
     product,
-    baseUrl: input("base-url"),
+    baseUrl: input2("base-url"),
     env: io.env,
     stdout: io.stdout,
     stderr: io.stderr,
@@ -51429,26 +51981,26 @@ async function runTransportStep(io, input, given, product, dir, step) {
       await baPackage({
         ...common,
         from: dir,
-        out: input("transport-out"),
-        contentApi: input("content-api"),
-        variant: input("variant"),
+        out: input2("transport-out"),
+        contentApi: input2("content-api"),
+        variant: input2("variant"),
         platform
       });
       return;
     case "apple-ba-upload":
-      if (input("transport-out") !== void 0)
+      if (input2("transport-out") !== void 0)
         throw new Error(
           "apple-ba-upload reads the package step's output from dir; transport-out does not apply."
         );
       await baUpload({
         ...common,
         dir,
-        contentApi: input("content-api"),
-        expectResource: input("asc-expect-resource")
+        contentApi: input2("content-api"),
+        expectResource: input2("asc-expect-resource")
       });
       return;
     case "play-pad-modules": {
-      const project = input("gradle-project");
+      const project = input2("gradle-project");
       if (!project)
         throw new Error(
           "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build)."
@@ -51457,13 +52009,13 @@ async function runTransportStep(io, input, given, product, dir, step) {
         ...common,
         from: dir,
         project,
-        delivery: input("pad-delivery"),
-        variant: input("variant")
+        delivery: input2("pad-delivery"),
+        variant: input2("variant")
       });
       return;
     }
     default: {
-      const depot = input("steam-depot");
+      const depot = input2("steam-depot");
       if (!depot)
         throw new Error(
           "steam-depot-vdf needs steam-depot: the pack's depot id."
@@ -51472,16 +52024,16 @@ async function runTransportStep(io, input, given, product, dir, step) {
         ...common,
         from: dir,
         depot,
-        branch: input("steam-branch"),
-        channel: input("channel"),
+        branch: input2("steam-branch"),
+        channel: input2("channel"),
         setlive: setlive === "true",
-        out: input("transport-out"),
-        variant: input("variant")
+        out: input2("transport-out"),
+        variant: input2("variant")
       });
     }
   }
 }
-async function runStorefrontStep(io, input, given, product, dir, step) {
+async function runStorefrontStep(io, input2, given, product, dir, step) {
   if (!ACTION_STOREFRONT_STEPS.includes(step))
     throw new Error(
       `storefront must be one of ${ACTION_STOREFRONT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
@@ -51511,26 +52063,26 @@ async function runStorefrontStep(io, input, given, product, dir, step) {
     "steam-branch",
     "steam-setlive",
     "asc-expect-resource"
-  ]).filter((n) => !(n === "deliverable" && input(n) === "app"));
-  if (input("transport-report") === "false") wrong.push("transport-report");
+  ]).filter((n) => !(n === "deliverable" && input2(n) === "app"));
+  if (input2("transport-report") === "false") wrong.push("transport-report");
   if (wrong.length)
     throw new Error(
       `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a storefront step (${step}).`
     );
-  if (step !== "itch-push" && input("itch-platform") !== void 0)
+  if (step !== "itch-push" && input2("itch-platform") !== void 0)
     throw new Error("itch-platform applies only to itch-push.");
-  const dryRun = input("dry-run");
+  const dryRun = input2("dry-run");
   const flags = {
     product,
-    ...input("base-url") ? { "base-url": input("base-url") } : {},
+    ...input2("base-url") ? { "base-url": input2("base-url") } : {},
     ...dryRun === "true" ? { "dry-run": true } : {},
-    ...input("storefront-outlet") ? { outlet: input("storefront-outlet") } : {}
+    ...input2("storefront-outlet") ? { outlet: input2("storefront-outlet") } : {}
   };
   let positional;
   switch (step) {
     case "itch-push": {
-      const platform = input("itch-platform");
-      const version = input("version") ?? input("tag")?.replace(/^v/, "");
+      const platform = input2("itch-platform");
+      const version = input2("version") ?? input2("tag")?.replace(/^v/, "");
       if (!platform)
         throw new Error(
           "itch-push needs itch-platform: windows, linux, mac or android."
@@ -51539,11 +52091,11 @@ async function runStorefrontStep(io, input, given, product, dir, step) {
         throw new Error("itch-push needs version: butler's --userversion.");
       positional = ["itch", "push"];
       Object.assign(flags, { dir, platform, version });
-      if (input("channel")) flags.channel = input("channel");
+      if (input2("channel")) flags.channel = input2("channel");
       break;
     }
     case "snap-upload": {
-      const channel = input("channel");
+      const channel = input2("channel");
       if (!channel)
         throw new Error(
           "snap-upload needs channel: the release channel the outlet's channels map onto snap channels."
@@ -51573,7 +52125,7 @@ async function runStorefrontStep(io, input, given, product, dir, step) {
   );
   if (code !== 0) throw new Error(`storefront ${step} failed.`);
 }
-async function runAssetsStep(io, input, product, dir, assets) {
+async function runAssetsStep(io, input2, product, dir, assets) {
   const wrong = ACTION_INPUTS.filter(
     (n) => ![
       "product",
@@ -51583,16 +52135,16 @@ async function runAssetsStep(io, input, product, dir, assets) {
       "assets",
       "deliverable",
       "transport-report"
-    ].includes(n) && input(n) !== void 0
+    ].includes(n) && input2(n) !== void 0
   );
-  if (input("deliverable") !== void 0 && input("deliverable") !== "app")
+  if (input2("deliverable") !== void 0 && input2("deliverable") !== "app")
     wrong.push("deliverable");
-  if (input("transport-report") === "false") wrong.push("transport-report");
+  if (input2("transport-report") === "false") wrong.push("transport-report");
   if (wrong.length)
     throw new Error(
       `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to an assets step.`
     );
-  const dryRun = input("dry-run");
+  const dryRun = input2("dry-run");
   if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
     throw new Error(
       `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
@@ -51603,7 +52155,7 @@ async function runAssetsStep(io, input, product, dir, assets) {
     cwd: io.cwd,
     product,
     entries,
-    baseUrl: input("base-url"),
+    baseUrl: input2("base-url"),
     dryRun: dryRun === "true",
     env: io.env,
     stdout: io.stdout,

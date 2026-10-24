@@ -88,7 +88,12 @@ import {
 } from "./manifest.js";
 import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
 import type { StageProgress } from "./ci.js";
-import { wrapSpans, type Line } from "@polaris-key/node/terminal";
+import {
+  wrapSpans,
+  type Line,
+  type TerminalInput,
+} from "@polaris-key/node/terminal";
+import { askInit, mayPrompt, type InitKeys } from "./initPrompt.js";
 import {
   guardOutput,
   untrusted,
@@ -551,6 +556,8 @@ export interface CliIo {
   credentialStore?: () => Promise<CredentialStore>;
   /** The browser, clipboard, keys and clock behind `pkey login` (tests pass fakes). */
   login?: LoginSeams;
+  /** The terminal's keyboard for `pkey init`'s questions (tests pass a TTY stdin and scripted keys). */
+  prompt?: { stdin?: TerminalInput; keys?: InitKeys };
 }
 
 interface ParsedArgs {
@@ -686,6 +693,8 @@ async function runCommand(
       term,
       store: io.credentialStore ?? defaultStore,
       login: io.login,
+      stdin: io.prompt?.stdin,
+      keys: io.prompt?.keys,
     });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
@@ -709,6 +718,10 @@ async function runCommand(
 /** What a command handler gets besides its parsed arguments. */
 interface Runtime {
   cwd: string;
+  /** Keys for the prompts (`pkey init`); default `process.stdin`. */
+  stdin?: TerminalInput;
+  /** A scripted key reader (tests). */
+  keys?: InitKeys;
   stdout: TermOut;
   stderr: TermOut;
   ci: CiIo & { env: CiEnv };
@@ -735,7 +748,7 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
     }),
   whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
   logout: (p, rt) => cmdLogout(accountIo(p, rt)),
-  init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
+  init: (p, rt) => cmdInit(p, rt),
   validate: (p, rt) =>
     cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
@@ -949,11 +962,8 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { command, flags, multi, bare, positional, rest: after };
 }
 
-async function cmdInit(
-  parsed: ParsedArgs,
-  cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
-): Promise<number> {
+async function cmdInit(parsed: ParsedArgs, rt: Runtime): Promise<number> {
+  const { cwd, stdout } = rt;
   const basename =
     path
       .basename(cwd)
@@ -963,14 +973,28 @@ async function cmdInit(
   const slug =
     flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
-  const modules = normalizeModules(flagString(parsed, "modules"));
-  const starterTier = flagString(parsed, "starter-tier");
-  if (
-    starterTier !== undefined &&
-    starterTier !== "free" &&
-    starterTier !== "none"
-  )
+  const modulesFlag = flagString(parsed, "modules");
+  let modules: ProductModule[] = normalizeModules(modulesFlag);
+  const tierFlag = flagString(parsed, "starter-tier");
+  if (tierFlag !== undefined && tierFlag !== "free" && tierFlag !== "none")
     throw new UsageError("--starter-tier takes free or none.");
+  let starterTier: "free" | "none" | undefined = tierFlag;
+  // On a terminal, ask for what the flags did not give (ST-46.3); anywhere else, none of this runs.
+  const stdin = rt.stdin ?? process.stdin;
+  const term = termFor(stdout, rt.ci.env, rt.g, stdin);
+  if (mayPrompt(term, stdin)) {
+    const asked = await askInit({
+      term,
+      stdout,
+      stdin,
+      keys: rt.keys,
+      givenServices: modulesFlag ? modules : undefined,
+      tierGiven: tierFlag !== undefined,
+    });
+    if (typeof asked === "number") return asked;
+    if (asked.modules) modules = asked.modules;
+    if (asked.starterTier) starterTier = asked.starterTier;
+  }
   const result = await initManifest({
     cwd,
     slug,
