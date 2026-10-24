@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { atRest } from "./atRest.js";
+import { frameStrip } from "./strips.js";
 import { workerFields } from "./workerFields.js";
 
 /**
@@ -568,28 +569,9 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
 describe.skipIf(!SHOTS)("frame strips", () => {
   for (const theme of ["dark", "light"] as const) {
     it(`saves the filter, Clear filters and bulk-bar frames (${theme})`, async () => {
-      mkdirSync(SHOTS!, { recursive: true });
       const page = await openLicenses({ theme });
-      const cdp = await page.context().newCDPSession(page);
-      await cdp.send("Animation.enable");
-      const strip = async (
-        name: string,
-        act: () => Promise<void>,
-      ): Promise<void> => {
-        await atRest(page);
-        await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
-        await act();
-        for (const [i, ms] of [30, 600, 1200, 1800, 2600, 3600].entries()) {
-          await page.waitForTimeout(
-            i === 0 ? ms : ms - [30, 600, 1200, 1800, 2600][i - 1]!,
-          );
-          await page.screenshot({
-            path: `${SHOTS}/console-data-${name}-${theme}-${i + 1}.png`,
-          });
-        }
-        await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
-        await atRest(page, 6000);
-      };
+      const strip = (name: string, act: () => Promise<void>): Promise<void> =>
+        frameStrip(page, `console-data-${name}`, act, { theme });
       await openStatusMenu(page);
       await strip("filter", () =>
         page.getByRole("checkbox", { name: /^Disabled/ }).click(),
