@@ -613,6 +613,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Sign out of {product} on this device?",
     "signin.signout.released":
       "{product} stops using your {tier} license on this device and frees room for another device.",
+    "signin.signout.titleMac": "Sign out of {product} on this Mac?",
+    "signin.signout.releasedMac":
+      "This frees your {tier} license for another device.",
     "signin.signout.unsynced":
       "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",
     "signin.signout.waitSync": "Wait for sync",
@@ -2219,6 +2222,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Auf diesem Gerät von {product} abmelden?",
     "signin.signout.released":
       "{product} verwendet Ihre {tier}-Lizenz auf diesem Gerät nicht mehr und schafft Platz für ein weiteres Gerät.",
+    "signin.signout.titleMac": "Auf diesem Mac von {product} abmelden?",
+    "signin.signout.releasedMac":
+      "Dadurch wird Ihre {tier}-Lizenz für ein anderes Gerät frei.",
     "signin.signout.unsynced":
       "{n, plural, one {# Änderung wurde noch nicht synchronisiert.} other {# Änderungen wurden noch nicht synchronisiert.}}",
     "signin.signout.waitSync": "Auf Synchronisierung warten",
@@ -3877,6 +3883,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Se déconnecter de {product} sur cet appareil ?",
     "signin.signout.released":
       "{product} cesse d’utiliser votre licence {tier} ici et libère de la place pour un autre appareil.",
+    "signin.signout.titleMac": "Se déconnecter de {product} sur ce Mac ?",
+    "signin.signout.releasedMac":
+      "Cela libère votre licence {tier} pour un autre appareil.",
     "signin.signout.unsynced":
       "{n, plural, one {# modification n’a pas encore été synchronisée.} many {# de modifications n’ont pas encore été synchronisées.} other {# modifications n’ont pas encore été synchronisées.}}",
     "signin.signout.waitSync": "Attendre la synchronisation",
@@ -5523,6 +5532,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "¿Cerrar sesión de {product} en este dispositivo?",
     "signin.signout.released":
       "{product} dejará de usar aquí tu licencia {tier} y liberará espacio para otro dispositivo.",
+    "signin.signout.titleMac": "¿Cerrar sesión de {product} en este Mac?",
+    "signin.signout.releasedMac":
+      "Esto libera tu licencia {tier} para otro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# cambio aún no se ha sincronizado.} many {# de cambios aún no se han sincronizado.} other {# cambios aún no se han sincronizado.}}",
     "signin.signout.waitSync": "Esperar a sincronizar",
@@ -7163,6 +7175,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Sair de {product} neste dispositivo?",
     "signin.signout.released":
       "{product} deixa de usar sua licença {tier} aqui e libera espaço para outro dispositivo.",
+    "signin.signout.titleMac": "Sair de {product} neste Mac?",
+    "signin.signout.releasedMac":
+      "Isso libera sua licença {tier} para outro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# alteração ainda não foi sincronizada.} many {# de alterações ainda não foram sincronizadas.} other {# alterações ainda não foram sincronizadas.}}",
     "signin.signout.waitSync": "Aguardar sincronização",
@@ -8771,6 +8786,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Uscire da {product} su questo dispositivo?",
     "signin.signout.released":
       "{product} smette di usare qui la tua licenza {tier} e libera spazio per un altro dispositivo.",
+    "signin.signout.titleMac": "Disconnettersi da {product} su questo Mac?",
+    "signin.signout.releasedMac":
+      "Questo libera la tua licenza {tier} per un altro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# modifica non è ancora sincronizzata.} many {# di modifiche non sono ancora sincronizzate.} other {# modifiche non sono ancora sincronizzate.}}",
     "signin.signout.waitSync": "Attendi la sincronizzazione",
@@ -10404,6 +10422,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "このデバイスで{product}からサインアウトしますか？",
     "signin.signout.released":
       "{product}はこのデバイスで{tier}ライセンスの使用を停止し、別のデバイス用に空きを作ります。",
+    "signin.signout.titleMac": "このMacで{product}からサインアウトしますか？",
+    "signin.signout.releasedMac":
+      "{tier}ライセンスが解放され、別のデバイスで使えるようになります。",
     "signin.signout.unsynced":
       "{n, plural, other {#件の変更がまだ同期されていません。}}",
     "signin.signout.waitSync": "同期を待つ",
@@ -12027,6 +12048,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "이 기기의 {product}에서 로그아웃할까요?",
     "signin.signout.released":
       "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요.",
+    "signin.signout.titleMac": "이 Mac에서 {product}에서 로그아웃할까요?",
+    "signin.signout.releasedMac":
+      "{tier} 라이선스가 해제되어 다른 기기에서 사용할 수 있습니다.",
     "signin.signout.unsynced":
       "{n, plural, other {변경 사항 #개가 아직 동기화되지 않았어요.}}",
     "signin.signout.waitSync": "동기화 기다리기",
@@ -13557,6 +13581,8 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "要在此设备上退出登录{product}吗？",
     "signin.signout.released":
       "{product}将停止在此设备上使用你的{tier}许可证，以便其他设备使用。",
+    "signin.signout.titleMac": "要在此 Mac 上退出 {product} 吗？",
+    "signin.signout.releasedMac": "这会释放你的 {tier} 许可，供其他设备使用。",
     "signin.signout.unsynced": "{n, plural, other {#项更改尚未同步。}}",
     "signin.signout.waitSync": "等待同步",
     "signin.session.toastTitle": "你已被退出登录",

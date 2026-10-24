@@ -511,6 +511,8 @@
   "signin.identityOff.lede": "在此登录即可在你的资料库中看到{product}。",
   "signin.signout.title": "要在此设备上退出登录{product}吗？",
   "signin.signout.released": "{product}将停止在此设备上使用你的{tier}许可证，以便其他设备使用。",
+  "signin.signout.titleMac": "要在此 Mac 上退出 {product} 吗？",
+  "signin.signout.releasedMac": "这会释放你的 {tier} 许可，供其他设备使用。",
   "signin.signout.unsynced": "{n, plural, other {#项更改尚未同步。}}",
   "signin.signout.waitSync": "等待同步",
   "signin.session.toastTitle": "你已被退出登录",

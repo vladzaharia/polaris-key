@@ -1,6 +1,6 @@
 // @pkey-feature ui.settings ui.update
 // The macOS menu commands (UK-08.4, SIGN-IN.md D-71): `PolarisKeyCommands(client)` puts
-// Check for Updates… and Manage License… under the app's About item, and Sign Out… after them.
+// Check for Updates… and Manage License… under the app's About item, and Sign Out… after Settings….
 //
 //   WindowGroup { … }.commands { PolarisKeyCommands(client) }
 //
@@ -34,8 +34,6 @@
             _model = State(initialValue: model)
             self.theme = theme
             self.checkForUpdates = checkForUpdates
-            // The menu follows the client: Sign Out… is off while nobody is signed in.
-            Task { @MainActor in model.start() }
         }
 
         /// The commands over a model the host holds (previews and the sample).
@@ -55,12 +53,20 @@
         }
 
         public var body: some Commands {
+            // The menu follows the client: Sign Out… is off while nobody is signed in. A Commands
+            // value is rebuilt freely and `@State` keeps only the first model, so the model that
+            // is read here starts here; `start()` is idempotent and a discarded one never runs.
+            let _ = model.start()
             CommandGroup(after: .appInfo) {
                 Button(strings.string("update.checkNow")) { check() }
                 Button(strings.string("menu.manageLicense")) { show() }
-                Divider()
+            }
+            // Below Settings… in a section of its own (D-71 names the app menu, not an order;
+            // `after: .appSettings` lands above Settings…).
+            CommandGroup(before: .systemServices) {
                 Button(strings.string("menu.signOut")) { show(.signOut) }
                     .disabled(!model.account.shows("common.signOut"))
+                Divider()
             }
         }
 

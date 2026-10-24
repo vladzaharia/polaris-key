@@ -3175,6 +3175,16 @@ msgstr "이 기기의 {product}에서 로그아웃할까요?"
 msgid "signin.signout.released"
 msgstr "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요."
 
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr "이 Mac에서 {product}에서 로그아웃할까요?"
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
+msgstr "{tier} 라이선스가 해제되어 다른 기기에서 사용할 수 있습니다."
+
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
 #. Plural on {n}.

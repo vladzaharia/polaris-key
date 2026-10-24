@@ -511,6 +511,8 @@
   "signin.identityOff.lede": "ここでサインインすると、ライブラリに{product}が表示されます。",
   "signin.signout.title": "このデバイスで{product}からサインアウトしますか？",
   "signin.signout.released": "{product}はこのデバイスで{tier}ライセンスの使用を停止し、別のデバイス用に空きを作ります。",
+  "signin.signout.titleMac": "このMacで{product}からサインアウトしますか？",
+  "signin.signout.releasedMac": "{tier}ライセンスが解放され、別のデバイスで使えるようになります。",
   "signin.signout.unsynced": "{n, plural, other {#件の変更がまだ同期されていません。}}",
   "signin.signout.waitSync": "同期を待つ",
   "signin.session.toastTitle": "サインアウトされました",

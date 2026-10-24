@@ -1170,6 +1170,10 @@
     <string name="signin_signout_title">要在此设备上退出登录%1$s吗？</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
     <string name="signin_signout_released">%1$s将停止在此设备上使用你的%2$s许可证，以便其他设备使用。</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_titleMac">要在此 Mac 上退出 %1$s 吗？</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_signout_releasedMac">这会释放你的 %1$s 许可，供其他设备使用。</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="other">%1$d项更改尚未同步。</item>

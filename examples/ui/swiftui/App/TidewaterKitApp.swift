@@ -120,6 +120,14 @@ enum SampleArgs {
             pane.platform = PolarisKeyPreviewState.mac
             // Only the managed row: the mockup's pane has no other catalog settings.
             pane.config = inputs("Settings.locked").config?.filter { $0.locked }
+            // Two devices, this Mac one of them: the list agrees with "2 of 3 in use".
+            pane.devices = [
+                KitDevice(
+                    name: "Work laptop", platform: "windows", formFactor: .computer, lastSeenDays: 12),
+                KitDevice(
+                    name: "MacBook Pro", platform: "macos", formFactor: .mac, lastSeenDays: 0,
+                    current: true),
+            ]
             return PolarisKeySettingsModel(
                 preview: pane, tier: "Pro", holder: "Mara Lindqvist",
                 channel: .choose(current: "stable", options: ["stable", "beta"]), seats: "2 of 3",

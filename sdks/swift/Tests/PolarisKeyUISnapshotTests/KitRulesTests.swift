@@ -452,11 +452,10 @@ final class KitRulesTests: XCTestCase {
             let strings = KitStrings()
             XCTAssertEqual(
                 SignOutCopy.title(strings, product: "Tidewater Studio"),
-                "Sign out of Tidewater Studio on this device?")
+                "Sign out of Tidewater Studio on this Mac?")
             XCTAssertEqual(
                 SignOutCopy.message(strings, product: "Tidewater Studio", tier: "Pro"),
-                "Tidewater Studio stops using your Pro license on this device and frees room for another device."
-            )
+                "This frees your Pro license for another device.")
         }
 
         @MainActor func testAStillModelAnswersCheckNowWithUpToDate() async {

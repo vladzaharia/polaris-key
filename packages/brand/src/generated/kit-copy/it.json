@@ -511,6 +511,8 @@
   "signin.identityOff.lede": "Accedi qui per vedere {product} nella tua libreria.",
   "signin.signout.title": "Uscire da {product} su questo dispositivo?",
   "signin.signout.released": "{product} smette di usare qui la tua licenza {tier} e libera spazio per un altro dispositivo.",
+  "signin.signout.titleMac": "Disconnettersi da {product} su questo Mac?",
+  "signin.signout.releasedMac": "Questo libera la tua licenza {tier} per un altro dispositivo.",
   "signin.signout.unsynced": "{n, plural, one {# modifica non è ancora sincronizzata.} many {# di modifiche non sono ancora sincronizzate.} other {# modifiche non sono ancora sincronizzate.}}",
   "signin.signout.waitSync": "Attendi la sincronizzazione",
   "signin.session.toastTitle": "Sei stato disconnesso",
