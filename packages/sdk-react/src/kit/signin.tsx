@@ -26,6 +26,7 @@ import {
 } from "react";
 import {
   SignInModel,
+  signInView,
   type ReplaceMode,
   type SignInPresentation,
   type SignInPrimitives,
@@ -345,6 +346,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
 
   const kit = useKit(
     "SignIn",
+    signInView,
     {
       ...props,
       input,

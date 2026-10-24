@@ -4,7 +4,7 @@
 // drop-in parts (drive.tsx) and the per-component exports use stays out of the gate's chunk.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { ComponentName } from "@polaris-key/ui-core";
+import { MODELS, type ComponentName } from "@polaris-key/ui-core";
 import { platformVariant } from "@polaris-key/ui-core/theme";
 
 import { KitRoot, useKit, type KitProps } from "./component.js";
@@ -82,6 +82,7 @@ export function kitComponent(component: ComponentName) {
     const stateRef = useRef("");
     const kit = useKit(
       component,
+      MODELS[component],
       component === "UpdatePrompt"
         ? {
             ...props,

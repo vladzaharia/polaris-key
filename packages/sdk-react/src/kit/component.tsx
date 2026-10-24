@@ -23,11 +23,18 @@ import {
   type ReactNode,
 } from "react";
 import {
+  activateView,
+  BareViewModel,
+  contextOf,
   focusOnMount,
+  gateView,
+  graceBannerView,
   renewTarget,
-  ViewModel,
-  viewOf,
+  signInHandoffView,
+  statusScreenView,
+  welcomeView,
   type ComponentName,
+  type Model,
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
@@ -241,6 +248,8 @@ export interface KitHooks {
 /** Everything one kit component resolves and holds: the model, the theme, the identity. */
 export function useKit(
   component: ComponentName,
+  /** The component's model, handed in so the gate's entry carries only the models it draws. */
+  modelOf: Model,
   props: KitProps,
   /** The view drawn for a view (the gate hands to Welcome, StatusScreen…): focus follows it. */
   drawnOf?: (view: View, input: UiInput) => View,
@@ -409,10 +418,10 @@ export function useKit(
   };
 
   // The model: created once, its view read in render; the loading timer redraws through it.
-  const modelRef = useRef<ViewModel | null>(null);
+  const modelRef = useRef<BareViewModel | null>(null);
   const deliver = (fn: () => void) => queueMicrotask(fn);
   if (!modelRef.current)
-    modelRef.current = new ViewModel(component, input, { deliver });
+    modelRef.current = new BareViewModel(component, modelOf, input, { deliver });
   const model = modelRef.current;
   if (JSON.stringify(model.snapshot) !== JSON.stringify(input))
     model.update(() => input);
@@ -422,7 +431,7 @@ export function useKit(
   useEffect(() => {
     // StrictMode unmounts and mounts again: a disposed model is replaced, never reused.
     if (!modelRef.current) {
-      modelRef.current = new ViewModel(component, input, { deliver });
+      modelRef.current = new BareViewModel(component, modelOf, input, { deliver });
       force();
     }
     const m = modelRef.current;
@@ -746,6 +755,17 @@ export interface PolarisKeyGateProps extends KitProps {
   returnUrl?: string;
 }
 
+/** The models of the screens the gate draws; the rest of ui-core's models stay out of its entry. */
+const GATE_SCREENS: Partial<Record<ComponentName, Model>> = {
+  GraceBanner: graceBannerView,
+  Activate: activateView,
+  SignInHandoff: signInHandoffView,
+  Welcome: welcomeView,
+  StatusScreen: statusScreenView,
+};
+const viewOf = (component: ComponentName, input: UiInput): View =>
+  GATE_SCREENS[component]!(contextOf(input));
+
 /** The component the gate draws for its state and the sign-in step it is on. */
 function gateScreen(view: View, step: GateStep): ComponentName | null {
   switch (view.state) {
@@ -790,6 +810,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const lastFocus = useRef<View | null>(null);
   const kit = useKit(
     "PolarisKeyGate",
+    gateView,
     {
       ...props,
       input: driven ? sdk.input : props.input,
