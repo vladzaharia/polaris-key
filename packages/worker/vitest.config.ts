@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["test/**/*.test.ts", "src/**/*.test.ts"],
+    include: ["test/**/*.test.ts", "src/**/*.test.ts", "scripts/*.test.ts"],
     // I-30: empty OIDC client caches per test (test/setup/oidcClient.ts).
     setupFiles: ["test/setup/oidcClient.ts"],
     testTimeout: 20_000,
