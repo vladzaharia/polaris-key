@@ -88,13 +88,12 @@ export const KNOWN: Record<string, Record<string, string>> = {
       "PERMANENT: ST-32's refusal names the retired field and its replacement",
   },
   artifacts_access: {
-    "packages/worker/src/services/release/config.ts": "ST-25.2",
-    "packages/worker/src/services/release/ingest.ts": "ST-25.2",
-    "packages/worker/src/services/release/descriptor.ts": "ST-25.2",
-    "packages/worker/src/services/release/packs/ingest.ts": "ST-25.2",
-    "packages/worker/src/services/release/packages/ingest.ts": "ST-25.2",
-    "packages/worker/src/services/distribution/access.ts": "ST-25.2",
-    "packages/worker/src/services/identity/portal/api.ts": "ST-25.2",
+    "packages/worker/src/services/release/descriptor.ts":
+      "PERMANENT: the truth-store column release_metadata.artifacts_access / release_artifacts.access (CHECK-bound, D6)",
+    "packages/worker/src/services/release/packs/ingest.ts":
+      "PERMANENT: the truth-store column release_metadata.artifacts_access / release_artifacts.access (CHECK-bound, D6)",
+    "packages/worker/src/services/release/packages/ingest.ts":
+      "PERMANENT: the truth-store column release_metadata.artifacts_access / release_artifacts.access (CHECK-bound, D6)",
     "packages/worker/src/services/release/store.ts":
       "PERMANENT: the truth-store column release_metadata.artifacts_access / release_artifacts.access (CHECK-bound, D6)",
     "packages/worker/src/services/release/resolve.ts":

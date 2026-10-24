@@ -191,7 +191,6 @@ async function linkTo(db: Db, slug: string, owner: string, repo: string) {
       sparkleEd25519Pub: null,
       summaryMarker: "pkey:summary",
       metadataAccess: "public",
-      artifactsAccess: "public",
       accessSource: "manifest",
     }),
     {

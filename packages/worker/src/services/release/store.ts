@@ -65,6 +65,8 @@ import {
 } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
+import { deliveryAccessMode } from "../../core/deliveryAccess.js";
 import { archOf } from "./assets.js";
 import { assetSha256, type Release, type ReleaseAsset } from "./github.js";
 import {
@@ -86,11 +88,7 @@ import {
   versionFromTag,
   type ManualChannel,
 } from "./channels.js";
-import {
-  artifactPolicy,
-  artifactsAccessSnapshot,
-  type ReleaseConfigRow,
-} from "./config.js";
+import { artifactPolicy, type ReleaseConfigRow } from "./config.js";
 import {
   NEXT_SEQ_SQL,
   roleOfKind,
@@ -117,6 +115,8 @@ export interface StoreClassificationOptions {
    * so a new described release takes its `seq` in publication order like any other (P2-03).
    */
   describedRows?: ReadonlyMap<string, readonly DbStatement[]>;
+  /** The truth-store `access` value (`artifactsSnapshotAccess`); absent reads as `licensed`. */
+  artifactsAccess?: string;
 }
 
 // ── Row shapes ───────────────────────────────────────────────────────────────
@@ -477,6 +477,25 @@ export async function clearChannelFloor(
  */
 export function storeAccess(mode: ReleaseAccess): string {
   return mode === "entitled" ? "licensed" : mode;
+}
+
+/**
+ * The value the truth store's per-row `access` columns (`release_metadata.artifacts_access`,
+ * `release_artifacts.access`) are written with (ST-25.2, D6): Distribution's `dist_access` for the
+ * deliverable, read through the core `delivery` hook and mapped by `storeAccess`. A SNAPSHOT:
+ * nothing reads it for an access decision. Distribution off, or no row, is the strictest mode.
+ */
+export async function artifactsSnapshotAccess(
+  env: Env,
+  db: Db,
+  product: string,
+  deliverable: string,
+  now: number,
+): Promise<string> {
+  return storeAccess(
+    (await deliveryAccessMode(env, db, product, deliverable, now)) ??
+      "entitled",
+  );
 }
 
 /** Classify an asset by name: what a consumer is looking at, not what the uploader called it. */
@@ -922,7 +941,7 @@ export function releaseStoreStatements(
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
   const metadataAccess = storeAccess(policy.access.metadata);
-  const artifactsAccess = storeAccess(artifactsAccessSnapshot(cfg));
+  const artifactsAccess = opts.artifactsAccess ?? storeAccess("entitled");
   // Drafts are not published software. They are visible to the installation token and invisible
   // to everyone the portal serves, so ingesting them would list a release nobody can download.
   const published = releases.filter((r) => !r.draft);

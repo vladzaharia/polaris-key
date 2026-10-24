@@ -118,7 +118,6 @@ async function prepareCreate(
           ? JSON.stringify(rel.artifactPolicy)
           : null,
         metadataAccess: rel?.access.metadata ?? "public",
-        artifactsAccess: rel?.access.artifacts ?? "public",
         // Manifest-owned until an operator claims the modes. `operatorPolicyJson` is
         // deliberately absent: the operator-only artifact policy has no manifest spelling
         // (R6-03), so a freshly linked product starts on the fail-safe defaults.
@@ -251,15 +250,14 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
     // them, this matches no row: a manifest cannot express `entitled`, so without the guard every
     // push would silently downgrade an entitled product to the manifest's mode (default public).
     statements.push({
-      sql: `UPDATE release_config SET metadata_access = ?, artifacts_access = ?
+      sql: `UPDATE release_config SET metadata_access = ?
               WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'`,
-      params: [rel.access.metadata, rel.access.artifacts, slug],
+      params: [rel.access.metadata, slug],
     });
     if ((cfg.access_source ?? "manifest") === "manifest")
       syncedCfg = {
         ...syncedCfg,
         metadata_access: rel.access.metadata,
-        artifacts_access: rel.access.artifacts,
       };
     // One audit row per column this block actually changes: an unchanged manifest writes none,
     // and a push that swaps the binary name or sets, clears or replaces the update key leaves a
@@ -292,9 +290,8 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
           null,
           owned,
         );
-      // The artifacts mode is audited where it is written: Distribution's `dist_access` ingest
-      // emits `distribution.access` against the row it moves, not against the
-      // `release_config.artifacts_access` column nothing reads.
+      // The artifacts mode is Distribution's: its `dist_access` ingest writes and audits it
+      // (`distribution.access`); this block never touches it.
     }
     updated.push("release");
   }
@@ -388,7 +385,6 @@ async function prepareSystem(
       ? JSON.stringify(rel.artifactPolicy)
       : null,
     metadataAccess: rel.access.metadata,
-    artifactsAccess: rel.access.artifacts,
     accessSource: "manifest",
     stableTagPattern: rel.stableTagPattern,
     ignoreTagsJson: rel.ignoreTags.length
@@ -416,9 +412,7 @@ async function prepareSystem(
             stable_tag_pattern = excluded.stable_tag_pattern,
             ignore_tags_json = excluded.ignore_tags_json,
             metadata_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
-                                   THEN excluded.metadata_access ELSE release_config.metadata_access END,
-            artifacts_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
-                                    THEN excluded.artifacts_access ELSE release_config.artifacts_access END`,
+                                   THEN excluded.metadata_access ELSE release_config.metadata_access END`,
         params: config.params,
       },
       ...manifestDeliverableStatements(
@@ -512,7 +506,6 @@ export interface ReleaseConfigInput {
   manualChannelsJson?: string | null;
   artifactPolicyJson?: string | null;
   metadataAccess?: string;
-  artifactsAccess?: string;
   /** Owner of the two access modes (0022_b). A freshly linked row is manifest-owned. */
   accessSource?: "manifest" | "admin" | null;
   /** The operator-only artifact policy (0022_c). No manifest path supplies it; link leaves it NULL. */
@@ -527,9 +520,9 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
-            metadata_access, artifacts_access, access_source, operator_policy_json,
+            metadata_access, access_source, operator_policy_json,
             stable_tag_pattern, ignore_tags_json, release_keys_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -543,7 +536,6 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.summaryMarker,
       r.artifactPolicyJson ?? null,
       r.metadataAccess ?? "public",
-      r.artifactsAccess ?? "public",
       r.accessSource ?? null,
       r.operatorPolicyJson ?? null,
       r.stableTagPattern ?? null,

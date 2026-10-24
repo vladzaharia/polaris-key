@@ -33,12 +33,15 @@ import {
   isResolved,
   type ReleaseConfigRow,
 } from "./config.js";
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { floorRelease, installationToken } from "./gateway.js";
 import {
   listChannelFloors,
   listForeignDeliverableReleaseIds,
   listStoredReleaseIds,
+  artifactsSnapshotAccess,
   releaseStoreStatements,
+  storeAccess,
   type ReleaseChannelFloorRow,
 } from "./store.js";
 import { semverOfTag } from "./channels.js";
@@ -166,6 +169,18 @@ export async function releaseStoreSync(
       await heldFloorReleases(token, cfg, floors, listing.releases, fetchImpl),
     );
     const releases = appOnly(listing.releases);
+    // Read only when there are rows to write: a sync that lists nothing stays at the reads it
+    // always made.
+    const artifactsAccess =
+      releases.length + held.length > 0
+        ? await artifactsSnapshotAccess(
+            env,
+            db,
+            cfg.product,
+            APP_DELIVERABLE_ID,
+            now,
+          )
+        : storeAccess("entitled");
     const descriptors = await ingestGithubDescriptors(
       db,
       cfg,
@@ -175,6 +190,7 @@ export async function releaseStoreSync(
       app,
       now,
       fetchImpl,
+      artifactsAccess,
     );
     const statements = [
       ...releaseStoreStatements(
@@ -190,6 +206,7 @@ export async function releaseStoreSync(
           described: descriptors.described,
           refused: descriptors.refused,
           describedRows: descriptors.rows,
+          artifactsAccess,
         },
       ),
       ...descriptors.tail,

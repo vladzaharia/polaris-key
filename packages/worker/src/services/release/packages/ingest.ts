@@ -58,6 +58,7 @@ import { stmtEnqueuePackageRender } from "../../../core/registry/registryQueue.j
 import { parseManualChannels } from "../channels.js";
 import { getReleaseConfig } from "../config.js";
 import { NEXT_SEQ_SQL } from "../model.js";
+import { artifactsSnapshotAccess } from "../store.js";
 import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "../guard.js";
 import { readAppDeliverable } from "../descriptor.js";
 import { readPackDeliverableIds } from "../packs/deliverables.js";
@@ -484,6 +485,14 @@ export async function ingestPackageDescriptor(
   const publishedAt = d.publishedAt
     ? Math.floor(Date.parse(d.publishedAt) / 1000)
     : now;
+  // The truth-store snapshot of the deliverable's `dist_access` (ST-25.2, D6).
+  const artifactsAccess = await artifactsSnapshotAccess(
+    env,
+    db,
+    product,
+    d.deliverable,
+    now,
+  );
   const seqSql = d.seq === undefined ? NEXT_SEQ_SQL : "?";
   const seqParams = d.seq === undefined ? [product, d.deliverable] : [d.seq];
   // The head: the release row, only while nothing holds this version or id (and an explicit
@@ -495,7 +504,7 @@ export async function ingestPackageDescriptor(
               (product, release_id, version, title, notes, commit_sha, source_url,
                metadata_access, artifacts_access, published_at, metadata_json,
                created_at, modified_at, deliverable_id, seq, channel)
-            VALUES (?,?,?,?,?,?,NULL,'public','public',?,json_object('descriptor', json(?)),?,?,?,${seqSql},?)
+            VALUES (?,?,?,?,?,?,NULL,'public',?,?,json_object('descriptor', json(?)),?,?,?,${seqSql},?)
             ON CONFLICT(product, release_id) DO NOTHING`,
       params: [
         product,
@@ -504,6 +513,7 @@ export async function ingestPackageDescriptor(
         d.title ?? `${pkg.name} ${d.version}`,
         d.notes ?? null,
         d.provenance?.commit ?? null,
+        artifactsAccess,
         publishedAt,
         markerJson,
         now,
@@ -544,7 +554,7 @@ export async function ingestPackageDescriptor(
                size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
                metadata_json, created_at, build_id, role, locations_json)
             VALUES (?,?,?,?,'package',NULL,NULL,'application/octet-stream',?,?,NULL,?,NULL,
-                    'public',?,?,NULL,'payload',?)
+                    ?,?,?,NULL,'payload',?)
             ON CONFLICT(product, release_id, artifact_id) DO NOTHING`,
       params: [
         product,
@@ -554,6 +564,7 @@ export async function ingestPackageDescriptor(
         f.size,
         f.sha256,
         f.storageKey,
+        artifactsAccess,
         JSON.stringify({ packageFileType: f.type }),
         now,
         JSON.stringify(
