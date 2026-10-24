@@ -8,7 +8,7 @@ import { ACTION_KEYS, type Action, type View } from "@polaris-key/ui-core";
 
 import { isTitleKey, type Layout } from "./layout.js";
 
-import { stylesCss } from "./styles.js";
+import { desktopStylesCss, stylesCss, webStylesCss } from "./styles.js";
 
 export {
   LAYOUTS,
@@ -255,4 +255,14 @@ export function scopeCss(css: string, root = ".pk-root"): string {
  */
 export function lightDomCss(): string {
   return scopeCss(stylesCss());
+}
+
+/** `lightDomCss()` without the desktop chrome (UK-06): what a web page draws. */
+export function lightDomWebCss(): string {
+  return scopeCss(webStylesCss());
+}
+
+/** The desktop chrome's part of `lightDomCss()`, to adopt after `lightDomWebCss()`. */
+export function lightDomDesktopCss(): string {
+  return scopeCss(desktopStylesCss());
 }

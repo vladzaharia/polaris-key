@@ -13,14 +13,9 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 
-const union = (...lists: readonly (readonly string[])[]): string[] => [
-  ...new Set(lists.flat()),
-];
+import { patched, union } from "./adaptBase.js";
 
-/** The same view with `copy` and `decisions` replaced. */
-function patched(v: View, over: Partial<View>): View {
-  return { ...v, ...over, decisions: { ...v.decisions, ...over.decisions } };
-}
+export { adaptHandoff, HANDOFF_WAITING } from "./adaptBase.js";
 
 /** A pane whose transient state (rename, confirm, save, error) keeps its title and its rows. */
 export function adaptPane(view: View, input: UiInput): View {
@@ -84,18 +79,6 @@ export function adaptReplace(view: View): View {
     ),
   });
 }
-
-/** The code step: how long the code lasts and a Cancel to leave by. */
-export function adaptHandoff(view: View): View {
-  if (view.component !== "SignInHandoff" || view.state !== "code") return view;
-  const add: string[] = [];
-  if (view.args.time !== undefined) add.push("signin.handoff.expires");
-  add.push("common.cancel");
-  return patched(view, { copy: union(view.copy, add) });
-}
-
-/** What the code step says while it waits (a status, not the ticking countdown). */
-export const HANDOFF_WAITING = "cli.signin.waitingCode";
 
 export const ORIGIN_KEY: Readonly<Record<string, string>> = {
   store: "signin.choice.origin.store",
