@@ -27168,6 +27168,16 @@ async function flow(io, seams, deferred, mode) {
       mode.copy.unsupportedFix,
       "unsupported"
     );
+  if (startRes.status === 409 && mode.copy.unavailable) {
+    const err = (await jsonOf(startRes))["error"];
+    const code = typeof err === "string" ? err : err?.code;
+    if (code === "unavailable")
+      throw new Refusal(
+        mode.copy.unavailable[0],
+        mode.copy.unavailable[1],
+        "no-registry"
+      );
+  }
   if (startRes.status !== 201)
     throw new Failure(
       `${host} couldn't start a sign-in (HTTP ${startRes.status}).`,
@@ -27192,7 +27202,8 @@ async function flow(io, seams, deferred, mode) {
   );
   let interval = clampInterval(started["interval"], 3e3);
   const deadline = now() + expiresIn * 1e3;
-  const approveUrl = `${origin}${mode.approvePath(userCode)}`;
+  const served = mode.useServedApproveUrl ? servedApproveUrl(started["approveUrl"], origin, userCode) : null;
+  const approveUrl = served ?? `${origin}${mode.approvePath(userCode)}`;
   let heading;
   const remote = Boolean(io.env["SSH_CONNECTION"] || io.env["SSH_TTY"]);
   const mayOpen = !io.json && !io.noBrowser && !remote && hasDisplay(io.env, platform);
@@ -27503,6 +27514,15 @@ async function flow(io, seams, deferred, mode) {
       });
     finish();
     return settle(body, gap());
+  }
+}
+function servedApproveUrl(v, origin, code) {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    return u.origin === origin && u.pathname === "/approve" && u.search === `?code=${code}` && !u.hash && !u.username ? v : null;
+  } catch {
+    return null;
   }
 }
 function clampInterval(v, fallback) {
@@ -29992,6 +30012,10 @@ function cmdFeedsWrite(io, o) {
         fix: "Wait a few minutes, then run pkey feeds setup --write again."
       },
       unsupportedFix: "Check that this is your Polaris Key server.",
+      unavailable: [
+        "This Polaris Key server has no package registry.",
+        "Check --base-url."
+      ],
       tokenLimit: () => [
         [text("You already have the most personal tokens.")],
         [
@@ -30008,7 +30032,8 @@ function cmdFeedsWrite(io, o) {
       maybeApproved: "If you approved it, a token may exist: check Polaris Locker, under Packages."
     },
     // The Polaris Locker page that approves it, built from the origin pkey resolved.
-    approvePath: (code) => `/#/account/approve?code=${code}`,
+    approvePath: (code) => `/approve?code=${code}`,
+    useServedApproveUrl: true,
     warnAdminEnv: false,
     // The refusals come first: before the origin is resolved, so before any request.
     guard: () => guards(io, o),
@@ -30127,6 +30152,7 @@ async function apply(io, o, body, gap) {
     throw odd();
   }
   const hint2 = token.slice(-4);
+  const replaced = typeof body["replaced"] === "string" && /^[A-Za-z0-9_-]{4}$/.test(body["replaced"]) ? body["replaced"] : null;
   let plan;
   try {
     plan = userConfigPlan(feeds, { origin: registry, token });
@@ -30231,6 +30257,7 @@ async function apply(io, o, body, gap) {
           scope: "packages:read",
           ...label ? { label } : {},
           hint: hint2,
+          ...replaced ? { replaced } : {},
           expiresAt: new Date(expiresAt * 1e3).toISOString()
         },
         steps: outcomes.map((x) => ({
@@ -30319,7 +30346,12 @@ ${rowsText(
             text(
               label ? `${quote[0]}${label}${quote[1]} (pkeyp_${t.symbols.ellipsis}${hint2})` : `pkeyp_${t.symbols.ellipsis}${hint2}`,
               { unit: true }
-            )
+            ),
+            ...replaced ? [
+              text(` replaces ${t.symbols.ellipsis}${replaced}`, {
+                unit: true
+              })
+            ] : []
           ]
         ],
         ["Expires", [text(day(expiresAt, io.env), { unit: true })]]

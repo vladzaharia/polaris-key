@@ -272,6 +272,8 @@ export interface DeviceCopy {
   rateLimited: { message: string; fix: string };
   /** Where an unsupported server sends the person. */
   unsupportedFix: string;
+  /** A 409 `unavailable` at the start (no registry configured): the sentence and the fix. */
+  unavailable?: [string, string];
   /** The token limit: the sentences (the rerun line is added after them). */
   tokenLimit: (limit: string | undefined, origin: string) => Line[];
   /** What a 403 says: the sentence and the fix. */
@@ -292,6 +294,8 @@ export interface DeviceMode {
   title: string;
   /** Where the person approves, built from the resolved origin and the code. */
   approvePath: (code: string) => string;
+  /** Use the start answer's `approveUrl` when it is this origin's `/approve` for this code. */
+  useServedApproveUrl?: boolean;
   /** Runs before the start. `replaces` says an existing sign-in ends once this one is kept. */
   begin: () => Promise<{
     replaces: boolean;
@@ -562,6 +566,17 @@ async function flow(
       mode.copy.unsupportedFix,
       "unsupported",
     );
+  if (startRes.status === 409 && mode.copy.unavailable) {
+    const err = (await jsonOf(startRes))["error"];
+    const code =
+      typeof err === "string" ? err : (err as { code?: unknown } | null)?.code;
+    if (code === "unavailable")
+      throw new Refusal(
+        mode.copy.unavailable[0],
+        mode.copy.unavailable[1],
+        "no-registry",
+      );
+  }
   if (startRes.status !== 201)
     throw new Failure(
       `${host} couldn't start a sign-in (HTTP ${startRes.status}).`,
@@ -589,7 +604,10 @@ async function flow(
   let interval = clampInterval(started["interval"], 3_000);
   const deadline = now() + expiresIn * 1000;
   // Built here, from the origin pkey resolved: a server cannot send the person elsewhere.
-  const approveUrl = `${origin}${mode.approvePath(userCode)}`;
+  const served = mode.useServedApproveUrl
+    ? servedApproveUrl(started["approveUrl"], origin, userCode)
+    : null;
+  const approveUrl = served ?? `${origin}${mode.approvePath(userCode)}`;
   let heading: (() => void) | undefined;
 
   // 6. Show the code and the link; open the browser when allowed.
@@ -930,6 +948,27 @@ async function flow(
       });
     finish();
     return settle(body, gap());
+  }
+}
+
+/** The server's approve link, only when it is exactly this origin's /approve for this code. */
+function servedApproveUrl(
+  v: unknown,
+  origin: string,
+  code: string,
+): string | null {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    return u.origin === origin &&
+      u.pathname === "/approve" &&
+      u.search === `?code=${code}` &&
+      !u.hash &&
+      !u.username
+      ? v
+      : null;
+  } catch {
+    return null;
   }
 }
 

@@ -75,7 +75,7 @@ interface Call {
   body: unknown;
 }
 
-function server(poll: () => Response) {
+function server(poll: () => Response, approveUrl?: string) {
   const calls: Call[] = [];
   const f = (async (url: string, init: RequestInit) => {
     const headers = new Headers(init.headers);
@@ -89,7 +89,13 @@ function server(poll: () => Response) {
     if (u.pathname === "/api/device-login/start")
       return json(
         201,
-        { id: POLL, code: CODE, expiresIn: 300, interval: 3 },
+        {
+          id: POLL,
+          code: CODE,
+          expiresIn: 300,
+          interval: 3,
+          ...(approveUrl ? { approveUrl } : {}),
+        },
         {
           "set-cookie": `__Host-pkey_device_login=${COOKIE}; Path=/; Secure; HttpOnly; SameSite=Strict`,
         },
@@ -822,5 +828,79 @@ describe("pkey feeds setup --write: review fixes", () => {
       seams: s.seams,
     });
     expect(denied.err).toContain("was denied in Polaris Locker.");
+  });
+});
+
+describe("pkey feeds setup --write: the approve link", () => {
+  const link = async (served?: string) => {
+    const s = setup();
+    const r = await run(["--json"], {
+      f: server(() => json(200, { status: "denied" }), served).f,
+      home: s.home,
+      cwd: s.cwd,
+      seams: s.seams,
+    });
+    return JSON.parse(r.out.trim().split("\n")[0]!).url as string;
+  };
+  it("uses the Worker's /approve link, and builds the same one otherwise", async () => {
+    const mine = `${ORIGIN}/approve?code=${CODE}`;
+    expect(await link(mine)).toBe(mine);
+    expect(await link()).toBe(mine);
+  });
+  it("ignores a link that is another origin, path or code", async () => {
+    const mine = `${ORIGIN}/approve?code=${CODE}`;
+    expect(await link(`https://evil.example/approve?code=${CODE}`)).toBe(mine);
+    expect(await link(`${ORIGIN}/#/account/approve?code=${CODE}`)).toBe(mine);
+    expect(await link(`${ORIGIN}/approve?code=AAAA-BBBB`)).toBe(mine);
+  });
+});
+
+describe("pkey feeds setup --write: registry and replaced token", () => {
+  it("refuses a 409 unavailable at the start, before the browser opens", async () => {
+    const s = setup();
+    const opened: string[] = [];
+    const calls: string[] = [];
+    const f = (async (url: string) => {
+      calls.push(String(url));
+      return json(409, { error: "unavailable" });
+    }) as typeof fetch;
+    const r = await run([], {
+      f,
+      home: s.home,
+      cwd: s.cwd,
+      seams: s.seams,
+    });
+    expect(r.code).toBe(4);
+    expect(r.err).toContain("This Polaris Key server has no package registry.");
+    expect(calls).toHaveLength(1);
+    expect(opened).toEqual([]);
+    expect(readdirSync(s.home)).toEqual([]);
+  });
+
+  it("shows which token this one replaced", async () => {
+    const s = setup({ tools: ["npm"] });
+    const r = await run(["--owner", "acme"], {
+      f: server(() => approved({ replaced: "ab12" })).f,
+      home: s.home,
+      cwd: s.cwd,
+      seams: s.seams,
+    });
+    expect(r.out).toContain("(pkeyp_…h7Q2) replaces …ab12");
+    const j = await run(["--owner", "acme", "--json"], {
+      f: server(() => approved({ replaced: "ab12" })).f,
+      home: setup().home,
+      cwd: s.cwd,
+      seams: s.seams,
+    });
+    expect(JSON.parse(j.out.trim().split("\n").at(-1)!).token.replaced).toBe(
+      "ab12",
+    );
+    const none = await run(["--owner", "acme"], {
+      f: server(() => approved({ replaced: null })).f,
+      home: setup().home,
+      cwd: s.cwd,
+      seams: s.seams,
+    });
+    expect(none.out).not.toContain("replaces");
   });
 });

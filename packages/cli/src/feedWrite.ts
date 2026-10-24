@@ -667,6 +667,10 @@ export function cmdFeedsWrite(
         fix: "Wait a few minutes, then run pkey feeds setup --write again.",
       },
       unsupportedFix: "Check that this is your Polaris Key server.",
+      unavailable: [
+        "This Polaris Key server has no package registry.",
+        "Check --base-url.",
+      ],
       tokenLimit: () => [
         [text("You already have the most personal tokens.")],
         [
@@ -684,7 +688,8 @@ export function cmdFeedsWrite(
         "If you approved it, a token may exist: check Polaris Locker, under Packages.",
     },
     // The Polaris Locker page that approves it, built from the origin pkey resolved.
-    approvePath: (code) => `/#/account/approve?code=${code}`,
+    approvePath: (code) => `/approve?code=${code}`,
+    useServedApproveUrl: true,
     warnAdminEnv: false,
     // The refusals come first: before the origin is resolved, so before any request.
     guard: () => guards(io, o),
@@ -839,6 +844,12 @@ async function apply(
     throw odd();
   }
   const hint = token.slice(-4);
+  // The last four characters of the token this one replaced, when the server ended one.
+  const replaced =
+    typeof body["replaced"] === "string" &&
+    /^[A-Za-z0-9_-]{4}$/.test(body["replaced"])
+      ? body["replaced"]
+      : null;
   let plan;
   try {
     plan = userConfigPlan(feeds, { origin: registry, token });
@@ -953,6 +964,7 @@ async function apply(
           scope: "packages:read",
           ...(label ? { label } : {}),
           hint,
+          ...(replaced ? { replaced } : {}),
           expiresAt: new Date(expiresAt * 1000).toISOString(),
         },
         steps: outcomes.map((x) => ({
@@ -1054,6 +1066,13 @@ async function apply(
                 : `pkeyp_${t.symbols.ellipsis}${hint}`,
               { unit: true },
             ),
+            ...(replaced
+              ? [
+                  text(` replaces ${t.symbols.ellipsis}${replaced}`, {
+                    unit: true,
+                  }),
+                ]
+              : []),
           ],
         ],
         ["Expires", [text(day(expiresAt, io.env), { unit: true })]],
