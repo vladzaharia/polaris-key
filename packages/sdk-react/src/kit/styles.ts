@@ -4,15 +4,55 @@
 // `@polaris-key/react/styles.css` instead, so the first paint is already styled; adopting the same
 // rules again changes nothing.
 
-import { lightDomCss } from "./contract.js";
+import { lightDomWebCss } from "./contract.js";
 
 let css: string | null = null;
 let sheet: CSSStyleSheet | null = null;
 const done = new WeakSet<Document>();
 
-/** The light-DOM stylesheet's text (what `@polaris-key/react/styles.css` holds). */
+/** The light-DOM stylesheet's text a web page draws with: `@polaris-key/react/styles.css` without
+ *  the desktop chrome (Windows, GNOME and macOS rules), which `adoptDesktopStyles` adds on demand. */
 export function kitStylesCss(): string {
-  return (css ??= lightDomCss());
+  return (css ??= lightDomWebCss());
+}
+
+const desktopDone = new WeakSet<Document>();
+let desktopSheet: CSSStyleSheet | null = null;
+
+/** Whether `doc` has the desktop chrome's rules (or needs none: no constructable sheets, so the
+ *  host links `styles.css`, which has them). */
+export function hasDesktopStyles(doc: Document | undefined): boolean {
+  return !doc || desktopDone.has(doc);
+}
+
+/** Add the desktop chrome's sheet to `doc` after the web sheet (a later sheet wins at equal
+ *  specificity, as the rules did when they were one sheet). Resolves when it is in. */
+export function adoptDesktopStyles(doc: Document | undefined): Promise<void> {
+  if (!doc || desktopDone.has(doc)) return Promise.resolve();
+  return import("./desktopCss.js").then(
+    (m) => {
+      if (desktopDone.has(doc)) return;
+      desktopDone.add(doc);
+      if (
+        !("adoptedStyleSheets" in doc) ||
+        typeof CSSStyleSheet !== "function" ||
+        !("replaceSync" in CSSStyleSheet.prototype)
+      )
+        return;
+      try {
+        desktopSheet ??= new CSSStyleSheet();
+        if (desktopSheet.cssRules.length === 0)
+          desktopSheet.replaceSync(m.lightDomDesktopCss());
+        doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, desktopSheet];
+      } catch {
+        // A document of another realm: it links styles.css.
+      }
+    },
+    () => {
+      // Never arrives: the kit keeps the web chrome.
+      desktopDone.add(doc);
+    },
+  );
 }
 
 /** Put the kit's stylesheet in `doc` once, through `adoptedStyleSheets` only: never a `<style>`
