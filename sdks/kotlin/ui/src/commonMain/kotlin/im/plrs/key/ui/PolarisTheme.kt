@@ -327,7 +327,9 @@ private fun PolarisThemeResolved(
             val contrast = fluent && rememberThemeHostFacts()?.highContrast == true
             // macOS (UK-10.7): Mac scale type, and Increase Contrast draws full-contrast hairlines.
             val mac = autoPlatformVariant() == PolarisPlatformVariant.MacOS
-            val macContrast = mac && rememberMacHostFacts().highContrast
+            // GNOME (UK-10.11): the portal's `contrast` asks for full-contrast hairlines, as Increase Contrast does.
+            val gnomeContrast = autoPlatformVariant() == PolarisPlatformVariant.Gnome && rememberThemeHostFacts()?.highContrast == true
+            val macContrast = (mac && rememberMacHostFacts().highContrast) || gnomeContrast
             val scheme = remember(darkTheme, resolved, contrast, macContrast) {
                 if (contrast) {
                     windowsContrastScheme(darkTheme)

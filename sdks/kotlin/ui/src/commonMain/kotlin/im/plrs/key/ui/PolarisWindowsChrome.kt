@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -311,7 +312,8 @@ internal fun PolarisFluentButton(
         (contrast || kotlin.math.abs(accentText.luminance() - scheme.onSurface.luminance()) < 0.05f)
     Row(
         modifier = modifier
-            .height(PolarisFluent.controlHeight)
+            // A floor, not a fixed height: a larger font scale grows the control instead of cutting its label.
+            .heightIn(min = PolarisFluent.controlHeight)
             .clip(shape)
             .background(fillNow)
             .then(if (edge != null) Modifier.border(edge, shape) else Modifier)
@@ -339,8 +341,7 @@ internal fun PolarisFluentButton(
                 style = MaterialTheme.typography.labelLarge.copy(textDecoration = if (underline) TextDecoration.Underline else null),
                 color = content,
                 textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                // A label wraps (the control grows) rather than being cut: a narrow footer or a larger font scale.
             )
         }
     }
@@ -399,7 +400,7 @@ internal fun PolarisFluentTextField(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .height(PolarisFluent.controlHeight)
+                        .heightIn(min = PolarisFluent.controlHeight)
                         .clip(shape)
                         .background(fill)
                         .drawWithContent {
