@@ -918,12 +918,14 @@ jobs:
             sdks/kotlin/ui/build/outputs/roborazzi/
             sdks/kotlin/ui/build/reports/
 
-  # SP-52: a Release arm64 app must be at least 25% smaller than over the v0.8.33 SDK. Report
-  # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
-  # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
-  # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
-  # removed. Drop `continue-on-error` when SP-52's size target is met. It is its own job
-  # because it takes 9 minutes of Release builds and gates nothing.
+  # SP-52 / SP-52b: a Release arm64 app (the kit + client.update.decide(), tools/size-app) must be at
+  # least 25% smaller than the same app over the v0.8.33 SDK. The script rebuilds both trees on this
+  # runner's toolchain, so the CI figure is the acceptance; no number is recorded. Report only until it
+  # holds: at 2026-10-24 the tree is still LARGER (CI 3,348,956 B vs 3,109,960 B, +7.7%; target
+  # 2,332,470 B). The cuts are SP-52b.2-.5. With PKEY_FOOTPRINT_KEEP=<dir> the script keeps both
+  # archives and link maps and writes footprint.json (bytes per payload part, per module, per
+  # section). Drop `continue-on-error` and "report only" when the target holds. It is its own job
+  # because it takes 9 minutes of Release builds.
   apple-footprint:
     name: iOS app footprint (macos-26, report only)
     needs: changes
