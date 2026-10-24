@@ -1066,9 +1066,24 @@ export {
  * React gate's initial bundle stays under its size budget (SP-47). A key listed in
  * \`LAZY_EN_KEEP\` stays in the lean table because a web renderer draws it.
  */
-export const LAZY_EN_PREFIXES = ["core.codes.", "cli."] as const;
+export const LAZY_EN_PREFIXES = [
+  "core.codes.",
+  "cli.",
+  // The native Mac update window's and Mac sign-out's lines: no web renderer draws them.
+  "common.update",
+  "menu.signOut",
+  "menu.account",
+  "signin.signout.titleMac",
+  "signin.signout.releasedMac",
+  // The approve-a-device dialog is the portal's (admin reads the full table); no kit draws it.
+  "signin.approve.",
+] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   "cli.signin.waitingCode",
+  "common.updateCurrentNoSize",
+  "common.updateDownload",
+  "common.updateTimeMinutes",
+  "common.updateTimeLessThanMinute",
 ]);
 export const isLazyEnKey = (key: string): boolean =>
   LAZY_EN_PREFIXES.some((p) => key.startsWith(p)) && !LAZY_EN_KEEP.has(key);

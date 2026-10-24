@@ -1,17 +1,17 @@
 ── truecolor · 80 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
 [2m│[0m
-[32m✓[0m  [1mYou're up to date[0m
+[32m✓[0m  [1mYou’re up to date[0m
 [2m└[0m  [2mVersion 2.4.1[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
 [2m│[0m
-[32m✓[0m  [1mYou're up to date[0m
+[32m✓[0m  [1mYou’re up to date[0m
 [2m└[0m  [2mVersion 2.4.1[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · update
 │
-✓  [1mYou're up to date[0m
+✓  [1mYou’re up to date[0m
 └  Version 2.4.1
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
@@ -21,17 +21,17 @@
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
 [2m│[0m
-[32m✓[0m  [1mYou're up to date[0m
+[32m✓[0m  [1mYou’re up to date[0m
 [2m└[0m  [2mVersion 2.4.1[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
 [2m│[0m
-[32m✓[0m  [1mYou're up to date[0m
+[32m✓[0m  [1mYou’re up to date[0m
 [2m└[0m  [2mVersion 2.4.1[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · update
 │
-✓  [1mYou're up to date[0m
+✓  [1mYou’re up to date[0m
 └  Version 2.4.1
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
@@ -40,5 +40,5 @@
 [2m`[0m  [2mVersion 2.4.1[0m
 ── pipe · 80 ──
 Tidewater Studio · update
-You're up to date
+You’re up to date
 Version 2.4.1
