@@ -117,8 +117,8 @@ describe("api-check rule 1 (surface scanners)", () => {
       mutate(a);
     });
 
-  it("the real registry records the Node and Python surfaces and the rest are still empty (SP-35.8, .10)", () => {
-    expect(Object.keys(real().surfaces)).toEqual(["node", "python"]);
+  it("the real registry records the Node, React and Python surfaces and the rest are still empty (SP-35.8, .9, .10)", () => {
+    expect(Object.keys(real().surfaces)).toEqual(["node", "react", "python"]);
   });
 
   it("fails an unknown TypeScript verb; skips private, protected and _names", () => {

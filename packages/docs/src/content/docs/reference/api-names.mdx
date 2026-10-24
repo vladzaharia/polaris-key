@@ -29,19 +29,19 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.discover` | `client.discover` | — | `client.discover` | — | — | — | — |
 | `client.init` | `client.init` | — | `client.init` | — | — | — | — |
 | `client.portal` | `client.portal` | — | `client.portal` | — | — | — | — |
-| `client.presentation` | `client.presentation` | — | `client.presentation` | — | — | — | — |
+| `client.presentation` | `client.presentation` | `usePresentation` | `client.presentation` | — | — | — | — |
 | `client.presentationIcon` | `client.presentationIcon` | — | `client.presentation_icon` | — | — | — | — |
 | `client.presentationSource` | `client.presentationSource` | — | — | — | — | — | — |
 | `client.discovery` | `client.discovery` | — | `client.discovery` | — | — | — | — |
 | `client.servicesPinned` | `client.servicesPinned` | — | — | — | — | — | — |
 | `client.hasToken` | `client.hasToken` | — | — | — | — | — | — |
 | `client.ensureActivated` | `client.ensureActivated` | — | `client.ensure_activated` | — | — | — | — |
-| `client.capabilities` | `client.capabilities` | — | `client.capabilities` | — | — | — | — |
+| `client.capabilities` | `client.capabilities` | `useCapabilities` | `client.capabilities` | — | — | — | — |
 | `client.supports` | `client.supports` | — | `client.supports` | — | — | — | — |
 | `client.caps` | `client.caps` | — | `client.caps` | — | — | — | — |
 | `client.sync` | `client.sync` | — | `client.sync` | — | — | — | — |
 | `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | — | — | — | — |
-| `client.importBundle` | `client.importBundle` | — | `client.import_bundle` | — | — | — | — |
+| `client.importBundle` | `client.importBundle` | `useImportBundle` | `client.import_bundle` | — | — | — | — |
 | `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | — | — | — | — |
 | `client.status` | `client.status` | — | `client.status` | — | — | — | — |
 | `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | — | — | — | — |
@@ -68,6 +68,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
 | `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
 | `options.expectedServices` | `options.expectedServices` | `expectServices` (planned: SP-35) | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
+| `options.mode` | — | `options.mode` | — | — | — | — | — |
+| `options.bridge` | — | `options.bridge` | — | — | — | — | — |
+| `options.localOverrides` | — | `options.localOverrides` | — | — | — | — | — |
+| `options.version` | — | `options.version` | — | — | — | — | — |
+| `options.refreshIntervalSeconds` | — | `options.refreshIntervalSeconds` | — | — | — | — | — |
+| `options.store` | — | `options.store` | — | — | — | — | — |
+| `options.backend` | — | `options.backend` | — | — | — | — | — |
 
 ## config
 
@@ -109,7 +116,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `license.enroll` | `license.enroll` | — | `license.enroll` | — | — | — | — |
 | `license.deactivate` | `license.deactivate` | — | `license.deactivate` | — | — | — | — |
 | `license.getLicenseUser` | — | — | `license.get_license_user` | — | — | — | — |
-| `license.status` | `license.status` | — | `license.status` | — | — | — | — |
+| `license.status` | `license.status` | `useLicense` | `license.status` | — | — | — | — |
 | `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | — | — | — | — |
 
 ## entitlements
@@ -180,7 +187,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `release.fetch` | `release.fetch` | — | `release.fetch` | — | — | — | — |
-| `release.changelog` | `release.changelog` | — | `release.changelog` | — | — | — | — |
+| `release.changelog` | `release.changelog` | `useChangelog` | `release.changelog` | — | — | — | — |
 | `release.installUrl` | `release.installUrl` | — | `release.install_url` | — | — | — | — |
 | `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | — | — | — | — |
 
@@ -191,10 +198,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | — | — | — |
 | `update.decidable` | `update.decidable` | — | — | — | — | — | — |
 | `update.install` | `update.install` | — | `update.install` | — | — | — | — |
-| `update.check` | `update.check` | — | `update.check` | — | — | — | — |
+| `update.check` | `update.check` | `useLatestVersion` | `update.check` | — | — | — | — |
 | `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | — | — | — |
 | `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | — | — | — | — |
-| `update.decide` | `update.decide` | — | `update.decide` | — | — | — | — |
+| `update.decide` | `update.decide` | `useUpdateDecision` | `update.decide` | — | — | — | — |
 | `update.feed` | `update.feed` | — | `update.feed` | — | — | — | — |
 | `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | — | — | — | — |
 | `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | — | — | — | — |
@@ -255,6 +262,16 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `boot.runBoot` | `boot.runBoot` | — | `boot.run_boot` | — | — | — | — |
 | `boot.registrationOpen` | — | — | `boot.registration_open` | — | — | — | — |
 | `boot.ensureActivated` | `boot.ensureActivated` | — | `boot.ensure_activated` | — | — | — | — |
+
+## hooks
+
+| Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `hooks.usePolarisKey` | — | `usePolarisKey` | — | — | — | — | — |
+| `hooks.usePolarisAuth` | — | `usePolarisAuth` | — | — | — | — | — |
+| `hooks.useLicenseGate` | — | `useLicenseGate` | — | — | — | — | — |
+| `hooks.usePolarisFetch` | — | `usePolarisFetch` | — | — | — | — | — |
+| `hooks.screenFor` | — | `hooks.screenFor` | — | — | — | — | — |
 
 ## Removed in 0.9
 
