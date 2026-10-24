@@ -154,14 +154,6 @@
                 .system)
         }
 
-        func testGateLayoutIsCentredAtAComfortableWidth() {
-            // A readable column on iPad and macOS rather than edge to edge (the arrangement itself
-            // is KitLayoutTests').
-            XCTAssertLessThanOrEqual(PolarisGateLayout.cardMaxWidth, 480)
-            XCTAssertGreaterThanOrEqual(PolarisGateLayout.cardMaxWidth, 360)
-            XCTAssertGreaterThanOrEqual(PolarisGateLayout.pagePadding, 16)
-        }
-
         func testPaletteOverrideReplacesEveryColour() {
             var custom = PolarisPalette.brandLight
             custom.page = .white

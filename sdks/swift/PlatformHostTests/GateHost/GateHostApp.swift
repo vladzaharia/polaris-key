@@ -20,6 +20,7 @@
 import CryptoKit
 import Foundation
 import PolarisKey
+import PolarisKeyUICore
 import PolarisKeyUI
 import SwiftUI
 
@@ -161,13 +162,10 @@ struct ScenarioRoot: View {
             branding: branding, accent: accent, copy: PolarisCopy(productName: "Tidewater Studio"))
     }
 
-    private var options: GateOptions {
-        GateOptions(
-            offersOfflineActivation: defaults.bool(forKey: "pkOffline")
-                || GateOptions.defaultOffersOfflineActivation,
-            returnURL: "tidewater://activated",
-            renewURL: defaults.bool(forKey: "pkRenewURL") ? URL(string: "https://example.com/renew") : nil,
-            blockedAction: { _ in AnyView(Link("Contact support", destination: URL(string: "https://example.com/help")!)) })
+    private var options: KitGateOptions {
+        KitGateOptions(
+            offlineActivation: defaults.bool(forKey: "pkOffline")
+                || KitGateOptions().offlineActivation)
     }
 
     var body: some View {

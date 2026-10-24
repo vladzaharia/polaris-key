@@ -357,11 +357,11 @@
     },
     "ui.kit": {
       "status": "implemented",
-      "note": "UK-07: PolarisKeyUI on a pure-Swift presentation core (PolarisKeyUICore) for iOS and iPadOS 26 and macOS: PolarisLoginView, PolarisGate (update banner, sheet and progress; toasts), PolarisSignIn, PolarisOfflineActivation, boot stops (offline, blocked, declined, error, consent), account and licence, settings, devices and the update prompt, each laid out by the space it gets; the product leads (theme, the .polarisKeyPresentation seam, the bundle, a monogram); QR on TV only (D-67). Proof: PolarisKeyUICoreTests, KitLayoutTests (code and primary action on screen at iPhone, iPad and Mac sizes, Dynamic Type L and AX3, native and branded), the iPhone snapshot baselines with the accessibility audit, and KitRulesTests. BUILT UX review UXR-SWIFT plus one fix round (KX-SW-FIX)."
+      "note": "UK-07: PolarisKeyUI on a pure-Swift presentation core (PolarisKeyUICore) for iOS and iPadOS 26 and macOS: PolarisKeyGate (one gate; `.polarisKey(client)` and `.polarisKeyGate(client)` both draw it; update banner, sheet and progress; toasts), sign-in, offline activation, boot stops (offline, blocked, declined, error, consent), account and licence, settings, devices and the update prompt, each laid out by the space it gets; the product leads (theme, the .polarisKeyPresentation seam, the bundle, a monogram); QR on TV only (D-67). Proof: PolarisKeyUICoreTests, the iPhone snapshot baselines with the accessibility audit, and KitRulesTests. BUILT UX review UXR-SWIFT plus one fix round (KX-SW-FIX)."
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: PolarisLoginView shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
+      "note": "PX-W8: PolarisKeyGate shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
     },
     "ui.kit.account": {
       "status": "planned",

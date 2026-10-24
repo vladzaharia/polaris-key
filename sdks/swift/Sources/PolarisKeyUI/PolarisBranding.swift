@@ -3,10 +3,9 @@
 // Polaris Key look (the generated `PolarisBrand` tokens, bundled Rubik, the core violet or the
 // product presentation's accent) with one modifier:
 //
-//     PolarisLoginView(model: gate) { MyRoot() }
-//         .polarisKeyBranding(.polarisKey)
+//     MyRoot().polarisKey(client, theme: PolarisTheme(branding: .polarisKey))
 //
-// or per gate with `PolarisTheme(branding: .polarisKey)`. The "Powered by Polaris Locker" attribution is a
+// (the kit gate reads `branding` and `accent` of the legacy theme; `.polarisKeyTheme` is the full theme). The "Powered by Polaris Locker" attribution is a
 // separate opt-in (the kit theme's `poweredBy`, or `PolarisPoweredByAttribution` on your about and credits screens) and is off in both modes.
 
 import SwiftUI
