@@ -34,10 +34,10 @@ private const val PreviewShrink = 0.1f
 /**
  * Runs [onBack] when the person goes back, while [enabled]; returns the modifier that draws the
  * system gesture's preview on the screen that will go (identity below API 34 and when idle).
- * Apply it to the step's root: `modifier.then(polarisBack(enabled) { ... })`.
+ * This is the Android actual of PolarisBackHandler.
  */
 @Composable
-internal fun polarisBack(enabled: Boolean = true, onBack: () -> Unit): Modifier {
+internal fun androidBack(enabled: Boolean, onBack: () -> Unit): Modifier {
     val current by rememberUpdatedState(onBack)
     if (Build.VERSION.SDK_INT < PredictiveBackApi) {
         BackHandler(enabled = enabled) { current() }

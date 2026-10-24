@@ -10,7 +10,6 @@
 
 package im.plrs.key.ui
 
-import android.content.ClipData
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,9 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -314,9 +310,9 @@ public fun PolarisActivationScreen(
     val limit = refused as? ActivationResult.DeviceLimit
     // The QR code carries the key-free link: a code on a shared screen never holds the key.
     val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
+    val opener = rememberPolarisOpener()
     var noBrowser by rememberSaveable(manage) { mutableStateOf(false) }
     val keyFocus = remember { FocusRequester() }
     if (focusKey) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
@@ -332,8 +328,8 @@ public fun PolarisActivationScreen(
     val showKey = onSignIn == null || keyOpen || focusKey || ui.error != null
     // Back has somewhere to go (UI-KITS.md 1.4 Android): from the key path to the Welcome with the
     // draft kept, from the device-limit step to the key. The Welcome itself never consumes it.
-    val keyBack = polarisBack(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
-    val limitBack = polarisBack(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
+    val keyBack = PolarisBackHandler(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
+    val limitBack = PolarisBackHandler(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
     val keyField: @Composable () -> Unit = {
         PolarisTextField(
             value = ui.key,
@@ -389,7 +385,7 @@ public fun PolarisActivationScreen(
                 if (manageAsQr && manage != null) {
                     Spacer(Modifier.height(polarisWindow.section))
                     // The QR sits beside its sentence (the lede above), one group set apart from the next.
-                    PolarisQrCode(manage, copy.freeDeviceQrDescription, Modifier.size(polarisWindow.qrSize))
+                    PolarisQr(manage, copy.freeDeviceQrDescription, Modifier.size(polarisWindow.qrSize))
                     Spacer(Modifier.height(PolarisSpace.group))
                 }
             } else {
@@ -449,7 +445,7 @@ public fun PolarisActivationScreen(
             }
             if (replace) {
                 val openManage = {
-                    val opened = runCatching { (onOpenManage ?: uriHandler::openUri)(manage!!) }.isSuccess
+                    val opened = (if (onOpenManage != null) runCatching { onOpenManage(manage!!) }.isSuccess else opener(manage!!))
                     noBrowser = !opened
                 }
                 // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
@@ -468,7 +464,7 @@ public fun PolarisActivationScreen(
                         text = copy.signInCopyLink,
                         initialFocus = true,
                         onClick = {
-                            scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, manage))) }
+                            scope.launch { clipboard.setText(copy.signInCopyLink, manage) }
                             onCopied()
                         },
                     )

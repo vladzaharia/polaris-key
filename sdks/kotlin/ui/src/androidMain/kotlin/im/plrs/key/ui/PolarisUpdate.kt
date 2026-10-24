@@ -346,7 +346,7 @@ private fun PolarisSkipRow(content: @Composable () -> Unit) {
 private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
-    val uri = androidx.compose.ui.platform.LocalUriHandler.current
+    val opener = rememberPolarisOpener()
     val lines = ui.notes.take(PolarisUpdateUi.MAX_NOTES)
     if (lines.isEmpty() && ui.notesUrl == null) return
     Spacer(Modifier.height(16.dp))
@@ -365,7 +365,7 @@ private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
             Row(
                 Modifier
                     .heightIn(min = 48.dp)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { runCatching { uri.openUri(url) } },
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { opener(url) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.primary)
