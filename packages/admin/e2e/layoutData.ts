@@ -15,6 +15,7 @@ import type {
   PlatformStoreCredential,
 } from "../src/api.js";
 import { sha } from "../test/releaseFixture.js";
+import { workerFields } from "./workerFields.js";
 
 type Setting = Record<string, unknown>;
 
@@ -1595,7 +1596,7 @@ export const LICENSES = Array.from({ length: 240 }, (_, i) => ({
           batchId: null,
           keyEntries: null,
         }),
-}));
+})).map(workerFields);
 
 /** LX-30: two batches, one with a label at the 80-character limit. */
 export const BATCHES = [

@@ -213,8 +213,7 @@ export const channelRequirement = (id: string): NavRequirement =>
  * The nav's facts from a one-product read. The Worker lists a channel when it is in scope or the
  * team declared it (an out-of-scope declared one stays, flagged), so a listed channel stays and
  * an unlisted one is out. A product with no platform facts has an unknown scope, not an empty
- * one, and an older Worker that sends no `channels` has none: both leave the channels unset,
- * which shows every page as before.
+ * one: it leaves the channels unset, which shows every page as before.
  */
 export function navFeaturesOf(
   product: Pick<ProductDetail, "channels" | "platforms"> | null | undefined,

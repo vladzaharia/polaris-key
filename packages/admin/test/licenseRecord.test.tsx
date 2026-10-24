@@ -15,6 +15,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "../src/ui/toast.js";
+import { termsOnTier } from "../src/console/sections/license/components/shared.js";
 import { NONE, resetConsole, type Enablement } from "./consoleHarness.js";
 import {
   API,
@@ -1034,6 +1035,10 @@ describe("license record: device limit (LX-14a)", () => {
     deviceLimitSource: "license" as const,
     inheritedDeviceLimit: 5,
     inheritedDeviceLimitSource: "tier" as const,
+    terms: termsOnTier({ ...DETAIL, deviceLimit: 3 }, DETAIL.tier, TIERS, {
+      defaultDeviceLimit: 3,
+      defaultMaxOfflineDays: 14,
+    }),
   };
 
   it("shows the effective limit and its source in Limits and on the Devices tab", async () => {

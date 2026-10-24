@@ -129,8 +129,6 @@ export const licenseHolderMovesQuery = (slug: string, id: string) =>
   queryOptions({
     queryKey: qk.licenseHolderMoves(slug, id),
     queryFn: () => api.licenseHolderMoves(slug, id),
-    // An older Worker has no such route: no moves to undo, nothing to retry.
-    retry: false,
   });
 
 export const fingerprintPolicyQuery = (slug: string) =>

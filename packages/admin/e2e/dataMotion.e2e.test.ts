@@ -7,6 +7,7 @@ import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { atRest } from "./atRest.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The console's data surfaces in motion (notes/S-23 §6.1 list, status, meter, skeleton; MO-09), in
@@ -57,7 +58,7 @@ const LICENSES = Array.from({ length: 60 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
-}));
+})).map(workerFields);
 const ROUTES: Record<string, unknown> = {
   ...CORE_ROUTES,
   "/manage/api/products/djdl/license/licenses": { licenses: LICENSES },

@@ -4,6 +4,8 @@
  * `core.e2e.test.ts`.
  */
 
+import { workerFields } from "./workerFields.js";
+
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 
@@ -294,7 +296,7 @@ export const CORE_ROUTES: Record<string, unknown> = {
       minVersion: null,
       maxVersion: null,
       identityProvider: "manual",
-    })),
+    })).map(workerFields),
   },
   "/manage/api/products/djdl/devices/summary": {
     total: devices.length,

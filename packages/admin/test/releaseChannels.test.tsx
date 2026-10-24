@@ -66,6 +66,7 @@ const { ChannelsPage } =
 
 const PRODUCT: ProductDetail = {
   slug: SLUG,
+  manifestAuthoritative: { value: false, locked: false },
   name: "Diceroll",
   signingKid: "kid-2026",
   compatMin: "0.0.0",

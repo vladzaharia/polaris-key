@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { feedRoutes } from "../test/feedsFixture.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * Every overlay of the console under the Worker's real CSP (`style-src 'self'`, no inline style).
@@ -66,7 +67,7 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/license/licenses": { licenses: [] },
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
   // LX-14a: a licence record for the Device limit… sheet.
-  "/manage/api/products/djdl/license/licenses/lic_1": {
+  "/manage/api/products/djdl/license/licenses/lic_1": workerFields({
     id: "lic_1",
     name: "Ada Lovelace",
     email: "ada@x.io",
@@ -93,7 +94,7 @@ const ROUTES: Record<string, unknown> = {
     overrides: { config: {}, secrets: {}, entitlements: {} },
     keys: [],
     devices: [],
-  },
+  }),
   "/manage/api/products/djdl/config/profiles": { profiles: [] },
   "/manage/api/products/djdl/release/releases": { releases: [] },
   "/manage/api/platform/version": {

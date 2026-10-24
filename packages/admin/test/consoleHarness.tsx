@@ -78,6 +78,7 @@ export function productRow(
     defaultMaxOfflineDays: 14,
     defaultDeviceLimit: 3,
     adminGroup: null,
+    manifestAuthoritative: { value: false, locked: false },
     createdAt: 0,
     modifiedAt: 0,
     ...(services

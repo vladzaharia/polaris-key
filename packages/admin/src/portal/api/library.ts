@@ -39,15 +39,15 @@ export interface PortalLicenseSummary {
   activeKeyCount: number;
   deviceCount: number;
   entitlements: PortalEntitlement[];
-  /** PX-23: how it reached the person. Absent on an older Worker (the card then infers it). */
-  origin?: PortalLicenseOrigin | (string & {});
+  /** PX-23: how it reached the person. */
+  origin: PortalLicenseOrigin | (string & {});
   /** The store for `store-key` and `store` (`purchase.store`'s ids), else null. */
-  originStore?: string | null;
+  originStore: string | null;
   /**
    * PX-23: Remove from my library is offered (its key can bring it back: an active key, on a
-   * product that lets a key add a licence). Absent on an older Worker, which offers no Remove.
+   * product that lets a key add a licence).
    */
-  removable?: boolean;
+  removable: boolean;
 }
 
 export interface PortalKey {
@@ -376,26 +376,6 @@ function pathFrom(v: unknown): PortalObtainPath | null {
   };
 }
 
-/** A Worker before PS-04 sent no `paths`: its one reason and terms are the one path. */
-function legacyPath(reason: string, terms: PortalDiscoverTerms | null) {
-  const group = reason.startsWith("group:")
-    ? reason.slice("group:".length)
-    : null;
-  return {
-    kind:
-      reason === "free_with_account"
-        ? "auto_issue"
-        : group !== null
-          ? "group"
-          : reason,
-    detail: group,
-    label: null,
-    terms,
-    action: "add" as const,
-    reason,
-  };
-}
-
 function storeFrom(v: unknown): PortalStorefrontStore | null {
   if (!isObject(v)) return null;
   const url = strOrNull(v.url);
@@ -410,24 +390,18 @@ function storeFrom(v: unknown): PortalStorefrontStore | null {
 }
 
 /**
- * One offer as the portal shows it, from the Worker's answer (PS-04's additive shape, or PX-W10's
- * older one: no `cta`, no `paths`). `null` for an offer this build cannot show honestly: an
+ * One offer as the portal shows it, from the Worker's answer (PS-04's shape). `null` for an offer this build cannot show honestly: an
  * action it does not know (S-22's `buy`), or an Add with no path to say why (Q-6).
  */
 export function offerFromWire(raw: unknown): PortalDiscoverOffer | null {
   if (!isObject(raw) || typeof raw.product !== "string") return null;
-  const cta = raw.cta ?? "add";
+  const cta = raw.cta;
   if (cta !== "add" && cta !== "link") return null;
-  const reason = typeof raw.reason === "string" ? raw.reason : null;
   const terms = termsFrom(raw.offer);
   const paths =
-    cta === "link"
+    cta === "link" || !Array.isArray(raw.paths)
       ? []
-      : Array.isArray(raw.paths)
-        ? raw.paths.flatMap((p) => pathFrom(p) ?? [])
-        : reason !== null
-          ? [legacyPath(reason, terms)]
-          : [];
+      : raw.paths.flatMap((p) => pathFrom(p) ?? []);
   if (cta === "add" && paths.length === 0) return null;
   const stores = Array.isArray(raw.stores)
     ? raw.stores.flatMap((s) => storeFrom(s) ?? [])

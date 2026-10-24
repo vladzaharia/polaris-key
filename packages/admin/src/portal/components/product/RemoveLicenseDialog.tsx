@@ -35,7 +35,6 @@ export function RemoveLicenseDialog({
   license,
   detail,
   cloudSync,
-  store = null,
   onRemoved,
 }: {
   open: boolean;
@@ -47,8 +46,6 @@ export function RemoveLicenseDialog({
   detail?: PortalLicenseDetail;
   /** The product runs Cloud Sync (the product view's `services.sync`). */
   cloudSync: boolean;
-  /** The store of an active purchase on it (PX-W6), for an older Worker's origin. */
-  store?: string | null;
   /** After the Worker removed it; `others` is how many licences of the product remain. */
   onRemoved: (others: number) => void;
 }): React.ReactElement {
@@ -58,7 +55,6 @@ export function RemoveLicenseDialog({
   const named = Boolean((detail ?? license).email?.trim());
   const which = licenseOptionLabel(license, licenseStatus(license, now), {
     keys: detail?.id === license.id ? detail.keys : undefined,
-    store,
     developer: product.presentation.developer,
   });
   const consequences = [

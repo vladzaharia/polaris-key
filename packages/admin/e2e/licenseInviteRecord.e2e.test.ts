@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * LX-27c.5: a waiting licence's record and the Licenses list under the Worker's CSP, at 360, 390
@@ -28,7 +29,7 @@ function summary(
   id: string,
   over: Record<string, unknown>,
 ): Record<string, unknown> {
-  return {
+  return workerFields({
     id,
     name: "",
     email: "",
@@ -50,7 +51,7 @@ function summary(
     batchId: null,
     keyEntries: null,
     ...over,
-  };
+  });
 }
 const waiting = (id: string, name: string, over: Record<string, unknown>) =>
   summary(id, {

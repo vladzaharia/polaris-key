@@ -39,6 +39,7 @@ const STRICT: TrustPolicyDto = {
   mint: "attested",
   gatedDelivery: "basic",
   commerceClaim: "basic",
+  cloudSyncWrite: "basic",
   enforce: true,
   appAttest: { teamId: "ABCDE12345", environment: "production" },
   playIntegrity: null,

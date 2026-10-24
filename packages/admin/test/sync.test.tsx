@@ -58,6 +58,7 @@ const services = (sync: boolean): ProductDetail["services"] => ({
 
 const PRODUCT = (sync: boolean): ProductDetail => ({
   slug: "djdl",
+  manifestAuthoritative: { value: false, locked: false },
   name: "DJDL",
   signingKid: "kid-2026",
   releaseSource: "github",

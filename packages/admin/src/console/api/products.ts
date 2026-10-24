@@ -231,7 +231,7 @@ export interface ProductDetail {
    * break-glass claims only (a reason, at most 7 days). Locked on for the system product. Absent
    * from an older Worker.
    */
-  manifestAuthoritative?: { value: boolean; locked: boolean };
+  manifestAuthoritative: { value: boolean; locked: boolean };
   createdAt: number;
   modifiedAt: number;
 }

@@ -744,15 +744,6 @@ export function licenseOptionLabel(
     .join(" · ");
 }
 
-/** The store of the active purchase on licence `id` (`purchase.store`, PX-W6), or null. */
-export function storeFor(
-  view: PortalProduct | undefined,
-  id: string,
-): string | null {
-  const p = view?.licenses.find((l) => l.id === id)?.purchase;
-  return p && p.source === "store" ? (p.store ?? null) : null;
-}
-
 /**
  * The seat limit activation enforces on licence `id`: the product view's per-licence
  * `deviceLimit` (PX-W1), else the library's seats when `id` is the best licence; `null` when

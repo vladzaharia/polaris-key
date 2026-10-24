@@ -55,7 +55,7 @@ export function useHasLicenses(slug: string): boolean | null {
 
 /**
  * LX-27c.4 (L15): whether an invitation can reach this product's licences (Identity on and auto-link
- * on), and why not, from the same one-row page; `null` while unknown or from an older Worker. The
+ * on), and why not, from the same one-row page; `null` while unknown. The
  * wizard and the record read this one fact.
  */
 export function useInvitations(slug: string): {
@@ -259,49 +259,20 @@ export function deviceLimitFrom(
 /**
  * The device limit the Worker enforces on a licence, with its source. The Worker reports both
  * (`effectiveDeviceLimit`, `deviceLimitSource`: the licence's own limit, else the tier's, else a
- * `deviceLimit` entitlement, else the product default); a response without them (an older
- * Worker) falls back to the licence's own limit, else the tier's, else the product's.
+ * `deviceLimit` entitlement, else the product default).
  */
 export function seatLimitOf(
   license: Pick<
     LicenseSummary,
-    "tier" | "deviceLimit" | "effectiveDeviceLimit" | "deviceLimitSource"
+    "tier" | "effectiveDeviceLimit" | "deviceLimitSource"
   >,
   tiers: readonly TierSummary[],
-  productLimit: number | undefined,
 ): SeatLimit {
   const tier = license.tier
     ? tiers.find((t) => t.id === license.tier)
     : undefined;
-  let limit: number | undefined;
-  let source: DeviceLimitSource;
-  if (
-    license.effectiveDeviceLimit !== undefined &&
-    license.deviceLimitSource !== undefined
-  ) {
-    limit = license.effectiveDeviceLimit;
-    source = license.deviceLimitSource;
-  } else {
-    // An older Worker did not report it: resolve it here with the same resolver.
-    const terms = termsOf(
-      {
-        tier: license.tier,
-        deviceLimit: license.deviceLimit ?? null,
-        entitlementDeviceLimit: null,
-        maxOfflineDays: null,
-        channels: [],
-        minVersion: null,
-        maxVersion: null,
-      },
-      tier,
-      { defaultDeviceLimit: productLimit ?? 0, defaultMaxOfflineDays: 0 },
-    );
-    limit =
-      productLimit === undefined && terms.deviceLimit.source === "product"
-        ? undefined
-        : terms.deviceLimit.value;
-    source = terms.deviceLimit.source;
-  }
+  const limit = license.effectiveDeviceLimit;
+  const source = license.deviceLimitSource;
   return {
     limit: limit && limit > 0 ? limit : null,
     source,

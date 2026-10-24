@@ -152,7 +152,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   );
 
   const seatsOf = React.useCallback(
-    (l: LicenseSummary) => seatLimitOf(l, tiers, product?.defaultDeviceLimit),
+    (l: LicenseSummary) => seatLimitOf(l, tiers),
     [tiers, product?.defaultDeviceLimit],
   );
 

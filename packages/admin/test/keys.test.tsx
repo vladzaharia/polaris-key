@@ -46,6 +46,7 @@ const NOW = 1_800_000_000;
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {
     slug: "djdl",
+    manifestAuthoritative: { value: false, locked: false },
     name: "DJDL",
     signingKid: "djdl-a",
     jwksUrl: "/djdl/.well-known/jwks.json",

@@ -3,9 +3,7 @@
  *
  * A licence is **floating** (no account and no email: anyone with the key uses it) or
  * **assigned**, either **in an account** or **waiting** for the first account that verifies its
- * email. The Worker derives it (`holder`, S-24 D1); an older Worker without the member is read
- * from the licence's own email, which says assigned or floating but not whether it joined an
- * account. The words are S-24 §8.6's: "Floating · anyone with the key", "In an account",
+ * email. The Worker derives it (`holder`, S-24 D1). The words are S-24 §8.6's: "Floating · anyone with the key", "In an account",
  * "Waiting for ada@example.com". The console never says whether a waiting email has an account
  * (D4), and never "holder", "claim", "redeem" or "seat" in what an operator reads.
  *
@@ -49,18 +47,9 @@ export const HOLDER_STATE_LABELS: Record<HolderState, string> = {
   floating: "Floating",
 };
 
-/** The licence's holder: the Worker's, else read from its own email (an older Worker). */
-export function holderOf(
-  l: Pick<LicenseSummary, "holder" | "email" | "ownerSubject">,
-): LicenseHolder {
-  if (l.holder) return l.holder;
-  const email = l.email?.trim();
-  if (!email && !l.ownerSubject) return { kind: "floating" };
-  return {
-    kind: "assigned",
-    inAccount: Boolean(l.ownerSubject),
-    ...(email ? { email } : {}),
-  };
+/** The licence's holder, as the Worker derived it. */
+export function holderOf(l: Pick<LicenseSummary, "holder">): LicenseHolder {
+  return l.holder;
 }
 
 export function holderState(

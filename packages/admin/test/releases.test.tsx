@@ -61,6 +61,7 @@ const { ReleaseRecord } =
 
 const PRODUCT: ProductDetail = {
   slug: "djdl",
+  manifestAuthoritative: { value: false, locked: false },
   name: "DJDL",
   signingKid: "kid-2026",
   compatMin: "1.0.0",

@@ -1363,7 +1363,7 @@ function KeyStep({
     } catch (err) {
       const status = err instanceof PortalApiError ? err.status : 0;
       // A refusal the key itself earned (unknown, not a key, too many tries) is said under the
-      // field. Anything else (offline, a Worker error, an older Worker without the preview) must
+      // field. Anything else (offline, a Worker error) must
       // not strand the on-ramp: the key is carried through sign-in as it always was.
       if (status === 401 || status === 422 || status === 429)
         setRefused(claimVerdict({ status }, productLabel(check.slug)));

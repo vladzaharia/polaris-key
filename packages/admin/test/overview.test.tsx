@@ -79,6 +79,7 @@ function enablement(on: ServiceSlug[]) {
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {
     slug: "djdl",
+    manifestAuthoritative: { value: false, locked: false },
     name: "DJDL",
     signingKid: "djdl-a",
     signing: { kid: "djdl-a", publicKey: "PUBKEY-A" },

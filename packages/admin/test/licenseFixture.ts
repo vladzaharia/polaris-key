@@ -19,7 +19,11 @@ import {
   type Enablement,
   type FetchLog,
 } from "./consoleHarness.js";
+import { termsOnTier } from "../src/console/sections/license/components/shared.js";
 
+// The console harness's product defaults.
+const PRODUCT_DEVICE_LIMIT = 3;
+const PRODUCT_OFFLINE_DAYS = 14;
 export const API = "/manage/api/products/djdl";
 export const NOW_S = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
@@ -30,64 +34,6 @@ export const axe: ReturnType<typeof configureAxe> = configureAxe({
     "color-contrast": { enabled: false },
   },
 });
-
-export function summary(
-  id: string,
-  over: Partial<LicenseSummary> = {},
-): LicenseSummary {
-  return {
-    id,
-    name: id,
-    email: `${id}@example.com`,
-    status: "active",
-    activatedAt: NOW_S - 100 * DAY,
-    expiresAt: null,
-    keyCount: 1,
-    activeKeyCount: 1,
-    deviceCount: 1,
-    profile: null,
-    profiles: [],
-    tier: "pro",
-    channels: [],
-    minVersion: null,
-    maxVersion: null,
-    identityProvider: "manual",
-    ...over,
-  };
-}
-
-export const ADA = summary("lic_1", {
-  name: "Ada Lovelace",
-  email: "ada@x.io",
-  expiresAt: NOW_S + 300 * DAY,
-  keyCount: 2,
-  activeKeyCount: 1,
-  deviceCount: 2,
-  channels: ["stable", "beta"],
-  modifiedBy: "u1",
-  modifiedAt: NOW_S - 3600,
-  // LX-26: in an account (the Worker's derived holder).
-  holder: { kind: "assigned", inAccount: true, email: "ada@x.io" },
-  ownerSubject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
-  batchId: null,
-});
-
-export const LICENSES: LicenseSummary[] = [
-  ADA,
-  summary("lic_2", {
-    name: "Lab 3",
-    tier: "edu",
-    expiresAt: NOW_S + 4 * DAY,
-    identityProvider: "oidc",
-  }),
-  summary("lic_3", {
-    name: "Old seat",
-    tier: null,
-    expiresAt: NOW_S - 30 * DAY,
-    deviceCount: 0,
-  }),
-  summary("lic_4", { name: "Chargeback Ltd", status: "disabled" }),
-];
 
 export const PRO: TierSummary = {
   id: "pro",
@@ -134,6 +80,85 @@ export const DEFAULT_TIER: TierSummary = {
 };
 export const TIERS = [PRO, EDU, UNUSED];
 
+export function summary(
+  id: string,
+  over: Partial<LicenseSummary> = {},
+): LicenseSummary {
+  // The fields the Worker always sends: the limit it enforces, where that comes from, what
+  // "Use inherited limit" falls back to, and every term with its layer.
+  const tierId = "tier" in over ? (over.tier ?? null) : "pro";
+  const tier = tierId ? TIERS.find((t) => t.id === tierId) : undefined;
+  const inheritedDeviceLimit = tier?.policyDeviceLimit ?? PRODUCT_DEVICE_LIMIT;
+  const inheritedDeviceLimitSource =
+    tier?.policyDeviceLimit != null ? ("tier" as const) : ("product" as const);
+  const own = over.deviceLimit ?? null;
+  const base: Omit<LicenseSummary, "terms"> = {
+    id,
+    name: id,
+    email: `${id}@example.com`,
+    status: "active",
+    activatedAt: NOW_S - 100 * DAY,
+    expiresAt: null,
+    keyCount: 1,
+    activeKeyCount: 1,
+    deviceCount: 1,
+    profile: null,
+    profiles: [],
+    tier: "pro",
+    channels: [],
+    minVersion: null,
+    maxVersion: null,
+    identityProvider: "manual",
+    deletion: { allowed: true, reasons: [] },
+    holder: { kind: "assigned", inAccount: false, email: `${id}@example.com` },
+    effectiveDeviceLimit: own ?? inheritedDeviceLimit,
+    deviceLimitSource: own !== null ? "license" : inheritedDeviceLimitSource,
+    inheritedDeviceLimit,
+    inheritedDeviceLimitSource,
+    ...over,
+  };
+  return {
+    ...base,
+    terms: termsOnTier(base, base.tier, TIERS, {
+      defaultDeviceLimit: PRODUCT_DEVICE_LIMIT,
+      defaultMaxOfflineDays: PRODUCT_OFFLINE_DAYS,
+    }),
+  };
+}
+
+export const ADA = summary("lic_1", {
+  name: "Ada Lovelace",
+  email: "ada@x.io",
+  expiresAt: NOW_S + 300 * DAY,
+  keyCount: 2,
+  activeKeyCount: 1,
+  deviceCount: 2,
+  channels: ["stable", "beta"],
+  modifiedBy: "u1",
+  modifiedAt: NOW_S - 3600,
+  // LX-26: in an account (the Worker's derived holder).
+  holder: { kind: "assigned", inAccount: true, email: "ada@x.io" },
+  ownerSubject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+  batchId: null,
+});
+
+export const LICENSES: LicenseSummary[] = [
+  ADA,
+  summary("lic_2", {
+    name: "Lab 3",
+    tier: "edu",
+    expiresAt: NOW_S + 4 * DAY,
+    identityProvider: "oidc",
+  }),
+  summary("lic_3", {
+    name: "Old seat",
+    tier: null,
+    expiresAt: NOW_S - 30 * DAY,
+    deviceCount: 0,
+  }),
+  summary("lic_4", { name: "Chargeback Ltd", status: "disabled" }),
+];
+
 export const PROFILES = [
   { id: "base", name: "Base" },
   { id: "studio", name: "Studio" },
@@ -141,6 +166,12 @@ export const PROFILES = [
 
 export const DETAIL: LicenseDetail = {
   ...ADA,
+  seatDeviceCount: 2,
+  terms: termsOnTier({ ...ADA, maxOfflineDays: 14 }, ADA.tier, TIERS, {
+    defaultDeviceLimit: PRODUCT_DEVICE_LIMIT,
+    defaultMaxOfflineDays: PRODUCT_OFFLINE_DAYS,
+  }),
+  configOverrides: { owned: false, ownerSubject: null, signUpUrl: null },
   maxOfflineDays: 14,
   profiles: ["base", "studio"],
   overrides: {

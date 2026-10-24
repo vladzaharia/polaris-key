@@ -32,7 +32,6 @@ import {
   seatLimitFor,
   seatsFor,
   showsDeviceCount,
-  storeFor,
   tierName,
   withSeats,
 } from "../model/product.js";
@@ -148,8 +147,6 @@ function ProductBody({
   // best licence's.
   const seatLimit = seatLimitFor(product, view.data, selected.id);
   const showCount = showsDeviceCount(product, selected);
-  // The store of an active purchase on each licence (PX-W6): the origin names it with the key.
-  const storeOf = (id: string): string | null => storeFor(view.data, id);
   // Get it is in the nav only when its card is drawn (an ended license with nothing to download
   // has none): the nav never points at a section the page does not have.
   const getIt = useGetItShown(product, here);
@@ -293,7 +290,7 @@ function ProductBody({
     href.product(product.slug, s),
   );
   const devicesDetail = detail.data ? withSeats(detail.data, seats) : undefined;
-  // The product view is the seat source; an older Worker without it keeps the licence detail.
+  // The product view is the seat source; the licence detail answers until it arrives.
   const seatsPending = view.isPending && !view.error;
   const activeDevices =
     seats?.inUse ??
@@ -338,7 +335,6 @@ function ProductBody({
       onSelect={(id) =>
         setParams({ license: id === product.best.id ? null : id })
       }
-      storeOf={storeOf}
     />
   );
 
@@ -354,9 +350,7 @@ function ProductBody({
         action={action}
         headingRef={headingRef}
         // Only a licence its key can bring back (the Worker's `removable`, PX-23 review).
-        onRemove={
-          selected.removable === true ? () => setRemoving(true) : undefined
-        }
+        onRemove={selected.removable ? () => setRemoving(true) : undefined}
       />
       <RemoveLicenseDialog
         open={removing}
@@ -365,7 +359,6 @@ function ProductBody({
         license={selected}
         detail={detail.data}
         cloudSync={view.data?.services.sync === true}
-        store={storeOf(selected.id)}
         onRemoved={removed}
       />
       <SectionNav {...navProps} variant="pills" />

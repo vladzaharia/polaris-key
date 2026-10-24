@@ -70,24 +70,24 @@ export interface LicenseSummary {
   /** How the licence was minted: by an operator, a sign-in, or an auto-issue. */
   origin?: LicenseOrigin;
   /** Whether it may be deleted, and every reason it may not. */
-  deletion?: LicenseDeletion;
+  deletion: LicenseDeletion;
   modifiedBy?: string;
   modifiedAt?: number;
   /** LX-14a: the licence's own device limit; `null` inherits. */
   deviceLimit?: number | null;
   /** The limit the Worker enforces at the next activation (0: no limit), and its source. */
-  effectiveDeviceLimit?: number;
-  deviceLimitSource?: DeviceLimitSource;
+  effectiveDeviceLimit: number;
+  deviceLimitSource: DeviceLimitSource;
   /** What "Use inherited limit" falls back to: the tier's, an entitlement's or the product's. */
-  inheritedDeviceLimit?: number;
-  inheritedDeviceLimitSource?: Exclude<DeviceLimitSource, "license">;
+  inheritedDeviceLimit: number;
+  inheritedDeviceLimitSource: Exclude<DeviceLimitSource, "license">;
   /** LX-32: every limit with the layer it came from (the Worker's one resolver). */
-  terms?: LicenseTerms;
+  terms: LicenseTerms;
   /**
    * LX-26 (S-24 D1): floating or assigned, derived by the Worker from the licence's account and
-   * its own email. Absent from an older Worker: the console then derives it from `email`.
+   * its own email.
    */
-  holder?: LicenseHolder;
+  holder: LicenseHolder;
   /** PX-W17: the owner as this product sees them, `null` while floating or waiting. */
   ownerSubject?: string | null;
   /** LX-28: the batch the licence was created in, `null` for a licence created on its own. */
@@ -362,8 +362,7 @@ export interface FingerprintPolicyResponse {
 
 /**
  * What sits above a licence's overrides (U-03; worker `services/license/admin/licenses.ts`
- * `configOverridesView`). The licence layer is always read and always editable (U-27); an older
- * Worker also sent a `phase` and a `runNotBefore`, which this console ignores.
+ * `configOverridesView`). The licence layer is always read and always editable (U-27).
  */
 export interface LicenseConfigOverrides {
   /** An account owns the licence. An unowned licence has no account layer. */
@@ -379,10 +378,10 @@ export interface LicenseDetail extends LicenseSummary {
   maxOfflineDays?: number | null;
   /** LX-14a: the devices holding a seat, with the dormancy cutoff the seat check and the
    *  PATCH's `overLimit` apply (a dormant device's seat is reclaimed at the next activation). */
-  seatDeviceCount?: number;
+  seatDeviceCount: number;
   overrides: RedactedPayload;
-  /** U-03. Absent from an older Worker, which reads as an unowned licence. */
-  configOverrides?: LicenseConfigOverrides;
+  /** U-03. */
+  configOverrides: LicenseConfigOverrides;
   keys: KeyDto[];
   devices: DeviceDto[];
 }
@@ -491,7 +490,7 @@ export interface TierSummary {
   /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
   source?: "manifest" | "console";
   /** LX-33.7: the product's Default tier (used when a license names no tier). Its limits follow
-   *  the product's license defaults and it cannot be deleted. Absent on an older Worker. */
+   *  the product's license defaults and it cannot be deleted. */
   implicit?: boolean;
 }
 

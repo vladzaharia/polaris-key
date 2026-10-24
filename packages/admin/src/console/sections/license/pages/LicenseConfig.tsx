@@ -125,17 +125,10 @@ export function resolveInherited(
   return out;
 }
 
-/** An older Worker sent no `configOverrides`: read it as an unowned licence with no offer. */
-const UNOWNED: LicenseConfigOverrides = {
-  owned: false,
-  ownerSubject: null,
-  signUpUrl: null,
-};
-
 export function configOverridesOf(
   license: LicenseDetail,
 ): LicenseConfigOverrides {
-  return license.configOverrides ?? UNOWNED;
+  return license.configOverrides;
 }
 
 /** The portal link the operator can send the customer: shown as text, with a copy button. */

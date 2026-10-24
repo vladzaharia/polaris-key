@@ -1,9 +1,8 @@
 /**
  * The portal client and the storefront's shapes (PS-04's API, PS-05's UI): `GET /api/discover`
  * and `GET /api/library` carry open products, link-only listings and library entries, and the
- * client hands every one of them to the pages (PS-04's interim filter is gone). An answer from a
- * Worker before PS-04 (no `cta`, no `paths`) still reads, and an offer this build cannot show
- * honestly (an action it does not know, an Add with no reason) is left out.
+ * client hands every one of them to the pages (PS-04's interim filter is gone). An offer this
+ * build cannot show honestly (an action it does not know, an Add with no reason) is left out.
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -51,14 +50,6 @@ describe("the portal client and the storefront's shapes", () => {
     mockFetch({
       "GET /api/discover": {
         offers: [
-          // A Worker before PS-04: no `cta`, no `paths`; its reason and terms are the one path.
-          {
-            ...PRESENTATION,
-            product: "old",
-            name: "Old",
-            offer: TERMS,
-            reason: "group:beta",
-          },
           {
             ...PRESENTATION,
             product: "moss",
@@ -126,24 +117,8 @@ describe("the portal client and the storefront's shapes", () => {
       },
     });
     const { offers } = await portalApi.discover();
-    expect(offers.map((o) => o.product)).toEqual([
-      "old",
-      "moss",
-      "open",
-      "teaser",
-    ]);
-    const [old, moss, open, teaser] = offers;
-    expect(old!.cta).toBe("add");
-    expect(old!.paths).toEqual([
-      {
-        kind: "group",
-        detail: "beta",
-        label: null,
-        terms: TERMS,
-        action: "add",
-        reason: "group:beta",
-      },
-    ]);
+    expect(offers.map((o) => o.product)).toEqual(["moss", "open", "teaser"]);
+    const [moss, open, teaser] = offers;
     expect(moss!.paths.map((p) => p.kind)).toEqual(["auto_issue", "open"]);
     expect(moss!.shortDescription).toBe("A garden");
     expect(moss!.offer).toEqual(TERMS);

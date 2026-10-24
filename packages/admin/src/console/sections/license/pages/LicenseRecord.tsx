@@ -206,7 +206,7 @@ function LicenseRecordBody({
   );
   // PX-W9: a licence with no account counts the devices that entered its key (Identity on).
   const keyEntries = inAccount ? null : (license.keyEntries ?? null);
-  const seats = seatLimitOf(license, tiers, product?.defaultDeviceLimit);
+  const seats = seatLimitOf(license, tiers);
   const { limit } = seats;
   const activeKeys = license.keys.filter((k) => k.status === "active").length;
   const configOn = product?.services?.config?.enabled ?? true;
@@ -542,7 +542,6 @@ function LicenseRecordBody({
         slug={slug}
         license={license}
         tiers={tiers}
-        productLimit={product?.defaultDeviceLimit}
         open={dialog === "deviceLimit"}
         onOpenChange={(o) => setDialog(o ? "deviceLimit" : null)}
       />

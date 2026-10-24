@@ -54,7 +54,6 @@ export function LicenseCard({
   onRetry,
   selectedId,
   onSelect,
-  storeOf = () => null,
 }: {
   product: LibraryProduct;
   detail: PortalLicenseDetail | undefined;
@@ -63,8 +62,6 @@ export function LicenseCard({
   onRetry: () => void;
   selectedId: string;
   onSelect: (id: string) => void;
-  /** The store of an active purchase on a licence (PX-W6), or null. */
-  storeOf?: (id: string) => string | null;
 }): React.ReactElement {
   const now = Math.floor(Date.now() / 1000);
   const switcherId = React.useId();
@@ -122,7 +119,6 @@ export function LicenseCard({
             {product.licenses.map((l) => (
               <option key={l.id} value={l.id}>
                 {licenseOptionLabel(l, licenseStatus(l, now), {
-                  store: storeOf(l.id),
                   keys: l.id === detail?.id ? detail.keys : undefined,
                   developer: product.presentation.developer,
                 })}
@@ -153,12 +149,7 @@ export function LicenseCard({
           className="border-0 p-0 shadow-none"
         />
       ) : (
-        <LicenseFacts
-          product={product}
-          detail={detail}
-          now={now}
-          store={storeOf(detail.id)}
-        />
+        <LicenseFacts product={product} detail={detail} now={now} />
       )}
     </SectionCard>
   );
@@ -186,17 +177,14 @@ function LicenseFacts({
   product,
   detail,
   now,
-  store,
 }: {
   product: LibraryProduct;
   detail: PortalLicenseDetail;
   now: number;
-  store: string | null;
 }): React.ReactElement {
   const status = statusOf(product, detail, now);
   const origin = licenseOrigin(detail, {
     keys: detail.keys,
-    store,
     developer: product.presentation.developer,
   });
   const key = detail.keys.find((k) => k.status === "active") ?? detail.keys[0];

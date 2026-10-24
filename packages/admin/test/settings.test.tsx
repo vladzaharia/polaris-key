@@ -39,6 +39,7 @@ const { SettingsPage } =
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {
     slug: "djdl",
+    manifestAuthoritative: { value: false, locked: false },
     name: "DJDL",
     signingKid: "k",
     releaseSource: "github",
