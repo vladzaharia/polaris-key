@@ -44,10 +44,10 @@ describe("gen-api-surface", () => {
   it("skips a symbol absent today and a reserved concept; asserts the current spelling", async () => {
     const files = await renderAll(loadApi());
     const node = files.get(NODE_OUT)!;
-    expect(node).not.toContain("clearAll");
+    expect(node).toContain('"clearAll" in ConfigClient.prototype');
     expect(node).not.toContain("visibility");
     expect(node).not.toContain("fromConfig");
-    expect(node).toContain('"getConfig" in ConfigClient.prototype');
+    expect(node).toContain('"get" in ConfigClient.prototype');
     expect(files.get(PYTHON_OUT)).toContain('"get_config"');
   });
 

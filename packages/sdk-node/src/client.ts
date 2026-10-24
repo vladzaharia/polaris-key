@@ -669,10 +669,6 @@ export class PolarisKeyClient {
     return this.license.isLicensed(now);
   }
 
-  getConfig<T = JSONValue>(key: string, fallback: T): T {
-    return this.config.getConfig(key, fallback);
-  }
-
   getCurrentDevice(): DeviceInfo {
     const out: DeviceInfo = {
       id: this.core.deviceId,

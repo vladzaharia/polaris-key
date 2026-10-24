@@ -404,7 +404,7 @@ export function createFixtureClient(o: FixtureOptions = {}): PolarisKeyClient {
         if (key in saved.config) return "local";
         return s ? "remote-default" : "fallback";
       },
-      getConfig: (key: string, fallback: unknown) =>
+      get: (key: string, fallback: unknown) =>
         settings().find((e) => e.key === key)?.value ?? fallback,
       getSecret: () => null,
       async set(key: string, value: unknown) {

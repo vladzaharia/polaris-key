@@ -266,7 +266,7 @@ describe("R4-01: unauthenticated offline cache", () => {
     // No secret injection: the SDK's config-delivery channel now only carries values that
     // arrived inside a signature the pinned key produced.
     expect(client.config.getSecret("beatport.apiKey")).toBeNull();
-    expect(client.getConfig("quality.floor", "mp3")).toBe("mp3");
+    expect(client.config.get("quality.floor", "mp3")).toBe("mp3");
     expect(client.license.getProfile()).toBeNull();
     client.close();
   });

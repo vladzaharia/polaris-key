@@ -505,8 +505,8 @@ describe("the config-only product flow (D-08)", () => {
     expect(m.calls.filter((p) => p.includes("/license/"))).toEqual([]);
 
     // The document resolved through the config service's own accessors…
-    expect(client.config.getConfig("quality.floor", "mp3")).toBe("flac");
-    expect(client.getConfig("quality.floor", "mp3")).toBe("flac");
+    expect(client.config.get("quality.floor", "mp3")).toBe("flac");
+    expect(client.config.get("quality.floor", "mp3")).toBe("flac");
     expect(client.config.schemaVersion()).toBe(4);
 
     // …and the license gate reports "there is no license here", usably.
