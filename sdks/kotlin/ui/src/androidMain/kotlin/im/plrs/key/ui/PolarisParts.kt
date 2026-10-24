@@ -9,7 +9,6 @@
 
 package im.plrs.key.ui
 
-import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,8 +40,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -559,7 +556,7 @@ public fun PolarisAbout(
     val catalog = KitCopy.bundled
     val locale = kitLocale()
     val copy = PolarisTheme.copy
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
     val name = productName(copy)
@@ -577,7 +574,7 @@ public fun PolarisAbout(
                 onLicenses?.let { Triple(catalog.format("about.licenses", locale), true, it) },
                 Triple(catalog.format("about.copyDiagnostics", locale), false) {
                     val text = redactDiagnostics(info.diagnostics)
-                    scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(catalog.format("about.copyDiagnostics", locale), text))) }
+                    scope.launch { clipboard.setText(catalog.format("about.copyDiagnostics", locale), text) }
                     copied = true
                     onCopied(text)
                 },

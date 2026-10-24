@@ -144,10 +144,3 @@ internal val LocalPolarisTextAlign = staticCompositionLocalOf { TextAlign.Center
 internal val polarisWindow: PolarisWindow
     @Composable @ReadOnlyComposable
     get() = LocalPolarisWindow.current
-
-/** True on Android TV (the configuration's UI mode type). */
-@Composable
-@ReadOnlyComposable
-internal fun isTelevision(): Boolean =
-    (androidx.compose.ui.platform.LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK) ==
-        Configuration.UI_MODE_TYPE_TELEVISION

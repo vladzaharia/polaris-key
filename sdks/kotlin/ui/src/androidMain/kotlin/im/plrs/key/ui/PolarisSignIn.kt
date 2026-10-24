@@ -14,7 +14,6 @@
 
 package im.plrs.key.ui
 
-import android.content.ClipData
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -54,9 +53,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -252,26 +248,26 @@ private fun PolarisCodeView(
 ) {
     val copy = PolarisTheme.copy
     val theme = PolarisTheme.current
-    val uriHandler = LocalUriHandler.current
+    val opener = rememberPolarisOpener()
     val link = ui.prompt.verificationUriComplete
     val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.prompt.verificationUri)
     var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
     // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
     val linkOk = isSafeSignInLink(link)
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val clipScope = rememberCoroutineScope()
     val copyLink: () -> Unit = copyLink@{
         // Only a validated link is ever copied.
         if (!linkOk) return@copyLink
         if (onCopyLink != null) onCopyLink(link)
-        else clipScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+        else clipScope.launch { clipboard.setText(copy.signInCopyLink, link) }
     }
     val open: () -> Unit = {
-        val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
+        val opened = linkOk && (if (onOpenBrowser != null) runCatching { onOpenBrowser(link) }.isSuccess else opener(link))
         noBrowser = !opened
     }
     // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
-    val back = polarisBack(onBack = onCancel)
+    val back = PolarisBackHandler(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val view = LocalView.current
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
@@ -363,16 +359,11 @@ private fun PolarisCodeView(
     )
 }
 
-/** The longest link the screen opens or encodes (a QR code holds more, but nothing legitimate is longer). */
-internal const val MAX_SIGN_IN_LINK: Int = 2048
+/** The longest link the screen opens or encodes. */
+internal const val MAX_SIGN_IN_LINK: Int = MAX_LINK_LENGTH
 
-/** An https link of at most [MAX_SIGN_IN_LINK] characters with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
-internal fun isSafeSignInLink(raw: String): Boolean = try {
-    val u = URI(raw)
-    raw.length <= MAX_SIGN_IN_LINK && u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
-} catch (e: Exception) {
-    false
-}
+/** An https link the opener accepts ([isSafeHttpsLink]): the only kind the sign-in screen opens, encodes or copies. */
+internal fun isSafeSignInLink(raw: String): Boolean = isSafeHttpsLink(raw)
 
 /** A lede template (`%1$s` for the address) with the address set inline at 600 weight, unbroken. */
 @Composable
@@ -485,7 +476,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
 @Composable
 internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?) {
     val copy = PolarisTheme.copy
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) {
@@ -500,7 +491,7 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
             if (onCopyLink != null) {
                 onCopyLink(link)
             } else {
-                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+                scope.launch { clipboard.setText(copy.signInCopyLink, link) }
             }
             copied = true
         },

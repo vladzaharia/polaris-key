@@ -177,7 +177,7 @@ public fun PolarisDevicesScreen(
     val reopened = (failed as? PolarisDeviceActionError.Rename)?.takeIf { renaming == null && ui.busyId == null }
     val renameId = renaming ?: reopened?.deviceId
     // Back closes an open rename or confirm first, as Cancel does (UI-KITS.md DL9).
-    val back = polarisBack(enabled = renameId != null || removing != null) {
+    val back = PolarisBackHandler(enabled = renameId != null || removing != null) {
         if (renameId != null && reopened != null) onDismissError()
         renaming = null
         removing = null
