@@ -7,7 +7,7 @@ import { outOfRange } from "./settings.js";
 import { html, nothing, svg, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
-import { styleMap } from "lit/directives/style-map.js";
+import { ref } from "lit/directives/ref.js";
 import {
   countdown,
   renewTarget,
@@ -566,7 +566,12 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     aria-valuenow=${pct}
     aria-label=${ifDefined(label)}
     data-key=${ifDefined(named ? "a11y.progress" : undefined)}
-    style=${styleMap({ "--pk-fraction": String(pct / 100) })}
+    ${ref((el) =>
+      (el as HTMLElement | undefined)?.style.setProperty(
+        "--pk-fraction",
+        String(pct / 100),
+      ),
+    )}
   >
     <span></span>
   </div>`;

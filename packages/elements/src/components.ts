@@ -119,7 +119,12 @@ export class PkGate extends PkElement {
     this.binding.detach();
   }
 
+  /** Whether focus sat inside the gate's own screens before this update (see `updated`). */
+  private hadFocus = false;
+  private lastState: string | null = null;
+
   protected override willUpdate(changed: PropertyValues): void {
+    this.hadFocus = this.matches(":focus-within");
     const before = this.binding.driver;
     this.binding.sync(
       this.driven ? this.config : undefined,
@@ -223,10 +228,38 @@ export class PkGate extends PkElement {
     return this.snapshot?.step ?? "home";
   }
 
+  /** The gate opens (UI-KITS "never lost across async work"): the screen that held focus is
+   *  gone, so focus goes to the app's first focusable, else to the host. Only when focus was in
+   *  the gate's own screens: an already-open gate on first render, or a person working elsewhere,
+   *  keeps theirs. */
+  private focusApp(): void {
+    const state = this.view.state;
+    const was = this.lastState;
+    this.lastState = state;
+    if (
+      !this.hadFocus ||
+      was === null ||
+      was === state ||
+      !this.fillsWindow(was) ||
+      this.fillsWindow(state)
+    )
+      return;
+    const first = this.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (first) {
+      first.focus({ preventScroll: true });
+      return;
+    }
+    if (!this.hasAttribute("tabindex")) this.tabIndex = -1;
+    this.focus({ preventScroll: true });
+  }
+
   /** Focus follows the step (DL9): a new screen takes its own target; Back returns to the
    *  control that opened the step. */
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
+    this.focusApp();
     const step = this.driven ? this.step : "home";
     if (step === this.lastStep) return;
     this.lastStep = step;

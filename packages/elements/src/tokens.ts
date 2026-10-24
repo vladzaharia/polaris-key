@@ -25,6 +25,19 @@ export const decl = (vars: Record<string, string | number>) =>
     .map(([k, v]) => `  ${k}: ${v};`)
     .join("\n");
 
+/** The shape tokens a host sets once on `<pk-provider>` (UI-KITS §3.2). A custom property that
+ *  only inherits loses to the `:host` declaration, so the host's value comes in under a second
+ *  name, `--pk-provider-<name>`, which `:host` reads as the default's override. */
+const PROVIDED =
+  /^--pk-(font-|radius-|kit-radius-|kit-control-height|kit-card-pad|kit-focus-)/;
+
+function providable(vars: Record<string, string | number>) {
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(vars))
+    out[k] = PROVIDED.test(k) ? `var(--pk-provider-${k.slice(5)}, ${v})` : v;
+  return out;
+}
+
 function scales(): Record<string, string | number> {
   const out: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(SPACE))
@@ -112,7 +125,7 @@ export function rgba(hex: string, alpha: number): string {
  *  variants' blocks on the kit root's `[data-pk-platform]`. */
 export function tokenCss(withPlatform = true): string {
   return [
-    `:host {\n${decl(scales())}\n}`,
+    `:host {\n${decl(providable(scales()))}\n}`,
     `[data-theme="dark"] {\n  color-scheme: dark;\n${decl(colours("dark"))}\n}`,
     `[data-theme="light"] {\n  color-scheme: light;\n${decl(colours("light"))}\n}`,
     ...(withPlatform ? [platformTokenCss()] : []),

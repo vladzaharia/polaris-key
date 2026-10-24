@@ -291,12 +291,12 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="short"] .stage[data-split] .panel-icon {
   display: contents;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"] .icon,
-.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"] .icon {
+.pk-root[data-shape="landscape"] .stage[data-split] .identity .icon,
+.pk-root[data-shape="short"] .stage[data-split] .identity .icon {
   display: none;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)),
-.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)) {
+.pk-root[data-shape="landscape"] .stage[data-split] .identity:not(:has(.name)):not(:has(.by)),
+.pk-root[data-shape="short"] .stage[data-split] .identity:not(:has(.name)):not(:has(.by)) {
   display: none;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .actions,
@@ -1205,8 +1205,19 @@ bdi {
   flex-direction: row;
   gap: var(--pk-space-2);
 }
+.banner .actions {
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
 .banner .actions .btn {
   inline-size: auto;
+  /* Wrapped (large text, a narrow box), the buttons stack full-width at one width, not ragged. */
+  flex: 1 1 auto;
+}
+@container pk (max-width: 30rem) {
+  .banner .actions {
+    flex-basis: 100%;
+  }
 }
 .toast {
   position: relative;
@@ -1340,7 +1351,7 @@ dialog.sheet .card,
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .panel-icon {
   display: none;
 }
-.pk-root[data-shape] dialog.sheet .stage[data-split] .identity[data-size="hero"] .icon {
+.pk-root[data-shape] dialog.sheet .stage[data-split] .identity .icon {
   display: revert;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
@@ -1625,7 +1636,10 @@ dialog.sheet .identity {
 
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
-  .card,
+  /* The card carries no padding when it is split or full-bleed: its frame would touch the title
+     and buttons and sit on the viewport edge. Those frame their panes instead. */
+  .pk-root:not([data-fill]) .stage:not([data-split]) .card,
+  .stage[data-split] .passport,
   .pane,
   .list,
   .banner,
