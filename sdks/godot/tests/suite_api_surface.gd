@@ -33,6 +33,7 @@ const ROWS := [
 	["entitlements.has", "res://addons/polaris_key/services/license.gd", "method", "is_entitled"],
 	["entitlements.all", "res://addons/polaris_key/services/license.gd", "method", "get_entitlements"],
 	["identity.signOut", "res://addons/polaris_key/services/identity.gd", "method", "sign_out"],
+	["events", SDK, "signal", "event"],
 	["client.discover", SDK, "method", "discover"],
 	["client.presentation", SDK, "method", "presentation"],
 	["client.presentationIcon", SDK, "method", "presentation_icon"],

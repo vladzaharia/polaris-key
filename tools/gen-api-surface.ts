@@ -476,6 +476,7 @@ function renderKotlin(api: Api): string {
 const GODOT_SCRIPT: Record<string, string> = {
   client: `SDK`,
   PolarisKey: `SDK`,
+  events: `SDK`,
   config: `"res://addons/polaris_key/services/config.gd"`,
   license: `"res://addons/polaris_key/services/license.gd"`,
   identity: `"res://addons/polaris_key/services/identity.gd"`,

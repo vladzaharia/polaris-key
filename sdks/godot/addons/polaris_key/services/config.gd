@@ -33,6 +33,9 @@ extends RefCounted
 ## override written through the store, or a catalog that moved a key's accessor. Sorted; one
 ## emission per event; never for a key whose value did not change.
 signal config_changed(keys: PackedStringArray)
+## The same change with its detail, one Dictionary per key: {key, value, previous, source} (`value` and
+## `previous` null when the key falls back). PolarisKey's `event` stream reads it.
+signal config_changes(changes: Array)
 
 ## The Worker's recipe-id alphabet (`MINT_ID` in services/config/routes.ts): an id outside it
 ## could never reach the recipe lookup, so it is refused here instead of sent.
@@ -691,8 +694,9 @@ func bind_property(object: Object, property: StringName, key: String, fallback: 
 func refresh() -> PackedStringArray:
 	var next := _take_snapshot()
 	var changed := PackedStringArray()
+	var before := _snapshot
 	for k in next:
-		if not _snapshot.has(k) or not _same(_snapshot[k], next[k]):
+		if not before.has(k) or not _same(before[k], next[k]):
 			changed.append(k)
 	_snapshot = next
 	_bindings = _bindings.filter(func(b: PKeyConfigBinding) -> bool: return b.target() != null)
@@ -705,6 +709,12 @@ func refresh() -> PackedStringArray:
 		if changed.has(b.key):
 			b.apply()
 	config_changed.emit(changed)
+	var detail: Array = []
+	for k in changed:
+		var was: Array = before.get(k, [])
+		var now: Array = next.get(k, [])
+		detail.append({"key": k, "value": now[0] if not now.is_empty() else null, "previous": was[0] if not was.is_empty() else null, "source": String(get_source(k))})
+	config_changes.emit(detail)
 	return changed
 
 
