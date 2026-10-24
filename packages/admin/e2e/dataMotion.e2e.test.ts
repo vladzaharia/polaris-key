@@ -58,6 +58,8 @@ const LICENSES = Array.from({ length: 60 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
+  // The product default the Worker reports as the limit (a fifth of the track per device).
+  inheritedDeviceLimit: 5,
 })).map(workerFields);
 const ROUTES: Record<string, unknown> = {
   ...CORE_ROUTES,

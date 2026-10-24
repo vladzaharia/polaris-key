@@ -34,6 +34,7 @@ const product = {
   compatMax: "3.0.0",
   defaultMaxOfflineDays: 30,
   defaultDeviceLimit: 5,
+  manifestAuthoritative: { value: false, locked: false },
   adminGroup: "djdl-admins",
   createdAt: NOW - 200 * DAY,
   modifiedAt: NOW - DAY,
