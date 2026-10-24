@@ -13,7 +13,7 @@
  * change. A new hit on any page fails, so debt cannot grow.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
@@ -45,6 +45,7 @@ export const RULES = [
   "help-host",
   "pkey-command",
   "http-path",
+  "removed-name",
 ] as const;
 export type Rule = (typeof RULES)[number];
 
@@ -62,7 +63,21 @@ export interface Facts {
   commonFlags: ReadonlySet<string>;
   /** OpenAPI operations: method and a matcher for the path. */
   routes: readonly { method: string; re: RegExp }[];
+  /** Names that were removed: matched in code only, or anywhere when `distinct`. */
+  removed: readonly RemovedName[];
 }
+
+export interface RemovedName {
+  re: RegExp;
+  /** Not a plain word, so prose may match it too. */
+  distinct: boolean;
+}
+
+/** Pages that name removed things on purpose. */
+export const REMOVED_EXEMPT: ReadonlySet<string> = new Set([
+  "build/upgrade-to-0-9",
+  "reference/changelog/index",
+]);
 
 // ── facts ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -83,7 +98,65 @@ export function loadFacts(): Facts {
     for (const method of Object.keys(ops))
       if (/^(get|post|put|patch|delete)$/.test(method))
         routes.push({ method: method.toUpperCase(), re: pathMatcher(path) });
-  return { commands, commonFlags, routes };
+  return { commands, commonFlags, routes, removed: loadRemoved() };
+}
+
+const escapeRe = (s: string): string =>
+  s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** A plain lowercase word (`registration`) is common; anything with structure is distinct. */
+const isPlainWord = (s: string): boolean => /^[a-z]+$/.test(s);
+
+/**
+ * The removed names: the changelog's `replaces[].old` code spans, `api.json` `removed` rows (their
+ * `scan.pattern`, else the qualified name) and the validator's "X is removed" messages.
+ */
+export function loadRemoved(): RemovedName[] {
+  const out: RemovedName[] = [];
+  const add = (source: string, distinct: boolean): void => {
+    try {
+      out.push({ re: new RegExp(source), distinct });
+    } catch {
+      /* a pattern written for another engine */
+    }
+  };
+  const names = (name: string): void => {
+    const word = isPlainWord(name);
+    add(`(?<![\\w.])${escapeRe(name)}(?![\\w])`, !word);
+  };
+  const dir = join(docsRoot, "changelog");
+  for (const f of readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const { data } = splitFrontmatter(readFileSync(join(dir, f), "utf8"));
+    const replaces = (data as { replaces?: { old: string }[] }).replaces ?? [];
+    for (const r of replaces)
+      for (const span of r.old.matchAll(/`([^`]+)`/g)) {
+        const name = span[1]!.trim();
+        // A path or a bare dotted prefix names a place, not a removed name.
+        if (name.startsWith(".") || name.startsWith("/")) continue;
+        if (/^pnpm\s/.test(name)) continue;
+        // Context in the old text, not removed names: HTTP verbs, literals, query strings.
+        if (/^(?:GET|POST|PUT|PATCH|DELETE|null|true|false|\?.*)$/.test(name))
+          continue;
+        names(name);
+      }
+  }
+  const api = JSON.parse(
+    readFileSync(
+      join(docsRoot, "..", "..", "conformance", "parity", "api.json"),
+      "utf8",
+    ),
+  ) as { removed?: { from: string; scan?: { pattern?: string } }[] };
+  for (const row of api.removed ?? []) {
+    if (row.scan?.pattern !== undefined) add(row.scan.pattern, false);
+    else names(row.from);
+  }
+  const validator = readFileSync(
+    join(docsRoot, "..", "shared-manifest", "src", "index.ts"),
+    "utf8",
+  );
+  for (const m of validator.matchAll(/"([A-Za-z][\w.]*) is removed[:"]/g))
+    names(m[1]!);
+  return out;
 }
 
 /** `/{product}/x/{id}` matches `/acme/x/abc`, `/:product/x/<id>` and `/{slug}/x/{id}`. */
@@ -223,10 +296,12 @@ export function lintPage(page: PageInfo, facts: Facts): Hit[] {
 
   for (const l of all) {
     if (l.fence) {
+      if (!REMOVED_EXEMPT.has(page.id)) removedHits(l, facts, hit);
       commandHits(l, facts, hit);
       httpHits(l, facts, hit);
       continue;
     }
+    if (!REMOVED_EXEMPT.has(page.id)) removedHits(l, facts, hit);
     for (const span of l.text.matchAll(/`([^`]+)`/g)) {
       const code = span[1]!;
       if (/^pkey\s/.test(code)) commandHits({ ...l, text: code }, facts, hit);
@@ -248,6 +323,23 @@ export function lintPage(page: PageInfo, facts: Facts): Hit[] {
   }
   if (type !== undefined) skeletonHits(type, page, all, hit);
   return hits;
+}
+
+function removedHits(l: Line, facts: Facts, hit: HitFn): void {
+  const spans = l.fence
+    ? [l.text]
+    : [...l.text.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
+  const text = l.text.replace(/\]\([^)]*\)/g, "]");
+  for (const r of facts.removed) {
+    const found =
+      spans.map((c) => r.re.exec(c)).find((m) => m !== null) ??
+      (r.distinct && !l.fence ? r.re.exec(text) : null);
+    if (found) {
+      // One hit per line, however many rows name it.
+      hit("removed-name", l.n, found[0].trim());
+      return;
+    }
+  }
 }
 
 type HitFn = (rule: Rule, line: number, text: string) => void;

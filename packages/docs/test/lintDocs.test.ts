@@ -38,6 +38,31 @@ function lint(
 }
 const rules = (hits: Hit[]): Rule[] => hits.map((h) => h.rule);
 
+describe("removed-name", () => {
+  it("flags a removed name in a code span and a fence", () => {
+    expect(rules(lint("Run `pkey feeds fdroid` to publish.\n"))).toEqual([
+      "removed-name",
+    ]);
+    expect(
+      rules(lint('```swift\nlet v = license.isEntitled("x")\n```\n')),
+    ).toEqual(["removed-name"]);
+  });
+
+  it("does not flag a common word outside a code span", () => {
+    expect(
+      rules(lint("The registration policy follows the services.\n")),
+    ).toEqual([]);
+    expect(rules(lint("Set `registration` to a policy.\n"))).toEqual([
+      "removed-name",
+    ]);
+  });
+
+  it("exempts the upgrade page and the changelog", () => {
+    for (const id of ["build/upgrade-to-0-9", "reference/changelog/index"])
+      expect(rules(lint("Run `pkey feeds fdroid`.\n", {}, id))).toEqual([]);
+  });
+});
+
 describe("rules", () => {
   it("passes a clean page", () => {
     expect(lint("Pick an SDK. The SDK caches the license document.\n")).toEqual(
@@ -89,9 +114,7 @@ describe("rules", () => {
       ),
     ).toEqual(["uk-spelling", "uk-spelling", "uk-spelling", "uk-spelling"]);
     expect(
-      lint(
-        "The `core.licence-override-migration` job, a cancellation, a license.\n",
-      ),
+      lint("The `core.licence-grace` job, a cancellation, a license.\n"),
     ).toEqual([]);
   });
 
@@ -216,7 +239,7 @@ describe("rules", () => {
   });
 
   it("every rule is exercised", () => {
-    expect(RULES).toHaveLength(13);
+    expect(RULES).toHaveLength(14);
   });
 });
 
