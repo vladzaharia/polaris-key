@@ -52,8 +52,8 @@ func apiSurface() async {
     _ = PolarisKeyClient.listDevices  // client.listDevices
     _ = PolarisKeyClient.deauthorizeDevice  // client.deauthorizeDevice
     _ = PolarisKeyClient.renameDevice  // client.renameDevice
-    _ = PolarisKeyClient.startRefresh  // client.startRefresh
-    _ = PolarisKeyClient.close  // client.close
+    _ = { (c: PolarisKeyClient) async in await c.startRefresh() }  // client.startRefresh
+    _ = { (c: PolarisKeyClient) async in await c.close() }  // client.close
     _ = ConfigClient.listUserConfig  // config.listUserConfig
     _ = ConfigClient.schemaVersion  // config.schemaVersion
     _ = ConfigClient.fetchSchema  // config.fetchSchema
@@ -116,7 +116,7 @@ func apiSurface() async {
     _ = PolarisKeyClient.fromBundle  // client.fromBundle
     _ = PolarisKeyClient.options  // client.options
     _ = PolarisKeyClient.bundleVersion  // client.bundleVersion
-    _ = PolarisKeyClient.syncOnForeground  // client.syncOnForeground
+    _ = { (c: PolarisKeyClient) async in await c.syncOnForeground() }  // client.syncOnForeground
     _ = PolarisKeyClient.stopForegroundSync  // client.stopForegroundSync
     _ = PolarisKeyClient.syncIfStale  // client.syncIfStale
     _ = PolarisKeyClient.installUpdateBootHooks  // client.installUpdateBootHooks
