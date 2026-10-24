@@ -45,7 +45,8 @@ export function fontFaceCss(): string {
     face("Rubik", "300 900", files.rubik, LATIN),
     face("JetBrains Mono", "400 600", files.monoExt, LATIN_EXT),
     face("JetBrains Mono", "400 600", files.mono, LATIN),
-    `@font-face{font-family:"Rubik Fallback";src:local("Arial"),local("ArialMT"),local("Liberation Sans");size-adjust:105.73%;ascent-override:88.43%;descent-override:23.64%;line-gap-override:0%}`,
+    `@font-face{font-family:"Rubik Fallback";font-weight:300 549;src:local("Arial"),local("ArialMT"),local("Liberation Sans");size-adjust:105.73%;ascent-override:88.43%;descent-override:23.64%;line-gap-override:0%}`,
+    `@font-face{font-family:"Rubik Fallback";font-weight:550 900;src:local("Arial Bold"),local("Arial-BoldMT"),local("Helvetica Bold"),local("Helvetica-Bold"),local("Liberation Sans Bold");size-adjust:105.73%;ascent-override:88.43%;descent-override:23.64%;line-gap-override:0%}`,
     `@font-face{font-family:"JetBrains Mono Fallback";src:local("Menlo"),local("Courier New"),local("Liberation Mono");size-adjust:99.66%;ascent-override:102.35%;descent-override:30.1%;line-gap-override:0%}`,
   ].join("\n");
 }

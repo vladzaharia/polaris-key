@@ -4,7 +4,6 @@
 // (DL9) and turns every control into a `pk-action` DOM event.
 
 import { LitElement, nothing, type PropertyValues } from "lit";
-import { styleMap } from "lit/directives/style-map.js";
 import { html } from "lit";
 import {
   focusOnMount,
@@ -648,16 +647,36 @@ export abstract class PkElement extends LitElement {
         data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
         lang=${c.copy.locale}
-        style=${styleMap(themeVars(r))}
       >
         ${this.renderBody(c)}
       </div>
       ${this.renderProjected(view)}`;
   }
 
+  private appliedVars = new Set<string>();
+
+  /** The resolved theme's custom properties, set through the CSSOM: a `style` attribute binding
+   *  is a `style-src-attr` violation under a strict CSP (UI-KITS §3.2). */
+  private applyThemeVars(): void {
+    const node = (this.renderRoot as ShadowRoot).querySelector<HTMLElement>(
+      ".pk-root",
+    );
+    if (!node) {
+      this.appliedVars.clear();
+      return;
+    }
+    const vars = themeVars(this.resolved);
+    for (const name of this.appliedVars)
+      if (!(name in vars)) node.style.removeProperty(name);
+    for (const [name, value] of Object.entries(vars))
+      node.style.setProperty(name, value);
+    this.appliedVars = new Set(Object.keys(vars));
+  }
+
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
     const view = this.view;
+    this.applyThemeVars();
     // A list that scrolls (past six devices) opens on its checked row, not the top of the list.
     for (const list of (
       this.renderRoot as ShadowRoot
