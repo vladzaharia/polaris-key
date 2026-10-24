@@ -832,6 +832,12 @@ export function actions(
   const last =
     primaryLast ||
     (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    // A short Mac window docks the bar as one row: the default last, so Tab follows the eye.
+    (!c.dialog &&
+      c.shape === "short" &&
+      controls.length === 2 &&
+      group !== "choices" &&
+      platformVariant(c.resolved.theme) === "macos") ||
     (group !== "choices" &&
       controls.length === 2 &&
       c.view.component !== "StatusScreen" &&

@@ -2078,6 +2078,12 @@ dialog.sheet .identity {
 .pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions[data-group] .btn {
   inline-size: 100%;
 }
+/* A short window's docked bar: the default last in the DOM, so a plain row (no reversing) puts it
+   at the trailing edge and Tab runs left to right. */
+.pk-root[data-pk-platform="macos"][data-shape="short"] .stage[data-kind="screen"] .card > .actions[data-primary="last"] {
+  flex-direction: row;
+  justify-content: flex-end;
+}
 /* A choice between actions in page content: content-sized at the trailing edge, in DOM order. */
 .pk-root[data-pk-platform="macos"] .actions[data-layout="row"] {
   flex-direction: row;
