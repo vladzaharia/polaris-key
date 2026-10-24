@@ -33,7 +33,6 @@
 
 package im.plrs.key.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -221,13 +220,15 @@ public fun PolarisTheme(
     poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     copy: PolarisCopy = PolarisCopy.localized(),
     logo: (@Composable () -> Unit)? = null,
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = polarisSystemDark(),
     accent: Color? = null,
     deviceCodeUrl: String? = null,
     developer: String? = null,
     presentation: PresentationSource? = LocalPolarisKey.current?.presentationSource,
     content: @Composable () -> Unit,
 ) {
+    // GNOME: the portal's accent-color is the native preset's accent (UK-10.6); null elsewhere and for an integrator's own.
+    val hostAccent = if (branding == PolarisBranding.None && accent == null) gnomeHostAccent() else null
     val member = rememberPresentation(presentation)
     // The icon is fetched only for what it fills: the logo, or a branded accent nothing else gives.
     val wantsArt = logo == null || (branding == PolarisBranding.PolarisKey && accent == null && member?.accentFor(darkTheme) == null)
@@ -239,7 +240,7 @@ public fun PolarisTheme(
         copy = copy,
         logo = logo ?: art?.let { presentationLogo(it) },
         darkTheme = darkTheme,
-        accent = themeAccent(accent, branding, member, darkTheme, art?.derivedAccent),
+        accent = themeAccent(accent ?: hostAccent, branding, member, darkTheme, art?.derivedAccent),
         deviceCodeUrl = deviceCodeUrl,
         developer = developer ?: member?.developerName?.takeIf { it.isNotBlank() },
         content = content,
@@ -352,6 +353,9 @@ internal val polarisSheetShape: Shape = RoundedCornerShape(topStart = 28.dp, top
 
 /** The shape a screen rounds to while the back gesture previews the step it returns to (PolarisBack.kt). */
 internal fun polarisPreviewShape(radius: androidx.compose.ui.unit.Dp): Shape = RoundedCornerShape(radius)
+
+/** A rounded-corner shape of [radius] on every corner (the desktop chromes' radii; UK-10.6). */
+internal fun polarisRadiusShape(radius: androidx.compose.ui.unit.Dp): Shape = RoundedCornerShape(radius)
 
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)

@@ -680,7 +680,9 @@ private fun PolarisBusyRing() {
 private fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
-    return (if (row) this else this.fillMaxWidth()).heightIn(min = height)
+    val sized = if (row) this else this.fillMaxWidth()
+    // Material's button holds a 40 dp floor of its own; GNOME's 34 px control needs the height fixed to get under it.
+    return if (polarisWindow.isGnome) sized.height(height) else sized.heightIn(min = height)
 }
 
 /** The primary action: filled, full round, 56 dp tall (60 on TV), full width in a stacked group. */
@@ -696,7 +698,7 @@ public fun PolarisPrimaryButton(
     external: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = PolarisTheme.buttonShape
+    val shape = polarisActionShape(suggested = true)
     if (polarisWindow.fluent) {
         PolarisFluentButton(
             FluentButtonKind.Accent, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
@@ -708,7 +710,7 @@ public fun PolarisPrimaryButton(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = shape,
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        contentPadding = polarisButtonPadding(),
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -753,7 +755,7 @@ public fun PolarisSecondaryButton(
     external: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = PolarisTheme.buttonShape
+    val shape = polarisActionShape(suggested = false)
     if (polarisWindow.fluent) {
         PolarisFluentButton(
             FluentButtonKind.Standard, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
@@ -774,7 +776,7 @@ public fun PolarisSecondaryButton(
         } else {
             ButtonDefaults.filledTonalButtonColors()
         },
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        contentPadding = polarisButtonPadding(),
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -802,7 +804,7 @@ public fun PolarisTextButton(
         return
     }
     val interaction = remember { MutableInteractionSource() }
-    val shape = PolarisTheme.buttonShape
+    val shape = polarisActionShape(suggested = false)
     val tv = polarisWindow.tv
     if (polarisWindow.fluent) {
         PolarisFluentButton(
@@ -919,7 +921,8 @@ internal fun PolarisMessageLayout(
     actions: (@Composable () -> Unit)?,
 ) {
     PolarisSurface(modifier) { window, maxHeight ->
-        val block = window.compactHeight || window.card
+        // AdwStatusPage (GNOME): always one centred column, never a card or a start-aligned block.
+        val block = !window.isGnome && (window.compactHeight || window.card)
         val align = if (block) TextAlign.Start else TextAlign.Center
         val horizontal = if (block) Alignment.Start else Alignment.CenterHorizontally
         val inner: @Composable ColumnScope.() -> Unit = {
@@ -945,7 +948,7 @@ internal fun PolarisMessageLayout(
             }
             if (actions != null) {
                 Spacer(Modifier.height(window.section))
-                PolarisActionGroup(row = block, content = actions)
+                PolarisActionGroup(row = block, modifier = statusActionsModifier(window), content = actions)
             }
         }
         CompositionLocalProvider(LocalPolarisTextAlign provides align) {
