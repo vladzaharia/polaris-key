@@ -32,6 +32,7 @@ internal val SystemHostCommandRunner = HostCommandRunner { argv, timeoutMs ->
     runCatching {
         val p = ProcessBuilder(argv)
             .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .redirectInput(ProcessBuilder.Redirect.from(java.io.File(if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) "NUL" else "/dev/null")))
             .start()
         val out = ByteArrayOutputStream()
         // Drain on a daemon thread so a chatty or stuck child can never fill its pipe or hold this call.
@@ -66,11 +67,13 @@ internal val MAC_CONTRAST_ARGV: List<String> = listOf("/usr/bin/defaults", "read
 internal val MAC_TRANSPARENCY_ARGV: List<String> = listOf("/usr/bin/defaults", "read", "com.apple.universalaccess", "reduceTransparency")
 
 // ── Windows: `reg query` ───────────────────────────────────────────────────────────────────────
+/** `reg.exe` by absolute path: CreateProcess would otherwise search the app directory and the cwd before System32. */
+internal val WIN_REG: String = (System.getenv("SystemRoot")?.takeIf { it.isNotBlank() } ?: "C:\\Windows") + "\\System32\\reg.exe"
 private const val WIN_PERSONALIZE = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-internal val WIN_DARK_ARGV: List<String> = listOf("reg", "query", WIN_PERSONALIZE, "/v", "AppsUseLightTheme")
-internal val WIN_TRANSPARENCY_ARGV: List<String> = listOf("reg", "query", WIN_PERSONALIZE, "/v", "EnableTransparency")
-internal val WIN_ACCENT_ARGV: List<String> = listOf("reg", "query", "HKCU\\Software\\Microsoft\\Windows\\DWM", "/v", "AccentColor")
-internal val WIN_CONTRAST_ARGV: List<String> = listOf("reg", "query", "HKCU\\Control Panel\\Accessibility\\HighContrast", "/v", "Flags")
+internal val WIN_DARK_ARGV: List<String> = listOf(WIN_REG, "query", WIN_PERSONALIZE, "/v", "AppsUseLightTheme")
+internal val WIN_TRANSPARENCY_ARGV: List<String> = listOf(WIN_REG, "query", WIN_PERSONALIZE, "/v", "EnableTransparency")
+internal val WIN_ACCENT_ARGV: List<String> = listOf(WIN_REG, "query", "HKCU\\Software\\Microsoft\\Windows\\DWM", "/v", "AccentColor")
+internal val WIN_CONTRAST_ARGV: List<String> = listOf(WIN_REG, "query", "HKCU\\Control Panel\\Accessibility\\HighContrast", "/v", "Flags")
 
 // ── Linux: the Settings portal ─────────────────────────────────────────────────────────────────
 private fun portal(key: String): List<String> = listOf(

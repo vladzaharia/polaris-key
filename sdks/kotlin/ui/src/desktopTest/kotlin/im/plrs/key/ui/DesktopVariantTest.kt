@@ -132,7 +132,7 @@ class DesktopVariantTest {
             WIN_DARK_ARGV, WIN_ACCENT_ARGV, WIN_CONTRAST_ARGV, WIN_TRANSPARENCY_ARGV,
             PORTAL_COLOR_SCHEME_ARGV, PORTAL_ACCENT_ARGV, PORTAL_CONTRAST_ARGV,
         )
-        for (a in all) assertTrue(a.first() in setOf("/usr/bin/defaults", "reg", "gdbus") && a.none { it == "sh" || it == "-c" || it == "cmd" }, a.toString())
+        for (a in all) assertTrue(a.first() in setOf("/usr/bin/defaults", WIN_REG, "gdbus") && (a.first() != WIN_REG || a.first().endsWith("System32\\reg.exe")) && a.none { it == "sh" || it == "-c" || it == "cmd" }, a.toString())
     }
 
     @Test
