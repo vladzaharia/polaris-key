@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { evenOffsets, frameStrip } from "./strips.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Locator, Page } from "playwright";
 import {
@@ -325,26 +326,18 @@ async function transformOf(
   );
 }
 
-/** With PK_SHOTS_DIR: slow every animation ×0.1, run `act`, and save `frames` screenshots. */
-async function strip(
+/** With PK_SHOTS_DIR: slow every animation ×0.1, run `act`, and save `frames` screenshots (the shared helper). */
+const strip = (
   page: Page,
   name: string,
   act: () => Promise<void>,
   frames = 6,
   every = 300,
-): Promise<void> {
-  if (!SHOTS) return;
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Animation.enable");
-  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
-  await act();
-  for (let i = 0; i < frames; i++) {
-    await page.screenshot({ path: `${SHOTS}/mo07-${name}-${i}.png` });
-    await page.waitForTimeout(every);
-  }
-  await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
-  await cdp.detach();
-}
+): Promise<void> =>
+  frameStrip(page, "mo07-" + name, act, {
+    offsets: evenOffsets(frames, every),
+    rest: false,
+  });
 
 /** Move the mouse to the middle of `target`, as a pointer does (the tile's link covers its art). */
 async function pointAt(page: Page, target: Locator): Promise<void> {

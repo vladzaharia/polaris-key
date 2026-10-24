@@ -8,6 +8,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
 import { atRest } from "./atRest.js";
+import { frameStrip, SHOTS } from "./strips.js";
 import { workerFields } from "./workerFields.js";
 
 /**
@@ -111,6 +112,9 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
 };
 
+/** Extra latency per API path, in ms (the skeleton strip holds a response back). */
+const DELAYS: Record<string, number> = {};
+
 let server: PreviewServer;
 let browser: Browser;
 let base: string;
@@ -185,6 +189,8 @@ async function openConsole(
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
       const body = ROUTES[url.pathname];
+      const wait = DELAYS[url.pathname];
+      if (wait) await new Promise((r) => setTimeout(r, wait));
       return body
         ? route.fulfill({ json: body })
         : route.fulfill({ status: 404, json: { error: "not_found" } });
@@ -1775,6 +1781,418 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       );
       expect(await o.violations()).toEqual([]);
       await o.close();
+    });
+  }
+});
+
+// ── MO-13.2: console frame strips and the always-on box and transition assertions ─────────────────
+
+/** dark, light, and reduced motion (dark): the three the review reads, per `<name>-<label>-<n>`. */
+const VARIANTS: { label: string; theme: Theme; motion: Motion }[] = [
+  { label: "dark", theme: "dark", motion: "no-preference" },
+  { label: "light", theme: "light", motion: "no-preference" },
+  { label: "reduced", theme: "dark", motion: "reduce" },
+];
+
+/** The config fixtures the approve drawer needs: one edge-mint entry, its pending recipe. */
+const P = "/manage/api/products/djdl";
+const MINT_PATH = `${P}/config/mint`;
+const MINT_FIELDS = {
+  alg: "ES256",
+  signingKeySecret: "MINT_KEY",
+  kid: "K1",
+  claimsTemplateJson: '{"iss":"T"}',
+  ttlSeconds: 3600,
+  audience: null,
+};
+const mintBody = (ttlSeconds: number): unknown => ({
+  registration: "open",
+  anonymousEnroll: false,
+  oidcDefault: false,
+  publicMint: true,
+  licenseEnabled: true,
+  identity: null,
+  recipes: [
+    {
+      id: "music",
+      ...MINT_FIELDS,
+      ttlSeconds,
+      claimsTemplate: {},
+      status: "pending",
+      secretUsage: "edge-mint",
+      approval: null,
+      changedFields: [],
+    },
+  ],
+});
+const CONFIG_ROUTES: Record<string, unknown> = {
+  [`${P}/config/catalog`]: {
+    schemaVersion: 2,
+    entries: [
+      {
+        key: "music",
+        kind: "secret",
+        category: "Tokens",
+        label: "Music",
+        description: "",
+        schema: { type: "string" },
+        delivery: "edgeMint",
+      },
+    ],
+  },
+  [`${P}/config/catalog/versions`]: { versions: [] },
+  [`${P}/config/catalog/usage`]: { keys: {} },
+  [`${P}/config/profiles`]: { profiles: [] },
+  [MINT_PATH]: mintBody(3600),
+};
+const APPROVE_HASH = "#/p/djdl/config/catalog/edit?entry=music";
+
+/**
+ * Tell the app the tab is visible again: React Query listens for `visibilitychange` on the window
+ * (a document-level, non-bubbling event never reaches it) and refetches what is mounted and watched.
+ */
+const refocus = (page: Page): Promise<void> =>
+  page.evaluate(() => {
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+
+describe.skipIf(!SHOTS)("console frame strips (PK_SHOTS_DIR)", () => {
+  const originals: Record<string, unknown> = {};
+  beforeAll(() => {
+    for (const k of Object.keys(CONFIG_ROUTES)) originals[k] = ROUTES[k];
+    Object.assign(ROUTES, CONFIG_ROUTES);
+  });
+  afterAll(() => {
+    Object.assign(ROUTES, originals);
+    ROUTES[`${P}/license/licenses/lic_1`] = RECORD;
+  });
+
+  for (const v of VARIANTS) {
+    const reduced = v.label === "reduced";
+    it(`saves the enter, morph, shared-element, skeleton, success, press, expand and status frames (${v.label})`, async () => {
+      // One frame under reduced motion: the instant swap. Otherwise the six slowed ones.
+      const strip = (
+        page: Page,
+        name: string,
+        act: () => Promise<void>,
+      ): Promise<void> =>
+        frameStrip(page, `console-${name}`, act, {
+          theme: v.label,
+          ...(reduced ? { offsets: [60] } : {}),
+        });
+      const page = await openConsole(v.theme, v.motion);
+      await page.getByText("Seat 01").first().waitFor();
+      const nav = page.getByRole("navigation", { name: "Console" }).first();
+
+      // enter and exit: a dialog, then a popover (the product switcher)
+      await strip(page, "dialog-enter", () => page.keyboard.press("?"));
+      await strip(page, "dialog-exit", () => page.keyboard.press("Escape"));
+      const switcher = page.getByRole("button", { name: /^Product: DJDL/ });
+      await strip(page, "popover-enter", () => switcher.click());
+      await strip(page, "popover-exit", () => page.keyboard.press("Escape"));
+
+      // skeleton: Tiers, its data held back
+      DELAYS[`${P}/license/tiers`] = reduced ? 800 : 4200;
+      try {
+        await strip(page, "skeleton", () =>
+          nav.getByRole("link", { name: "Tiers" }).click(),
+        );
+      } finally {
+        delete DELAYS[`${P}/license/tiers`];
+      }
+
+      // morph: a sibling route, a drill-down, the status pill on the record, a tab, Back
+      await strip(page, "morph-route", () =>
+        nav.getByRole("link", { name: "Licenses" }).click(),
+      );
+      const row = (): Locator =>
+        page.locator("main#content table tbody a", { hasText: "Seat 01" });
+      await strip(page, "morph-forward", () =>
+        row()
+          .first()
+          .evaluate((a) => (a as HTMLElement).click()),
+      );
+      await focusedHeading(page, "Seat 01");
+      ROUTES[`${P}/license/licenses/lic_1`] = { ...RECORD, status: "disabled" };
+      // The record is fresh for 30 s: move the page's clock past that, so coming back refetches.
+      await page.clock.setFixedTime(Date.now() + 60_000);
+      await strip(page, "status-pill", () => refocus(page));
+      await strip(page, "morph-tab", () =>
+        page
+          .getByRole("navigation", { name: "License sections" })
+          .getByRole("link", { name: /^Devices/ })
+          .click(),
+      );
+      await page.goBack();
+      await strip(page, "morph-back", () =>
+        page.goBack().then(() => undefined),
+      );
+      await row().first().waitFor();
+      // shared element: the record is cached now, so the name flies from the row into the title
+      await strip(page, "shared-key", () => row().first().click());
+      await page.goBack();
+      await row().first().waitFor();
+      await atRest(page);
+
+      // press: hold the pointer on a pressable button, then slide off it so nothing is clicked
+      const pressable = page
+        .locator("main#content button.pk-pressable")
+        .first();
+      if (await pressable.count()) {
+        const b = (await pressable.boundingBox())!;
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+        await strip(page, "press", () => page.mouse.down());
+        await page.mouse.move(2, 2);
+        await page.mouse.up();
+        await atRest(page);
+      }
+
+      // expand: a collapsed sidebar section opens in place
+      const closed = page
+        .locator("aside button[data-section-header][aria-expanded=false]")
+        .first();
+      if (await closed.count())
+        await strip(page, "expand", () => closed.click());
+      await closeContext(page.context());
+    });
+
+    it(`saves the first release's success frames (${v.label})`, async () => {
+      const page = await openConsole(v.theme, v.motion, "#/p/djdl");
+      await page.getByText("2.4.0 is live on stable").waitFor();
+      await page.waitForFunction(
+        () => document.querySelector(".pk-burst") === null,
+      );
+      // The moment is stored per browser: forget it, and the reload plays it again.
+      await frameStrip(
+        page,
+        "console-success",
+        async () => {
+          await page.evaluate(() =>
+            window.localStorage.removeItem("pk-moment:first-release:djdl"),
+          );
+          await page.reload();
+        },
+        { theme: v.label, ...(reduced ? { offsets: [60] } : {}) },
+      );
+      await closeContext(page.context());
+    });
+
+    it(`saves U-31's changed-while-reviewing notice (${v.label})`, async () => {
+      const page = await openConsole(v.theme, v.motion, APPROVE_HASH);
+      await page.getByRole("button", { name: "Review and approve" }).click();
+      await page.getByRole("dialog", { name: "Approve music?" }).waitFor();
+      await atRest(page);
+      ROUTES[MINT_PATH] = mintBody(1800);
+      try {
+        await frameStrip(page, "console-changed-notice", () => refocus(page), {
+          theme: v.label,
+          ...(reduced ? { offsets: [60] } : {}),
+        });
+      } finally {
+        ROUTES[MINT_PATH] = mintBody(3600);
+      }
+      await closeContext(page.context());
+    });
+  }
+});
+
+// ── Always on: what must not move ─────────────────────────────────────────────────────────────────
+
+type Box = [number, number, number, number];
+
+/**
+ * Run `act` while sampling the box of each selector on every frame (and once more at rest), and
+ * return the distinct boxes seen per selector, in order. A selector with no element is skipped
+ * for that frame.
+ */
+async function boxesDuring(
+  page: Page,
+  selectors: string[],
+  act: () => Promise<void>,
+): Promise<Record<string, Box[]>> {
+  await page.evaluate((sels) => {
+    const w = window as unknown as {
+      __bx: Record<string, number[][]>;
+      __bxOn: boolean;
+    };
+    w.__bx = Object.fromEntries(sels.map((s) => [s, []]));
+    w.__bxOn = true;
+    const sample = (): void => {
+      for (const s of sels) {
+        const el = document.querySelector(s);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const b = [r.x, r.y, r.width, r.height].map((n) => Math.round(n));
+        const seen = w.__bx[s]!;
+        const last = seen[seen.length - 1];
+        if (!last || last.some((n, i) => n !== b[i])) seen.push(b);
+      }
+      if (w.__bxOn) requestAnimationFrame(sample);
+    };
+    sample();
+  }, selectors);
+  await act();
+  await atRest(page);
+  return page.evaluate(() => {
+    const w = window as unknown as {
+      __bx: Record<string, Box[]>;
+      __bxOn: boolean;
+    };
+    w.__bxOn = false;
+    return w.__bx;
+  });
+}
+
+describe("what must not move: the canvas, the masthead and the sidebar's marker, in both themes and reduced", () => {
+  for (const v of VARIANTS) {
+    it(`a sibling route change keeps [data-canvas], the masthead and the section rule where they are; only main fades (${v.label})`, async () => {
+      const page = await openConsole(v.theme, v.motion);
+      await page.getByText("Seat 01").first().waitFor();
+      await atRest(page);
+      const rule = (): Promise<string> =>
+        page.evaluate(() => {
+          const cs = getComputedStyle(document.querySelector("[data-canvas]")!);
+          return `${cs.borderTopWidth} ${cs.borderTopColor}`;
+        });
+      const ruleBefore = await rule();
+      expect(ruleBefore).toMatch(/^3px /);
+      const seen = await boxesDuring(
+        page,
+        ["[data-canvas]", "[data-masthead]"],
+        () =>
+          page
+            .getByRole("navigation", { name: "Console" })
+            .first()
+            .getByRole("link", { name: "Tiers" })
+            .click(),
+      );
+      await focusedHeading(page, "Tiers");
+      expect(
+        seen["[data-canvas]"],
+        "the canvas keeps one box through the change",
+      ).toHaveLength(1);
+      const masthead = seen["[data-masthead]"]!;
+      expect(masthead.length, "the masthead was measured").toBeGreaterThan(0);
+      // The page's own title and actions may change its height; where it starts and how wide it
+      // runs are the chrome's.
+      expect(
+        new Set(masthead.map((b) => b.slice(0, 3).join(","))).size,
+        "the masthead keeps its origin and width",
+      ).toBe(1);
+      expect(await rule(), "the section rule keeps its width and colour").toBe(
+        ruleBefore,
+      );
+      expect(await violations(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`the record masthead keeps its box across a tab change (${v.label})`, async () => {
+      const page = await openConsole(v.theme, v.motion);
+      await page.getByText("Seat 01").first().waitFor();
+      await page
+        .locator("main#content table tbody a", { hasText: "Seat 01" })
+        .first()
+        .click();
+      await focusedHeading(page, "Seat 01");
+      await atRest(page);
+      const seen = await boxesDuring(page, ["[data-masthead]"], () =>
+        page
+          .getByRole("navigation", { name: "License sections" })
+          .getByRole("link", { name: /^Devices/ })
+          .click(),
+      );
+      await page
+        .getByRole("navigation", { name: "License sections" })
+        .getByRole("link", { name: /^Devices/ })
+        .and(page.locator("[aria-current]"))
+        .waitFor();
+      expect(
+        seen["[data-masthead]"],
+        "one box through the tab change",
+      ).toHaveLength(1);
+      expect(await violations(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`the sidebar's active marker never runs a colour transition longer than micro (${v.label})`, async () => {
+      const page = await openConsole(v.theme, v.motion);
+      await atRest(page);
+      const tk = await tokens(page);
+      const longest = await page.evaluate(() => {
+        const el = document.querySelector<HTMLElement>(
+          "[data-nav-list] [aria-current=page], aside [aria-current=page]",
+        );
+        if (!el) return null;
+        const ms = (t: string): number =>
+          t.endsWith("ms") ? parseFloat(t) : parseFloat(t) * 1000;
+        const colourish = /color|fill|stroke|^all$|^background/;
+        const out: { where: string; property: string; ms: number }[] = [];
+        for (const pseudo of [null, "::before", "::after"]) {
+          const cs = getComputedStyle(el, pseudo);
+          const props = cs.transitionProperty.split(",").map((p) => p.trim());
+          const durs = cs.transitionDuration.split(",").map((p) => p.trim());
+          const delays = cs.transitionDelay.split(",").map((p) => p.trim());
+          props.forEach((p, i) => {
+            if (!colourish.test(p)) return;
+            const d = durs[i % durs.length]!;
+            const l = delays[i % delays.length]!;
+            out.push({
+              where: pseudo ?? "element",
+              property: p,
+              ms: ms(d) + ms(l),
+            });
+          });
+        }
+        return out;
+      });
+      expect(longest, "the active page's row is in the sidebar").not.toBeNull();
+      for (const t of longest!)
+        expect(t.ms, `${t.where} ${t.property} transition`).toBeLessThanOrEqual(
+          tk.micro,
+        );
+      await closeContext(page.context());
+    });
+
+    it(`the approve drawer's notice appears without moving the content above it (${v.label})`, async () => {
+      const originalMint = ROUTES[MINT_PATH];
+      const saved: Record<string, unknown> = {};
+      for (const k of Object.keys(CONFIG_ROUTES)) saved[k] = ROUTES[k];
+      Object.assign(ROUTES, CONFIG_ROUTES);
+      try {
+        const page = await openConsole(v.theme, v.motion, APPROVE_HASH);
+        await page.getByRole("button", { name: "Review and approve" }).click();
+        const dialog = page.getByRole("dialog", { name: "Approve music?" });
+        await dialog.waitFor();
+        await atRest(page);
+        const notice = dialog.getByText(
+          "The recipe changed while you were reviewing",
+        );
+        expect(await notice.count()).toBe(0);
+        const above = ["[role=dialog]", "[role=dialog] h2"];
+        const seen = await boxesDuring(page, above, async () => {
+          ROUTES[MINT_PATH] = mintBody(1800);
+          await refocus(page);
+          await notice.waitFor();
+        });
+        expect(
+          seen["[role=dialog]"],
+          "the drawer keeps its box when the notice appears",
+        ).toHaveLength(1);
+        expect(
+          seen["[role=dialog] h2"],
+          "the title above the notice does not move",
+        ).toHaveLength(1);
+        // The notice is above the fields, so what moves is only what is below it.
+        const noticeTop = (await notice.boundingBox())!.y;
+        const titleBottom = (await dialog.locator("h2").first().boundingBox())!;
+        expect(noticeTop).toBeGreaterThanOrEqual(
+          titleBottom.y + titleBottom.height,
+        );
+        expect(await violations(page)).toEqual([]);
+        await closeContext(page.context());
+      } finally {
+        Object.assign(ROUTES, { ...saved, [MINT_PATH]: originalMint });
+      }
     });
   }
 });

@@ -212,3 +212,12 @@ Checked against staging at 8a8548da2. The code is the fact; these override the t
 - **B12. Naming.** End users see the portal as Polaris Locker. The contributor page is Polaris Key developer docs and says "the portal (Polaris Locker)" once.
 
 ## QA record
+
+### MO-13.2 console strips
+
+- Helper: `packages/admin/e2e/strips.ts` (`frameStrip(page, name, act, options)`); `PK_SHOTS_DIR` unchanged. Files are `<name>-<dark|light|reduced>-<n>.png`, six frames at 30, 600, 1200, 1800, 2600 and 3600 ms at ×0.1, one frame under reduced motion.
+- Evidence (not committed): `/Users/vlad/Repos/pk-wt/_evidence/MO-13/strips/`.
+- Console strips (`console-<name>`): dialog-enter, dialog-exit, popover-enter, popover-exit, skeleton, morph-route, morph-forward, morph-tab, morph-back, shared-key, status-pill, press, expand (the sidebar section), success (the first release), changed-notice (U-31). Plus the existing `console-data-*`, `mo06-*` and `mo07-*` strips, now through the helper.
+- Always-on assertions (motion.e2e, dark, light, reduced): sibling route keeps the canvas, masthead origin and width and the section rule; record masthead keeps its box across a tab change; the sidebar's active marker has no colour transition above `micro`; the approve drawer's notice leaves the drawer and its title where they are.
+- Not in the console: inline-confirm expand (portal only, MO-13.3's strips).
+- Observation for MO-13.5: the status-pill strip (a licence record going Waiting to Disabled) is identical from frame 1 to 6, so the changed-word pop is not visible in it.
