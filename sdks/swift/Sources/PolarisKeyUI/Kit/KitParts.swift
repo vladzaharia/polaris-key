@@ -9,6 +9,9 @@ import SwiftUI
 #if canImport(UIKit)
     import UIKit
 #endif
+#if os(macOS)
+    import AppKit
+#endif
 
 // MARK: - Product identity
 
@@ -196,20 +199,23 @@ public struct KeyField: View {
                             .tint(style.palette.accentFg)
                         }
                     #endif
+                    #if os(macOS)
+                        // Paste sits inside the field, small (desktop.html); the Tab order
+                        // reaches it like any control.
+                        if text.isEmpty {
+                            Button(strings.string("common.paste")) {
+                                if let pasted = NSPasteboard.general.string(forType: .string) {
+                                    text = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+                                }
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.bordered)
+                            .buttonBorderShape(.capsule)
+                            .tint(style.palette.accentFg)
+                        }
+                    #endif
                 }
-                .padding(.horizontal, style.space(.md))
-                .frame(minHeight: style.controlHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                        .fill(style.palette.sunken)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                        .strokeBorder(
-                            invalid
-                                ? style.palette.danger : (focused ? style.palette.focus : .clear),
-                            lineWidth: 2)
-                )
+                .modifier(KeyFieldSurface(style: style, invalid: invalid, focused: focused))
                 verdict(style)
             }
         }
@@ -235,6 +241,49 @@ public struct KeyField: View {
             }
         }
         .animation(style.morph, value: screen.stateName)
+    }
+}
+
+/// The field's surface. Under `polaris-key` it is filled (sunken) with the accent focus ring; on
+/// macOS under `native` it is the system's `.roundedBorder` large field, whose focus ring is the
+/// system's. A wrong key takes the danger stroke in both (DL7).
+private struct KeyFieldSurface: ViewModifier {
+    let style: KitResolvedStyle
+    let invalid: Bool
+    let focused: Bool
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+            if style.isNative {
+                content
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(invalid ? style.palette.danger : .clear, lineWidth: 1.5)
+                    )
+            } else {
+                filled(content)
+            }
+        #else
+            filled(content)
+        #endif
+    }
+
+    private func filled(_ content: Content) -> some View {
+        content
+            .padding(.horizontal, style.space(.md))
+            .frame(minHeight: style.controlHeight)
+            .background(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .fill(style.palette.sunken)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .strokeBorder(
+                        invalid ? style.palette.danger : (focused ? style.palette.focus : .clear),
+                        lineWidth: 2)
+            )
     }
 }
 

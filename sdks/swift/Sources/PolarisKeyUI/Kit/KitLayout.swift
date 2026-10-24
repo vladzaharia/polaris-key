@@ -40,6 +40,113 @@ public enum KitArrangement: Sendable, Equatable {
     }
 }
 
+/// The arrangement of a Mac window (UK-08.3, `desktop.html`, DL1). One component whose shape is a
+/// function of the window's own measured size, so a narrow, a short and a large window are the
+/// same screens at other sizes:
+///
+///   * `strip`  under 640 pt wide: the art pane collapses to a 64 pt header strip holding the icon
+///     and the name, and the act docks at the bottom;
+///   * `short`  under 480 pt tall (and 640 wide or more): still two columns, no scroll; the lede
+///     gives way first and the hero capsules drop to the 28 pt control;
+///   * `split`  the art pane (334 pt) beside one top-aligned block of at most 440 pt;
+///   * `card`   1200 pt wide and 640 tall or more: the same two panes as a 880 x 600 card on the
+///     product ambient.
+public enum KitMacArrangement: Sendable, Equatable {
+    case strip
+    case short
+    case split
+    case card
+
+    public static let stripBelowWidth: CGFloat = 640
+    public static let shortBelowHeight: CGFloat = 480
+    public static let cardFromWidth: CGFloat = 1200
+    public static let cardFromHeight: CGFloat = 640
+    /// The form block's widest extent beside the art pane.
+    public static let formMaxWidth: CGFloat = 440
+    /// The sheet's width on macOS (the form, fitted).
+    public static let sheetWidth: CGFloat = 440
+    /// The art pane's margin from the window (and the strip's from the top and sides).
+    public static let artMargin: CGFloat = 14
+    /// The gap between the Welcome capsules.
+    public static let actsSpacing: CGFloat = 8
+    /// The sheet form's padding.
+    public static let sheetInsets: (top: CGFloat, side: CGFloat, bottom: CGFloat) = (22, 22, 18)
+    /// The hero actions' widest extent.
+    public static let actsMaxWidth: CGFloat = 320
+    /// The minimum window the kit lays out for.
+    public static let minimumWindow = CGSize(width: 480, height: 520)
+
+    public static func of(_ size: CGSize) -> KitMacArrangement {
+        if size.width < stripBelowWidth { return .strip }
+        if size.height < shortBelowHeight { return .short }
+        if size.width >= cardFromWidth, size.height >= cardFromHeight { return .card }
+        return .split
+    }
+
+    /// The art pane's width; 0 when the pane is a strip.
+    public var artWidth: CGFloat {
+        switch self {
+        case .strip: return 0
+        case .short: return 300
+        case .split: return 334
+        case .card: return 340
+        }
+    }
+
+    /// The end pane's padding from the window: top, leading, trailing, bottom.
+    public var endInsets: (top: CGFloat, leading: CGFloat, trailing: CGFloat, bottom: CGFloat) {
+        switch self {
+        case .strip: return (28, 32, 32, 32)
+        case .short: return (36, 18, 40, 20)
+        case .split: return (72, 22, 48, 40)
+        case .card: return (80, 22, 48, 40)
+        }
+    }
+
+    /// The row of the card: 880 x 600; the other arrangements fill the window.
+    public static let cardSize = CGSize(width: 880, height: 600)
+
+    /// Whether the lede is drawn (it gives way first at short heights, DL3).
+    public var showsLede: Bool { self != .short }
+
+    /// Whether the Welcome capsules are the 36 pt hero (the short window uses the 28 pt control).
+    public var heroCapsules: Bool { self != .short }
+
+    /// Whether the art pane is a header strip rather than a column.
+    public var isStrip: Bool { self == .strip }
+}
+
+private struct KitMacArrangementKey: EnvironmentKey {
+    static let defaultValue: KitMacArrangement = .split
+}
+
+private struct KitInSheetKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// The Mac arrangement the enclosing scaffold chose, for a screen that adapts inside it.
+    var kitMacArrangement: KitMacArrangement {
+        get { self[KitMacArrangementKey.self] }
+        set { self[KitMacArrangementKey.self] = newValue }
+    }
+
+    /// The form is drawn in a sheet (a fitted panel), not the Welcome window.
+    var kitInSheet: Bool {
+        get { self[KitInSheetKey.self] }
+        set { self[KitInSheetKey.self] = newValue }
+    }
+}
+
+/// Hands a screen the arrangement the enclosing scaffold chose (the scaffold sets it inside its
+/// own body, so a screen reads it through a child view).
+struct KitArrangementReader<Built: View>: View {
+    @Environment(\.kitMacArrangement) private var arrangement
+    @ViewBuilder let build: (KitMacArrangement) -> Built
+
+    var body: some View { build(arrangement) }
+}
+
 private struct KitWindowSizeKey: PreferenceKey {
     static let defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
@@ -65,7 +172,24 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 
     @State private var window: CGSize = .zero
 
+    @Environment(\.kitInSheet) private var inSheet
+
     var body: some View {
+        #if os(macOS)
+            if inSheet {
+                // A sheet is the form alone, fitted to 440 pt, on the system's panel.
+                KitMacSheetForm(
+                    header: header, tier: tier, heading: heading, content: content,
+                    actions: actions, footer: footer)
+            } else {
+                scaffold
+            }
+        #else
+            scaffold
+        #endif
+    }
+
+    private var scaffold: some View {
         kitStyle { style in
             ZStack {
                 style.palette.page.ignoresSafeArea()
@@ -89,10 +213,16 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
     }
 
     @ViewBuilder private func arranged(_ style: KitResolvedStyle) -> some View {
-        switch KitArrangement.of(window) {
-        case .split: split(style)
-        case .tall: tall(style)
-        }
+        #if os(macOS)
+            KitMacScaffold(
+                arrangement: KitMacArrangement.of(window), hero: hero, header: header, tier: tier,
+                heading: heading, content: content, actions: actions, footer: footer)
+        #else
+            switch KitArrangement.of(window) {
+            case .split: split(style)
+            case .tall: tall(style)
+            }
+        #endif
     }
 
     private func heroIcon(_ height: CGFloat) -> CGFloat? {

@@ -162,6 +162,16 @@ struct ActivateActions: View {
     var onCancel: (() -> Void)?
     var onDone: (() -> Void)?
 
+    /// The device-limit fix's label: "Replace a Device" on a Mac (the button's `macos` variant, title
+    /// case), the screen's title elsewhere.
+    static var replaceKey: String {
+        #if os(macOS)
+            return "signin.replace.open"
+        #else
+            return "deviceLimit.title"
+        #endif
+    }
+
     /// The Done step's lone action, when the host gave one (DL4: a lone action is the primary).
     static func doneActionKey(onDone: Bool) -> String? { onDone ? "signin.done.start" : nil }
 
@@ -171,7 +181,7 @@ struct ActivateActions: View {
             case .deviceLimit:
                 if screen.line("deviceLimit.noManage") == nil, let onReplaceDevice {
                     KitButton(
-                        line: screen.lineOrKey("deviceLimit.title"), kind: .primary,
+                        line: screen.lineOrKey(Self.replaceKey), kind: .primary,
                         glyph: PolarisKitGlyph.newWindow, action: onReplaceDevice
                     )
                     .keyboardShortcut(.defaultAction)
@@ -237,7 +247,7 @@ public struct DeviceLimitView: View {
             VStack(alignment: .leading, spacing: 6) {
                 // The component is titled Replace a device in every kit (UI-KITS DeviceLimit,
                 // owner 2026-10-05); the seat count is the line under it.
-                KitText(screen.lineOrKey("deviceLimit.title"), .title, color: .strong)
+                KitText(screen.lineOrKey(ActivateActions.replaceKey), .title, color: .strong)
                     .accessibilityAddTraits(.isHeader)
                 if let count = screen.line("deviceLimit.heading") {
                     KitText(count, .headline, color: .strong)

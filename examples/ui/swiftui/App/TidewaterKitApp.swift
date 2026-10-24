@@ -5,9 +5,11 @@
 //   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off,
 //   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de, -pkeyMaterial (the iOS 18
 //   material fallback on 26)
-//   macOS only: -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
+//   macOS only: -pkeyActivate (take the activation when launched from a script),
+//   -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
 //   (hands the activation to Finder once the window is up, so the window is on screen but not
 //   active: the inactive look, UK-08.1 S2)
+//   macOS only: -pkeySheet (the state as a sheet over Welcome: one fitted 440 pt panel, UK-08.3)
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -32,6 +34,16 @@ import SwiftUI
 
         /// `-pkeyInactive`: once the window is up, make Finder the active app. The window stays
         /// on screen, drawn as an inactive window.
+        /// `-pkeyActivate`: take the activation, so a window launched from a script draws as the
+        /// active window (the hand-run review renders; the XCUITest runner activates the app itself).
+        @MainActor static func activateIfAsked() {
+            guard ProcessInfo.processInfo.arguments.contains("-pkeyActivate") else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NSApp.activate()
+                NSApp.windows.first?.makeKeyAndOrderFront(nil)
+            }
+        }
+
         @MainActor static func deactivateIfAsked() {
             guard ProcessInfo.processInfo.arguments.contains("-pkeyInactive") else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -84,9 +96,29 @@ struct Root: View {
             } else if let id = value("-pkeyState"),
                 let state = PolarisKeyPreviewState.all.first(where: { $0.id == id })
             {
-                PolarisKeyPreview(
-                    state, iconData: TidewaterIcon.png,
-                    frozenTime: args.contains("-pkeyFreezeTime"))
+                #if os(macOS)
+                    if args.contains("-pkeySheet"), let welcome = PolarisKeyPreviewState.named(.welcome, "default") {
+                        PolarisKeyPreview(
+                            welcome, iconData: TidewaterIcon.png,
+                            frozenTime: args.contains("-pkeyFreezeTime")
+                        )
+                        .sheet(isPresented: .constant(true)) {
+                            PolarisKeyPreview(
+                                state, iconData: TidewaterIcon.png,
+                                frozenTime: args.contains("-pkeyFreezeTime"), asSheet: true
+                            )
+                            .presentationSizing(.fitted)
+                        }
+                    } else {
+                        PolarisKeyPreview(
+                            state, iconData: TidewaterIcon.png,
+                            frozenTime: args.contains("-pkeyFreezeTime"))
+                    }
+                #else
+                    PolarisKeyPreview(
+                        state, iconData: TidewaterIcon.png,
+                        frozenTime: args.contains("-pkeyFreezeTime"))
+                #endif
             } else {
                 PolarisKeyGallery()
             }
@@ -97,7 +129,10 @@ struct Root: View {
             .frame(
                 width: MacWindow.size?.width, height: MacWindow.size?.height
             )
-            .onAppear { MacWindow.deactivateIfAsked() }
+            .onAppear {
+                MacWindow.activateIfAsked()
+                MacWindow.deactivateIfAsked()
+            }
         #endif
     }
 }

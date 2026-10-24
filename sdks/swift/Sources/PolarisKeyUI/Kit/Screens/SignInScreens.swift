@@ -26,7 +26,6 @@ public struct SignInView: View {
     var providers: [KitProvider]
     var onClose: (() -> Void)?
 
-    @State private var confirmingReplace = false
     @AccessibilityFocusState private var headingFocused: Bool
     @Environment(\.openURL) private var openURL
 
@@ -161,7 +160,7 @@ public struct SignInView: View {
                 }
                 ReplaceDeviceView(
                     screen: model.licenseChoice, view: model.inputs.replaceView,
-                    confirmInSystem: true, onReplace: { confirmingReplace = true })
+                    confirmInSystem: true, onReplace: {})
             }
         case .key:
             ActivateBody(
@@ -696,7 +695,22 @@ public struct ReplaceDeviceView: View {
     var confirmInSystem: Bool
     var onReplace: () -> Void
     @State private var selection: String?
+    @State private var confirming = false
     @Environment(\.polarisKeyStrings) private var strings
+
+    private static var formFactor: String {
+        #if os(macOS)
+            return "mac"
+        #else
+            return "iphone"
+        #endif
+    }
+
+    /// The device the Replace… confirm names: the picked one, else the least recent.
+    private var target: KitReplaceDevice? {
+        let devices = view?.devices ?? []
+        return devices.first { $0.id == selection } ?? devices.first(where: \.leastRecent)
+    }
 
     public init(
         screen: KitScreen<LicenseChoiceState>, view: KitReplaceView?, confirmInSystem: Bool = true,
@@ -741,7 +755,31 @@ public struct ReplaceDeviceView: View {
                 KitButton(
                     line: CopyLine(
                         confirmInSystem ? "signin.replace.openSystem" : "signin.replace.confirm"),
-                    kind: .primary, action: onReplace)
+                    kind: .primary,
+                    action: { if confirmInSystem { confirming = true } else { onReplace() } }
+                )
+                .confirmationDialog(
+                    strings.string(
+                        "signin.replace.title", ["device": .text(target?.label ?? "")]),
+                    isPresented: $confirming, titleVisibility: .visible
+                ) {
+                    Button(
+                        strings.string(
+                            "signin.replace.confirmNamed", ["device": .text(target?.label ?? "")]),
+                        role: .destructive, action: onReplace)
+                    Button(strings.string("common.cancel"), role: .cancel) {}
+                } message: {
+                    Text(
+                        strings.string(
+                            "signin.replace.consequence",
+                            [
+                                "device": .text(target?.label ?? ""),
+                                "product": .text(style.identity.name),
+                                "thisDevice": .text(
+                                    strings.string(
+                                        "part.thisDevice", ["formFactor": .text(Self.formFactor)])),
+                            ]))
+                }
             }
         }
     }

@@ -125,8 +125,7 @@ public struct PolarisKeyGate<Content: View>: View {
                     PolarisKeyScope(model: model) {
                         SignInView(model: model, providers: providers) { model.backToWelcome() }
                     }
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .kitSignInSheetShape()
                 }
         case .welcome:
             welcome
@@ -276,6 +275,19 @@ public struct PolarisKeyGate<Content: View>: View {
     }
 }
 
+extension View {
+    /// The sign-in sheet's shape. iOS: full height with the drag indicator. macOS: one fitted
+    /// sheet, 440 pt wide; macOS 26 draws the inset rounded panel itself and the kit only sizes
+    /// it (S3).
+    @ViewBuilder fileprivate func kitSignInSheetShape() -> some View {
+        #if os(macOS)
+            kitMacSheet()
+        #else
+            presentationDetents([.large]).presentationDragIndicator(.visible)
+        #endif
+    }
+}
+
 /// Puts a gate model's resolved style, copy and icon in the environment of `content`: the
 /// one place a subtree turns the theme into colours, fonts and strings.
 public struct PolarisKeyScope<Content: View>: View {
@@ -344,8 +356,7 @@ extension View {
             PolarisKeyScope(model: model) {
                 SignInView(model: model, providers: providers) { isPresented.wrappedValue = false }
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .kitSignInSheetShape()
             .onAppear { model.route = .signIn }
             .onDisappear { model.cancelSignIn() }
         }

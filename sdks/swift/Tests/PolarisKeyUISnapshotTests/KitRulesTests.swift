@@ -143,6 +143,49 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(KitArrangement.of(CGSize(width: 900, height: 800)), .tall)
     }
 
+    // MARK: Mac window (UK-08.3, desktop.html)
+
+    func testTheMacWindowChoosesItsShapeFromItsOwnSize() {
+        func at(_ w: CGFloat, _ h: CGFloat) -> KitMacArrangement {
+            KitMacArrangement.of(CGSize(width: w, height: h))
+        }
+        // The minimum window is the one-line header strip.
+        XCTAssertEqual(KitMacArrangement.minimumWindow, CGSize(width: 480, height: 520))
+        XCTAssertEqual(at(480, 520), .strip)
+        XCTAssertEqual(at(639, 900), .strip)
+        // 760 x 420 is the short landscape: still two columns, no scroll.
+        XCTAssertEqual(at(760, 420), .short)
+        XCTAssertEqual(at(640, 479), .short)
+        XCTAssertEqual(at(900, 640), .split)
+        XCTAssertEqual(at(760, 480), .split)
+        // A large window is the capped card; a wide but short one is not.
+        XCTAssertEqual(at(1440, 900), .card)
+        XCTAssertEqual(at(1920, 1080), .card)
+        XCTAssertEqual(at(1200, 640), .card)
+        XCTAssertEqual(at(1400, 560), .split)
+    }
+
+    func testTheMacPanesAndFormKeepTheirMeasures() {
+        XCTAssertEqual(KitMacArrangement.split.artWidth, 334)
+        XCTAssertEqual(KitMacArrangement.card.artWidth, 340)
+        XCTAssertEqual(KitMacArrangement.short.artWidth, 300)
+        XCTAssertEqual(KitMacArrangement.strip.artWidth, 0)
+        // One top-aligned form of at most 440 pt, hero actions at most 320.
+        XCTAssertEqual(KitMacArrangement.formMaxWidth, 440)
+        XCTAssertEqual(KitMacArrangement.actsMaxWidth, 320)
+        XCTAssertEqual(KitMacArrangement.sheetWidth, 440)
+        XCTAssertEqual(KitMacArrangement.cardSize, CGSize(width: 880, height: 600))
+        XCTAssertEqual(KitMacArrangement.split.endInsets.top, 72)
+        XCTAssertEqual(KitMacArrangement.card.endInsets.top, 80)
+        // The lede and the 36 pt capsules give way in the short window only.
+        XCTAssertFalse(KitMacArrangement.short.showsLede)
+        XCTAssertFalse(KitMacArrangement.short.heroCapsules)
+        for shape in [KitMacArrangement.strip, .split, .card] {
+            XCTAssertTrue(shape.showsLede)
+            XCTAssertTrue(shape.heroCapsules)
+        }
+    }
+
     func testTheHeroGivesWayFirst() {
         XCTAssertEqual(KitArrangement.heroSize(height: 956), 120)
         XCTAssertEqual(KitArrangement.heroSize(height: 600), 72)

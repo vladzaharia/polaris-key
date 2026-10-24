@@ -14,7 +14,7 @@
 //   PKEY_KIT_SHOTS      where the renders go (unset: attachments only)
 //   PKEY_KIT_ONLY       comma-separated states (default: the Mac set)
 //   PKEY_KIT_QUICK=1    Welcome.default in both schemes at one size, nothing else
-//   PKEY_KIT_WINDOWS    comma-separated WxH list (default 900x640; the full run adds 480x520)
+//   PKEY_KIT_WINDOWS    comma-separated WxH list (default 480x520, 900x640, 1440x900 and 1920x1080)
 //   PKEY_KIT_INACTIVE   1: also render each default-row state with the window inactive
 //   PKEY_KIT_BASELINES / PKEY_KIT_RECORD   compare with / record baselines as on iOS
 //   PKEY_KIT_EXTRA_ARGS extra launch arguments
@@ -44,6 +44,9 @@ final class KitRenderMacTests: XCTestCase {
         "SignInHandoff.code", "LicenseChoice.many", "DeviceLimit.default", "StatusScreen.revoked",
     ]
 
+    /// The steps drawn as a sheet.
+    static let sheets = ["Activate.parsed", "SignIn.methods", "SignInHandoff.code"]
+
     static func env(_ name: String) -> String? {
         let env = ProcessInfo.processInfo.environment
         let value = env[name] ?? env["TEST_RUNNER_\(name)"]
@@ -61,9 +64,19 @@ final class KitRenderMacTests: XCTestCase {
             ?? (quick ? ["Welcome.default"] : Self.all)
         let windows =
             Self.env("PKEY_KIT_WINDOWS").map { $0.split(separator: ",").map(String.init) }
-            ?? (quick ? ["900x640"] : ["900x640", "480x520"])
+            ?? (quick ? ["900x640"] : ["480x520", "900x640", "1440x900", "1920x1080"])
         let inactive = Self.env("PKEY_KIT_INACTIVE") == "1"
         var renders: [Render] = []
+        // The Mac sheet (`presentation: "sheet"`, UK-08.3): the step as one fitted 440 pt panel
+        // over Welcome, at the common window.
+        if !quick, Self.env("PKEY_KIT_ONLY") == nil {
+            for state in Self.sheets {
+                for scheme in ["dark", "light"] {
+                    renders.append(
+                        try render(state, window: "900x640", scheme: scheme, sheet: true))
+                }
+            }
+        }
         for window in windows {
             for state in states {
                 for scheme in ["dark", "light"] {
@@ -96,17 +109,19 @@ final class KitRenderMacTests: XCTestCase {
     @MainActor
     private func render(
         _ state: String, window: String, scheme: String, preset: String = "polaris-key",
-        inactive: Bool = false
+        inactive: Bool = false, sheet: Bool = false
     ) throws -> Render {
         let os = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
         let name =
-            "mac\(os)-\(window)-\(state)-\(preset)-\(scheme)\(inactive ? "-inactive" : "")"
+            "mac\(os)-\(window)-\(state)-\(preset)-\(scheme)\(inactive ? "-inactive" : "")\(sheet ? "-sheet" : "")"
         let app = XCUIApplication()
         var args = [
             "-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime", "-pkeyWindow", window,
+            "-ApplePersistenceIgnoreState", "YES",
         ]
         if preset == "native" { args += ["-pkeyPreset", "native"] }
         if inactive { args += ["-pkeyInactive"] }
+        if sheet { args += ["-pkeySheet"] }
         if let extra = Self.env("PKEY_KIT_EXTRA_ARGS") {
             args += extra.split(separator: " ").map(String.init)
         }
