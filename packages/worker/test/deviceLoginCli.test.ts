@@ -595,14 +595,19 @@ describe("the poll of a CLI record", () => {
 // F-37.1: a `packages:read` request, decided in the portal.
 const PKG_START = { ...CLI_START, scope: "packages:read" };
 
+/** `setup()` with a package registry host, which a packages request needs (F-37.1b). */
+async function pkgSetup(): Promise<{ env: Env; db: Db; ledger: LedgerBucket }> {
+  const r = await setup();
+  r.env.PKG_ORIGIN = "https://pkg.example.test";
+  return r;
+}
+
 describe("a packages:read CLI request", () => {
   it("is approved in the portal, and the poll mints packages:read only, with the origin and feeds", async () => {
-    const { env, db } = await setup();
+    const { env, db } = await pkgSetup();
     const ada = await signIn(env, db, "ada@example.com");
     const s = await startCli(env, db, PKG_START);
-    expect(s.approveUrl).toBe(
-      `https://key.plrs.im/#/account/approve?code=${s.code}`,
-    );
+    expect(s.approveUrl).toBe(`https://key.plrs.im/approve?code=${s.code}`);
     expect(s.qr).toMatch(/^data:image\/svg\+xml/);
     expect(s).toMatchObject({ purpose: "cli", scope: "packages:read" });
     const lookup = await call(env, db, "POST", "/api/device-login/lookup", {
@@ -617,6 +622,12 @@ describe("a packages:read CLI request", () => {
       },
     });
     expect((await portalApprove(env, db, ada, s.code)).status).toBe(200);
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM portal_audit WHERE action = 'portal.device_login.approve'",
+    );
+    expect(audit!.summary).toBe(
+      "Approved personal token “pkey on ada-mbp.local” for pkey",
+    );
     const res = await poll(env, db, s);
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
@@ -625,7 +636,8 @@ describe("a packages:read CLI request", () => {
       scope: "packages:read",
       label: "pkey on ada-mbp.local",
       username: expect.any(String),
-      registryOrigin: null, // the test env configures no registry host
+      registryOrigin: "https://pkg.example.test",
+      replaced: null,
       feeds: [],
     });
     expect(body.token).toMatch(/^pkeyp_/);
@@ -653,7 +665,7 @@ describe("a packages:read CLI request", () => {
   });
 
   it("is refused by the portal when the record is admin, and by the console when it is packages", async () => {
-    const { env, db } = await setup();
+    const { env, db } = await pkgSetup();
     const ada = await signIn(env, db, "ada@example.com");
     const admin = await startCli(env, db);
     expect((await portalApprove(env, db, ada, admin.code)).status).toBe(410);
@@ -671,7 +683,7 @@ describe("a packages:read CLI request", () => {
   });
 
   it("answers only the feeds the account's licences reach", async () => {
-    const { env, db } = await setup();
+    const { env, db } = await pkgSetup();
     const feed = { ecosystem: "npm", product: "djdl" };
     const { handleDeviceLoginPoll } =
       await import("../src/services/identity/portal/deviceLogin.js");
@@ -697,7 +709,7 @@ describe("a packages:read CLI request", () => {
   });
 
   it("always needs a fresh sign-in to approve, even from the same place; the code stays live for the retry", async () => {
-    const { env, db } = await setup();
+    const { env, db } = await pkgSetup();
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     const issue = async (at: number): Promise<Session> => {
       const { token, session } = await issuePortalSessionRow(
@@ -738,5 +750,86 @@ describe("a packages:read CLI request", () => {
       status: "approved",
       scope: "packages:read",
     });
+  });
+
+  it("refuses start with 409 when no registry is configured, before any record exists", async () => {
+    const { env, db } = await setup();
+    const res = await call(env, db, "POST", "/api/device-login/start", {
+      body: PKG_START,
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "unavailable" });
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // The admin scope is unaffected by the registry.
+    const admin = await call(env, db, "POST", "/api/device-login/start", {
+      body: CLI_START,
+    });
+    expect(admin.status).toBe(201);
+  });
+
+  it("replaces the earlier CLI token for the same label: two approvals in a row revoke the first", async () => {
+    const { env, db } = await pkgSetup();
+    const ada = await signIn(env, db, "ada@example.com");
+    const mint = async (ip: string) => {
+      const s = await startCli(env, db, PKG_START, ip);
+      expect((await portalApprove(env, db, ada, s.code)).status).toBe(200);
+      return (await (await poll(env, db, s)).json()) as {
+        token: string;
+        replaced: string | null;
+      };
+    };
+    const first = await mint("203.0.113.20");
+    expect(first.replaced).toBeNull();
+    const second = await mint("203.0.113.21");
+    expect(second.replaced).toBe(first.token.slice(-4));
+    const scope = "packages:read";
+    expect(
+      await resolvePersonalToken(env, db, first.token, scope, NOW),
+    ).toBeNull();
+    expect(
+      await resolvePersonalToken(env, db, second.token, scope, NOW),
+    ).not.toBeNull();
+  });
+
+  it("only ever revokes the same account's own CLI token with the same label and scope", async () => {
+    const { env, db } = await pkgSetup();
+    const ada = await signIn(env, db, "ada@example.com");
+    const bob = await signIn(env, db, "bob@example.com");
+    const label = "pkey on ada-mbp.local";
+    const hand = (
+      accountId: string,
+      l: string,
+      scope: "admin" | "packages:read",
+    ) =>
+      mintAccountToken(
+        env,
+        db,
+        { accountId, label: l, scope, createdBy: `portal:${accountId}` },
+        NOW,
+      );
+    // Adversaries: same label made by hand, a CLI token for another label, admin scope, another account.
+    const byHand = await hand(ada.accountId, label, "packages:read");
+    const otherLabel = await hand(
+      ada.accountId,
+      "pkey on elsewhere",
+      "packages:read",
+    );
+    const admin = await hand(ada.accountId, label, "admin");
+    const bobs = await hand(bob.accountId, label, "packages:read");
+    const mint = async (who: Session, ip: string) => {
+      const s = await startCli(env, db, PKG_START, ip);
+      expect((await portalApprove(env, db, who, s.code)).status).toBe(200);
+      return (await (await poll(env, db, s)).json()) as { token: string };
+    };
+    await mint(bob, "203.0.113.30");
+    await mint(ada, "203.0.113.31");
+    const live = async (
+      t: { ok: boolean; token?: string },
+      scope: "admin" | "packages:read",
+    ) => (await resolvePersonalToken(env, db, t.token!, scope, NOW)) !== null;
+    expect(await live(byHand, "packages:read")).toBe(true);
+    expect(await live(otherLabel, "packages:read")).toBe(true);
+    expect(await live(admin, "admin")).toBe(true);
+    expect(await live(bobs, "packages:read")).toBe(true);
   });
 });

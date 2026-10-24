@@ -199,7 +199,7 @@
       "code": "unavailable",
       "kind": "wire",
       "service": "identity",
-      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again. Also the device-code poll could not finish an approved sign-in yet (503 with `Retry-After`): the flow is kept, poll again (I-37d)."
+      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again. Also the device-code poll could not finish an approved sign-in yet (503 with `Retry-After`): the flow is kept, poll again (I-37d). Also `POST /api/device-login` (409) for a `pkey` packages sign-in on a deployment with no package registry configured (F-37.1b): the CLI refuses before the browser opens."
     },
     {
       "code": "erasure_ledger_unavailable",

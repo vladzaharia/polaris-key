@@ -344,6 +344,61 @@ export async function revokeAccountTokenCounted(
   };
 }
 
+/**
+ * The provenance mark of a token minted for `pkey` by a Locker approval: the tail of the
+ * `portal.personal_token.create` audit row's summary. The token row keeps no created_by column, so
+ * this row is how a CLI-minted token is told from one the person made by hand under the same label.
+ */
+export const CLI_PACKAGES_TOKEN_MARK = "by pkey approved in Polaris Locker";
+
+/**
+ * F-37.1b: a new CLI `packages:read` mint replaces the account's earlier one for the same label
+ * (as `pkey login` replaces its sign-in). Revokes ONLY live tokens that are all of: this
+ * `accountId`'s, scope `packages:read`, exactly this `label`, not `exceptId`, and recorded by a
+ * Locker CLI approval (the audit mark above) for the same account. A token the person made by
+ * hand with the same label, another label, another scope or another account is never touched.
+ * Answers the revoked tokens' hints.
+ */
+export async function revokeReplacedCliPackagesTokens(
+  db: Db,
+  accountId: string,
+  label: string,
+  exceptId: string,
+  now: number,
+): Promise<string[]> {
+  const rows = await db.all<{ id: string; hint: string }>(
+    `SELECT t.id AS id, t.hint AS hint FROM account_tokens t
+      WHERE t.account_id = ? AND t.scope = ? AND t.label = ? AND t.id <> ?
+        AND t.revoked_at IS NULL AND t.expires_at > ?
+        AND EXISTS (
+          SELECT 1 FROM portal_audit a
+           WHERE a.account_id = t.account_id AND a.target_id = t.id
+             AND a.action = 'portal.personal_token.create'
+             AND a.target_kind = 'account_token'
+             AND a.summary LIKE ?
+        )`,
+    accountId,
+    PACKAGES_READ_SCOPE,
+    label,
+    exceptId,
+    now,
+    `%${CLI_PACKAGES_TOKEN_MARK}`,
+  );
+  const hints: string[] = [];
+  for (const r of rows) {
+    const out = await revokeAccountTokenCounted(
+      db,
+      accountId,
+      r.id,
+      `portal:${accountId}`,
+      "manual",
+      now,
+    );
+    if (out.changed) hints.push(r.hint);
+  }
+  return hints;
+}
+
 /** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
 export interface PersonalTokenAdminView extends Omit<
   PersonalTokenView,

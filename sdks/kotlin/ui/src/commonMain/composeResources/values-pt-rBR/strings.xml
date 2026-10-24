@@ -1565,7 +1565,13 @@
     <string name="signin_approve_look">Buscar</string>
     <string name="signin_approve_look__macos">Buscar</string>
     <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
-    <string name="signin_approve_askPackages">O pkey em %1$s pede um token de pacotes.</string>
+    <string name="signin_approve_askPackages">O pkey em %1$s pede um token pessoal somente leitura para os seus pacotes.</string>
+    <!-- Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it. -->
+    <string name="signin_approve_askPackagesTitle">Dar um token pessoal ao pkey?</string>
+    <!-- Approve dialog, confirm button for the pkey packages token. -->
+    <string name="signin_approve_approvePackages">Aprovar</string>
+    <!-- Approve dialog outcome after approving the pkey packages token. -->
+    <string name="signin_approve_approvedPackages">Aprovado. Volte ao terminal.</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">O código %1$s pede para entrar na sua conta.</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->

@@ -4146,9 +4146,24 @@ msgctxt "macos"
 msgid "signin.approve.look"
 msgstr ""
 
-#. pkey on {host} asks for a packages token.
+#. pkey on {host} asks for a read-only personal token for your packages.
 #. Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is.
 msgid "signin.approve.askPackages"
+msgstr ""
+
+#. Give pkey a personal token?
+#. Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it.
+msgid "signin.approve.askPackagesTitle"
+msgstr ""
+
+#. Approve
+#. Approve dialog, confirm button for the pkey packages token.
+msgid "signin.approve.approvePackages"
+msgstr ""
+
+#. Approved. Go back to your terminal.
+#. Approve dialog outcome after approving the pkey packages token.
+msgid "signin.approve.approvedPackages"
 msgstr ""
 
 #. Code {code} asks to sign in to your account.

@@ -1545,7 +1545,13 @@
     <string name="signin_approve_look">検索</string>
     <string name="signin_approve_look__macos">検索</string>
     <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
-    <string name="signin_approve_askPackages">%1$s の pkey がパッケージトークンを求めています。</string>
+    <string name="signin_approve_askPackages">%1$s の pkey が、パッケージ用の読み取り専用の個人用トークンを求めています。</string>
+    <!-- Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it. -->
+    <string name="signin_approve_askPackagesTitle">pkey に個人用トークンを発行しますか？</string>
+    <!-- Approve dialog, confirm button for the pkey packages token. -->
+    <string name="signin_approve_approvePackages">承認</string>
+    <!-- Approve dialog outcome after approving the pkey packages token. -->
+    <string name="signin_approve_approvedPackages">承認しました。ターミナルに戻ってください。</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">コード %1$s がアカウントへのサインインを求めています。</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->

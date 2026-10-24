@@ -59,6 +59,12 @@ function templates(): Record<string, NoticeMessage> {
       at: 1_800_000_000,
       origin,
     }),
+    "packages-token": T.packagesTokenNotice({
+      host: "build-box",
+      location: "Lisbon, Portugal",
+      at: 1_800_000_000,
+      origin,
+    }),
     "device-removed": T.deviceRemovedNotice({
       ...P,
       deviceLabel: "Studio PC",

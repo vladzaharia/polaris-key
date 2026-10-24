@@ -4137,10 +4137,25 @@ msgctxt "macos"
 msgid "signin.approve.look"
 msgstr "찾기"
 
-#. pkey on {host} asks for a packages token.
+#. pkey on {host} asks for a read-only personal token for your packages.
 #. Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is.
 msgid "signin.approve.askPackages"
-msgstr "{host}의 pkey가 패키지 토큰을 요청했어요."
+msgstr "{host}의 pkey가 패키지용 읽기 전용 개인 토큰을 요청했어요."
+
+#. Give pkey a personal token?
+#. Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it.
+msgid "signin.approve.askPackagesTitle"
+msgstr "pkey에 개인 토큰을 줄까요?"
+
+#. Approve
+#. Approve dialog, confirm button for the pkey packages token.
+msgid "signin.approve.approvePackages"
+msgstr "승인"
+
+#. Approved. Go back to your terminal.
+#. Approve dialog outcome after approving the pkey packages token.
+msgid "signin.approve.approvedPackages"
+msgstr "승인했어요. 터미널로 돌아가세요."
 
 #. Code {code} asks to sign in to your account.
 #. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.

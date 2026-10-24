@@ -194,7 +194,7 @@ describe("POST /api/device-login/start", () => {
     expect(body.expiresIn).toBe(DEVICE_LOGIN_TTL_SECONDS);
     expect(DEVICE_LOGIN_TTL_SECONDS).toBeLessThanOrEqual(300);
     expect(body.approveUrl).toBe(
-      `https://key.plrs.im/#/account/approve?code=${body.code as string}`,
+      `https://key.plrs.im/approve?code=${body.code as string}`,
     );
     expect(body.qr).toMatch(/^data:image\/svg\+xml;base64,/);
     const svg = atob((body.qr as string).split(",")[1]!);
