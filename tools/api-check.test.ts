@@ -28,6 +28,15 @@ describe("api-check rule 4", () => {
     expect(checkApi(root)).toEqual([]);
   });
 
+  it("fails an SDK whose manifest implements the feature but is not listed (L11)", () => {
+    const v = run((a) => {
+      delete concept(a, "config.get").sdks.node;
+    });
+    expect(v).toContain(
+      '[rule 8] config.get: node implements "config.resolve" (packages/sdk-node/parity.json) but is not listed on the concept',
+    );
+  });
+
   it("fails the schema", () => {
     const v = run((a) => {
       a.apiVersion = 2;
