@@ -37,7 +37,8 @@ WITH leftovers(n) AS (
       (SELECT COUNT(*) FROM portal_account_emails e
     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.id = e.account_id)
       AND NOT EXISTS (SELECT 1 FROM account_links l
-                       WHERE l.kind = 'email' AND l.subject = e.email)) +
+                       WHERE l.kind = 'email' AND l.subject = e.email
+                         AND l.account_id = e.account_id)) +
       (SELECT COUNT(*) FROM portal_license_links k
     WHERE EXISTS (SELECT 1 FROM licenses li
                    WHERE li.product = k.product AND li.id = k.license_id
@@ -58,7 +59,8 @@ WITH leftovers(n) AS (
       (SELECT COUNT(*) FROM portal_account_emails e
     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.id = e.account_id)
       AND NOT EXISTS (SELECT 1 FROM account_links l
-                       WHERE l.kind = 'email' AND l.subject = e.email)) +
+                       WHERE l.kind = 'email' AND l.subject = e.email
+                         AND l.account_id = e.account_id)) +
       (SELECT COUNT(*) FROM portal_license_links k
     WHERE EXISTS (SELECT 1 FROM licenses li
                    WHERE li.product = k.product AND li.id = k.license_id
@@ -79,7 +81,8 @@ WITH leftovers(n) AS (
       (SELECT COUNT(*) FROM portal_account_emails e
     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.id = e.account_id)
       AND NOT EXISTS (SELECT 1 FROM account_links l
-                       WHERE l.kind = 'email' AND l.subject = e.email)) +
+                       WHERE l.kind = 'email' AND l.subject = e.email
+                         AND l.account_id = e.account_id)) +
       (SELECT COUNT(*) FROM portal_license_links k
     WHERE EXISTS (SELECT 1 FROM licenses li
                    WHERE li.product = k.product AND li.id = k.license_id
@@ -100,7 +103,8 @@ WITH leftovers(n) AS (
       (SELECT COUNT(*) FROM portal_account_emails e
     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.id = e.account_id)
       AND NOT EXISTS (SELECT 1 FROM account_links l
-                       WHERE l.kind = 'email' AND l.subject = e.email)) +
+                       WHERE l.kind = 'email' AND l.subject = e.email
+                         AND l.account_id = e.account_id)) +
       (SELECT COUNT(*) FROM portal_license_links k
     WHERE EXISTS (SELECT 1 FROM licenses li
                    WHERE li.product = k.product AND li.id = k.license_id

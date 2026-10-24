@@ -2167,7 +2167,9 @@ npx wrangler d1 execute <DATABASE> --env <ENV> --remote --file packages/worker/s
 2. Any value above 0: the purge deletes nothing (its DELETEs are guarded by the sum of the same four
    counts) and the migration still succeeds. Send the leftovers to the lead before the release.
 3. Note a D1 Time Travel bookmark of the environment's database before the release deploys.
-4. After the deploy, the four tables read 0 rows. I-28b may ship no earlier than 14 days later.
+4. After the deploy, required check: the four tables read 0 rows (`SELECT COUNT(*)` on each). Any row means the purge was held back; do not start the 14 days. I-28b may ship no earlier than 14 days after the zero reading.
+
+The Time Travel bookmark from step 3 keeps the purged end-user data (emails, identities, links) for its retention window. An erasure request received in that window is still held there: do not restore to that bookmark without re-running the erasure afterwards (see Account erasure ledger and D1 restore).
 
 **Roll back.** Roll the Worker back, then run `scripts/rollback/0068_accounts.down.sql`: with the
 tables empty it rebuilds all four exactly from the account model.

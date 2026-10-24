@@ -11,8 +11,8 @@
 --   unmigrated_accounts      `portal_accounts` ids in neither `accounts` nor `account_tombstones`.
 --   identities_without_link  identities of an existing account with no `account_links` row (same
 --                            account and subject, kind 'oidc', global scope).
---   emails_without_link      emails of an existing account with no `account_links` row (kind
---                            'email', subject = the address).
+--   emails_without_link      emails of an existing account with no `account_links` row (same
+--                            account, kind 'email', subject = the address).
 --   unsettled_license_links  links whose licence is floating or held by another account (the
 --                            unsettled ownership conflict legacy.ts used to settle).
 
@@ -30,7 +30,8 @@ SELECT
   (SELECT COUNT(*) FROM portal_account_emails e
     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.id = e.account_id)
       AND NOT EXISTS (SELECT 1 FROM account_links l
-                       WHERE l.kind = 'email' AND l.subject = e.email))
+                       WHERE l.kind = 'email' AND l.subject = e.email
+                         AND l.account_id = e.account_id))
     AS emails_without_link,
   (SELECT COUNT(*) FROM portal_license_links k
     WHERE EXISTS (SELECT 1 FROM licenses li

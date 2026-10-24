@@ -162,6 +162,24 @@ describe("portal contract purge", () => {
     });
   }
 
+  it("an email of account A linked only to account B blocks the purge", () => {
+    const raw = scratch();
+    seedClean(raw);
+    raw.exec(
+      `INSERT INTO portal_account_emails (email, account_id, verified_at, created_at)
+         VALUES ('shared@x.test', 'acct_a', ${T}, ${T})`,
+    );
+    raw.exec(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+         email_verified, created_at, last_used_at)
+       VALUES ('l9', 'acct_b', 'email', '', 'shared@x.test', 'email', 1, ${T}, ${T})`,
+    );
+    expect(counts(raw)).toEqual({ ...ZERO, emails_without_link: 1 });
+    const before = rows(raw);
+    raw.exec(read("migrations", PURGE));
+    expect(rows(raw)).toEqual(before);
+  });
+
   it("a link to a licence held by another account is an unsettled leftover", () => {
     const raw = scratch();
     seedClean(raw);
