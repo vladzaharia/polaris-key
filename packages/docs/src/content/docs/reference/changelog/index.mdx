@@ -1,0 +1,51 @@
+---
+title: "Developer changelog"
+description: "Changes to the SDKs, the CLI, the manifest and the API, newest first."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Changes to the SDKs, the CLI, the manifest and the API, newest version first. The tables of what each removal is replaced by are in [Upgrade to 0.9](/docs/build/upgrade-to-0-9/).
+
+## 0.9.x
+
+### Exit code 4 for a refusal
+
+Added · 2026-10-22
+
+**Action required:** only if a script wraps [`pkey whoami`](/docs/reference/cli/#pkey-whoami) or [`pkey logout`](/docs/reference/cli/#pkey-logout), which are new, or `pkey login`.
+
+These commands exit 4 and print ▲ rather than ✗ when they refuse: not signed in, a sign-in that has ended, no credential store, or a token the server rejects. A network or server failure exits 1, as for every other command. `--json` prints one result line with `ok`, `exit` and `error` either way.
+
+Exit codes: 0 success; 1 failure (an invalid manifest, a network or server error); 2 usage; 4 refused.
+
+## 0.9.18
+
+### pkey feeds fdroid moved
+
+Removed · 2026-10-24 · distribution
+
+**Action required:** change the command in your CI. `pkey feeds fdroid` exits 2 and runs nothing. The flags are the same.
+
+## 0.9.0
+
+### The license-override migration is gone
+
+Removed · 2026-10-22 · license · config
+
+**Action required:** none for a manifest. Stop calling the removed routes and stop running the script.
+
+A license's own config and secret overrides stay: they are layer 4 of the merge, and the license overrides route accepts config, secret and flag keys on every license, floating or owned.
+
+Provisioned secrets now live on the owner's account row when the signing identity is linked to the license's owner. The tables `override_migration` and `override_migration_report` are neither read nor written; a later release drops them.
+
+### The declared registration policy is removed
+
+Removed · 2026-10-11 · license · identity
+
+**Action required:** remove `devices.registration` from every `.pkey/product.{json,yaml,yml}` manifest, then run [`pkey validate`](/docs/reference/cli/#pkey-validate) before you resync or ship. Remove `registration` from every services admin API request in the same change.
+
+Do not replace the field with another `devices` value: 0.9 removes it rather than accepting an alias. A manifest that still declares it reports `invalid_registration_policy`.
+
+The settings reference no longer lists `core.registration`, the registry entry for the same field.

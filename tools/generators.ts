@@ -319,8 +319,12 @@ export const GENERATORS: Generator[] = [
       "packages/*/parity.json",
       "packages/worker/openapi/**",
       "conformance/transcripts/**",
+      "packages/docs/changelog/**",
+      "tools/services.json",
     ],
     outputs: [
+      "packages/docs/src/content/docs/reference/changelog/index.mdx",
+      "packages/docs/src/content/docs/build/upgrade-to-0-9.md",
       "packages/docs/src/content/docs/reference/{api-names,compatibility,config-entry,error-codes,github-action,parity,routes,validation-codes}.mdx",
       "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
       "packages/docs/src/content/docs/contribute/data-model.mdx",

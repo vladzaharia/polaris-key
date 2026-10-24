@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://key.plrs.im/docs/changelog.schema.json",
+  "title": "Developer changelog entry frontmatter",
+  "description": "One file per change in packages/docs/changelog/<yyyy-mm-dd>-<slug>.md. The body is the note, at most 150 words. scripts/gen-reference.mjs validates every entry against this file and writes reference/changelog and the upgrade tables.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "date", "version", "type", "services", "sdks"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "version": {
+      "description": "The release that ships it: 0.9.18, or 0.9.x when no patch is named.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.(\\d+|x)$"
+    },
+    "type": {
+      "enum": ["feature", "fix", "breaking", "removed", "security"]
+    },
+    "services": {
+      "description": "Service slugs from tools/services.json; empty when the change is not a service's.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sdks": {
+      "description": "SDK ids from src/lib/docs.ts SDK_IDS; empty when no SDK is touched.",
+      "type": "array",
+      "items": {
+        "enum": ["node", "react", "python", "swift", "kotlin", "godot"]
+      }
+    },
+    "replaces": {
+      "description": "Rows of the upgrade page's Removed and Use instead tables, one table per surface. Markdown, code spans included.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["old", "new", "surface"],
+        "properties": {
+          "old": { "type": "string", "minLength": 1 },
+          "new": { "type": "string", "minLength": 1 },
+          "surface": {
+            "enum": ["sdk", "manifest", "cli", "action", "console"]
+          },
+          "sdk": {
+            "enum": ["node", "react", "python", "swift", "kotlin", "godot"]
+          }
+        }
+      }
+    }
+  }
+}
