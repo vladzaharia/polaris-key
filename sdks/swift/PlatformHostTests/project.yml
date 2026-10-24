@@ -80,6 +80,8 @@ targets:
         product: PolarisKey
       - package: PolarisKey
         product: PolarisKeyUI
+      - package: PolarisKey
+        product: PolarisKeyUICore
     info:
       path: build/generated/GateHost-Info.plist
       properties:

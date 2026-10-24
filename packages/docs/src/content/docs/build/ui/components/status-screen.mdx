@@ -19,7 +19,7 @@ The blocking states, each with its primary fix: revoked, expired, version too ol
 - **Expired** offers **Renew** and **Use another license**. Renew appears only when your app can renew: otherwise **Use another license** stands alone. It never offers Try again or Reconnect, because neither can change the outcome.
 - **Version too new** keeps **Try again** as its one action.
 
-Tell the kit how to renew: SwiftUI takes `renewURL` on `GateOptions`, Compose `onRenew` on `PolarisGate`, React `renewUrl` or `onRenew` (or `input.renew`), the elements `input.renew` and Qt `renew_url`, and the Godot gate `renew_url` (or a `renew_requested` handler). A URL must be https; Renew then carries the new-window glyph. A handler-only Renew has no glyph.
+Tell the kit how to renew: SwiftUI draws Renew from the https `url` of `KitOffers` (the live gate has no host renew input yet), Compose `onRenew` on `PolarisGate`, React `renewUrl` or `onRenew` (or `input.renew`), the elements `input.renew` and Qt `renew_url`, and the Godot gate `renew_url` (or a `renew_requested` handler). A URL must be https; Renew then carries the new-window glyph. A handler-only Renew has no glyph.
 
 ## States and copy
 

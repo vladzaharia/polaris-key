@@ -273,18 +273,6 @@
     },
     {
       "kit": "swiftui",
-      "rule": "swiftui-link-validation",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 2
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-link-validation",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisSignIn.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
       "rule": "swiftui-polaris-mark",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
       "count": 1
@@ -300,18 +288,6 @@
       "rule": "swiftui-px-font",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitStyle.swift",
       "count": 3
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-px-font",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-px-font",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 1
     },
     {
       "kit": "swiftui",
@@ -384,18 +360,6 @@
       "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/PolarisBrandMarks.swift",
       "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-spacing-off-scale",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-spacing-off-scale",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 2
     },
     {
       "kit": "swiftui",

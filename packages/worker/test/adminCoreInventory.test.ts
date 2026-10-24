@@ -10,16 +10,12 @@
  * Admin routes are narrative-only (`routeCoverage.test.ts` NARRATIVE_ONLY): no OpenAPI entry.
  */
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
+import { NOW, seedProductSecret } from "./seed.js";
+import { adminWorld } from "./adminWorld.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getProduct } from "../src/core/products/store.js";
 import { appendAudit, listAudit } from "../src/core/audit.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
@@ -31,49 +27,26 @@ interface World {
 }
 
 async function world(): Promise<World> {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), [SLUG]);
-  env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
-  env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  await seedProduct(db, SLUG);
+  const w = await adminWorld({
+    products: [SLUG],
+    groups: { platform: PLATFORM_GROUP },
+  });
   // A proven step-up: break-glass activation below is in the step-up table.
-  const { token, session } = await consoleTestSession(
-    env,
-    db,
-    {
-      sub: "u1",
-      name: "Ada",
-      email: "ada@x.io",
-      groups: [PLATFORM_GROUP],
-      authTime: NOW,
-      stepUp: true,
-    },
-    NOW,
-  );
+  const as = await w.login({
+    sub: "u1",
+    name: "Ada",
+    email: "ada@x.io",
+    groups: [PLATFORM_GROUP],
+    authTime: NOW,
+    stepUp: true,
+  });
   const call = (
     method: string,
     path: string,
     body?: unknown,
-  ): Promise<Response> => {
-    const full = `/api/products/${SLUG}${path}`;
-    const headers: Record<string, string> = {
-      cookie: `${ADMIN_COOKIE}=${token}`,
-      [CSRF_HEADER]: session.csrf,
-    };
-    if (body !== undefined) headers["content-type"] = "application/json";
-    return handleAdmin(
-      new Request(`https://key.plrs.im/manage${full}`, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-      }) as unknown as Request,
-      env,
-      db,
-      full.split("?")[0]!,
-      { now: NOW },
-    );
-  };
-  return { db, env, call };
+  ): Promise<Response> =>
+    w.call(method, `/api/products/${SLUG}${path}`, { body, as });
+  return { db: w.db, env: w.env, call };
 }
 
 async function seedAudit(db: Db): Promise<void> {

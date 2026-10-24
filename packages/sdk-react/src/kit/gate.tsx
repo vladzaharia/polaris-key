@@ -26,7 +26,7 @@ const OpenedViews = lazy(() => import("./openedViews.js"));
 
 /**
  * What the host asked the window to open (`PolarisAdapter.onOpen`, a native menu item): the drop-in
- * Settings, or an update check that ends in the prompt or "You're up to date", each as a modal
+ * Settings, or an update check that ends in the prompt or "You’re up to date", each as a modal
  * dialog over the app. Closing returns focus to what held it. Draws nothing when nothing is open.
  * The request is taken at once; the drivers behind it load when it arrives.
  */

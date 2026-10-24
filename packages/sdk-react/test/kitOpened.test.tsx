@@ -1,7 +1,7 @@
 // @pkey-feature ui.kit ui.update
 //
 // UK-06.4: a native menu item asks the desktop host window for a view. `<PolarisKeyGate>` shows the
-// drop-in Settings, or runs an update check and shows the prompt or "You're up to date", as a modal
+// drop-in Settings, or runs an update check and shows the prompt or "You’re up to date", as a modal
 // dialog over the app; Escape closes it and focus goes back; the prompt installs through the host
 // and draws its real bytes.
 
@@ -170,7 +170,7 @@ describe("the host opens a view in the gate's window", () => {
       expect(x).not.toBeNull();
       return x!;
     });
-    expect(d.textContent).toContain("You're up to date");
+    expect(d.textContent).toContain("You’re up to date");
     expect(m.calls).toContain("update.check");
     cancel(d);
     await waitFor(() => expect(dialog(m.container)).toBeNull());

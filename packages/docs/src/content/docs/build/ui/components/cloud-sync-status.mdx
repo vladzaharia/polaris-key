@@ -51,6 +51,29 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** A host places `PolarisCloudSyncStatus(status)` beside its account row.
+
+    **Styled part.** `PolarisCloudSyncStatus`, given a `PolarisCloudSync` (synced, syncing, offline, conflict, error or signed out) with `onOpen`, `onRetry` and `onSignIn`.
+
+    **Headless.** `PolarisCloudSync` in `polaris-key-ui`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisCloudSync
+    import im.plrs.key.ui.PolarisCloudSyncStatus
+
+    @Composable
+    fun SyncRow(retry: () -> Unit) {
+        PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = retry)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

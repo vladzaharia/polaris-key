@@ -54,6 +54,32 @@ The product, its version and build, the open-source notices, the optional Powere
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** A host places `PolarisAbout(info)` in its settings or a screen of its own.
+
+    **Styled part.** `PolarisAbout`, given a `PolarisAboutInfo`; a row whose callback is null is not drawn, and Copy diagnostics redacts before it copies.
+
+    **Headless.** `PolarisAboutInfo` in `polaris-key-ui`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisAbout
+    import im.plrs.key.ui.PolarisAboutInfo
+
+    @Composable
+    fun AboutScreen(openPrivacy: () -> Unit) {
+        PolarisAbout(
+            info = PolarisAboutInfo(version = "1.4.0", build = "214"),
+            onPrivacy = openPrivacy,
+        )
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

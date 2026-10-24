@@ -1,9 +1,9 @@
 // @pkey-feature ui.kit
 //
-// The SwiftUI kit's models and surfaces (notes/SDK-PARITY-PASS.md §3.18). The models are driven
-// against a stub Worker; every surface is rendered off-screen with `ImageRenderer` in each of its
-// states (a render that traps or lays out to nothing fails), which is the kit's snapshot check
-// under `swift test`, where no host app draws.
+// `PolarisKeyModel` and the `.polarisKey(client)` modifier (notes/SDK-PARITY-PASS.md §3.18). The
+// model is driven against a stub Worker; the modifier is rendered off-screen with `ImageRenderer`
+// (a render that traps or lays out to nothing fails). The gate's screens are covered by the
+// PolarisKeyUICore and snapshot suites.
 
 #if canImport(SwiftUI)
 import Foundation
@@ -11,6 +11,7 @@ import PolarisKey
 import PolarisKeyCore
 import PolarisKeyIdentity
 @testable import PolarisKeyUI
+import PolarisKeyUICore
 import SwiftUI
 import XCTest
 
@@ -110,120 +111,51 @@ final class KitModelTests: XCTestCase {
         model.stop()
     }
 
-    func testTheGateModelConvenienceInitTracksIdentity() async throws {
-        let gate = PolarisGateModel(client: try await client())
-        await gate.reload()
-        XCTAssertTrue(gate.identityEnabled)
-        XCTAssertNotNil(gate.facade)
-        let off = PolarisGateModel(client: try await client(services: [.license]))
-        await off.reload()
-        XCTAssertFalse(off.identityEnabled)
-    }
-
-    /// A device_limit refusal surfaces the manage URL (with the key as a fragment on an /activate
-    /// link) for the gate to offer; any other result clears it and forgets the key.
-    func testADeviceLimitRefusalSurfacesTheManageURLAndForgetsTheKeyOtherwise() async throws {
-        await server.reply(
-            "/djdl/license/activate", status: 403,
-            body: #"{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"https://key.plrs.im/activate?product=djdl&next=free-device"}"#
-        )
-        let model = PolarisKeyModel(client: try await client())
-        await model.activate(key: "PKEY-1")
-        let url = try XCTUnwrap(model.offeredManageURL)
-        XCTAssertTrue(url.hasPrefix("https://key.plrs.im/activate?product=djdl"), url)
-        XCTAssertTrue(url.hasSuffix("#key=PKEY-1"), url)
-        XCTAssertEqual(model.lastKey, "PKEY-1")
-
-        await server.reply(
-            "/djdl/license/activate", status: 403, body: #"{"error":"license_owned"}"#)
-        await model.activate(key: "PKEY-1")
-        XCTAssertNil(model.offeredManageURL)
-        XCTAssertNil(model.lastKey, "the key is forgotten after any other result")
-    }
-
-    /// Through PolarisGate itself (not the surface): the refusal reaches Replace a device.
-    func testPolarisGateOffersReplaceADeviceAfterARefusal() async throws {
-        await server.reply(
-            "/djdl/license/activate", status: 403,
-            body: #"{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"https://key.plrs.im/activate?product=djdl&next=free-device"}"#
-        )
-        let model = PolarisKeyModel(client: try await client(services: [.license]))
-        await model.activate(key: "PKEY-1")
-        let gate = PolarisGate(model: model, theme: PolarisTheme()) { Text("App") }
-        let result = KitHost.render(
-            gate.polarisKeyBranding(.polarisKey), at: KitSizes.iPhoneMax, scheme: .dark,
-            type: .large, snapshot: false)
-        let replace = try XCTUnwrap(result.frames[.primaryAction], "Replace a device is offered")
-        XCTAssertTrue(result.safe.contains(replace), "and on screen")
-    }
-
     func testQRCodeEncodes() {
         let image = PolarisQRCode.cgImage(for: "https://key.example/d?user_code=ABCD-EFGH")
         XCTAssertNotNil(image)
         XCTAssertGreaterThan(image?.width ?? 0, 20)
     }
 
-    func testGateSurfacesRender() {
-        let theme = PolarisTheme(copy: PolarisCopy(productName: "Aurora"))
-        for (signIn, free, keys) in [(true, true, true), (false, false, true), (true, false, false)] {
-            let surface = PolarisGateSurface(
-                status: .needsActivation, allowedRange: nil, isWorking: false,
-                lastError: ErrorCopy.message(ErrorCode.deviceLimit), licenseKey: .constant(""),
-                theme: theme, onSignIn: signIn ? {} : nil, onActivate: { _ in }, onRefresh: {},
-                onContinueFree: free ? {} : nil, onActivateOffline: {}, showsKeyEntry: keys,
-                content: { Text("App") })
-            XCTAssertTrue(renders(surface))
-        }
-    }
-
-    /// B-138: only the Worker's deny answer reads "declined"; any other error code is a failure.
-    func testSignInErrorsAreDeclinedOnlyForDeny() async throws {
-        let model = PolarisSignInModel(client: try await client())
-        let prompt = SignInPrompt(
-            deviceCode: "dc", userCode: "ABCD-EFGH", verificationUri: "https://key.example/d",
-            verificationUriComplete: "https://key.example/d?user_code=ABCD-EFGH", expiresIn: 600,
-            interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 600)
-        model.settle(.error(message: "no", code: ErrorCode.signInDenied), prompt: prompt)
-        XCTAssertEqual(
-            model.phase,
-            .failed(code: ErrorCode.signInDenied, message: ErrorCopy.message(ErrorCode.signInDenied)))
-        for code in [ErrorCode.signInFailed, "network-error", nil] as [String?] {
-            model.settle(.error(message: "boom", code: code), prompt: prompt)
-            XCTAssertEqual(
-                model.phase,
-                .failed(
-                    code: ErrorCode.signInFailed, message: ErrorCopy.message(ErrorCode.signInFailed)),
-                "\(code ?? "nil")")
-        }
-    }
-
-    func testSignInSurfacesRender() {
-        let prompt = SignInPrompt(
-            deviceCode: "dc", userCode: "ABCD-EFGH", verificationUri: "https://key.example/d",
-            verificationUriComplete: "https://key.example/d?user_code=ABCD-EFGH", expiresIn: 600,
-            interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 600)
-        let phases: [PolarisSignInModel.Phase] = [
-            .starting, .waiting(prompt),
-            .confirm(prompt, identity: SignInIdentity(name: "Ada", email: "a@e.com"), attachable: true),
-            .ready(SignInReady(identity: SignInIdentity(email: "a@e.com"))), .expired,
-            .failed(code: "sign-in-denied", message: ErrorCopy.message("sign-in-denied")),
+    func testTheRequestCodeBreaksWithoutFalseHyphens() {
+        let ids = [
+            "dev-7Q2M-x9cL-r4Tb-V0aZ-3WPL-DA8k-N5eY", "dev_7Q2Mx9cLr4TbV0aZ3WPLDA8kN5eYZ", "ab",
         ]
-        for phase in phases {
-            let view = PolarisSignInSurface(
-                phase: phase, theme: PolarisTheme(), attach: .constant(true), onOpen: { _ in },
-                onAccept: {}, onRetry: {}, onCancel: {})
-            XCTAssertTrue(renders(view), "\(phase)")
-            XCTAssertTrue(renders(view.polarisKeyBranding(.polarisKey).environment(\.colorScheme, .dark)))
+        for id in ids {
+            let shown = PolarisOfflineSurface.displayCode(id)
+            let stripped = shown.replacingOccurrences(of: "\u{200B}", with: "")
+                .replacingOccurrences(of: "\u{2060}", with: "")
+            XCTAssertEqual(stripped, id, "the drawn code rejoins to the raw id")
+            XCTAssertEqual(
+                shown.filter { $0 == "-" }.count, id.filter { $0 == "-" }.count, "no hyphen is added")
+            XCTAssertFalse(shown.contains("-\u{200B}"))
+            for part in shown.components(separatedBy: "\u{200B}") where id.count > 4 {
+                XCTAssertGreaterThan(
+                    part.replacingOccurrences(of: "\u{2060}", with: "").count, 2,
+                    "an orphan tail in \(id)")
+            }
         }
+        XCTAssertEqual(PolarisOfflineSurface.requestCode(deviceId: ids[0]), ids[0])
     }
 
-    func testOfflineSurfacesRender() {
-        for (imported, message) in [(false, nil), (false, ErrorCopy.message("bundle-trust-rejected")), (true, nil)] {
-            let view = PolarisOfflineSurface(
-                productName: "djdl", deviceId: "DEVICE0001", message: message, imported: imported,
-                theme: PolarisTheme(), onImportFile: {}, onPaste: {}, onDone: {})
-            XCTAssertTrue(renders(view))
+    /// `.polarisKey(client)` draws the kit gate (UK-07): it renders, with and without a legacy
+    /// theme, and the legacy theme maps only what the kit theme has a counterpart for.
+    func testThePolarisKeyModifierDrawsTheKitGate() async throws {
+        let c = try await client()
+        XCTAssertTrue(renders(Text("App").polarisKey(c)))
+        XCTAssertTrue(
+            renders(
+                Text("App").polarisKey(
+                    c, theme: PolarisTheme(branding: .native, accent: .orange), offersFreeTier: true,
+                    options: KitGateOptions(keyEntry: false))))
+        XCTAssertNil(PolarisTheme().kitTheme, "an empty legacy theme leaves the kit theme alone")
+        let mapped = try XCTUnwrap(PolarisTheme(branding: .native, accent: .orange).kitTheme)
+        XCTAssertEqual(mapped.preset, .native)
+        guard case .color(let light, let dark) = mapped.accent else {
+            return XCTFail("the accent maps to a colour pair")
         }
+        XCTAssertTrue(light.hasPrefix("#") && dark?.hasPrefix("#") == true)
+        XCTAssertEqual(PolarisTheme(branding: .polarisKey).kitTheme?.preset, .polarisKey)
     }
 }
 #endif
