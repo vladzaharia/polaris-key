@@ -573,7 +573,10 @@ function tileFor(page: string): Element | null {
 let named: HTMLElement[] = [];
 
 function clearNamed(keep: Element | null = null): void {
-  for (const el of named) el.style.removeProperty("view-transition-name");
+  for (const el of named) {
+    el.style.removeProperty("view-transition-name");
+    el.style.removeProperty("width");
+  }
   named = [];
   for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`)))
     if (el !== keep) el.removeAttribute(VT_SOURCE);
@@ -583,6 +586,9 @@ function nameNewEnds(ends: Ends): void {
   for (const [el, name] of ends) {
     if (!(el instanceof HTMLElement)) continue;
     el.style.setProperty("view-transition-name", name);
+    // A text pair must be as wide as its text at both ends, or the snapshot stretches and a
+    // ghost of the old title shows over its neighbours (S-23 §3.4 item 4).
+    if (name === "pk-hero-title") el.style.setProperty("width", "fit-content");
     named.push(el);
   }
 }
