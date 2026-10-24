@@ -44754,16 +44754,24 @@ function homebrewKinds(i) {
   return kinds;
 }
 function rubyString(s) {
-  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#(?=[{@$])/g, "\\#").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t").replace(
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#(?=[{@$])/g, "\\#").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t").replace(new RegExp("\\p{Cf}", "gu"), "").replace(
     /[\u0000-\u001f\u007f]/g,
     (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`
   )}"`;
 }
 var SHA256 = /^[0-9a-f]{64}$/;
+function plainHttps(u) {
+  if (!isHttps(u) || !URL_SAFE.test(u)) return false;
+  const url = new URL(u);
+  const authority = u.slice(u.indexOf("//") + 2).split(/[/?#]/)[0];
+  return !url.username && !url.password && !authority.includes("@");
+}
 var URL_SAFE = /^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
 function checkBuild(b) {
-  if (!isHttps(b.url))
-    throw new Error(`${b.name}: a cask needs an HTTPS URL (got ${b.url}).`);
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a cask needs a plain HTTPS URL (got ${b.url}).`
+    );
   if (!b.sha256 || !SHA256.test(b.sha256))
     throw new Error(`${b.name}: the release records no SHA-256 for it.`);
   if (!/\.(dmg|zip)$/i.test(b.name))
@@ -44860,7 +44868,7 @@ function formulaClass(name) {
   return cls;
 }
 function formulaSource(b) {
-  if (!isHttps(b.url) || !URL_SAFE.test(b.url) || new URL(b.url).username)
+  if (!plainHttps(b.url))
     throw new Error(
       `${b.name}: a formula needs a plain HTTPS URL without credentials (got ${b.url}).`
     );
@@ -45583,7 +45591,7 @@ async function planPr(store, i, o, gh, kind = prKinds(store, i)[0] ?? null) {
       if (kind === "formula") {
         files = [generateFormula(i, o)];
         title = `${name} ${version} (formula)`;
-        branch = `pkey/formula-${name}-${version}`;
+        branch = `pkey/f/${name}-${version}`;
       } else {
         files = [generateCask(i, o)];
         title = `${name} ${version}`;
@@ -45937,7 +45945,7 @@ async function statusOne(o, store, inputs, kind) {
   const repo = argv2[2];
   const key = prNaturalKey(store, command, argv2);
   const pkg = argv2[4] ?? "";
-  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${kind === "formula" ? "formula-" : ""}${pkg}-${version}`;
+  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${kind === "formula" ? "f/" : ""}${pkg}-${version}`;
   const headOwner = store.fork ? o.env.PKEY_PR_TOKEN ? await gh.login() : null : repo.split("/")[0];
   const candidates = [
     ...headOwner ? await gh.pullsFromHead(repo, `${headOwner}:${branch}`) : [],

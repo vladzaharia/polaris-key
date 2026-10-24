@@ -61,6 +61,8 @@ export function rubyString(s: string): string {
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
     .replace(/\t/g, "\\t")
+    // Unicode format characters (bidi controls, zero-width marks) could spoof the PR diff.
+    .replace(/\p{Cf}/gu, "")
     // eslint-disable-next-line no-control-regex
     .replace(
       /[\u0000-\u001f\u007f]/g,
@@ -69,12 +71,22 @@ export function rubyString(s: string): string {
 }
 
 const SHA256 = /^[0-9a-f]{64}$/;
+
+/** Whether a URL is plain https: URL-safe characters only, and no user name, password or `@`. */
+function plainHttps(u: string): boolean {
+  if (!isHttps(u) || !URL_SAFE.test(u)) return false;
+  const url = new URL(u);
+  const authority = u.slice(u.indexOf("//") + 2).split(/[/?#]/)[0]!;
+  return !url.username && !url.password && !authority.includes("@");
+}
 /** A URL a formula or cask may carry: https, no userinfo, only URL-safe characters. */
 const URL_SAFE = /^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
 
 function checkBuild(b: PrInputBuild): { url: string; sha256: string } {
-  if (!isHttps(b.url))
-    throw new Error(`${b.name}: a cask needs an HTTPS URL (got ${b.url}).`);
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a cask needs a plain HTTPS URL (got ${b.url}).`,
+    );
   if (!b.sha256 || !SHA256.test(b.sha256))
     throw new Error(`${b.name}: the release records no SHA-256 for it.`);
   if (!/\.(dmg|zip)$/i.test(b.name))
@@ -191,7 +203,7 @@ export function formulaClass(name: string): string {
 
 /** The formula's url and sha256, checked: https, URL-safe characters, 64 hex digits. */
 function formulaSource(b: PrInputBuild): { url: string; sha256: string } {
-  if (!isHttps(b.url) || !URL_SAFE.test(b.url) || new URL(b.url).username)
+  if (!plainHttps(b.url))
     throw new Error(
       `${b.name}: a formula needs a plain HTTPS URL without credentials (got ${b.url}).`,
     );

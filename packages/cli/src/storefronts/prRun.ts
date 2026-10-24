@@ -230,7 +230,7 @@ export async function planPr(
       if (kind === "formula") {
         files = [generateFormula(i, o)];
         title = `${name} ${version} (formula)`;
-        branch = `pkey/formula-${name}-${version}`;
+        branch = `pkey/f/${name}-${version}`;
       } else {
         files = [generateCask(i, o)];
         title = `${name} ${version}`;
@@ -647,7 +647,7 @@ async function statusOne(
   const branch =
     store.store === "flathub"
       ? `pkey/${version}`
-      : `pkey/${kind === "formula" ? "formula-" : ""}${pkg}-${version}`;
+      : `pkey/${kind === "formula" ? "f/" : ""}${pkg}-${version}`;
   const headOwner = store.fork
     ? o.env.PKEY_PR_TOKEN
       ? await gh.login()

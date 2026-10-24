@@ -340,6 +340,8 @@ describe("PR-plane generator rules (A-18i)", () => {
       { url: "http://x.example.test/a.tar.gz" },
       { url: 'https://x.example.test/a"#{`id`}.tar.gz' },
       { url: "https://u:p@x.example.test/a.tar.gz" },
+      { url: "https://:s3cret@host.example.test/x.tar.gz" },
+      { url: "https://host.example.test@evil.example.test/x.tar.gz" },
       { sha256: "z".repeat(64) },
       { sha256: "a".repeat(63) },
       { sha256: null },
@@ -348,6 +350,17 @@ describe("PR-plane generator rules (A-18i)", () => {
       bad.release!.builds[0] = { ...bad.release!.builds[0]!, ...patch };
       expect(() => generateFormula(bad), JSON.stringify(patch)).toThrow();
     }
+    // the cask refuses the same URLs
+    for (const url of [
+      "https://:s3cret@host.example.test/x.dmg",
+      "https://u:p@host.example.test/x.dmg",
+    ]) {
+      const c = structuredClone(HOMEBREW_INPUTS);
+      c.release!.builds[0]!.url = url;
+      expect(() => generateCask(c), url).toThrow(/plain HTTPS/);
+    }
+    // bidi and zero-width format characters are dropped
+    expect(rubyString("a\u202Eb\u200Bc\u2066")).toBe('"abc"');
     const evil = structuredClone(FORMULA_INPUTS);
     evil.app.shortDescription = 'x"\n#{`id`} #@a #$b \\ \u0000';
     evil.app.website = "https://ok.example.test/";
@@ -1066,7 +1079,7 @@ describe("pkey storefront <store> pr (A-18i)", () => {
     expect(r2.plan.command).toBe("pull-request");
     expect(r2.also).toHaveLength(1);
     expect(r2.also![0]!.plan.command).toBe("formula-pull-request");
-    expect(r2.also![0]!.plan.branch).toBe("pkey/formula-diceroll-cli-1.2.0");
+    expect(r2.also![0]!.plan.branch).toBe("pkey/f/diceroll-cli-1.2.0");
     expect(
       both.seen.filter((s) => s.method === "POST" && s.url.endsWith("/pulls")),
     ).toHaveLength(2);
