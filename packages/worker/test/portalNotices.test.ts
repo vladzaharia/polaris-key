@@ -306,10 +306,10 @@ describe("notice templates: rules", () => {
     }
   });
 
-  it("footer links: What is Polaris Locker? and About this email; security notices add Secure your account (DOC-06b)", () => {
+  it("footer links: What is Polaris Locker? and About this email; security notices add How to secure your account (DOC-06b)", () => {
     const plain = TEMPLATES.licenseAdded!().text;
     expect(plain).toContain(
-      `What is Polaris Locker?: ${ORIGIN}/docs/help/what-is-polaris-locker/`,
+      `What is Polaris Locker? ${ORIGIN}/docs/help/what-is-polaris-locker/`,
     );
     expect(plain).toContain(
       `About this email: ${ORIGIN}/docs/help/emails/#license-added`,
@@ -317,7 +317,7 @@ describe("notice templates: rules", () => {
     expect(plain).not.toContain("Secure your account");
     const sec = TEMPLATES.methodAdded!();
     expect(sec.text).toContain(
-      `Secure your account: ${ORIGIN}/docs/help/secure-your-account/`,
+      `How to secure your account: ${ORIGIN}/docs/help/secure-your-account/`,
     );
     // The callout keeps its link to the app (D-W2).
     expect(sec.text).toContain(
