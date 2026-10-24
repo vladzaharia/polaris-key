@@ -81,7 +81,6 @@ import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/re
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import { artefacts } from "../singleUseMock.js";
 import { withDefaultHead } from "../githubHead.js";

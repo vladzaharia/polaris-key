@@ -51,7 +51,6 @@ import {
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import {
   attachWaitingLicensesByEmail,
@@ -281,7 +280,6 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
 
   it("the injected link also grants the victim's account release visibility for the attacker's product", async () => {
     const db = makeTestDb();
-    const e = env();
     await seedProduct(db, EVILCO);
     // NOTE: no seedOidcConfig here, so EVILCO reads as a PLATFORM-issuer product and
     // auto-linking is on by default. This arm therefore still documents that a verified email

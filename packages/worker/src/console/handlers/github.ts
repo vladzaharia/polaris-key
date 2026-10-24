@@ -162,7 +162,7 @@ export async function handleGithub(
   req: Request,
   env: Env,
   db: Db,
-  session: AdminSession,
+  _session: AdminSession,
   segments: string[],
   now: number,
   fetchImpl: FetchImpl = fetch,

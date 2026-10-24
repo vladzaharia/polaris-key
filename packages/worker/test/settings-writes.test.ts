@@ -55,7 +55,6 @@ const MANIFEST_WRITERS: Readonly<
       "stmtInsertProduct",
       "setFingerprintPolicy",
       "stmtSetFingerprintPolicy",
-      "setAutoIssuePolicy",
       "stmtSetAutoIssuePolicy",
       "setServices",
       "stmtSetServices",
@@ -118,7 +117,6 @@ const DUAL_BUILDERS: Readonly<Record<string, number>> = {
   stmtSetServices: 2,
   setFingerprintPolicy: 3,
   stmtSetFingerprintPolicy: 2,
-  setAutoIssuePolicy: 3,
   stmtSetAutoIssuePolicy: 2,
 };
 

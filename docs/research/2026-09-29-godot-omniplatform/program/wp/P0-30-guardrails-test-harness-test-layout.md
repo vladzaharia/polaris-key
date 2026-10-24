@@ -71,3 +71,16 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-30 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-30 done`.
+
+## Corrections (2026-10-24)
+
+Verified against the code (plan `P0-30-AX-07-slices.md` §0):
+
+- The numbers grew: 186 migrations (newest `0141_b_index_assertion.sql`), 1,272 `makeTestDb(` call sites in 348 files, 489 flat `*.test.ts` under `test/` plus 27 in subdirectories.
+- `makeTestDb()` replays every migration per call (about 75 ms); a deserialised template takes 0.04 ms.
+- The unused-export test already exists: knip (P0-46.2). Its ledger `tools/lint/debt/knip.json` is the allow-list; no second mechanism.
+- `noUnusedLocals` / `noUnusedParameters` are off; turning them on for the worker gives 116 errors (105 TS6133, 6 TS6196, 5 TS6192). The worker `tsconfig.json` only (P0-30.2).
+- No size budget exists; 69 worker `src/**/*.ts` files exceed 800 lines.
+- The admin harness is half there (`consoleSessionHelper.ts`); `makeEnv(kv, _slugs)` has an unused parameter, made optional rather than swept (263 files).
+- `presentationInsert` can go (migration 0106 shipped from v0.8.33); the migration tests that seed older schemas prove it.
+- Shared helpers are imported from outside `test/` (`dev/world.ts`, admin e2e, `turbo.json`), so only `*.test.ts` files move.

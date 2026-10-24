@@ -45,7 +45,6 @@ import {
 import { readListing } from "../listing/store.js";
 import { flowOp } from "./plan.js";
 import type {
-  FlowContext,
   FlowRefusal,
   FlowRuntime,
   LedgerView,

@@ -328,7 +328,7 @@ async function buildWorld(): Promise<World> {
   );
   await seedDeliveryAccess(db, SLUG, "public");
   const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
-  const { licenseId, key } = await seedLicenseWithKey(db, SLUG, {
+  const { key } = await seedLicenseWithKey(db, SLUG, {
     id: LICENSE,
   });
   const product = (await loadProduct(env, db, SLUG))!;

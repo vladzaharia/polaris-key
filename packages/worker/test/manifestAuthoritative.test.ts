@@ -222,12 +222,6 @@ const activeCatalog = async (ctx: Ctx): Promise<string[]> => {
   ).entries.map((e) => e.key);
 };
 
-const rows = (ctx: Ctx, table: "tiers" | "profiles") =>
-  ctx.db.all<{ id: string; source: string; label?: string; name?: string }>(
-    `SELECT * FROM ${table} WHERE product = ? ORDER BY id`,
-    SLUG,
-  );
-
 const claimRows = (ctx: Ctx) =>
   ctx.db.all<{ key: string; source: string; updated_by: string }>(
     "SELECT key, source, updated_by FROM product_settings WHERE product = ? ORDER BY key",

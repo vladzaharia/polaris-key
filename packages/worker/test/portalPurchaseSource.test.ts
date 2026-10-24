@@ -34,10 +34,7 @@ import {
   getOrCreateAccountByEmail,
   linkLicense,
 } from "../src/services/identity/portal/repo.js";
-import {
-  PORTAL_COOKIE,
-  issuePortalSession,
-} from "../src/services/identity/portal/session.js";
+import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { handlePortalApi } from "./portalHarness.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

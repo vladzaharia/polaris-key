@@ -16,19 +16,8 @@ import {
   type IdTokenVerifier,
 } from "../src/console/auth.js";
 import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
-import {
-  ADMIN_COOKIE,
-  BREAK_GLASS_TTL_SECONDS,
-  CSRF_HEADER,
-  issueSessionV2,
-  STEP_UP_MAX_AGE_SECONDS,
-  type SessionIdentity,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { refuseBreakGlass } from "../src/console/lib/accountSession.js";
-import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
-import { importHmacKey } from "../src/platform/hash.js";
-import { signHmacToken } from "../src/platform/hmacToken.js";
-import { breakGlassUsedNotice } from "../src/core/notify/templates.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";
@@ -182,11 +171,6 @@ const audit = (action: string) =>
     "SELECT actor_sub, summary FROM platform_audit WHERE action = ?",
     action,
   );
-const noAccountRows = async () => ({
-  accounts: await count("accounts"),
-  links: await count("account_links"),
-  sessions: await count("account_sessions"),
-});
 
 const HINT = "__Host-pkey_console_hint";
 const ORIGIN = "https://key.plrs.im";

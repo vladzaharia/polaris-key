@@ -30,7 +30,7 @@ import { customerOrigin } from "../../core/hosts.js";
 import type { Db } from "../../db/types.js";
 
 /** The origin account mail links to: the customer site while `CUSTOMER_ORIGIN` is usable. */
-const originOf = async (env: Env, db: Db): Promise<string> =>
+const originOf = async (env: Env, _db: Db): Promise<string> =>
   customerOrigin(env, env.CONSOLE_ORIGIN ?? "") ?? "";
 
 /**

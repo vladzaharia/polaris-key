@@ -310,7 +310,6 @@ describe("the blob route and package files (SEC-DST-1)", () => {
     const N = 4000;
     const arts: string[] = [];
     for (let i = 0; i < N; i++) {
-      const key = `blobs/sha256/${i.toString(16).padStart(64, "0")}`;
       arts.push(`('${SLUG}','r${i}','a${i}','n','package',1)`);
     }
     await w.db.run("PRAGMA foreign_keys = OFF");

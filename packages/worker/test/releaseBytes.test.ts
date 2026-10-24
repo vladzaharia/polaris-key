@@ -49,7 +49,6 @@ import { mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 
 const BLOB = bytesOf(4096, 9);
 const BLOB_HEX = sha256Hex(BLOB);
-const BLOB_KEY = blobKey(BLOB_HEX);
 
 async function setup(
   opts: { access?: string; repoPrivate?: boolean } = {},

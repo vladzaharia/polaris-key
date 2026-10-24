@@ -25,10 +25,7 @@ import {
   getOrCreateAccountByEmail,
   linkLicense,
 } from "../src/services/identity/portal/repo.js";
-import {
-  PORTAL_COOKIE,
-  issuePortalSession,
-} from "../src/services/identity/portal/session.js";
+import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import type { PortalDownloads } from "../src/services/identity/portal/downloads.js";
 import {
   STEAM_ACTIVATE_URL,

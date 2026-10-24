@@ -10,7 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   PACKAGE_ECOSYSTEM_RULES,
   SYSTEM_PRODUCT_SLUG,

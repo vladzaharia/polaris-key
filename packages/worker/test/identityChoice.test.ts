@@ -24,7 +24,6 @@ import {
 import { stmtsDeauthorizeDevice } from "../src/core/devices/store.js";
 import { withMintClaim } from "../src/services/identity/passthrough/mint.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { loadProduct } from "../src/core/products.js";
 import {
   serializeServices,
   SERVICE_SLUGS,
@@ -38,11 +37,8 @@ import {
 } from "../src/services/identity/portal/session.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi as portalApi } from "../src/services/identity/portal/api.js";
-import { codeCopy, CLOSE_PAGE } from "../src/core/brandPage.js";
-import { escapeHtml } from "../src/platform/html.js";
 import { SETTINGS } from "../src/mount.js";
 import { portalHooksFor } from "./portalHarness.js";
-import { validateRedirectUri } from "../src/services/identity/passthrough/redirectUri.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
