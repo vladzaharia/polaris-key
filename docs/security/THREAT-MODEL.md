@@ -11013,6 +11013,15 @@ reviewer checks in the first release; the second amends them.
 
 No personal data is added: the reports hold release metadata only.
 
+### SDK API names (SP-35)
+
+A removed trust-pin name is never read. Python's `trust=` (and the `"trust"` key of a generated
+config) is gone with no alias: an old call fails with `TypeError` or a missing-pinned-keys
+refusal, so an old config cannot set, widen or empty the trust root unnoticed. Godot's
+`pinned_trust_keys` follows the same rule (SP-35b): its `_set` keeps a legacy value only to
+refuse it and to pre-fill the dock, never as the trust set. A refusal names options, never
+values. `conformance/parity/api.json` and its lint are hygiene, not a security boundary.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every

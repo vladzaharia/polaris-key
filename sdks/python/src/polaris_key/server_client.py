@@ -97,7 +97,7 @@ def server_client(
     *,
     product_slug: str,
     version: str,
-    trust: Mapping[str, str],
+    pinned_keys: Mapping[str, str],
     device_id: Optional[str] = None,
     device_id_file: Optional[str] = None,
     license_key: Optional[str] = None,
@@ -127,7 +127,7 @@ def server_client(
     client = PolarisKeyClient.create(
         product_slug=product_slug,
         version=version,
-        trust=dict(trust),
+        pinned_keys=dict(pinned_keys),
         store=InMemoryStore(product_slug, dev),
         device_reports=False,
         refresh_interval_seconds=refresh_interval_seconds,

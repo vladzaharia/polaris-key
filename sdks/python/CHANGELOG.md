@@ -6,6 +6,8 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **Pinned keys are `pinned_keys` (SP-35.21).** `PolarisKeyClient(pinned_keys=...)`, `create()`, `polaris_key.create()`, `AsyncClient.create()` and `server_client(pinned_keys=...)` replace `trust=`. The generated config and the `PolarisKey(config=...)` and CLI-mount dictionaries use the key `pinned_keys`. The CLI flag `--trust` is unchanged. An old `trust=` raises `TypeError` and an old `"trust"` config key is refused as missing pinned_keys; it is never read, so it cannot set, widen or empty the trust set. There are no deprecated aliases.
+
 - **Entitlements have a namespace (SP-35.20).** `client.entitlements.has(name)`, `.value(name)` and `.all()` replace `client.license.is_entitled`, `entitlement_value` and `get_entitlements`. The view reads through the licence gate, so a revoked, expired or never-activated install still answers `False` and `None`. `polaris_key.server` verdicts keep their own `is_entitled`. There are no deprecated aliases.
 
 - **The setting handle follows the shared registry (SP-35.19).** `client.config.setting(key)` takes no fallback: `value` is `None` when no layer has one (source `fallback`), and a default goes through `client.config.get(key, fallback)`. `enforced` is `locked`, `subscribe(fn)` is `on(fn)`, and the new `visibility` reads `editable`, `readonly` or `hidden` (`SettingVisibility`) from the document's state. There are no deprecated aliases.

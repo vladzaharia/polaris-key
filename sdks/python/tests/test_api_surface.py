@@ -91,7 +91,7 @@ ATTRS = [
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),
-    ("options.pinnedKeys", "trust"),
+    ("options.pinnedKeys", "pinned_keys"),
     ("options.pinnedReleaseKeys", "update"),
     ("options.baseUrl", "base_url"),
     ("options.expectedServices", "expected_services"),

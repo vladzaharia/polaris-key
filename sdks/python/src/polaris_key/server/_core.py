@@ -159,17 +159,17 @@ def _config_fields(config: Any) -> Tuple[str, str, Dict[str, str], Optional[List
             src = {
                 "product_slug": getattr(config, "PRODUCT_SLUG", None),
                 "base_url": getattr(config, "BASE_URL", None),
-                "trust": getattr(config, "PINNED_KEYS", None),
+                "pinned_keys": getattr(config, "PINNED_KEYS", None),
                 "expected_services": getattr(config, "EXPECTED_SERVICES", None),
             }
     if isinstance(config, str):
         raise PolarisKeySetupError(f"PolarisKey: config is the string {config!r}; import the module and {CONFIG_HINT}")
-    slug, base, pins = src.get("product_slug"), src.get("base_url"), src.get("trust")
+    slug, base, pins = src.get("product_slug"), src.get("base_url"), src.get("pinned_keys")
     if not isinstance(slug, str) or not slug:
         raise PolarisKeySetupError(f"PolarisKey: config.product_slug is missing; {CONFIG_HINT}")
     if not isinstance(pins, Mapping):
         raise PolarisKeySetupError(
-            f"PolarisKey: config for {slug!r} has no trust (the pinned keys); run `pkey sdk --lang python --write` to write them"
+            f"PolarisKey: config for {slug!r} has no pinned_keys; run `pkey sdk --lang python --write` to write them"
         )
     if not pins:
         raise PolarisKeySetupError(

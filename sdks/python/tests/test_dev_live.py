@@ -341,7 +341,7 @@ def test_the_generated_config_describes_this_server(dev: Dev, harness: Harness) 
     assert sorted(cfg.EXPECTED_SERVICES) == enabled
     # CONFIG is what the client takes, and says the same.
     assert cfg.CONFIG["base_url"] == cfg.BASE_URL
-    assert cfg.CONFIG["trust"] == cfg.PINNED_KEYS
+    assert cfg.CONFIG["pinned_keys"] == cfg.PINNED_KEYS
     assert cfg.CONFIG["update"].pinned_release_keys == cfg.PINNED_RELEASE_KEYS
 
     # The client built from it uses those values (the harness spreads CONFIG).

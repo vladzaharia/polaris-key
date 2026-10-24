@@ -193,7 +193,7 @@ def client(
     c = make_client(
         srv,
         store=store,
-        trust=PRODUCT_TRUST,
+        pinned_keys=PRODUCT_TRUST,
         data_dir=str(work / "data"),
         expected_services=["release", "distribution", "update"],
         update=UpdateClientOptions(
@@ -314,7 +314,7 @@ def test_embedded_baseline_fetches_nothing(srv: FakeServer, tmp_path: Any) -> No
 def test_not_configured_without_stamp_and_content_stamp_invalid(srv: FakeServer, tmp_path: Any) -> None:
     c = make_client(
         srv,
-        trust=PRODUCT_TRUST,
+        pinned_keys=PRODUCT_TRUST,
         data_dir=str(tmp_path / "data"),
         expected_services=["release", "distribution", "update"],
         update=UpdateClientOptions(pinned_release_keys=RELEASE_KEYS, outlet="direct"),
@@ -326,7 +326,7 @@ def test_not_configured_without_stamp_and_content_stamp_invalid(srv: FakeServer,
     c.close()
     bad = make_client(
         srv,
-        trust=PRODUCT_TRUST,
+        pinned_keys=PRODUCT_TRUST,
         data_dir=str(tmp_path / "data"),
         expected_services=["release", "distribution", "update"],
         update=UpdateClientOptions(
@@ -639,7 +639,7 @@ def test_is_available_and_pack_for_through_the_client(srv: FakeServer, tmp_path:
     # Without a content stamp: no packs, so nothing is available and nothing provides.
     bare = make_client(
         srv,
-        trust=PRODUCT_TRUST,
+        pinned_keys=PRODUCT_TRUST,
         data_dir=str(tmp_path / "bare"),
         expected_services=["release", "distribution", "update"],
         update=UpdateClientOptions(pinned_release_keys=RELEASE_KEYS, outlet="direct"),

@@ -102,6 +102,6 @@ def test_a_product_without_config_is_none_and_never_probed() -> None:
 
 def test_local_only_is_none() -> None:
     c = create_local_client(
-        product_slug=PRODUCT, version="1.0.0", trust=TRUST, store=InMemoryStore(PRODUCT)
+        product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, store=InMemoryStore(PRODUCT)
     )
     assert c.config.fetch_schema() is None

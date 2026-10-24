@@ -21,7 +21,7 @@ from polaris_key.cli.mount import BOUND_OPTIONS, IDS, END_USER, plan_mount
 
 ROOT = Path(__file__).resolve().parents[4]
 CLI = json.loads((ROOT / "conformance" / "corpus" / "v2" / "ui-matrix.json").read_text(encoding="utf-8"))["cli"]
-CONFIG = {"product_slug": "tidewater", "trust": {"k1": "A" * 43}}
+CONFIG = {"product_slug": "tidewater", "pinned_keys": {"k1": "A" * 43}}
 _ESC = re.compile(r"\x1b\[[0-9;]*m|\x1b\]8;[^\x07\x1b]*(?:\x07|\x1b\\)")
 ALIAS_WORDS = {"login": ("sign-in",), "logout": ("sign-out",)}
 

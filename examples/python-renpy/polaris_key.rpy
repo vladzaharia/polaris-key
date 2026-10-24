@@ -11,7 +11,7 @@ init python:
     PKEY_PRODUCT = "mygame"
     PKEY_TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
-    pkey = polaris_key.create(product_slug=PKEY_PRODUCT, version=config.version, trust=PKEY_TRUST)
+    pkey = polaris_key.create(product_slug=PKEY_PRODUCT, version=config.version, pinned_keys=PKEY_TRUST)
 
     def pkey_boot():
         """Run the one-call boot; offline or in grace the game still starts."""

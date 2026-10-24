@@ -41,7 +41,7 @@ def start(seen, env=None, **kw):
     return server_client(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         client=mock_client(handler),
         expected_services=["license", "config"],
@@ -64,7 +64,7 @@ def test_makes_no_device_report() -> None:
     log: Dict[str, List[str]] = {"paths": []}
     handler = plane(log)
     with server_client(
-        product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=BASE_URL,
+        product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url=BASE_URL,
         client=mock_client(handler), expected_services=["license", "config"],
         trust_refresh=False, env=ENV,
     ) as c:
@@ -94,7 +94,7 @@ def test_refreshes_in_the_background() -> None:
     log: Dict[str, List[str]] = {"paths": []}
     handler = plane(log)
     c = server_client(
-        product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=BASE_URL,
+        product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url=BASE_URL,
         client=mock_client(handler), expected_services=["license", "config"],
         trust_refresh=False, env=ENV, refresh_interval_seconds=0.05,
     )
@@ -134,7 +134,7 @@ def test_raises_the_servers_code_when_the_key_is_refused() -> None:
 
     with pytest.raises(PolarisError) as e:
         server_client(
-            product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=BASE_URL,
+            product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url=BASE_URL,
             client=mock_client(handler), expected_services=["license", "config"],
             trust_refresh=False, env=ENV,
         )
