@@ -1,0 +1,7 @@
+# SHA-256 of the pinned lint CLI jars (P0-46.5), `shasum -a 256` format. tools/lint.sh downloads
+# each from Maven Central and refuses to run one that does not match. Both sums equal the .sha256
+# files Maven Central publishes beside the jars. ktlint 1.8.0 (2025-11-14); detekt 1.23.8
+# (2025-02-21, the newest 1.x CLI; it parses this repo's Kotlin 2.1 sources, and the 2.0 alphas are
+# not used).
+369ad2b789f95a011f807e1fcb690ccef80bd7cd014fd139e73ae82dcc0baeab  ktlint-cli-1.8.0-all.jar
+3afe89a11120303c73c9bdda3d8fe558dd9070a6937d27819ddc04b275381245  detekt-cli-1.23.8-all.jar

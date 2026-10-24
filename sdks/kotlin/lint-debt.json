@@ -1,0 +1,2928 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    "sdks/kotlin/android/src/direct/kotlin/im/plrs/key/android/DirectInstallDriver.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/android/src/direct/kotlin/im/plrs/key/android/FlavorAndroid.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/BuildDownload.kt": {
+      "detekt:style.MagicNumber": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/DeviceInputs.kt": {
+      "detekt:exceptions.SwallowedException": 4,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/KeystoreStore.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:filename": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/OutletReaders.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PlayIntegrityAttestation.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PlayPacks.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 2
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyAndroid.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "ktlint:standard:no-consecutive-blank-lines": 1
+    },
+    "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyLifecycle.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:empty-blocks.EmptyFunctionBlock": 3,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 3
+    },
+    "sdks/kotlin/android/src/play/kotlin/im/plrs/key/android/FlavorAndroid.kt": {
+      "detekt:complexity.LongParameterList": 1
+    },
+    "sdks/kotlin/android/src/play/kotlin/im/plrs/key/android/PadPackTransport.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5
+    },
+    "sdks/kotlin/android/src/play/kotlin/im/plrs/key/android/PlayInstallDriver.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 8,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/AndroidFingerprintTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/AndroidKeystoreStoreTest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/AndroidOutletTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 16,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/PlayIntegrityAttestationTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 15,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:parameter-list-wrapping": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/PolarisKeyAndroidTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/PolarisKeyLifecycleTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 3
+    },
+    "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/Testing.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/android/src/testDirect/kotlin/im/plrs/key/android/DirectInstallDriverTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 17,
+      "detekt:style.MaxLineLength": 5,
+      "ktlint:standard:argument-list-wrapping": 67,
+      "ktlint:standard:function-literal": 16,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:property-wrapping": 4,
+      "ktlint:standard:statement-wrapping": 6,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/android/src/testPlay/kotlin/im/plrs/key/android/PadPackTransportTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 20,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/android/src/testPlay/kotlin/im/plrs/key/android/PlayInstallDriverTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 19,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 32,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/billing/src/main/kotlin/im/plrs/key/billing/BillingClientPort.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 1
+    },
+    "sdks/kotlin/billing/src/main/kotlin/im/plrs/key/billing/PolarisPlayBilling.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:class-signature": 4,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/billing/src/test/kotlin/im/plrs/key/billing/PolarisPlayBillingTest.kt": {
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 44,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 2
+    },
+    "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/Catalog.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/ConfigClient.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 1,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2
+    },
+    "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/ConfigEndpoints.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 1,
+      "ktlint:standard:kdoc-wrapping": 2
+    },
+    "sdks/kotlin/config/src/main/kotlin/im/plrs/key/config/ConfigResolution.kt": {
+      "detekt:naming.EnumNaming": 6,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:enum-entry-name-case": 6
+    },
+    "sdks/kotlin/config/src/test/kotlin/im/plrs/key/config/ConfigClientTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/config/src/test/kotlin/im/plrs/key/config/ConfigLocalTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 24,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/BackendMatrixTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/BootDriverMatrixTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/BundleImportPublishesTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/ConfigMatrixTest.kt": {
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/ContentCorpusTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.UseRequire": 1,
+      "ktlint:standard:argument-list-wrapping": 52,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:parameter-list-wrapping": 5,
+      "ktlint:standard:property-wrapping": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/ContentDecisionTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MaxLineLength": 6,
+      "ktlint:standard:argument-list-wrapping": 40,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 6,
+      "ktlint:standard:wrapping": 5
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/Corpus.kt": {
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/CorpusV2Test.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 37,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 10,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/DelegationTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MaxLineLength": 8,
+      "ktlint:standard:argument-list-wrapping": 56,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-literal": 12,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 8,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/FeedCasesTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/FeedUrlMatrixTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 15,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 4
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/FingerprintTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/GateMatrixTest.kt": {
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 3
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/LiveDevTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:class-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/OutletMatrixTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PackRecordTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 33,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PlanMatrixTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PresentationMatrixTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 41,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/ReleaseRecordTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/StageMatrixTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "ktlint:standard:argument-list-wrapping": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 23,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptReplay.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.UnusedParameter": 1,
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 42,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 32,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/UpdateMatrixTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Attest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ThrowsCount": 2,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Base64Url.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MagicNumber": 53,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:mixed-condition-operators": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Bundle.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:naming.EnumNaming": 6,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 21,
+      "ktlint:standard:enum-entry-name-case": 6,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Capabilities.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Clock.kt": {
+      "detekt:naming.MatchingDeclarationName": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Content.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:naming.EnumNaming": 5,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 3,
+      "detekt:style.ThrowsCount": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:class-signature": 6,
+      "ktlint:standard:enum-entry-name-case": 5,
+      "ktlint:standard:wrapping": 6
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ContentDecision.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 5,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 3,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 5,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 4
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "ktlint:standard:function-signature": 16
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/CoreContext.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LargeClass": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:exceptions.TooGenericExceptionCaught": 7,
+      "detekt:naming.EnumNaming": 7,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 9,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 7,
+      "ktlint:standard:argument-list-wrapping": 48,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 15,
+      "ktlint:standard:enum-entry-name-case": 7,
+      "ktlint:standard:enum-wrapping": 5,
+      "ktlint:standard:function-signature": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:no-trailing-spaces": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
+      "ktlint:standard:spacing-between-declarations-with-comments": 8
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/DeviceLabel.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 28,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Devices.kt": {
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:multiline-if-else": 4
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Discovery.kt": {
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:class-signature": 4
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Download.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Ed25519.kt": {
+      "detekt:exceptions.SwallowedException": 5,
+      "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.MagicNumber": 52,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Endpoints.kt": {
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:naming.EnumNaming": 2,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:enum-entry-name-case": 2,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Facts.kt": {
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 1,
+      "ktlint:standard:class-signature": 5,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Feed.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:naming.EnumNaming": 10,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 6,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:enum-entry-name-case": 10,
+      "ktlint:standard:multiline-if-else": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Fingerprint.kt": {
+      "detekt:naming.EnumNaming": 7,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:enum-entry-name-case": 7
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Gate.kt": {
+      "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Headers.kt": {
+      "detekt:style.MagicNumber": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Json.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 9,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:complexity.NestedBlockDepth": 3,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 68,
+      "detekt:style.ReturnCount": 12,
+      "ktlint:standard:blank-line-between-when-conditions": 26,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:statement-wrapping": 25
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Jws.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.EnumNaming": 6,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:enum-entry-name-case": 6
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Keyring.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 7,
+      "detekt:exceptions.TooGenericExceptionCaught": 12,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:class-signature": 5,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ManageLink.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:potential-bugs.ImplicitDefaultLocale": 1,
+      "detekt:style.MagicNumber": 11,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Models.kt": {
+      "detekt:naming.EnumNaming": 20,
+      "detekt:style.ReturnCount": 6,
+      "ktlint:standard:class-signature": 17,
+      "ktlint:standard:enum-entry-name-case": 20,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Outlet.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 36,
+      "ktlint:standard:class-signature": 9,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/PackClaims.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 7,
+      "detekt:style.ReturnCount": 6,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:property-naming": 10
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Presentation.kt": {
+      "detekt:complexity.ComplexCondition": 3,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 21,
+      "detekt:style.ReturnCount": 7,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/PresentationSource.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 8,
+      "detekt:exceptions.TooGenericExceptionCaught": 6,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:filename": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ReleaseRecord.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 4,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 8,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.ReturnCount": 9,
+      "ktlint:standard:enum-entry-name-case": 8,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:spacing-between-declarations-with-comments": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Semver.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:naming.EnumNaming": 4,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:enum-entry-name-case": 4
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Stages.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:naming.EnumNaming": 48,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:blank-line-between-when-conditions": 24,
+      "ktlint:standard:enum-entry-name-case": 48,
+      "ktlint:standard:enum-wrapping": 21,
+      "ktlint:standard:multiline-if-else": 18
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Store.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 4,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:wrapping": 6
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Templates.kt": {
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Transport.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:class-signature": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Trust.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/UpdateCheck.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.NestedBlockDepth": 2,
+      "detekt:naming.EnumNaming": 5,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 21,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:enum-entry-name-case": 5,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/UpdateDecision.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 5,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/UpdateEvents.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 4,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:mixed-condition-operators": 2,
+      "ktlint:standard:parameter-list-wrapping": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Verify.kt": {
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 3
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Version.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:multiline-if-else": 4
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:binary-expression-wrapping": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/BlockedHintVocabularyTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/CacheTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/CapabilitiesTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/CopyTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/DegradedStoreWarningTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Ed25519SelectionTest.kt": {
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/ErrorCodeRegistryTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/KeyringStoreTest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/LocalOnlyTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/LocalTrustTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:statement-wrapping": 9
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/MainSafeTransportTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/PinCustodyTest.kt": {
+      "detekt:naming.VariableNaming": 1,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 36,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:property-naming": 1,
+      "ktlint:standard:property-wrapping": 2,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/PresentationSourceTest.kt": {
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 42,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 5,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/StoreNamespaceTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/TransportTest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/UpdateEventJournalTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/testFixtures/kotlin/im/plrs/key/core/testing/Fixtures.kt": {
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:style.MagicNumber": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/desktop/src/main/kotlin/im/plrs/key/desktop/PolarisKeyDesktop.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/desktop/src/test/kotlin/im/plrs/key/desktop/PolarisKeyDesktopTest.kt": {
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 50,
+      "ktlint:standard:function-signature": 5,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 2,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityClientTest.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:function-signature": 3
+    },
+    "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseClient.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:spacing-between-declarations-with-comments": 2
+    },
+    "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseEndpoints.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 7,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 15,
+      "ktlint:standard:class-signature": 4,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/license/src/test/kotlin/im/plrs/key/license/LicenseClientTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Apply.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 10,
+      "detekt:exceptions.TooGenericExceptionCaught": 10,
+      "detekt:style.MagicNumber": 12,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 5,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:statement-wrapping": 4
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Boot.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:naming.EnumNaming": 3,
+      "ktlint:standard:enum-entry-name-case": 3,
+      "ktlint:standard:multiline-if-else": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/ChunkApply.kt": {
+      "detekt:complexity.ComplexCondition": 3,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:exceptions.TooGenericExceptionCaught": 6,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 3,
+      "detekt:style.ThrowsCount": 2,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 3
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Chunks.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 34,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 3
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/DataOnly.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.NestedBlockDepth": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 2,
+      "detekt:style.MagicNumber": 93,
+      "detekt:style.ReturnCount": 8,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:enum-entry-name-case": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/DirStorage.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 2,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:performance.SpreadOperator": 1,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:multiline-if-else": 5
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Engine.kt": {
+      "detekt:complexity.ComplexCondition": 10,
+      "detekt:complexity.CyclomaticComplexMethod": 9,
+      "detekt:complexity.LargeClass": 1,
+      "detekt:complexity.LongMethod": 4,
+      "detekt:complexity.LongParameterList": 6,
+      "detekt:complexity.NestedBlockDepth": 4,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 45,
+      "detekt:exceptions.TooGenericExceptionCaught": 47,
+      "detekt:naming.EnumNaming": 3,
+      "detekt:style.LoopWithTooManyJumpStatements": 4,
+      "detekt:style.MagicNumber": 14,
+      "detekt:style.MaxLineLength": 26,
+      "detekt:style.ReturnCount": 25,
+      "detekt:style.ThrowsCount": 3,
+      "ktlint:standard:argument-list-wrapping": 122,
+      "ktlint:standard:binary-expression-wrapping": 19,
+      "ktlint:standard:blank-line-between-when-conditions": 13,
+      "ktlint:standard:enum-entry-name-case": 3,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 13,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 26,
+      "ktlint:standard:multiline-if-else": 4,
+      "ktlint:standard:parameter-list-wrapping": 13,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 10,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1,
+      "ktlint:standard:statement-wrapping": 36,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/EnginePorts.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.MagicNumber": 6,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Files.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/L10n.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 5,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 4,
+      "detekt:style.LoopWithTooManyJumpStatements": 4,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 9,
+      "ktlint:standard:enum-entry-name-case": 4
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Marker.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:parameter-list-wrapping": 6
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Memory.kt": {
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:class-signature": 5,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:parameter-list-wrapping": 7,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/PacksClient.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 10,
+      "detekt:exceptions.TooGenericExceptionCaught": 12,
+      "detekt:style.MagicNumber": 15,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 2,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:binary-expression-wrapping": 6,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:multiline-loop": 1,
+      "ktlint:standard:parameter-list-wrapping": 3,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Patch.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Plan.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Ports.kt": {
+      "detekt:style.MagicNumber": 7,
+      "ktlint:standard:class-signature": 5
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Provides.kt": {
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Revocations.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Select.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 8,
+      "ktlint:standard:argument-list-wrapping": 52,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 14,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:statement-wrapping": 9,
+      "ktlint:standard:wrapping": 19
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/State.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 33,
+      "ktlint:standard:class-signature": 3,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 4,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/TypeHandlers.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 7,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:argument-list-wrapping": 36,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:class-signature": 5,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:parameter-list-wrapping": 5
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Types.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 10,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:class-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:parameter-list-wrapping": 10,
+      "ktlint:standard:wrapping": 10
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Window.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MagicNumber": 36,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Zstd.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:exceptions.TooGenericExceptionCaught": 6,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 7,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 3,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:parameter-list-wrapping": 5
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PackEngineTest.kt": {
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.UseCheckOrError": 1,
+      "ktlint:standard:argument-list-wrapping": 51,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 4
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PackFixtures.kt": {
+      "detekt:complexity.LongParameterList": 5,
+      "detekt:empty-blocks.EmptyFunctionBlock": 1,
+      "detekt:style.MaxLineLength": 5,
+      "ktlint:standard:argument-list-wrapping": 63,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:property-naming": 2,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
+      "ktlint:standard:spacing-between-declarations-with-comments": 7,
+      "ktlint:standard:statement-wrapping": 23,
+      "ktlint:standard:wrapping": 14
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PackTypeHandlersTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PackZstdTest.kt": {
+      "detekt:exceptions.SwallowedException": 4
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PacksChunkRangeTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:parameter-list-wrapping": 3,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1,
+      "ktlint:standard:statement-wrapping": 11
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PacksObjectRefusalTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PacksRecordRefusalTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/packs/src/test/kotlin/im/plrs/key/packs/PacksRuntimeSupportTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 1
+    },
+    "sdks/kotlin/platform/src/direct/kotlin/im/plrs/key/platform/FlavorIntegrity.kt": {
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/platform/src/direct/kotlin/im/plrs/key/platform/direct/ApkInstaller.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 11,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:class-signature": 3,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/platform/src/direct/kotlin/im/plrs/key/platform/direct/ApkVerifier.kt": {
+      "detekt:style.MagicNumber": 2
+    },
+    "sdks/kotlin/platform/src/direct/kotlin/im/plrs/key/platform/direct/InstallStatusReceiver.kt": {
+      "detekt:style.MagicNumber": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 10
+    },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/InstallSource.kt": {
+      "detekt:style.MagicNumber": 5,
+      "ktlint:standard:annotation": 2
+    },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/Integrity.kt": {
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:class-signature": 8,
+      "ktlint:standard:function-signature": 8
+    },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/Platform.kt": {
+      "detekt:style.MagicNumber": 4,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/SecureStore.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 3,
+      "ktlint:standard:class-signature": 4,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1
+    },
+    "sdks/kotlin/platform/src/play/kotlin/im/plrs/key/platform/play/AssetPacks.kt": {
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/platform/src/play/kotlin/im/plrs/key/platform/play/InAppUpdates.kt": {
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/platform/src/play/kotlin/im/plrs/key/platform/play/PlayIntegrity.kt": {
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "ktlint:standard:function-signature": 4
+    },
+    "sdks/kotlin/platform/src/test/kotlin/im/plrs/key/platform/SecureStoreTest.kt": {
+      "detekt:empty-blocks.EmptyFunctionBlock": 2,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:function-signature": 3,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:parameter-list-wrapping": 10
+    },
+    "sdks/kotlin/platform/src/testDirect/kotlin/im/plrs/key/platform/DirectIntegrityTest.kt": {
+      "detekt:style.MagicNumber": 4
+    },
+    "sdks/kotlin/platform/src/testDirect/kotlin/im/plrs/key/platform/direct/ApkInstallerTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 18,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/platform/src/testDirect/kotlin/im/plrs/key/platform/direct/ApkVerifierTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 22,
+      "ktlint:standard:class-signature": 3
+    },
+    "sdks/kotlin/platform/src/testPlay/kotlin/im/plrs/key/platform/play/AssetPacksTest.kt": {
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/platform/src/testPlay/kotlin/im/plrs/key/platform/play/InAppUpdatesTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/platform/src/testPlay/kotlin/im/plrs/key/platform/play/PlayIntegrityTest.kt": {
+      "detekt:style.MagicNumber": 6,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1
+    },
+    "sdks/kotlin/platform/src/testPlay/kotlin/im/plrs/key/platform/play/PlayPlatformIntegrityTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/DistributionClient.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/release/src/main/kotlin/im/plrs/key/release/ReleaseClient.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/release/src/test/kotlin/im/plrs/key/release/ReleaseClientTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 35,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/samples/android-consumer/app/src/androidTest/kotlin/im/plrs/key/samples/consumer/ActivationOnMainTest.kt": {
+      "detekt:style.DestructuringDeclarationWithTooManyEntries": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/samples/android-consumer/app/src/androidTest/kotlin/im/plrs/key/samples/consumer/AndroidRuntimeTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/samples/android-consumer/app/src/androidTest/kotlin/im/plrs/key/samples/consumer/MainSafetyTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:exceptions.SwallowedException": 4,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 24,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/samples/android-consumer/app/src/androidTest/kotlin/im/plrs/key/samples/consumer/TestBackend.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/samples/cli/src/main/kotlin/im/plrs/key/samples/cli/Main.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 8,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/samples/cli/src/test/kotlin/im/plrs/key/samples/cli/SampleTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Backend.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 4,
+      "detekt:style.MagicNumber": 7,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:enum-entry-name-case": 4,
+      "ktlint:standard:function-signature": 6,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Boot.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 8,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:statement-wrapping": 6
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Commerce.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:property-naming": 3
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 8,
+      "detekt:exceptions.TooGenericExceptionCaught": 9,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
+      "ktlint:standard:spacing-between-declarations-with-comments": 6
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyFutures.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/BackendTest.kt": {
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/BootDriverTest.kt": {
+      "detekt:style.UseCheckOrError": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloseMain.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloseTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CommerceAttestTest.kt": {
+      "detekt:style.MaxLineLength": 5,
+      "ktlint:standard:argument-list-wrapping": 26,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/DeliveryHelpersTest.kt": {
+      "detekt:style.MaxLineLength": 7,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 76,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:function-literal": 12,
+      "ktlint:standard:import-ordering": 2,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:statement-wrapping": 9,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/DevicesTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/EventsAndChannelTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/FuturesTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/LicenseIdRefreshTest.kt": {
+      "detekt:complexity.LongMethod": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/LiveStateTest.kt": {
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 36,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
+      "ktlint:standard:function-literal": 12,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 3,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/StartedClientTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/server-ktor/src/main/kotlin/im/plrs/key/server/ktor/PolarisKeyAuth.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 16,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/server-ktor/src/test/kotlin/im/plrs/key/server/ktor/KtorDxTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 10,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:statement-wrapping": 26,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/server-ktor/src/test/kotlin/im/plrs/key/server/ktor/KtorMatrixTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 15,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/server-ktor/src/test/kotlin/im/plrs/key/server/ktor/KtorPluginTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 5,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/server/src/main/kotlin/im/plrs/key/server/PolarisServer.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 14,
+      "detekt:style.MaxLineLength": 10,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 29,
+      "ktlint:standard:binary-expression-wrapping": 8,
+      "ktlint:standard:class-signature": 3,
+      "ktlint:standard:function-literal": 12,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:parameter-list-wrapping": 2,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/server/src/main/kotlin/im/plrs/key/server/Problem.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.ReturnCount": 3,
+      "detekt:style.UseCheckOrError": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/server/src/main/kotlin/im/plrs/key/server/Verdict.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 2,
+      "detekt:style.MagicNumber": 16,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/server/src/main/kotlin/im/plrs/key/server/testing/PolarisTestKit.kt": {
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/server/src/test/kotlin/im/plrs/key/server/PolarisServerDxTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 24,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/server/src/test/kotlin/im/plrs/key/server/PolarisServerTest.kt": {
+      "detekt:style.MaxLineLength": 5,
+      "ktlint:standard:argument-list-wrapping": 58,
+      "ktlint:standard:binary-expression-wrapping": 8,
+      "ktlint:standard:function-literal": 9,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:property-wrapping": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyAuthentication.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyAuthorization.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyAutoConfiguration.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyConfigurer.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 7,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyFilters.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/PolarisKeyProperties.kt": {
+      "detekt:style.MagicNumber": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/main/kotlin/im/plrs/key/server/spring/testing/PolarisKeyTesting.kt": {
+      "detekt:naming.MatchingDeclarationName": 1
+    },
+    "sdks/kotlin/spring-boot-starter/src/test/kotlin/im/plrs/key/server/spring/SpringMatrixTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:binary-expression-wrapping": 7,
+      "ktlint:standard:function-literal": 10,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/spring-boot-starter/src/test/kotlin/im/plrs/key/server/spring/SpringStarterTest.kt": {
+      "detekt:style.FunctionOnlyReturningConstant": 4,
+      "detekt:style.MaxLineLength": 9,
+      "ktlint:standard:argument-list-wrapping": 91,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 9,
+      "ktlint:standard:statement-wrapping": 7,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitActivationStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:style.ReturnCount": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 8
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitCopy.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 2,
+      "detekt:naming.EnumNaming": 4,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 8,
+      "ktlint:standard:class-signature": 6,
+      "ktlint:standard:enum-entry-name-case": 4,
+      "ktlint:standard:function-signature": 8
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitDeviceStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 4
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitGateStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:style.MaxLineLength": 13,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:argument-list-wrapping": 166,
+      "ktlint:standard:binary-expression-wrapping": 10,
+      "ktlint:standard:blank-line-between-when-conditions": 20,
+      "ktlint:standard:max-line-length": 13,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitPresentation.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 48,
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 5,
+      "ktlint:standard:class-signature": 7,
+      "ktlint:standard:enum-entry-name-case": 48,
+      "ktlint:standard:function-signature": 14,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:property-naming": 3,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitRows.kt": {
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitSettingsStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 4
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitSignInStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 3,
+      "detekt:style.MaxLineLength": 11,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 121,
+      "ktlint:standard:binary-expression-wrapping": 7,
+      "ktlint:standard:blank-line-between-when-conditions": 9,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 11,
+      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitUpdateStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 12
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisBootState.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 9
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisDevicesState.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisGateState.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:function-signature": 5
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisPackProgressState.kt": {
+      "ktlint:standard:class-signature": 5
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisSettingsState.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisSignInState.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisUpdateState.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.MagicNumber": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/KitPresentationRulesTest.kt": {
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/KitRowsTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 17,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:statement-wrapping": 4,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisBootStateTest.kt": {
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisDevicesStateTest.kt": {
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisGateStateLiveTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 2
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisGateStateTest.kt": {
+      "ktlint:standard:class-signature": 3
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisSettingsStateTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 15,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisSignInStateTest.kt": {
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisUpdateStateTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/UIMatrixPresentationTest.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:string-template": 1
+    },
+    "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBack.kt": {
+      "detekt:exceptions.RethrowCaughtException": 1,
+      "detekt:naming.TopLevelPropertyNaming": 3,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:property-naming": 3
+    },
+    "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisPlatform.android.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignInAndroid.kt": {
+      "detekt:naming.FunctionNaming": 1,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 2,
+      "ktlint:standard:function-naming": 1
+    },
+    "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisTypography.android.kt": {
+      "detekt:style.MagicNumber": 6,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/AccessibilityTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "ktlint:standard:no-blank-line-before-rbrace": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/BackTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/BrandRulesTest.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:property-wrapping": 2,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/BrandingTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 15,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ChannelPickerTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ComposeResourcesTest.kt": {
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/DeviceLimitStepTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/DevicesInlineTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/FlowTest.kt": {
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 54,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 10,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:parameter-list-wrapping": 2,
+      "ktlint:standard:statement-wrapping": 15,
+      "ktlint:standard:wrapping": 3
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/GateToastTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitSamples.kt": {
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 71,
+      "ktlint:standard:binary-expression-wrapping": 12,
+      "ktlint:standard:function-literal": 3,
+      "ktlint:standard:function-naming": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:indent": 7,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitScreenFixesTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:function-literal": 3,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitScreenLayoutTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitSignInMethodsTest.kt": {
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitSnapshotTest.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 22,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:kdoc": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ListDetailTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/MatrixSnapshotTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:class-signature": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:parameter-list-wrapping": 6
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PartsTest.kt": {
+      "detekt:style.MaxLineLength": 5,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:function-literal": 10,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:wrapping": 4
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PolarisCopyCatalogTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PolarisCopyMappingTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PolarisCopyResourcesTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PredictiveBackTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 2
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PresentationSnapshotTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 9,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PresentationThemeTest.kt": {
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ProductHeaderTest.kt": {
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:no-blank-line-before-rbrace": 1,
+      "ktlint:standard:no-trailing-spaces": 1,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/RefusalTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ResponsiveTest.kt": {
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 62,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 3,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:multiline-loop": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/RevokedInForegroundTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/SettingsEditorsTest.kt": {
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 53,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/SettingsRowsTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ToastTest.kt": {
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisAccount.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBoot.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 13,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBrandMarks.kt": {
+      "detekt:naming.FunctionNaming": 4,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-naming": 4,
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisChannelPicker.kt": {
+      "detekt:naming.FunctionNaming": 2,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 24,
+      "ktlint:standard:function-literal": 1,
+      "ktlint:standard:function-naming": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:indent": 15,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCopy.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "ktlint:standard:function-signature": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCopyMapping.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:performance.SpreadOperator": 1,
+      "detekt:style.MagicNumber": 21,
+      "ktlint:standard:blank-line-between-when-conditions": 30,
+      "ktlint:standard:class-signature": 4,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisDevices.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 6,
+      "detekt:style.MagicNumber": 9,
+      "detekt:style.MaxLineLength": 10,
+      "ktlint:standard:argument-list-wrapping": 50,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:function-naming": 6,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 10,
+      "ktlint:standard:no-consecutive-blank-lines": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisGate.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:complexity.LongParameterList": 4,
+      "detekt:naming.FunctionNaming": 5,
+      "detekt:style.MaxLineLength": 10,
+      "ktlint:standard:argument-list-wrapping": 68,
+      "ktlint:standard:binary-expression-wrapping": 10,
+      "ktlint:standard:blank-line-between-when-conditions": 11,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-naming": 5,
+      "ktlint:standard:indent": 72,
+      "ktlint:standard:max-line-length": 10,
+      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:no-consecutive-blank-lines": 1,
+      "ktlint:standard:statement-wrapping": 6
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisGnome.kt": {
+      "detekt:complexity.LongParameterList": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 7,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.UnusedParameter": 1,
+      "ktlint:standard:argument-list-wrapping": 35,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 7,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisHostFactsTheme.kt": {
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKeyApp.kt": {
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:naming.FunctionNaming": 3,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:function-signature": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 14,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.MaxLineLength": 21,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.UnusedParameter": 1,
+      "ktlint:standard:argument-list-wrapping": 105,
+      "ktlint:standard:binary-expression-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 14,
+      "ktlint:standard:function-expression-body": 1,
+      "ktlint:standard:function-literal": 38,
+      "ktlint:standard:function-naming": 14,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:indent": 11,
+      "ktlint:standard:max-line-length": 21,
+      "ktlint:standard:multiline-if-else": 1,
+      "ktlint:standard:parameter-list-wrapping": 8,
+      "ktlint:standard:statement-wrapping": 6,
+      "ktlint:standard:wrapping": 11
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisLayout.kt": {
+      "detekt:style.MagicNumber": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisMacChrome.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 4,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:function-naming": 4,
+      "ktlint:standard:function-signature": 3,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisOpener.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPackProgress.kt": {
+      "detekt:naming.FunctionNaming": 4,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-naming": 4,
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisParts.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 8,
+      "detekt:naming.FunctionNaming": 10,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 10,
+      "ktlint:standard:argument-list-wrapping": 81,
+      "ktlint:standard:binary-expression-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 13,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-naming": 10,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 10,
+      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPlatform.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "ktlint:standard:function-naming": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPresentation.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.MagicNumber": 12,
+      "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisScreen.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 3,
+      "detekt:complexity.LongParameterList": 6,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 25,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 28,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:blank-line-between-when-conditions": 7,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:function-naming": 25,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:kdoc": 1,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:multiline-if-else": 4,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1,
+      "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSettings.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 12,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.MaxLineLength": 16,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 94,
+      "ktlint:standard:binary-expression-wrapping": 11,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-literal": 12,
+      "ktlint:standard:function-naming": 12,
+      "ktlint:standard:function-signature": 16,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 16,
+      "ktlint:standard:parameter-list-wrapping": 38,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 4
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:naming.FunctionNaming": 8,
+      "detekt:style.MagicNumber": 55,
+      "ktlint:standard:blank-line-between-when-conditions": 5,
+      "ktlint:standard:function-naming": 8,
+      "ktlint:standard:function-signature": 5,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:no-consecutive-blank-lines": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSkeleton.kt": {
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:style.MagicNumber": 4,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSymbols.kt": {
+      "ktlint:standard:argument-list-wrapping": 13,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisTheme.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 2,
+      "detekt:style.MagicNumber": 29,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:multiline-if-else": 6,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisToast.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:style.MagicNumber": 2,
+      "ktlint:standard:function-naming": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 7,
+      "detekt:naming.TopLevelPropertyNaming": 1,
+      "detekt:style.MagicNumber": 2,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.UnusedParameter": 1,
+      "ktlint:standard:argument-list-wrapping": 16,
+      "ktlint:standard:blank-line-between-when-conditions": 6,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 7,
+      "ktlint:standard:function-signature": 5,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:multiline-if-else": 10,
+      "ktlint:standard:property-naming": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisVariant.kt": {
+      "ktlint:standard:enum-wrapping": 3
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisWindowsChrome.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 2,
+      "detekt:complexity.LongParameterList": 3,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:style.MagicNumber": 6,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:kdoc": 1,
+      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:spacing-between-declarations-with-comments": 2,
+      "ktlint:standard:statement-wrapping": 8
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisWindowsUpdate.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:naming.FunctionNaming": 1,
+      "ktlint:standard:function-naming": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisAccent.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.ReturnCount": 3
+    },
+    "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisHostFacts.desktop.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 24,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:spacing-between-declarations-with-comments": 1,
+      "ktlint:standard:statement-wrapping": 16
+    },
+    "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisHostFactsTheme.desktop.kt": {
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisPlatform.desktop.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:naming.FunctionNaming": 3,
+      "detekt:naming.MatchingDeclarationName": 1,
+      "detekt:style.MagicNumber": 7,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:function-naming": 3,
+      "ktlint:standard:function-signature": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:statement-wrapping": 12
+    },
+    "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisWindowState.desktop.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
+    "sdks/kotlin/ui/src/desktopMain/kotlin/im/plrs/key/ui/PolarisWindows.desktop.kt": {
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:naming.FunctionNaming": 8,
+      "detekt:style.MagicNumber": 1,
+      "ktlint:standard:function-naming": 8,
+      "ktlint:standard:function-signature": 4
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/AccentSwatchSmokeTest.kt": {
+      "detekt:style.MagicNumber": 4,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/BoardShots.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 2,
+      "detekt:style.MagicNumber": 15,
+      "ktlint:standard:function-naming": 2
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/DesktopVariantTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 18,
+      "detekt:style.MaxLineLength": 6,
+      "ktlint:standard:argument-list-wrapping": 26,
+      "ktlint:standard:binary-expression-wrapping": 12,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:max-line-length": 6,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/DesktopWindowsTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:empty-blocks.EmptyFunctionBlock": 4,
+      "detekt:style.MagicNumber": 3,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/DialogDimTest.kt": {
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:wrapping": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/GnomeBoardShotsTest.kt": {
+      "detekt:style.MagicNumber": 19,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 20,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/GnomeChromeTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 26,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.UnusedPrivateProperty": 1,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:statement-wrapping": 11
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/MacBoardShotsTest.kt": {
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MagicNumber": 9,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 19,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/MacChromeTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 1,
+      "detekt:style.MagicNumber": 40,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 21,
+      "ktlint:standard:binary-expression-wrapping": 5,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 1,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/NativeSurfacesTest.kt": {
+      "detekt:style.MagicNumber": 8
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/PlatformEdgesTest.kt": {
+      "detekt:style.MagicNumber": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:statement-wrapping": 9
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/PolarisGateBootSmokeTest.kt": {
+      "detekt:style.MagicNumber": 3,
+      "ktlint:standard:argument-list-wrapping": 5
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/SignInAddressTest.kt": {
+      "detekt:style.MagicNumber": 11,
+      "ktlint:standard:multiline-loop": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/UpdateProgressDesktopTest.kt": {
+      "detekt:style.MagicNumber": 4
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/WindowsBoardShotsTest.kt": {
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 17,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:multiline-loop": 2
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/WindowsChromeTest.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.FunctionNaming": 2,
+      "detekt:style.MagicNumber": 52,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 16,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 3,
+      "ktlint:standard:multiline-loop": 3,
+      "ktlint:standard:statement-wrapping": 4
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/ArtifactFetch.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "detekt:style.UnusedPrivateProperty": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 1,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/BootGuard.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/DesktopInstallDriver.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 4,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.MaxLineLength": 2,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:class-signature": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:mixed-condition-operators": 1,
+      "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/DirUpdateSlots.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 5,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/InstallDriver.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
+      "ktlint:standard:class-signature": 2,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/update/src/main/kotlin/im/plrs/key/update/UpdateClient.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:naming.EnumNaming": 2,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 7,
+      "detekt:style.ReturnCount": 4,
+      "detekt:style.ThrowsCount": 3,
+      "ktlint:standard:argument-list-wrapping": 33,
+      "ktlint:standard:binary-expression-wrapping": 7,
+      "ktlint:standard:blank-line-between-when-conditions": 5,
+      "ktlint:standard:enum-entry-name-case": 2,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:kdoc": 1,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:property-naming": 5,
+      "ktlint:standard:spacing-between-declarations-with-comments": 2,
+      "ktlint:standard:statement-wrapping": 3,
+      "ktlint:standard:wrapping": 2
+    },
+    "sdks/kotlin/update/src/test/kotlin/im/plrs/key/update/BootGuardTest.kt": {
+      "ktlint:standard:statement-wrapping": 22
+    },
+    "sdks/kotlin/update/src/test/kotlin/im/plrs/key/update/DesktopInstallDriverTest.kt": {
+      "detekt:style.MaxLineLength": 8,
+      "ktlint:standard:argument-list-wrapping": 106,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 8,
+      "ktlint:standard:property-wrapping": 5,
+      "ktlint:standard:statement-wrapping": 9
+    },
+    "sdks/kotlin/update/src/test/kotlin/im/plrs/key/update/DirUpdateSlotsTest.kt": {
+      "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/update/src/test/kotlin/im/plrs/key/update/UpdateClientTest.kt": {
+      "detekt:style.MaxLineLength": 7,
+      "ktlint:standard:argument-list-wrapping": 63,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-signature": 3,
+      "ktlint:standard:max-line-length": 7,
+      "ktlint:standard:multiline-if-else": 2,
+      "ktlint:standard:property-wrapping": 3,
+      "ktlint:standard:statement-wrapping": 6
+    }
+  }
+}

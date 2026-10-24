@@ -1000,6 +1000,9 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      - name: Lint (ktlint and detekt against the lint-debt ledger)
+        working-directory: sdks/kotlin
+        run: tools/lint.sh check
       - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
         working-directory: sdks/kotlin
         run: >-

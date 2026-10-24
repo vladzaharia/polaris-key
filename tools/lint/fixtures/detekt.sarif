@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///repo/sdks/kotlin/core/src/main/kotlin/A.kt"
+                },
+                "region": { "startLine": 3 }
+              }
+            }
+          ],
+          "message": { "text": "too many parameters" },
+          "ruleId": "detekt.complexity.LongParameterList"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///repo/sdks/kotlin/core/src/main/kotlin/A.kt"
+                },
+                "region": { "startLine": 9 }
+              }
+            }
+          ],
+          "message": { "text": "magic number" },
+          "ruleId": "detekt.style.MagicNumber"
+        }
+      ],
+      "tool": { "driver": { "name": "detekt" } }
+    }
+  ]
+}
