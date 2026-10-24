@@ -1,0 +1,6 @@
+outlets:
+  # Flathub
+  flathub:
+    kind: flathub
+    # Steam app id, or the Flatpak application id for Flathub.
+    appId: com.acme.Dice

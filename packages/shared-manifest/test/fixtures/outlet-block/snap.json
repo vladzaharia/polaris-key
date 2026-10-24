@@ -1,0 +1,11 @@
+{
+  "outlets": {
+    "snap": {
+      "kind": "snap",
+      "name": "dice",
+      "channels": {
+        "stable": "stable"
+      }
+    }
+  }
+}

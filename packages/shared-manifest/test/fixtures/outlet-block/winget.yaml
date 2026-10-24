@@ -1,0 +1,6 @@
+outlets:
+  # winget
+  winget:
+    kind: winget
+    # winget package identifier.
+    packageIdentifier: Acme.Dice

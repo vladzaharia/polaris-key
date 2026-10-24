@@ -1,0 +1,9 @@
+{
+  "outlets": {
+    "fdroid": {
+      "kind": "fdroid-repo",
+      "artifact": "apk",
+      "packageName": "com.acme.dice"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "outlets": {
+    "flathub": {
+      "kind": "flathub",
+      "appId": "com.acme.Dice"
+    }
+  }
+}
