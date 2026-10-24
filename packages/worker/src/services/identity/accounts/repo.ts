@@ -21,8 +21,6 @@ export interface AccountRow {
   avatar_key: string | null;
   locale: string | null;
   details_source_json: string | null;
-  /** Superseded by `account_terms_acceptances` (PX-W15): neither read nor written. */
-  terms_json: string | null;
   /**
    * I-33: the optional birth date (`YYYY-MM-DD`) and where it came from (`user`,
    * `connection:<id>`), `accounts/birthdate.ts`. Private to the person: never answered outside
