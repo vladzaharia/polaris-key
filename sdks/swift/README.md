@@ -103,8 +103,8 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 
 | Surface                                                                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
-| `isEnabled(flag:)`, `license.isEntitled(_:)`                               | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `activateWithKey(_:)`, `enroll()`                                          | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
+| `entitlements.has(_:)`, `entitlements.value(_:)`, `entitlements.all()`     | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `licenseInfo()`                                                            | License id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `config.set(_:_:)`, `clear(_:)`, `localValues()`                           | The user's own values, persisted in UserDefaults (an app-group suite with `appGroup`). They beat the environment and a remote `default`, never `enforced` or `hidden`, and are checked against the catalog's `type` and `enum`.                                                                                                                                                                                                                                                                          |
@@ -142,13 +142,13 @@ let client = try await PolarisKeyClient.create(options: .init(
 
 // Offline-first: status comes from the cached signed documents with no network.
 if await client.isLicensed() {
-    let concurrency = await client.config.config("run.concurrency", default: .int(4))
-    let vpnUrl = await client.config.secret("proxy.subscriptionUrl")
-    let hasVpn = await client.license.isEntitled("polarisVpn")
+    let concurrency = await client.config.get("run.concurrency", default: .int(4))
+    let vpnUrl = await client.config.getSecret("proxy.subscriptionUrl")
+    let hasVpn = await client.entitlements.has("polarisVpn")
 }
 
 // Activate with a license key (key → token, persisted, then a forced sync).
-let result = await client.activate(key: userEnteredKey)
+let result = await client.license.activateWithKey(userEnteredKey)
 
 // Or, for a config-only product, mint a credential with no key at all (§6).
 let registered = await client.register()
@@ -163,11 +163,11 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{config,
-configSource,secret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
+entitledChannels,getProfile,deactivate}`, `client.entitlements.{has,value,all}`, `client.config.{get,
+getConfigSource,getSecret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
 `client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
-installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,config,
-activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
+installUrl,downloadUrl(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
+activate,enroll,register,report,sync,deactivate,importBundle,getSyncState}` are convenience
 passthroughs for the calls a host makes before it knows which service it is talking to.
 
 `client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
@@ -228,8 +228,8 @@ runtime fetch; routine key rotation is handled by the signed trust manifest at
 
 ### Layered config
 
-`client.config.config(_:default:)` resolves a value through the **same precedence** as every
-Polaris Key SDK; `configSource(_:)` returns which layer won:
+`client.config.get(_:default:)` resolves a value through the **same precedence** as every
+Polaris Key SDK; `getConfigSource(_:)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
@@ -237,7 +237,7 @@ enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default
 
 `enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env vars
 are ignored for those keys; `hidden` keys are additionally withheld from `listUserConfig()` (but
-still applied by `config(_:default:)`).
+still applied by `get(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
 `PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The value is the decoded
@@ -298,7 +298,7 @@ attach opt-in is retired). A Deny on the approval page ends as `.error(message:c
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.
 `.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
-(or `LicenseClient.profile()`) returns the signed license profile too. Show "Signed in as Ada
+(or `LicenseClient.getProfile()`) returns the signed license profile too. Show "Signed in as Ada
 Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
@@ -382,7 +382,7 @@ is on and already validated by `ManageLink.read`. It is never an auth failure.
 import PolarisKey
 
 func replaceDeviceLink(_ client: PolarisKeyClient, key: String) async -> String? {
-    if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
+    if case .deviceLimit(_, _, let manageURL?) = await client.license.activateWithKey(key) {
         // Offer "Replace a device", opening this link behind a tap.
         return ManageLink.withReturn(ManageLink.withKey(manageURL, key), "myapp://activated")
     }
@@ -667,7 +667,7 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
     let update = UpdateClient(core: client.core)
     let feed = await update.feed(
         channel: "stable",
-        entitlements: await client.license.entitlements())
+        entitlements: await client.entitlements.all())
 
     // Sparkle holds its delegate weakly: keep both objects for the app's lifetime.
     let delegate = PolarisSparkleUpdaterDelegate(feed: feed)
@@ -748,7 +748,7 @@ func checkForUpdate(_ client: PolarisKeyClient) async throws {
         // open listingUrl, or the page you compiled in when it is nil (AltStore, iOS web distribution)
         _ = listingUrl
     case .binary(_, let release, let build, _, _, _, _, _):
-        let url = await update.buildURL(version: release.version, buildId: build)
+        let url = await update.buildUrl(version: release.version, buildId: build)
         _ = url  // download, check the payload's `size` and `sha256` against the record, then stage
     case .none, .codeReady, .platform, .blocked, .packs:
         break
@@ -834,7 +834,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 - `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
   without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
   `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
-  feed pins it); `buildURL(version:buildId:)` is the `distribution/builds` route, never the
+  feed pins it); `buildUrl(version:buildId:)` is the `distribution/builds` route, never the
   R2-only blob route.
 
 ## Packs (`update.packs`)

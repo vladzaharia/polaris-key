@@ -32,7 +32,7 @@ public enum ConfigSource: String, Sendable, Equatable {
 }
 
 /// One user-facing catalog entry, for building settings UIs. `hidden` keys are excluded (they
-/// are still APPLIED by `config(_:default:)`); `enforced` keys are shown read-only.
+/// are still APPLIED by `get(_:default:)`); `enforced` keys are shown read-only.
 public struct UserConfigEntry: Sendable, Equatable {
     public let key: String
     public let value: JSONValue
@@ -264,7 +264,7 @@ public actor ConfigClient {
         let after = await snapshot()
         for key in Set(before.keys).union(after.keys).sorted() where before[key] != after[key] {
             deliver(
-                ConfigChange(key: key, value: after[key], previous: before[key], source: await configSource(key)))
+                ConfigChange(key: key, value: after[key], previous: before[key], source: await getConfigSource(key)))
         }
     }
 
@@ -281,6 +281,16 @@ public actor ConfigClient {
         return ConfigSettingState(
             value: ConfigResolution.resolveValue(ctx, key), source: ConfigResolution.resolveSource(ctx, key),
             locked: state == .enforced || state == .hidden)
+    }
+
+    /// How `key` appears (`SettingVisibility`): `enforced` is readonly, `hidden` is hidden; a
+    /// `default` entry or none is editable (`setting(key).visibility`).
+    func settingVisibility(_ key: String) async -> String {
+        switch await doc()?.config[key]?.state {
+        case .enforced: return SettingVisibility.readonly
+        case .hidden: return SettingVisibility.hidden
+        default: return SettingVisibility.editable
+        }
     }
 
     /// The values `set` kept, by key.
@@ -300,42 +310,42 @@ public actor ConfigClient {
 
     /// Resolve the effective value for `key`, honouring management state + the override layers
     /// (`ConfigResolution`, WIRE-CONTRACT-V3 §2.2.1).
-    public func config(_ key: String, default fallback: JSONValue) async -> JSONValue {
+    public func get(_ key: String, default fallback: JSONValue) async -> JSONValue {
         ConfigResolution.resolveValue(await context(), key) ?? fallback
     }
 
     // ── Typed getters (SP-S02) ───────────────────────────────────────────────────────────
     /// The effective value as a `Bool`, or `fallback` when absent or of another type.
     public func bool(_ key: String, default fallback: Bool) async -> Bool {
-        await config(key, default: .null).boolValue ?? fallback
+        await get(key, default: .null).boolValue ?? fallback
     }
 
     /// The effective value as an `Int` (an integral JSON number), or `fallback`.
     public func int(_ key: String, default fallback: Int) async -> Int {
-        await config(key, default: .null).intValue ?? fallback
+        await get(key, default: .null).intValue ?? fallback
     }
 
     /// The effective value as a `Double` (any JSON number), or `fallback`.
     public func double(_ key: String, default fallback: Double) async -> Double {
-        await config(key, default: .null).doubleValue ?? fallback
+        await get(key, default: .null).doubleValue ?? fallback
     }
 
     /// The effective value as a `String`, or `fallback`.
     public func string(_ key: String, default fallback: String) async -> String {
-        await config(key, default: .null).stringValue ?? fallback
+        await get(key, default: .null).stringValue ?? fallback
     }
 
     /// The effective value decoded as `T` (an object or array into a `Decodable` struct), or nil
     /// when absent or when it does not decode.
     public func decode<T: Decodable>(_ key: String, as type: T.Type = T.self) async -> T? {
-        let value = await config(key, default: .null)
+        let value = await get(key, default: .null)
         if case .null = value { return nil }
         guard let data = try? JSONEncoder().encode(value) else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
-    /// Where `config(key)` would source its value from (provenance, for settings UIs).
-    public func configSource(_ key: String) async -> ConfigSource {
+    /// Where `get(key)` would source its value from (provenance, for settings UIs).
+    public func getConfigSource(_ key: String) async -> ConfigSource {
         ConfigResolution.resolveSource(await context(), key)
     }
 
@@ -359,7 +369,7 @@ public actor ConfigClient {
     }
 
     /// A managed secret's value (string only), or nil. Secrets are never enumerated.
-    public func secret(_ key: String) async -> String? {
+    public func getSecret(_ key: String) async -> String? {
         await doc()?.secrets[key]?.value.stringValue
     }
 }

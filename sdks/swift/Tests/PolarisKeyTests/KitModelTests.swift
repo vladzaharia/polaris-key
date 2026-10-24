@@ -98,7 +98,7 @@ final class KitModelTests: XCTestCase {
         let model = PolarisKeyModel(client: c)
         model.start()
         XCTAssertFalse(model.identityEnabled)
-        _ = await c.activate(key: "PKEY-1")
+        _ = await c.license.activateWithKey("PKEY-1")
         try await settle { model.activation == .token && model.state.status == .ok }
         XCTAssertEqual(model.activation, .token)
         XCTAssertEqual(model.state.status, .ok)

@@ -33981,6 +33981,8 @@ import PolarisKey
 /// Polaris Key configuration for ${facts.product}:
 ///
 ///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
+///
+/// Config reads use the 0.9 names: \`client.config.get(_:default:)\`, \`getConfigSource(_:)\`, \`getSecret(_:)\`.
 public enum PolarisConfig {
     public static let productSlug = ${q(facts.product)}
     public static let baseUrl = ${q(facts.baseUrl)}
@@ -34851,7 +34853,7 @@ var SWIFT_LIBRARY = {
       `    options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
       `_ = await client.sync()`,
       `if await !client.isLicensed() {`,
-      `    let result = await client.activate(key: userEnteredKey)`,
+      `    let result = await client.license.activateWithKey(userEnteredKey)`,
       `    print(result)`,
       `}`
     )

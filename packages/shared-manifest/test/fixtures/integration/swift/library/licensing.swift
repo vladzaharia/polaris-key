@@ -5,6 +5,6 @@ let client = try await PolarisKeyClient.create(
     options: PolarisConfig.clientOptions(version: "1.4.2"))
 _ = await client.sync()
 if await !client.isLicensed() {
-    let result = await client.activate(key: userEnteredKey)
+    let result = await client.license.activateWithKey(userEnteredKey)
     print(result)
 }

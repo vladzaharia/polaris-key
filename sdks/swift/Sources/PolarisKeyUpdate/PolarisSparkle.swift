@@ -101,7 +101,7 @@ import PolarisKeyCore
 
         /// Re-derive the feed, headers and channels from the client's current state.
         public func reconfigure() async {
-            let entitlements = await client.license.entitlements()
+            let entitlements = await client.entitlements.all()
             let feed = await client.update.feed(channel: channel, entitlements: entitlements)
             let headers = await client.update.feedHeaders(channel: channel)
             delegate.apply(feed)

@@ -240,7 +240,7 @@ enum SwiftReplay {
             }
             out["documents"] = .object(docs)
         case "activate":
-            activation(await client.activate(key: step.args["key"]?.stringValue ?? ""), into: &out)
+            activation(await client.license.activateWithKey(step.args["key"]?.stringValue ?? ""), into: &out)
         case "enroll":
             activation(await client.enroll(), into: &out)
         case "boot":
@@ -282,10 +282,10 @@ enum SwiftReplay {
                 out["code"] = .string(e.code)
             }
         case "installUrl":
-            out["url"] = .string(try await client.release.installURL().absoluteString)
+            out["url"] = .string(try await client.release.installUrl().absoluteString)
         case "downloadUrl":
             out["url"] = .string(
-                try await client.release.downloadURL(
+                try await client.release.downloadUrl(
                     version: step.args["version"]?.stringValue ?? "",
                     binary: step.args["binary"]?.stringValue ?? "",
                     arch: step.args["arch"]?.stringValue ?? "",

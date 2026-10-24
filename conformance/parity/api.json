@@ -272,6 +272,11 @@
         "file": "sdks/swift/Sources/PolarisKeyLicense/LicenseClient.swift"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/swift/Sources/PolarisKeyLicense/EntitlementsClient.swift"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "sdks/swift/Sources/PolarisKeyIdentity/IdentityClient.swift"
@@ -1186,8 +1191,8 @@
     },
     {
       "sdk": "swift",
-      "path": "client.activate",
-      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
       "sdk": "swift",
@@ -1216,33 +1221,28 @@
     },
     {
       "sdk": "swift",
-      "path": "client.events",
-      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "swift",
-      "path": "client.changes",
-      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "swift",
       "path": "client.emit",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.events",
+      "reason": "row events (the AsyncStream of PolarisKeyEvent); rule 1 matches rows by the surface namespace"
     },
     {
       "sdk": "swift",
       "path": "events.emit",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
       "path": "events.stream",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
       "path": "events.subscriberCount",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
@@ -2353,8 +2353,6 @@
         },
         "python": {},
         "swift": {
-          "spelling": "config",
-          "planned": "SP-35b",
           "labels": ["_", "default"]
         },
         "kotlin": {
@@ -2383,10 +2381,7 @@
         "node": {},
         "react": {},
         "python": {},
-        "swift": {
-          "spelling": "configSource",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "configSource",
           "planned": "SP-35b"
@@ -2411,10 +2406,7 @@
         "node": {},
         "python": {},
         "godot": {},
-        "swift": {
-          "spelling": "secret",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "secret",
           "planned": "SP-35b"
@@ -2574,9 +2566,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "value",
-          "planned": "SP-35b",
-          "labels": ["default"]
+          "shape": "property"
         },
         "kotlin": {
           "spelling": "value",
@@ -2596,8 +2586,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "source",
-          "planned": "SP-35b"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2616,8 +2605,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "isLocked",
-          "planned": "SP-35b"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2637,8 +2625,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "planned": "SP-35b",
-          "reason": "absent today"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2704,10 +2691,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "onChange",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07",
           "reason": "a StateFlow until U-07"
@@ -2745,11 +2729,7 @@
         "node": {},
         "python": {},
         "godot": {},
-        "swift": {
-          "spelling": "activate",
-          "planned": "SP-35b",
-          "labels": ["key"]
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "activate",
           "planned": "SP-35b"
@@ -2778,10 +2758,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
@@ -2807,10 +2784,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
@@ -2830,10 +2804,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.entitlements",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.entitlements",
           "planned": "SP-35b"
@@ -2918,10 +2889,7 @@
       "enum": "eventKind",
       "sdks": {
         "node": {},
-        "swift": {
-          "spelling": "changes",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {
           "spelling": "event",
@@ -3165,10 +3133,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "syncState",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "syncState",
           "planned": "SP-35b"
@@ -3280,10 +3245,7 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "swift": {
-          "spelling": "startRefreshLoop",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "startRefreshLoop",
           "planned": "SP-35b"
@@ -3389,10 +3351,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "profile",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "profile",
           "planned": "SP-35b"
@@ -3407,10 +3366,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "licenseId",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "licenseId",
           "planned": "SP-35b"
@@ -3597,10 +3553,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "installURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3612,10 +3565,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "downloadURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3751,10 +3701,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "buildURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {}
       },
       "layer": "client"
@@ -4137,10 +4084,7 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {
-          "spelling": "licenseUser",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "licenseUser",
           "planned": "SP-35b"
@@ -4385,17 +4329,6 @@
         "react": {
           "sdkOnly": true,
           "reason": "React-only today (SP-35.9 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "client.isEnabled",
-      "kind": "method",
-      "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
         }
       },
       "layer": "client"
@@ -5541,6 +5474,136 @@
   ],
   "removed": [
     {
+      "sdk": "swift",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.config(_:default:)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.value(default:)",
+      "to": "config.setting.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.value\\(default:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.source\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.isLocked()",
+      "to": "config.setting.locked",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.isLocked\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.onChange(_:)",
+      "to": "config.setting.on",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.onChange\\s*[({]",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "client.isEnabled(flag:)",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.isEnabled\\(flag:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.activate(key:)",
+      "to": "license.activateWithKey",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:client|license|c)\\.activate\\(key:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
       "sdk": "node",
       "from": "config.getConfig",
       "to": "config.get",
@@ -5807,6 +5870,96 @@
       "scan": {
         "pattern": "\\bupdate\\.apply\\s*\\(",
         "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.changes",
+      "to": "client.events",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.changes\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.syncState\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.startRefreshLoop(onChange:)",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bstartRefreshLoop\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.installURL()",
+      "to": "release.installUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\binstallURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.downloadURL(version:binary:arch:checksum:dmg:)",
+      "to": "release.downloadUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdownloadURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "UpdateClient.buildURL(version:buildId:)",
+      "to": "update.buildUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bbuildURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
       }
     }
   ]

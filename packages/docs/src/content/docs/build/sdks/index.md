@@ -57,7 +57,7 @@ Node also carries `client.distribution`, the public download model for a platfor
 A handful of calls — `status`/`isLicensed`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking
 to. Verbs and field names follow each language's own convention (`activateWithKey` in
-TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift, `activate_with_key` in GDScript), but the _shape_ —
+TypeScript, `activate_with_key` in Python, `activateWithKey(_:)` in Swift, `activate_with_key` in GDScript), but the _shape_ —
 Core plus one sub-client per service, the same services in the same order — never
 changes, which is what makes the SDK pages that follow read as one document in six languages
 rather than six unrelated APIs.

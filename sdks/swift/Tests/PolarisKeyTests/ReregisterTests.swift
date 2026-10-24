@@ -121,12 +121,12 @@ final class ReregisterTests: XCTestCase {
         let (c, _) = try await client(services: [.license, .config])
 
         // Activation's own sync 401s on the fresh token: one /license/token, then the retry.
-        guard case .ok = await c.activate(key: "pkey_k") else { return XCTFail("activate") }
+        guard case .ok = await c.license.activateWithKey("pkey_k") else { return XCTFail("activate") }
         let tokens = await count(tokenPath)
         let registers = await count(registerPath)
         XCTAssertEqual(tokens, 1)
         XCTAssertEqual(registers, 0)
-        let state = await c.syncState()
+        let state = await c.getSyncState()
         XCTAssertFalse(state.lastSyncUnauthorized)
     }
 
@@ -209,7 +209,7 @@ final class ReregisterTests: XCTestCase {
         XCTAssertEqual(licenseFetches, 1, "no retry after a failed attempt")
         XCTAssertEqual(configFetches, 1)
         XCTAssertTrue(r.unauthorized)
-        let state = await c.syncState()
+        let state = await c.getSyncState()
         XCTAssertTrue(state.lastSyncUnauthorized)
         let stored = await store.getToken()
         XCTAssertEqual(stored, "pkeyt_reg1")

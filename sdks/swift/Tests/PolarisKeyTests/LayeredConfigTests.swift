@@ -1,5 +1,5 @@
 // Layered config: management-state honoring + localOverrides/env precedence, plus the
-// `listUserConfig()`/`configSource()` surface.
+// `listUserConfig()`/`getConfigSource()` surface.
 //
 //   enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
 //
@@ -62,10 +62,10 @@ final class LayeredConfigTests: XCTestCase {
         let c = try await client(
             localOverrides: ["run.concurrency": .int(99), "proxy.secret": .string("nope")],
             environment: ["PKEY_CONFIG_run__concurrency": "1234"])
-        let conc = await c.config.config("run.concurrency", default: .int(0))
-        let secret = await c.config.config("proxy.secret", default: .string("d"))
-        let concSrc = await c.config.configSource("run.concurrency")
-        let secretSrc = await c.config.configSource("proxy.secret")
+        let conc = await c.config.get("run.concurrency", default: .int(0))
+        let secret = await c.config.get("proxy.secret", default: .string("d"))
+        let concSrc = await c.config.getConfigSource("run.concurrency")
+        let secretSrc = await c.config.getConfigSource("proxy.secret")
         XCTAssertEqual(conc, .int(4))
         XCTAssertEqual(secret, .string("s"))
         XCTAssertEqual(concSrc, .enforced)
@@ -75,8 +75,8 @@ final class LayeredConfigTests: XCTestCase {
     // @pkey-feature config.resolve
     func testDefaultStateLocalOverrideBeatsRemote() async throws {
         let c = try await client(localOverrides: ["ui.theme": .string("light")])
-        let theme = await c.config.config("ui.theme", default: .string("d"))
-        let src = await c.config.configSource("ui.theme")
+        let theme = await c.config.get("ui.theme", default: .string("d"))
+        let src = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, .string("light"))
         XCTAssertEqual(src, .local)
     }
@@ -84,12 +84,12 @@ final class LayeredConfigTests: XCTestCase {
     // @pkey-feature config.resolve
     func testDefaultStateFallsBackToRemoteThenFallback() async throws {
         let c = try await client()
-        let theme = await c.config.config("ui.theme", default: .string("d"))
-        let themeSrc = await c.config.configSource("ui.theme")
+        let theme = await c.config.get("ui.theme", default: .string("d"))
+        let themeSrc = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, .string("dark"))
         XCTAssertEqual(themeSrc, .remoteDefault)
-        let missing = await c.config.config("missing.key", default: .int(7))
-        let missingSrc = await c.config.configSource("missing.key")
+        let missing = await c.config.get("missing.key", default: .int(7))
+        let missingSrc = await c.config.getConfigSource("missing.key")
         XCTAssertEqual(missing, .int(7))
         XCTAssertEqual(missingSrc, .fallback)
     }
@@ -104,22 +104,22 @@ final class LayeredConfigTests: XCTestCase {
             "PKEY_CONFIG_feature__on": "true",
             "PKEY_CONFIG_feature__list": "[1,2]",
         ])
-        let theme = await c.config.config("ui.theme", default: .string("d"))
-        let themeSrc = await c.config.configSource("ui.theme")
+        let theme = await c.config.get("ui.theme", default: .string("d"))
+        let themeSrc = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, .string("midnight"))
         XCTAssertEqual(themeSrc, .env)
-        let count = await c.config.config("feature.count", default: .int(0))
+        let count = await c.config.get("feature.count", default: .int(0))
         XCTAssertEqual(count, .int(42))
-        let on = await c.config.config("feature.on", default: .bool(false))
+        let on = await c.config.get("feature.on", default: .bool(false))
         XCTAssertEqual(on, .bool(true))
-        let list = await c.config.config("feature.list", default: .null)
+        let list = await c.config.get("feature.list", default: .null)
         XCTAssertEqual(list, .array([.int(1), .int(2)]))
     }
 
     /// The withdrawn `PLRS_CONFIG_` prefix is NOT read — no dual-read (§8).
     func testWithdrawnEnvPrefixIsIgnored() async throws {
         let c = try await client(environment: ["PLRS_CONFIG_ui__theme": "\"legacy\""])
-        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let theme = await c.config.get("ui.theme", default: .string("d"))
         XCTAssertEqual(theme, .string("dark"), "PLRS_CONFIG_ was withdrawn by Amendment A1")
     }
 
@@ -128,15 +128,15 @@ final class LayeredConfigTests: XCTestCase {
         let c = try await client(
             localOverrides: ["ui.theme": .string("local-wins")],
             environment: ["PKEY_CONFIG_ui__theme": "\"midnight\""])
-        let theme = await c.config.config("ui.theme", default: .string("d"))
-        let src = await c.config.configSource("ui.theme")
+        let theme = await c.config.get("ui.theme", default: .string("d"))
+        let src = await c.config.getConfigSource("ui.theme")
         XCTAssertEqual(theme, .string("local-wins"))
         XCTAssertEqual(src, .local)
     }
 
     func testEnvNonJsonFallsBackToRawString() async throws {
         let c = try await client(environment: ["PKEY_CONFIG_ui__theme": "not json: bare"])
-        let v = await c.config.config("ui.theme", default: .string("d"))
+        let v = await c.config.get("ui.theme", default: .string("d"))
         XCTAssertEqual(v, .string("not json: bare"))
     }
 
@@ -158,8 +158,8 @@ final class LayeredConfigTests: XCTestCase {
     /// a secret has no business on one.
     func testSecretsAreReadableButNotEnumerated() async throws {
         let c = try await client()
-        let secret = await c.config.secret("api.key")
-        let missing = await c.config.secret("nope")
+        let secret = await c.config.getSecret("api.key")
+        let missing = await c.config.getSecret("nope")
         let rows = await c.config.listUserConfig()
         XCTAssertEqual(secret, "sk-live")
         XCTAssertNil(missing)
@@ -172,7 +172,7 @@ final class LayeredConfigTests: XCTestCase {
         let c = try await client(services: [.config])
         let status = await c.status()
         let usable = await c.isLicensed()
-        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let theme = await c.config.get("ui.theme", default: .string("d"))
         let configEnabled = await c.config.isEnabled()
         let schemaVersion = await c.config.schemaVersion()
         XCTAssertEqual(status.status, .notApplicable)

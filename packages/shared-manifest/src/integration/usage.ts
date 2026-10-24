@@ -796,7 +796,7 @@ const SWIFT_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       `    options: PolarisConfig.clientOptions(version: ${q(c.appVersion)}))`,
       `_ = await client.sync()`,
       `if await !client.isLicensed() {`,
-      `    let result = await client.activate(key: userEnteredKey)`,
+      `    let result = await client.license.activateWithKey(userEnteredKey)`,
       `    print(result)`,
       `}`,
     ),

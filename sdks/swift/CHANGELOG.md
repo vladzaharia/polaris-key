@@ -15,6 +15,21 @@ deprecated aliases).
 
 ## Unreleased
 
+- **`events` is the stream; getters take `get` (SP-35b).** `PolarisKeyClient.changes` is removed (`events` is the one stream). Renamed: `syncState()` is `getSyncState()`, `startRefreshLoop(onChange:)` is `startRefresh(onChange:)`, `LicenseClient.profile()` is `getProfile()`, `licenseId()` is `getLicenseId()`, `licenseUser()` is `getLicenseUser()`, `ReleaseClient.installURL()`/`downloadURL(...)` are `installUrl()`/`downloadUrl(...)`, and `UpdateClient.buildURL(...)` is `buildUrl(...)`. Core's top-level `licenseUser(_:)` helpers stay. No aliases.
+  Migrating: `client.changes` becomes `client.events`; rename each call to the new spelling, e.g. `await client.license.profile()` becomes `await client.license.getProfile()`.
+
+- **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key:)` is renamed `activateWithKey(_:)`, and the `PolarisKeyClient.activate(key:)` facade is removed. No aliases.
+  Migrating: `client.activate(key: k)` and `client.license.activate(key: k)` become `client.license.activateWithKey(k)`.
+
+- **Entitlements are a namespace (SP-35b).** `client.entitlements` has `has(_:)`, `value(_:)` and `all()`. `has` and `value` answer false and nil whenever the licence gate is not usable (S-19 G11); `all()` reads the held document. `license.isEntitled`, `license.entitlementValue`, `license.entitlements()` and `client.isEnabled(flag:)` are removed. No aliases.
+  Migrating: `client.license.isEntitled(n)` and `client.isEnabled(flag: n)` become `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`.
+
+- **The setting handle is async properties (SP-35b).** `client.config.setting(key)` exposes `value` (nil when no layer has one, source `fallback`), `source`, `locked` and the new `visibility` (`SettingVisibility`: `editable`, `readonly` for `enforced`, `hidden`) as `async` properties, and `on(_:)` subscribes. `value(default:)`, `source()`, `isLocked()` and `onChange(_:)` are removed. No aliases.
+  Migrating: `await setting.value(default: d)` becomes `await setting.value ?? d` (or `config.get(k, default: d)`); `await setting.source()` becomes `await setting.source`; `await setting.isLocked()` becomes `await setting.locked`; `setting.onChange { ... }` becomes `setting.on { ... }`.
+
+- **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(_:default:)`, `client.config.getConfigSource(_:)` and `client.config.getSecret(_:)` replace `config(_:default:)`, `configSource(_:)` and `secret(_:)`; the `PolarisKeyClient.config(_:default:)` shortcut is removed. No aliases.
+  Migrating: `client.config(k, default: d)` and `client.config.config(k, default: d)` become `client.config.get(k, default: d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`.
+
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you set `GateOptions.renewURL`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. SwiftUI draws the numbered steps and the request QR.
   Migrating: pass an https `url` in `KitOffers` to get Buy in your browser on the paywall, and `renewURL` on `GateOptions` to get Renew.
 

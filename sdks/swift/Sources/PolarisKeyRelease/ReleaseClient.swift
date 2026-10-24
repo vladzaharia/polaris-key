@@ -76,7 +76,7 @@ public struct ReleaseClient: Sendable {
     }
 
     /// The canonical install-script URL, for a host that wants to print it rather than run it.
-    public func installURL() async throws -> URL {
+    public func installUrl() async throws -> URL {
         try await core.requireService(.release, feature: Feature.releaseDownload)
         return core.endpoints.releaseInstall
     }
@@ -84,7 +84,7 @@ public struct ReleaseClient: Sendable {
     /// `GET /<p>/release/dl/:version/:binary-:arch[.dmg]` — the artifact URL, with
     /// `?checksum=sha256` when `checksum` is set (the server then serves the artifact's sha256
     /// digest). Built, not fetched: the caller streams it themselves.
-    public func downloadURL(
+    public func downloadUrl(
         version: String, binary: String, arch: String, checksum: Bool = false, dmg: Bool = false
     ) async throws -> URL {
         try await core.requireService(.release, feature: Feature.releaseDownload)
