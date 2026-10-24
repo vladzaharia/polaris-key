@@ -122,6 +122,8 @@ jobs:
       # tools/lint/debt/jscpd.json: a new duplicate block fails, a cleared one asks for a re-record.
       - name: Duplicate code (jscpd)
         run: pnpm lint:dupes
+      # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
+      - run: pnpm lint:knip
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
       # the storefront CI plane, the settings reference, the brand tokens, the publish Action's bundle
