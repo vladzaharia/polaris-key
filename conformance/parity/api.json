@@ -378,6 +378,11 @@
         "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseClient.kt"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/EntitlementsClient.kt"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt"
@@ -1473,6 +1478,11 @@
     {
       "sdk": "kotlin",
       "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.entitlements",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
@@ -2756,10 +2766,7 @@
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "license.is_entitled",
           "planned": "SP-35b"
@@ -2788,10 +2795,7 @@
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "SP-35b",
           "reason": "absent today"
@@ -2814,10 +2818,7 @@
           "spelling": "license.entitlements",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "license.entitlements",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "license.get_entitlements",
           "planned": "SP-35b"
@@ -5530,6 +5531,46 @@
     }
   ],
   "removed": [
+    {
+      "sdk": "kotlin",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyFutures.isEntitled",
+      "to": "hasEntitlement",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:pk|futures)\\.isEntitled\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
     {
       "sdk": "kotlin",
       "from": "config.config",

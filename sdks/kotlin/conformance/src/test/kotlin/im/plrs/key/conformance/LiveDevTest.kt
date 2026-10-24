@@ -177,7 +177,7 @@ class LiveDevTest : ConformanceSuite() {
         assertEquals(LicenseStatus.ok, client.status().status)
         assertEquals(ActivationSource.token, client.license.activation())
         assertNotNull(client.license.licenseId())
-        assertTrue("the ok licence carries exportPro", client.license.isEntitled("exportPro"))
+        assertTrue("the ok licence carries exportPro", client.entitlements.has("exportPro"))
         assertTrue(device.transport.sent.any { it.startsWith("POST ${live.origin}/${live.quickstart.productSlug}/license/activate") })
     }
 

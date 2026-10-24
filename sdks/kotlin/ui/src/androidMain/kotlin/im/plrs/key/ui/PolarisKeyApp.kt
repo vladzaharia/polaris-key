@@ -74,8 +74,8 @@ public fun rememberPolarisLicense(client: PolarisKeyClient = polarisKey()): Stat
 public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = polarisKey()): State<Boolean> =
     remember(client, name) {
         flow {
-            emit(client.license.isEntitled(name))
-            client.licenseChanges.collect { emit(client.license.isEntitled(name)) }
+            emit(client.entitlements.has(name))
+            client.licenseChanges.collect { emit(client.entitlements.has(name)) }
         }
     }.collectAsState(false)
 

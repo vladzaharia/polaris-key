@@ -166,9 +166,9 @@ suspend fun start(key: String) {
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
   floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
-  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (license id, tier, tier label,
+  `licenseInfo` (license id, tier, tier label,
   device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
-  `["stable"]`). **`isEntitled` answers `false` whenever the gate is not usable** (revoked,
+  `["stable"]`). The `entitlements` namespace (`has`, `value`, `all`, in `EntitlementsClient`) reads the held document; **`entitlements.has` answers `false` whenever the gate is not usable** (revoked,
   expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
   the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the
   server's registry `code`: `DeviceLimit`, `Unauthorized`, `FingerprintRequired`,
@@ -200,7 +200,7 @@ suspend fun start(key: String) {
 - **Live license state**: `licenseChanges`, `events` and the `licenseState` StateFlow emit on
   every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
   expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not
-  repeated. `entitlementValue()` and `entitlements()` answer nothing while the gate is not usable
+  repeated. `entitlements.value()` answers nothing while the gate is not usable
   (`licenseInfo()` stays the diagnostic). A 401 on `/license/token` is final for that token and at
   most 5 token requests go out a minute; boot retries back off from 1 s to 30 s; concurrent `sync()`
   calls share one pass; `close()` cancels the client's scope and shuts OkHttp down so a JVM `main`
@@ -215,7 +215,7 @@ suspend fun start(key: String) {
   `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
   the license does not grant it, then syncs so documents and decisions follow.
 - **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
-  `CompletableFuture`s (`start`, `sync`, `status`, `isEntitled`, `licenseInfo`, `activate`,
+  `CompletableFuture`s (`start`, `sync`, `status`, `hasEntitlement`, `licenseInfo`, `activate`,
   `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
   `PolarisKeyFutures.create(options)` builds the client), and every options class has
   `@JvmOverloads` constructors.

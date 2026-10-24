@@ -84,7 +84,7 @@ class LicenseIdRefreshTest {
         val client = PolarisKeyClient.create(options(store, transport))
         assertTrue(client.activate("pkey_djdl_test") is ActivationResult.Ok)
         assertEquals("lic_trial", client.license.licenseId())
-        assertFalse(client.license.isEntitled("pro"))
+        assertFalse(client.entitlements.has("pro"))
         val sentBefore = transport.requests().size
 
         // The server re-anchors this device on another licence; the next plain sync receives it.
@@ -99,8 +99,8 @@ class LicenseIdRefreshTest {
         // cache
         assertEquals(DocOutcome.Applied, result.documents[DocumentSlice.license])
         assertEquals("lic_pro", client.license.licenseId())
-        assertTrue(client.license.isEntitled("pro"))
-        assertEquals(JsonPrimitive("pro"), client.license.entitlements()["license.tier"])
+        assertTrue(client.entitlements.has("pro"))
+        assertEquals(JsonPrimitive("pro"), client.entitlements.all()["license.tier"])
         // activation state
         assertFalse(sent.any { it.path == "/djdl/license/activate" })
         assertEquals(
@@ -131,7 +131,7 @@ class LicenseIdRefreshTest {
             ),
         )
         assertEquals("lic_pro", offline.license.licenseId())
-        assertTrue(offline.license.isEntitled("pro"))
+        assertTrue(offline.entitlements.has("pro"))
         assertEquals(LicenseStatus.ok, offline.status().status)
         offline.close()
     }

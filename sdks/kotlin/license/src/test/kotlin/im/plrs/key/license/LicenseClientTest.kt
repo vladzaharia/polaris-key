@@ -76,10 +76,10 @@ class LicenseClientTest {
         val client = licensed(mapOf("polarisVpn" to JsonPrimitive(true), "seats" to JsonPrimitive(3)), profile)
         assertEquals(LicenseStatus.ok, client.status().status)
         assertTrue(client.isLicensed())
-        assertEquals(mapOf("polarisVpn" to JsonPrimitive(true), "seats" to JsonPrimitive(3)), client.entitlements())
-        assertTrue(client.isEntitled("polarisVpn"))
-        assertFalse(client.isEntitled("seats")) // present but not `true`
-        assertFalse(client.isEntitled("absent"))
+        assertEquals(mapOf("polarisVpn" to JsonPrimitive(true), "seats" to JsonPrimitive(3)), EntitlementsClient(client).all())
+        assertTrue(EntitlementsClient(client).has("polarisVpn"))
+        assertFalse(EntitlementsClient(client).has("seats")) // present but not `true`
+        assertFalse(EntitlementsClient(client).has("absent"))
         assertEquals("lic_42", client.licenseId())
         assertEquals("Ada", client.profile()?.firstName)
     }
@@ -98,7 +98,7 @@ class LicenseClientTest {
         core.start()
         val client = LicenseClient(core)
         assertEquals(LicenseStatus.needsActivation, client.status().status)
-        assertTrue(client.entitlements().isEmpty())
+        assertTrue(EntitlementsClient(client).all().isEmpty())
         assertNull(client.licenseId())
         assertEquals(listOf("stable"), client.entitledChannels())
     }
@@ -253,18 +253,18 @@ class LicenseClientTest {
 
     /** S-19 G11: an install whose gate is not usable is entitled to nothing, whatever its last document said. */
     @Test
-    fun isEntitledIsFalseOnceTheGateIsNotUsable() = runBlocking {
+    fun hasIsFalseOnceTheGateIsNotUsable() = runBlocking {
         val client = licensed(mapOf("polarisVpn" to JsonPrimitive(true)))
-        assertTrue(client.isEntitled("polarisVpn"))
+        assertTrue(EntitlementsClient(client).has("polarisVpn"))
         // Past graceUntil the gate reads expired: nothing is entitled.
         assertEquals(LicenseStatus.expired, client.status(now + 10L * 365 * 86_400).status)
-        assertFalse(client.isEntitled("polarisVpn", now + 10L * 365 * 86_400))
+        assertFalse(EntitlementsClient(client).has("polarisVpn", now + 10L * 365 * 86_400))
         // The raw read stays available for display.
-        assertEquals(JsonPrimitive(true), client.entitlementValue("polarisVpn"))
+        assertEquals(JsonPrimitive(true), EntitlementsClient(client).value("polarisVpn"))
     }
 
     @Test
-    fun isEntitledIsFalseAfterRevocation() = runBlocking {
+    fun hasIsFalseAfterRevocation() = runBlocking {
         val store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") }
         val doc = signer.licenseDoc("djdl", "dev1", now, mapOf("polarisVpn" to JsonPrimitive(true)), "lic_42", null)
         var revoked = false
@@ -278,11 +278,11 @@ class LicenseClientTest {
         core.start()
         core.sync()
         val client = LicenseClient(core)
-        assertTrue(client.isEntitled("polarisVpn"))
+        assertTrue(EntitlementsClient(client).has("polarisVpn"))
         revoked = true
         core.sync(force = true, reacquire = { _, _ -> null })
         assertEquals(LicenseStatus.revoked, client.status().status)
-        assertFalse(client.isEntitled("polarisVpn"))
+        assertFalse(EntitlementsClient(client).has("polarisVpn"))
     }
 
     @Test

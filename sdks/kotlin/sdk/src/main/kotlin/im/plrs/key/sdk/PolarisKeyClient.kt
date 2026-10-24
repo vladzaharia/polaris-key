@@ -69,6 +69,7 @@ import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.license.LicenseEndpoints
@@ -257,6 +258,9 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         return core.attestDevice(provider).trustLevel == "attested"
     }
 
+    /** Entitlement reads: `has`, `value`, `all` (SP-35b). A thin view over [license]'s gate. */
+    public val entitlements: EntitlementsClient = EntitlementsClient(license)
+
     public val config: ConfigClient = ConfigClient(core, options.config, reacquire) { attestForRetry() }
     /**
      * The changelog, the URLs, record verification and `fetch()` (a verified, resumable build
@@ -383,7 +387,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val commerce: CommerceClient = CommerceClient(
         core,
         attest = { attestForRetry() },
-        isEntitled = { license.isEntitled(it) },
+        isEntitled = { entitlements.has(it) },
         outletKind = { update.outlet()?.kind },
     )
 

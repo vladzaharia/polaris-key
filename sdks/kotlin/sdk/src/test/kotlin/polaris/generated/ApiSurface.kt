@@ -7,6 +7,7 @@ import im.plrs.key.config.ConfigClient
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.packs.PacksClient
 import im.plrs.key.release.DistributionClient
@@ -38,9 +39,9 @@ internal suspend fun apiSurface() {
     ConfigClient::changes  // config.onConfigChange
     ConfigClient::setting  // config.setting
     LicenseClient::activate  // license.activateWithKey
-    LicenseClient::isEntitled  // entitlements.has
-    LicenseClient::entitlementValue  // entitlements.value
-    LicenseClient::entitlements  // entitlements.all
+    EntitlementsClient::has  // entitlements.has
+    EntitlementsClient::value  // entitlements.value
+    EntitlementsClient::all  // entitlements.all
     PolarisKeyClient::events  // events
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation

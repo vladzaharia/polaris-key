@@ -6,7 +6,7 @@
 //   PolarisKeyFutures pk = new PolarisKeyFutures(client);
 //   pk.start().get();
 //   pk.sync().get();
-//   if (pk.isEntitled("pro").get()) { … }
+//   if (pk.hasEntitlement("pro").get()) { … }
 //
 // The futures run on [scope] (Dispatchers.Default by default); cancelling a future cancels the call.
 // Results and failures are the Kotlin API's: a refusal completes the future exceptionally with the
@@ -55,7 +55,7 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun isLicensed(): CompletableFuture<Boolean> = call { client.isLicensed() }
 
     /** False whenever the gate is not usable (S-19 G11). */
-    public fun isEntitled(name: String): CompletableFuture<Boolean> = call { client.license.isEntitled(name) }
+    public fun hasEntitlement(name: String): CompletableFuture<Boolean> = call { client.entitlements.has(name) }
 
     public fun licenseInfo(): CompletableFuture<LicenseInfo?> = call { client.license.licenseInfo() }
 

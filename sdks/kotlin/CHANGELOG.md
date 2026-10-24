@@ -6,6 +6,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Entitlement reads are the `entitlements` namespace (SP-35b).** `client.entitlements.has(name)`, `client.entitlements.value(name)` and `client.entitlements.all()` replace `license.isEntitled`, `license.entitlementValue` and `license.entitlements()`; `PolarisKeyFutures.isEntitled` is now `hasEntitlement`. `has` and `value` answer false/null while the gate is not usable; `all()` is the ungated read of the held document. No aliases. `PolarisServer.isEntitled` (`:server`) is unchanged.
+  Migrating: `client.license.isEntitled(n)` becomes `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`; `futures.isEntitled(n)` becomes `futures.hasEntitlement(n)`.
+
 - **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(key, default)`, `client.config.getConfigSource(key)` and `client.config.getSecret(key)` replace `config(key, default)`, `configSource(key)` and `secret(key)`; the `PolarisKeyClient.config(key, default)` shortcut is removed, and `PolarisKeyFutures.config` is now `getConfig`. No aliases.
   Migrating: `client.config(k, d)` and `client.config.config(k, d)` become `client.config.get(k, d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`; `futures.config(k, d)` becomes `futures.getConfig(k, d)`.
 

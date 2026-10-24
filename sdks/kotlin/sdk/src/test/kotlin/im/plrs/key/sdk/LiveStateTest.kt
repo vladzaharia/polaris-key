@@ -1,7 +1,7 @@
 // @pkey-feature core.sync license.entitlements license.deactivate license.gate
 //
 // SP-51: the client's licence state is live. Every transition is emitted (an activation, a deactivation,
-// a server revoke seen by a sync that moved no ETag), `entitlementValue()` and `entitlements()` obey the
+// a server revoke seen by a sync that moved no ETag), `entitlements.value()` obeys the
 // gate, the §5 re-acquire cannot become a request storm, concurrent syncs share one pass, and
 // `listDevices()` says when it is offline.
 
@@ -109,13 +109,13 @@ class LiveStateTest {
         val server = Server(signer, now)
         val c = client(server)
         c.activate("pkey_djdl_x")
-        assertEquals(JsonPrimitive(3), c.license.entitlementValue("seats"))
-        assertEquals(setOf("pro", "seats"), c.license.entitlements().keys)
+        assertEquals(JsonPrimitive(3), c.entitlements.value("seats"))
+        assertEquals(setOf("pro", "seats"), c.entitlements.all().keys)
         server.revoked = true
         c.sync(force = true)
-        assertNull(c.license.entitlementValue("seats"))
-        assertTrue(c.license.entitlements().isEmpty())
-        assertTrue(!c.license.isEntitled("pro"))
+        assertNull(c.entitlements.value("seats"))
+        assertTrue(c.entitlements.all().isEmpty())
+        assertTrue(!c.entitlements.has("pro"))
         // A hard 401 deletes the licence document (V4 §4.3), so there is no last verified document
         // left to read: licenseInfo is null, and the gate reports the revocation.
         assertNull(c.license.licenseInfo())
