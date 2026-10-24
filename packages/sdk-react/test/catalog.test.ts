@@ -63,9 +63,7 @@ function browser(fetchImpl: typeof fetch, enabled = true) {
     fetchImpl,
     now: () => NOW_SEC,
     offlineStore: null,
-    expectServices: enabled
-      ? services("license", "config")
-      : services("license"),
+    expectedServices: enabled ? ["license", "config"] : ["license"],
   });
 }
 

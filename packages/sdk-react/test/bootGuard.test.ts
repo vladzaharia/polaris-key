@@ -650,7 +650,7 @@ describe("the local adapter's guard", () => {
     const a = localAdapter({
       productSlug: "acme",
       version: "1.0.0",
-      expectServices: services("config"),
+      expectedServices: ["config"],
       storage: s,
     });
     await a.markBootAttempt();

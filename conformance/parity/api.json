@@ -1852,10 +1852,7 @@
         "swift": {},
         "kotlin": {},
         "godot": {},
-        "react": {
-          "spelling": "expectServices",
-          "planned": "SP-35"
-        }
+        "react": {}
       },
       "layer": "client"
     },
@@ -4545,6 +4542,30 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\blicense\\.get_entitlements\\s*\\("
+      }
+    },
+    {
+      "sdk": "react",
+      "from": "expectServices",
+      "to": "options.expectedServices",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "react",
+      "from": "usePolarisKey().getConfig",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:pk|polarisKey|usePolarisKey\\(\\))\\.getConfig\\b"
+      }
+    },
+    {
+      "sdk": "react",
+      "from": "usePolarisKey().isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:pk|polarisKey|usePolarisKey\\(\\))\\.isEntitled\\b"
       }
     }
   ]

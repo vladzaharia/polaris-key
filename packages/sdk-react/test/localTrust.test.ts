@@ -194,11 +194,11 @@ describe("unsigned discovery turns the gate on, never off", () => {
     a.dispose();
   });
 
-  it("a config-only build (expectServices without licence) is not gated", async () => {
+  it("a config-only build (expectedServices without licence) is not gated", async () => {
     const a = browserAdapter({
       auth: "cookie",
       productSlug: "acme",
-      expectServices: services("config"),
+      expectedServices: ["config"],
       fetchImpl: disabled(),
       now: () => NOW,
     });
@@ -212,7 +212,7 @@ describe("unsigned discovery turns the gate on, never off", () => {
     const a = browserAdapter({
       auth: "cookie",
       productSlug: "acme",
-      expectServices: services("config"),
+      expectedServices: ["config"],
       fetchImpl: makeFakeFetch(null, {
         capabilities: services("license", "config"),
       }),

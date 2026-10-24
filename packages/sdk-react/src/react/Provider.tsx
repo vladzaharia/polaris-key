@@ -18,13 +18,7 @@ import {
   type PolarisAdapter,
   type PolarisMode,
 } from "../core/index.js";
-import {
-  SERVICE_SLUGS,
-  defaultServices,
-  servicesFromList,
-  type ServiceSlug,
-  type ServicesMap,
-} from "../core/services.js";
+import { SERVICE_SLUGS, type ServiceSlug } from "../core/services.js";
 import { normalizeBackendOrigin } from "../core/backend.js";
 import { PolarisContext } from "./context.js";
 
@@ -81,10 +75,10 @@ export interface PolarisKeyProviderProps {
   children?: ReactNode;
 }
 
-function expectedServicesMap(
+function checkedServices(
   expectedServices: readonly unknown[] | undefined,
-): ServicesMap {
-  if (!expectedServices) return defaultServices();
+): readonly ServiceSlug[] | undefined {
+  if (!expectedServices) return undefined;
   for (const service of expectedServices) {
     if (
       typeof service !== "string" ||
@@ -96,7 +90,7 @@ function expectedServicesMap(
       );
     }
   }
-  return servicesFromList(expectedServices as readonly ServiceSlug[]);
+  return expectedServices as readonly ServiceSlug[];
 }
 
 /** Resolve the concrete mode from the requested mode + bridge availability. */
@@ -144,9 +138,9 @@ export function PolarisKeyProvider(
 
   // Serialize the expectation list so an inline array literal does not rebuild the adapter.
   const expectedKey = JSON.stringify(expectedServices ?? null);
-  const expected = useMemo<ServicesMap>(
+  const expected = useMemo<readonly ServiceSlug[] | undefined>(
     () =>
-      expectedServicesMap(
+      checkedServices(
         JSON.parse(expectedKey) as readonly unknown[] | undefined,
       ),
     [expectedKey],
@@ -207,7 +201,7 @@ export function PolarisKeyProvider(
         bridge,
         now: stableNow,
         localOverrides: overrides,
-        expectServices: expected,
+        ...(expected ? { expectedServices: expected } : {}),
       });
     }
     return new BrowserAdapter({
@@ -218,7 +212,7 @@ export function PolarisKeyProvider(
       now: stableNow,
       localOverrides: overrides,
       version,
-      expectServices: expected,
+      ...(expected ? { expectedServices: expected } : {}),
       ...(auth ? { auth } : {}),
       ...(pinned ? { trust: pinned } : {}),
       ...(store ? { store } : {}),

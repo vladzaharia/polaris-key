@@ -15,7 +15,7 @@
 //     cache), and without it the renderer's gate is the one gate in the suite a rolled-back
 //     clock can still fool. This is the field this package used to be missing.
 //   * `capabilities` — the product's `services` map (D-21). Absent ⇒ the adapter keeps its
-//     configured `expectServices` belief; it never assumes all-true.
+//     configured `expectedServices` belief; it never assumes all-true.
 //   * `config` — the CONFIG document's entries. v3 split the fused document, so grants arrive
 //     on `doc` (a `LicenseDoc`) and settings arrive here.
 //   * `getSyncState()` and a versioned `invoke(service, method, args)` escape hatch.

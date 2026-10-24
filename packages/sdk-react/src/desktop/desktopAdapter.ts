@@ -100,9 +100,9 @@ import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
 import { isCatalog } from "../browser/catalog.js";
 import { activationError } from "../core/activationError.js";
 import type { ActivationOutcome } from "../core/activation.js";
+import { expectedServicesOf } from "../core/expectedServices.js";
 import {
   copyServices,
-  defaultServices,
   noBusy,
   noErrors,
   withBusy,
@@ -156,7 +156,7 @@ export interface DesktopAdapterOptions {
   catalog?: ProductCatalog | null;
   /** What the host EXPECTS this product to run, used only while the bridge has not reported
    *  a capability map (D-21). Defaults to license + config; never all-true. */
-  expectServices?: ServicesMap;
+  expectedServices?: readonly ServiceSlug[];
 }
 
 const nowSec = (): number => Math.floor(Date.now() / 1000);
@@ -195,9 +195,7 @@ export class DesktopAdapter implements PolarisAdapter {
     );
     const hostOverrides = opts.localOverrides ?? {};
     this.localOverrides = { ...hostOverrides };
-    this.fallbackServices = copyServices(
-      opts.expectServices ?? defaultServices(),
-    );
+    this.fallbackServices = expectedServicesOf(opts);
     this.capabilities = copyServices(this.fallbackServices);
     this.capabilityCtx = capabilityContext(
       "desktop-bridge",

@@ -10,7 +10,7 @@
 // Three states, one rule. When discovery SUCCEEDS its `services` map is the authority and a
 // slug it omits reads as DISABLED — "not advertised" must mean "do not try". When discovery
 // FAILS (offline, 404, malformed) the client falls back to what the host said it expected
-// (`expectServices`), and when the host said nothing, to `DEFAULT_SERVICES` — licensing plus
+// (`expectedServices`), and when the host said nothing, to `DEFAULT_SERVICES` — licensing plus
 // settings distribution, which is what every product ran before the suite existed. What it
 // never does is assume all-true: a UI that offers a sign-in button for an identity service the
 // product does not run is a dead end presented as an affordance.
@@ -64,7 +64,7 @@ export function copyServices(services: ServicesMap): ServicesMap {
   return perService((slug) => ({ enabled: services[slug]?.enabled === true }));
 }
 
-/** Turn a host's `expectServices` list into a full map — everything unlisted is off. */
+/** Turn a host's `expectedServices` list into a full map — everything unlisted is off. */
 export function servicesFromList(slugs: readonly ServiceSlug[]): ServicesMap {
   const out = noServices();
   for (const slug of slugs) {
@@ -133,7 +133,7 @@ export function firstError(map: ServiceErrorMap): PolarisError | null {
 /**
  * The licence GATE's input. Discovery is an unsigned network read, so it may switch the
  * gate ON and never OFF: the gate is on when the BUILD expected the licence service (the
- * default, or a stated `expectServices` that lists it) or a discovery loaded this session says
+ * default, or a stated `expectedServices` that lists it) or a discovery loaded this session says
  * it is on. `capabilities.license.enabled` keeps governing the sub-client (discovery wins).
  */
 export function licenseGateEnabled(

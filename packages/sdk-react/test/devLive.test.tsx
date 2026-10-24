@@ -299,7 +299,7 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
       productSlug: polarisKey.productSlug,
       baseUrl: polarisKey.baseUrl,
       trust: polarisKey.trust,
-      expectServices: servicesFromList(polarisKey.expectedServices),
+      expectedServices: polarisKey.expectedServices,
       version,
       // Tidewater ships one build, a macOS zip from its direct outlet, so a page that asks for
       // updates says it is the shell running it. As a plain web page it would be told there is

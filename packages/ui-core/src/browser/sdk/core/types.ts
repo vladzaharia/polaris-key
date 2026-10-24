@@ -272,7 +272,7 @@ export interface PolarisState {
    * a wound-back system clock inert. `0` when nothing signed has been seen yet.
    */
   highWaterMark: number;
-  /** What the product runs, per D-21. Discovery when it answered; the host's `expectServices`
+  /** What the product runs, per D-21. Discovery when it answered; the host's `expectedServices`
    *  (default: license + config) when it did not. Never all-true. */
   capabilities: ServicesMap;
   /** The signed profile (name/email), once a license document is present. */

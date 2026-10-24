@@ -28,7 +28,7 @@ states it can be in and the words to show. To take the finished screens instead,
 | Release notes         | `useChangelog()`                              | `entries`                                                                      |
 
 `busy` and `error` are per service: a config refresh does not grey out sign-out. `usePolarisKey()`
-returns the whole client at once and is deprecated; prefer the hooks above.
+returns the whole client at once and is deprecated; prefer the hooks above. It has no `getConfig` or `isEntitled`: use `useConfigSetting()` and `useEntitlement()`. The adapters take `expectedServices`, a list of service slugs.
 
 ## The state table
 
@@ -261,12 +261,10 @@ own reactivity, or for a service worker:
 
 ```ts
 import { browserAdapter } from "@polaris-key/react/browser";
-import { servicesFromList } from "@polaris-key/react/core";
 import { polarisKey } from "./polaris.config";
 
 const adapter = browserAdapter({
   ...polarisKey,
-  expectServices: servicesFromList(polarisKey.expectedServices),
   version: APP_VERSION,
 });
 

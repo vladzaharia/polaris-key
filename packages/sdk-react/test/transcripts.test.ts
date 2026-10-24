@@ -65,7 +65,7 @@
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
-// pre-discovery belief, which with no `expectServices` is `defaultServices()`.
+// pre-discovery belief, which with no `expectedServices` is `defaultServices()`.
 //
 // `initial.updateJournal` (telemetry.updates, SP-14) is not written into the journal by hand: each
 // entry is RECORDED through `session.recordUpdateEvent(event, input)` — the call the adapters'
