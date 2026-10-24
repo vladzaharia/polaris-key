@@ -49516,7 +49516,8 @@ async function channelSync(a, io) {
           message: NO_CI_CREDENTIAL
         })
       );
-    else io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
+    else
+      io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
     return 1;
   }
   await runRows(rows, a, io, product.slug, product.outlets, dryRun);
