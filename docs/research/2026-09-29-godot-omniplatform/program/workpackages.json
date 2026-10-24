@@ -17769,7 +17769,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §5.1, §5.5, §8.3 (AX-07)"
       ],
       "brief": "wp/AX-07-the-agent-kit-layout-release-zip-references-lint.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "AX-08",
