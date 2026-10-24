@@ -64,6 +64,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family           | Here it          | Run                                        |
 | ---------------- | ---------------- | ------------------------------------------ |
+| `registry-docs`  | reads            | `pnpm gen registry-docs`                   |
 | `readme-work`    | writes           | `pnpm gen readme-work`                     |
 | `parity`         | reads            | `pnpm gen parity`                          |
 | `ux-rows`        | reads            | `pnpm gen ux-rows`                         |

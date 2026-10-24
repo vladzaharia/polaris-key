@@ -70,6 +70,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | ---------------- | ---------------- | ------------------------- |
 | `constants`      | reads            | `pnpm gen constants`      |
 | `docs-reference` | reads            | `pnpm gen docs-reference` |
+| `registry-docs`  | reads            | `pnpm gen registry-docs`  |
 | `readme-work`    | reads and writes | `pnpm gen readme-work`    |
 | `parity`         | reads            | `pnpm gen parity`         |
 
