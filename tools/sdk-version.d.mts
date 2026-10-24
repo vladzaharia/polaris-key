@@ -29,14 +29,22 @@ export declare function gitDescribe(cwd?: string): {
 };
 export interface StampTarget {
   file: string;
-  pattern: RegExp;
+  pattern?: RegExp;
   pep440?: boolean;
+  /** A JSON object file: the key the stamp sets. */
+  json?: string;
 }
 export declare const STAMP_TARGETS: StampTarget[];
 export declare function publicPackageJsons(root: string): string[];
 export declare function stampText(
   text: string,
   pattern: RegExp,
+  version: string,
+  file: string,
+): string;
+export declare function stampJson(
+  text: string,
+  key: string,
   version: string,
   file: string,
 ): string;

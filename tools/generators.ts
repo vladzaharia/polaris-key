@@ -371,7 +371,7 @@ export const GENERATORS: Generator[] = [
       "products/package.json",
     ],
     outputs: [
-      "packages/{worker,admin,docs,elements,ui-qa}/README.md",
+      "packages/{worker,admin,docs,elements,ui-qa,agent-kit}/README.md",
       "conformance/README.md",
       "tools/README.md",
       "products/README.md",
@@ -409,6 +409,7 @@ export const GENERATORS: Generator[] = [
       "sdks/*/README.md",
       "packages/sdk-*/README.md",
       ".claude/skills/**",
+      "packages/agent-kit/skills/**",
       "packages/docs/src/content/docs/**",
       "packages/cli/src/**",
       "packages/shared-manifest/src/integration/**",

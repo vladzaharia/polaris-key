@@ -422,6 +422,7 @@ const SCOPES: { path: string; own?: Family; any?: boolean; main?: boolean }[] =
     { path: "sdks/godot/examples" },
     { path: "sdks/kotlin/samples" },
     { path: ".claude/skills" },
+    { path: "packages/agent-kit/skills" },
     { path: "packages/docs/src/content/docs" },
     { path: "packages/cli/src", any: true },
     { path: "packages/shared-manifest/src/integration", any: true },
