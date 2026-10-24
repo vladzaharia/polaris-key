@@ -46,12 +46,11 @@ pnpm --dir examples/ui/recipes -r build
 </pk-gate>
 ```
 
-```html
-<script type="module">
-  import "htmx.org";
-  import "@polaris-key/elements";
-  document.querySelector("pk-gate").input = gateInput;
-</script>
+```js
+// main.js, bundled
+import "htmx.org";
+import "@polaris-key/elements";
+document.querySelector("pk-gate").input = input; // an object: set the property
 ```
 
 Set `input` in script, never as an attribute. Sample: `examples/ui/recipes/htmx/`.
@@ -83,11 +82,11 @@ Without `.prop`, Vue sets an attribute and the gate gets the string `[object Obj
 
 <KitStatus kit="svelte" />
 
-Svelte 5 sets a custom element's `input` as a property when it has one. Listen with `on:pk-action`. Leave Svelte's `customElement` compiler option off: that is for building elements, not using them.
+Svelte 5 sets a custom element's `input` as a property when it has one. Listen with `onpk-action`. Leave Svelte's `customElement` compiler option off: that is for building elements, not using them.
 
 ```svelte
-<pk-gate {input} on:pk-action={onAction}>
-  <main><slot /></main>
+<pk-gate {input} onpk-action={onAction}>
+  <main>{@render children?.()}</main>
 </pk-gate>
 ```
 
@@ -140,6 +139,8 @@ Angular 21. Add `CUSTOM_ELEMENTS_SCHEMA` so the template accepts `pk-*`, bind `[
 export class App {}
 ```
 
+Angular's builder does not copy the font files the elements load: add `@import "@polaris-key/elements/fonts.css";` to `styles.css` and call `PolarisKey.fonts(false)` before `bootstrapApplication`.
+
 Sample: `examples/ui/recipes/angular/`.
 
 ## Tauri
@@ -167,7 +168,7 @@ The Rust bridge is not shipped. Until it is, the elements run on fixtures, or li
 The gate takes a host design system through three seams. It writes no style into a shadow root.
 
 1. **Tokens.** Map the host's shape tokens (radius, control height, focus width, font) onto `--pk-*` on `pk-provider`. The kit sets its own scales on `:host`, and a value that only inherits loses to that, so `pk-gate` and `pk-sign-in` take the provider's value explicitly with `inherit`.
-2. **Structure.** `::part(primary)`, `::part(secondary)` and `::part(card)`.
+2. **Structure.** `::part(secondary)`, `::part(primary)` and `::part(card)` for borders and shape; never type or color.
 3. **Accent.** Pass the host's brand color as `theme.accent`. The kit resolves it for contrast in each scheme, so colors stay with the scheme and the accent, not a token-by-token map.
 
 ```css
@@ -179,8 +180,8 @@ pk-provider :is(pk-gate, pk-sign-in) {
   --pk-kit-radius-control: inherit;
   --pk-kit-control-height: inherit;
 }
-pk-gate::part(primary) {
-  text-transform: uppercase;
+pk-gate::part(secondary) {
+  border-color: currentColor;
 }
 ```
 

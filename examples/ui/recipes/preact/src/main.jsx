@@ -12,6 +12,8 @@ import "./app.css";
 // ?theme=dark|light picks the scheme; anything else follows the system.
 const params = new URLSearchParams(location.search);
 const theme = params.get("theme");
+if (theme === "dark" || theme === "light")
+  document.body.style.colorScheme = theme;
 PolarisKey.theme({
   colorScheme: theme === "dark" || theme === "light" ? theme : "system",
   product: {
@@ -39,21 +41,37 @@ function App() {
           <p>The license holds. This is the app.</p>
         </main>
       </pk-gate>
-      <OwnUi />
+      <OwnUi onAction={onAction} />
     </>
   );
 }
 
-// Your own UI: the view model alone, no elements. Five lines.
-function OwnUi() {
-  const view = viewOf("PolarisKeyGate", gateInput("grace"));
+// Your own UI: the view model alone, no elements. The app draws Welcome in its own words.
+const words = {
+  "welcome.signIn": "Sign in",
+  "welcome.useKey": "Use a license key",
+};
+
+function OwnUi({ onAction }) {
+  const view = viewOf("Welcome", gateInput("needs-activation"));
+  const keys = Object.keys(words).filter((k) => view.copy.includes(k));
   return (
-    <section class="own">
-      <h2>Your own UI</h2>
-      <p>
-        State <code>{view.state}</code>, main action{" "}
-        <code>{view.decisions.primary ?? "none"}</code>
-      </p>
+    <section class="own" aria-labelledby="own-ui">
+      <h2 id="own-ui">Your own UI</h2>
+      <p>The same Welcome, drawn by the app.</p>
+      <ul>
+        {keys.map((key) => (
+          <li>
+            <button
+              type="button"
+              data-primary={key === view.decisions.primary ? "" : undefined}
+              onClick={() => onAction({ detail: { key } })}
+            >
+              {words[key]}
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

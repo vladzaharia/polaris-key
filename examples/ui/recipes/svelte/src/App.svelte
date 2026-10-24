@@ -14,11 +14,11 @@
   }
 </script>
 
-<!-- On a custom element Svelte sets `input` as a property; on:pk-action is the event. -->
-<pk-gate {input} on:pk-action={onAction}>
+<!-- On a custom element Svelte sets `input` as a property; onpk-action is the event. -->
+<pk-gate {input} onpk-action={onAction}>
   <main>
     <h1>Tidewater Studio</h1>
     <p>The license holds. This is the app.</p>
-    <OwnUi />
   </main>
 </pk-gate>
+<OwnUi {onAction} />
