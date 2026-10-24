@@ -63,7 +63,7 @@ public fun PolarisChannelPicker(
     val locale = kitLocale()
     val catalog = KitCopy.bundled
     PolarisSection(catalog.format("channel.title", locale), modifier) {
-        val lockedBy = channel.lockedBy
+        val lockedBy = channel.lockingOutlet
         if (lockedBy != null || channel.lockedByLicense) {
             val reason = if (lockedBy != null) channelLockedReason(lockedBy, locale) else catalog.format("channel.lockedLicense", locale)
             PolarisChannelLocked(channelLabel(channel.current, channel.labels), reason, catalog.format("a11y.locked", locale))

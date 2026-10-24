@@ -71,7 +71,10 @@ public data class PolarisChannelUi(
     val lockedByLicense: Boolean = false,
     val labels: Map<String, String> = emptyMap(),
 ) {
-    public val locked: Boolean get() = lockedBy != null || lockedByLicense
+    /** The outlet that fixes the channel, or null: an unknown outlet names no store, so it locks nothing. */
+    public val lockingOutlet: String? get() = lockedBy?.takeIf { it != im.plrs.key.core.OUTLET_UNKNOWN }
+
+    public val locked: Boolean get() = lockingOutlet != null || lockedByLicense
 
     /** A picker with nothing to pick and nothing fixing it has no reason to draw. */
     public val drawn: Boolean get() = locked || options.distinct().size > 1

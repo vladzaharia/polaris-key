@@ -248,6 +248,9 @@ public fun PolarisDevicesScreen(
     }
 }
 
+/** The end inset of a row's stacked actions: the icon buttons' own padding. */
+private val ActionsInset = 4.dp
+
 /** What a device row is doing: showing the device, editing its name, or asking before it is removed. */
 internal sealed interface DeviceRowMode {
     data object Idle : DeviceRowMode
@@ -310,6 +313,16 @@ internal fun PolarisDeviceRow(
         if (wasOpen && !open) runCatching { renameButton.requestFocus() }
         wasOpen = open
     }
+    val stackActions = polarisFontScale() >= 1.5f
+    val rowActions: @Composable () -> Unit = {
+        val tint = MaterialTheme.colorScheme.onSurfaceVariant
+        PolarisIconButton(onClick = onRename, enabled = !busy, modifier = Modifier.focusRequester(renameButton)) {
+            Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
+        }
+        PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
+            Icon(PolarisSymbols.Logout, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
+        }
+    }
     Column(Modifier.fillMaxWidth()) {
         Row(
             // 64 dp rows (UI-KITS.md 4.3 DeviceLimit list measure).
@@ -343,15 +356,11 @@ internal fun PolarisDeviceRow(
                     Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (!open) {
-                val tint = MaterialTheme.colorScheme.onSurfaceVariant
-                PolarisIconButton(onClick = onRename, enabled = !busy, modifier = Modifier.focusRequester(renameButton)) {
-                    Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
-                }
-                PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
-                    Icon(PolarisSymbols.Logout, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
-                }
-            }
+            if (!open && !stackActions) rowActions()
+        }
+        // At large font scales the actions sit under the text, so the name and the meta keep the row's width.
+        if (!open && stackActions) {
+            Row(Modifier.fillMaxWidth().padding(end = ActionsInset), horizontalArrangement = Arrangement.End) { rowActions() }
         }
         when (mode) {
             DeviceRowMode.Idle -> Unit
@@ -422,9 +431,9 @@ internal fun PolarisRemoveConfirm(name: String, onRemove: () -> Unit, onCancel: 
         PolarisActionGroup(row = true, visualOrder = polarisWindow.isMac) {
             if (polarisWindow.isMac) {
                 PolarisSecondaryButton(copy.cancel, onClick = onCancel)
-                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true)
+                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true, danger = true)
             } else {
-                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true)
+                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true, danger = true)
                 PolarisSecondaryButton(copy.cancel, onClick = onCancel)
             }
         }

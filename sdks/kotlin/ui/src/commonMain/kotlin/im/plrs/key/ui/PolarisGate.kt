@@ -362,10 +362,15 @@ public fun PolarisActivationScreen(
                 // A focused step (UI-KITS.md 4.3 DeviceLimit): the product header, "Replace a device",
                 // the count, the lede, the neutral seat meter (only when the refusal carries the counts).
                 PolarisProductHeader()
-                PolarisTitle(copy.freeDevice)
-                seats?.let { (used, max) ->
+                // Android (the board): the count is the title, one sentence under it, then the meter.
+                val countHeading = seats?.let { (used, max) ->
+                    KitCopy.bundled.format("deviceLimit.heading", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max)))
+                }
+                val countIsTitle = autoPlatformVariant() == PolarisPlatformVariant.Android && countHeading != null
+                PolarisTitle(if (countIsTitle) countHeading!! else copy.freeDevice)
+                if (!countIsTitle && countHeading != null) {
                     Spacer(Modifier.height(PolarisSpace.tight))
-                    PolarisBody(KitCopy.bundled.format("deviceLimit.heading", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max))))
+                    PolarisBody(countHeading)
                 }
                 Spacer(Modifier.height(PolarisSpace.tight))
                 PolarisBody(
@@ -501,6 +506,7 @@ public fun PolarisActivationScreen(
                 return@PolarisScaffold
             }
             // After a device-limit refusal: one filled button (Open in browser, or Try again).
+            val androidLimit = autoPlatformVariant() == PolarisPlatformVariant.Android
             if (noBrowser) {
                 PolarisInlineNotice(copy.signInNoBrowser)
                 Spacer(Modifier.height(PolarisSpace.controls))
@@ -532,11 +538,12 @@ public fun PolarisActivationScreen(
                     )
                     Spacer(Modifier.height(PolarisSpace.controls))
                 }
-                PolarisSecondaryButton(text = copy.retry, onClick = onActivate, busy = ui.busy)
+                // Android: Try again and Back are text buttons under the one primary; Sign in is not offered here.
+                if (androidLimit) PolarisTextButton(text = copy.retry, onClick = onActivate, enabled = !ui.busy) else PolarisSecondaryButton(text = copy.retry, onClick = onActivate, busy = ui.busy)
             } else {
                 PolarisPrimaryButton(text = copy.retry, onClick = onActivate, busy = ui.busy, initialFocus = true)
             }
-            if (onSignIn != null) {
+            if (onSignIn != null && !androidLimit) {
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
             }
