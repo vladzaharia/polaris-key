@@ -1,6 +1,6 @@
 /**
  * `distribution.feed-access-customers` (F-34.4; P0-49 runner): a package feed's access becomes
- * Public or Customers, and no principal gains access.
+ * Public or Licensed, and no principal gains access.
  *
  * WHY THIS IS SAFE. The ladder (`registry/authorize.ts`, which this job does not touch) judges a
  * read by `stricter(feed.access_mode, dist_access(deliverable).mode)`, and the entitlement flag

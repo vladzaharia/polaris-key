@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ACCESS_DESCRIPTIONS, ACCESS_LABELS } from "../../lib/labels.js";
 import { ChannelPicker } from "../../ui/ChannelPicker.js";
 import { Checkbox } from "../../ui/Checkbox.js";
 import { CodeEditor, CodeEditorFallback } from "../../ui/CodeEditor.js";
@@ -38,28 +39,13 @@ const PROFILES = [
   { value: "edu", label: "edu", secondary: "5 keys" },
 ];
 
-const ACCESS = [
-  {
-    value: "public",
-    label: "Public",
-    description: "Anyone with the feed URL can download.",
-  },
-  {
-    value: "authenticated",
-    label: "Authenticated",
-    description: "Any signed-in device; no license needed.",
-  },
-  {
-    value: "licensed",
-    label: "Licensed",
-    description: "Devices with an active license.",
-  },
-  {
-    value: "entitled",
-    label: "Entitled",
-    description: "Licenses that carry the chosen flag.",
-  },
-] as const;
+const ACCESS = ["public", "authenticated", "licensed", "entitled"].map(
+  (value) => ({
+    value,
+    label: ACCESS_LABELS[value]!,
+    description: ACCESS_DESCRIPTIONS[value]!,
+  }),
+);
 
 /** A standalone field: the controlled FormField outside a Form. */
 function Field<V>({

@@ -294,7 +294,7 @@ export function feedDetail(
     feed,
     settings: {
       enabled: feed.enabled,
-      // A feed never saved reads as the server defaults it: Customers.
+      // A feed never saved reads as the server defaults it: Licensed.
       accessMode: feed.configured ? "public" : "licensed",
       accessDisplay: feed.configured ? "public" : "customers",
       namespaceSource: "console",

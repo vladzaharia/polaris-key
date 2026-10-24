@@ -184,12 +184,12 @@ Every surface answers under one of four modes, set independently for the _metada
 surfaces (the downloads and the appcast — Distribution's
 [delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access), per deliverable):
 
-| Mode            | Who                                                                         | Notes                                                                       |
-| --------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `public`        | anyone                                                                      | The default — keeps anonymous installs and anonymous update checks working. |
-| `authenticated` | a device with a valid token                                                 | Requires a usable license, exactly as `licensed` does today.                |
-| `licensed`      | a device whose license is usable                                            | Behaves identically to `authenticated` today (both require a usable one).   |
-| `entitled`      | a device whose _own license_ covers the requested release track and version | The only mode that can offer two licensed devices different builds.         |
+| Mode (console)                  | Who                                                                         | Notes                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `public` (Public)               | anyone                                                                      | The default — keeps anonymous installs and anonymous update checks working. |
+| `authenticated` (Authenticated) | a device with a valid token and a usable license                            | Behaves identically to `licensed` today.                                    |
+| `licensed` (Licensed)           | a device whose license is usable                                            | Behaves identically to `authenticated` today.                               |
+| `entitled` (Entitled)           | a device whose _own license_ covers the requested release track and version | The only mode that can offer two licensed devices different builds.         |
 
 `licensed` and `authenticated` are kept as two distinct names on purpose, even though
 nothing distinguishes their enforcement: both refuse a device whose license is not

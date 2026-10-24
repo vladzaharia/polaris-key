@@ -5,10 +5,10 @@
  * 409 when someone saved first). Never one Save across two endpoints: the platform policy
  * (platform scope only) is its own resource and its own section.
  *
- * - **General:** enabled, and Access: Public or Customers (F-34). Customers is the stored
- *   `licensed`; an old `entitled` feed reads "Customers, packages gated individually" and is not
+ * - **General:** enabled, and Access: Public or Licensed (F-34; `ACCESS_LABELS`). An old
+ *   `entitled` feed reads "Licensed, packages gated individually" and is not
  *   rewritten unless the operator picks again. Turning a feed off, and moving access either way,
- *   is L1: Public to Customers refuses anonymous clients within 30 seconds; Customers to Public
+ *   is L1: Public to Licensed refuses anonymous clients within 30 seconds; Licensed to Public
  *   opens the feed to everyone.
  * - **Namespace:** the dependency-confusion rule ingest enforces, one row per namespace field
  *   the ecosystem's ingest rules declare (scope, prefixes, groups, publisher). A namespace the
@@ -63,12 +63,11 @@ import {
 } from "../../distribution/components/forms.js";
 import {
   ECOSYSTEMS,
-  accessDisplayLabel,
   ECOSYSTEM_LABELS,
   FEED_ACCESS_DESCRIPTIONS,
   FEED_EXTENSION_FIELDS,
   FEED_PANEL_TITLES,
-  FEED_ACCESS_LABELS,
+  feedAccessLabel,
   bytesToMiB,
   feedAccessChoice,
   feedAccessMode,
@@ -235,7 +234,7 @@ function GeneralSection({
     const Icon = choice === "public" ? Globe : Lock;
     return {
       value: choice,
-      label: FEED_ACCESS_LABELS[choice] ?? choice,
+      label: feedAccessLabel(choice),
       description:
         choice === "customers" && gated
           ? "Packages gated individually: a customer's token gets a package only when their license holds its entitlement."
@@ -389,10 +388,10 @@ function confirmTitle(label: string, ask: GeneralAsk | null): string {
   if (ask?.off && ask.access === "widen")
     return `Switch off the ${label} feed and make it public?`;
   if (ask?.off && ask.access === "tighten")
-    return `Switch off the ${label} feed and switch it to Customers?`;
+    return `Switch off the ${label} feed and switch it to Licensed?`;
   if (ask?.off) return `Switch off the ${label} feed?`;
   if (ask?.access === "widen") return `Make the ${label} feed public?`;
-  return `Switch the ${label} feed to Customers?`;
+  return `Switch the ${label} feed to Licensed?`;
 }
 
 function confirmConsequences(ask: GeneralAsk | null): string[] {
@@ -405,10 +404,10 @@ function confirmConsequences(ask: GeneralAsk | null): string[] {
 function confirmLabelOf(ask: GeneralAsk | null): string {
   if (ask?.off && ask.access === "widen") return "Switch off and make public";
   if (ask?.off && ask.access === "tighten")
-    return "Switch off and use Customers";
+    return "Switch off and use Licensed";
   if (ask?.off) return "Switch off feed";
   if (ask?.access === "widen") return "Make feed public";
-  return "Switch to Customers";
+  return "Switch to Licensed";
 }
 
 function LimitsSection({

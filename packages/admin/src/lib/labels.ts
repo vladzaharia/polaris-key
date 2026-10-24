@@ -20,17 +20,24 @@ export const REGISTRATION_LABELS: Record<string, string> = {
 /** Release and delivery access modes (`ReleaseAccess`). */
 export const ACCESS_LABELS: Record<string, string> = {
   public: "Public",
-  authenticated: "Signed-in devices",
+  authenticated: "Authenticated",
   licensed: "Licensed",
   entitled: "Entitled",
 };
 
 /** What each access mode means, for `RadioCards` and `Select` option descriptions. */
 export const ACCESS_DESCRIPTIONS: Record<string, string> = {
-  public: "Anyone can download, with no device token.",
-  authenticated: "Any registered device with a valid token.",
-  licensed: "Devices with an active license.",
-  entitled: "Devices whose license includes a specific entitlement flag.",
+  public: "Anyone, with no device token.",
+  authenticated: "A device with a valid token and a usable license.",
+  licensed: "A device whose license is usable.",
+  entitled:
+    "A device whose own license covers the requested channel and version.",
+};
+
+/** The same, for a pack: its `entitled` is the pack's gate flag, not the channel and version. */
+export const PACK_ACCESS_DESCRIPTIONS: Record<string, string> = {
+  ...ACCESS_DESCRIPTIONS,
+  entitled: "A device whose license holds the pack's gate flag.",
 };
 
 /** License and portal sign-in methods. */

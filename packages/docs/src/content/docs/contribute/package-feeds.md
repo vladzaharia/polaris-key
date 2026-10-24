@@ -20,7 +20,7 @@ and [Feeds in the console](/docs/admin/feeds/). This page is for whoever adds th
 The manifest creates a feed. Distribution's ingest contribution (`services/distribution/registryFeeds.ts`,
 called from `ingest.ts`) inserts, for each ecosystem a manifest declares a package in:
 
-- a `dist_registry_feeds` row, enabled, `access_mode = 'licensed'` (Customers), with the
+- a `dist_registry_feeds` row, enabled, `access_mode = 'licensed'`, with the
   namespace from `deriveFeedNamespace(ecosystem, names, owner)` in `@polaris-key/manifest`;
 - a `dist_registry_owners` row, only when the product has neither an owner row nor a feed row;
 - one `distribution.feed.provision` audit row per created feed.
@@ -33,7 +33,7 @@ reason when no one namespace fits (nothing is provisioned; the ingest answer car
 `distribution.packageFeeds` is the owner's off switch (L1 confirm on off), a registry setting over
 `dist_registry_owners`.
 
-Feed writes accept only Public and Customers (`access_mode_unavailable`). The migration job `distribution.feed-access-customers`
+Feed writes accept only Public and Licensed (`access_mode_unavailable`). The migration job `distribution.feed-access-customers`
 (`feedAccessJob.ts`) moves feeds written before that:
 
 - `authenticated` becomes `licensed`: the same strictness, so no answer changes.

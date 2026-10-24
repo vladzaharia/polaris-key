@@ -19,6 +19,7 @@ import {
   Package,
   type LucideIcon,
 } from "lucide-react";
+import { ACCESS_LABELS, label } from "../../../../lib/labels.js";
 import {
   FEED_SETUP,
   feedSetupProblem,
@@ -78,9 +79,9 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
 };
 
 /**
- * Two access options: Public and Customers (F-34). Customers is the stored `licensed`; the stored
+ * Two access options: Public and Licensed (F-34; the console words are `ACCESS_LABELS`). The stored
  * `authenticated` is the same strictness and an old `entitled` feed (packages gated one by one)
- * also reads as Customers. The server writes only `public` and `licensed`.
+ * also reads as Licensed. The server writes only `public` and `licensed`.
  */
 const CUSTOMER_MODES: readonly string[] = [
   "authenticated",
@@ -98,21 +99,24 @@ export function feedAccessMode(choice: string): string {
   return choice === "customers" ? "licensed" : choice;
 }
 
-/** Access choices as the Feeds pages name them (a registry client presents a token). */
-export const FEED_ACCESS_LABELS: Record<string, string> = {
-  public: "Public",
-  customers: "Customers",
-};
-
+/** What a registry client needs, per choice; the names come from `ACCESS_LABELS`. */
 export const FEED_ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Any client can install, with no credentials.",
   customers:
     "Clients with a registry token: yours, your CI's, or a customer's while their license is active.",
 };
 
-/** The server's `accessDisplay` as a sentence start: "customers, packages gated individually". */
-export function accessDisplayLabel(display: string): string {
-  return display.charAt(0).toUpperCase() + display.slice(1);
+/** A choice or stored mode as `ACCESS_LABELS` names it: `customers` is `licensed`. */
+export function feedAccessLabel(modeOrChoice: string): string {
+  const mode = feedAccessMode(feedAccessChoice(modeOrChoice));
+  return label(ACCESS_LABELS, mode);
+}
+
+/** A feed's access as text: an old `entitled` feed also says its packages are gated one by one. */
+export function feedAccessText(mode: string): string {
+  return mode === "entitled"
+    ? `${feedAccessLabel(mode)}, packages gated individually`
+    : feedAccessLabel(mode);
 }
 
 /** Why a feed does not answer, in words. */

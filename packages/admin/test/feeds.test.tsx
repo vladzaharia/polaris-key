@@ -137,13 +137,13 @@ function bootSettings(
 }
 
 describe("registry auth (F-21)", () => {
-  it("Access is two options in General: Public and Customers, no Access section", async () => {
+  it("Access is two options in General: Public and Licensed, no Access section", async () => {
     bootSettings("public");
     const form = await general();
     const radios = within(form).getAllByRole("radio");
     expect(radios.map((r) => r.textContent)).toEqual([
       expect.stringContaining("Public"),
-      expect.stringContaining("Customers"),
+      expect.stringContaining("Licensed"),
     ]);
     expect(
       within(form)
@@ -158,12 +158,12 @@ describe("registry auth (F-21)", () => {
     ).toBeNull();
   });
 
-  it("Customers shows the Tokens link; nothing to save while the choice is the stored one", async () => {
+  it("Licensed shows the Tokens link; nothing to save while the choice is the stored one", async () => {
     const log = bootSettings("licensed");
     const form = await general();
     expect(
       within(form)
-        .getByRole("radio", { name: /Customers/ })
+        .getByRole("radio", { name: /Licensed/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
     expect(within(form).getByRole("link", { name: "Tokens" })).toBeTruthy();
@@ -173,18 +173,18 @@ describe("registry auth (F-21)", () => {
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
   });
 
-  it("opening a Public feed to Customers stores licensed, after the L1 confirm", async () => {
+  it("opening a Public feed to Licensed stores licensed, after the L1 confirm", async () => {
     const log = bootSettings("public");
     const form = await general();
     await userEvent.click(
-      within(form).getByRole("radio", { name: /Customers/ }),
+      within(form).getByRole("radio", { name: /Licensed/ }),
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain("refused within 30 seconds");
     expect(dialog.textContent).not.toContain("401");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Switch to Customers" }),
+      within(dialog).getByRole("button", { name: "Switch to Licensed" }),
     );
     await waitFor(() =>
       expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
@@ -194,7 +194,7 @@ describe("registry auth (F-21)", () => {
     );
   });
 
-  it("widening Customers to Public asks first (L1) and writes public", async () => {
+  it("widening Licensed to Public asks first (L1) and writes public", async () => {
     const log = bootSettings("licensed");
     const form = await general();
     await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
@@ -230,17 +230,17 @@ describe("registry auth (F-21)", () => {
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
   });
 
-  it("an entitled feed reads Customers, packages gated individually, and is not rewritten", async () => {
+  it("an entitled feed reads Licensed, packages gated individually, and is not rewritten", async () => {
     const log = bootSettings("entitled");
     const form = await general();
     expect(
       within(form)
-        .getByRole("radio", { name: /Customers/ })
+        .getByRole("radio", { name: /Licensed/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
     // The selected card says the fact; there is no separate "Now" line.
     expect(
-      within(form).getByRole("radio", { name: /Customers/ }).textContent,
+      within(form).getByRole("radio", { name: /Licensed/ }).textContent,
     ).toContain("Packages gated individually");
     expect(form.textContent).not.toContain("Now:");
     // The packages without a gate are named, each linking to its Delivery tab.
@@ -252,12 +252,12 @@ describe("registry auth (F-21)", () => {
     ).toContain("/deliverables/npm.sdk/delivery");
     // Untouched: nothing to save, and no write.
     expect(within(form).queryByRole("button", { name: /^Save/ })).toBeNull();
-    // Public, then back to Customers: the form is the stored choice again; still no write.
+    // Public, then back to Licensed: the form is the stored choice again; still no write.
     await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
-    // The warning is about Customers: gone while Public is picked.
+    // The warning is about Licensed: gone while Public is picked.
     expect(form.textContent).not.toContain("tokens are refused these packages");
     await userEvent.click(
-      within(form).getByRole("radio", { name: /Customers/ }),
+      within(form).getByRole("radio", { name: /Licensed/ }),
     );
     expect(within(form).queryByRole("button", { name: /^Save/ })).toBeNull();
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
@@ -280,12 +280,12 @@ describe("registry auth (F-21)", () => {
     );
     const form = await general();
     await userEvent.click(
-      within(form).getByRole("radio", { name: /Customers/ }),
+      within(form).getByRole("radio", { name: /Licensed/ }),
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Switch to Customers" }),
+      within(dialog).getByRole("button", { name: "Switch to Licensed" }),
     );
     expect(
       await within(form).findByText(
@@ -294,7 +294,7 @@ describe("registry auth (F-21)", () => {
     ).toBeTruthy();
     expect(
       within(form)
-        .getByRole("radio", { name: /Customers/ })
+        .getByRole("radio", { name: /Licensed/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
   });
@@ -1597,7 +1597,7 @@ describe("the Feeds overview", () => {
     ).toBeNull();
   });
 
-  it("a Customers feed reads Customers on its card", async () => {
+  it("a Licensed feed reads Licensed on its card", async () => {
     const routes = feedRoutes();
     const overview = productOverview();
     overview.feeds = overview.feeds.map((f) =>
@@ -1614,7 +1614,7 @@ describe("the Feeds overview", () => {
       name: "Package feeds",
     });
     expect(list.querySelector("[data-access-chip]")!.textContent).toBe(
-      "Customers",
+      "Licensed",
     );
   });
 
@@ -1850,7 +1850,7 @@ describe("a feed page", () => {
     await heading(/npm/);
     const access = await general();
     const radios = within(access).getAllByRole("radio");
-    // Public and Customers, both choosable.
+    // Public and Licensed, both choosable.
     expect(
       radios.map(
         (r) =>
@@ -2165,7 +2165,7 @@ describe("a feed page", () => {
   it("Cancel on a General confirm shows no error and writes nothing (widen, tighten, switch off)", async () => {
     for (const [stored, pick, cancel] of [
       ["licensed", /Public/, "Cancel"],
-      ["public", /Customers/, "Cancel"],
+      ["public", /Licensed/, "Cancel"],
       ["licensed", null, "Cancel"],
     ] as const) {
       cleanup();
@@ -2231,20 +2231,20 @@ describe("a feed page", () => {
     expect(log.calls.filter((c) => c.method === "PUT").length).toBe(1);
   });
 
-  it("switching off and moving to Customers in one save asks once and saves both", async () => {
+  it("switching off and moving to Licensed in one save asks once and saves both", async () => {
     const log = bootSettings("public");
     const form = await general();
     await userEvent.click(
       within(form).getByRole("switch", { name: "Serving" }),
     );
     await userEvent.click(
-      within(form).getByRole("radio", { name: /Customers/ }),
+      within(form).getByRole("radio", { name: /Licensed/ }),
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(
       within(dialog).getByRole("button", {
-        name: "Switch off and use Customers",
+        name: "Switch off and use Licensed",
       }),
     );
     await waitFor(() =>
@@ -2579,12 +2579,12 @@ describe("a feed page", () => {
     bootSettings("public", new Response("{}", { status: 500 }));
     const form = await general();
     await userEvent.click(
-      within(form).getByRole("radio", { name: /Customers/ }),
+      within(form).getByRole("radio", { name: /Licensed/ }),
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     await userEvent.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Switch to Customers",
+        name: "Switch to Licensed",
       }),
     );
     expect(
@@ -2592,14 +2592,14 @@ describe("a feed page", () => {
     ).toBeTruthy();
   });
 
-  it("a never-saved feed reads Customers, as the server defaults it", async () => {
+  it("a never-saved feed reads Licensed, as the server defaults it", async () => {
     boot("#/p/djdl/distribution/feeds/swift/settings", {
       extra: { ...feedRoutes(), ...declaring("swift"), ...product(true) },
     });
     const form = await general();
     expect(
       within(form)
-        .getByRole("radio", { name: /Customers/ })
+        .getByRole("radio", { name: /Licensed/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
   });
