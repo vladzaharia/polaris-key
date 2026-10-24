@@ -266,6 +266,22 @@ const flat = (lines: Line[]): string =>
  * `pkey feeds setup --write` (a `packages:read` token, approved in Polaris Locker, handed to the
  * caller and stored nowhere).
  */
+export interface DeviceCopy {
+  /** "Opening Polaris Key in your browser" (no ellipsis). */
+  opening: string;
+  rateLimited: { message: string; fix: string };
+  /** Where an unsupported server sends the person. */
+  unsupportedFix: string;
+  /** The token limit: the sentences (the rerun line is added after them). */
+  tokenLimit: (limit: string | undefined, origin: string) => Line[];
+  /** What a 403 says: the sentence and the fix. */
+  forbidden: [string, string];
+  /** A request refused in the browser. */
+  denied: (code: string) => string;
+  /** After a network failure an approval may have gone through unseen. */
+  maybeApproved: string;
+}
+
 export interface DeviceMode {
   /** The JSON `command` and the name `guarded` prints. */
   command: "login" | "feeds setup";
@@ -279,9 +295,13 @@ export interface DeviceMode {
   /** Runs before the start. `replaces` says an existing sign-in ends once this one is kept. */
   begin: () => Promise<{
     replaces: boolean;
+    /** A line under the heading (what will be set up). */
+    note?: string;
     /** The approved answer's body; `gap` is the blank row to print before a result. */
     approved: (body: Record<string, unknown>, gap: string) => Promise<number>;
   }>;
+  /** The words that differ between the flows. */
+  copy: DeviceCopy;
   /** Refusals that must come before anything else, the CI one included. */
   guard?: () => void;
   /** Warn that `PKEY_ADMIN_TOKEN` outranks this sign-in (the console one only). */
@@ -302,6 +322,41 @@ export function cmdLogin(io: LoginIo): Promise<number> {
     rerun: "pkey login",
     scope: "admin",
     title: "Polaris Key console",
+    copy: {
+      opening: "Opening Polaris Key in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey login again.",
+      },
+      unsupportedFix: `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      tokenLimit: (limit, origin) => {
+        const url = `${origin}/manage/#/personal-tokens`;
+        return [
+          [
+            text(
+              limit
+                ? `You already have ${limit} personal tokens, the most allowed.`
+                : "You already have the most personal tokens allowed.",
+            ),
+          ],
+          rerunLine(
+            "pkey login",
+            io,
+            origin,
+            "Revoke one in Personal tokens, then run ",
+            " again.",
+          ),
+          [text(url, { break: "url", link: url })],
+        ];
+      },
+      forbidden: [
+        "This account can't sign in.",
+        "Ask a Superadmin to check your access.",
+      ],
+      denied: (code) => `Code ${code} was canceled in the browser.`,
+      maybeApproved:
+        "If you approved it, the token may exist; check Personal tokens.",
+    },
     approvePath: (code) => `/manage/device?code=${code}`,
     warnAdminEnv: true,
     // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
@@ -373,7 +428,7 @@ async function flow(
   const sleep = seams.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const f = io.fetchImpl ?? fetch;
 
-  const { replaces, approved: settle } = await mode.begin();
+  const { replaces, note, approved: settle } = await mode.begin();
 
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
@@ -426,6 +481,7 @@ async function flow(
             "",
           ]
         : []),
+      ...(note ? [...layout([text(note)], columns), ""] : []),
     ];
   };
 
@@ -496,14 +552,14 @@ async function flow(
     throw new Redirected(host);
   if (startRes.status === 429)
     throw new Refusal(
-      "Too many sign-in attempts from this network.",
-      "Wait a few minutes, then run pkey login again.",
+      mode.copy.rateLimited.message,
+      mode.copy.rateLimited.fix,
       "rate-limited",
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
       `${host} doesn't offer terminal sign-in.`,
-      `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      mode.copy.unsupportedFix,
       "unsupported",
     );
   if (startRes.status !== 201)
@@ -561,7 +617,7 @@ async function flow(
         code: userCode,
         url: approveUrl,
         expiresIn,
-        replaces,
+        ...(mode.scope === "admin" ? { replaces } : {}),
       }),
     );
   } else {
@@ -576,11 +632,7 @@ async function flow(
       return [
         ...(opened
           ? layout(
-              [
-                text(
-                  `Opening Polaris Key in your browser${out.symbols.ellipsis}`,
-                ),
-              ],
+              [text(`${mode.copy.opening}${out.symbols.ellipsis}`)],
               columns,
             )
           : []),
@@ -731,9 +783,7 @@ async function flow(
   /** After a network failure an approval may have gone through unseen. */
   let sawFailure = false;
   const maybeApproved = (): Line[] =>
-    sawFailure
-      ? plain("If you approved it, the token may exist; check Personal tokens.")
-      : [];
+    sawFailure ? plain(mode.copy.maybeApproved) : [];
   const expired = (): number =>
     report({
       state: "expired",
@@ -823,28 +873,16 @@ async function flow(
       const limit = /at most (\d{1,3}) /.exec(
         String(body["message"] ?? ""),
       )?.[1];
-      const url = `${origin}/manage/#/personal-tokens`;
+      const lines = mode.copy.tokenLimit(limit, origin);
       return report({
         state: "token_limit",
         exit: 4,
         kind: "warn",
-        lines: [
-          [
-            text(
-              limit
-                ? `You already have ${limit} personal tokens, the most allowed.`
-                : "You already have the most personal tokens allowed.",
-            ),
-          ],
-          rerun(
-            io,
-            origin,
-            "Revoke one in Personal tokens, then run ",
-            " again.",
-          ),
-          [text(url, { break: "url", link: url })],
-        ],
-        extra: { url },
+        lines,
+        extra:
+          mode.scope === "admin"
+            ? { url: `${origin}/manage/#/personal-tokens` }
+            : {},
       });
     }
     if (res.status === 403)
@@ -852,10 +890,7 @@ async function flow(
         state: "refused",
         exit: 4,
         kind: "warn",
-        lines: plain(
-          "This account can't sign in.",
-          "Ask a Superadmin to check your access.",
-        ),
+        lines: plain(...mode.copy.forbidden),
       });
     if (!res.ok)
       return report({
@@ -879,7 +914,7 @@ async function flow(
         exit: 1,
         kind: "warn",
         lines: [
-          [text(`Code ${userCode} was canceled in the browser.`)],
+          [text(mode.copy.denied(userCode))],
           rerun(io, origin, "Run ", " to try again."),
         ],
       });

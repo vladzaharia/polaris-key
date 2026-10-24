@@ -46,7 +46,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { isCi } from "@polaris-key/node/terminal";
+import { isCi, wrapSpans, type Line } from "@polaris-key/node/terminal";
 import { isPackageEcosystem } from "@polaris-key/manifest";
 import {
   isExecStep,
@@ -222,8 +222,8 @@ function mergeYaml(
     if (found < 0) {
       // Insert the rest of the path at the end of this region, after its last content line.
       let at = regionEnd;
-      while (at > start && blank(lines[at - 1]!)) at--;
-      const base = child >= 0 ? child : parent + 2 < 0 ? 0 : parent + 2;
+      while (at > start && /^\s*$/.test(lines[at - 1]!)) at--;
+      const base = child >= 0 ? child : parent < 0 ? 0 : parent + 2;
       const add: string[] = [];
       keys.slice(depth).forEach((k, n) => {
         const pad = " ".repeat(base + 2 * n);
@@ -273,16 +273,45 @@ function tomlKeyOf(line: string): string | null {
   return m ? m[1]!.replace(/^["']|["']$/g, "") : null;
 }
 
+/** A dotted TOML key as its unquoted segments (`registries."x".y` -> registries, x, y). */
+function tomlPath(src: string): string[] | null {
+  const out: string[] = [];
+  const re = /\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*(\.|$)/y;
+  let at = 0;
+  while (at < src.length) {
+    re.lastIndex = at;
+    const m = re.exec(src);
+    if (!m) return null;
+    out.push(m[1]!.replace(/^["']|["']$/g, ""));
+    at = re.lastIndex;
+    if (m[2] === "") break;
+  }
+  return out.length ? out : null;
+}
+
+/** The table a `[a."b"]` header line names, or null for any other line. */
+function tomlHeader(line: string): string[] | null {
+  const m = /^\s*\[(?!\[)\s*(.+?)\s*\]\s*(#.*)?$/.exec(line);
+  return m ? tomlPath(m[1]!) : null;
+}
+
 function mergeToml(
   lines: string[],
   table: string,
   key: string,
   value: string,
 ): void {
-  const header = (t: string) =>
-    new RegExp(`^\\s*\\[\\s*${esc(t)}\\s*\\]\\s*(#.*)?$`);
   const regionOf = (t: string): [number, number] | null => {
-    const h = lines.findIndex((l) => header(t).test(l));
+    const want = tomlPath(t);
+    const h = lines.findIndex((l) => {
+      const got = tomlHeader(l);
+      return (
+        got !== null &&
+        want !== null &&
+        got.length === want.length &&
+        got.every((g, n) => g === want[n])
+      );
+    });
     if (h < 0) return null;
     let e = lines.length;
     for (let i = h + 1; i < lines.length; i++)
@@ -332,12 +361,19 @@ function mergeNetrc(
   const mine = new RegExp(`^\\s*machine\\s+${esc(machine)}(\\s|$)`);
   const at = lines.findIndex((l) => mine.test(l));
   if (at < 0) {
-    if (lines.length && !blank(lines[lines.length - 1]!)) lines.push("");
-    lines.push(
+    const block = [
       `machine ${machine}`,
       `  login ${login}`,
       `  password ${password}`,
-    );
+    ];
+    // `default` must stay the last entry: ours goes before it.
+    const dflt = lines.findIndex((l) => /^\s*default\b/.test(l));
+    if (dflt >= 0) {
+      lines.splice(dflt, 0, ...block, "");
+      return;
+    }
+    if (lines.length && !blank(lines[lines.length - 1]!)) lines.push("");
+    lines.push(...block);
     return;
   }
   let to = lines.length;
@@ -430,7 +466,7 @@ export function safeTarget(realHome: string, rel: string): string {
         throw new Unsafe("a symbolic link that goes nowhere");
       }
       if (!within(realHome, real))
-        throw new Unsafe("a symbolic link that leaves the home directory");
+        throw new Unsafe("links outside your home directory");
     }
     cur = real;
   }
@@ -452,9 +488,10 @@ export function writeMerged(
   let mode = 0o600;
   if (exists) {
     const m = statSync(target).mode & 0o777;
-    if (after === before && (!secret || m === 0o600))
+    if (after === before && (!secret || (m & 0o077) === 0))
       return { state: "unchanged", backup: false };
-    mode = secret ? 0o600 : m;
+    // A secret file is never loosened: 0400 stays 0400.
+    mode = secret ? m & 0o600 || 0o600 : m;
   }
   const dir = path.dirname(target);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -504,17 +541,28 @@ type StepState =
   | "created"
   | "updated"
   | "unchanged"
+  | "ran"
   | "missing"
   | "skipped"
   | "refused"
   | "failed";
 
 interface Outcome {
+  /** The row's label: the tool, or the ecosystem of a skipped feed. */
   tool: string;
-  /** `~/.npmrc`, or the command line without any secret. */
-  target: string;
   state: StepState;
+  /** What the row says first: `~/.npmrc`, `signed in to pkg.plrs.im`, a product slug. */
+  text: string;
+  /** The file's `~/` path, and its real one when a link leads elsewhere. */
+  file?: string;
+  link?: string;
+  backup?: string;
+  /** The command, as far as it names no secret. */
+  command?: string;
+  product?: string;
   note?: string;
+  /** The git work tree the written file sits in. */
+  git?: string;
 }
 
 function readFeeds(raw: unknown, owner: string | undefined): CombinedFeed[] {
@@ -555,7 +603,53 @@ function registryOf(v: unknown): string | null {
   }
 }
 
-const tilde = (rel: string) => `~/${rel}`;
+/** The clients a plan can set up, by the name a row gives them and the programs that stand for them. */
+const CLIENTS: readonly (readonly [string, readonly string[]])[] = [
+  ["npm", ["npm", "pnpm"]],
+  ["yarn", ["yarn"]],
+  ["bun", ["bun"]],
+  ["pip/uv", ["pip", "pip3", "uv", "poetry"]],
+  ["go", ["go"]],
+  ["gradle", ["gradle"]],
+  ["cargo", ["cargo"]],
+  ["swift", ["swift"]],
+  ["docker", ["docker"]],
+];
+
+const list = (items: readonly string[]): string =>
+  items.length < 2
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+/** A refusal whose lines keep the command whole, wrapping only between its flags. */
+class PrintRefusal extends Refusal {
+  readonly lines: Line[];
+  constructor(message: string, lead: string, code: string) {
+    const units = [
+      "pkey feeds setup",
+      "--ecosystem npm",
+      "--owner slug",
+      "--token-env NAME",
+    ];
+    super(message, `${lead} ${units.join(" ")}`, code);
+    this.lines = [
+      [text(message)],
+      [text(lead)],
+      units.flatMap(
+        (u, n): Line => [...(n ? [text(" ")] : []), text(u, { unit: true })],
+      ),
+    ];
+  }
+}
+
+/** The clients on PATH, by row label. */
+function installed(io: LoginIo, o: FeedsWriteOptions): string[] {
+  const onPath = o.seams.onPath ?? defaultOnPath;
+  const pathVar = io.env["PATH"] ?? "";
+  return CLIENTS.filter(([, names]) =>
+    names.some((n) => onPath(n, pathVar)),
+  ).map(([label]) => label);
+}
 
 export function cmdFeedsWrite(
   io: LoginIo,
@@ -566,39 +660,65 @@ export function cmdFeedsWrite(
     rerun: "pkey feeds setup --write",
     scope: "packages:read",
     title: "Polaris Key packages",
+    copy: {
+      opening: "Opening Polaris Locker in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey feeds setup --write again.",
+      },
+      unsupportedFix: "Check that this is your Polaris Key server.",
+      tokenLimit: () => [
+        [text("You already have the most personal tokens.")],
+        [
+          text(
+            "Revoke one in Polaris Locker, under Packages, then run pkey feeds setup --write again.",
+          ),
+        ],
+      ],
+      forbidden: [
+        "This Polaris Locker account can't get a token.",
+        "Sign in to Polaris Locker to check it.",
+      ],
+      denied: (code) => `Code ${code} was denied in Polaris Locker.`,
+      maybeApproved:
+        "If you approved it, a token may exist: check Polaris Locker, under Packages.",
+    },
     // The Polaris Locker page that approves it, built from the origin pkey resolved.
     approvePath: (code) => `/#/account/approve?code=${code}`,
     warnAdminEnv: false,
     // The refusals come first: before the origin is resolved, so before any request.
     guard: () => guards(io, o),
-    begin: async () => {
-      return {
-        replaces: false,
-        approved: (body, gap) => apply(io, o, body, gap),
-      };
-    },
+    begin: async () => ({
+      replaces: false,
+      note: `Sets up ${list(installed(io, o))}.`,
+      approved: (body, gap) => apply(io, o, body, gap),
+    }),
   };
   return runDeviceFlow(io, mode);
 }
 
-/** CI, no terminal, no usable HOME: all before the network. */
+/** CI, no terminal, no usable HOME, nothing to set up: all before the network. */
 function guards(io: LoginIo, o: FeedsWriteOptions): void {
-  const print =
-    "Print it instead: pkey feeds setup --ecosystem <name> --owner <slug> --token-env NAME.";
   if (isCi(io.env))
-    throw new Refusal(
+    throw new PrintRefusal(
       "pkey feeds setup --write needs a person at a terminal.",
-      print,
+      "In CI, print the setup instead:",
       "ci",
     );
   const seams = resolveSeams(io);
   if (!seams.stdin?.isTTY || !io.stdout.isTTY)
-    throw new Refusal(
-      "pkey feeds setup --write needs a terminal to show the sign-in code.",
-      print,
+    throw new PrintRefusal(
+      "pkey feeds setup --write needs a person at a terminal.",
+      "Without one, print the setup instead:",
       "no-tty",
     );
   home(io, o.cwd);
+  if (!installed(io, o).length)
+    throw new Refusal(
+      "None of the tools pkey sets up are installed.",
+      "Install npm, pip, go, cargo, docker or swift, or print the setup with pkey feeds setup.",
+      "no-tools",
+    );
 }
 
 /** HOME, real: set, absolute, a directory, and not inside the working directory. */
@@ -636,6 +756,31 @@ function home(io: LoginIo, cwd: string): string {
   return real;
 }
 
+/** The nearest directory from `file` up to HOME that holds a `.git`, as a `~/` path. */
+function gitTree(realHome: string, file: string): string | undefined {
+  let dir = path.dirname(file);
+  while (within(realHome, dir)) {
+    if (existsSync(path.join(dir, ".git"))) return display(realHome, dir);
+    if (dir === realHome) break;
+    dir = path.dirname(dir);
+  }
+  return undefined;
+}
+
+const display = (realHome: string, p: string): string =>
+  p === realHome
+    ? "~"
+    : `~/${path.relative(realHome, p).split(path.sep).join("/")}`;
+
+/** The row label of a step: the tool, or the clients a shared .netrc serves. */
+function toolLabel(s: PlanStep): string {
+  if (s.tool !== "netrc") return s.tool;
+  const names = CLIENTS.filter(([, n]) => n.some((x) => s.onPath.includes(x)))
+    .map(([label]) => label)
+    .join("/");
+  return names || "netrc";
+}
+
 async function apply(
   io: LoginIo,
   o: FeedsWriteOptions,
@@ -644,10 +789,18 @@ async function apply(
 ): Promise<number> {
   const origin = originFor(io, "feeds setup");
   const host = hostOf(origin);
+  const label =
+    typeof body["label"] === "string" && body["label"].trim()
+      ? shown(body["label"], io.env).slice(0, 200)
+      : null;
+  const t = io.term(io.stdout);
+  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  // A refusal after the approval leaves a token that nothing uses: say where it ends.
+  const revoke = `Revoke ${quote[0]}${label ?? `pkey on ${host}`}${quote[1]} in Polaris Locker, under Packages.`;
   const odd = (): Failure =>
     new Failure(
       `${host} answered the sign-in unexpectedly. Nothing was written.`,
-      "Try again, or check --base-url.",
+      `Check --base-url. ${revoke}`,
       "unexpected-answer",
       { host },
     );
@@ -656,7 +809,7 @@ async function apply(
   if (body["scope"] !== "packages:read")
     throw new Refusal(
       `${host} issued a token for a different scope than the one pkey asked for. Nothing was written.`,
-      "Check --base-url, then try again.",
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
       "wrong-scope",
     );
   const token = body["token"];
@@ -675,7 +828,7 @@ async function apply(
   if (body["registryOrigin"] === null || body["registryOrigin"] === undefined)
     throw new Refusal(
       `${host} has no package registry. Nothing was written.`,
-      "Check --base-url.",
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
       "no-registry",
     );
   if (!registry) throw odd();
@@ -685,13 +838,7 @@ async function apply(
   } catch {
     throw odd();
   }
-  const label =
-    typeof body["label"] === "string" && body["label"].trim()
-      ? shown(body["label"], io.env).slice(0, 200)
-      : null;
   const hint = token.slice(-4);
-
-  const t = io.term(io.stdout);
   let plan;
   try {
     plan = userConfigPlan(feeds, { origin: registry, token });
@@ -700,14 +847,10 @@ async function apply(
   }
 
   const realHome = home(io, o.cwd);
+  const registryHost = new URL(registry).host;
   const pathVar = io.env["PATH"] ?? "";
   const onPath = o.seams.onPath ?? defaultOnPath;
   const runner = o.seams.run ?? defaultRun;
-  /** What to call a tool that is not on PATH: its own name, or the clients a .netrc serves. */
-  const absent = (s: PlanStep) =>
-    s.tool === "netrc"
-      ? s.onPath.filter((n) => n !== "pip3").join("/")
-      : s.tool;
   const have = (s: PlanStep) => s.onPath.some((n) => onPath(n, pathVar));
   const outcomes: Outcome[] = [];
 
@@ -716,16 +859,21 @@ async function apply(
   for (const s of plan.steps) {
     if (isExecStep(s)) continue;
     if (!have(s)) {
-      const tool = absent(s);
+      const tool = toolLabel(s);
       if (!outcomes.some((x) => x.tool === tool && x.state === "missing"))
-        outcomes.push({ tool, target: tilde(s.file), state: "missing" });
+        outcomes.push({
+          tool,
+          state: "missing",
+          text: `~/${s.file}`,
+          file: `~/${s.file}`,
+        });
       continue;
     }
     byFile.set(s.file, [...(byFile.get(s.file) ?? []), s]);
   }
   for (const [file, steps] of byFile) {
-    const tool = [...new Set(steps.map((s) => s.tool))].join(" ");
-    const target = tilde(file);
+    const tool = [...new Set(steps.map(toolLabel))].join(" ");
+    const shownFile = `~/${file}`;
     try {
       const real = safeTarget(realHome, file);
       const r = writeMerged(
@@ -733,27 +881,25 @@ async function apply(
         steps.map((s) => s.edit),
         steps.some((s) => s.secret),
       );
+      const where = display(realHome, real);
+      const git = r.state === "unchanged" ? undefined : gitTree(realHome, real);
       outcomes.push({
         tool,
-        target,
         state: r.state,
-        ...(r.backup
-          ? { note: `kept ${path.basename(file)}${BACKUP_SUFFIX}` }
-          : {}),
+        text: shownFile,
+        file: where,
+        ...(where !== shownFile ? { link: shownFile } : {}),
+        ...(r.backup ? { backup: `${where}${BACKUP_SUFFIX}` } : {}),
+        ...(git ? { git } : {}),
       });
     } catch (e) {
-      const why =
-        e instanceof Unsafe || e instanceof Unmergeable
-          ? e.message
-          : "could not be written";
+      const known = e instanceof Unsafe || e instanceof Unmergeable;
       outcomes.push({
         tool,
-        target,
-        state:
-          e instanceof Unsafe || e instanceof Unmergeable
-            ? "refused"
-            : "failed",
-        note: why,
+        state: known ? "refused" : "failed",
+        text: shownFile,
+        file: shownFile,
+        note: known ? e.message : "could not be written",
       });
     }
   }
@@ -762,24 +908,40 @@ async function apply(
   for (const s of plan.steps) {
     if (!isExecStep(s)) continue;
     // A command line without any secret: the argv never holds the token.
-    const target = s.exec.argv.slice(0, 3).join(" ");
+    const command = s.exec.argv.slice(0, 3).join(" ");
     if (!have(s)) {
-      outcomes.push({ tool: absent(s), target, state: "missing" });
+      outcomes.push({ tool: s.tool, state: "missing", text: command, command });
       continue;
     }
-    outcomes.push(await runStep(io, o, s, target, realHome, runner));
+    outcomes.push(
+      await runStep(io, o, s, command, realHome, token, runner, {
+        host: registryHost,
+      }),
+    );
   }
   for (const k of plan.skipped)
     outcomes.push({
       tool: k.ecosystem,
-      target: k.owner,
       state: "skipped",
+      text: k.owner,
+      product: k.owner,
       note: k.reason,
     });
 
-  const bad = outcomes.some((x) => x.state === "failed");
-  const refused = outcomes.some((x) => x.state === "refused");
-  const exit = bad ? 1 : refused ? 4 : 0;
+  const bad = outcomes.filter((x) => x.state === "failed");
+  const refused = outcomes.filter((x) => x.state === "refused");
+  const exit = bad.length ? 1 : refused.length ? 4 : 0;
+  const warnings = [
+    ...new Set(
+      outcomes.flatMap((x) =>
+        x.git
+          ? [
+              `${x.git} is a git repository: the token is now in a tracked file.`,
+            ]
+          : [],
+      ),
+    ),
+  ];
 
   if (io.json) {
     io.stdout.write(
@@ -795,76 +957,90 @@ async function apply(
         },
         steps: outcomes.map((x) => ({
           tool: x.tool,
-          target: x.target,
           state: x.state,
+          ...(x.file ? { file: x.file } : {}),
+          ...(x.link ? { link: x.link } : {}),
+          ...(x.backup ? { backup: x.backup } : {}),
+          ...(x.command ? { command: x.command } : {}),
+          ...(x.product ? { product: x.product } : {}),
           ...(x.note ? { note: x.note } : {}),
         })),
+        ...(warnings.length ? { warnings } : {}),
       }),
     );
     return exit;
   }
 
-  const done = outcomes.filter((x) =>
-    ["created", "updated", "unchanged"].includes(x.state),
+  const ok = outcomes.filter((x) =>
+    ["created", "updated", "unchanged", "ran"].includes(x.state),
   ).length;
-  const found = outcomes.filter((x) => x.state !== "missing");
+  const tried = ok + bad.length + refused.length;
   const missing = outcomes.filter((x) => x.state === "missing");
-  const headline =
-    bad || refused
-      ? `Set up ${done} of ${found.length}.`
-      : done
-        ? `Set up ${done} ${done === 1 ? "tool" : "tools"}.`
-        : "Nothing to set up.";
-  io.stdout.write(
-    `${gap}${block(t, bad || refused ? "warn" : "ok", [[text(headline)]])}\n`,
-  );
-  const word: Record<StepState, string> = {
-    created: "created",
-    updated: "updated",
-    unchanged: "already set",
-    missing: "not installed",
-    skipped: "skipped",
-    refused: "refused",
-    failed: "failed",
-  };
-  if (outcomes.length)
+  const shownRows = outcomes.filter((x) => x.state !== "missing");
+  const sep = t.symbols.separator;
+  const columns = t.caps.columns;
+  /** One wrapped sentence under the rows, aligned with their text. */
+  const sentence = (line: string): string =>
+    wrapSpans([text(line)], Math.max(1, columns - (columns < 32 ? 0 : 3)))
+      .map((l) => `${columns < 32 ? "" : "   "}${t.painter.line(l)}\n`)
+      .join("");
+
+  if (!feeds.length) {
     io.stdout.write(
-      rowsText(
-        t,
-        [
-          ...found.map((x): [string, ReturnType<typeof plain>[number]] => [
-            x.tool,
-            [
-              text(x.target, { unit: true }),
-              text(` ${word[x.state]}`),
-              ...(x.note ? [text(` ${t.symbols.separator} ${x.note}`)] : []),
-            ],
-          ]),
-          ...(missing.length
-            ? ([
-                [
-                  "Not found",
-                  [text(missing.map((x) => x.tool).join(", "), { unit: true })],
-                ],
-              ] as [string, ReturnType<typeof plain>[number]][])
-            : []),
-        ],
-        { indent: 3, label: 11 },
-      ),
-    );
-  else if (!feeds.length)
-    io.stdout.write(
-      block(
+      `${gap}${block(
         t,
         "warn",
         plain(
           o.owner
-            ? `No private feed of ${o.owner} on this account.`
-            : "No private package feeds on this account yet.",
+            ? `This account has no private feeds for ${o.owner}.`
+            : "This account has no private package feeds.",
         ),
-      ),
+      )}\n`,
     );
-  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  } else {
+    const headline =
+      bad.length || refused.length
+        ? `Set up ${ok} of ${tried} ${tried === 1 ? "tool" : "tools"}.`
+        : ok
+          ? `Set up ${ok} ${ok === 1 ? "tool" : "tools"}.`
+          : "Nothing to set up.";
+    io.stdout.write(
+      `${gap}${block(t, ok && !bad.length && !refused.length ? "ok" : "warn", plain(headline))}\n`,
+    );
+  }
+  const word: Record<StepState, string> = {
+    created: " created",
+    updated: " updated",
+    unchanged: " already set",
+    ran: "",
+    missing: "",
+    skipped: "",
+    refused: " refused",
+    failed: " failed",
+  };
+  const rows: [string, Line][] = shownRows.map((x) => [
+    x.tool,
+    [
+      text(x.text, { unit: true }),
+      ...(x.link || (x.file && x.file !== x.text && x.state !== "refused")
+        ? [text(` → ${x.file}`, { unit: true })]
+        : []),
+      text(word[x.state]),
+      ...(x.backup ? [text(` ${sep} backup ${x.backup}`)] : []),
+      ...(x.note ? [text(` ${sep} ${x.note}`)] : []),
+    ],
+  ]);
+  if (missing.length)
+    rows.push([
+      "Not installed",
+      [
+        text([...new Set(missing.map((x) => x.tool))].join(", "), {
+          unit: true,
+        }),
+      ],
+    ]);
+  if (rows.length) io.stdout.write(rowsText(t, rows, { indent: 3, label: 15 }));
+  for (const w of warnings) io.stdout.write(`\n${block(t, "warn", plain(w))}`);
   io.stdout.write(
     `\n${rowsText(
       t,
@@ -880,15 +1056,39 @@ async function apply(
             ),
           ],
         ],
-        ["Ends", [text(day(expiresAt, io.env), { unit: true })]],
+        ["Expires", [text(day(expiresAt, io.env), { unit: true })]],
       ],
-      { indent: 3, label: 11 },
+      { indent: 3, label: 15 },
     )}`,
   );
+  io.stdout.write("\n");
+  if (bad.length || refused.length)
+    io.stdout.write(
+      sentence(
+        `Fix ${list([...new Set([...bad, ...refused].map((x) => x.tool))])}, then run pkey feeds setup --write again.`,
+      ),
+    );
   io.stdout.write(
-    `\n${t.caps.columns < 32 ? "" : "   "}Revoke it any time in Polaris Locker, under Packages.\n`,
+    sentence("Revoke it any time in Polaris Locker, under Packages."),
   );
   return exit;
+}
+
+/** The last line a failed command printed, with the token and any pkeyp_ value taken out. */
+function lastLine(out: string, token: string, env: LoginIo["env"]): string {
+  const line =
+    out
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .pop() ?? "";
+  return shown(
+    line
+      .split(token)
+      .join("…")
+      .replace(/pkeyp_[A-Za-z0-9_-]+/g, "…"),
+    env,
+  ).slice(0, 120);
 }
 
 /** Run one command step; the token goes by stdin or a 0600 file, never argv. */
@@ -896,15 +1096,18 @@ async function runStep(
   io: LoginIo,
   o: FeedsWriteOptions,
   s: Extract<PlanStep, { exec: unknown }>,
-  target: string,
+  command: string,
   cwd: string,
+  token: string,
   run: NonNullable<FeedWriteSeams["run"]>,
+  at: { host: string },
 ): Promise<Outcome> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(io.env))
     if (typeof v === "string" && !k.startsWith("PKEY_")) env[k] = v;
   env["HOME"] = cwd;
   const argv = [...s.exec.argv];
+  const base = { tool: s.tool, command, product: s.owner };
   let dir: string | undefined;
   try {
     const tf = s.exec.tokenFile;
@@ -913,9 +1116,9 @@ async function runStep(
       const probe = await run([...argv, "--help"], { cwd, env });
       if (!probe.out.includes(tf.flag))
         return {
-          tool: s.tool,
-          target,
+          ...base,
           state: "skipped",
+          text: command,
           note: `this ${s.tool} has no ${tf.flag}; set it up by hand`,
         };
       dir = mkdtempSync(path.join((o.seams.tmpdir ?? tmpdir)(), "pkey-"));
@@ -925,13 +1128,29 @@ async function runStep(
     }
     const r = await run(argv, { cwd, env, stdin: s.exec.stdin });
     return r.code === 0
-      ? { tool: s.tool, target, state: "updated" }
+      ? {
+          ...base,
+          state: "ran",
+          text:
+            s.tool === "cargo"
+              ? `signed in to registry ${s.owner}`
+              : `signed in to ${at.host}`,
+        }
       : {
-          tool: s.tool,
-          target,
+          ...base,
           state: "failed",
-          note: r.code === null ? "did not run" : `exit ${r.code}`,
+          text: argv.slice(0, 2).join(" "),
+          note:
+            lastLine(r.out, token, io.env) ||
+            (r.code === null ? "did not run" : `exit ${r.code}`),
         };
+  } catch {
+    return {
+      ...base,
+      state: "failed",
+      text: argv.slice(0, 2).join(" "),
+      note: "could not run",
+    };
   } finally {
     if (dir) rmSync(dir, { recursive: true, force: true });
   }

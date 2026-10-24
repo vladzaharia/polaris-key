@@ -10593,15 +10593,15 @@ var require_parser = __commonJS({
     var node_process = __require("process");
     var cst = require_cst();
     var lexer = require_lexer();
-    function includesToken(list2, type) {
-      for (let i = 0; i < list2.length; ++i)
-        if (list2[i].type === type)
+    function includesToken(list3, type) {
+      for (let i = 0; i < list3.length; ++i)
+        if (list3[i].type === type)
           return true;
       return false;
     }
-    function findNonEmptyIndex(list2) {
-      for (let i = 0; i < list2.length; ++i) {
-        switch (list2[i].type) {
+    function findNonEmptyIndex(list3) {
+      for (let i = 0; i < list3.length; ++i) {
+        switch (list3[i].type) {
           case "space":
           case "comment":
           case "newline":
@@ -14985,7 +14985,7 @@ var CompiledPattern = class {
     this.mark = new Int32Array(insts.length).fill(-1);
   }
   /** Epsilon-closure of `pc`, appended to `list`. Returns true if `match` is reachable. */
-  addThread(list2, pc, pos, len) {
+  addThread(list3, pc, pos, len) {
     const stack = [pc];
     while (stack.length) {
       const at = stack.pop();
@@ -15012,7 +15012,7 @@ var CompiledPattern = class {
         case "match":
           return true;
         default:
-          list2.push(at);
+          list3.push(at);
       }
     }
     return false;
@@ -15667,9 +15667,9 @@ function schemaProblem(type, schema, where2 = "schema") {
     if (items !== null) return items;
   }
   for (const k of ["enum", "examples"]) {
-    const list2 = schema[k];
-    if (list2 !== void 0) {
-      if (!Array.isArray(list2) || !list2.every((v) => valueMatches(type, v)))
+    const list3 = schema[k];
+    if (list3 !== void 0) {
+      if (!Array.isArray(list3) || !list3.every((v) => valueMatches(type, v)))
         return `${where2}.${k} must list ${TYPE_WORDS[type]} values`;
     }
   }
@@ -16187,8 +16187,8 @@ function isOneOf(v, values) {
 function isRecord22(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function add(list2, file, path33, code, message) {
-  list2.push({ file, path: path33, code, message });
+function add(list3, file, path33, code, message) {
+  list3.push({ file, path: path33, code, message });
 }
 var P = "product";
 var S = "schema";
@@ -16657,8 +16657,8 @@ function emitConflict(warnings, doc, path33, old, write, used) {
       `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
     );
 }
-function add2(list2, file, path33, code, message) {
-  list2.push({ file, path: path33, code, message });
+function add2(list3, file, path33, code, message) {
+  list3.push({ file, path: path33, code, message });
 }
 function isRecord3(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -18102,8 +18102,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add3(list2, file, path33, code, message) {
-  list2.push({ file, path: path33, code, message });
+function add3(list3, file, path33, code, message) {
+  list3.push({ file, path: path33, code, message });
 }
 var globWork = { steps: 0 };
 function withIncludedChannels(channels2) {
@@ -18280,8 +18280,8 @@ var CONTROL_RE = /[\u0000-\u001f\u007f]/;
 function isRecord5(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function oneOf2(list2, v) {
-  return typeof v === "string" && list2.includes(v);
+function oneOf2(list3, v) {
+  return typeof v === "string" && list3.includes(v);
 }
 function codePoints(s) {
   return [...s].length;
@@ -19550,12 +19550,12 @@ var CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
 var MAX_PROVIDES = 4096;
 var DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
 var PROVIDES_FILE_PATTERN = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+){0,31}$/;
-function providesListProblem(list2) {
-  if (!Array.isArray(list2)) return "is not an array of content ids";
-  if (list2.length > MAX_PROVIDES)
-    return `holds ${list2.length} ids; at most ${MAX_PROVIDES}`;
+function providesListProblem(list3) {
+  if (!Array.isArray(list3)) return "is not an array of content ids";
+  if (list3.length > MAX_PROVIDES)
+    return `holds ${list3.length} ids; at most ${MAX_PROVIDES}`;
   const seen = /* @__PURE__ */ new Set();
-  for (const [i, id] of list2.entries()) {
+  for (const [i, id] of list3.entries()) {
     if (typeof id !== "string" || !CONTENT_ID_PATTERN.test(id))
       return `entry ${i} (${JSON.stringify(id)?.slice(0, 80)}) is not a content id: printable ASCII without spaces, 1 to 128 characters`;
     if (seen.has(id)) return `lists ${id} twice`;
@@ -23520,8 +23520,8 @@ function isOneOf2(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add4(list2, file, path33, code, message) {
-  list2.push({ file, path: path33, code, message });
+function add4(list3, file, path33, code, message) {
+  list3.push({ file, path: path33, code, message });
 }
 
 // src/oidc.ts
@@ -24379,6 +24379,7 @@ var COMMANDS = [
     name: "feeds",
     group: "feeds",
     json: true,
+    valueless: ["no-browser"],
     context: ["product", "baseUrl"],
     summary: "Package-feed setup and feed pruning",
     rows: [
@@ -24389,7 +24390,7 @@ var COMMANDS = [
     tree: { setup: [], prune: [] },
     usage: [
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
-      "pkey feeds setup --write [--owner slug] [--base-url url] [--json]",
+      "pkey feeds setup --write [--owner slug] [--no-browser] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
     ],
     about: [
@@ -24403,7 +24404,7 @@ var COMMANDS = [
       },
       {
         subs: ["setup"],
-        text: "pkey feeds setup --write signs in with a code, as pkey login does, but for a read-only packages token that you approve in Polaris Locker, then sets up the tools it finds on PATH: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc (pip, uv, Poetry, go), ~/.gradle/gradle.properties, ~/.cargo/config.toml, docker, cargo and swift. It changes only the lines it owns, writes files at 0600, keeps the first version of a changed file as <file>.pkey-backup, and never puts the token in a command line or on screen. It does not touch the sign-in pkey login saved. --owner limits it to one product's feeds. It refuses (exit 4) in CI and without a terminal; print the setup there. Godot feeds are skipped: their token is in the editor's URL, which the console shows. A file it cannot merge safely, or that leaves your home directory by a symbolic link, is left alone and exits 4; a command that fails exits 1."
+        text: "pkey feeds setup --write signs in with a code and a read-only personal token that you approve in Polaris Locker, then sets up the tools it finds on PATH. It changes only the lines it owns, in files under your home directory at 0600, and keeps the first version of a changed file as <file>.pkey-backup. It refuses (exit 4) in CI and without a terminal, where you print the setup instead; --owner limits it to one product's feeds. A Godot feed is skipped: the editor needs its own URL, made in Polaris Locker under Packages."
       },
       { subs: ["prune"], text: CI_PARA }
     ],
@@ -25705,10 +25706,10 @@ function moveLegacyRecipes(docs, cwd, moves) {
       const recipe = plain(doc.edit.get(["edgeMint", String(i)]));
       const id = recipe?.id;
       if (typeof id !== "string") continue;
-      for (const list2 of ["entries", "catalog"]) {
-        const n = lengthOf(schema.edit.get([list2]));
+      for (const list3 of ["entries", "catalog"]) {
+        const n = lengthOf(schema.edit.get([list3]));
         for (let j = 0; j < n; j++) {
-          const at = [list2, String(j)];
+          const at = [list3, String(j)];
           if (schema.edit.get([...at, "key"]) !== id || schema.edit.get([...at, "kind"]) !== "secret" || schema.edit.get([...at, "delivery"]) !== "edgeMint" || isSet(schema.edit.get([...at, "mint"])))
             continue;
           const { id: _id, ...block2 } = recipe;
@@ -25720,7 +25721,7 @@ function moveLegacyRecipes(docs, cwd, moves) {
           moves.push({
             file: path4.relative(cwd, doc.file),
             from: `/edgeMint/${i}`,
-            to: `${path4.relative(cwd, schema.file)}#/${list2}/${j}/mint`
+            to: `${path4.relative(cwd, schema.file)}#/${list3}/${j}/mint`
           });
         }
       }
@@ -25757,17 +25758,17 @@ async function fixManifest(manifest, cwd) {
       });
     }
     if (name === "schema") {
-      for (const list2 of ["entries", "catalog"]) {
-        const entries = edit.get([list2]);
+      for (const list3 of ["entries", "catalog"]) {
+        const entries = edit.get([list3]);
         const n = Array.isArray(entries) ? entries.length : entries?.items?.length ?? 0;
         for (let i = 0; i < n; i++) {
-          if (edit.get([list2, String(i), "kind"]) !== "secret" || edit.get([list2, String(i), "secret"]) !== true)
+          if (edit.get([list3, String(i), "kind"]) !== "secret" || edit.get([list3, String(i), "secret"]) !== true)
             continue;
-          edit.remove([list2, String(i), "secret"]);
+          edit.remove([list3, String(i), "secret"]);
           doc.changed = true;
           moves.push({
             file: path4.relative(cwd, file),
-            from: `/${list2}/${i}/secret`,
+            from: `/${list3}/${i}/secret`,
             to: "(dropped)"
           });
         }
@@ -26971,6 +26972,38 @@ function cmdLogin(io) {
     rerun: "pkey login",
     scope: "admin",
     title: "Polaris Key console",
+    copy: {
+      opening: "Opening Polaris Key in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey login again."
+      },
+      unsupportedFix: `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      tokenLimit: (limit, origin) => {
+        const url = `${origin}/manage/#/personal-tokens`;
+        return [
+          [
+            text(
+              limit ? `You already have ${limit} personal tokens, the most allowed.` : "You already have the most personal tokens allowed."
+            )
+          ],
+          rerunLine(
+            "pkey login",
+            io,
+            origin,
+            "Revoke one in Personal tokens, then run ",
+            " again."
+          ),
+          [text(url, { break: "url", link: url })]
+        ];
+      },
+      forbidden: [
+        "This account can't sign in.",
+        "Ask a Superadmin to check your access."
+      ],
+      denied: (code) => `Code ${code} was canceled in the browser.`,
+      maybeApproved: "If you approved it, the token may exist; check Personal tokens."
+    },
     approvePath: (code) => `/manage/device?code=${code}`,
     warnAdminEnv: true,
     // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
@@ -27021,7 +27054,7 @@ async function flow(io, seams, deferred, mode) {
   const now = seams.now ?? Date.now;
   const sleep = seams.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const f = io.fetchImpl ?? fetch;
-  const { replaces, approved: settle } = await mode.begin();
+  const { replaces, note, approved: settle } = await mode.begin();
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
   const say = (s) => io.stdout.write(s);
@@ -27056,7 +27089,8 @@ async function flow(io, seams, deferred, mode) {
           columns
         ),
         ""
-      ] : []
+      ] : [],
+      ...note ? [...layout([text(note)], columns), ""] : []
     ];
   };
   if (!io.json) {
@@ -27124,14 +27158,14 @@ async function flow(io, seams, deferred, mode) {
     throw new Redirected(host);
   if (startRes.status === 429)
     throw new Refusal(
-      "Too many sign-in attempts from this network.",
-      "Wait a few minutes, then run pkey login again.",
+      mode.copy.rateLimited.message,
+      mode.copy.rateLimited.fix,
       "rate-limited"
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
       `${host} doesn't offer terminal sign-in.`,
-      `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      mode.copy.unsupportedFix,
       "unsupported"
     );
   if (startRes.status !== 201)
@@ -27182,7 +27216,7 @@ async function flow(io, seams, deferred, mode) {
         code: userCode,
         url: approveUrl,
         expiresIn,
-        replaces
+        ...mode.scope === "admin" ? { replaces } : {}
       })
     );
   } else {
@@ -27192,11 +27226,7 @@ async function flow(io, seams, deferred, mode) {
       const shown3 = short2 ? `${origin}${mode.approvePath("").split("?")[0]}` : approveUrl;
       return [
         ...opened ? layout(
-          [
-            text(
-              `Opening Polaris Key in your browser${out.symbols.ellipsis}`
-            )
-          ],
+          [text(`${mode.copy.opening}${out.symbols.ellipsis}`)],
           columns
         ) : [],
         ...layout(
@@ -27331,7 +27361,7 @@ async function flow(io, seams, deferred, mode) {
     lines: plain2("Canceled. Nothing was saved.")
   });
   let sawFailure = false;
-  const maybeApproved = () => sawFailure ? plain2("If you approved it, the token may exist; check Personal tokens.") : [];
+  const maybeApproved = () => sawFailure ? plain2(mode.copy.maybeApproved) : [];
   const expired = () => report2({
     state: "expired",
     exit: 1,
@@ -27419,26 +27449,13 @@ async function flow(io, seams, deferred, mode) {
       const limit = /at most (\d{1,3}) /.exec(
         String(body["message"] ?? "")
       )?.[1];
-      const url = `${origin}/manage/#/personal-tokens`;
+      const lines4 = mode.copy.tokenLimit(limit, origin);
       return report2({
         state: "token_limit",
         exit: 4,
         kind: "warn",
-        lines: [
-          [
-            text(
-              limit ? `You already have ${limit} personal tokens, the most allowed.` : "You already have the most personal tokens allowed."
-            )
-          ],
-          rerun(
-            io,
-            origin,
-            "Revoke one in Personal tokens, then run ",
-            " again."
-          ),
-          [text(url, { break: "url", link: url })]
-        ],
-        extra: { url }
+        lines: lines4,
+        extra: mode.scope === "admin" ? { url: `${origin}/manage/#/personal-tokens` } : {}
       });
     }
     if (res.status === 403)
@@ -27446,10 +27463,7 @@ async function flow(io, seams, deferred, mode) {
         state: "refused",
         exit: 4,
         kind: "warn",
-        lines: plain2(
-          "This account can't sign in.",
-          "Ask a Superadmin to check your access."
-        )
+        lines: plain2(...mode.copy.forbidden)
       });
     if (!res.ok)
       return report2({
@@ -27473,7 +27487,7 @@ async function flow(io, seams, deferred, mode) {
         exit: 1,
         kind: "warn",
         lines: [
-          [text(`Code ${userCode} was canceled in the browser.`)],
+          [text(mode.copy.denied(userCode))],
           rerun(io, origin, "Run ", " to try again.")
         ]
       });
@@ -29383,7 +29397,15 @@ function userConfigPlan(feeds, ctx) {
     const at = { ecosystem, owner };
     const file = (tool, onPath, path33, edit, secret = false) => files.push({ tool, onPath, file: path33, edit, secret, ...at });
     const netrc = (onPath) => {
-      if (netrcDone.has(host)) return;
+      if (netrcDone.has(host)) {
+        const at2 = files.findIndex((f) => f.file === ".netrc");
+        const prev = files[at2];
+        files[at2] = {
+          ...prev,
+          onPath: [.../* @__PURE__ */ new Set([...prev.onPath, ...onPath])]
+        };
+        return;
+      }
       netrcDone.add(host);
       file(
         "netrc",
@@ -29531,7 +29553,7 @@ function userConfigPlan(feeds, ctx) {
     } else {
       skipped.push({
         ...at,
-        reason: "its token rides in the editor's URL: set it up in the console"
+        reason: "needs an editor URL from Polaris Locker, under Packages"
       });
     }
   }
@@ -29639,8 +29661,8 @@ function mergeYaml(lines4, keys, value) {
     }
     if (found < 0) {
       let at = regionEnd;
-      while (at > start && blank(lines4[at - 1])) at--;
-      const base = child >= 0 ? child : parent + 2 < 0 ? 0 : parent + 2;
+      while (at > start && /^\s*$/.test(lines4[at - 1])) at--;
+      const base = child >= 0 ? child : parent < 0 ? 0 : parent + 2;
       const add5 = [];
       keys.slice(depth).forEach((k, n) => {
         const pad2 = " ".repeat(base + 2 * n);
@@ -29686,10 +29708,31 @@ function tomlKeyOf(line) {
   const m = /^\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*=/.exec(line);
   return m ? m[1].replace(/^["']|["']$/g, "") : null;
 }
+function tomlPath(src) {
+  const out = [];
+  const re = /\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*(\.|$)/y;
+  let at = 0;
+  while (at < src.length) {
+    re.lastIndex = at;
+    const m = re.exec(src);
+    if (!m) return null;
+    out.push(m[1].replace(/^["']|["']$/g, ""));
+    at = re.lastIndex;
+    if (m[2] === "") break;
+  }
+  return out.length ? out : null;
+}
+function tomlHeader(line) {
+  const m = /^\s*\[(?!\[)\s*(.+?)\s*\]\s*(#.*)?$/.exec(line);
+  return m ? tomlPath(m[1]) : null;
+}
 function mergeToml(lines4, table, key, value) {
-  const header = (t) => new RegExp(`^\\s*\\[\\s*${esc(t)}\\s*\\]\\s*(#.*)?$`);
   const regionOf = (t) => {
-    const h = lines4.findIndex((l) => header(t).test(l));
+    const want = tomlPath(t);
+    const h = lines4.findIndex((l) => {
+      const got = tomlHeader(l);
+      return got !== null && want !== null && got.length === want.length && got.every((g, n) => g === want[n]);
+    });
     if (h < 0) return null;
     let e = lines4.length;
     for (let i = h + 1; i < lines4.length; i++)
@@ -29733,12 +29776,18 @@ function mergeNetrc(lines4, machine, login, password) {
   const mine = new RegExp(`^\\s*machine\\s+${esc(machine)}(\\s|$)`);
   const at = lines4.findIndex((l) => mine.test(l));
   if (at < 0) {
-    if (lines4.length && !blank(lines4[lines4.length - 1])) lines4.push("");
-    lines4.push(
+    const block2 = [
       `machine ${machine}`,
       `  login ${login}`,
       `  password ${password}`
-    );
+    ];
+    const dflt = lines4.findIndex((l) => /^\s*default\b/.test(l));
+    if (dflt >= 0) {
+      lines4.splice(dflt, 0, ...block2, "");
+      return;
+    }
+    if (lines4.length && !blank(lines4[lines4.length - 1])) lines4.push("");
+    lines4.push(...block2);
     return;
   }
   let to = lines4.length;
@@ -29814,7 +29863,7 @@ function safeTarget(realHome, rel) {
         throw new Unsafe("a symbolic link that goes nowhere");
       }
       if (!within(realHome, real))
-        throw new Unsafe("a symbolic link that leaves the home directory");
+        throw new Unsafe("links outside your home directory");
     }
     cur = real;
   }
@@ -29828,9 +29877,9 @@ function writeMerged(target, edits, secret) {
   let mode = 384;
   if (exists2) {
     const m = statSync(target).mode & 511;
-    if (after === before && (!secret || m === 384))
+    if (after === before && (!secret || (m & 63) === 0))
       return { state: "unchanged", backup: false };
-    mode = secret ? 384 : m;
+    mode = secret ? m & 384 || 384 : m;
   }
   const dir = path5.dirname(target);
   mkdirSync(dir, { recursive: true, mode: 448 });
@@ -29892,43 +29941,106 @@ function registryOf(v) {
     return null;
   }
 }
-var tilde = (rel) => `~/${rel}`;
+var CLIENTS = [
+  ["npm", ["npm", "pnpm"]],
+  ["yarn", ["yarn"]],
+  ["bun", ["bun"]],
+  ["pip/uv", ["pip", "pip3", "uv", "poetry"]],
+  ["go", ["go"]],
+  ["gradle", ["gradle"]],
+  ["cargo", ["cargo"]],
+  ["swift", ["swift"]],
+  ["docker", ["docker"]]
+];
+var list2 = (items) => items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+var PrintRefusal = class extends Refusal {
+  lines;
+  constructor(message, lead, code) {
+    const units = [
+      "pkey feeds setup",
+      "--ecosystem npm",
+      "--owner slug",
+      "--token-env NAME"
+    ];
+    super(message, `${lead} ${units.join(" ")}`, code);
+    this.lines = [
+      [text(message)],
+      [text(lead)],
+      units.flatMap(
+        (u, n) => [...n ? [text(" ")] : [], text(u, { unit: true })]
+      )
+    ];
+  }
+};
+function installed(io, o) {
+  const onPath = o.seams.onPath ?? defaultOnPath;
+  const pathVar = io.env["PATH"] ?? "";
+  return CLIENTS.filter(
+    ([, names]) => names.some((n) => onPath(n, pathVar))
+  ).map(([label]) => label);
+}
 function cmdFeedsWrite(io, o) {
   const mode = {
     command: "feeds setup",
     rerun: "pkey feeds setup --write",
     scope: "packages:read",
     title: "Polaris Key packages",
+    copy: {
+      opening: "Opening Polaris Locker in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey feeds setup --write again."
+      },
+      unsupportedFix: "Check that this is your Polaris Key server.",
+      tokenLimit: () => [
+        [text("You already have the most personal tokens.")],
+        [
+          text(
+            "Revoke one in Polaris Locker, under Packages, then run pkey feeds setup --write again."
+          )
+        ]
+      ],
+      forbidden: [
+        "This Polaris Locker account can't get a token.",
+        "Sign in to Polaris Locker to check it."
+      ],
+      denied: (code) => `Code ${code} was denied in Polaris Locker.`,
+      maybeApproved: "If you approved it, a token may exist: check Polaris Locker, under Packages."
+    },
     // The Polaris Locker page that approves it, built from the origin pkey resolved.
     approvePath: (code) => `/#/account/approve?code=${code}`,
     warnAdminEnv: false,
     // The refusals come first: before the origin is resolved, so before any request.
     guard: () => guards(io, o),
-    begin: async () => {
-      return {
-        replaces: false,
-        approved: (body, gap) => apply(io, o, body, gap)
-      };
-    }
+    begin: async () => ({
+      replaces: false,
+      note: `Sets up ${list2(installed(io, o))}.`,
+      approved: (body, gap) => apply(io, o, body, gap)
+    })
   };
   return runDeviceFlow(io, mode);
 }
 function guards(io, o) {
-  const print = "Print it instead: pkey feeds setup --ecosystem <name> --owner <slug> --token-env NAME.";
   if (isCi(io.env))
-    throw new Refusal(
+    throw new PrintRefusal(
       "pkey feeds setup --write needs a person at a terminal.",
-      print,
+      "In CI, print the setup instead:",
       "ci"
     );
   const seams = resolveSeams(io);
   if (!seams.stdin?.isTTY || !io.stdout.isTTY)
-    throw new Refusal(
-      "pkey feeds setup --write needs a terminal to show the sign-in code.",
-      print,
+    throw new PrintRefusal(
+      "pkey feeds setup --write needs a person at a terminal.",
+      "Without one, print the setup instead:",
       "no-tty"
     );
   home(io, o.cwd);
+  if (!installed(io, o).length)
+    throw new Refusal(
+      "None of the tools pkey sets up are installed.",
+      "Install npm, pip, go, cargo, docker or swift, or print the setup with pkey feeds setup.",
+      "no-tools"
+    );
 }
 function home(io, cwd) {
   const raw = io.env["HOME"] ?? io.env["USERPROFILE"];
@@ -29962,19 +30074,38 @@ function home(io, cwd) {
     );
   return real;
 }
+function gitTree(realHome, file) {
+  let dir = path5.dirname(file);
+  while (within(realHome, dir)) {
+    if (existsSync(path5.join(dir, ".git"))) return display(realHome, dir);
+    if (dir === realHome) break;
+    dir = path5.dirname(dir);
+  }
+  return void 0;
+}
+var display = (realHome, p) => p === realHome ? "~" : `~/${path5.relative(realHome, p).split(path5.sep).join("/")}`;
+function toolLabel(s) {
+  if (s.tool !== "netrc") return s.tool;
+  const names = CLIENTS.filter(([, n]) => n.some((x) => s.onPath.includes(x))).map(([label]) => label).join("/");
+  return names || "netrc";
+}
 async function apply(io, o, body, gap) {
   const origin = originFor(io, "feeds setup");
   const host = hostOf2(origin);
+  const label = typeof body["label"] === "string" && body["label"].trim() ? shown(body["label"], io.env).slice(0, 200) : null;
+  const t = io.term(io.stdout);
+  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  const revoke = `Revoke ${quote[0]}${label ?? `pkey on ${host}`}${quote[1]} in Polaris Locker, under Packages.`;
   const odd = () => new Failure(
     `${host} answered the sign-in unexpectedly. Nothing was written.`,
-    "Try again, or check --base-url.",
+    `Check --base-url. ${revoke}`,
     "unexpected-answer",
     { host }
   );
   if (body["scope"] !== "packages:read")
     throw new Refusal(
       `${host} issued a token for a different scope than the one pkey asked for. Nothing was written.`,
-      "Check --base-url, then try again.",
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
       "wrong-scope"
     );
   const token = body["token"];
@@ -29985,7 +30116,7 @@ async function apply(io, o, body, gap) {
   if (body["registryOrigin"] === null || body["registryOrigin"] === void 0)
     throw new Refusal(
       `${host} has no package registry. Nothing was written.`,
-      "Check --base-url.",
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
       "no-registry"
     );
   if (!registry) throw odd();
@@ -29995,9 +30126,7 @@ async function apply(io, o, body, gap) {
   } catch {
     throw odd();
   }
-  const label = typeof body["label"] === "string" && body["label"].trim() ? shown(body["label"], io.env).slice(0, 200) : null;
   const hint2 = token.slice(-4);
-  const t = io.term(io.stdout);
   let plan;
   try {
     plan = userConfigPlan(feeds, { origin: registry, token });
@@ -30005,26 +30134,31 @@ async function apply(io, o, body, gap) {
     throw odd();
   }
   const realHome = home(io, o.cwd);
+  const registryHost = new URL(registry).host;
   const pathVar = io.env["PATH"] ?? "";
   const onPath = o.seams.onPath ?? defaultOnPath;
   const runner = o.seams.run ?? defaultRun;
-  const absent = (s) => s.tool === "netrc" ? s.onPath.filter((n) => n !== "pip3").join("/") : s.tool;
   const have = (s) => s.onPath.some((n) => onPath(n, pathVar));
   const outcomes = [];
   const byFile = /* @__PURE__ */ new Map();
   for (const s of plan.steps) {
     if (isExecStep(s)) continue;
     if (!have(s)) {
-      const tool = absent(s);
+      const tool = toolLabel(s);
       if (!outcomes.some((x) => x.tool === tool && x.state === "missing"))
-        outcomes.push({ tool, target: tilde(s.file), state: "missing" });
+        outcomes.push({
+          tool,
+          state: "missing",
+          text: `~/${s.file}`,
+          file: `~/${s.file}`
+        });
       continue;
     }
     byFile.set(s.file, [...byFile.get(s.file) ?? [], s]);
   }
   for (const [file, steps] of byFile) {
-    const tool = [...new Set(steps.map((s) => s.tool))].join(" ");
-    const target = tilde(file);
+    const tool = [...new Set(steps.map(toolLabel))].join(" ");
+    const shownFile = `~/${file}`;
     try {
       const real = safeTarget(realHome, file);
       const r = writeMerged(
@@ -30032,41 +30166,61 @@ async function apply(io, o, body, gap) {
         steps.map((s) => s.edit),
         steps.some((s) => s.secret)
       );
+      const where2 = display(realHome, real);
+      const git = r.state === "unchanged" ? void 0 : gitTree(realHome, real);
       outcomes.push({
         tool,
-        target,
         state: r.state,
-        ...r.backup ? { note: `kept ${path5.basename(file)}${BACKUP_SUFFIX}` } : {}
+        text: shownFile,
+        file: where2,
+        ...where2 !== shownFile ? { link: shownFile } : {},
+        ...r.backup ? { backup: `${where2}${BACKUP_SUFFIX}` } : {},
+        ...git ? { git } : {}
       });
     } catch (e) {
-      const why = e instanceof Unsafe || e instanceof Unmergeable ? e.message : "could not be written";
+      const known = e instanceof Unsafe || e instanceof Unmergeable;
       outcomes.push({
         tool,
-        target,
-        state: e instanceof Unsafe || e instanceof Unmergeable ? "refused" : "failed",
-        note: why
+        state: known ? "refused" : "failed",
+        text: shownFile,
+        file: shownFile,
+        note: known ? e.message : "could not be written"
       });
     }
   }
   for (const s of plan.steps) {
     if (!isExecStep(s)) continue;
-    const target = s.exec.argv.slice(0, 3).join(" ");
+    const command = s.exec.argv.slice(0, 3).join(" ");
     if (!have(s)) {
-      outcomes.push({ tool: absent(s), target, state: "missing" });
+      outcomes.push({ tool: s.tool, state: "missing", text: command, command });
       continue;
     }
-    outcomes.push(await runStep(io, o, s, target, realHome, runner));
+    outcomes.push(
+      await runStep(io, o, s, command, realHome, token, runner, {
+        host: registryHost
+      })
+    );
   }
   for (const k of plan.skipped)
     outcomes.push({
       tool: k.ecosystem,
-      target: k.owner,
       state: "skipped",
+      text: k.owner,
+      product: k.owner,
       note: k.reason
     });
-  const bad = outcomes.some((x) => x.state === "failed");
-  const refused = outcomes.some((x) => x.state === "refused");
-  const exit = bad ? 1 : refused ? 4 : 0;
+  const bad = outcomes.filter((x) => x.state === "failed");
+  const refused = outcomes.filter((x) => x.state === "refused");
+  const exit = bad.length ? 1 : refused.length ? 4 : 0;
+  const warnings = [
+    ...new Set(
+      outcomes.flatMap(
+        (x) => x.git ? [
+          `${x.git} is a git repository: the token is now in a tracked file.`
+        ] : []
+      )
+    )
+  ];
   if (io.json) {
     io.stdout.write(
       envelope("feeds setup", exit, {
@@ -30081,67 +30235,79 @@ async function apply(io, o, body, gap) {
         },
         steps: outcomes.map((x) => ({
           tool: x.tool,
-          target: x.target,
           state: x.state,
+          ...x.file ? { file: x.file } : {},
+          ...x.link ? { link: x.link } : {},
+          ...x.backup ? { backup: x.backup } : {},
+          ...x.command ? { command: x.command } : {},
+          ...x.product ? { product: x.product } : {},
           ...x.note ? { note: x.note } : {}
-        }))
+        })),
+        ...warnings.length ? { warnings } : {}
       })
     );
     return exit;
   }
-  const done = outcomes.filter(
-    (x) => ["created", "updated", "unchanged"].includes(x.state)
+  const ok = outcomes.filter(
+    (x) => ["created", "updated", "unchanged", "ran"].includes(x.state)
   ).length;
-  const found = outcomes.filter((x) => x.state !== "missing");
+  const tried = ok + bad.length + refused.length;
   const missing = outcomes.filter((x) => x.state === "missing");
-  const headline = bad || refused ? `Set up ${done} of ${found.length}.` : done ? `Set up ${done} ${done === 1 ? "tool" : "tools"}.` : "Nothing to set up.";
-  io.stdout.write(
-    `${gap}${block(t, bad || refused ? "warn" : "ok", [[text(headline)]])}
-`
-  );
-  const word = {
-    created: "created",
-    updated: "updated",
-    unchanged: "already set",
-    missing: "not installed",
-    skipped: "skipped",
-    refused: "refused",
-    failed: "failed"
-  };
-  if (outcomes.length)
+  const shownRows = outcomes.filter((x) => x.state !== "missing");
+  const sep = t.symbols.separator;
+  const columns = t.caps.columns;
+  const sentence = (line) => wrapSpans([text(line)], Math.max(1, columns - (columns < 32 ? 0 : 3))).map((l) => `${columns < 32 ? "" : "   "}${t.painter.line(l)}
+`).join("");
+  if (!feeds.length) {
     io.stdout.write(
-      rowsText(
-        t,
-        [
-          ...found.map((x) => [
-            x.tool,
-            [
-              text(x.target, { unit: true }),
-              text(` ${word[x.state]}`),
-              ...x.note ? [text(` ${t.symbols.separator} ${x.note}`)] : []
-            ]
-          ]),
-          ...missing.length ? [
-            [
-              "Not found",
-              [text(missing.map((x) => x.tool).join(", "), { unit: true })]
-            ]
-          ] : []
-        ],
-        { indent: 3, label: 11 }
-      )
-    );
-  else if (!feeds.length)
-    io.stdout.write(
-      block(
+      `${gap}${block(
         t,
         "warn",
         plain2(
-          o.owner ? `No private feed of ${o.owner} on this account.` : "No private package feeds on this account yet."
+          o.owner ? `This account has no private feeds for ${o.owner}.` : "This account has no private package feeds."
         )
-      )
+      )}
+`
     );
-  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  } else {
+    const headline = bad.length || refused.length ? `Set up ${ok} of ${tried} ${tried === 1 ? "tool" : "tools"}.` : ok ? `Set up ${ok} ${ok === 1 ? "tool" : "tools"}.` : "Nothing to set up.";
+    io.stdout.write(
+      `${gap}${block(t, ok && !bad.length && !refused.length ? "ok" : "warn", plain2(headline))}
+`
+    );
+  }
+  const word = {
+    created: " created",
+    updated: " updated",
+    unchanged: " already set",
+    ran: "",
+    missing: "",
+    skipped: "",
+    refused: " refused",
+    failed: " failed"
+  };
+  const rows = shownRows.map((x) => [
+    x.tool,
+    [
+      text(x.text, { unit: true }),
+      ...x.link || x.file && x.file !== x.text && x.state !== "refused" ? [text(` → ${x.file}`, { unit: true })] : [],
+      text(word[x.state]),
+      ...x.backup ? [text(` ${sep} backup ${x.backup}`)] : [],
+      ...x.note ? [text(` ${sep} ${x.note}`)] : []
+    ]
+  ]);
+  if (missing.length)
+    rows.push([
+      "Not installed",
+      [
+        text([...new Set(missing.map((x) => x.tool))].join(", "), {
+          unit: true
+        })
+      ]
+    ]);
+  if (rows.length) io.stdout.write(rowsText(t, rows, { indent: 3, label: 15 }));
+  for (const w of warnings) io.stdout.write(`
+${block(t, "warn", plain2(w))}`);
   io.stdout.write(
     `
 ${rowsText(
@@ -30156,24 +30322,37 @@ ${rowsText(
             )
           ]
         ],
-        ["Ends", [text(day(expiresAt, io.env), { unit: true })]]
+        ["Expires", [text(day(expiresAt, io.env), { unit: true })]]
       ],
-      { indent: 3, label: 11 }
+      { indent: 3, label: 15 }
     )}`
   );
+  io.stdout.write("\n");
+  if (bad.length || refused.length)
+    io.stdout.write(
+      sentence(
+        `Fix ${list2([...new Set([...bad, ...refused].map((x) => x.tool))])}, then run pkey feeds setup --write again.`
+      )
+    );
   io.stdout.write(
-    `
-${t.caps.columns < 32 ? "" : "   "}Revoke it any time in Polaris Locker, under Packages.
-`
+    sentence("Revoke it any time in Polaris Locker, under Packages.")
   );
   return exit;
 }
-async function runStep(io, o, s, target, cwd, run2) {
+function lastLine(out, token, env) {
+  const line = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).pop() ?? "";
+  return shown(
+    line.split(token).join("…").replace(/pkeyp_[A-Za-z0-9_-]+/g, "…"),
+    env
+  ).slice(0, 120);
+}
+async function runStep(io, o, s, command, cwd, token, run2, at) {
   const env = {};
   for (const [k, v] of Object.entries(io.env))
     if (typeof v === "string" && !k.startsWith("PKEY_")) env[k] = v;
   env["HOME"] = cwd;
   const argv2 = [...s.exec.argv];
+  const base = { tool: s.tool, command, product: s.owner };
   let dir;
   try {
     const tf = s.exec.tokenFile;
@@ -30181,9 +30360,9 @@ async function runStep(io, o, s, target, cwd, run2) {
       const probe = await run2([...argv2, "--help"], { cwd, env });
       if (!probe.out.includes(tf.flag))
         return {
-          tool: s.tool,
-          target,
+          ...base,
           state: "skipped",
+          text: command,
           note: `this ${s.tool} has no ${tf.flag}; set it up by hand`
         };
       dir = mkdtempSync(path5.join((o.seams.tmpdir ?? tmpdir)(), "pkey-"));
@@ -30192,11 +30371,22 @@ async function runStep(io, o, s, target, cwd, run2) {
       argv2.push(tf.flag, file);
     }
     const r = await run2(argv2, { cwd, env, stdin: s.exec.stdin });
-    return r.code === 0 ? { tool: s.tool, target, state: "updated" } : {
-      tool: s.tool,
-      target,
+    return r.code === 0 ? {
+      ...base,
+      state: "ran",
+      text: s.tool === "cargo" ? `signed in to registry ${s.owner}` : `signed in to ${at.host}`
+    } : {
+      ...base,
       state: "failed",
-      note: r.code === null ? "did not run" : `exit ${r.code}`
+      text: argv2.slice(0, 2).join(" "),
+      note: lastLine(r.out, token, io.env) || (r.code === null ? "did not run" : `exit ${r.code}`)
+    };
+  } catch {
+    return {
+      ...base,
+      state: "failed",
+      text: argv2.slice(0, 2).join(" "),
+      note: "could not run"
     };
   } finally {
     if (dir) rmSync(dir, { recursive: true, force: true });
@@ -32285,13 +32475,13 @@ async function collectProvides(o) {
     }
   }
   if (file !== null) {
-    const list2 = await readJson2(file, "The provides file");
-    const problem = providesListProblem(list2);
+    const list3 = await readJson2(file, "The provides file");
+    const problem = providesListProblem(list3);
     if (problem)
       throw new Error(
         `The provides file ${path6.relative(o.cwd, file) || file} ${problem}.`
       );
-    out.provides = [...list2].sort(byCodeUnit);
+    out.provides = [...list3].sort(byCodeUnit);
   }
   if (o.removes && o.removes.length > 0) {
     const problem = providesListProblem(o.removes);
@@ -34995,18 +35185,18 @@ async function buildPayload(z, p) {
   const distinct = /* @__PURE__ */ new Map();
   for (const f of p.files)
     if (!distinct.has(f.sha256)) distinct.set(f.sha256, f);
-  const list2 = [...distinct.values()];
+  const list3 = [...distinct.values()];
   const gapBytes = p.layout === "container" ? gapsOf(p.bytes, p.files) : null;
   const fullBytes = fullBytesOf(p);
   const stored = storeMany(z, [
     fullBytes,
     ...gapBytes ? [gapBytes] : [],
-    ...list2.map((f) => f.data)
+    ...list3.map((f) => f.data)
   ]);
   const full = stored[0];
   const gaps = gapBytes ? stored[1] : void 0;
   const blobs = /* @__PURE__ */ new Map();
-  list2.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
+  list3.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
   const index = {
     format: FILES_FORMAT,
     layout: p.layout,
@@ -35538,8 +35728,8 @@ function contentRuleProblems(content, contentApi, packs, embeds = {}) {
         `${p.id} is baseline: embedded, so every app release pins it.`
       );
   }
-  for (const [build, list2] of Object.entries(embeds))
-    for (const p of list2)
+  for (const [build, list3] of Object.entries(embeds))
+    for (const p of list3)
       if (!pinned.has(p))
         problems.push(
           `build ${build} embeds ${p}, which the release does not pin.`
@@ -39501,7 +39691,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var BANK_VERSION_PATTERN = /^[0-9]{1,9}\.[0-9]{1,9}(\.[0-9]{1,9})?$/;
 var TOKEN = /^[a-z][a-z0-9-]{0,31}$/;
 var MAX_DESCRIPTOR_BYTES3 = 65536;
-function installed(files) {
+function installed2(files) {
   return files.map((f) => ({
     path: f.path,
     size: f.size,
@@ -39515,7 +39705,7 @@ function staged(files, variant) {
     record: {},
     variant: { variant },
     location: "",
-    files: installed(files),
+    files: installed2(files),
     payload: null
   };
 }
@@ -39535,7 +39725,7 @@ async function lintTypeTree(type, files, variant) {
         `${r.path ?? ""}: ${type} ${DETAIL_TEXT[r.detail] ?? r.detail}${r.message ? ` (${r.message})` : ""}.`
       );
   } else if (type === "ml.model") {
-    const d = await readModelDescriptor(installed(files));
+    const d = await readModelDescriptor(installed2(files));
     if (!d.ok)
       errors.push(
         'model.json: an ml.model pack carries a model.json at its root, strict JSON declaring runtime (a lowercase token such as "onnx" or "gguf"), file (exactly a path of the payload) and memBytes (the RAM it needs, a non-negative integer), with optional vramBytes and quantization.'
@@ -39815,14 +40005,14 @@ function delegationVersion(jws) {
   return payload.version;
 }
 function parseDelegationTypes(types) {
-  const list2 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
-  if (list2.length < 1 || list2.length > MAX_DELEGATION_TYPES)
+  const list3 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
+  if (list3.length < 1 || list3.length > MAX_DELEGATION_TYPES)
     throw new UsageError(
-      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list2.length}).`
+      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list3.length}).`
     );
-  if (new Set(list2).size !== list2.length)
+  if (new Set(list3).size !== list3.length)
     throw new UsageError("--types lists a type twice.");
-  for (const t of list2) {
+  for (const t of list3) {
     if (!PACK_TYPE_PATTERN.test(t))
       throw new UsageError(`--types: ${JSON.stringify(t)} is not a pack type.`);
     if (!DELEGABLE_PACK_TYPES.includes(t))
@@ -39830,7 +40020,7 @@ function parseDelegationTypes(types) {
         `--types: ${t} can never be delegated; a content key signs only ${DELEGABLE_PACK_TYPES.join(", ")} (godot.pck, godot.zip, audio.bank, ml.model and custom types can load code).`
       );
   }
-  return list2;
+  return list3;
 }
 async function keepSignedDelegation(cwd, jws, sha2566) {
   const file = path16.join(cwd, `pkey-delegation-${sha2566}.jws`);
@@ -40259,11 +40449,11 @@ function attachableEntryProblem(s) {
   const path33 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
   return pckPathOk(path33) ? null : "not a normal res:// path";
 }
-function parseAttachable(list2 = []) {
+function parseAttachable(list3 = []) {
   const paths = /* @__PURE__ */ new Set();
   const dirs = [];
   const uids = /* @__PURE__ */ new Set();
-  for (const s of list2) {
+  for (const s of list3) {
     const why = attachableEntryProblem(s);
     if (why !== null)
       throw new Error(
@@ -41994,20 +42184,20 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       const ask = /* @__PURE__ */ new Map();
       for (const c of chains.values())
         for (const [sha, size] of c.index.bundles) ask.set(sha, size);
-      const list3 = [...ask].map(([sha2566, size]) => ({ sha256: sha2566, size }));
+      const list4 = [...ask].map(([sha2566, size]) => ({ sha256: sha2566, size }));
       if (client)
-        for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list4.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list3.slice(i, i + STAGE_ROUND_OBJECTS),
+            list4.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           for (const o of ticket.objects)
             if (o.present) presentBundles.add(o.sha256);
         }
-      else if (list3.length > 0) {
-        for (const o of list3) presentBundles.add(o.sha256);
+      else if (list4.length > 0) {
+        for (const o of list4) presentBundles.add(o.sha256);
         warn(
           "the cached chunk bundles are assumed stored: without a CI credential the dry run cannot ask Polaris Key which it holds."
         );
@@ -42109,8 +42299,8 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       let chunksRef;
       const omittedWhy = chunksOmitted.get(v.key);
       if (omittedWhy) report2.chunksOmitted = omittedWhy;
-      const list3 = chunked.get(v.key);
-      if (list3) {
+      const list4 = chunked.get(v.key);
+      if (list4) {
         const base = chains.get(v.key) ?? null;
         const reuse = base ? priorLocations(base.index, (sha) => presentBundles.has(sha)) : /* @__PURE__ */ new Map();
         if (base) {
@@ -42128,7 +42318,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             bytes: v.payload.bytes,
             ...b.payload
           },
-          list3,
+          list4,
           base,
           reuse,
           { maxIndexBytes: opts.maxChunkIndexBytes }
@@ -42218,22 +42408,22 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       variants: reports,
       markers: []
     };
-    const list2 = [...objects.values()];
+    const list3 = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
         opts.progress?.stage("Asking which objects are stored");
         let present2 = 0;
-        for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list2.slice(i, i + STAGE_ROUND_OBJECTS),
+            list3.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           present2 += ticket.objects.filter((o) => o.present).length;
         }
         out.write(
-          `Objects: ${list2.length - present2} new, ${present2} already stored (deduplicated)
+          `Objects: ${list3.length - present2} new, ${present2} already stored (deduplicated)
 `
         );
       }
@@ -42279,10 +42469,10 @@ ${JSON.stringify(seq === void 0 ? shown3 : record, null, 2)}
     const objDir = path17.join(work, "objects");
     await mkdir3(objDir, { recursive: true });
     opts.progress?.stage(
-      `Uploading ${list2.length} object${list2.length === 1 ? "" : "s"}`
+      `Uploading ${list3.length} object${list3.length === 1 ? "" : "s"}`
     );
-    for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
-      const round = list2.slice(i, i + STAGE_ROUND_OBJECTS);
+    for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
+      const round = list3.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (; ; ) {
         try {
@@ -42294,7 +42484,7 @@ ${JSON.stringify(seq === void 0 ? shown3 : record, null, 2)}
             objDir,
             opts,
             result,
-            list2.length
+            list3.length
           );
           break;
         } catch (e) {
@@ -44712,9 +44902,9 @@ function bindingHolds(b, value, identity) {
     }
   }
 }
-function checkCiCommand(list2, id, argv2, identity) {
-  if (!Object.hasOwn(list2.commands, id)) return "not_allowed";
-  const rule = list2.commands[id];
+function checkCiCommand(list3, id, argv2, identity) {
+  if (!Object.hasOwn(list3.commands, id)) return "not_allowed";
+  const rule = list3.commands[id];
   if (argv2.length !== rule.argv.length) return "not_allowed";
   let bound = false;
   for (let i = 0; i < argv2.length; i++) {
@@ -44741,8 +44931,8 @@ function checkCiCommand(list2, id, argv2, identity) {
   }
   return null;
 }
-function ciParamValue(list2, id, argv2, param) {
-  const rule = list2.commands[id];
+function ciParamValue(list3, id, argv2, param) {
+  const rule = list3.commands[id];
   if (!rule) return void 0;
   const i = rule.argv.findIndex(
     (a) => typeof a !== "string" && a.param === param
@@ -44750,8 +44940,8 @@ function ciParamValue(list2, id, argv2, param) {
   if (i < 0 || argv2[i] === void 0) return void 0;
   return argv2[i].slice((rule.argv[i].prefix ?? "").length);
 }
-function bindsIdentity(list2, id) {
-  return (list2.commands[id]?.argv ?? []).some(
+function bindsIdentity(list3, id) {
+  return (list3.commands[id]?.argv ?? []).some(
     (a) => typeof a !== "string" && a.identity !== void 0
   );
 }
@@ -44834,8 +45024,8 @@ function prPathPattern(template, values) {
   }).join("");
   return missing ? null : new RegExp(`^${source}$`);
 }
-function prParams(list2, command, argv2) {
-  const rule = list2.commands[command];
+function prParams(list3, command, argv2) {
+  const rule = list3.commands[command];
   const out = {};
   if (!rule) return out;
   rule.argv.forEach((a, i) => {
@@ -45024,11 +45214,11 @@ function metainfoMarkup(text2, indent) {
   for (const block2 of text2.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
     const lines4 = block2.split("\n").map((l) => l.trim()).filter(Boolean);
     for (let n = 0; n < lines4.length; ) {
-      const list2 = isItem(lines4[n]);
+      const list3 = isItem(lines4[n]);
       const run2 = [];
-      while (n < lines4.length && isItem(lines4[n]) === list2)
+      while (n < lines4.length && isItem(lines4[n]) === list3)
         run2.push(lines4[n++]);
-      if (list2) {
+      if (list3) {
         out.push(`${indent}<ul>`);
         for (const l of run2)
           out.push(
@@ -49732,9 +49922,9 @@ ${LISTING_ASSETS_USAGE}`);
   const packEntries = /* @__PURE__ */ new Map();
   const addToPack = (store, name, data, meta) => {
     if (!PACK_STORES.includes(store)) return;
-    const list2 = packEntries.get(store) ?? [];
-    list2.push({ name, data, meta });
-    packEntries.set(store, list2);
+    const list3 = packEntries.get(store) ?? [];
+    list3.push({ name, data, meta });
+    packEntries.set(store, list3);
   };
   const reportSlots = [];
   const encodeTotal = slots.filter((s) => s.raster).length + fitted.outputs.filter((s) => s.raster).length;
@@ -51876,7 +52066,7 @@ ${TRANSPORT_USAGE}`
       );
     return f;
   };
-  const list2 = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
+  const list3 = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
   switch (`${transport ?? ""} ${step ?? ""}`) {
     case "apple-ba package":
       await baPackage({
@@ -51885,7 +52075,7 @@ ${TRANSPORT_USAGE}`
         out: flagString(parsed, "out"),
         contentApi: flagString(parsed, "content-api"),
         variant: flagString(parsed, "variant"),
-        platforms: list2("platforms"),
+        platforms: list3("platforms"),
         archive: !flagBool(parsed, "no-archive")
       });
       return 0;

@@ -224,7 +224,16 @@ export function userConfigPlan(
       secret = false,
     ) => files.push({ tool, onPath, file: path, edit, secret, ...at });
     const netrc = (onPath: string[]) => {
-      if (netrcDone.has(host)) return;
+      if (netrcDone.has(host)) {
+        // One entry serves every client that reads it: any of them on PATH is enough.
+        const at = files.findIndex((f) => f.file === ".netrc");
+        const prev = files[at]!;
+        files[at] = {
+          ...prev,
+          onPath: [...new Set([...prev.onPath, ...onPath])],
+        };
+        return;
+      }
       netrcDone.add(host);
       file(
         "netrc",
@@ -371,7 +380,7 @@ export function userConfigPlan(
     } else {
       skipped.push({
         ...at,
-        reason: "its token rides in the editor's URL: set it up in the console",
+        reason: "needs an editor URL from Polaris Locker, under Packages",
       });
     }
   }
