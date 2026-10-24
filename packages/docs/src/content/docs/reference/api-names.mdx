@@ -115,7 +115,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
-| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
+| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_config_source` | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
 | `config.mintToken` | `config.mintToken` | planned (U-20) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
@@ -126,7 +126,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
 | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
-| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | `config.setting.visibility` | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | planned (U-07) | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | planned (U-07) | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
@@ -410,3 +410,4 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |
 | Godot | `options.product` | `options.productSlug` | SP-35b |
 | Godot | `options.pinned_trust_keys` | `options.pinnedKeys` | SP-35b |
+| Godot | `config.get_source` | `config.getConfigSource` | SP-35b |

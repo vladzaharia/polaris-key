@@ -15,7 +15,7 @@ const ROWS := [
 	["options.baseUrl", "res://addons/polaris_key/core/options.gd", "property", "base_url"],
 	["options.expectedServices", "res://addons/polaris_key/core/options.gd", "property", "expected_services"],
 	["config.get", "res://addons/polaris_key/services/config.gd", "method", "get_value"],
-	["config.getConfigSource", "res://addons/polaris_key/services/config.gd", "method", "get_source"],
+	["config.getConfigSource", "res://addons/polaris_key/services/config.gd", "method", "get_config_source"],
 	["config.getSecret", "res://addons/polaris_key/services/config.gd", "method", "get_secret"],
 	["config.mintToken", "res://addons/polaris_key/services/config.gd", "method", "mint_token"],
 	["config.set", "res://addons/polaris_key/services/config.gd", "method", "set_value"],
@@ -26,6 +26,7 @@ const ROWS := [
 	["config.setting.value", "res://addons/polaris_key/services/config/setting.gd", "property", "value"],
 	["config.setting.source", "res://addons/polaris_key/services/config/setting.gd", "property", "source"],
 	["config.setting.locked", "res://addons/polaris_key/services/config/setting.gd", "property", "locked"],
+	["config.setting.visibility", "res://addons/polaris_key/services/config/setting.gd", "property", "visibility"],
 	["config.setting.set", "res://addons/polaris_key/services/config/setting.gd", "method", "set_value"],
 	["config.setting.clear", "res://addons/polaris_key/services/config/setting.gd", "method", "clear"],
 	["config.setting.on", "res://addons/polaris_key/services/config/setting.gd", "signal", "changed"],
@@ -172,6 +173,7 @@ const ROWS := [
 const REMOVED := [
 	["options.product", "res://addons/polaris_key/core/options.gd", "product"],
 	["options.pinned_trust_keys", "res://addons/polaris_key/core/options.gd", "pinned_trust_keys"],
+	["config.get_source", "res://addons/polaris_key/services/config.gd", "get_source"],
 ]
 
 

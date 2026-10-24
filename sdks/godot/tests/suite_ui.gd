@@ -14,7 +14,7 @@ extends RefCounted
 #           Label, Button and placeholder is translated copy, unless the node is marked as data
 #
 # and the behaviour the acceptance rows name: an enforced setting is a disabled control with
-# "Set by …", editing a default setting writes the override store and get_source() becomes
+# "Set by …", editing a default setting writes the override store and get_config_source() becomes
 # `local`, a locked update answer is a banner with no dismiss that never covers the game, every
 # PKeyActivationResult kind and sign-in ending has its own copy, and COPY DIAGNOSTICS never holds a
 # credential.
@@ -1200,19 +1200,19 @@ func _settings(t: PKeyTestContext) -> void:
 	var kill_input: Control = kill.get("input")
 	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
 	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeyUiTheme.isolate(PKeySettingsController.product_name(sdk)) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
-	var before: StringName = sdk.config.get_source("audio.volume")
+	var before: StringName = sdk.config.get_config_source("audio.volume")
 	var vol := _row_nodes(p, "audio.volume")
 	var spin: Range = vol.get("input")
 	spin.value = 35
 	await _tree().process_frame
 	var store: PKeyOverrideStore = sdk.config.get_override_store()
 	t.check("settings: editing a default setting writes the override store", store.has_override("audio.volume") and store.get_override("audio.volume") == 35, str(store.values))
-	t.check("settings: ... and get_source() becomes local", before == &"remote-default" and sdk.config.get_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_source("audio.volume")])
+	t.check("settings: ... and get_config_source() becomes local", before == &"remote-default" and sdk.config.get_config_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_config_source("audio.volume")])
 	vol = _row_nodes(p, "audio.volume")
 	t.check("settings: a local row shows its badge and Reset to default", (vol["status"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
 	(vol["reset"] as Button).pressed.emit()
 	await _tree().process_frame
-	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_source("audio.volume") == &"remote-default")
+	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_config_source("audio.volume") == &"remote-default")
 	# An enforced key ignores an attempted write and keeps the saved player value untouched.
 	p._write("game.killSwitch", false)
 	t.check("settings: an enforced key is never written", not store.has_override("game.killSwitch"))

@@ -38,7 +38,7 @@ func run(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 	var synced: PKeySyncResult = await sdk.sync(true)
 	t.check("config: the next sync applies the new config document", synced.ok and synced.documents.get("config") == "applied", str(synced.documents))
 	t.check("config: config_changed fires once and names the key", events.size() == 1 and events[0] == [KEY], str(events))
-	t.check("config: the value is the server's and the source is enforced", sdk.config.get_value(KEY) == target and sdk.config.get_source(KEY) == &"enforced", "%s from %s" % [sdk.config.get_value(KEY), sdk.config.get_source(KEY)])
+	t.check("config: the value is the server's and the source is enforced", sdk.config.get_value(KEY) == target and sdk.config.get_config_source(KEY) == &"enforced", "%s from %s" % [sdk.config.get_value(KEY), sdk.config.get_config_source(KEY)])
 
 	events.clear()
 	await sdk.sync(true)
