@@ -78,6 +78,7 @@ select = ["E", "F", "W", "B", "I"]
 
 [tool.mypy]
 python_version = "3.9"
+platform = "linux"
 files = ["src/polaris_key"]
 exclude = ["src/polaris_key/constants_generated\\.py$", "src/polaris_key/copy_generated\\.py$"]
 ignore_missing_imports = true

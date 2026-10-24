@@ -76,7 +76,7 @@ import {
   type LoginIo,
 } from "./login.js";
 
-export const FEEDS_WRITE_USAGE =
+const FEEDS_WRITE_USAGE =
   "pkey feeds setup --write [--owner slug] [--base-url url] [--json]";
 
 const MAX_FEEDS = 64;
