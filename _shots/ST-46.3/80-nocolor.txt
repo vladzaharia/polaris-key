@@ -1,0 +1,329 @@
+
+===== happy path (exit 0) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◇  Features  Licensing, Ship builds
+◆  Start with a Free tier? (Y/n)
+│  Lifetime, 5 devices.
+└  y yes · n no · Esc cancel
+--- frame 2 ---
+◇  Free tier  Yes
+Created 3 manifest files:
+- .pkey/product.yaml
+- .pkey/schema.yaml
+- .pkey/release.yaml
+
+Next: pkey validate
+
+
+===== Cloud Sync locked (Space), then Esc (exit 1) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│  › ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 2 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│  › ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 3 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│  › ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 4 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│  › ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 5 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│  › ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│
+│  Tick Managed config and Sign-in first.
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 6 ---
+▲  Canceled. Nothing was written.
+
+
+===== untick all: Enter refused, then Esc (exit 1) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◆  What is Acme for?
+│  › ◻ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 2 ---
+◆  What is Acme for?
+│    ◻ Licensing
+│  › ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 3 ---
+◆  What is Acme for?
+│    ◻ Licensing
+│    ◻ Managed config
+│  › ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 4 ---
+◆  What is Acme for?
+│    ◻ Licensing
+│    ◻ Managed config
+│  › ◻ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 5 ---
+◆  What is Acme for?
+│    ◻ Licensing
+│    ◻ Managed config
+│  › ◻ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+│
+│  Tick at least one.
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 6 ---
+▲  Canceled. Nothing was written.
+
+
+===== Commerce ticked then Licensing unticked (clearing note) (exit 1) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│  › ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 2 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│  › ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 3 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 4 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│  › ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 5 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│  › ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 6 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│  › ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 7 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│  › ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 8 ---
+◆  What is Acme for?
+│    ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│  › ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◼ Commerce
+│
+│  Tick Managed config and Sign-in first.
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 9 ---
+▲  Canceled. Nothing was written.
+
+
+===== no tier: untick Licensing (exit 0) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◆  What is Acme for?
+│  › ◻ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+│      Needs Licensing
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 2 ---
+◇  Features  Ship builds
+Created 3 manifest files:
+- .pkey/product.yaml
+- .pkey/schema.yaml
+- .pkey/release.yaml
+
+Next: pkey validate
+
+
+===== cancel Esc (exit 1) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+▲  Canceled. Nothing was written.
+
+
+===== Ctrl-C at the tier question (exit 130) =====
+--- frame 0 ---
+◆  What is Acme for?
+│  › ◼ Licensing
+│    ◻ Managed config
+│    ◼ Ship builds
+│    ◻ Sign-in
+│    ◻ Cloud Sync
+│      Needs Managed config and Sign-in
+│    ◻ Commerce
+└  ↑↓ move · Space toggle · Enter confirm · Esc cancel
+--- frame 1 ---
+◇  Features  Licensing, Ship builds
+◆  Start with a Free tier? (Y/n)
+│  Lifetime, 5 devices.
+└  y yes · n no · Esc cancel
+--- frame 2 ---
+▲  Canceled. Nothing was written.
+

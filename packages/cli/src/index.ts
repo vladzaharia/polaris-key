@@ -983,7 +983,21 @@ async function cmdInit(parsed: ParsedArgs, rt: Runtime): Promise<number> {
   const stdin = rt.stdin ?? process.stdin;
   const term = termFor(stdout, rt.ci.env, rt.g, stdin);
   if (mayPrompt(term, stdin)) {
+    // Refuse before asking anything when the files are there (the write would refuse anyway).
+    const clash = async (rels: string[]) => {
+      if (flagBool(parsed, "force")) return;
+      for (const rel of rels)
+        if (
+          await stat(path.join(cwd, rel)).then(
+            () => true,
+            () => false,
+          )
+        )
+          throw new Error(`${rel} already exists. Pass --force to overwrite.`);
+    };
+    await clash([".pkey/product.yaml", ".pkey/schema.yaml"]);
     const asked = await askInit({
+      name,
       term,
       stdout,
       stdin,
@@ -993,6 +1007,7 @@ async function cmdInit(parsed: ParsedArgs, rt: Runtime): Promise<number> {
     });
     if (typeof asked === "number") return asked;
     if (asked.modules) modules = asked.modules;
+    if (modules.includes("release")) await clash([".pkey/release.yaml"]);
     if (asked.starterTier) starterTier = asked.starterTier;
   }
   const result = await initManifest({

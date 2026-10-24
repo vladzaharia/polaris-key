@@ -147,7 +147,7 @@ describe("pkey init on a terminal (ST-46.3)", () => {
       },
     );
     expect(await r.done).toBe(0);
-    expect(r.out()).toContain("Clearing Licensing also clears Commerce.");
+    expect(r.out()).toContain("Commerce is off too: it needs Licensing.");
   });
 
   it("does not ask for a tier without Licensing", async () => {
@@ -191,7 +191,7 @@ describe("pkey init on a terminal (ST-46.3)", () => {
       keys: [key("escape")],
     });
     expect(await esc.done).toBe(1);
-    expect(esc.out()).toContain("Cancelled. Nothing written.");
+    expect(esc.out()).toContain("Canceled. Nothing was written.");
     expect(esc.out()).not.toContain("Next:");
     expect(await files(a)).toEqual([]);
     const b = await tempDir();
@@ -202,6 +202,73 @@ describe("pkey init on a terminal (ST-46.3)", () => {
     expect(await files(b)).toEqual([]);
     // DOWN is unused here; keep the import honest.
     expect(DOWN.name).toBe("down");
+  });
+});
+
+describe("pkey init prompts, review fixes", () => {
+  it("names the product, shows the focus marker and the tier's detail and keys", async () => {
+    const cwd = await tempDir();
+    const r = run(["init", "--product", "acme", "--name", "Acme"], cwd, {
+      keys: [ENTER, ENTER],
+    });
+    expect(await r.done).toBe(0);
+    expect(r.out()).toContain("What is Acme for?");
+    expect(r.out()).toContain("› ◼ Licensing");
+    expect(r.out()).toContain("↑↓ move");
+    expect(r.out()).toContain("Lifetime, 5 devices.");
+    expect(r.out()).toContain("y yes · n no · Esc cancel");
+    expect(r.out()).toContain("Features  Licensing, Ship builds");
+    expect(r.out()).toContain("Free tier  Yes");
+  });
+
+  it("Space on a locked row says what to tick first, and the reason is its own line", async () => {
+    const cwd = await tempDir();
+    const r = run(["init", "--product", "acme"], cwd, {
+      keys: [
+        key("down"),
+        key("down"),
+        key("down"),
+        key("down"),
+        SPACE,
+        key("escape"),
+      ],
+    });
+    expect(await r.done).toBe(1);
+    expect(r.out()).toContain("Needs Managed config and Sign-in");
+    expect(r.out()).toContain("Tick Managed config and Sign-in first.");
+    expect(r.out()).toContain("› ◻ Cloud Sync");
+  });
+
+  it("refuses Enter with nothing ticked", async () => {
+    const cwd = await tempDir();
+    const r = run(["init", "--product", "acme"], cwd, {
+      keys: [SPACE, key("down"), key("down"), SPACE, ENTER, key("escape")],
+    });
+    // Licensing off, then Ship builds off, Enter refused, Esc cancels.
+    expect(await r.done).toBe(1);
+    expect(r.out()).toContain("Tick at least one.");
+    expect(await files(cwd)).toEqual([]);
+  });
+
+  it("refuses existing files before asking anything, with a relative path", async () => {
+    const cwd = await tempDir();
+    await runPkey(["init", "--product", "acme"], {
+      cwd,
+      stdout: { write: () => true } as never,
+      stderr: { write: () => true },
+      env: {},
+    });
+    const r = run(["init", "--product", "acme"], cwd, { keys: [ENTER, ENTER] });
+    expect(await r.done).toBe(1);
+    expect(r.reads()).toBe(0);
+    expect(r.err()).toContain(
+      ".pkey/product.yaml already exists. Pass --force to overwrite.",
+    );
+    expect(r.err()).not.toContain(cwd);
+    const forced = run(["init", "--product", "acme", "--force"], cwd, {
+      keys: [ENTER, ENTER],
+    });
+    expect(await forced.done).toBe(0);
   });
 });
 

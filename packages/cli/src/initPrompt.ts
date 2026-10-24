@@ -17,6 +17,7 @@ import {
 } from "@polaris-key/manifest";
 import {
   CANCEL,
+  clean,
   fitScreen,
   INTERRUPT,
   keyHints,
@@ -45,6 +46,8 @@ export interface InitAsk {
   stdout: TermOut;
   stdin: TerminalInput;
   keys?: InitKeys;
+  /** The product name init will write (the question names it). */
+  name: string;
   /** The services `--modules` named, when it was given: the features are not asked then. */
   givenServices?: readonly string[];
   /** `--starter-tier` was given: the tier is not asked. */
@@ -57,12 +60,28 @@ export const INITIAL_FEATURES: readonly ManifestFeatureId[] = [
   "ship-builds",
 ];
 
-const KEYS = "Space toggle · Enter confirm · Esc cancel";
+const KEYS = (ascii: boolean) =>
+  `${ascii ? "Up/Down" : "↑↓"} move · Space toggle · Enter confirm · Esc cancel`;
+const CONFIRM_KEYS = "y yes · n no · Esc cancel";
+
+/** "A, B and C". */
+const andList = (xs: readonly string[]): string =>
+  xs.length > 1
+    ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`
+    : (xs[0] ?? "");
 
 /** The prompts may run: both streams are terminals, not CI, not TERM=dumb. */
 export function mayPrompt(term: Term, stdin: { isTTY?: boolean }): boolean {
   return term.caps.interactive && stdin.isTTY === true;
 }
+
+const missing = (
+  id: ManifestFeatureId,
+  chosen: readonly ManifestFeatureId[],
+): string[] =>
+  featureNeeds(id)
+    .filter((n) => !chosen.includes(n))
+    .map(labelOf);
 
 const labelOf = (id: ManifestFeatureId): string =>
   MANIFEST_FEATURES.find((f) => f.id === id)!.label;
@@ -101,7 +120,7 @@ export async function askInit(ask: InitAsk): Promise<InitAnswers | number> {
     },
   };
   const cancelled = (): RailRow[] => [
-    { mark: "fail", spans: text("Cancelled. Nothing written.") },
+    { mark: "warn", spans: text("Canceled. Nothing was written.") },
   ];
   const exit = (r: unknown): number | null =>
     r === INTERRUPT ? 130 : r === CANCEL ? 1 : null;
@@ -110,20 +129,20 @@ export async function askInit(ask: InitAsk): Promise<InitAnswers | number> {
     let licensing = false;
     if (!ask.givenServices) {
       const r = await promptMultiSelect<ManifestFeatureId>(ctx, {
-        title: text("What is it for?"),
+        title: text(`What is ${clean(ask.name)} for?`),
         options: MANIFEST_FEATURES.map((f) => ({
           value: f.id,
           label: text(f.label),
         })),
         initial: INITIAL_FEATURES,
-        hints: keyHints(KEYS, term.symbols),
+        hints: keyHints(KEYS(term.symbols.rail === "|"), term.symbols),
         toggle: (chosen, id) => {
           const t = toggleFeature(chosen, id, !chosen.includes(id));
           return {
             chosen: t.features,
             note: t.cleared.length
               ? text(
-                  `Clearing ${labelOf(id)} also clears ${t.cleared.map(labelOf).join(", ")}.`,
+                  `${andList(t.cleared.map(labelOf))} ${t.cleared.length === 1 ? "is" : "are"} off too: ${t.cleared.length === 1 ? "it needs" : "they need"} ${labelOf(id)}.`,
                   ["muted"],
                 )
               : null,
@@ -132,21 +151,17 @@ export async function askInit(ask: InitAsk): Promise<InitAnswers | number> {
         locked: (id, chosen) =>
           featureUnlocked(id, chosen)
             ? null
-            : text(
-                `Needs ${featureNeeds(id)
-                  .filter((n) => !chosen.includes(n))
-                  .map(labelOf)
-                  .join(", ")}`,
-              ),
+            : text(`Needs ${andList(missing(id, chosen))}`),
+        lockedNote: (id, chosen) =>
+          text(`Tick ${andList(missing(id, chosen))} first.`),
+        check: (chosen) => (chosen.length ? null : text("Tick at least one.")),
         done: (chosen) => [
           {
             mark: "done",
             spans: [
-              ...text("What is it for?  "),
+              ...text("Features  "),
               {
-                text: chosen.length
-                  ? chosen.map(labelOf).join(", ")
-                  : "Nothing",
+                text: chosen.map(labelOf).join(", "),
                 style: ["strong"],
               },
             ],
@@ -163,6 +178,8 @@ export async function askInit(ask: InitAsk): Promise<InitAnswers | number> {
     if (licensing && !ask.tierGiven) {
       const r = await promptConfirm(ctx, {
         title: text("Start with a Free tier? (Y/n)"),
+        detail: text("Lifetime, 5 devices."),
+        hints: keyHints(CONFIRM_KEYS, term.symbols),
         initial: true,
         done: (yes) => [
           {

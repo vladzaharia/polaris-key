@@ -12753,7 +12753,16 @@ var frame = (_ctx, rows) => rows;
 async function promptConfirm(ctx, p) {
   const live = region(ctx);
   try {
-    live.draw(frame(ctx, [{ mark: "active", spans: p.title }]));
+    live.draw(frame(ctx, [
+      { mark: "active", spans: p.title },
+      ...p.detail ? [
+        {
+          mark: "rail",
+          spans: p.detail.map((s) => ({ ...s, style: ["muted"] }))
+        }
+      ] : [],
+      ...p.hints ? [{ mark: "end", spans: p.hints }] : []
+    ]));
     for (; ; ) {
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
@@ -12772,7 +12781,7 @@ async function promptConfirm(ctx, p) {
   }
 }
 function boxes(symbols) {
-  return symbols.rail === "|" ? { on: "[x]", off: "[ ]" } : { on: "◼", off: "◻" };
+  return symbols.rail === "|" ? { on: "[x]", off: "[ ]", focus: ">" } : { on: "◼", off: "◻", focus: "›" };
 }
 async function promptMultiSelect(ctx, p) {
   const live = region(ctx);
@@ -12782,39 +12791,72 @@ async function promptMultiSelect(ctx, p) {
   let note = null;
   const ordered = () => p.options.map((o) => o.value).filter((v) => chosen.includes(v));
   const render = () => {
-    const rows = [{ mark: "active", spans: p.title }];
-    p.options.forEach((o, i) => {
+    const blocks = p.options.map((o, i) => {
       const focus = i === at;
       const ticked = chosen.includes(o.value);
       const lock = p.locked?.(o.value, chosen) ?? null;
       const label = o.label.map((s) => lock ? { ...s, style: ["muted"] } : focus ? { ...s, style: [...s.style ?? [], "strong"] } : s);
-      rows.push({
-        mark: "rail",
-        spans: [
-          {
-            text: `${ticked ? box.on : box.off} `,
-            style: lock ? ["muted"] : focus || ticked ? ["accent"] : ["muted"]
-          },
-          ...label,
-          ...lock ? [
-            { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
-            ...lock.map((s) => ({ ...s, style: ["muted"] }))
-          ] : []
-        ]
-      });
-      if (o.meta)
+      const rows = [
+        {
+          mark: "rail",
+          spans: [
+            {
+              text: focus ? `${box.focus} ` : "  ",
+              style: ["accent"]
+            },
+            {
+              text: `${ticked ? box.on : box.off} `,
+              style: lock ? ["muted"] : focus || ticked ? ["accent"] : ["muted"]
+            },
+            ...focus && lock ? label.map((s) => ({
+              ...s,
+              style: [...s.style ?? [], "strong"]
+            })) : label
+          ]
+        }
+      ];
+      const meta = lock ?? o.meta;
+      if (meta)
         rows.push({
           mark: "rail",
           spans: [
             { text: "    " },
-            ...o.meta.map((s) => ({ ...s, style: ["muted"] }))
+            ...meta.map((s) => ({ ...s, style: ["muted"] }))
           ]
         });
+      return rows;
     });
+    const tail = [];
     if (note)
-      rows.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
-    rows.push({ mark: "end", spans: p.hints });
-    live.draw(frame(ctx, rows));
+      tail.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
+    tail.push({ mark: "end", spans: p.hints });
+    const budget = Math.max(3, ctx.caps.rows - 1 - 1 - tail.length);
+    let from = 0;
+    let to = blocks.length;
+    const total = blocks.reduce((n, b) => n + b.length, 0);
+    if (total > budget) {
+      from = at;
+      to = at + 1;
+      let used = blocks[at].length;
+      for (; ; ) {
+        const next = to < blocks.length && used + blocks[to].length <= budget ? to : -1;
+        const prev = from > 0 && used + blocks[from - 1].length <= budget ? from - 1 : -1;
+        if (next < 0 && prev < 0)
+          break;
+        if (next >= 0) {
+          used += blocks[to].length;
+          to += 1;
+        } else {
+          used += blocks[from - 1].length;
+          from -= 1;
+        }
+      }
+    }
+    live.draw(frame(ctx, [
+      { mark: "active", spans: p.title },
+      ...blocks.slice(from, to).flat(),
+      ...tail
+    ]));
   };
   try {
     render();
@@ -12832,7 +12874,7 @@ async function promptMultiSelect(ctx, p) {
         const v = p.options[at].value;
         const lock = p.locked?.(v, chosen) ?? null;
         if (lock)
-          note = lock;
+          note = p.lockedNote?.(v, chosen) ?? lock;
         else {
           const r = p.toggle(chosen, v);
           chosen = r.chosen;
@@ -12841,6 +12883,12 @@ async function promptMultiSelect(ctx, p) {
         render();
         continue;
       } else if (k.name === "return" || k.name === "enter") {
+        const refused = p.check?.(ordered()) ?? null;
+        if (refused) {
+          note = refused;
+          render();
+          continue;
+        }
         const out = ordered();
         live.commit(frame(ctx, p.done(out)));
         return out;
@@ -22594,11 +22642,11 @@ function parseManifest(files, opts = {}) {
     else docs[name] = res.value;
   }
   if (files.product === void 0) {
-    const missing = validateIngestDocuments({
+    const missing2 = validateIngestDocuments({
       product: void 0,
       schema: files.schema === void 0 ? void 0 : null
     });
-    for (const e of missing.errors) errors.push(formatIngestError(e));
+    for (const e of missing2.errors) errors.push(formatIngestError(e));
   }
   if (errors.length) return { ok: false, errors };
   if (!isRecord6(docs.product))
@@ -29131,10 +29179,13 @@ var INITIAL_FEATURES = [
   "licensing",
   "ship-builds"
 ];
-var KEYS = "Space toggle · Enter confirm · Esc cancel";
+var KEYS = (ascii2) => `${ascii2 ? "Up/Down" : "↑↓"} move · Space toggle · Enter confirm · Esc cancel`;
+var CONFIRM_KEYS = "y yes · n no · Esc cancel";
+var andList = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "";
 function mayPrompt(term, stdin) {
   return term.caps.interactive && stdin.isTTY === true;
 }
+var missing = (id, chosen) => featureNeeds(id).filter((n) => !chosen.includes(n)).map(labelOf);
 var labelOf = (id) => FEATURES.find((f) => f.id === id).label;
 var text2 = (t, style) => [
   style ? { text: t, style } : { text: t }
@@ -29166,7 +29217,7 @@ async function askInit(ask) {
     }
   };
   const cancelled2 = () => [
-    { mark: "fail", spans: text2("Cancelled. Nothing written.") }
+    { mark: "warn", spans: text2("Canceled. Nothing was written.") }
   ];
   const exit = (r) => r === INTERRUPT ? 130 : r === CANCEL ? 1 : null;
   try {
@@ -29174,33 +29225,33 @@ async function askInit(ask) {
     let licensing = false;
     if (!ask.givenServices) {
       const r = await promptMultiSelect(ctx, {
-        title: text2("What is it for?"),
+        title: text2(`What is ${clean(ask.name)} for?`),
         options: FEATURES.map((f) => ({
           value: f.id,
           label: text2(f.label)
         })),
         initial: INITIAL_FEATURES,
-        hints: keyHints(KEYS, term.symbols),
+        hints: keyHints(KEYS(term.symbols.rail === "|"), term.symbols),
         toggle: (chosen, id) => {
           const t = toggleFeature(chosen, id, !chosen.includes(id));
           return {
             chosen: t.features,
             note: t.cleared.length ? text2(
-              `Clearing ${labelOf(id)} also clears ${t.cleared.map(labelOf).join(", ")}.`,
+              `${andList(t.cleared.map(labelOf))} ${t.cleared.length === 1 ? "is" : "are"} off too: ${t.cleared.length === 1 ? "it needs" : "they need"} ${labelOf(id)}.`,
               ["muted"]
             ) : null
           };
         },
-        locked: (id, chosen) => featureUnlocked(id, chosen) ? null : text2(
-          `Needs ${featureNeeds(id).filter((n) => !chosen.includes(n)).map(labelOf).join(", ")}`
-        ),
+        locked: (id, chosen) => featureUnlocked(id, chosen) ? null : text2(`Needs ${andList(missing(id, chosen))}`),
+        lockedNote: (id, chosen) => text2(`Tick ${andList(missing(id, chosen))} first.`),
+        check: (chosen) => chosen.length ? null : text2("Tick at least one."),
         done: (chosen) => [
           {
             mark: "done",
             spans: [
-              ...text2("What is it for?  "),
+              ...text2("Features  "),
               {
-                text: chosen.length ? chosen.map(labelOf).join(", ") : "Nothing",
+                text: chosen.map(labelOf).join(", "),
                 style: ["strong"]
               }
             ]
@@ -29217,6 +29268,8 @@ async function askInit(ask) {
     if (licensing && !ask.tierGiven) {
       const r = await promptConfirm(ctx, {
         title: text2("Start with a Free tier? (Y/n)"),
+        detail: text2("Lifetime, 5 devices."),
+        hints: keyHints(CONFIRM_KEYS, term.symbols),
         initial: true,
         done: (yes) => [
           {
@@ -34677,12 +34730,12 @@ ${GODOT_NAMES_NOTE}` });
     insertAt = end;
     pos = end;
   }
-  const missing = [...owned].filter(([k]) => !seen.has(k));
-  if (missing.length > 0)
+  const missing2 = [...owned].filter(([k]) => !seen.has(k));
+  if (missing2.length > 0)
     edits.push({
       from: insertAt,
       to: insertAt,
-      text: missing.map(([k, v]) => `
+      text: missing2.map(([k, v]) => `
 ${k} = ${v}`).join("")
     });
   let out = existing;
@@ -42015,12 +42068,12 @@ async function stageRound(client, round, gated, packId, objDir, opts, result, ob
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
   const answered = new Set(ticket.objects.map((o) => o.sha256));
-  const missing = round.filter((o) => !answered.has(o.sha256));
-  if (missing.length)
+  const missing2 = round.filter((o) => !answered.has(o.sha256));
+  if (missing2.length)
     throw new Error(
-      `${client.url("release/publish/uploads")} answered a ticket without ${missing.length} of the ${round.length} requested objects (${missing.slice(0, 3).map((o) => `${o.sha256.slice(0, 12)}…`).join(
+      `${client.url("release/publish/uploads")} answered a ticket without ${missing2.length} of the ${round.length} requested objects (${missing2.slice(0, 3).map((o) => `${o.sha256.slice(0, 12)}…`).join(
         ", "
-      )}${missing.length > 3 ? ", …" : ""}); nothing of this round was staged.`
+      )}${missing2.length > 3 ? ", …" : ""}); nothing of this round was staged.`
     );
   const uploaded = [];
   const skipped = [];
@@ -44432,7 +44485,7 @@ function prStore(store) {
 var PR_LOCALE_PATTERN = String.raw`[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8}){0,3}`;
 var escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function prPathPattern(template, values) {
-  let missing = false;
+  let missing2 = false;
   const source = template.split(/(\{[A-Za-z]+(?:\|[a-z]+)?\})/).map((part) => {
     const m = /^\{([A-Za-z]+)(?:\|([a-z]+))?\}$/.exec(part);
     if (!m) return escapeRe(part);
@@ -44440,14 +44493,14 @@ function prPathPattern(template, values) {
     if (name === "locale") return PR_LOCALE_PATTERN;
     const v = values[name];
     if (v === void 0 || v === "") {
-      missing = true;
+      missing2 = true;
       return "";
     }
     if (filter === "segments") return escapeRe(v.split(".").join("/"));
     if (filter === "first") return escapeRe(v.charAt(0).toLowerCase());
     return escapeRe(v);
   }).join("");
-  return missing ? null : new RegExp(`^${source}$`);
+  return missing2 ? null : new RegExp(`^${source}$`);
 }
 function prParams(list2, command, argv2) {
   const rule = list2.commands[command];
@@ -50241,7 +50294,18 @@ async function cmdInit(parsed, rt) {
   const stdin = rt.stdin ?? process.stdin;
   const term = termFor(stdout, rt.ci.env, rt.g, stdin);
   if (mayPrompt(term, stdin)) {
+    const clash = async (rels) => {
+      if (flagBool(parsed, "force")) return;
+      for (const rel of rels)
+        if (await stat11(path30.join(cwd, rel)).then(
+          () => true,
+          () => false
+        ))
+          throw new Error(`${rel} already exists. Pass --force to overwrite.`);
+    };
+    await clash([".pkey/product.yaml", ".pkey/schema.yaml"]);
     const asked = await askInit({
+      name,
       term,
       stdout,
       stdin,
@@ -50251,6 +50315,7 @@ async function cmdInit(parsed, rt) {
     });
     if (typeof asked === "number") return asked;
     if (asked.modules) modules = asked.modules;
+    if (modules.includes("release")) await clash([".pkey/release.yaml"]);
     if (asked.starterTier) starterTier = asked.starterTier;
   }
   const result = await initManifest({
@@ -50612,9 +50677,9 @@ function checkFlags(parsed, command, known, term) {
   const valueless = new Set(
     findCommand(command)?.valueless ?? []
   );
-  const missing = known.find((k) => parsed.bare.has(k) && !valueless.has(k));
-  if (missing !== void 0)
-    return failLine(`Option --${missing} needs a value.`, term);
+  const missing2 = known.find((k) => parsed.bare.has(k) && !valueless.has(k));
+  if (missing2 !== void 0)
+    return failLine(`Option --${missing2} needs a value.`, term);
   return null;
 }
 async function cmdBundle(parsed, cwd, stdout, term, env, token, fetchImpl) {
