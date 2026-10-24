@@ -79,7 +79,7 @@ androidComponents {
 
 // Compose Multiplatform is here for its resources only (the generated string tables under
 // commonMain/composeResources). The UI libraries stay on the androidx Compose BOM, so the Android
-// toolchain remains the Godot template's (AGP 8.6.1, Kotlin 2.1); UK-10 adds the desktop target.
+// toolchain remains the Godot template's (AGP 8.6.1, Kotlin 2.1).
 compose.resources {
     packageOfResClass = "im.plrs.key.ui.res"
     generateResClass = always
@@ -93,17 +93,23 @@ kotlin {
         publishLibraryVariants("release")
     }
 
+    // The desktop (JVM) target: ui-core and Compose only; :sdk joins in a later slice (UK-10.2+).
+    jvm("desktop")
+
     sourceSets {
         commonMain.dependencies {
             api(project(":ui-core"))
-            api(project.dependencies.platform(libs.compose.bom))
-            api(libs.compose.runtime)
-            api(libs.compose.ui)
-            api(libs.compose.foundation)
-            api(libs.compose.material3)
+            // The Compose Multiplatform plugin's coordinates (UK-10.1, K1): on Android they resolve to
+            // the androidx artifacts, on desktop to the JetBrains ones. 1.8.2, built on Kotlin 2.1.
+            api(compose.runtime)
+            api(compose.foundation)
+            api(compose.ui)
+            api(compose.material3)
             implementation(compose.components.resources)
         }
         androidMain.dependencies {
+            // Android keeps the androidx BOM, so its versions stay the ones the baselines were recorded on.
+            api(project.dependencies.platform(libs.compose.bom))
             api(project(":sdk"))
             implementation(libs.compose.ui.graphics)
             implementation(libs.compose.material.icons.core)
@@ -112,6 +118,15 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             // BackHandler: every step with a back target backs out (UI-KITS.md 1.4 Android, DL9).
             implementation(libs.androidx.activity.compose)
+        }
+        getByName("desktopTest") {
+            dependencies {
+                implementation(compose.desktop.uiTestJUnit4)
+                implementation(compose.desktop.currentOs)
+                implementation(libs.roborazzi.compose.desktop)
+                implementation(kotlin("test"))
+                implementation(libs.junit)
+            }
         }
         getByName("androidUnitTest") {
             dependencies {
@@ -138,19 +153,30 @@ roborazzi {
     outputDir.set(file("src/test/snapshots"))
 }
 
+// The desktop kit's references (UK-10.12 records them) live beside its tests.
+tasks.withType<Test>().matching { it.name == "desktopTest" }.configureEach {
+    systemProperty("roborazzi.test.record", "false")
+    systemProperty("roborazzi.output.dir", file("src/desktopTest/snapshots").path)
+    maxHeapSize = "2g"
+}
+
 dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // The KMP plugin makes the publications: the root (polaris-key-ui, which Gradle metadata resolves to
-// the platform artifact) and the Android one (polaris-key-ui-android).
+// the platform artifact), the Android one (polaris-key-ui-android) and the desktop one (polaris-key-ui-desktop).
 afterEvaluate {
     publishing {
         publications.withType<MavenPublication>().configureEach {
             groupId = project.group.toString()
             version = project.version.toString()
-            artifactId = if (name == "kotlinMultiplatform") "polaris-key-ui" else "polaris-key-ui-android"
+            artifactId = when (name) {
+                "kotlinMultiplatform" -> "polaris-key-ui"
+                "desktop" -> "polaris-key-ui-desktop"
+                else -> "polaris-key-ui-android"
+            }
             pom {
                 name.set("Polaris Key UI (Jetpack Compose)")
                 description.set(
