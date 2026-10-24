@@ -586,6 +586,41 @@ describe("Approve a new device", () => {
     );
   });
 
+  it("words a pkey packages request as a personal token, and names the client, not a device", async () => {
+    window.history.replaceState(null, "", "/#/account/approve?code=ABCD-EFGH");
+    mockFetch(
+      signedIn([], {
+        "POST /api/device-login/lookup": {
+          request: {
+            ...request,
+            device: { label: "A device", browser: null, os: null },
+            scope: "packages:read",
+            client: { name: "pkey", version: "1.2.3", host: "ada-mbp.local" },
+          },
+        },
+        "POST /api/device-login/approve": { ok: true, status: "approved" },
+      }),
+    );
+    renderPortal();
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(
+        "pkey on ada-mbp.local asks for a read-only personal token for your packages.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Give pkey a personal token?"),
+    ).toBeTruthy();
+    expect(within(dialog).getByText("pkey 1.2.3")).toBeTruthy();
+    expect(within(dialog).queryByText("A device")).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Approve" }),
+    );
+    expect(
+      await within(dialog).findByText("Approved. Go back to your terminal."),
+    ).toBeTruthy();
+  });
+
   it("says too many tries on a 429, not the generic line", async () => {
     window.history.replaceState(null, "", "/#/account/approve?code=ABCD-EFGH");
     mockFetch(

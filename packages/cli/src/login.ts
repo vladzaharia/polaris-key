@@ -231,7 +231,8 @@ async function send(
 }
 
 /** `before` + `pkey login` as the person ran it (`--base-url` repeated) + `after`. */
-function rerun(
+function rerunLine(
+  command: string,
   io: LoginIo,
   origin: string,
   before: string,
@@ -239,7 +240,7 @@ function rerun(
 ): Line {
   return [
     text(before),
-    text("pkey login"),
+    text(command),
     ...(io.baseUrlGiven
       ? [text(" --base-url "), text(origin, { break: "url" as const })]
       : []),
@@ -259,16 +260,144 @@ interface Outcome {
 const flat = (lines: Line[]): string =>
   lines.map((l) => l.map((s) => s.text).join("")).join(" ");
 
-export function cmdLogin(io: LoginIo): Promise<number> {
+/**
+ * What differs between the device flows that share `flow` (F-37.3 extracted it once): `pkey login`
+ * (an `admin` token, approved in the console, stored in the credential store) and
+ * `pkey feeds setup --write` (a `packages:read` token, approved in Polaris Locker, handed to the
+ * caller and stored nowhere).
+ */
+export interface DeviceCopy {
+  /** "Opening Polaris Key in your browser" (no ellipsis). */
+  opening: string;
+  rateLimited: { message: string; fix: string };
+  /** Where an unsupported server sends the person. */
+  unsupportedFix: string;
+  /** A 409 `unavailable` at the start (no registry configured): the sentence and the fix. */
+  unavailable?: [string, string];
+  /** The token limit: the sentences (the rerun line is added after them). */
+  tokenLimit: (limit: string | undefined, origin: string) => Line[];
+  /** What a 403 says: the sentence and the fix. */
+  forbidden: [string, string];
+  /** A request refused in the browser. */
+  denied: (code: string) => string;
+  /** After a network failure an approval may have gone through unseen. */
+  maybeApproved: string;
+}
+
+export interface DeviceMode {
+  /** The JSON `command` and the name `guarded` prints. */
+  command: "login" | "feeds setup";
+  /** The command as the person ran it, in "Run … to try again". */
+  rerun: string;
+  scope: "admin" | "packages:read";
+  /** The heading above the code. */
+  title: string;
+  /** Where the person approves, built from the resolved origin and the code. */
+  approvePath: (code: string) => string;
+  /** Use the start answer's `approveUrl` when it is this origin's `/approve` for this code. */
+  useServedApproveUrl?: boolean;
+  /** Runs before the start. `replaces` says an existing sign-in ends once this one is kept. */
+  begin: () => Promise<{
+    replaces: boolean;
+    /** A line under the heading (what will be set up). */
+    note?: string;
+    /** The approved answer's body; `gap` is the blank row to print before a result. */
+    approved: (body: Record<string, unknown>, gap: string) => Promise<number>;
+  }>;
+  /** The words that differ between the flows. */
+  copy: DeviceCopy;
+  /** Refusals that must come before anything else, the CI one included. */
+  guard?: () => void;
+  /** Warn that `PKEY_ADMIN_TOKEN` outranks this sign-in (the console one only). */
+  warnAdminEnv: boolean;
+}
+
+/** The seams `pkey login` and `--write` run with: the real ones, then the ones given. */
+export function resolveSeams(io: LoginIo): LoginSeams {
   const given = Object.fromEntries(
     Object.entries(io.seams).filter(([, v]) => v !== undefined),
   );
-  const seams: LoginSeams = { ...defaultSeams(), ...given };
+  return { ...defaultSeams(), ...given };
+}
+
+export function cmdLogin(io: LoginIo): Promise<number> {
+  return runDeviceFlow(io, {
+    command: "login",
+    rerun: "pkey login",
+    scope: "admin",
+    title: "Polaris Key console",
+    copy: {
+      opening: "Opening Polaris Key in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey login again.",
+      },
+      unsupportedFix: `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      tokenLimit: (limit, origin) => {
+        const url = `${origin}/manage/#/personal-tokens`;
+        return [
+          [
+            text(
+              limit
+                ? `You already have ${limit} personal tokens, the most allowed.`
+                : "You already have the most personal tokens allowed.",
+            ),
+          ],
+          rerunLine(
+            "pkey login",
+            io,
+            origin,
+            "Revoke one in Personal tokens, then run ",
+            " again.",
+          ),
+          [text(url, { break: "url", link: url })],
+        ];
+      },
+      forbidden: [
+        "This account can't sign in.",
+        "Ask a Superadmin to check your access.",
+      ],
+      denied: (code) => `Code ${code} was canceled in the browser.`,
+      maybeApproved:
+        "If you approved it, the token may exist; check Personal tokens.",
+    },
+    approvePath: (code) => `/manage/device?code=${code}`,
+    warnAdminEnv: true,
+    // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
+    begin: async () => {
+      const store: CredentialStore = await io.store();
+      const existing = store.get(originFor(io, "login"));
+      const now = io.seams.now ?? Date.now;
+      const replaces =
+        existing !== null &&
+        (existing.expiresAt === null || existing.expiresAt * 1000 > now());
+      return {
+        replaces,
+        approved: (body, gap) =>
+          approved(io, {
+            origin: originFor(io, "login"),
+            host: hostOf(originFor(io, "login")),
+            platform: io.seams.platform ?? osPlatform(),
+            store,
+            previous: replaces ? existing : null,
+            token: body["token"],
+            expiresAt: body["expiresAt"],
+            label: body["label"],
+            gap,
+          }),
+      };
+    },
+  });
+}
+
+/** The device flow: start, show the code, poll; the mode says what is asked and what follows. */
+export function runDeviceFlow(io: LoginIo, mode: DeviceMode): Promise<number> {
+  const seams = resolveSeams(io);
   // A heading held back for the live region is printed after all if the sign-in fails before it.
   const deferred: { flush?: () => void } = {};
-  return guarded(io, "login", async () => {
+  return guarded(io, mode.command, async () => {
     try {
-      return await flow(io, seams, deferred);
+      return await flow(io, seams, deferred, mode);
     } catch (e) {
       deferred.flush?.();
       throw e;
@@ -280,27 +409,30 @@ async function flow(
   io: LoginIo,
   seams: LoginSeams,
   deferred: { flush?: () => void },
+  mode: DeviceMode,
 ): Promise<number> {
+  const rerun = (
+    io: LoginIo,
+    origin: string,
+    before: string,
+    after: string,
+  ): Line => rerunLine(mode.rerun, io, origin, before, after);
+  mode.guard?.();
   // 1. CI: before the network and before the credential store.
   if (isCi(io.env))
     throw new Refusal(
-      `pkey login needs a person; in CI use ${ADMIN_TOKEN_ENV}.`,
+      `${mode.rerun} needs a person; in CI use ${ADMIN_TOKEN_ENV}.`,
     );
 
   // 2. The origin: https, or http on loopback; the one string every request and the store use.
-  const origin = originFor(io, "login");
+  const origin = originFor(io, mode.command);
   const host = hostOf(origin);
   const platform = seams.platform ?? osPlatform();
   const now = seams.now ?? Date.now;
   const sleep = seams.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const f = io.fetchImpl ?? fetch;
 
-  // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
-  const store: CredentialStore = await io.store();
-  const existing = store.get(origin);
-  const replaces =
-    existing !== null &&
-    (existing.expiresAt === null || existing.expiresAt * 1000 > now());
+  const { replaces, note, approved: settle } = await mode.begin();
 
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
@@ -322,7 +454,7 @@ async function flow(
 
   /** The title, the notice that a sign-in is replaced, and the blank rows around them. */
   const titleRows = (columns: number): string[] => {
-    const title = "Polaris Key console";
+    const title = mode.title;
     const sep = out.symbols.separator;
     // One line when it fits; else the separator stays at the end of the first and the host hangs.
     const fits = cellWidth(`${title} ${sep} ${host}`) <= columns;
@@ -353,6 +485,7 @@ async function flow(
             "",
           ]
         : []),
+      ...(note ? [...layout([text(note)], columns), ""] : []),
     ];
   };
 
@@ -360,7 +493,7 @@ async function flow(
     if (live)
       deferred.flush = () => say(`${titleRows(out.caps.columns).join("\n")}\n`);
     else say(`${titleRows(out.caps.columns).join("\n")}\n`);
-    if (io.env[ADMIN_TOKEN_ENV]?.trim())
+    if (mode.warnAdminEnv && io.env[ADMIN_TOKEN_ENV]?.trim())
       io.stderr.write(
         block(
           errTerm,
@@ -400,7 +533,7 @@ async function flow(
         },
         body: JSON.stringify({
           purpose: "cli",
-          scope: "admin",
+          scope: mode.scope,
           client: {
             name: "pkey",
             version: CLI_VERSION,
@@ -423,16 +556,27 @@ async function flow(
     throw new Redirected(host);
   if (startRes.status === 429)
     throw new Refusal(
-      "Too many sign-in attempts from this network.",
-      "Wait a few minutes, then run pkey login again.",
+      mode.copy.rateLimited.message,
+      mode.copy.rateLimited.fix,
       "rate-limited",
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
       `${host} doesn't offer terminal sign-in.`,
-      `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      mode.copy.unsupportedFix,
       "unsupported",
     );
+  if (startRes.status === 409 && mode.copy.unavailable) {
+    const err = (await jsonOf(startRes))["error"];
+    const code =
+      typeof err === "string" ? err : (err as { code?: unknown } | null)?.code;
+    if (code === "unavailable")
+      throw new Refusal(
+        mode.copy.unavailable[0],
+        mode.copy.unavailable[1],
+        "no-registry",
+      );
+  }
   if (startRes.status !== 201)
     throw new Failure(
       `${host} couldn't start a sign-in (HTTP ${startRes.status}).`,
@@ -460,7 +604,10 @@ async function flow(
   let interval = clampInterval(started["interval"], 3_000);
   const deadline = now() + expiresIn * 1000;
   // Built here, from the origin pkey resolved: a server cannot send the person elsewhere.
-  const approveUrl = `${origin}/manage/device?code=${userCode}`;
+  const served = mode.useServedApproveUrl
+    ? servedApproveUrl(started["approveUrl"], origin, userCode)
+    : null;
+  const approveUrl = served ?? `${origin}${mode.approvePath(userCode)}`;
   let heading: (() => void) | undefined;
 
   // 6. Show the code and the link; open the browser when allowed.
@@ -482,13 +629,13 @@ async function flow(
     say(
       jsonLine({
         v: 1,
-        command: "login",
+        command: mode.command,
         event: "started",
         host,
         code: userCode,
         url: approveUrl,
         expiresIn,
-        replaces,
+        ...(mode.scope === "admin" ? { replaces } : {}),
       }),
     );
   } else {
@@ -497,15 +644,13 @@ async function flow(
     const codeRows = (columns: number): string[] => {
       // Too narrow for the whole link: print it without the code, which shows right under it.
       const short = approveUrl.length >= columns;
-      const shown = short ? `${origin}/manage/device` : approveUrl;
+      const shown = short
+        ? `${origin}${mode.approvePath("").split("?")[0]}`
+        : approveUrl;
       return [
         ...(opened
           ? layout(
-              [
-                text(
-                  `Opening Polaris Key in your browser${out.symbols.ellipsis}`,
-                ),
-              ],
+              [text(`${mode.copy.opening}${out.symbols.ellipsis}`)],
               columns,
             )
           : []),
@@ -635,7 +780,7 @@ async function flow(
     finish();
     if (io.json)
       io.stdout.write(
-        envelope("login", o.exit, {
+        envelope(mode.command, o.exit, {
           error: o.state,
           message: flat(o.lines),
           host,
@@ -656,9 +801,7 @@ async function flow(
   /** After a network failure an approval may have gone through unseen. */
   let sawFailure = false;
   const maybeApproved = (): Line[] =>
-    sawFailure
-      ? plain("If you approved it, the token may exist; check Personal tokens.")
-      : [];
+    sawFailure ? plain(mode.copy.maybeApproved) : [];
   const expired = (): number =>
     report({
       state: "expired",
@@ -748,28 +891,16 @@ async function flow(
       const limit = /at most (\d{1,3}) /.exec(
         String(body["message"] ?? ""),
       )?.[1];
-      const url = `${origin}/manage/#/personal-tokens`;
+      const lines = mode.copy.tokenLimit(limit, origin);
       return report({
         state: "token_limit",
         exit: 4,
         kind: "warn",
-        lines: [
-          [
-            text(
-              limit
-                ? `You already have ${limit} personal tokens, the most allowed.`
-                : "You already have the most personal tokens allowed.",
-            ),
-          ],
-          rerun(
-            io,
-            origin,
-            "Revoke one in Personal tokens, then run ",
-            " again.",
-          ),
-          [text(url, { break: "url", link: url })],
-        ],
-        extra: { url },
+        lines,
+        extra:
+          mode.scope === "admin"
+            ? { url: `${origin}/manage/#/personal-tokens` }
+            : {},
       });
     }
     if (res.status === 403)
@@ -777,10 +908,7 @@ async function flow(
         state: "refused",
         exit: 4,
         kind: "warn",
-        lines: plain(
-          "This account can't sign in.",
-          "Ask a Superadmin to check your access.",
-        ),
+        lines: plain(...mode.copy.forbidden),
       });
     if (!res.ok)
       return report({
@@ -804,7 +932,7 @@ async function flow(
         exit: 1,
         kind: "warn",
         lines: [
-          [text(`Code ${userCode} was canceled in the browser.`)],
+          [text(mode.copy.denied(userCode))],
           rerun(io, origin, "Run ", " to try again."),
         ],
       });
@@ -819,17 +947,28 @@ async function flow(
         ],
       });
     finish();
-    return approved(io, {
-      origin,
-      host,
-      platform,
-      store,
-      previous: replaces ? existing : null,
-      token: body["token"],
-      expiresAt: body["expiresAt"],
-      label: body["label"],
-      gap: gap(),
-    });
+    return settle(body, gap());
+  }
+}
+
+/** The server's approve link, only when it is exactly this origin's /approve for this code. */
+function servedApproveUrl(
+  v: unknown,
+  origin: string,
+  code: string,
+): string | null {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    return u.origin === origin &&
+      u.pathname === "/approve" &&
+      u.search === `?code=${code}` &&
+      !u.hash &&
+      !u.username
+      ? v
+      : null;
+  } catch {
+    return null;
   }
 }
 
@@ -938,7 +1077,8 @@ async function approved(
         [text(message)],
         ended
           ? [
-              ...rerun(
+              ...rerunLine(
+                "pkey login",
                 io,
                 origin,
                 `${unlockAdvice(a.platform)} and run `,
@@ -954,7 +1094,15 @@ async function approved(
               text(personalTokens, { break: "url", link: personalTokens }),
             ],
         ...(a.previous && !restored
-          ? [rerun(io, origin, "Your old sign-in may need ", " again.")]
+          ? [
+              rerunLine(
+                "pkey login",
+                io,
+                origin,
+                "Your old sign-in may need ",
+                " again.",
+              ),
+            ]
           : []),
       ],
     );

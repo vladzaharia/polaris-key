@@ -51,6 +51,7 @@ import {
   licenseMadeFloatingNotice,
   licenseReassignedAwayNotice,
   newDeviceSignInNotice,
+  packagesTokenNotice,
   signInMethodAddedNotice,
   signInMethodRemovedNotice,
   type NoticeMessage,
@@ -110,6 +111,12 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
       location: "Lisbon, Portugal",
       origin: ORIGIN,
     }),
+  packagesToken: () =>
+    packagesTokenNotice({
+      host: "build-box",
+      location: "Lisbon, Portugal",
+      origin: ORIGIN,
+    }),
   methodAdded: () =>
     signInMethodAddedNotice({ method: "Steam", origin: ORIGIN }),
   methodRemoved: () =>
@@ -161,6 +168,7 @@ const SECURITY: Record<string, true> = {
   deviceRemoved: true,
   deviceReplaced: true,
   newDeviceSignIn: true,
+  packagesToken: true,
   methodAdded: true,
   methodRemoved: true,
   madeFloating: true,
@@ -215,6 +223,12 @@ describe("notice templates: copy", () => {
     );
     expect(TEMPLATES.deviceReplaced!().text).toContain(
       "Work laptop was replaced by Mara's Pixel 8 when you signed in to Diceroll on",
+    );
+    expect(TEMPLATES.packagesToken!().subject).toBe(
+      "A personal token was created for your Polaris Locker account",
+    );
+    expect(TEMPLATES.packagesToken!().text).toContain(
+      "pkey on build-box got a read-only personal token from about Lisbon, Portugal. If this wasn't you, revoke it in Polaris Locker, under Packages.",
     );
     // SIGN-IN.md §3.15: signin.mail.newDevice.subject.
     expect(TEMPLATES.newDeviceSignIn!().subject).toBe(
@@ -271,6 +285,9 @@ describe("notice templates: rules", () => {
     expect(urls(TEMPLATES.newDeviceSignIn!())[0]).toBe(
       `${ORIGIN}/#/account/sessions`,
     );
+    expect(urls(TEMPLATES.packagesToken!())[0]).toBe(
+      `${ORIGIN}/#/account/packages`,
+    );
     expect(urls(TEMPLATES.accountDeletionScheduled!())[0]).toBe(
       `${ORIGIN}/#/account/data`,
     );
@@ -278,8 +295,11 @@ describe("notice templates: rules", () => {
       `${ORIGIN}/#/account/data`,
     );
     expect(urls(TEMPLATES.accountDeleted!())).toEqual([]);
-    for (const build of Object.values(TEMPLATES)) {
-      expect(build().text).not.toMatch(/token|pkey_/i);
+    // `packagesToken` names the kind of token in words; it carries none (no `pkey_`/`pkeyp_` value).
+    for (const [name, build] of Object.entries(TEMPLATES)) {
+      expect(build().text).not.toMatch(
+        name === "packagesToken" ? /pkeyp?_/i : /token|pkey_/i,
+      );
     }
   });
 

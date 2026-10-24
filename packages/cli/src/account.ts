@@ -63,6 +63,7 @@ const COMMAND = {
   whoami: "whoami",
   logout: "logout",
   login: "login",
+  "feeds setup": "feeds setup",
   doctor: "doctor",
 } as const;
 export type Command = keyof typeof COMMAND;

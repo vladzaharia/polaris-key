@@ -44,6 +44,10 @@ function tidyCode(raw: string): string {
     .replace(/^(.{4})(.+)$/, "$1-$2");
 }
 
+/** F-37.1b: a `pkey` packages request gets its own words: it hands out a token, it signs nothing in. */
+const isPackages = (r: PortalDeviceLoginRequest): boolean =>
+  r.scope === "packages:read" && !!r.client;
+
 export function ApproveDeviceDialog({
   code,
   onClose,
@@ -130,7 +134,9 @@ export function ApproveDeviceDialog({
 
   const title =
     phase.kind === "review" || phase.kind === "deciding"
-      ? t("signin.approve.ask")
+      ? isPackages(phase.request)
+        ? t("signin.approve.askPackagesTitle")
+        : t("signin.approve.ask")
       : phase.kind === "stepup"
         ? t("core.codes.step_up_required.title")
         : phase.kind === "done"
@@ -226,15 +232,19 @@ export function ApproveDeviceDialog({
         <>
           <DialogBody className="space-y-4">
             <p className="text-fg">
-              {phase.request.scope === "packages:read" && phase.request.client
+              {isPackages(phase.request)
                 ? t("signin.approve.askPackages", {
-                    host: phase.request.client.host,
+                    host: phase.request.client!.host,
                   })
                 : t("signin.approve.askBody", { code: phase.request.code })}
             </p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               <dt className="text-fg-muted">{t("signin.approve.device")}</dt>
-              <dd className="text-fg-strong">{phase.request.device.label}</dd>
+              <dd className="text-fg-strong">
+                {isPackages(phase.request)
+                  ? `${phase.request.client!.name} ${phase.request.client!.version}`
+                  : phase.request.device.label}
+              </dd>
               <dt className="text-fg-muted">{t("signin.approve.where")}</dt>
               <dd className="text-fg-strong">
                 {phase.request.location.label ??
@@ -272,7 +282,9 @@ export function ApproveDeviceDialog({
               loading={phase.kind === "deciding"}
               onClick={() => void decide(phase.request, "approve")}
             >
-              {t("signin.approve.approve")}
+              {isPackages(phase.request)
+                ? t("signin.approve.approvePackages")
+                : t("signin.approve.approve")}
             </Button>
           </DialogFooter>
         </>
@@ -293,9 +305,11 @@ export function ApproveDeviceDialog({
             <p role="status" className="flex items-center gap-2 text-fg">
               <Check aria-hidden className="size-4 shrink-0 text-success" />
               {phase.status === "approved"
-                ? t("signin.approve.approved", {
-                    device: phase.request.device.label,
-                  })
+                ? isPackages(phase.request)
+                  ? t("signin.approve.approvedPackages")
+                  : t("signin.approve.approved", {
+                      device: phase.request.device.label,
+                    })
                 : t("signin.approve.deniedDone")}
             </p>
           </DialogBody>

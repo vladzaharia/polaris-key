@@ -75,6 +75,7 @@ import {
   isCustomerFeedRoute,
   isCustomerHostOwnPath,
   oldCustomerUrlRedirect,
+  lockerLink,
 } from "./core/customerHost.js";
 import { customerHostname, isCustomerHost } from "./core/hosts.js";
 import { relatedOriginsResponse } from "./core/customerHost.js";
@@ -312,6 +313,8 @@ async function routeRequest(
           settings: SETTINGS,
         });
       return handleSignInEntry(req);
+    case "lockerLink":
+      return lockerLink(req, env, route.to, url);
     case "deviceEntry":
       return handleDeviceEntry(
         req,

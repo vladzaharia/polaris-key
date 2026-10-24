@@ -13711,6 +13711,47 @@ paths:
             Location: { schema: { type: string } }
         "404":
           description: A `request` handle was given.
+  /approve:
+    get:
+      operationId: getLockerApproveHop
+      tags: [portal]
+      summary: Approve a pkey sign-in (redirect into Polaris Locker)
+      description: >
+        The address `pkey` prints for the browser step of a packages sign-in. Answers `302` to
+        `/#/account/approve?code=<code>` on the customer origin (`CUSTOMER_ORIGIN`), or on this
+        host's own portal when no customer host is configured. The target origin is configuration,
+        never request data; `code` must be exactly the display form of a device code
+        (`BCDF-GHJK`) or the answer is `400` and nothing is echoed. `cache-control: no-store`.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            {
+              type: string,
+              pattern: "^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$",
+            }
+      responses:
+        "302":
+          description: Polaris Locker's approval page.
+          headers:
+            Location: { schema: { type: string } }
+        "400":
+          description: The code is missing or not a device code.
+  /account/packages:
+    get:
+      operationId: getLockerPackagesHop
+      tags: [portal]
+      summary: Packages page (redirect into Polaris Locker)
+      description: >
+        The address `pkey` links to for revoking a personal token. Answers `302` to
+        `/#/account/packages` on the customer origin, or on this host's own portal when no
+        customer host is configured. `cache-control: no-store`.
+      responses:
+        "302":
+          description: Polaris Locker's Packages page.
+          headers:
+            Location: { schema: { type: string } }
   /device:
     get:
       operationId: getPlatformDeviceEntry

@@ -3501,9 +3501,24 @@
       "note": "Approve dialog: looks the code up (reads only, never approves)."
     },
     "signin.approve.askPackages": {
-      "value": "pkey on {host} asks for a packages token.",
+      "value": "pkey on {host} asks for a read-only personal token for your packages.",
       "role": "body",
       "note": "Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is."
+    },
+    "signin.approve.askPackagesTitle": {
+      "value": "Give pkey a personal token?",
+      "role": "title",
+      "note": "Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it."
+    },
+    "signin.approve.approvePackages": {
+      "value": "Approve",
+      "role": "button",
+      "note": "Approve dialog, confirm button for the pkey packages token."
+    },
+    "signin.approve.approvedPackages": {
+      "value": "Approved. Go back to your terminal.",
+      "role": "body",
+      "note": "Approve dialog outcome after approving the pkey packages token."
     },
     "signin.approve.askBody": {
       "value": "Code {code} asks to sign in to your account.",

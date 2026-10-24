@@ -111,7 +111,8 @@
         "pip",
         "pip3",
         "uv",
-        "poetry"
+        "poetry",
+        "go"
       ],
       "file": ".netrc",
       "edit": {
@@ -251,7 +252,7 @@
     {
       "ecosystem": "godot",
       "owner": "acme",
-      "reason": "its token rides in the editor's URL: set it up in the console"
+      "reason": "needs an editor URL from Polaris Locker, under Packages"
     }
   ]
 }
