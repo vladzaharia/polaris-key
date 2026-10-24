@@ -2425,7 +2425,11 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {}
+        "godot": {},
+        "react": {
+          "planned": "U-20",
+          "reason": "the adapter has mintToken; no React hook exposes it yet"
+        }
       },
       "layer": "client"
     },
@@ -2517,6 +2521,10 @@
           "spelling": "config_changed",
           "shape": "signal",
           "reason": "Godot observes a signal"
+        },
+        "react": {
+          "planned": "U-20",
+          "reason": "no React hook; useConfigSetting re-renders on a change"
         }
       },
       "layer": "client"
@@ -2699,6 +2707,10 @@
           "spelling": "changed",
           "shape": "signal",
           "reason": "Godot observes a signal"
+        },
+        "react": {
+          "planned": "U-20",
+          "reason": "no React hook; useConfigSetting re-renders on a change"
         }
       },
       "layer": "client"
@@ -2732,6 +2744,12 @@
         "kotlin": {
           "spelling": "activate",
           "planned": "SP-35b"
+        },
+        "react": {
+          "spelling": "usePolarisKey().submitKey",
+          "shape": "hook",
+          "planned": "I-10a",
+          "reason": "the aggregate hook calls it submitKey until I-10a"
         }
       },
       "layer": "client"
@@ -2794,6 +2812,10 @@
         "godot": {
           "planned": "SP-35b",
           "reason": "absent today"
+        },
+        "react": {
+          "planned": "LX-19",
+          "reason": "useEntitlement returns a boolean only"
         }
       },
       "layer": "client"
@@ -2816,6 +2838,10 @@
         "godot": {
           "spelling": "license.get_entitlements",
           "planned": "SP-35b"
+        },
+        "react": {
+          "planned": "LX-19",
+          "reason": "no React hook lists the grants"
         }
       },
       "layer": "client"
@@ -3211,17 +3237,6 @@
         "swift": {},
         "kotlin": {},
         "godot": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "client.getCurrentDevice",
-      "kind": "method",
-      "sdks": {
-        "node": {
-          "sdkOnly": true,
-          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
-        }
       },
       "layer": "client"
     },
@@ -4103,6 +4118,7 @@
       "id": "client.currentDevice",
       "kind": "method",
       "sdks": {
+        "node": {},
         "python": {},
         "swift": {},
         "kotlin": {},
@@ -5643,6 +5659,12 @@
       "sdk": "node",
       "from": "license.getEntitlements",
       "to": "entitlements.all",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "client.getCurrentDevice",
+      "to": "client.currentDevice",
       "package": "SP-35"
     },
     {

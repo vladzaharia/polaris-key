@@ -75,6 +75,7 @@ interface Concept {
   feature?: string;
   enum?: string;
   reserved?: string;
+  layer?: string;
   sdks?: Record<string, SdkEntry>;
 }
 interface Removed {
@@ -581,6 +582,38 @@ function readJson(root: string, file: string): unknown {
   return JSON.parse(readFileSync(abs, "utf8"));
 }
 
+const PARITY_MANIFESTS: Record<string, string> = {
+  node: "packages/sdk-node/parity.json",
+  react: "packages/sdk-react/parity.json",
+  python: "sdks/python/parity.json",
+  swift: "sdks/swift/parity.json",
+  kotlin: "sdks/kotlin/parity.json",
+  godot: "sdks/godot/parity.json",
+};
+
+/** L11: an SDK whose manifest implements a concept's feature is listed on the concept (a `planned` entry counts). */
+function checkCoverage(root: string, doc: Api): string[] {
+  const out: string[] = [];
+  for (const [sdk, file] of Object.entries(PARITY_MANIFESTS)) {
+    const m = readJson(root, file) as
+      | { features?: Record<string, { status?: string }> }
+      | undefined;
+    if (!m?.features) continue;
+    for (const c of doc.concepts) {
+      if (c.feature === undefined || c.reserved !== undefined) continue;
+      // `layer: "server"` rows document Node's verdict objects (L4); the other SDKs' server
+      // drop-ins are not an inventoried surface, so the feature does not imply the row.
+      if (c.layer === "server") continue;
+      if (m.features[c.feature]?.status !== "implemented") continue;
+      if (c.sdks?.[sdk] === undefined)
+        out.push(
+          `[rule 8] ${c.id}: ${sdk} implements "${c.feature}" (${file}) but is not listed on the concept`,
+        );
+    }
+  }
+  return out;
+}
+
 /** Returns one `[rule 8]` line per violation; empty when the registry is sound. */
 export function checkApi(
   root: string,
@@ -663,6 +696,7 @@ export function checkApi(
         `[rule 8] removed ${r.from}: a common word needs its own "scan" (pattern or files)`,
       );
   }
+  out.push(...checkCoverage(root, doc));
   out.push(...checkSurfaces(root, doc));
   out.push(...checkRemoved(options.scanRoot ?? root, doc));
   return out;

@@ -673,7 +673,7 @@ export class PolarisKeyClient {
     return this.license.isLicensed(now);
   }
 
-  getCurrentDevice(): DeviceInfo {
+  currentDevice(): DeviceInfo {
     const out: DeviceInfo = {
       id: this.core.deviceId,
       current: true,
@@ -692,7 +692,7 @@ export class PolarisKeyClient {
    *  there is no roster to fetch, so the answer is this device alone — which is the honest
    *  offline answer, not an error. */
   async listDevices(): Promise<DeviceInfo[]> {
-    const current = this.getCurrentDevice();
+    const current = this.currentDevice();
     let roster;
     try {
       roster = await this.devices.list();

@@ -109,12 +109,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Each SDK's surface test asserts every canonical symbol
-- [ ] No new SDK verb outside api.json (lint)
-- [ ] Every command in `plans/SP-35.md` §13 above the SP-35b line passes
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
-- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Each SDK's surface test asserts every canonical symbol
+- [x] No new SDK verb outside api.json (lint)
+- [x] Every command in `plans/SP-35.md` §13 above the SP-35b line passes
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
+- [x] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7). _Met per slice-plan L3: no new `replaces` field. The `removed` rows in `conformance/parity/api.json` are the data; `reference/api-names`'s "Removed in 0.9" lists them and `pnpm exec tsx tools/api-check.ts --notes SP-35` renders the release notes (23 rows). The changelog page is still a stub and DOC-12a builds the upgrade table from these rows._
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

@@ -97,8 +97,6 @@ it("client.storeStatus", () =>
   expect("storeStatus" in PolarisKeyClient.prototype).toBe(true));
 it("client.isLicensed", () =>
   expect("isLicensed" in PolarisKeyClient.prototype).toBe(true));
-it("client.getCurrentDevice", () =>
-  expect("getCurrentDevice" in PolarisKeyClient.prototype).toBe(true));
 it("client.listDevices", () =>
   expect("listDevices" in PolarisKeyClient.prototype).toBe(true));
 it("client.deauthorizeDevice", () =>
@@ -143,6 +141,8 @@ it("identity.pollSignIn", () =>
   expect("pollSignIn" in IdentityClient.prototype).toBe(true));
 it("identity.waitForSignIn", () =>
   expect("waitForSignIn" in IdentityClient.prototype).toBe(true));
+it("client.currentDevice", () =>
+  expect("currentDevice" in PolarisKeyClient.prototype).toBe(true));
 it("license.status", () =>
   expect("status" in LicenseClient.prototype).toBe(true));
 it("license.isLicensed", () =>
@@ -157,3 +157,5 @@ it("removed: license.entitlementValue", () =>
   expect("entitlementValue" in LicenseClient.prototype).toBe(false));
 it("removed: license.getEntitlements", () =>
   expect("getEntitlements" in LicenseClient.prototype).toBe(false));
+it("removed: client.getCurrentDevice", () =>
+  expect("getCurrentDevice" in PolarisKeyClient.prototype).toBe(false));

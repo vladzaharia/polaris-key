@@ -46,7 +46,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.status` | `client.status` | — | `client.status` | `client.status` | `client.status` | `client.status` | — |
 | `client.storeStatus` | `client.storeStatus` | — | `client.store_status` | `client.storeStatus` | `client.storeStatus` | `client.store_status` | — |
 | `client.isLicensed` | `client.isLicensed` | — | `client.is_licensed` | `client.isLicensed` | `client.isLicensed` | `client.is_licensed` | — |
-| `client.getCurrentDevice` | `client.getCurrentDevice` | — | — | — | — | — | — |
 | `client.listDevices` | `client.listDevices` | — | `client.list_devices` | `client.listDevices` | `client.listDevices` | — | — |
 | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — |
 | `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | `client.renameDevice` | `client.renameDevice` | — | — |
@@ -56,7 +55,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
 | `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
 | `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
-| `client.currentDevice` | — | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
+| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
 | `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
 | `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
 | `client.start` | — | — | — | `client.start` | `client.start` | `client.start` | — |
@@ -118,11 +117,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
 | `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
-| `config.mintToken` | `config.mintToken` | — | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
+| `config.mintToken` | `config.mintToken` | planned (U-20) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
 | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
 | `config.clearAll` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
-| `config.onConfigChange` | `config.onConfigChange` | — | `config.on_config_change` | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
+| `config.onConfigChange` | `config.onConfigChange` | planned (U-20) | `config.on_config_change` | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
@@ -130,7 +129,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | planned (U-07) | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | planned (U-07) | `config.setting.clear` | `config.resolve` |
-| `config.setting.on` | `config.setting.on` | — | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | `config.list_user_config` | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | `config.schema_version` | — |
@@ -158,7 +157,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `license.activateWithKey` | `license.activateWithKey` | — | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
+| `license.activateWithKey` | `license.activateWithKey` | `usePolarisKey().submitKey` (planned: I-10a) | `license.activate_with_key` | `activate` (planned: SP-35b) | `activate` (planned: SP-35b) | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | `license.activation` | `license.activation` | — |
 | `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | `license.licenseInfo` | — | — |
@@ -176,8 +175,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `entitlements.value` | — | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `entitlements.all` | — | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -401,6 +400,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Node | `license.isEntitled` | `entitlements.has` | SP-35 |
 | Node | `license.entitlementValue` | `entitlements.value` | SP-35 |
 | Node | `license.getEntitlements` | `entitlements.all` | SP-35 |
+| Node | `client.getCurrentDevice` | `client.currentDevice` | SP-35 |
 | Python | `license.is_entitled` | `entitlements.has` | SP-35 |
 | Python | `license.entitlement_value` | `entitlements.value` | SP-35 |
 | Python | `license.get_entitlements` | `entitlements.all` | SP-35 |

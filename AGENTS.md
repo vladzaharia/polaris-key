@@ -122,7 +122,7 @@ pnpm build                       # build all JS packages (turbo)
 pnpm gen --check                 # every generator's drift gate, from the registry (tools/generators.ts):
                                  # corpus, transcripts, services, constants, platform inventory, storefront CI,
                                  # settings, brand, Action bundle (after pnpm build), docs reference,
-                                 # parity, program INDEX, registry docs
+                                 # parity (and every public SDK verb is in api.json), program INDEX, registry docs
 pnpm ui:lint                     # UI-kit modernity + string + kit-source lint (needs Chromium; CI job ui-kits)
 pnpm ui:report                   # UI kits side by side per state; fails only on a React/elements pixel drift
 pnpm typecheck

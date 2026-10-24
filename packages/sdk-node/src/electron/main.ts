@@ -854,7 +854,7 @@ export function exposePolarisBridge(
       return r.kind === "ok" ? r.manifest : null;
     },
     "core.storeStatus": async () => client.storeStatus(),
-    "devices.id": async () => client.getCurrentDevice().id,
+    "devices.id": async () => client.currentDevice().id,
     // ── v4 (SP-12) ─────────────────────────────────────────────────────────────────────
     "core.boot": async (a) => {
       const b = bag(a);

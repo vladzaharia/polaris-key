@@ -152,7 +152,7 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
     expect(
       (reports[0]?.entitlements as Record<string, unknown>)["license.tier"],
     ).toBe("pro");
-    expect(client.getCurrentDevice().licenseId).toBe("lic_pro");
+    expect(client.currentDevice().licenseId).toBe("lic_pro");
 
     // The following refresh revalidates the new license's document normally.
     const again = await client.sync();
