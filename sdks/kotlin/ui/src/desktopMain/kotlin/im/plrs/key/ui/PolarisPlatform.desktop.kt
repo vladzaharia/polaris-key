@@ -55,6 +55,7 @@ public actual fun rememberPolarisClipboard(): PolarisClipboard = remember { Desk
  * Opens [url] with `Desktop.browse`, then `xdg-open`; false when neither took it, which the screens
  * turn into the copy-link state (`signin.handoff.noBrowser`). The link is re-parsed here as a second
  * check behind [PolarisOpener]; [xdgOpen] gets the parsed link, never anything else, as one argv entry.
+ * Called from click handlers, so it never waits on a launcher: see [awtBrowse] and [runXdgOpen].
  */
 internal fun launchOnDesktop(
     url: String,
@@ -63,8 +64,30 @@ internal fun launchOnDesktop(
 ): Boolean {
     val uri = try { URI(url) } catch (e: Exception) { return false }
     if (!"https".equals(uri.scheme, ignoreCase = true) || uri.host.isNullOrEmpty() || uri.userInfo != null) return false
-    if (browse(uri)) return true
+    if (browseBounded(uri, browse)) return true
     return xdgOpen(uri.toASCIIString())
+}
+
+/** How long the caller waits for `Desktop.browse` to say no before taking it as in flight. */
+internal const val BROWSE_GRACE_MS: Long = 200
+
+/**
+ * [browse] (`Desktop.browse`, which can block on the desktop's launcher) runs on its own daemon
+ * thread. The caller waits at most [BROWSE_GRACE_MS] for a refusal; a call still running after that
+ * is taken as accepted, so a slow launcher never freezes the UI thread.
+ */
+private fun browseBounded(uri: URI, browse: (URI) -> Boolean): Boolean {
+    val result = java.util.concurrent.CompletableFuture<Boolean>()
+    val t = Thread { result.complete(runCatching { browse(uri) }.getOrDefault(false)) }
+        .apply { isDaemon = true; name = "pkey-browse"; start() }
+    return try {
+        result.get(BROWSE_GRACE_MS, TimeUnit.MILLISECONDS)
+    } catch (e: java.util.concurrent.TimeoutException) {
+        true
+    } catch (e: Exception) {
+        t.interrupt()
+        false
+    }
 }
 
 private fun awtBrowse(uri: URI): Boolean = runCatching {
@@ -73,18 +96,38 @@ private fun awtBrowse(uri: URI): Boolean = runCatching {
     true
 }.getOrDefault(false)
 
-/** `xdg-open <https link>` on Linux and the BSDs: fixed argv, no shell; the link starts with `https:`, so it is never an option. */
+/** How long a launched `xdg-open` may run before it is destroyed. */
+internal const val XDG_OPEN_REAP_MS: Long = 5_000
+
+/**
+ * `xdg-open <https link>` on Linux and the BSDs: fixed argv, no shell; the link starts with `https:`,
+ * so it is never an option. A successful `start()` is success: nothing waits on the process here. A
+ * daemon thread reaps it, and destroys it when it is still running after [XDG_OPEN_REAP_MS].
+ */
 private fun runXdgOpen(url: String): Boolean {
     val os = System.getProperty("os.name").orEmpty().lowercase()
     if (os.contains("win") || os.contains("mac")) return false
-    return runCatching {
-        val p = ProcessBuilder("xdg-open", url)
-            .redirectErrorStream(true)
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            .start()
-        if (p.waitFor(5, TimeUnit.SECONDS)) p.exitValue() == 0 else true
-    }.getOrDefault(false)
+    return startAndReap(listOf("xdg-open", url))
 }
+
+internal fun startAndReap(argv: List<String>, reapMs: Long = XDG_OPEN_REAP_MS): Boolean = runCatching {
+    val p = ProcessBuilder(argv)
+        .redirectErrorStream(true)
+        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+        .redirectInput(ProcessBuilder.Redirect.from(java.io.File("/dev/null")))
+        .start()
+    Thread {
+        try {
+            if (!p.waitFor(reapMs, TimeUnit.MILLISECONDS)) {
+                p.destroy()
+                if (!p.waitFor(1, TimeUnit.SECONDS)) p.destroyForcibly()
+            }
+        } catch (e: InterruptedException) {
+            p.destroyForcibly()
+        }
+    }.apply { isDaemon = true; name = "pkey-xdg-reap"; start() }
+    true
+}.getOrDefault(false)
 
 @Composable
 public actual fun rememberPolarisOpener(): PolarisOpener = remember { PolarisOpener { launchOnDesktop(it) } }
@@ -171,3 +214,6 @@ internal actual fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, 
     DisposableEffect(state) { onDispose { state.cancel() } }
     return state
 }
+
+internal actual fun autoPlatformVariant(): PolarisPlatformVariant =
+    PolarisPlatformVariant.resolve(System.getProperty("os.name"), System.getProperty(PolarisPlatformVariant.FORCE_PROPERTY))

@@ -369,7 +369,7 @@ internal fun PolarisIconButton(onClick: () -> Unit, modifier: Modifier = Modifie
         onClick = onClick,
         enabled = enabled,
         interactionSource = interaction,
-        modifier = modifier.polarisFocusIndication(interaction, CircleShape).size(PolarisMinTouchTarget),
+        modifier = modifier.polarisFocusIndication(interaction, CircleShape).size(polarisWindow.minTarget),
         content = content,
     )
 }

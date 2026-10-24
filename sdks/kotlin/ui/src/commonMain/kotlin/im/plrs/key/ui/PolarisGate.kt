@@ -445,7 +445,7 @@ public fun PolarisActivationScreen(
             }
             if (replace) {
                 val openManage = {
-                    val opened = (if (onOpenManage != null) runCatching { onOpenManage(manage!!) }.isSuccess else opener(manage!!))
+                    val opened = isSafeHttpsLink(manage!!) && (if (onOpenManage != null) runCatching { onOpenManage(manage) }.isSuccess else opener(manage))
                     noBrowser = !opened
                 }
                 // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
