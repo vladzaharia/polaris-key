@@ -214,7 +214,8 @@ class DesktopVariantTest {
                 }
             }
             waitForIdle()
-            onNodeWithText(PolarisCopy().openInBrowser).performClick()
+            // On a Mac host the theme reads the Mac wording of a default copy (S4).
+            onNodeWithText(PolarisCopy().let { if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) it.forMac() else it }.openInBrowser).performClick()
             waitForIdle()
         }
         return opened

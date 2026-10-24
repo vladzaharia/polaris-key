@@ -98,9 +98,14 @@ internal expect fun PolarisDialogDim(amount: Float)
  * The dialog properties of a prompt window. [scrim] asks the desktop's `Dialog` for its own dim
  * (Compose Multiplatform draws a black 60 % one by default); a chrome that draws its own dim (the
  * Windows smoke, the GNOME scrim) or none (the Mac sheet) passes false, so two never stack. Android
- * dims through [PolarisDialogDim] and ignores it.
+ * dims through [PolarisDialogDim] and ignores it. [dismissOnClickOutside] defaults to [dismissible]; the Mac sheet
+ * turns it off while Escape still dismisses.
  */
-internal expect fun polarisPromptDialogProperties(dismissible: Boolean, scrim: Boolean): androidx.compose.ui.window.DialogProperties
+internal expect fun polarisPromptDialogProperties(
+    dismissible: Boolean,
+    scrim: Boolean,
+    dismissOnClickOutside: Boolean = dismissible,
+): androidx.compose.ui.window.DialogProperties
 
 /** Whether the prompt's dialog window draws its own dim: only where no desktop chrome owns the dimming. */
 internal fun dialogWindowDraws(variant: PolarisPlatformVariant): Boolean = variant == PolarisPlatformVariant.Android

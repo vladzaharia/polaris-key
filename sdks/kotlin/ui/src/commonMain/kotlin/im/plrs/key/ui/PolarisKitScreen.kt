@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -247,7 +248,8 @@ private fun KitScreenBody(
         offered.filterNot { catalog.isDangling(it) }
     }
     val lines = remember(kept, screen, catalog, locale) {
-        val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale, variant), line.args) }
+        // The platform's wording (macOS title case) is for buttons, menu items and window titles only (S4).
+        val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale, variant.takeIf { isMacVariantRole(line.key) }), line.args) }
         // A state whose every sentence lost an argument still says what happened, without the name.
         val fallback = screen.copy.firstOrNull { it.key in sentenceWithoutName }
         if (fallback != null && formatted.none { it.role == KitLineRole.Text }) {
@@ -304,6 +306,9 @@ private fun KitScreenBody(
     val rowsOnly = component == KitComponent.accountAndLicense
     val tertiary = if (rowsOnly) emptyList() else controls.filter { it.key in tertiaryKeys }
     val buttons = if (rowsOnly) emptyList() else controls.filter { it.key !in tertiaryKeys }
+    // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
+    val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
+    val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onAction(KitAction.forCopyKey(line.key)) } } else null
     val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution && component != KitComponent.activate) null else {
         {
             if (component == KitComponent.activate && screen.state != "done") KitKeyField(lines, busy = activating)
@@ -311,15 +316,33 @@ private fun KitScreenBody(
                 PolarisPrimaryButton(catalog.format("activate.submit", locale), onClick = {}, busy = true)
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
-            buttons.forEachIndexed { index, line ->
-                val action = KitAction.forCopyKey(line.key)
-                // One primary, then tonal secondaries (a lone action is always the primary, DL4).
-                if (index == 0) {
-                    PolarisPrimaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
-                } else {
-                    PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
+            if (macRow) {
+                // macOS (B1): a trailing row sized to the labels, Cancel and Back directly left of the default,
+                // emitted left to right so Tab runs the same way; the default has the focus.
+                PolarisActionGroup(row = true, visualOrder = true) {
+                    for ((index, line) in buttons.withIndex().reversed()) {
+                        val action = KitAction.forCopyKey(line.key)
+                        if (index == 0) {
+                            PolarisPrimaryButton(line.text, onClick = { onAction(action) }, initialFocus = true, external = KitAction.leavesApp(line.key))
+                        } else {
+                            PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
+                        }
+                    }
                 }
-                if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
+            } else {
+                CompositionLocalProvider(LocalPolarisMacHero provides (polarisWindow.isMac && component == KitComponent.welcome)) {
+                    buttons.forEachIndexed { index, line ->
+                        val action = KitAction.forCopyKey(line.key)
+                        // One primary, then tonal secondaries (a lone action is always the primary, DL4).
+                        val hero = if (polarisWindow.isMac && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
+                        if (index == 0) {
+                            PolarisPrimaryButton(line.text, onClick = { onAction(action) }, modifier = hero, external = KitAction.leavesApp(line.key))
+                        } else {
+                            PolarisSecondaryButton(line.text, onClick = { onAction(action) }, modifier = hero, external = KitAction.leavesApp(line.key))
+                        }
+                        if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
+                    }
+                }
             }
             if (tertiary.isNotEmpty()) {
                 Spacer(Modifier.height(if (buttons.isEmpty()) 0.dp else 20.dp))
@@ -359,6 +382,7 @@ private fun KitScreenBody(
                     // The confirm's first line is bold body text, read before the button (4.3 DeviceLimit item 7).
                     line.key == "deviceLimit.confirmTitle" || line.key == "signin.replace.title" ->
                         Text(line.text, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth())
+                    index == 0 && component == KitComponent.welcome && polarisWindow.isMac -> PolarisMacWelcomeTitle(line.text)
                     index == 0 -> PolarisTitle(line.text)
                     step != null -> PolarisStep(step, line.text)
                     else -> PolarisBody(line.text)
@@ -402,14 +426,14 @@ private fun KitScreenBody(
     CompositionLocalProvider(LocalPolarisArtName provides (productName ?: product)) {
     if (!asColumn) {
         PolarisScaffold(
-            modifier = semanticsModifier,
+            modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier),
             anchor = PolarisAnchor.Top,
             contentAlign = TextAlign.Start,
             actions = actions,
             content = body,
         )
     } else {
-        PolarisScreen(modifier = semanticsModifier, showLogo = false, actions = actions, content = body)
+        PolarisScreen(modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier), showLogo = false, actions = actions, content = body)
     }
     }
 }
@@ -430,6 +454,7 @@ private fun KitKeyField(lines: List<KitLine>, busy: Boolean) {
         label = label,
         placeholder = placeholder,
         enabled = !busy,
+        monospace = true,
         error = error,
         supporting = hints,
         trailing = paste?.let { description -> { PolarisPasteButton(description) { value = it } } },

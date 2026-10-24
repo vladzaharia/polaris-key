@@ -1,114 +1,87 @@
 // @pkey-feature ui.kit
 //
-// UK-10.7: the macOS board screens, rendered headless (Compose desktop, no window) at 900x640, 1440x900
-// and the 480x520 floor, dark and light, for the BUILT UX review against desktop.html. With
-// PKEY_KIT_SHOTS set, each render is written to <dir>/macos.<screen>/<size>-<scheme>.png; without it
-// the test only checks that every screen renders. No baselines are committed here (UK-10.12 does).
+// UK-10.7: the macOS board screens rendered offscreen to PKEY_KIT_SHOTS (PNGs, dark and light at 900x640
+// and 1440x900, the 480x520 floor and the Welcome / sheet focus shot), through BoardShots.kt with the
+// Tidewater fixtures, for the BUILT UX review against desktop.html. The host is a full-size content
+// view (the sheet floats 52 dp down). Nothing is compared: UK-10.12 commits the baseline set. Without
+// PKEY_KIT_SHOTS the test only checks every screen composes.
 
 package im.plrs.key.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toAwtImage
-import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.runDesktopComposeUiTest
-import im.plrs.key.core.AllowedRange
-import im.plrs.key.core.LicenseState
-import im.plrs.key.core.LicenseStatus
+import androidx.compose.runtime.CompositionLocalProvider
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
-import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalTestApi::class)
 class MacBoardShotsTest {
-    private val now = 1_790_000_000L
-    private val manage = "https://polaris.locker/activate?product=djdl&next=free-device&for=macOS"
+    private val shots: File? = System.getenv("PKEY_KIT_SHOTS")?.takeIf { it.isNotBlank() }?.let(::File)
 
-    private fun gateUi(status: LicenseStatus, range: AllowedRange? = null) =
-        PolarisGateUi(license = LicenseState(status, allowedRange = range), nowSeconds = now)
+    private class Board(val name: String, val sizes: List<Pair<Int, Int>> = DEFAULT_SIZES, val content: @Composable () -> Unit)
 
-    private val prompt = SignInPrompt(
-        deviceCode = "dc_sample", userCode = "WDJB-MJHT", verificationUri = "https://polaris.locker/device",
-        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT", expiresIn = 600, interval = 5,
-        expiresAt = now + 461, deviceName = "Studio Mac",
+    private val limit = PolarisActivationUi(
+        key = "pkey_tidewater_ABCDEFGHIJKLMNOPQRSTUV",
+        error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(3, 3, BoardFixtures.PORTAL)),
+        manageUrl = BoardFixtures.PORTAL,
     )
 
-    @Composable
-    private fun Product() {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-            Text("Diceroll", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onBackground)
-        }
-    }
-
-    private val screens: List<Pair<String, @Composable () -> Unit>> = listOf(
-        "gate" to { PolarisGateScreen(gateUi(LicenseStatus.needsActivation), PolarisActivationUi(), onSignIn = {}) },
-        "activate" to { PolarisGateScreen(gateUi(LicenseStatus.needsActivation), PolarisActivationUi(key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")) },
-        "sign-in" to { PolarisSignInScreen(PolarisSignInUi.Showing(prompt, now)) },
-        "device-limit" to {
-            PolarisGateScreen(
-                gateUi(LicenseStatus.needsActivation),
-                PolarisActivationUi(
-                    key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
-                    error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, manage)),
-                    manageUrl = manage,
+    private val boards = listOf(
+        Board("gate") { PolarisActivationScreen(PolarisActivationUi(), onSignIn = {}) },
+        Board("activate") { PolarisActivationScreen(PolarisActivationUi(key = "pkey_tidewater_ABCDEFGHIJKLMNOPQRSTUV"), onSignIn = {}) },
+        Board("sign-in") {
+            PolarisSignInScreen(
+                PolarisSignInUi.Showing(
+                    SignInPrompt("dc", "WDJB-MJHT", BoardFixtures.SIGN_IN, "${BoardFixtures.SIGN_IN}?code=WDJB-MJHT", 600, 5, 1_700_000_600, "Studio"),
+                    nowSeconds = 1_700_000_000,
                 ),
             )
         },
-        "sheet" to {
-            Product()
+        Board("device-limit") { PolarisActivationScreen(limit) },
+        // The sheet over the product, the parent visibly undimmed.
+        Board("sheet", DEFAULT_SIZES + (480 to 520)) {
+            BoardFixtures.Product()
             PolarisUpdatePromptHosted(
                 PolarisUpdateUi(
-                    "2.5.0", currentVersion = "2.4.1", size = 61_000_000L,
-                    notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
-                    notesUrl = "https://example.com/releases/2.5.0", outlet = "direct",
+                    version = "2.5.0", currentVersion = "2.4.1", size = 61_000_000,
+                    notes = listOf("Stem export in one click, with loudness matching", "Track freeze now works with every plug-in"),
+                    notesUrl = "https://polaris.locker/releases/2.5.0",
                 ),
                 onUpdate = {}, onLater = {}, onSkip = {},
             )
         },
-        "message" to { PolarisGateScreen(gateUi(LicenseStatus.versionTooOld, AllowedRange(min = "2.4.0")), PolarisActivationUi(), onUpdate = {}) },
+        Board("message", DEFAULT_SIZES + (480 to 520)) {
+            PolarisMessageScreen(PolarisMessageCopy("Can't connect", "Can't reach Polaris Locker. Check your connection and try again.", PolarisMessageKind.Offline)) {
+                PolarisPrimaryButton("Try again", {})
+                PolarisSecondaryButton("Continue offline", {})
+            }
+        },
     )
 
     @Test
-    fun theBoardScreensRenderAtEverySizeInBothSchemes() {
+    fun theBoardScreensCompose() {
         val old = System.getProperty(PolarisPlatformVariant.FORCE_PROPERTY)
         System.setProperty(PolarisPlatformVariant.FORCE_PROPERTY, "MacOS")
         try {
-            val out = System.getenv("PKEY_KIT_SHOTS")?.takeIf { it.isNotBlank() }?.let(::File)
             var rendered = 0
-            val sizes = listOf(900 to 640, 1440 to 900, 480 to 520)
-            for ((name, screen) in screens) for ((w, h) in sizes) for (dark in listOf(true, false)) {
-                runDesktopComposeUiTest(width = w, height = h) {
-                    setContent {
-                        PolarisTheme(darkTheme = dark, copy = PolarisCopy.localized().with(mapOf("productName" to "Diceroll"))) {
-                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { screen() }
-                        }
-                    }
-                    waitForIdle()
-                    mainClock.advanceTimeBy(800)
-                    waitForIdle()
-                    val image = onNode(isRoot()).captureToImage()
-                    if (out != null) {
-                        val file = File(out, "macos.$name/${w}x$h-${if (dark) "dark" else "light"}.png")
-                        file.parentFile.mkdirs()
-                        ImageIO.write(image.toAwtImage(), "png", file)
+            for (board in boards) for ((w, h) in board.sizes) {
+                // Without a destination only the smallest size is composed, to keep the run short.
+                if (shots == null && (w to h) != board.sizes.first()) continue
+                for (render in rendersFor(first = w == 900, large = w == 1440 && (board.name == "gate" || board.name == "sheet"))) {
+                    renderBoard(shots, "macos", board.name, w, h, render) {
+                        CompositionLocalProvider(LocalPolarisMacFullSizeContent provides true) { board.content() }
                     }
                     rendered++
                 }
             }
-            assertTrue(rendered == screens.size * sizes.size * 2)
+            assertTrue(rendered >= boards.size * 2)
         } finally {
             old?.let { System.setProperty(PolarisPlatformVariant.FORCE_PROPERTY, it) } ?: System.clearProperty(PolarisPlatformVariant.FORCE_PROPERTY)
         }
+    }
+
+    private companion object {
+        val DEFAULT_SIZES = listOf(900 to 640, 1440 to 900)
     }
 }

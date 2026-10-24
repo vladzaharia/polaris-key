@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
@@ -197,6 +198,8 @@ private fun PolarisUpdatePromptCard(
         // A card (not the phone's sheet) is the 560 dp message block, so its three actions fit one row.
         modifier = if (gnome) {
             modifier.widthIn(max = PolarisGnome.dialogWidth).fillMaxWidth().polarisGnomeDialogChrome()
+        } else if (mac) {
+            modifier.widthIn(max = PolarisMac.sheetWidth).fillMaxWidth().testTag("pkey-mac-sheet")
         } else {
             modifier.widthIn(max = if (mac) PolarisMac.sheetWidth else if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth()
         },
@@ -205,40 +208,62 @@ private fun PolarisUpdatePromptCard(
         border = if (mac) polarisMacSheetBorder() else null,
         shadowElevation = if (mac) 12.dp else 0.dp,
         // One step lower than the tonal Later button's container, so Later stays visible.
-        color = if (gnome) polarisGnomeDialogColor() else scheme.surfaceContainerLow,
+        color = if (gnome) polarisGnomeDialogColor() else if (mac) polarisMacSheetColor() else scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
         tonalElevation = if (gnome || mac) 0.dp else 6.dp,
     ) {
-        Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // macOS: every line starts at the leading edge (S1); elsewhere the card is centred.
+        val align = if (mac) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.Center
+        val horizontal = if (mac) Alignment.Start else Alignment.CenterHorizontally
+        Column(Modifier.then(if (mac) Modifier.fillMaxWidth().polarisMacInnerHighlight(PolarisTheme.current.dark) else Modifier).padding(24.dp), horizontalAlignment = horizontal) {
             val content: @Composable () -> Unit = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = horizontal) {
                     val kind = if (ui.critical) PolarisMessageKind.Warning else PolarisMessageKind.Info
-                    if (productName(copy) != null || PolarisTheme.current.logo != null) {
-                        PolarisProductIcon(56.dp)
-                    } else {
-                        PolarisIconBadge(if (ui.critical) PolarisSymbols.Warning else PolarisSymbols.Refresh, kind.tint().first, kind.glyph())
+                    val icon: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { size ->
+                        if (productName(copy) != null || PolarisTheme.current.logo != null) {
+                            PolarisProductIcon(size)
+                        } else {
+                            PolarisIconBadge(if (ui.critical) PolarisSymbols.Warning else PolarisSymbols.Refresh, kind.tint().first, kind.glyph())
+                        }
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().semantics { heading() },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    if (body != null) PolarisBody(body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    if (mac) {
+                        // S1: the icon beside the title and its meta line, on one leading edge.
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            icon(48.dp)
+                            Column {
+                                Text(title, style = MaterialTheme.typography.headlineSmall, textAlign = align, modifier = Modifier.fillMaxWidth().semantics { heading() })
+                                if (ui.kind == PolarisUpdateUi.Kind.Install) {
+                                    copy.updateCurrentLine(ui)?.let {
+                                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                    } else {
+                        icon(56.dp)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().semantics { heading() },
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    if (body != null) PolarisBody(body, textAlign = align)
                     if (ui.kind == PolarisUpdateUi.Kind.Install) {
-                        copy.updateCurrentLine(ui)?.let { PolarisBody(it, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                        if (!mac) copy.updateCurrentLine(ui)?.let { PolarisBody(it, textAlign = align) }
                         // A short window keeps the title, version and actions on screen: no room for the notes.
                         if (!window.compactHeight) PolarisUpdateNotes(ui)
                     }
                     if (ui.critical) {
                         Spacer(Modifier.height(8.dp))
-                        PolarisBody(copy.updateCritical, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        PolarisBody(copy.updateCritical, textAlign = align)
                     }
                     ui.error?.let {
                         Spacer(Modifier.height(8.dp))
-                        PolarisBody(copy.updateFailureMessage(it), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        PolarisBody(copy.updateFailureMessage(it), textAlign = align)
                     }
                     if (downloading) {
                         // Counted bytes only: the bar and "Downloading · 38 of 61 MB" (UI-KITS.md 4.3).
@@ -291,7 +316,17 @@ private fun PolarisUpdatePromptCard(
             }
             val showLater = onLater != null && !ui.mandatory
             val showSkip = onSkip != null && !ui.mandatory && !downloading && ui.kind == PolarisUpdateUi.Kind.Install && ui.version != null
-            if (!sheet && !mac && (window.compactHeight || footer) && showSkip) {
+            if (mac) {
+                // macOS (S1, S2): Skip at the leading end of the row when it fits, else leading under it; Cancel
+                // then the default at the trailing end, emitted left to right so Tab runs the same way.
+                PolarisMacActionRow(leading = showSkip) {
+                    if (showSkip) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                    CompositionLocalProvider(LocalPolarisActionRow provides true) {
+                        if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() })
+                        PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = true)
+                    }
+                }
+            } else if (!sheet && (window.compactHeight || footer) && showSkip) {
                 // Skip stays a quiet text link at the start edge; Later and the verb end the row (DL4).
                 // Where the three do not fit one row they stack, the verb first and Skip last.
                 PolarisSkipRow {
@@ -302,16 +337,11 @@ private fun PolarisUpdatePromptCard(
                     }
                 }
             } else {
-                PolarisActionGroup(row = window.compactHeight || gnome || mac) {
+                PolarisActionGroup(row = window.compactHeight || gnome) {
                     // While the download runs the primary queues the restart, so it is never disabled.
                     PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
                     if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, initialFocus = laterFirst)
-                    if (showSkip && !mac) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
-                }
-                // macOS: Cancel and the default are the row; Skip is the quiet link under it.
-                if (showSkip && mac) {
-                    Spacer(Modifier.height(8.dp))
-                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                    if (showSkip) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
                 }
             }
         }
@@ -414,7 +444,12 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
         onDismissRequest = { if (!ui.mandatory) onLater() },
         // The sheet and the card span the window: the dialog's own width would cap them.
         // A Windows or GNOME dialog carries its own dim and the Mac sheet none; the window's 60 % black must not stack on it.
-        properties = polarisPromptDialogProperties(dismissible = !ui.mandatory, scrim = dialogWindowDraws(autoPlatformVariant())),
+        properties = polarisPromptDialogProperties(
+            dismissible = !ui.mandatory,
+            scrim = dialogWindowDraws(autoPlatformVariant()),
+            // The Mac sheet is window-modal: Escape is Remind Me Later, a click outside does nothing (S3).
+            dismissOnClickOutside = !ui.mandatory && autoPlatformVariant() != PolarisPlatformVariant.MacOS,
+        ),
     ) {
         // The Mac sheet dims nothing (UK-10.7): the parent stays as it was.
         if (autoPlatformVariant() != PolarisPlatformVariant.MacOS) PolarisDialogDim(if (dark) 0.6f else 0.32f)
@@ -443,7 +478,14 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
             // Taps, not click semantics: TalkBack gets no unnamed full-window control (Later and Back dismiss).
             Box(
                 Modifier.fillMaxSize().then(if (window.isGnome) Modifier.polarisGnomeScrim() else Modifier)
-                    .pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } },
+                    .then(
+                        if (window.isMac) {
+                            // No tap-to-dismiss (S3); Return is the default and Escape is Remind Me Later.
+                            Modifier.polarisMacDefaultKeys(onUpdate, if (ui.mandatory) null else onLater)
+                        } else {
+                            Modifier.pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } }
+                        },
+                    ),
                 contentAlignment = if (window.isMac) Alignment.TopCenter else if (sheet) Alignment.BottomCenter else Alignment.Center,
             ) {
                 if (sheet) {
@@ -459,7 +501,7 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
                 } else {
                     PolarisUpdatePromptCard(
                         ui,
-                        Modifier.padding(top = if (window.isMac) PolarisMac.sheetTop else 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        Modifier.padding(top = if (window.isMac) polarisMacSheetTop() else 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                             .heightIn(max = available).pointerInput(Unit) { detectTapGestures {} },
                         onUpdate,
                         onLater,

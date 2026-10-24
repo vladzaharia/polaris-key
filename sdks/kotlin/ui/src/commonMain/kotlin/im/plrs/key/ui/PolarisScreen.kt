@@ -205,23 +205,27 @@ internal fun PolarisSurface(
         return
     }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(Modifier.polarisMacFloor().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
-            val height = maxHeight
-            CompositionLocalProvider(LocalPolarisWindow provides window) {
-                if (window.textScale == 1f) {
-                    content(window, height)
-                } else {
-                    // A copy of the type scale, not a density override: the platform's own
-                    // (non-linear) font scaling keeps applying on top of it.
-                    MaterialTheme(
-                        colorScheme = MaterialTheme.colorScheme,
-                        shapes = MaterialTheme.shapes,
-                        typography = MaterialTheme.typography.scaled(window.textScale),
-                    ) { content(window, height) }
+        val body: @Composable () -> Unit = {
+            BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
+                val height = maxHeight
+                CompositionLocalProvider(LocalPolarisWindow provides window) {
+                    if (window.textScale == 1f) {
+                        content(window, height)
+                    } else {
+                        // A copy of the type scale, not a density override: the platform's own
+                        // (non-linear) font scaling keeps applying on top of it.
+                        MaterialTheme(
+                            colorScheme = MaterialTheme.colorScheme,
+                            shapes = MaterialTheme.shapes,
+                            typography = MaterialTheme.typography.scaled(window.textScale),
+                        ) { content(window, height) }
+                    }
                 }
             }
         }
+        // macOS: the window floor is 480 x 520; a smaller host scrolls instead of clipping.
+        if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) PolarisMacFloor(body) else body()
     }
 }
 
@@ -685,7 +689,12 @@ private fun Modifier.controlSize(): Modifier {
     val row = LocalPolarisActionRow.current
     val sized = if (row) this else this.fillMaxWidth()
     // Material's button holds a 40 dp floor of its own; GNOME's 34 px control and the Mac's 28 pt one need the height fixed to get under it.
-    return if (polarisWindow.isGnome || polarisWindow.isMac) sized.height(height) else sized.heightIn(min = height)
+    // The Mac's 28 pt is a minimum: it grows with the font scale (the label's line plus 5 dp above and below).
+    if (polarisWindow.isMac) {
+        val grown = with(LocalDensity.current) { MaterialTheme.typography.labelLarge.lineHeight.toDp() } + 10.dp
+        return sized.height(maxOf(if (LocalPolarisMacHero.current) PolarisMac.heroButtonHeight else height, grown))
+    }
+    return if (polarisWindow.isGnome) sized.height(height) else sized.heightIn(min = height)
 }
 
 /** The primary action: filled, full round, 56 dp tall (60 on TV), full width in a stacked group. */
@@ -714,6 +723,7 @@ public fun PolarisPrimaryButton(
         enabled = enabled && !busy,
         shape = shape,
         contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else polarisButtonPadding(),
+        border = if (polarisWindow.isMac) polarisMacControlBorder() else null,
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -771,7 +781,9 @@ public fun PolarisSecondaryButton(
         enabled = enabled && !busy,
         shape = shape,
         // A busy secondary keeps its label at full contrast beside the ring (rule 7).
-        colors = if (busy) {
+        colors = if (polarisWindow.isMac) {
+            polarisMacSecondaryColors()
+        } else if (busy) {
             ButtonDefaults.filledTonalButtonColors(
                 disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                 disabledContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -780,6 +792,7 @@ public fun PolarisSecondaryButton(
             ButtonDefaults.filledTonalButtonColors()
         },
         contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else polarisButtonPadding(),
+        border = if (polarisWindow.isMac) polarisMacBezel() else null,
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -832,10 +845,12 @@ public fun PolarisTextButton(
  * A group of actions. Stacked ([row] false): full width, primary first, 12 dp apart. In a
  * trailing row ([row] true): trailing-aligned at equal height, primary last (so the emission order
  * stays primary first), each sized to its label and at least 96 dp wide; when the labels do not
- * fit side by side the group stacks instead (UI-KITS.md §1.5 rule 10).
+ * fit side by side the group stacks instead (UI-KITS.md §1.5 rule 10). On the Mac a [visualOrder]
+ * group's children are emitted left to right (Cancel first, the default last): the row is placed
+ * from its leftmost child, so Tab runs left to right, and a stack puts the default on top.
  */
 @Composable
-internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, visualOrder: Boolean = false, content: @Composable () -> Unit) {
     if (!row) {
         Column(
             modifier = modifier.fillMaxWidth(),
@@ -855,11 +870,18 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, con
             val natural = measurables.map { it.maxIntrinsicWidth(Constraints.Infinity).coerceAtLeast(minWidth) }
             val widths = if (fluent) natural.map { natural.max() } else natural
             val fits = widths.sum() + gap * (measurables.size - 1).coerceAtLeast(0) <= maxWidth
+            val macOrder = isMac && visualOrder
             if (fits) {
                 val height = measurables.zip(widths).maxOfOrNull { (m, w) -> m.minIntrinsicHeight(w) } ?: 0
                 val placeables = measurables.zip(widths).map { (m, w) -> m.measure(Constraints.fixed(w, height)) }
                 layout(maxWidth, height) {
-                    if (fluent) {
+                    if (macOrder) {
+                        var x = maxWidth - (widths.sum() + gap * (widths.size - 1).coerceAtLeast(0))
+                        for (p in placeables) {
+                            p.placeRelative(x, 0)
+                            x += p.width + gap
+                        }
+                    } else if (fluent) {
                         var x = 0
                         for (p in placeables) {
                             p.placeRelative(x, 0)
@@ -875,7 +897,7 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, con
                     }
                 }
             } else {
-                val placeables = measurables.map { it.measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth)) }
+                val placeables = measurables.map { it.measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth)) }.let { if (macOrder) it.asReversed() else it }
                 val height = placeables.sumOf { it.height } + gap * (placeables.size - 1).coerceAtLeast(0)
                 layout(maxWidth, height) {
                     var y = 0
@@ -1024,12 +1046,19 @@ internal fun PolarisTextField(
     focusRequester: FocusRequester? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /** The value is a key or a code: macOS draws it in monospace. */
+    monospace: Boolean = false,
 ) {
     val branded = PolarisTheme.current.branding == PolarisBranding.PolarisKey
     val shape = PolarisTheme.fieldShape
     val fluent = polarisWindow.fluent
     Column(modifier.fillMaxWidth()) {
-        if (fluent) {
+        if (polarisWindow.isMac) {
+            PolarisMacTextField(
+                value, onValueChange, label, Modifier, placeholder, enabled, error != null, trailing, focusRequester,
+                keyboardOptions, keyboardActions, monospace,
+            )
+        } else if (fluent) {
             PolarisFluentTextField(
                 value, onValueChange, label, Modifier, placeholder, enabled, error != null, trailing, focusRequester,
                 keyboardOptions, keyboardActions,

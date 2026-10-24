@@ -25,6 +25,16 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.requestFocus
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.semantics.Role
@@ -118,12 +128,14 @@ class MacChromeTest {
     fun theSheetIsInsetRoundedAndDimsNothing() = runDesktopComposeUiTest(width = 900, height = 640) {
         setContent {
             Behind {
-                PolarisMacSheet(Modifier.testTag("sheet")) { Box(Modifier.size(440.dp, 160.dp)) }
+                CompositionLocalProvider(LocalPolarisMacFullSizeContent provides true) {
+                    PolarisUpdatePromptHosted(update, onUpdate = {}, onLater = {}, onSkip = null)
+                }
             }
         }
         waitForIdle()
-        val b = onNodeWithTag("sheet").getBoundsInRoot()
-        assertEquals(52.dp, b.top, "below the title-bar row")
+        val b = onNodeWithTag("pkey-mac-sheet").getBoundsInRoot()
+        assertEquals(52.dp, b.top, "below the title-bar row under a full-size content view")
         assertEquals(440.dp, b.right - b.left, "about 440 wide")
         assertEquals((900.dp - 440.dp) / 2, b.left, "centred")
         val px = onNode(isRoot()).captureToImage().toPixelMap()
@@ -139,6 +151,13 @@ class MacChromeTest {
         assertTrue(!near(px[(left + right) / 2, top + 1], PAGE))
         assertTrue(!near(px[(left + right) / 2, bottom - 1], PAGE))
         assertEquals(18f, PolarisMac.sheetRadius.value, "K4: the brand's sheet token")
+    }
+
+    @Test
+    fun theSheetFloatsTwelveDpInAPlainWindow() = runDesktopComposeUiTest(width = 900, height = 640) {
+        setContent { Behind { PolarisUpdatePromptHosted(update, onUpdate = {}, onLater = {}, onSkip = null) } }
+        waitForIdle()
+        assertEquals(12.dp, onNodeWithTag("pkey-mac-sheet").getBoundsInRoot().top, "S6: ~12 dp without a full-size content view")
     }
 
     @Test
@@ -233,12 +252,183 @@ class MacChromeTest {
     }
 
     @Test
+    fun updateSheetHasALeadingHeaderAndSkipLeading() = runDesktopComposeUiTest(width = 900, height = 640) {
+        setContent {
+            Behind { PolarisUpdatePromptHosted(update, onUpdate = {}, onLater = {}, onSkip = {}) }
+        }
+        waitForIdle()
+        val title = onNodeWithText("2.5.0", substring = true).getBoundsInRoot()
+        val skip = onNodeWithText("Skip This Version").getBoundsInRoot()
+        val later = onNodeWithText("Remind Me Later").getBoundsInRoot()
+        val sheet = onNodeWithTag("pkey-mac-sheet").getBoundsInRoot()
+        // S1: Skip is at the leading edge of the content, never centred; Remind Me Later stays trailing.
+        assertTrue(skip.left < sheet.left + 24.dp + 16.dp, "Skip is leading: ${skip.left}")
+        assertTrue(later.left > skip.right || later.top < skip.top, "Skip does not sit between the buttons")
+        assertTrue(title.left < sheet.left + 24.dp + 80.dp, "the icon and the title share the leading edge: ${title.left} vs ${sheet.left}")
+    }
+
+    @Test
+    fun tabRunsLeftToRightAndReturnFiresTheDefault() = runDesktopComposeUiTest(width = 900, height = 640) {
+        var updated = 0
+        var later = 0
+        setContent { Behind { PolarisUpdatePromptHosted(update, onUpdate = { updated++ }, onLater = { later++ }, onSkip = {}) } }
+        waitForIdle()
+        val lefts = onAllNodes(isButton).fetchSemanticsNodes().map { it.boundsInRoot.left }
+        assertEquals(lefts.sorted(), lefts, "composition (Tab) order is left to right: $lefts")
+        onNodeWithText("Remind Me Later").requestFocus()
+        onRoot().performKeyInput { pressKey(Key.Enter) }
+        waitForIdle()
+        assertEquals(1, updated, "Return fires the default, even from Remind Me Later")
+        assertEquals(0, later)
+        onRoot().performKeyInput { pressKey(Key.Escape) }
+        waitForIdle()
+        assertEquals(1, later, "Escape is Remind Me Later")
+    }
+
+    @Test
+    fun aClickOutsideTheSheetDoesNotDismissIt() = runDesktopComposeUiTest(width = 900, height = 640) {
+        var later = 0
+        setContent { Behind { PolarisUpdatePromptHosted(update, onUpdate = {}, onLater = { later++ }, onSkip = null) } }
+        waitForIdle()
+        onRoot().performMouseInput { click(androidx.compose.ui.geometry.Offset(8f, 600f)) }
+        waitForIdle()
+        assertEquals(0, later, "S3: no tap-to-Later on the Mac")
+        val props = polarisPromptDialogProperties(dismissible = true, scrim = false, dismissOnClickOutside = false)
+        assertTrue(props.dismissOnBackPress && !props.dismissOnClickOutside)
+    }
+
+    @Test
+    fun stepActionsAreATrailingRowWithCancelLeftOfTheDefault() = runDesktopComposeUiTest(width = 900, height = 640) {
+        setContent {
+            Behind {
+                PolarisActivationScreen(
+                    PolarisActivationUi(
+                        key = "pkey_tidewater_ABCDEFGHIJKLMNOPQRSTUV",
+                        error = PolarisActivationError.Refused(im.plrs.key.license.ActivationResult.DeviceLimit(3, 3, BoardFixtures.PORTAL)),
+                        manageUrl = BoardFixtures.PORTAL,
+                    ),
+                )
+            }
+        }
+        waitForIdle()
+        val back = onNodeWithText("Back").getBoundsInRoot()
+        val retry = onNodeWithText("Try Again").getBoundsInRoot()
+        val open = onNodeWithText("Open in Browser", substring = true).getBoundsInRoot()
+        assertEquals(back.top, retry.top, "one row")
+        assertEquals(retry.top, open.top, "one row")
+        assertTrue(back.right <= retry.left && retry.right <= open.left, "Back | Try Again | Open in Browser")
+        assertTrue(open.right - open.left < 300.dp)
+    }
+
+    @Test
+    fun theKeyFieldHasABoundaryALabelAboveAndAMonospaceKey() = runDesktopComposeUiTest(width = 900, height = 640) {
+        setContent {
+            Behind { PolarisActivationScreen(PolarisActivationUi(key = "pkey_tidewater_ABCDEFGH"), onSignIn = {}) }
+        }
+        waitForIdle()
+        val label = onAllNodesWithText(PolarisCopy().keyLabel).fetchSemanticsNodes().first().boundsInRoot
+        val field = onNode(hasSetTextAction()).getBoundsInRoot()
+        assertTrue(label.bottom <= field.top.value + 1f, "the label is above the field")
+        val style = onNode(hasSetTextAction()).fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.let { f ->
+            val out = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            f(out)
+            out.firstOrNull()?.layoutInput?.style
+        }
+        assertEquals(androidx.compose.ui.text.font.FontFamily.Monospace, style?.fontFamily, "the key is monospace")
+        // The boundary is at least 3:1 against the page it sits on (WCAG 1.4.11).
+        val px = onNode(isRoot()).captureToImage().toPixelMap()
+        val x = field.left.value.toInt()
+        val y = ((field.top.value + field.bottom.value) / 2).toInt()
+        val ground = px[x - 8, y]
+        val best = (x - 2..x + 2).maxOf { contrast(px[it, y], ground) }
+        assertTrue(best >= 3f, "the boundary reads $best:1")
+    }
+
+    @Test
+    fun theDarkSheetIsRaisedAndTheSecondaryButtonKeepsAnEdge() {
+        var sheetDark: Color? = null
+        var sheetLight: Color? = null
+        var face: Color? = null
+        runDesktopComposeUiTest(width = 200, height = 100) {
+            setContent {
+                PolarisTheme(darkTheme = true) {
+                    sheetDark = polarisMacSheetColor()
+                    face = polarisMacSecondaryColors().containerColor
+                    assertEquals(MaterialTheme.colorScheme.surfaceContainerHigh, sheetDark)
+                    assertEquals(0.5.dp, polarisMacBezel()!!.width)
+                }
+                PolarisTheme(darkTheme = false) { sheetLight = polarisMacSheetColor() }
+            }
+            waitForIdle()
+        }
+        assertNotEquals(sheetDark, sheetLight)
+        assertNotEquals(sheetDark, face, "the secondary face is distinct from the sheet")
+    }
+
+    @Test
+    fun increaseContrastBordersButtonsAndFields() = runDesktopComposeUiTest(width = 200, height = 100) {
+        var border: BorderStroke? = null
+        var color: Color? = null
+        setContent {
+            CompositionLocalProvider(LocalPolarisHostFacts provides PolarisHostFacts(highContrast = true)) {
+                PolarisTheme(darkTheme = false) {
+                    border = polarisMacBezel()
+                    color = MaterialTheme.colorScheme.onSurface
+                }
+            }
+        }
+        waitForIdle()
+        assertEquals(1.dp, border!!.width)
+        assertEquals(androidx.compose.ui.graphics.SolidColor(color!!), border!!.brush)
+    }
+
+    @Test
+    fun macVariantsAreByCatalogKeyForButtonsOnly() {
+        assertEquals("All Changes in %1\$s", PolarisCopy().forMac().updateAllChanges, "templated variants carry their argument")
+        assertEquals("Replace a device", PolarisCopy().forMac().freeDevice, "a heading is not a button: sentence case")
+        assertEquals("Install and Relaunch", PolarisCopy().forMac().updateNow)
+        assertTrue(isMacVariantRole("update.later") && isMacVariantRole("menu.manageLicense"))
+        assertTrue(!isMacVariantRole("deviceLimit.title"))
+        var themed = ""
+        runDesktopComposeUiTest(width = 200, height = 100) {
+            setContent { PolarisTheme(copy = PolarisCopy()) { themed = PolarisTheme.copy.updateLater } }
+            waitForIdle()
+        }
+        assertEquals("Remind Me Later", themed, "an explicit default copy reads the Mac wording in PolarisTheme too")
+    }
+
+    @Test
+    fun theWelcomeUsesTheDisplayTitleAndTheHeroButtons() = runDesktopComposeUiTest(width = 900, height = 640) {
+        setContent { Behind { PolarisActivationScreen(PolarisActivationUi(), onSignIn = {}) } }
+        waitForIdle()
+        val signIn = onNodeWithText("Sign In").getBoundsInRoot()
+        assertEquals(36.dp, signIn.bottom - signIn.top, "S5: hero buttons are 36 pt")
+        assertTrue(signIn.right - signIn.left <= 320.dp, "at most 320 wide")
+        var display = 0f
+        runDesktopComposeUiTest(width = 200, height = 100) {
+            setContent { PolarisTheme(darkTheme = false) { display = MaterialTheme.typography.headlineLarge.fontSize.value } }
+            waitForIdle()
+        }
+        assertEquals(26f, display)
+    }
+
+    @Test
     fun androidKeepsItsOwnChrome() = runDesktopComposeUiTest(width = 300, height = 300) {
         force("Android")
         setContent { PolarisTheme(darkTheme = false) { PolarisSurface { _, _ -> Box(Modifier.testTag("c").fillMaxSize()) } } }
         waitForIdle()
         assertEquals(300, onNodeWithTag("c").fetchSemanticsNode().size.width, "no floor")
         assertEquals(56.dp, PolarisPlatformVariant.Android.controlHeight)
+    }
+
+    private fun lum(c: Color): Float {
+        fun ch(v: Float) = if (v <= 0.03928f) v / 12.92f else Math.pow(((v + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+        return 0.2126f * ch(c.red) + 0.7152f * ch(c.green) + 0.0722f * ch(c.blue)
+    }
+
+    private fun contrast(a: Color, b: Color): Float {
+        val (hi, lo) = lum(a).let { x -> lum(b).let { y -> maxOf(x, y) to minOf(x, y) } }
+        return (hi + 0.05f) / (lo + 0.05f)
     }
 
     private fun near(a: Color, b: Color) = kotlin.math.abs(a.red - b.red) < 0.03f && kotlin.math.abs(a.green - b.green) < 0.03f && kotlin.math.abs(a.blue - b.blue) < 0.03f
