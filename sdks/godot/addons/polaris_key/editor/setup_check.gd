@@ -146,6 +146,18 @@ static func check(host: Node, base_url: String, product: String, pins: Dictionar
 ## Write `res://polaris_key.tres` (or `path`): the existing PKeyOptions there with the dock's four
 ## fields replaced, so the rest of a hand-edited file survives. Refuses without `confirmed`.
 ## {ok, message}.
+## The editor and export notice for a config file that still carries the pre-0.9 option names
+## (the two options renamed in 0.9): "" when the file is absent, current, or not a PKeyOptions.
+## The values are never part of the text.
+static func legacy_notice(path: String) -> String:
+	if not ResourceLoader.exists(path):
+		return ""
+	var opts = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not (opts is PKeyOptions) or opts.removed_names().is_empty():
+		return ""
+	return "%s uses names removed in 0.9 (%s). Open the Polaris Key dock and Save, or run `pkey sdk --lang godot --write`, to rewrite it with product_slug and pinned_keys." % [path, ", ".join(opts.removed_names())]
+
+
 static func save(path: String, product: String, base_url: String, pins: Dictionary, editor_channel: String, confirmed: bool) -> Dictionary:
 	if not confirmed:
 		return {"ok": false, "message": "Confirm that the pins match `pkey trust` or the console before saving."}

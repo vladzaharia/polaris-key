@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/polaris_key/core/options.gd" id="1_opts"]
+
+[resource]
+script = ExtResource("1_opts")
+product = "djdl"
+base_url = "https://key.plrs.im"
+pinned_trust_keys = {
+"pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+}

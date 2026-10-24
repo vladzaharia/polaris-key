@@ -20,6 +20,7 @@ func run(t: PKeyTestContext) -> void:
 	disc = tr["steps"][0]["exchanges"]["items"][0]["response"]["body"]
 	await _check(t)
 	_save(t)
+	_legacy(t)
 
 
 func _pins(t: PKeyTestContext) -> void:
@@ -112,4 +113,34 @@ func _save(t: PKeyTestContext) -> void:
 	t.check("save: the rest of the file survives", back is PKeyOptions and back.refresh_interval_seconds == 120.0)
 	t.check("save: a bad channel is refused", not PKeySetupCheck.save(path, "djdl", "https://key.plrs.im", {}, "Beta", true)["ok"])
 	t.check("save: an insecure base URL is refused", not PKeySetupCheck.save(path, "djdl", "http://example.com", {}, "", true)["ok"])
+	PKeyTestFixtures.remove_tree(dir)
+
+
+const LEGACY := "res://tests/fixtures/legacy_options.tres"
+
+
+func _legacy(t: PKeyTestContext) -> void:
+	var notice := PKeySetupCheck.legacy_notice(LEGACY)
+	t.check("legacy: the export notice names both old names, never a value", notice.contains("product") and notice.contains("pinned_trust_keys") and notice.contains("product_slug") and not notice.contains("kDJF6"), notice)
+	t.check("legacy: a current file has no notice", PKeySetupCheck.legacy_notice("res://nope.tres") == "")
+	var old = ResourceLoader.load(LEGACY, "", ResourceLoader.CACHE_MODE_IGNORE)
+	t.check("legacy: the fixture loads with old names kept apart", old is PKeyOptions and old.product_slug != "djdl" and old.pinned_keys.is_empty() and old.removed_names().size() == 2)
+	var host := Node.new()
+	var dock = load("res://addons/polaris_key/editor/setup_dock.gd").new()
+	dock.config_path = LEGACY
+	host.add_child(dock)
+	Engine.get_main_loop().root.add_child(host)
+	t.check("legacy: the dock shows the removed-names row", dock._removed_row.visible and dock._removed_row.text.contains("removed in 0.9"))
+	t.check("legacy: the product is pre-filled", dock._product.text == "djdl")
+	t.check("legacy: the pins are pre-filled but not confirmed", dock._pins.text.contains("pkey-test-prod-2026") and not dock._confirm.button_pressed and dock._save_button.disabled)
+	var dir := PKeyTestFixtures.scratch_dir("dock_legacy")
+	var path := dir.path_join("polaris_key.tres")
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(LEGACY), path)
+	dock.config_path = path
+	dock._confirm.button_pressed = true
+	dock._on_save()
+	var text := FileAccess.get_file_as_string(path)
+	t.check("legacy: the saved text has the new names and neither old one", text.contains("product_slug") and text.contains("pinned_keys") and not text.contains("pinned_trust_keys") and not text.contains("\nproduct ="), text)
+	t.check("legacy: the row goes away after Save", not dock._removed_row.visible)
+	host.queue_free()
 	PKeyTestFixtures.remove_tree(dir)
