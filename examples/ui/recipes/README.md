@@ -3,9 +3,11 @@
 The Polaris Locker gate in other front ends, each on the Tidewater fixtures (no Worker, no
 network, no keys). A standalone pnpm workspace: not part of the repo's workspace or lockfile.
 
-| Recipe  | Shows                                                           |
-| ------- | --------------------------------------------------------------- |
-| `htmx/` | `<pk-gate>` around an `hx-get` region; the gate survives a swap |
+| Recipe    | Shows                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------- |
+| `htmx/`   | `<pk-gate>` around an `hx-get` region; the gate survives a swap                                   |
+| `vue/`    | Vue 3: `:input.prop`, `@pk-action`, `isCustomElement`; your own UI over `headless`                |
+| `svelte/` | Svelte 5: `input` as a property, `on:pk-action`, `customElement` off; your own UI over `headless` |
 
 ## Run
 
