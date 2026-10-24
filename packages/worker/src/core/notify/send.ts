@@ -12,6 +12,7 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { portalAudit } from "../accounts/portalAudit.js";
 import { deliverEmail } from "./emailDelivery.js";
+import { whatIsLockerLink } from "../helpLinks.js";
 import { emailAssetOrigin, renderEmail } from "./render.js";
 import { securityNoticeRecipients } from "./recipients.js";
 import type { NoticeMessage } from "./templates.js";
@@ -29,6 +30,7 @@ export async function sendMagicLink(
   now: number,
 ): Promise<boolean> {
   const subject = "Sign in to Polaris Locker";
+  const assetOrigin = emailAssetOrigin(link, env.CONSOLE_ORIGIN);
   const result = await deliverEmail(
     env,
     db,
@@ -38,7 +40,8 @@ export async function sendMagicLink(
       subject,
       text:
         `Sign in to Polaris Locker\n\nUse this link to sign in:\n\n${link}\n\n` +
-        `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
+        `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.` +
+        helpText(assetOrigin),
       html: renderEmail({
         subject,
         heading: "Sign in to Polaris Locker",
@@ -48,13 +51,24 @@ export async function sendMagicLink(
         action: { label: "Sign in", url: link },
         footer:
           "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
-        origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+        ...helpLinks(assetOrigin),
+        origin: assetOrigin,
         brand: "locker",
       }),
     },
     now,
   );
   return result.ok || result.reason === "suppressed";
+}
+
+/** The sign-in mails link "What is Polaris Locker?" only (DOC-06b). */
+function helpLinks(origin: string | null) {
+  return origin ? { footerLinks: [whatIsLockerLink(origin)] } : {};
+}
+function helpText(origin: string | null): string {
+  if (!origin) return "";
+  const l = whatIsLockerLink(origin);
+  return `\n\n${l.label}: ${l.url}`;
 }
 
 /**
@@ -99,6 +113,7 @@ export async function sendSignInEmail(
   const footer = confirm
     ? "If you did not ask for this, you can ignore this email. Nothing changes until it is used."
     : "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.";
+  const assetOrigin = emailAssetOrigin(content.link, env.CONSOLE_ORIGIN);
   const result = await deliverEmail(
     env,
     db,
@@ -110,7 +125,8 @@ export async function sendSignInEmail(
         `${heading}: ${spaced}\n\n` +
         textLines.join("\n\n") +
         (content.link ? `\n\n${content.link}` : "") +
-        `\n\n${footer}`,
+        `\n\n${footer}` +
+        helpText(assetOrigin),
       html: renderEmail({
         subject,
         heading,
@@ -120,7 +136,8 @@ export async function sendSignInEmail(
           ? { action: { label: "Sign in", url: content.link } }
           : {}),
         footer,
-        origin: emailAssetOrigin(content.link, env.CONSOLE_ORIGIN),
+        ...helpLinks(assetOrigin),
+        origin: assetOrigin,
         brand: "locker",
       }),
     },

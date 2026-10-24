@@ -39,6 +39,11 @@ import {
 } from "@polaris-key/brand/email-copy";
 import { platformLabel } from "@polaris-key/manifest";
 import { PERSONAL_TOKEN_DAYS } from "../accounts/personalTokens.js";
+import {
+  aboutThisEmailLink,
+  secureHelpLink,
+  whatIsLockerLink,
+} from "../helpLinks.js";
 import { renderEmail, emailAssetOrigin, type EmailContent } from "./render.js";
 
 /** A finished message: what `EMAIL.send` needs besides the addresses. */
@@ -113,6 +118,33 @@ interface NoticeSpec {
   origin: string;
   /** The identity of the mail: Polaris Locker by default; `key` for an operator notice. */
   brand?: "key" | "locker";
+  /** This notice's entry on the Help "Emails" page: a fixed anchor id (`help/emails.md`). */
+  help?: string;
+}
+
+/** Locker mail's Help footer links as `EmailContent` fields (empty without a usable origin). */
+function lockerHelp(
+  origin: string,
+  anchor: string,
+  secure = false,
+): Pick<EmailContent, "footerLinks"> {
+  const base = emailAssetOrigin(origin);
+  if (!base) return {};
+  return {
+    footerLinks: [
+      whatIsLockerLink(base),
+      aboutThisEmailLink(base, anchor),
+      ...(secure ? [secureHelpLink(base)] : []),
+    ],
+  };
+}
+
+/** The plain-text part's matching `label: url` lines after the small print. */
+function withHelpText(text: string, c: EmailContent): string {
+  return [
+    text,
+    ...(c.footerLinks ?? []).map((l) => `${l.label}: ${l.url}`),
+  ].join("\n\n");
 }
 
 function buildNotice(spec: NoticeSpec): NoticeMessage {
@@ -127,6 +159,12 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
   if (spec.secureUrl)
     lines.push(`Wasn't you? ${SECURE_LABEL}: ${spec.secureUrl}`);
   lines.push(footer);
+  // Locker mail links Help in the footer; an operator (Key) notice does not (DOC-06b D-W1).
+  const helped =
+    spec.help && (spec.brand ?? "locker") === "locker"
+      ? lockerHelp(spec.origin, spec.help, Boolean(spec.secureUrl))
+      : {};
+  for (const l of helped.footerLinks ?? []) lines.push(`${l.label}: ${l.url}`);
   const content: EmailContent = {
     subject: spec.subject,
     heading,
@@ -137,6 +175,7 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
       ? { secure: { label: SECURE_LABEL, url: spec.secureUrl } }
       : {}),
     footer,
+    ...helped,
     origin: emailAssetOrigin(spec.origin),
     brand: spec.brand ?? "locker",
   };
@@ -157,6 +196,7 @@ export function licenseAddedNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "Your new product");
   return buildNotice({
+    help: "license-added",
     subject: `${name} is in your library`,
     paragraphs: [
       `${name} was added to your Polaris Locker account with a license key.`,
@@ -183,6 +223,7 @@ export function licenseFromDeveloperNotice(input: {
   const name = displayValue(input.productName, "Your new product");
   const from = displayValue(input.developerName, name);
   return buildNotice({
+    help: "license-from-developer",
     subject: `${name} is in your Polaris Locker library`,
     paragraphs: [`From ${from}.`, `${name} was added to your library.`],
     action: {
@@ -203,6 +244,7 @@ export function licenseAttachedNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "Your");
   return buildNotice({
+    help: "license-attached",
     subject: `Your ${name} license was added to a Polaris Locker account`,
     paragraphs: [
       `Your ${name} license was added to a Polaris Locker account with its license key.`,
@@ -220,6 +262,7 @@ export function licenseKeyReplacedNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "your product");
   return buildNotice({
+    help: "license-key-replaced",
     subject: "Your license has a new key",
     paragraphs: [
       `A new license key for ${name} was made in your Polaris Locker account.`,
@@ -249,6 +292,7 @@ export function downloadLinkEmail(input: {
     `${productRoute(input.productSlug, "download")}?platform=${encodeURIComponent(input.platform)}`,
   );
   return buildNotice({
+    help: "download-link",
     subject: `Download ${name} for ${platform}`,
     paragraphs: [
       `Here is the ${platform} download you asked for. Open this email on the device you want to install ${name} on.`,
@@ -318,10 +362,15 @@ export function licenseKeyEmail(input: {
     action: primary,
     ...(secondary ? { secondary } : {}),
     footer,
+    ...lockerHelp(input.origin, "license-key"),
     origin: emailAssetOrigin(input.origin),
     brand: "locker",
   };
-  return { subject, text, html: renderEmail(content) };
+  return {
+    subject,
+    text: withHelpText(text, content),
+    html: renderEmail(content),
+  };
 }
 
 /** Why the invitation was sent: it picks the footer. */
@@ -378,10 +427,15 @@ export function licenseInvitationEmail(input: {
     action: primary,
     ...(secondary ? { secondary } : {}),
     footer,
+    ...lockerHelp(input.origin, "license-invited"),
     origin: emailAssetOrigin(input.origin),
     brand: "locker",
   };
-  return { subject, text, html: renderEmail(content) };
+  return {
+    subject,
+    text: withHelpText(text, content),
+    html: renderEmail(content),
+  };
 }
 
 /** An email address for display: control, line-break, bidi and space characters removed, never cut. */
@@ -405,6 +459,7 @@ export function deviceRemovedNotice(input: {
   const device = displayValue(input.deviceLabel, "A device");
   const name = displayValue(input.productName, "your product");
   return buildNotice({
+    help: "device-removed",
     subject: `${device} was removed from ${name}`,
     paragraphs: [
       `${device} was removed from your ${name} license and no longer counts toward its device limit.`,
@@ -436,6 +491,7 @@ export function deviceReplacedNotice(input: {
   const newDevice = displayValue(input.newDeviceLabel, "A new device");
   const name = displayValue(input.productName, "your product");
   return buildNotice({
+    help: "device-replaced",
     subject: `${name} signed out on ${device}`, // signin.mail.replaced.subject
     paragraphs: [
       // signin.mail.replaced.body
@@ -489,6 +545,7 @@ export function newDeviceSignInNotice(input: {
   const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
   const where = location ? ` from ${location}` : "";
   return buildNotice({
+    help: "new-device-sign-in",
     subject: "A new device signed in to your Polaris Locker account", // signin.mail.newDevice.subject
     paragraphs: [
       // signin.mail.newDevice.body
@@ -518,6 +575,7 @@ export function packagesTokenNotice(input: {
   const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
   const where = location ? ` from about ${location}` : "";
   return buildNotice({
+    help: "packages-token",
     subject: "A personal token was created for your Polaris Locker account",
     paragraphs: [
       `pkey on ${host} got a read-only personal token${when}${where}. If this wasn't you, revoke it in Polaris Locker, under Packages.`,
@@ -569,6 +627,7 @@ export function signInMethodAddedNotice(input: {
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
   return buildNotice({
+    help: "sign-in-method-added",
     subject: `${method} was connected to your Polaris Locker account`,
     paragraphs: [
       `${method} was added as a way to sign in to your Polaris Locker account.`,
@@ -589,6 +648,7 @@ export function signInMethodRemovedNotice(input: {
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
   return buildNotice({
+    help: "sign-in-method-removed",
     subject: `${method} was disconnected from your Polaris Locker account`,
     paragraphs: [
       `${method} can no longer be used to sign in to your Polaris Locker account.`,
@@ -607,6 +667,7 @@ export function primaryEmailChangedNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
+    help: "primary-email-changed",
     subject: "Your Polaris Locker primary email was changed",
     paragraphs: [
       "Another verified email on your Polaris Locker account is now its primary. Security notices and the email apps see for you now go there.",
@@ -626,6 +687,7 @@ export function accountDeletionScheduledNotice(input: {
   dueAt: number;
 }): NoticeMessage {
   return buildNotice({
+    help: "account-deletion-scheduled",
     subject: "Your Polaris Locker account is scheduled for deletion",
     paragraphs: [
       "Your Polaris Locker account is scheduled to be erased unless you cancel the deletion before then.",
@@ -646,6 +708,7 @@ export function accountDeletionCancelledNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
+    help: "account-deletion-cancelled",
     subject: "Your Polaris Locker account deletion was canceled",
     paragraphs: [
       "Your Polaris Locker account will stay active. No account data will be erased.",
@@ -662,6 +725,7 @@ export function accountDeletionCancelledNotice(input: {
 /** The account was deleted at the holder's request (sent before the rows go). */
 export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
   return buildNotice({
+    help: "account-deleted",
     subject: "Your Polaris Locker account has been deleted",
     paragraphs: [
       "Your Polaris Locker account, its email addresses and its sign-in methods have been erased, as you asked.",
@@ -690,6 +754,7 @@ export function accountsMergedNotice(input: {
   undoUntil?: number;
 }): NoticeMessage {
   return buildNotice({
+    help: "accounts-merged",
     subject: "Two Polaris Locker accounts were joined",
     paragraphs: [
       "Two Polaris Locker accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
@@ -713,6 +778,7 @@ export function accountsSeparatedNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
+    help: "accounts-separated",
     subject: "Your Polaris Locker accounts were separated",
     paragraphs: [
       "Two Polaris Locker accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.",
@@ -742,6 +808,7 @@ export function licenseRelinkedAwayNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "A");
   return buildNotice({
+    help: "license-relinked-away",
     subject: `The developer moved your ${name} license to another account`,
     paragraphs: [
       `The developer of ${name} moved one of its licenses from your Polaris Locker account to another account, at the request of its support.`,
@@ -760,6 +827,7 @@ export function licenseRelinkedInNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "A product");
   return buildNotice({
+    help: "license-relinked-in",
     subject: `${name} is being added to your library`,
     paragraphs: [
       `The developer of ${name} moved one of its licenses to your Polaris Locker account, at the request of its support.`,
@@ -781,6 +849,7 @@ export function licenseRelinkUndoneNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "A");
   return buildNotice({
+    help: "license-relink-undone",
     subject: `The developer undid a move of a ${name} license`,
     paragraphs: [
       `The developer of ${name} undid an earlier move of one of its licenses. The license goes back to the account it came from.`,
@@ -806,6 +875,7 @@ const LICENSE_ADDRESS_FOOTER =
 
 /** The away side of a holder move: an account (security notice) or a waiting licence's address. */
 function holderMovedAwayNotice(input: {
+  help: string;
   subject: string;
   paragraph: string;
   inAccount: boolean;
@@ -813,6 +883,7 @@ function holderMovedAwayNotice(input: {
 }): NoticeMessage {
   const undo = `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`;
   return buildNotice({
+    help: input.help,
     subject: input.subject,
     paragraphs: [input.paragraph, undo],
     ...(input.inAccount
@@ -835,6 +906,7 @@ export function licenseMadeFloatingNotice(input: {
   const name = displayValue(input.productName, "product");
   const dev = displayValue(input.productName, "this product");
   return holderMovedAwayNotice({
+    help: "license-made-floating",
     subject: input.inAccount
       ? `The developer removed a ${name} license from your account`
       : `A ${name} license is no longer assigned to you`,
@@ -855,6 +927,7 @@ export function licenseReassignedAwayNotice(input: {
   const name = displayValue(input.productName, "product");
   const dev = displayValue(input.productName, "this product");
   return holderMovedAwayNotice({
+    help: "license-reassigned-away",
     subject: `The developer assigned your ${name} license to someone else`,
     paragraph: input.inAccount
       ? `The developer of ${dev} assigned one of its licenses in your Polaris Locker account to someone else, at the request of its support. It is no longer in your library.`
@@ -876,6 +949,7 @@ export function licenseAssignedToYouNotice(input: {
   const name = displayValue(input.productName, "product");
   const dev = displayValue(input.productName, "this product");
   return buildNotice({
+    help: "license-assigned-to-you",
     subject: `A ${name} license was assigned to you`,
     paragraphs: [
       `The developer of ${dev} assigned one of its licenses to this email address.`,

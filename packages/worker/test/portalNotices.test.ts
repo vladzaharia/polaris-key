@@ -269,7 +269,11 @@ describe("notice templates: rules", () => {
   }
 
   it("deep-links to the exact section, with no credential in the link", () => {
-    const urls = (m: NoticeMessage) => m.text.match(/https:\/\/\S+/g) ?? [];
+    // The app links; the footer's Help links (DOC-06b) are fixed paths and checked below.
+    const urls = (m: NoticeMessage) =>
+      (m.text.match(/https:\/\/\S+/g) ?? []).filter(
+        (u) => !u.startsWith(`${ORIGIN}/docs/help/`),
+      );
     expect(urls(TEMPLATES.licenseAdded!())).toEqual([
       `${ORIGIN}/#/p/mossgarden`,
     ]);
@@ -303,12 +307,33 @@ describe("notice templates: rules", () => {
     }
   });
 
+  it("footer links: What is Polaris Locker? and About this email; security notices add Secure your account (DOC-06b)", () => {
+    const plain = TEMPLATES.licenseAdded!().text;
+    expect(plain).toContain(
+      `What is Polaris Locker?: ${ORIGIN}/docs/help/what-is-polaris-locker/`,
+    );
+    expect(plain).toContain(
+      `About this email: ${ORIGIN}/docs/help/emails/#license-added`,
+    );
+    expect(plain).not.toContain("Secure your account");
+    const sec = TEMPLATES.methodAdded!();
+    expect(sec.text).toContain(
+      `Secure your account: ${ORIGIN}/docs/help/secure-your-account/`,
+    );
+    // The callout keeps its link to the app (D-W2).
+    expect(sec.text).toContain(
+      `Wasn't you? Secure your account: ${ORIGIN}/#/account/methods`,
+    );
+  });
+
   it("holder moves (LX-30): the new address hears nothing about accounts, a waiting address has no account to secure", () => {
     const toYou = TEMPLATES.assignedToYou!();
     expect(toYou.subject).toBe("A Mossgarden license was assigned to you");
-    expect(toYou.text.match(/https:\/\/\S+/g)).toEqual([
-      `${ORIGIN}/#/p/mossgarden`,
-    ]);
+    expect(
+      toYou.text
+        .match(/https:\/\/\S+/g)
+        ?.filter((u) => !u.startsWith(`${ORIGIN}/docs/help/`)),
+    ).toEqual([`${ORIGIN}/#/p/mossgarden`]);
     // The same words whether or not an account holds the address (S-24 D4).
     expect(toYou.text).not.toMatch(/already|your account|existing/i);
     for (const name of ["madeFloatingWaiting", "reassignedAwayWaiting"]) {
@@ -657,9 +682,11 @@ describe("POST /api/products/:product/email-download (G23)", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("ada@example.com");
     expect(sent[0]!.subject).toBe("Download DJ Download for Windows");
-    expect(sent[0]!.text.match(/https:\/\/\S+/g)).toEqual([
-      `${ORIGIN}/#/p/djdl/download?platform=windows`,
-    ]);
+    expect(
+      sent[0]!.text
+        .match(/https:\/\/\S+/g)
+        ?.filter((u) => !u.startsWith(`${ORIGIN}/docs/help/`)),
+    ).toEqual([`${ORIGIN}/#/p/djdl/download?platform=windows`]);
   });
 
   it("refuses an unknown platform", async () => {

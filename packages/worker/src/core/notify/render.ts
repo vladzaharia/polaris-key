@@ -109,6 +109,8 @@ export interface EmailContent {
   secondary?: { label: string; url: string };
   /** The small print under the card. Plain text. */
   footer: string;
+  /** Links after the small print (Help). Fixed labels and URLs the Worker built; escaped. */
+  footerLinks?: { label: string; url: string }[];
   /** The origin to load the lockup from, or null to use a text wordmark instead. */
   origin: string | null;
   /** The identity: `"key"` (the default) or `"locker"` (Polaris Locker). */
@@ -181,6 +183,15 @@ export function renderEmail(c: EmailContent): string {
         24,
       )
     : "";
+  const footerLinks = c.footerLinks?.length
+    ? `<br>` +
+      c.footerLinks
+        .map(
+          (l) =>
+            `<a class="pk-link" href="${escapeHtml(l.url)}" style="color:${LIGHT.text.muted};text-decoration:underline">${escapeHtml(l.label)}</a>`,
+        )
+        .join(" &middot; ")
+    : "";
   return [
     `<!doctype html>`,
     `<html lang="en">`,
@@ -216,7 +227,7 @@ export function renderEmail(c: EmailContent): string {
     secondary,
     secure,
     `</td></tr>`,
-    `<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:${font};font-size:13px;line-height:20px;color:${LIGHT.text.muted}">${escapeHtml(c.footer)}</td></tr>`,
+    `<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:${font};font-size:13px;line-height:20px;color:${LIGHT.text.muted}">${escapeHtml(c.footer)}${footerLinks}</td></tr>`,
     `</table>`,
     `</td></tr>`,
     `</table>`,

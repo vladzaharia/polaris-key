@@ -8,8 +8,8 @@ sidebar:
   order: 3
 ---
 
-Account emails come from Polaris Locker, sent from `noreply@auth.plrs.im` or `noreply@plrs.im`.
-None asks for your full license key.
+Account emails come from `noreply@auth.plrs.im` or `noreply@plrs.im`. None asks for your full license key.
+In a security email, choose **Secure your account** if it was not you.
 
 If you didn't ask, ignore it. Code didn't arrive? See [Your
 sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
@@ -22,11 +22,15 @@ Enter the key in the app. Keep it private.
 
 ### <a id="license-invited"></a><var>App</var> license is ready
 
-Sign in at Polaris Locker with this address. No key.
+Sign in with this address. No key.
 
 ### <a id="license-added"></a><var>App</var> is in your library
 
-A license was added to your library. Select **Open** and the app's name to see it.
+Select **Open** and the app's name to see it.
+
+### <a id="license-from-developer"></a><var>App</var> is in your Polaris Locker library
+
+Select **Open** and the app's name to see it.
 
 ### <a id="license-attached"></a>Your <var>App</var> license was added to a Polaris Locker account
 
@@ -34,33 +38,41 @@ A license was added with its key. If this was not you, contact the app's develop
 
 ### <a id="license-key-replaced"></a>Your license has a new key
 
-The old key cannot activate new devices; existing devices keep working. If unexpected, contact the developer.
+The old key cannot activate new devices; existing ones keep working. If unexpected, contact the developer.
 
 ### <a id="download-link"></a>Download <var>App</var> for <var>System</var>
 
-Select **Download** and the app's name on the device you install on. You may need to sign in first.
+Open it on the device you install on. You may need to sign in first.
 
 ## Devices and sign-in
 
 ### <a id="device-removed"></a><var>Device</var> was removed from <var>App</var>
 
-Choose **See your devices** to review it. Choose **Secure your account** if it was not you.
+Choose **See your devices** to review it.
+
+### <a id="device-replaced"></a><var>App</var> signed out on <var>Device</var>
+
+Another device replaced this one. Choose **Open Polaris Locker** to see your devices.
 
 ### <a id="new-device-sign-in"></a>A new device signed in to your Polaris Locker account
 
-Use **Open Polaris Locker** to see where you are signed in. Choose **Secure your account** if it was not you.
+Use **Open Polaris Locker** to see where you are signed in.
+
+### <a id="packages-token"></a>A personal token was created for your Polaris Locker account
+
+A command line got read-only access to your packages. Revoke it under **Packages**.
 
 ### <a id="sign-in-method-added"></a><var>Method</var> was connected to your Polaris Locker account
 
-Choose **Secure your account** if it was not you.
+A sign-in method was added.
 
 ### <a id="sign-in-method-removed"></a><var>Method</var> was disconnected from your Polaris Locker account
 
-Choose **Secure your account** if it was not you.
+A sign-in method was removed.
 
 ### <a id="primary-email-changed"></a>Your Polaris Locker primary email was changed
 
-Another verified email is now the primary. Security notices go there. Choose **See your sign-in methods**. Choose **Secure your account** if it was not you.
+Another verified email is now the primary, and security emails go there.
 
 ## Your account
 
@@ -78,11 +90,11 @@ Your account, its email addresses and its sign-in methods were erased as you ask
 
 ### <a id="accounts-merged"></a>Two Polaris Locker accounts were joined
 
-Their sign-in methods and licenses are now together. Choose **Secure your account** if it was not you.
+Their sign-in methods and licenses are now together.
 
 ### <a id="accounts-separated"></a>Your Polaris Locker accounts were separated
 
-Two joined accounts are separate again. Choose **Secure your account** if it was not you.
+Two joined accounts are separate again.
 
 ## License changes
 
