@@ -1,0 +1,5 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`. EMPTY until recorded from the first CI run (Swift 6.3 / Xcode 26.6): download the swift-format-lint artifact of the apple job, then `node tools/lint/lint-debt.mjs record --tool swift-format --ledger sdks/swift/lint-debt.json --input swift-format-lint.txt`.",
+  "version": 1,
+  "debt": {}
+}
