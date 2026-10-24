@@ -245,13 +245,9 @@ export const STEPS = [
     id: "lint-swift",
     title: "Swift lint: swift-format (Swift 6.3 only)",
     lane: "swift-floor",
-    // swift-format is the toolchain's, pinned to 6.3: the script exits 2 on any other toolchain, which
-    // is not a finding. Skip with a note locally; CI selects Xcode 26.6 and runs it for real.
-    argv: () => [
-      "bash",
-      "-c",
-      'sdks/swift/tools/lint.sh check; rc=$?; if [ "$rc" -eq 2 ]; then echo "lint-swift skipped: needs the Swift 6.3 toolchain (sdks/swift/tools/select-xcode-26.sh); CI runs it."; exit 0; fi; exit "$rc"',
-    ],
+    // swift-format is the toolchain's, pinned to 6.3: on any other toolchain the step skips with a
+    // note (not a finding); CI selects Xcode 26.6 and runs it for real.
+    argv: () => ["sdks/swift/tools/lint.sh", "check-or-skip"],
   },
   {
     n: 21,

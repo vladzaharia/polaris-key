@@ -2,6 +2,7 @@
 # Swift lint (P0-46.6): `swift format lint` against the ledger sdks/swift/lint-debt.json.
 #   tools/lint.sh check    fail on a new finding, and on debt the tool no longer reports
 #   tools/lint.sh record   rewrite the ledger from today's findings
+#   tools/lint.sh check-or-skip   check, or skip with a note on another toolchain (pnpm gate's step)
 # swift-format ships with the Swift toolchain, so there is nothing to download: the version is the
 # toolchain's. CI's apple job selects Xcode 26.6 (tools/select-xcode-26.sh), Swift 6.3. A rule set
 # or default can change between toolchains, so any other toolchain stops with a clear message (a
@@ -12,11 +13,17 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-check}"
-case "$mode" in check | record) ;; *) echo "usage: tools/lint.sh check|record" >&2; exit 2 ;; esac
+skip_other=""
+if [ "$mode" = check-or-skip ]; then mode=check; skip_other=1; fi
+case "$mode" in check | record) ;; *) echo "usage: tools/lint.sh check|record|check-or-skip" >&2; exit 2 ;; esac
 
 EXPECTED_SWIFT="6.3"
 have="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1)"
 if [ "$have" != "$EXPECTED_SWIFT" ] && [ "${PKEY_SWIFT_LINT_ANY_TOOLCHAIN:-}" != 1 ]; then
+  if [ -n "$skip_other" ]; then
+    echo "swift lint skipped: needs Swift $EXPECTED_SWIFT (tools/select-xcode-26.sh); CI runs it."
+    exit 0
+  fi
   echo "swift lint needs the Swift $EXPECTED_SWIFT toolchain (Xcode 26.6, CI's apple job); this is Swift ${have:-unknown}." >&2
   echo "Run sdks/swift/tools/select-xcode-26.sh, or set PKEY_SWIFT_LINT_ANY_TOOLCHAIN=1 to run anyway." >&2
   exit 2
