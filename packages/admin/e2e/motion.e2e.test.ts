@@ -883,9 +883,13 @@ describe("motion on: the console under the Worker's CSP", () => {
         page.getByRole("navigation", { name: "License sections" });
 
       // A drill-down: forward. The main region slides on the tokens (md out, lg in). The record
-      // is not cached yet, so the name's other end is not on the new page: it leaves with the list.
+      // is not cached yet and nothing hinted at it (the pointer went straight to the click), so
+      // the name's other end is not on the new page: it leaves with the list.
+      // `el.click()` raises no pointer events, so nothing prefetched the record.
       const [forward, ...f2] = await transitionsOf(page, () =>
-        row().first().click(),
+        row()
+          .first()
+          .evaluate((a) => (a as HTMLElement).click()),
       );
       expect(f2).toEqual([]);
       expect(forward!.type).toBe("forward");
@@ -1501,6 +1505,46 @@ describe("reduced motion: the same interactions are instant swaps", () => {
         "html[data-vt] was never set",
       ).toEqual([]);
       expect(await running(page)).toEqual([]);
+      expect(await violations(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`console navigation: an uncached record, prefetched on name hover, still flies the name (${theme})`, async () => {
+      const page = await openConsole(theme, "no-preference");
+      const tk = await tokens(page);
+      await page.getByText("Seat 01").first().waitFor();
+      await watchTransitions(page);
+      await atRest(page);
+      const name = page.locator("main#content table tbody a", {
+        hasText: "Seat 01",
+      });
+      // First visit: the record is not cached. Hovering the name reads it ahead of the click.
+      const read = page.waitForResponse((res) =>
+        res.url().endsWith("/license/licenses/lic_1"),
+      );
+      await name.first().hover();
+      await read;
+      // A second hover inside the stale window must not read it again.
+      let again = 0;
+      page.on("request", (req) => {
+        if (req.url().endsWith("/license/licenses/lic_1")) again++;
+      });
+      await page.mouse.move(0, 0);
+      await name.first().hover();
+      const [forward] = await transitionsOf(page, () => name.first().click());
+      expect(forward!.type).toBe("forward");
+      expect(groupNames(forward!)).toEqual(["pk-key", "pk-main"]);
+      expect(Object.keys(forward!.pseudo)).toEqual(
+        expect.arrayContaining([
+          "::view-transition-old(pk-key)",
+          "::view-transition-new(pk-key)",
+        ]),
+      );
+      expect(forward!.pseudo["::view-transition-group(pk-key)"]).toMatchObject({
+        duration: tk.slow,
+      });
+      expect(again).toBe(0);
+      await focusedHeading(page, "Seat 01");
       expect(await violations(page)).toEqual([]);
       await closeContext(page.context());
     });

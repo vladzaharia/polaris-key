@@ -16,6 +16,7 @@ import {
   type LicensePage,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
+import { STALE_TIME_MS } from "../../data/queryClient.js";
 import type { HolderState } from "./components/holders.js";
 
 export const licensesQuery = (slug: string) =>
@@ -61,6 +62,9 @@ export const licenseQuery = (slug: string, id: string) =>
   queryOptions({
     queryKey: qk.license(slug, id),
     queryFn: () => api.license(slug, id),
+    // Explicit, not just the client default: a prefetch on name hover or focus (MO-13.1) skips a
+    // record read inside this window, so repeated hovers do not refetch.
+    staleTime: STALE_TIME_MS,
   });
 
 export const licenseCleanupQuery = (slug: string) =>

@@ -414,6 +414,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     search,
     selection,
     rowHref,
+    onRowIntent,
     rowLabel,
     rowActions,
     linkComponent: LinkComponent,
@@ -841,17 +842,29 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     // A block, so a truncating cell inside it gets a bounded width (phone cards especially).
     const cls =
       "block min-w-0 max-w-full font-medium text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
+    const intent = onRowIntent ? () => onRowIntent(row) : undefined;
     if (LinkComponent) {
       return (
         <span data-row-link-wrap className="block min-w-0">
-          <LinkComponent to={href} className={cls}>
+          <LinkComponent
+            to={href}
+            className={cls}
+            onPointerEnter={intent}
+            onFocus={intent}
+          >
             {children}
           </LinkComponent>
         </span>
       );
     }
     return (
-      <a href={href} data-row-link className={cls}>
+      <a
+        href={href}
+        data-row-link
+        className={cls}
+        onPointerEnter={intent}
+        onFocus={intent}
+      >
         {children}
       </a>
     );
