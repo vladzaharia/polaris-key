@@ -121,6 +121,9 @@ targets:
       ]
     dependencies:
       - target: TidewaterKitMac
+      # PolarisKeyPreviewState.all: the harness renders every preview state.
+      - package: PolarisKey
+        product: PolarisKeyUICore
       - package: SnapshotTesting
         product: SnapshotTesting
     settings:

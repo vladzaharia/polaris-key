@@ -15,6 +15,11 @@
 //   License… and Sign Out… (PolarisKeyCommands).
 //   macOS only: -pkeyUpdate <state> the update window in one state (UK-08.6): permission, checking,
 //   found, downloading, downloading-unknown, extracting, ready, installing, up-to-date, error
+//   -pkeyContrast increased, -pkeyReduceTransparency (draw as if the system setting were on: a
+//   process cannot set them itself), -pkeyTypeSize ax3 (Dynamic Type forced to accessibility3 -
+//   the 200 % stand-in, M6), -pkeyPresentation (the product's accent #ff6a3d and icon arrive as a
+//   presentation document would deliver them: no integrator theme, UK-08.7)
+//   macOS only: -pkeySettings the Settings pane (Account) as the window's content, at its own size
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -83,6 +88,7 @@ struct TidewaterKitApp: App {
                 PolarisKeySettingsPane(model: SampleSettings.paneModel, cloudSync: "Synced 2 min ago")
                     .polarisKeyTheme(SampleArgs.theme(iconData: TidewaterIcon.png))
                     .environment(\.polarisKeyMaterialFallback, SampleArgs.has("-pkeyMaterial"))
+                    .environment(\.polarisKeyForcedAccessibility, SampleArgs.forcedAccessibility)
             }
         #endif
     }
@@ -96,6 +102,21 @@ enum SampleArgs {
     static func value(_ flag: String) -> String? {
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
         return args[i + 1]
+    }
+
+    static var forcedAccessibility: PolarisKeyForcedAccessibility {
+        PolarisKeyForcedAccessibility(
+            increaseContrast: value("-pkeyContrast") == "increased",
+            reduceTransparency: has("-pkeyReduceTransparency"))
+    }
+
+    /// `-pkeyTypeSize ax3`: the forced size; nil leaves the system's.
+    static var typeSize: DynamicTypeSize? {
+        switch value("-pkeyTypeSize") {
+        case "ax3": return .accessibility3
+        case "ax5": return .accessibility5
+        default: return nil
+        }
     }
 
     static var theme: PolarisKeyTheme { theme(iconData: nil) }
@@ -149,6 +170,14 @@ enum SampleArgs {
     }
 #endif
 
+struct ForcedTypeSize: ViewModifier {
+    let size: DynamicTypeSize?
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if let size { content.dynamicTypeSize(size) } else { content }
+    }
+}
+
 struct Root: View {
     private let args = SampleArgs.args
 
@@ -170,6 +199,8 @@ struct Root: View {
         }
         .polarisKeyTheme(theme)
         .environment(\.polarisKeyMaterialFallback, args.contains("-pkeyMaterial"))
+        .environment(\.polarisKeyForcedAccessibility, SampleArgs.forcedAccessibility)
+        .modifier(ForcedTypeSize(size: SampleArgs.typeSize))
         #if os(macOS)
             .frame(
                 width: MacWindow.size?.width, height: MacWindow.size?.height
@@ -181,17 +212,38 @@ struct Root: View {
         #endif
     }
 
+    /// The state as a presentation document would deliver the product: its accent and its icon
+    /// (the verified bytes are the sample's icon), with no theme from the integrator.
+    private static func presented(_ state: PolarisKeyPreviewState) -> PolarisKeyPreviewState {
+        var inputs = state.inputs
+        inputs.presentation = KitPresentation(
+            name: "Tidewater Studio", developerName: "Harbor Audio", accent: "#ff6a3d", icon: true)
+        return PolarisKeyPreviewState(state.component, state.state, variant: state.variant, inputs)
+    }
+
+    /// `-pkeySettings`: the Settings pane as the window's content (macOS).
+    @ViewBuilder private var settingsPane: some View {
+        #if os(macOS)
+            PolarisKeySettingsPane(model: SampleSettings.paneModel, cloudSync: "Synced 2 min ago")
+        #else
+            EmptyView()
+        #endif
+    }
+
     @ViewBuilder private var content: some View {
         Group {
-            if args.contains("--live"), let client = LiveClient.make() {
+            if args.contains("-pkeySettings") {
+                settingsPane
+            } else if args.contains("--live"), let client = LiveClient.make() {
                 SessionsView().polarisKeyGate(client)
                     #if os(macOS)
                         // `--live` also runs Sparkle on the kit's own update window.
                         .task { await LiveUpdates.start(client, theme: theme) }
                     #endif
             } else if let id = value("-pkeyState"),
-                let found = PolarisKeyPreviewState.all.first(where: { $0.id == id })
+                let listed = PolarisKeyPreviewState.all.first(where: { $0.id == id })
             {
+                let found = args.contains("-pkeyPresentation") ? Self.presented(listed) : listed
                 // A Mac says "this Mac", never "this iPhone".
                 #if os(macOS)
                     let state = found.on(PolarisKeyPreviewState.mac)
