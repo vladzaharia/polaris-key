@@ -548,8 +548,7 @@ export async function runScheduledMaintenance(
   await step(report, "consoleInvites", () => purgeExpiredInvites(db, now));
 
   // The services' early nightly work (`contributes.maintenance.early`): Identity's erasure
-  // ledger replay BEFORE its legacy catch-up (a restored account is re-erased before the
-  // catch-up looks at it), its due account deletions and its erasure retries.
+  // ledger replay, its due account deletions and its erasure retries.
   await runSlot(report, "early", { db, env, now, nightly: true });
   // LX-08: the licensing model's rows catch up with what a pre-LX-08 Worker wrote between the
   // migration and the deploy (store grants, purchases, mappings), and the OIDC-provisioned keys

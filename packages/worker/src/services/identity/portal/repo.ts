@@ -36,7 +36,6 @@ import {
   notAutoAttachBlockedSql,
   type JoinedLicense,
 } from "../../../core/licensing/licenseHolders.js";
-import { catchUpLegacyAccount } from "../accounts/legacy.js";
 import { deleteAccount, type ErasureResult } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
 import {
@@ -104,8 +103,8 @@ export interface PortalLicenseRow extends LicenseRow {
 /**
  * The portal's view of an account (I-05: `accounts`, which replaced `portal_accounts` and kept
  * its ids). With `now`, an account absorbed by a merge in the last 30 days resolves to the
- * survivor, so its signed cookie keeps working; an id the new tables do not know yet (an account
- * a pre-I-05 Worker created during the deploy window) is copied across first.
+ * survivor, so its signed cookie keeps working; an id the account tables do not know reads as
+ * signed out (I-28: the portal catch-up is gone).
  */
 export async function getPortalAccount(
   db: Db,
@@ -116,9 +115,7 @@ export async function getPortalAccount(
     now === undefined
       ? await getAccountRow(db, id)
       : await resolveAccount(db, id, now);
-  if (found) return found;
-  if (await catchUpLegacyAccount(db, id)) return getAccountRow(db, id);
-  return null;
+  return found;
 }
 
 function signedInAccount(result: SignInResult): PortalAccountRow {

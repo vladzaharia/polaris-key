@@ -1354,9 +1354,6 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     return { db, env, r2 };
   }
 
-  /** A pre-I-05 portal account with no row in the account model: what the legacy catch-up copies. */
-  const PORTAL_ACCOUNT_SQL = `INSERT INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)
-       VALUES (?, 'active', 'Ada', 'ada@example.com', ?, ?)`;
   /** A Db whose closing batch of an erasure fails, as a D1 outage does. */
   function refusingErasure(db: Db): Db {
     return {
@@ -1373,15 +1370,13 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     };
   }
 
-  it("the nightly replay runs before the legacy catch-up: a portal account the ledger names is never copied back", async () => {
+  it("the nightly replay writes the tombstone for an account the ledger names, and no account row appears", async () => {
     const { db, env } = ledgerWorld();
     await recordErasure(env, "acct_legacy", NOW);
-    await db.run(PORTAL_ACCOUNT_SQL, "acct_legacy", NOW, NOW);
 
     const report = await runScheduledMaintenance(db, NOW + 60, env);
     expect(report.failures).toEqual({});
-    // One repair: the tombstone. Had the catch-up run first it would have copied the account
-    // and the replay would have erased it again (two repairs, and a receipt).
+    // One repair: the tombstone.
     expect(report.counts.erasureLedger).toBe(1);
     expect(
       await db.first(
@@ -1391,21 +1386,6 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     expect(
       await db.first("SELECT id FROM accounts WHERE id = 'acct_legacy'"),
     ).toBeNull();
-    expect(
-      await db.first(
-        "SELECT id FROM portal_audit WHERE action = 'portal.account.delete'",
-      ),
-    ).toBeNull();
-
-    // The control: the same portal row with no ledger record IS copied into the account model.
-    const control = ledgerWorld();
-    await control.db.run(PORTAL_ACCOUNT_SQL, "acct_legacy", NOW, NOW);
-    await runScheduledMaintenance(control.db, NOW + 60, control.env);
-    expect(
-      await control.db.first(
-        "SELECT id FROM accounts WHERE id = 'acct_legacy'",
-      ),
-    ).toBeTruthy();
   });
 
   it("the nightly replay re-erases an account a restore brought back, through the real state machine", async () => {
@@ -1448,7 +1428,6 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     expect(report.failures.erasureLedger).toBe(
       `1 erasure ledger repair(s) failed: ${account.id} (reapply: D1 down)`,
     );
-    expect(report.counts.accountsCatchUp).toBe(0);
 
     // The cron invocation fails, naming the step and the id and nothing else about the person.
     await expect(handleScheduled(env, failing)).rejects.toThrow(
@@ -1494,7 +1473,6 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     const { db, env } = ledgerWorld(new DownList());
     const report = await runScheduledMaintenance(db, NOW, env);
     expect(report.failures.erasureLedger).toBe("R2 5xx on list");
-    expect(report.counts.accountsCatchUp).toBe(0);
     await expect(handleScheduled(env, db)).rejects.toThrow(
       "erasureLedger: R2 5xx on list",
     );

@@ -16,10 +16,6 @@ import type {
 import type { Env } from "../../platform/env.js";
 import { prunePortalAudit } from "./portal/repo.js";
 import { purgeDownloadTokens } from "../../core/assets/downloadTokens.js";
-import {
-  catchUpLegacyAccounts,
-  settleOwnershipConflicts,
-} from "./accounts/legacy.js";
 import { sweepAvatars } from "./card/avatars.js";
 import { pruneStorefrontSeen } from "./portal/store/analytics.js";
 import { pruneAccountMerges } from "./accounts/mergeUndo.js";
@@ -151,13 +147,6 @@ export const identityMaintenance: MaintenanceContribution = {
       prunePortalAudit(db, null, ctx.cutoff, limit),
     );
     if (env) await erasureLedgerReplay(ctx, env, rec);
-    // I-05: portal rows a pre-I-05 Worker wrote during the deploy window join the account model,
-    // then every second account linked to a licence another account owns loses its link, is
-    // emailed and is listed in the platform audit log (plans/I-04.md §8 Q1).
-    await rec.step("accountsCatchUp", async () => {
-      await catchUpLegacyAccounts(db);
-      return 0;
-    });
     // I-11: due requests enter the resumable erasure state machine, then incomplete erasures
     // retry under their own back-off. Both runs are bounded and fault-isolated.
     if (env) {
@@ -168,15 +157,6 @@ export const identityMaintenance: MaintenanceContribution = {
 
   async late(ctx, rec) {
     const { db, env, now } = ctx;
-    if (env)
-      await rec.step("accountOwnership", async () =>
-        settleOwnershipConflicts({
-          db,
-          env,
-          now,
-          origin: await originOf(env, db),
-        }),
-      );
     // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
     // upload never saved, a merged account's leftovers, a write that died half way).
     if (env) await rec.step("avatars", () => sweepAvatars(env, db, now));

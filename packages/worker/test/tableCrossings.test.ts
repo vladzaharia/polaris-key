@@ -93,7 +93,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
  */
 const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
   ["core/accounts/accountSubjects.ts", "P0-20"],
-  ["services/identity/accounts/legacy.ts", "P0-24"],
 ];
 
 const OWNER = new Map<string, string>();

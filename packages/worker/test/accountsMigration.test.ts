@@ -9,8 +9,7 @@
  *     licence by link strength (oidc > email > admin > license-key, then earliest; §8 Q1);
  *   - it is expand-only (no `portal_*` row and no licence column changes) and a replay converges;
  *   - every existing portal account and every existing OIDC licence still signs in;
- *   - the Worker's catch-up copies rows a pre-I-05 Worker wrote during the deploy window, and the
- *     Q1 settlement removes the losing links, revokes their registry tokens and reports them;
+ *   (I-28 retired the Worker's catch-up and the Q1 settlement with `legacy.ts`.)
  *   - the `down` script copies back what the I-05 Worker created, so a rolled-back Worker sees it.
  */
 import Database from "better-sqlite3";
@@ -20,28 +19,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { KvMock } from "./kvMock.js";
-import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { loadProduct } from "../src/core/products.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { rekeyLegacyAccountLinks } from "../src/services/identity/accounts/repo.js";
-import {
-  catchUpLegacyAccounts,
-  moveLicenseOwnerEndingLinks,
-  settleOwnershipConflicts,
-} from "../src/services/identity/accounts/legacy.js";
-import {
-  attachLicense,
-  detachLicense,
-  reassignLicense,
-} from "../src/services/identity/accounts/claim.js";
-import {
-  deleteAccount,
-  disableAccount,
-  removeProductData,
-} from "../src/services/identity/accounts/deletion.js";
+import { attachLicense } from "../src/services/identity/accounts/claim.js";
+import { disableAccount } from "../src/services/identity/accounts/deletion.js";
 import type { Env } from "../src/platform/env.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -450,241 +435,6 @@ describe("migrations 0068 on a production-shaped copy", () => {
     );
     expect(activated).toEqual({ licenseId: "lic-1" });
   });
-
-  it("the catch-up copies what a pre-I-05 Worker wrote; the Q1 settlement drops the losing links, revokes their tokens and reports them", async () => {
-    const { raw, db } = await productionShaped();
-    applyI05(raw);
-    const env = makeEnv(new KvMock(), ["acme"]) as Env;
-
-    // A pre-I-05 Worker, still serving, signs up a new portal user and links a licence.
-    raw
-      .prepare(
-        `INSERT INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)
-       VALUES ('acct_late', 'active', 'Late', 'late@example.com', ?, ?)`,
-      )
-      .run(NOW, NOW);
-    raw
-      .prepare(
-        `INSERT INTO portal_account_emails (email, account_id, verified_at, created_at)
-       VALUES ('late@example.com', 'acct_late', ?, ?)`,
-      )
-      .run(NOW, NOW);
-    await insertLicense(
-      db,
-      license("acme", "lic-late", { email: "late@example.com" }),
-    );
-    raw
-      .prepare(
-        `INSERT INTO portal_license_links (account_id, product, license_id, source, created_at, last_seen_at)
-       VALUES ('acct_late', 'acme', 'lic-late', 'email', ?, ?)`,
-      )
-      .run(NOW, NOW);
-
-    await catchUpLegacyAccounts(db);
-    await catchUpLegacyAccounts(db); // idempotent
-    expect(
-      raw.prepare("SELECT id FROM accounts WHERE id = 'acct_late'").get(),
-    ).toEqual({ id: "acct_late" });
-    expect(
-      raw
-        .prepare("SELECT account_id FROM licenses WHERE id = 'lic-late'")
-        .get(),
-    ).toEqual({
-      account_id: "acct_late",
-    });
-    expect(
-      raw
-        .prepare(
-          "SELECT COUNT(*) AS n FROM account_links WHERE account_id = 'acct_late'",
-        )
-        .get(),
-    ).toEqual({ n: 1 });
-
-    const settled = await settleOwnershipConflicts({
-      db,
-      env,
-      now: NOW,
-      origin: "",
-    });
-    // acct_3 lost lic-1 and lic-2; acct_1 lost lic-3.
-    expect(settled).toBe(3);
-    expect(
-      raw
-        .prepare(
-          "SELECT account_id, license_id FROM portal_license_links ORDER BY license_id",
-        )
-        .all(),
-    ).toEqual([
-      { account_id: "acct_1", license_id: "lic-1" },
-      { account_id: "acct_2", license_id: "lic-2" },
-      { account_id: "acct_2", license_id: "lic-3" },
-      { account_id: "acct_late", license_id: "lic-late" },
-    ]);
-    expect(
-      raw
-        .prepare(
-          "SELECT revoked_at, revoke_reason FROM registry_tokens WHERE token_id = 'rtok_loser'",
-        )
-        .get(),
-    ).toEqual({ revoked_at: NOW, revoke_reason: "link_removed" });
-    // F-33b.1: the winner still owns lic-1, so a loser's settlement leaves the operator's token.
-    expect(
-      raw
-        .prepare(
-          "SELECT revoked_at FROM registry_tokens WHERE token_id = 'rtok_op'",
-        )
-        .get(),
-    ).toEqual({ revoked_at: null });
-    const report = raw
-      .prepare(
-        "SELECT action, target_id FROM platform_audit WHERE action = 'account.license.superseded' ORDER BY target_id",
-      )
-      .all();
-    expect(report).toEqual([
-      { action: "account.license.superseded", target_id: "acme/lic-1" },
-      { action: "account.license.superseded", target_id: "acme/lic-2" },
-      { action: "account.license.superseded", target_id: "acme/lic-3" },
-    ]);
-    // Nothing is left to settle.
-    expect(
-      await settleOwnershipConflicts({ db, env, now: NOW, origin: "" }),
-    ).toBe(0);
-
-    // Idempotent settlement: a run that died after announcing a loser but before dropping its
-    // link finishes on the next run without a second email or audit row.
-    raw
-      .prepare(
-        `INSERT INTO portal_license_links (account_id, product, license_id, source, created_at, last_seen_at)
-         VALUES ('acct_3', 'acme', 'lic-1', 'email', ?, ?)`,
-      )
-      .run(NOW - 10, NOW - 10);
-    expect(
-      await settleOwnershipConflicts({ db, env, now: NOW, origin: "" }),
-    ).toBe(1);
-    expect(
-      raw
-        .prepare(
-          "SELECT COUNT(*) AS n FROM platform_audit WHERE action = 'account.license.superseded'",
-        )
-        .get(),
-    ).toEqual({ n: 3 });
-    expect(
-      raw
-        .prepare(
-          "SELECT COUNT(*) AS n FROM portal_license_links WHERE account_id = 'acct_3' AND license_id = 'lic-1'",
-        )
-        .get(),
-    ).toEqual({ n: 0 });
-
-    // The owner move ends every portal link in the same batch, and only when the move applies.
-    const ctx = { db, env, now: NOW, origin: "" };
-    expect(
-      await moveLicenseOwnerEndingLinks(ctx, "acme", "lic-1", "acct_2", null),
-    ).toBe(false);
-    expect(
-      raw
-        .prepare(
-          "SELECT COUNT(*) AS n FROM portal_license_links WHERE license_id = 'lic-1'",
-        )
-        .get(),
-    ).toEqual({ n: 1 });
-    expect(
-      await moveLicenseOwnerEndingLinks(ctx, "acme", "lic-1", "acct_1", null),
-    ).toBe(true);
-    expect(
-      raw
-        .prepare(
-          "SELECT COUNT(*) AS n FROM portal_license_links WHERE license_id = 'lic-1'",
-        )
-        .get(),
-    ).toEqual({ n: 0 });
-    expect(
-      raw
-        .prepare(
-          "SELECT account_id FROM licenses WHERE product = 'acme' AND id = 'lic-1'",
-        )
-        .get(),
-    ).toEqual({ account_id: null });
-  });
-
-  // Review fix: a removal path that clears the owner pointer must not leave another account's
-  // unsettled portal link behind, or the scheduled catch-up hands the floating licence to it.
-  for (const [name, clear] of [
-    [
-      "detach",
-      (ctx: Ctx) =>
-        detachLicense(ctx, {
-          accountId: "acct_1",
-          product: "acme",
-          licenseId: "lic-1",
-        }),
-    ],
-    [
-      "relink to nobody",
-      (ctx: Ctx) =>
-        reassignLicense(ctx, {
-          product: "acme",
-          licenseId: "lic-1",
-          toAccountId: null,
-          actor: "admin:test",
-        }),
-    ],
-    [
-      "per-product removal with detach",
-      (ctx: Ctx) =>
-        removeProductData(ctx, {
-          accountId: "acct_1",
-          product: "acme",
-          alsoDetachLicenses: true,
-        }),
-    ],
-    ["account deletion", (ctx: Ctx) => deleteAccount(ctx, "acct_1")],
-  ] as const) {
-    it(`after ${name}, the catch-up never re-points the floating licence at an unsettled Q1 loser`, async () => {
-      const { raw, db } = await productionShaped();
-      applyI05(raw);
-      const env = makeEnv(new KvMock(), ["acme"]) as Env;
-      // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
-      env.BLOBS = asR2(new R2Mock());
-      const ctx: Ctx = { db, env, now: NOW, origin: "" };
-      const owner = () =>
-        raw
-          .prepare(
-            "SELECT account_id FROM licenses WHERE product = 'acme' AND id = 'lic-1'",
-          )
-          .get();
-      // The migration picked acct_1; acct_3's key link is not settled yet (no nightly run).
-      expect(owner()).toEqual({ account_id: "acct_1" });
-
-      await clear(ctx);
-      expect(owner()).toEqual({ account_id: null });
-      await catchUpLegacyAccounts(db);
-      expect(owner()).toEqual({ account_id: null });
-
-      // acct_3 got the loser handling inline: its link went, its token stopped, it was reported.
-      expect(
-        raw
-          .prepare(
-            "SELECT account_id FROM portal_license_links WHERE product = 'acme' AND license_id = 'lic-1'",
-          )
-          .all(),
-      ).toEqual([]);
-      expect(
-        raw
-          .prepare(
-            "SELECT revoked_at FROM registry_tokens WHERE token_id = 'rtok_loser'",
-          )
-          .get(),
-      ).toEqual({ revoked_at: NOW });
-      expect(
-        raw
-          .prepare(
-            "SELECT target_id FROM platform_audit WHERE action = 'account.license.superseded'",
-          )
-          .all(),
-      ).toEqual([{ target_id: "acme/lic-1" }]);
-    });
-  }
 
   it("a disable reaches the portal tables, and the down script re-applies one", async () => {
     const { raw, db } = await productionShaped();

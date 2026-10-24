@@ -698,25 +698,6 @@ export function accountsSeparatedNotice(input: {
   });
 }
 
-/**
- * I-04 §8 Q1: a license had links to several accounts and keeps one owner; this account was not
- * it. Says which product, never which account owns it now.
- */
-export function licenseLinkSupersededNotice(input: {
-  productName: string | null | undefined;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "A");
-  return buildNotice({
-    subject: `A ${name} license left your library`,
-    paragraphs: [
-      `A ${name} license was linked to more than one Polaris Locker account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
-      "If you bought it, contact the developer: they can move it to your account.",
-    ],
-    origin: input.origin,
-  });
-}
-
 // ── The developer's relink tool (I-12) ──────────────────────────────────────────────────────
 
 /** How long the developer can undo a relink, as the notices say it. */

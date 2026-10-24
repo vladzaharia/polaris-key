@@ -44,7 +44,6 @@ import {
   type ReplayResult,
 } from "./erasureLedger.js";
 import { stmtSubjectEvent } from "./events.js";
-import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
@@ -381,9 +380,6 @@ async function runErasure(
   });
   for (const l of licenses) {
     await attempt("licenses", async () => {
-      // Every portal link to a licence that is about to float ends first, other accounts' too
-      // (§8 Q1 losers settled inline), so the scheduled catch-up cannot re-point it at one of them.
-      await endLicenseLinks(ctx, l.product, l.id, [accountId]);
       await onLicenseOwnershipEnded(db, env, {
         product: l.product,
         licenseId: l.id,
