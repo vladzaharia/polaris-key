@@ -5126,7 +5126,7 @@
       "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
     },
     "locker.error.loadFailed": {
-      "value": "Couldn't load {name}. Try again in a moment.",
+      "value": "Couldn't load {name}.",
       "role": "body",
       "note": "A page that failed to load (Library, a product) for a server error; a network failure reads core.codes.network instead. The Try again button is separate. Arguments: {name} = the page's own name."
     },
@@ -5141,17 +5141,17 @@
       "note": "The product page's heading when it failed to load and the product's name is not known; never the raw slug."
     },
     "locker.error.loadFailedLibrary": {
-      "value": "Couldn't load your library. Try again in a moment.",
+      "value": "Couldn't load your library.",
       "role": "body",
       "note": "The Library page failed to load for a server error; a network failure reads core.codes.network. The Try again button is separate."
     },
     "locker.error.loadFailedDiscover": {
-      "value": "Couldn't load Discover. Try again in a moment.",
+      "value": "Couldn't load Discover.",
       "role": "body",
       "note": "The Discover page failed to load; the Try again button is separate."
     },
     "locker.error.loadFailedMethods": {
-      "value": "Couldn't load your sign-in methods. Try again in a moment.",
+      "value": "Couldn't load your sign-in methods.",
       "role": "body",
       "note": "Account, Sign-in methods failed to load; the Try again button is separate."
     },

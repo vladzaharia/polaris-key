@@ -1380,7 +1380,7 @@ describe("product page correctness (UX-04)", () => {
     // Never the raw slug (LF1): a name that did not load reads "Product" / "this product".
     expect(screen.queryByText(/nightfall/)).toBeNull();
     expect(
-      screen.getByText("Couldn't load this product. Try again in a moment."),
+      screen.getByText("Couldn't load this product."),
     ).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);

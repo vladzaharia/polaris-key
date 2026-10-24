@@ -416,11 +416,7 @@ describe("Library on today's data (PX-02)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Your library" }),
     ).toBeTruthy();
-    expect(
-      await screen.findByText(
-        "Couldn't load your library. Try again in a moment.",
-      ),
-    ).toBeTruthy();
+    expect(await screen.findByText("Couldn't load your library.")).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.queryByText(/Nothing here/)).toBeNull();
     expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);
