@@ -4,7 +4,7 @@ extends RefCounted
 ## `config/client.ts`; report §5.4, notes/A2 §1.10 and §11).
 ##
 ##   var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
-##   PolarisKey.config.get_source("dice.animSpeed")      # &"enforced", &"local", &"env", …
+##   PolarisKey.config.get_config_source("dice.animSpeed")      # &"enforced", &"local", &"env", …
 ##   PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))
 ##   PolarisKey.config.config_changed.connect(_apply_settings)
 ##   PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
@@ -144,7 +144,7 @@ func get_value(key: String, fallback: Variant = null) -> Variant:
 
 ## Where `get_value(key)` takes its value from: &"enforced", &"hidden", &"local", &"env",
 ## &"remote-default" or &"fallback".
-func get_source(key: String) -> StringName:
+func get_config_source(key: String) -> StringName:
 	return PKeyConfigResolve.resolve_source(_context(), key)
 
 

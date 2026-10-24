@@ -2373,8 +2373,7 @@
           "planned": "SP-35b"
         },
         "godot": {
-          "spelling": "get_source",
-          "planned": "SP-35b"
+          "spelling": "get_config_source"
         }
       },
       "layer": "client"
@@ -2626,10 +2625,7 @@
           "planned": "U-07",
           "reason": "absent today"
         },
-        "godot": {
-          "planned": "SP-35b",
-          "reason": "absent today"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -5747,6 +5743,16 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\bpinned_trust_keys\\b",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "config.get_source",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bget_source\\s*\\(",
         "files": ["*.gd", "*.tres", "fence:gdscript"]
       }
     }
