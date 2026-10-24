@@ -163,6 +163,8 @@ refuses absolute or escaping destinations. `SafeStorageStore` encrypts the token
 secret store or on Linux's `basic_text`, and `keyring-error` when the stored token no longer
 decrypts.
 
+The window gets the kit as well: with `@polaris-key/react`, `<PolarisKeyGate theme={{ platform: "auto" }}>` draws the macOS, Windows or GNOME chrome of the host OS. `exposePolarisBridge` returns a handle: `bridge.menuItems()` gives the "Check for updates" and "Manage license" menu items, and `notifications` turns on OS notifications while the app is unfocused. The menu, notifications, update progress, sender rules and the Forge sample (`examples/ui/electron/`) are on [Electron](https://key.plrs.im/docs/build/ui/frameworks/electron/).
+
 ## Shape
 
 | Surface               | Subpath                          | What it owns                                                                                                                    |

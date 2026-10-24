@@ -41,6 +41,18 @@ Where a purchase is not available in the app, the screen says so. **Buy in your 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<Paywall />` from `@polaris-key/react/kit`, given an `input`. Its **Buy in your browser** needs an https `offers.url`.
+
+    **Styled part.** The React kit's `<Paywall />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Paywall", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
