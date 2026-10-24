@@ -145,6 +145,7 @@ describe("lane selection", () => {
   it("runs the kit lint lane for a kit's UI sources", () => {
     expect(on(["sdks/kotlin/ui/src/androidMain/kotlin/A.kt"])).toEqual([
       "ui-kits",
+      "compose-desktop",
       "kotlin",
       "android",
     ]);
@@ -412,8 +413,9 @@ describe("ci.yml reads the scope", () => {
     const ok = jobs["ci-ok"]!;
     expect(ok.if).toBe("${{ always() }}");
     const others = Object.keys(jobs).filter(
-      (id) => id !== "ci-ok" && id !== "swiftui-mac",
-    ); // swiftui-mac is non-blocking until its baselines are committed (UK-08.8);
+      (id) =>
+        id !== "ci-ok" && id !== "swiftui-mac" && id !== "compose-desktop",
+    ); // swiftui-mac and compose-desktop are non-blocking until their baselines are committed (UK-08.8, UK-10.12);
     expect(needsOf(ok).sort()).toEqual(others.sort());
   });
 });
@@ -592,5 +594,44 @@ describe("ci.yml renders the SwiftUI kit on the Mac", () => {
         (s) => s.if === "always()" && /upload-artifact/.test(s.uses ?? ""),
       ),
     ).toBe(true);
+  });
+});
+
+// UK-10.12: the Compose desktop kit's lane runs on the three desktop OSes for the kit's own tree and the
+// sample, and CI OK does not wait for it until the baselines are committed.
+describe("ci.yml runs the Compose desktop kit lane", () => {
+  const job = ci.jobs["compose-desktop"]!;
+  const steps = JSON.stringify(job.steps ?? []);
+
+  it("is its own lane, non-blocking for CI OK", () => {
+    expect(job.if).toBe("needs.changes.outputs.compose-desktop == 'true'");
+    expect(job["continue-on-error"]).toBe(true);
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(
+      "compose-desktop",
+    );
+    expect(on(["examples/ui/compose-desktop/build.gradle.kts"])).toContain(
+      "compose-desktop",
+    );
+    expect(on(["sdks/kotlin/ui/src/desktopMain/X.kt"])).toContain(
+      "compose-desktop",
+    );
+    expect(on(["sdks/kotlin/core/src/X.kt"])).not.toContain("compose-desktop");
+  });
+
+  it("covers three OSes, the Android SDK, xvfb on Linux, and always uploads", () => {
+    const m = JSON.stringify(job.strategy);
+    for (const os of ["ubuntu-latest", "macos-latest", "windows-latest"])
+      expect(m).toContain(os);
+    expect(steps).toContain("platforms;android-36");
+    expect(steps).toContain("verifyRoborazziDesktop");
+    expect(steps).toContain("xvfb-run");
+    expect(steps).toContain(":sample-compose-desktop:smoke");
+    expect(steps).toContain(":sample-compose-desktop:shots");
+    expect(steps).toContain(":ui:desktopTest");
+    expect(steps).not.toContain("--daemon ");
+    const upload = (job.steps ?? []).find((x) =>
+      String(x.uses ?? "").startsWith("actions/upload-artifact@"),
+    );
+    expect(upload?.if).toBe("always()");
   });
 });
