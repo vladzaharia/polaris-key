@@ -34689,10 +34689,10 @@ var PY_LIBRARY = {
       PY_HEAD(c),
       ``,
       `client.sync()`,
-      `value = client.config.get_config(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `value = client.config.get(${q2(c.configKey)}, ${py(c.configFallback)})`,
       `secret = client.config.get_secret(${q2(c.secretKey)})`,
       `minted = client.config.mint_token(${q2(c.mintRecipe)})`,
-      `client.config.on_change(${q2(c.configKey)}, lambda v: print("changed", v))`,
+      `client.config.on_config_change(${q2(c.configKey)}, lambda v: print("changed", v))`,
       `print(value, secret, minted)`
     )
   }),

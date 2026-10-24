@@ -289,7 +289,7 @@ client = server_client(**polaris_config.CONFIG, version="1.4.2")
 
 
 def run_concurrency() -> int:
-    return client.config.get_config("run.concurrency", 3)
+    return client.config.get("run.concurrency", 3)
 ```
 
 `server_client()` returns once the key is activated and the first sync is done. A refused key raises the server's code, for example `device_limit`. Per-user config is not offered: the device's config document carries secrets, so never forward it to a browser.

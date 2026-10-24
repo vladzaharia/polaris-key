@@ -80,14 +80,14 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.get` | `config.get` | `useManagedConfig().get` | `get_config` (planned: SP-35) | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
+| `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
 | `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
 | `config.mintToken` | `config.mintToken` | — | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
 | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
-| `config.clearAll` | `config.clearAll` | `config.clearAll` | planned (SP-35) | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
-| `config.onConfigChange` | `config.onConfigChange` | — | `on_change` (planned: SP-35) | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
+| `config.clearAll` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
+| `config.onConfigChange` | `config.onConfigChange` | — | `config.on_config_change` | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `get` (planned: SP-35) | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `source` (planned: SP-35) | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
@@ -279,3 +279,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- |
 | Node | `config.getConfig` | `config.get` | SP-35 |
 | Node | `PolarisKeyClient.getConfig` | `config.get` | SP-35 |
+| Python | `config.get_config` | `config.get` | SP-35 |
+| Python | `client.get_config` | `config.get` | SP-35 |
+| Python | `client.on_config_change` | `config.onConfigChange` | SP-35 |
+| Python | `config.on_change` | `config.onConfigChange` | SP-35 |
