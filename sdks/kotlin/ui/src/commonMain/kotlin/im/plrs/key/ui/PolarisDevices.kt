@@ -396,9 +396,14 @@ internal fun PolarisRenameRow(initial: String, current: String, onSave: (String)
             keyboardActions = KeyboardActions(onDone = { if (changed) onSave(text) }),
         )
         Spacer(Modifier.height(PolarisSpace.controls))
-        PolarisActionGroup(row = true) {
-            PolarisPrimaryButton(copy.deviceSave, onClick = { onSave(text) }, enabled = changed)
-            PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+        PolarisActionGroup(row = true, visualOrder = polarisWindow.isMac) {
+            if (polarisWindow.isMac) {
+                PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+                PolarisPrimaryButton(copy.deviceSave, onClick = { onSave(text) }, enabled = changed)
+            } else {
+                PolarisPrimaryButton(copy.deviceSave, onClick = { onSave(text) }, enabled = changed)
+                PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+            }
         }
     }
 }
@@ -414,9 +419,14 @@ internal fun PolarisRemoveConfirm(name: String, onRemove: () -> Unit, onCancel: 
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
         PolarisInlineNotice(copy.format(copy.deviceRemoveConfirm, name, copy.productName))
         Spacer(Modifier.height(PolarisSpace.controls))
-        PolarisActionGroup(row = true) {
-            PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true)
-            PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+        PolarisActionGroup(row = true, visualOrder = polarisWindow.isMac) {
+            if (polarisWindow.isMac) {
+                PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true)
+            } else {
+                PolarisPrimaryButton(copy.deviceDeauthorize, onClick = onRemove, initialFocus = true)
+                PolarisSecondaryButton(copy.cancel, onClick = onCancel)
+            }
         }
     }
 }

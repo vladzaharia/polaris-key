@@ -269,7 +269,20 @@ private fun PolarisCodeView(
                 PolarisInlineNotice(copy.signInNoBrowser)
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
-            if (showQr) {
+            if (!showQr && polarisWindow.isMac) {
+                // macOS (B1, S2): a trailing row, Cancel directly left of the default, emitted left to right;
+                // Return fires the default. After a failed open, Copy link is the default.
+                val default = if (noBrowser && linkOk) copyLink else open
+                PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(default)) {
+                    PolarisSecondaryButton(copy.cancel, onCancel)
+                    if (noBrowser && linkOk) {
+                        PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open, external = true)
+                        PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
+                    } else {
+                        PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true, external = true)
+                    }
+                }
+            } else if (showQr) {
                 // A TV may have no browser, so the QR leads and the first control is a real one.
                 if (onUseKey != null) {
                     PolarisSecondaryButton(copy.signInUseKey, onUseKey, initialFocus = true)

@@ -239,7 +239,8 @@ public fun PolarisTheme(
         branding = branding,
         showPoweredBy = showPoweredBy,
         poweredByStyle = poweredByStyle,
-        copy = copy,
+        // macOS: a copy the host built from the defaults reads the Mac wording too; a host's own text stays (S4).
+        copy = if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) copy.forMac() else copy,
         logo = logo ?: art?.let { presentationLogo(it) },
         darkTheme = darkTheme,
         accent = themeAccent(accent ?: hostAccent, branding, member, darkTheme, art?.derivedAccent),
@@ -268,7 +269,8 @@ private fun PolarisThemeResolved(
             // Windows and GNOME: the native preset is the platform's own neutral layers (mica and layer,
             // libadwaita's page and card), light or dark as the host says. Elsewhere it is the host's scheme.
             val variant = autoPlatformVariant()
-            val platform = followsHostFacts(variant)
+            // macOS follows the host's facts for dark/light but keeps the host's own scheme: it has no native layers of its own to draw.
+            val platform = followsHostFacts(variant) && variant != PolarisPlatformVariant.MacOS
             val contrast = variant == PolarisPlatformVariant.Windows && rememberThemeHostFacts()?.highContrast == true
             val host = when {
                 contrast -> windowsContrastScheme(darkTheme)
@@ -323,16 +325,20 @@ private fun PolarisThemeResolved(
             // Windows (UK-10.5): a contrast theme draws the system colours, whatever the product accent.
             val fluent = autoPlatformVariant() == PolarisPlatformVariant.Windows
             val contrast = fluent && rememberThemeHostFacts()?.highContrast == true
-            val scheme = remember(darkTheme, resolved, contrast) {
+            // macOS (UK-10.7): Mac scale type, and Increase Contrast draws full-contrast hairlines.
+            val mac = autoPlatformVariant() == PolarisPlatformVariant.MacOS
+            val macContrast = mac && rememberMacHostFacts().highContrast
+            val scheme = remember(darkTheme, resolved, contrast, macContrast) {
                 if (contrast) {
                     windowsContrastScheme(darkTheme)
                 } else {
                     polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand.withInk(darkTheme) }
+                        .let { if (macContrast) it.withMacContrast() else it }
                 }
             }
             val system = if (contrast) FluentSystemColors.forTheme(darkTheme) else null
             val inkText = if (darkTheme) PolarisBrandTokens.Dark.textStrong else PolarisBrandTokens.Light.textStrong
-            val typography = polarisBrandTypography(MaterialTheme.typography).let { if (fluent) windowsTypography(it) else it }
+            val typography = polarisBrandTypography(MaterialTheme.typography).let { if (fluent) windowsTypography(it) else if (mac) it.forMacScale() else it }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
@@ -344,7 +350,7 @@ private fun PolarisThemeResolved(
                 // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields; Windows: radius 4.
                 controlShape = if (fluent) PolarisFluent.controlShape else CircleShape,
                 accentText = system?.hotlight ?: resolved?.let { colorOf(it.fg) } ?: inkText,
-                fieldShape = if (fluent) PolarisFluent.controlShape else RoundedCornerShape(16.dp),
+                fieldShape = if (fluent) PolarisFluent.controlShape else if (mac) polarisRadiusShape(PolarisKitTokens.MacOS.radiusForm.dp) else RoundedCornerShape(16.dp),
                 focus = system?.windowText ?: resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
@@ -380,6 +386,9 @@ internal fun polarisRadiusShape(radius: androidx.compose.ui.unit.Dp): Shape = Ro
 
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)
+
+/** The message card on the Mac: radius 18, the sheet's (S8 nit). */
+private val MacMessageCardShape: Shape = RoundedCornerShape(18.dp)
 
 /** The product icon's 28 % squircle (UI-KITS.md §1.4, Android). */
 private val ProductIconShape: Shape = RoundedCornerShape(28)
@@ -451,7 +460,7 @@ public object PolarisTheme {
     /** A message screen's card on a wide window or TV: radius 28 (UI-KITS.md §1.4, Android sheets). */
     public val cardShape: Shape
         @Composable @ReadOnlyComposable
-        get() = if (polarisWindow.fluent) PolarisFluent.overlayShape else MessageCardShape
+        get() = if (polarisWindow.fluent) PolarisFluent.overlayShape else if (polarisWindow.isMac) MacMessageCardShape else MessageCardShape
 
     /** The keyboard and D-pad focus ring's colour. */
     public val focusColor: Color

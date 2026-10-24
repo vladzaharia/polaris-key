@@ -202,7 +202,7 @@ class DesktopVariantTest {
         val opened = mutableListOf<String>()
         runDesktopComposeUiTest(width = 700, height = 900) {
             setContent {
-                PolarisTheme(branding = PolarisBranding.None, darkTheme = false) {
+                PolarisTheme(branding = PolarisBranding.None, darkTheme = false, copy = PolarisCopy()) {
                     PolarisActivationScreen(
                         PolarisActivationUi(
                             key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
@@ -214,7 +214,8 @@ class DesktopVariantTest {
                 }
             }
             waitForIdle()
-            onNodeWithText(PolarisCopy().openInBrowser).performClick()
+            // On a Mac host the theme reads the Mac wording of a default copy (S4).
+            onNodeWithText(PolarisCopy().let { if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) it.forMac() else it }.openInBrowser).performClick()
             waitForIdle()
         }
         return opened

@@ -19,9 +19,9 @@ internal val LocalPolarisHostFacts = staticCompositionLocalOf<PolarisHostFacts?>
 @Composable
 internal expect fun rememberDesktopHostFacts(): PolarisHostFacts?
 
-/** The variants whose chrome follows host facts. UK-10.7 adds the Mac here. */
+/** The variants whose chrome follows host facts. Windows, GNOME and macOS. */
 internal fun followsHostFacts(variant: PolarisPlatformVariant): Boolean =
-    variant == PolarisPlatformVariant.Windows || variant == PolarisPlatformVariant.Gnome
+    variant == PolarisPlatformVariant.Windows || variant == PolarisPlatformVariant.Gnome || variant == PolarisPlatformVariant.MacOS
 
 /** The facts the chrome follows: provided, else the desktop's; null when there is no source (Android, an unfollowed variant). */
 @Composable

@@ -21,7 +21,7 @@ class UpdateProgressDesktopTest {
     private val hasRange = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
 
     private fun androidx.compose.ui.test.ComposeUiTest.render(ui: PolarisUpdateUi) = setContent {
-        PolarisTheme(branding = PolarisBranding.None, darkTheme = false) { PolarisUpdatePrompt(ui, onLater = {}) }
+        PolarisTheme(branding = PolarisBranding.None, darkTheme = false, copy = copy) { PolarisUpdatePrompt(ui, onLater = {}) }
     }
 
     @Test
@@ -29,7 +29,8 @@ class UpdateProgressDesktopTest {
         render(PolarisUpdateUi("2.0.0", progress = 38_000_000L to 61_000_000L, secondsLeft = 90))
         onNodeWithText(copy.format(copy.updateDownloading, copy.bytes(38_000_000L), copy.bytes(61_000_000L))).assertExists()
         onNodeWithText(copy.timeLeftLine(90)).assertExists()
-        onNodeWithText(copy.updateRestartWhenReady).assertExists()
+        // On a Mac host the theme reads the Mac wording of a default copy (S4).
+        onNodeWithText((if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) copy.forMac() else copy).updateRestartWhenReady).assertExists()
         onAllNodesWithText("%", substring = true).assertCountEquals(0)
     }
 

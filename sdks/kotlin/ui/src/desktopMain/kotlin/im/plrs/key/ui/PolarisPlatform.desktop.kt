@@ -208,10 +208,14 @@ internal actual fun thumbnailArgb32(image: ImageBitmap): IntArray {
 internal actual fun PolarisDialogDim(amount: Float) = Unit
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-internal actual fun polarisPromptDialogProperties(dismissible: Boolean, scrim: Boolean): androidx.compose.ui.window.DialogProperties =
+internal actual fun polarisPromptDialogProperties(
+    dismissible: Boolean,
+    scrim: Boolean,
+    dismissOnClickOutside: Boolean,
+): androidx.compose.ui.window.DialogProperties =
     androidx.compose.ui.window.DialogProperties(
         dismissOnBackPress = dismissible,
-        dismissOnClickOutside = dismissible,
+        dismissOnClickOutside = dismissOnClickOutside,
         usePlatformDefaultWidth = false,
         scrimColor = if (scrim) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f) else androidx.compose.ui.graphics.Color.Transparent, // polaris-lint: allow-colour (the desktop dialog's own default scrim)
     )

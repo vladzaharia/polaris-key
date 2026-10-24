@@ -395,6 +395,37 @@ class WindowsChromeTest {
     }
 
     @Test
+    fun theAllChangesLinkIsHotlightInAContrastTheme() {
+        for (dark in listOf(false, true)) {
+            runDesktopComposeUiTest(width = 400, height = 200) {
+                setContent {
+                    CompositionLocalProvider(LocalPolarisHostFacts provides PolarisHostFacts(dark = dark, highContrast = true)) {
+                        PolarisTheme(branding = PolarisBranding.None, darkTheme = dark) {
+                            CompositionLocalProvider(LocalPolarisWindow provides windowOf(PolarisPlatformVariant.Windows)) {
+                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                    PolarisUpdateNotes(PolarisUpdateUi("2.5.0", notesUrl = "https://example.com/r/2.5.0"))
+                                }
+                            }
+                        }
+                    }
+                }
+                waitForIdle()
+                val c = FluentSystemColors.forTheme(dark)
+                val img = onNode(isRoot()).captureToImage().toPixelMap()
+                var hot = 0
+                var highlight = 0
+                for (x in 0 until img.width) for (y in 0 until img.height) {
+                    val px = img[x, y].toArgb()
+                    if (px == c.hotlight.toArgb()) hot++
+                    if (px == c.highlight.toArgb() && c.highlight != c.hotlight) highlight++
+                }
+                assertTrue(hot > 20, "dark=$dark: the link is drawn in Hotlight ($hot px)")
+                assertEquals(0, highlight, "dark=$dark: not in the Highlight fill colour")
+            }
+        }
+    }
+
+    @Test
     fun aContrastButtonIsGrayTextWhenDisabledAndHighlightUnderThePointer() {
         for (dark in listOf(false, true)) {
             runDesktopComposeUiTest(width = 400, height = 200) {
