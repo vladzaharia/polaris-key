@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { Info, Monitor } from "lucide-react";
 import type {
   PortalAccount,
@@ -14,7 +15,6 @@ import {
 import { type PlatformKey } from "../../ui/Glyphs.js";
 import { platformInSentence } from "../../lib/vocab/platforms.js";
 import { StorePills } from "../components/StorePills.js";
-import { ErrorPanel } from "../components/States.js";
 import { BuildDetails } from "../components/product/BuildDetails.js";
 import { DownloadButton } from "../components/product/DownloadButton.js";
 import { EmailDownloadButton } from "../components/product/EmailDownloadButton.js";
@@ -156,7 +156,7 @@ export function DownloadFlowPage({
       ) : product.error && isNotFound(product.error) ? (
         <NotFoundProduct email={account.email} />
       ) : error || !p ? (
-        <ErrorPanel
+        <ErrorState
           error={error}
           onRetry={() => {
             void product.refetch();

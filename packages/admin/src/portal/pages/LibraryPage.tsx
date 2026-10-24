@@ -1,3 +1,4 @@
+import { ErrorState } from "../../ui/ErrorState.js";
 import { t, tParts } from "../../lib/copy.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
@@ -12,7 +13,6 @@ import { LibraryKeyTile } from "../components/LibraryKeyTile.js";
 import { LibraryHero } from "../components/LibraryHero.js";
 import { LibraryTile } from "../components/LibraryTile.js";
 import { libraryGrid, TILE_GRID } from "../components/tileGrid.js";
-import { ErrorPanel } from "../components/States.js";
 import { useLibrary } from "../library.js";
 import {
   attentionItems,
@@ -92,7 +92,7 @@ export function LibraryPage({
           <SkeletonTile className="hidden wide:block" />
         </div>
       ) : lib.error ? (
-        <ErrorPanel
+        <ErrorState
           error={lib.error}
           onRetry={lib.retry}
           message={t("locker.error.loadFailedLibrary")}

@@ -4,7 +4,6 @@ import * as React from "react";
 import { ApiError } from "../../src/api.js";
 import { PortalApiError } from "../../src/portal/api.js";
 import { portalVoice } from "../../src/portal/errors.js";
-import { ErrorPanel } from "../../src/portal/components/States.js";
 import { ErrorState } from "../../src/ui/ErrorState.js";
 import { ErrorVoiceProvider } from "../../src/ui/errorVoice.js";
 
@@ -121,17 +120,5 @@ describe("ErrorState, portal voice", () => {
       status: 429,
     });
     expect(screen.getByRole("button", { name: /Copy details/ })).toBeTruthy();
-  });
-
-  it("ErrorPanel speaks portal even outside a provider", () => {
-    render(
-      <ErrorPanel
-        error={new PortalApiError(0, "network")}
-        asPage
-        backToLibrary
-      />,
-    );
-    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
-    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

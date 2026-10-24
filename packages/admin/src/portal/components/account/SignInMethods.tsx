@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint,
@@ -62,7 +63,6 @@ import {
   SteamGlyph,
   WindowsGlyph,
 } from "../../../ui/Glyphs.js";
-import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
 import {
@@ -162,7 +162,7 @@ export function SignInMethods({
           <Skeleton className="h-14 w-full" />
         </div>
       ) : methods.error || !methods.data ? (
-        <ErrorPanel
+        <ErrorState
           account
           error={methods.error}
           onRetry={() => void methods.refetch()}

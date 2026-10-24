@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { ExternalLink, Mail } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
@@ -17,7 +18,6 @@ import {
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { KeyMask } from "../KeyMask.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
-import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
 import { LicenseTerm, termPlot } from "./LicenseTerm.js";
 import { t } from "../../../lib/copy.js";
@@ -139,7 +139,7 @@ export function LicenseCard({
           </div>
         </div>
       ) : error || !detail ? (
-        <ErrorPanel
+        <ErrorState
           error={error}
           // Try again keeps the person here: focus goes to the card's heading.
           onRetry={() => {

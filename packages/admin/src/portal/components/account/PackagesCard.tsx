@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { Clock, Info, KeyRound, Plus } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CodeBlock } from "../../../ui/CodeBlock.js";
@@ -37,7 +38,6 @@ import {
 } from "../../model/packageAccess.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { SetupTabs, type TabSnippet } from "../product/SetupTabs.js";
-import { ErrorPanel } from "../States.js";
 import { StepUpInline } from "./StepUpInline.js";
 
 /** Rows shown before "Show all". */
@@ -156,7 +156,7 @@ export function PackagesCard(): React.ReactElement | null {
           <Skeleton className="h-14 w-full" />
         </div>
       ) : q.isError || !data ? (
-        <ErrorPanel
+        <ErrorState
           error={q.error}
           account
           onRetry={() => void q.refetch()}
