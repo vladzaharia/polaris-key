@@ -1045,6 +1045,43 @@ export const COMMANDS: readonly PkeyCommand[] = [
     env: [CI_ENV],
   },
   {
+    name: "channel",
+    group: "storefront",
+    json: true,
+    summary: "Add a delivery channel to .pkey/distribution, and sync its steps",
+    rows: [
+      ["channel add <id>", "Append the channel to .pkey/distribution"],
+      ["channel sync", "Run the PR steps the declared channels have"],
+    ],
+    tree: { add: [], sync: [] },
+    usage: [
+      "pkey channel add id [--field name=value ...] [--outlet-id id] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]",
+    ],
+    about: [
+      {
+        subs: ["add"],
+        text:
+          "channel add writes one outlet, with a comment on every field, into " +
+          ".pkey/distribution (created when absent; comments already there stay). --field " +
+          "sets an identity field; a value starting [ or { is JSON. The outlet is named for " +
+          "the channel unless --outlet-id says otherwise. Nothing is written if the id is " +
+          "taken or .pkey/ would stop validating.",
+      },
+      {
+        subs: ["sync"],
+        text:
+          "channel sync plans one step per declared pr or ci channel (and F-Droid) and runs " +
+          "the pull-request ones as pkey storefront <store> pr does, reported into the " +
+          "store's ledger. A channel whose secret is unset is skipped with the variable's " +
+          "name (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, " +
+          "PKEY_FDROID_KS_PASS); a failed step fails the command after the rest ran. " +
+          "--channel is the release channel (default stable). --dry-run plans and runs " +
+          "nothing.",
+      },
+    ],
+  },
+  {
     name: "storefront",
     group: "storefront",
     json: true,

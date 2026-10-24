@@ -158,6 +158,7 @@ import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
+import { cmdChannel } from "./channel.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
@@ -802,6 +803,17 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
     cmdStorefront(
       { positional: p.positional, flags: p.flags, rest: p.rest },
       { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
+    ),
+  channel: (p, rt) =>
+    cmdChannel(
+      { positional: p.positional, flags: p.flags, multi: p.multi },
+      {
+        cwd: rt.cwd,
+        stdout: rt.stdout,
+        stderr: rt.stderr,
+        term: rt.term,
+        ...rt.ci,
+      },
     ),
 };
 
