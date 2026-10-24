@@ -1037,9 +1037,6 @@
     "packages/cli/src/account.ts": {
       "jscpd:duplicate": 1
     },
-    "packages/cli/src/action.ts": {
-      "jscpd:duplicate": 3
-    },
     "packages/cli/src/assets.ts": {
       "jscpd:duplicate": 6
     },
@@ -1136,9 +1133,6 @@
     "packages/cli/test/account.test.ts": {
       "jscpd:duplicate": 2
     },
-    "packages/cli/test/action.test.ts": {
-      "jscpd:duplicate": 3
-    },
     "packages/cli/test/adminCredential.test.ts": {
       "jscpd:duplicate": 2
     },
@@ -1203,7 +1197,7 @@
       "jscpd:duplicate": 4
     },
     "packages/cli/test/packPublish.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 5
     },
     "packages/cli/test/package.test.ts": {
       "jscpd:duplicate": 1
@@ -1233,7 +1227,7 @@
       "jscpd:duplicate": 1
     },
     "packages/cli/test/untrusted.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/cli/test/ux.test.ts": {
       "jscpd:duplicate": 3
