@@ -139,9 +139,6 @@ interface Scene {
   component: string;
   /** Text the screen must show. */
   text: RegExp;
-  /** Opened from a menu item, the kit draws this view with the `web` chrome whatever the theme
-   *  says (found by this harness, UK-06.12; fix owner: the kit, not the sample). */
-  drawsWeb?: boolean;
 }
 
 const SCENES: Scene[] = [
@@ -194,15 +191,13 @@ const SCENES: Scene[] = [
     reach: async ({ app }) => clickMenu(app, MANAGE),
     component: "Settings",
     text: /Sample rate/,
-    drawsWeb: true,
   },
   {
     id: "update",
     state: "ok",
     reach: async ({ app }) => clickMenu(app, CHECK),
     component: "UpdatePrompt",
-    text: /An update is available/,
-    drawsWeb: true,
+    text: /What's new/,
   },
 ];
 
@@ -406,11 +401,13 @@ function measure(opts: { zoomed: boolean }): LayoutFacts {
   };
 }
 
-/** Layout findings the kit has today, each pinned so the suite stays honest in both directions:
- *  the check must still fail here (it turns red the day the kit is fixed: drop the row). */
+/** Layout findings the kit still has, pinned so the suite stays honest in both directions: the
+ *  check must still fail here (it turns red the day the kit is fixed: drop the row). */
 const KNOWN_PRIMARY_BELOW_FOLD: Record<string, string> = {
-  "update 640x360":
-    "the update prompt's primary action is below the fold of a 360 px window (short-window footer, UK-06-KITFIX)",
+  "linux update 844x390":
+    "the GNOME update prompt's primary action is below the fold of a short landscape window",
+  "linux update 640x360":
+    "the GNOME update prompt's primary action is below the fold of a 360 px window",
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -447,16 +444,12 @@ for (const chrome of CHROMES)
               const facts = await l.page.evaluate(measure, {
                 zoomed: size.zoom > 1,
               });
-              expect(facts.platform, "data-pk-platform").toBe(
-                scene.drawsWeb ? "web" : VARIANT[chrome],
-              );
+              expect(facts.platform, "data-pk-platform").toBe(VARIANT[chrome]);
               expect(facts.theme, "data-theme").toBe(scheme);
               expect(facts.sideways, "sideways scroll").toBeNull();
-              if (`${scene.id} ${size.label}` in KNOWN_PRIMARY_BELOW_FOLD)
-                expect(
-                  facts.primary,
-                  KNOWN_PRIMARY_BELOW_FOLD[`${scene.id} ${size.label}`],
-                ).not.toBeNull();
+              const known =
+                KNOWN_PRIMARY_BELOW_FOLD[`${chrome} ${scene.id} ${size.label}`];
+              if (known) expect(facts.primary, known).not.toBeNull();
               else
                 expect(
                   facts.primary,
@@ -476,31 +469,6 @@ for (const chrome of CHROMES)
                 await l.page.screenshot({ path: file });
               }
             });
-      });
-  });
-
-// A view opened from a menu item gets the forced chrome. It does not yet (`drawsWeb` above): this
-// is expected to fail, and turns red the day the kit fixes it, which is the cue to drop `drawsWeb`
-// and `.fails`.
-for (const chrome of CHROMES)
-  describe(`menu-opened views, forced ${chrome} chrome`, () => {
-    for (const scene of SCENES.filter((x) => x.drawsWeb))
-      it.fails(`${scene.id} draws the ${chrome} chrome`, async () => {
-        const l = await launch({ state: scene.state, chrome });
-        try {
-          await scene.reach(l);
-          await showing(l.page, scene.component);
-          const platform = await l.page.evaluate(
-            (c) =>
-              document
-                .querySelector(`.pk-root[data-component="${c}"]`)
-                ?.getAttribute("data-pk-platform"),
-            scene.component,
-          );
-          expect(platform).toBe(VARIANT[chrome]);
-        } finally {
-          await close(l.app);
-        }
       });
   });
 
@@ -700,22 +668,11 @@ describe("the bridge and the shell, wired", () => {
     expect(dones[0]).toBeGreaterThan(0);
   });
 
-  it("the update prompt shows the install progress in MB", async (ctx) => {
+  it("the update prompt installs in the app and shows progress in MB", async () => {
     await clickMenu(l.app, CHECK);
     await showing(l.page, "UpdatePrompt");
-    const text = await l.page.evaluate(
-      () =>
-        document.querySelector<HTMLElement>(
-          '.pk-root[data-component="UpdatePrompt"]',
-        )!.innerText,
-    );
-    // Until UK-06-KITFIX lands the desktop update path, the prompt only opens the browser.
-    if (/Opens in your browser/.test(text)) {
-      ctx.skip();
-      return;
-    }
     await l.page
-      .getByRole("button", { name: /^(Install|Update|Download)/ })
+      .getByRole("button", { name: /^(Install|Update now)/ })
       .first()
       .click();
     await l.page.waitForFunction(
