@@ -69,12 +69,12 @@ docs/                RUNBOOK · DEPLOYMENT · PRIVACY
 **`docs/` is much smaller than it used to be.** Four long-form documents moved into the docs
 site and are no longer at their old paths — follow the move rather than recreating them:
 
-| Was                        | Now                                                                | Served at                        |
-| -------------------------- | ------------------------------------------------------------------ | -------------------------------- |
-| `docs/CONCEPTS.md`         | `packages/docs/src/content/docs/start/concepts.md`                 | `/docs/start/concepts/`          |
-| `docs/ADOPTER-GUIDE.md`    | `packages/docs/src/content/docs/start/first-product.md` (appended) | `/docs/start/first-product/`     |
-| `docs/CONFIG-AUTHORING.md` | `packages/docs/src/content/docs/build/manifest/product.md`         | `/docs/build/manifest/product/`  |
-| `products/README.md`       | `packages/docs/src/content/docs/build/manifest/register.md`        | `/docs/build/manifest/register/` |
+| Was                        | Now                                                                 | Served at                        |
+| -------------------------- | ------------------------------------------------------------------- | -------------------------------- |
+| `docs/CONCEPTS.md`         | `packages/docs/src/content/docs/start/concepts.md`                  | `/docs/start/concepts/`          |
+| `docs/ADOPTER-GUIDE.md`    | `packages/docs/src/content/docs/start/first-product.mdx` (appended) | `/docs/start/first-product/`     |
+| `docs/CONFIG-AUTHORING.md` | `packages/docs/src/content/docs/build/manifest/product.md`          | `/docs/build/manifest/product/`  |
+| `products/README.md`       | `packages/docs/src/content/docs/build/manifest/register.md`         | `/docs/build/manifest/register/` |
 
 `CONTRIBUTING.md` was slimmed to match: setup, the green gate and the pre-commit hook stay in
 the repo; the monorepo map, the wave model, the corpus and the release flow now live under
@@ -189,7 +189,7 @@ generator **inputs** (the zstd blobs, the `pkey-chunks/1` indexes and bundles, a
 hash-checked against `content/cases.json`'s `blobs` table and never rewritten by a normal or
 `--check` run; only the explicit `--rebuild-content-blobs` mode, pinned to zstd 1.5.7, writes them,
 and it may only **add** blobs and `refs.json` entries: it throws, writing nothing, if an existing
-one would change (plans/P4-10.md decision 15). Changing an existing blob is a PR of its own. Never weaken a runner to make a change "pass". The same
+one would change (`docs/research/2026-09-29-godot-omniplatform/program/plans/P4-10.md` decision 15). Changing an existing blob is a PR of its own. Never weaken a runner to make a change "pass". The same
 holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Godot mirror at
 `sdks/godot/tests/transcripts/` are recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
 `pnpm gen transcripts`; a Worker change that alters a recorded response regenerates them in the
@@ -381,7 +381,7 @@ stubs out of the sitemap). Skipping the build and editing either output by hand 
   export (`LicenseGate`, `useLicenseGate`, `register_argparse()`) must be one the SDK exports, or
   its line must say "planned". `no-compile` opts a block out on other pages, never on a covered
   one. A `swift`, `kotlin` or `gdscript` fence compiles the same way against the real SDK
-  (`nativeLanes.ts`; Swift needs macOS, Kotlin a JDK 17, GDScript a `godot` on PATH or `GODOT_BIN`;
+  (`packages/docs/test/snippets/nativeLanes.ts`; Swift needs macOS, Kotlin a JDK 17, GDScript a `godot` on PATH or `GODOT_BIN`;
   a Kotlin block that needs Android says `android` in its info string). CI names the lanes it
   requires in `PKEY_DOCS_LANES`. Conventions: `packages/docs/test/snippets/extract.ts`.
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and

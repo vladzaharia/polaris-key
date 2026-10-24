@@ -75,3 +75,19 @@ AX-04 writes the gate step list into `AGENTS.md`; AX-14's skills get router rows
 
 The role agent sets `--set AX-03b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set AX-03b done`.
+
+## Corrections (2026-10-24)
+
+Checked against the code; the code wins.
+
+- R1. `AGENTS.md` is 35,101 bytes, not 29.5 KB; about 13 KB must move or go to fit 24 KB.
+- R2. `tools/agents-md.test.ts` exists (AX-03a): extend it, do not create it. AX-03b.1 added the nested-shape and names-exist checks and extended the "no rule count" check to every `AGENTS.md`.
+- R3. Rule numbers 1–11 stay: "AGENTS.md rule N" is cited 54 times in tracked code and docs.
+- R4. Three skills exist (`adding-a-catalog-entry`, `authoring-pkey-manifests`, `running-the-omniplatform-program`); `adding-a-worker-route` does not (AX-14).
+- R5. AX-06 (`llms.txt`) and AX-05 (eval harness) are todo.
+- R6. SP-34 owns root `CLAUDE.md`'s plan-mode list; this package does not touch root `CLAUDE.md`.
+- R7. Four `docs/` subdirectories have no README (`design/`, `research/`, `security/`, `superpowers/`).
+- R8. `worker` and `admin` have no `description` in `package.json`.
+- R9. `registry-docs` already owns an `AGENTS.md` marker block; further generated blocks belong to it.
+- R10. Stale lines: the gate.sh "not yet switched" note (AX-04 fixes it); the `plans/P4-10.md` path, now its full path.
+- R11. No nested `AGENTS.md` or `CLAUDE.md` existed before AX-03b.1.
