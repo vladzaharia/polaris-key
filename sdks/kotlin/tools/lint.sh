@@ -51,7 +51,7 @@ java -jar "$dir/$ktlint_jar" --log-level=error --reporter=json --relative "${glo
 
 # detekt exits 2 when it finds issues; any other failure is a crash.
 input="$(IFS=,; echo "${dirs[*]}")"
-java -jar "$dir/$detekt_jar" --input "$input" --report "sarif:$tmp/detekt.sarif" >"$tmp/detekt.out" 2>&1
+java -jar "$dir/$detekt_jar" --config tools/detekt.yml --build-upon-default-config --input "$input" --report "sarif:$tmp/detekt.sarif" >"$tmp/detekt.out" 2>&1
 [ $? -le 2 ] && [ -s "$tmp/detekt.sarif" ] || { tail -20 "$tmp/detekt.out" >&2; echo "detekt crashed" >&2; exit 2; }
 
 rc=0
