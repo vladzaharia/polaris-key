@@ -11,6 +11,12 @@ import androidx.compose.ui.unit.dp
 /**
  * The Material Symbols subset the kit ships (filled, 24 dp grid), so the kit depends on no legacy
  * `Icons.Filled` set. Each is drawn in the colour the caller's `Icon` tints it.
+ *
+ * UK-09b.4 check against Material Symbols Rounded (C7): these paths are the classic Material Icons
+ * Filled (square-cornered) outlines, NOT the Rounded set, e.g. Check is "M9 16.17 4.83 12..." where
+ * Rounded draws round caps ("...a.996.996 0 1 0-1.41 1.41..."). The kit keeps them: the glyphs are
+ * 24 dp grid-compatible, and swapping to Rounded paths needs the Symbols font axes (FILL, wght,
+ * GRAD, opsz) exported per glyph, a separate package, recorded as a follow-up.
  */
 internal object PolarisSymbols {
     private fun symbol(name: String, path: String, autoMirror: Boolean = false): ImageVector =

@@ -34,6 +34,7 @@
 package im.plrs.key.ui
 
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
@@ -311,7 +312,7 @@ private fun PolarisThemeResolved(
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
             } else {
                 val fluent = variant == PolarisPlatformVariant.Windows
-                MaterialTheme(
+                PolarisMaterialTheme(
                     colorScheme = scheme,
                     typography = if (fluent) windowsTypography(MaterialTheme.typography) else MaterialTheme.typography,
                     shapes = MaterialTheme.shapes,
@@ -357,7 +358,7 @@ private fun PolarisThemeResolved(
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
             )
-            MaterialTheme(colorScheme = scheme, typography = typography, shapes = if (fluent) polarisFluentShapes else polarisBrandShapes) {
+            PolarisMaterialTheme(colorScheme = scheme, typography = typography, shapes = if (fluent) polarisFluentShapes else polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
             }
         }
@@ -614,3 +615,23 @@ public val polarisBrandShapes: Shapes = Shapes(
     large = RoundedCornerShape(PolarisBrandTokens.Radius.xl.dp),
     extraLarge = RoundedCornerShape(PolarisBrandTokens.Radius.xl.dp),
 )
+
+/** The inner corner of a connected group: small, so neighbouring rows read as one group. */
+private val CONNECTED_INNER = 4.dp
+
+/**
+ * The Expressive connected-group shape rule: the outer corners of the first and last item take
+ * [outer] (the brand's card radius), every inner corner the small radius.
+ */
+internal fun polarisConnectedShape(index: Int, count: Int, outer: Shape): Shape {
+    if (outer !is RoundedCornerShape || count <= 1) return outer
+    val inner = CornerSize(CONNECTED_INNER)
+    val first = index == 0
+    val last = index == count - 1
+    return RoundedCornerShape(
+        topStart = if (first) outer.topStart else inner,
+        topEnd = if (first) outer.topEnd else inner,
+        bottomEnd = if (last) outer.bottomEnd else inner,
+        bottomStart = if (last) outer.bottomStart else inner,
+    )
+}

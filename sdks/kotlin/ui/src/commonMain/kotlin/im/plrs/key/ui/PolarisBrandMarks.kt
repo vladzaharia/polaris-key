@@ -85,7 +85,7 @@ private val microLight by lazy { PolarisBrandMarkData.lockerMicroLight.toImageVe
  * display range (above [PolarisBrandTokens.SERVICE_MAX]): the optical cut is chosen by displayed
  * size, never by scaling the display drawing down into the service or favicon range.
  *
- * @param contentDescription "Polaris Key" by default; null makes the mark decorative.
+ * @param contentDescription "Polaris Locker" by default; null makes the mark decorative.
  */
 @Composable
 public fun PolarisMark(
