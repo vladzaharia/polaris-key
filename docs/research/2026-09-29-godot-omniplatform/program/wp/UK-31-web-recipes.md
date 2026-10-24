@@ -104,6 +104,22 @@ These are could rows of §5.1: recipes, not kits. The spec is [`docs/design/UI-K
 1. Build the scope in the order listed.
 2. Run the gates in the header.
 
+## Corrections (2026-10-24)
+
+The code is the fact (plan: `_lead/plans/UK-09b-UK-31-SP-52b-slices.md` §0).
+
+- **R1.** The Goal says "SolidJS, Preact, Qwik, htmx and plain pages"; the Consolidation section wins: Vue, Svelte, Angular, Solid, Preact, htmx, Tauri and bring-your-own design system. Qwik is dropped. UK-17, 18, 19 and 21 are parked and point here.
+- **R2.** "SP-36 layout" defines nothing for this package: SP-36 is todo and plans `examples/<sdk>-<host>/`. Recipes live in `examples/ui/recipes/<x>/`, one standalone pnpm workspace with its own lockfile and `minimumReleaseAge: 20160`.
+- **R3.** No CI job builds any `examples/ui/*` web sample; examples are outside the root pnpm workspace, and the `ui-kits` scope lane does not list `examples/ui/`.
+- **R4.** `pnpm ui:lint --html` had no colour-scheme control. It now takes `--scheme=dark,light` (`emulateMedia`). Any network call fails the run through console errors, so recipes run on fixtures.
+- **R5.** `@polaris-key/elements` is private at 0.0.0 with no `./define` export; registering is a side-effect import. The CDN module `key.plrs.im/elements/1/pk.js` belongs to UK-04b. Recipes import the package, aliased to `packages/elements/dist` (`examples/ui/recipes/alias.mjs`).
+- **R6.** `packages/docs/site-map.json` deletes `build/ui/recipes` (DOC-08b). The row goes when the recipes page is added.
+- **R7.** `uiKits.ts` has no recipe status (`KitStatus` is `ships` or `planned`; its header says recipes get no row), Elements still reads `planned: "UK-04"`, and Solid, Preact and htmx have no rows.
+- **R8.** No Rust toolchain in CI and no `src-tauri`/`Cargo.toml` in the repo (the Tauri recipe is built and linted, not compiled).
+- **R9.** No framework dependency and no age policy existed. Every recipe dependency is pinned exactly to a release at least 14 days old, in the recipes' own lockfile.
+- **R10.** The three kitboard items have no framework-specific board; the recipes render the shared web gate, which closes all three.
+- **R11.** "No recipe styles into a shadow root" holds through the sanctioned routes only: `--pk-*` custom properties, `::part()` and `theme`. The BYO recipe sets the accent through `theme.accent`, never a raw `--pk-accent`.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.

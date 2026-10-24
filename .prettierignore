@@ -122,3 +122,6 @@ packages/docs/src/content/docs/operate/console/tour.mdx
 
 # SP-33a's integration goldens: byte-compared against renderUsage by `pnpm gen integration --check`.
 packages/shared-manifest/test/fixtures/integration/
+
+# The recipes workspace's lockfile: written by pnpm.
+examples/ui/recipes/pnpm-lock.yaml

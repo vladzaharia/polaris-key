@@ -56,6 +56,8 @@ export interface PageTarget {
   name: string;
   url: string;
   theme?: "dark" | "light";
+  /** `prefers-color-scheme` the page is rendered under (`--scheme` for `--html` pages). */
+  scheme?: "dark" | "light";
   options?: LintOptions;
   viewport?: { width: number; height: number };
   /** Browser zoom is a smaller CSS viewport at a higher ratio (400 % = 320 × 256 at 4). */
@@ -76,6 +78,7 @@ export async function lintTargets(
     const page = await browser.newPage({
       viewport: target.viewport ?? { width: 3200, height: 2000 },
       deviceScaleFactor: target.deviceScaleFactor ?? 1,
+      ...(target.scheme && { colorScheme: target.scheme }),
       // The lint injects its own script: a page served under a strict CSP (the docs, through the
       // Worker) would otherwise block it.
       bypassCSP: true,

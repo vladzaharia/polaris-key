@@ -1,0 +1,6 @@
+# A standalone workspace: the recipes are not part of the repo's pnpm workspace or lockfile.
+# Every dependency is pinned to an exact release; the install refuses anything younger than
+# 14 days (minutes), so a freshly published (or hijacked) release cannot reach a recipe.
+packages:
+  - "*"
+minimumReleaseAge: 20160

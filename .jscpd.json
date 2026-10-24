@@ -13,6 +13,7 @@
     "**/__snapshots__/**",
     "**/*.snap",
     "**/*.d.ts",
+    "examples/ui/recipes/**",
     "docs/design/**",
     "docs/research/**",
     "conformance/corpus/**",
