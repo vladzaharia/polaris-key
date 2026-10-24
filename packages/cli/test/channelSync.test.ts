@@ -9,6 +9,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runPkey } from "../src/index.js";
+import { cmdChannel } from "../src/channel.js";
+import type { SpawnTool } from "../src/storefronts/run.js";
 import { planSync } from "../src/channelSync.js";
 import type { PrInputs } from "../src/storefronts/prInputs.js";
 import { BASE, FLATHUB_INPUTS, WINGET_INPUTS } from "./prFixtures.js";
@@ -48,7 +50,49 @@ const DISTRIBUTION = `outlets:
     appId: 480
 `;
 
-async function repo(distribution = DISTRIBUTION): Promise<string> {
+const ARTIFACTS = [
+  {
+    id: "win",
+    platform: "windows",
+    arch: "x86_64",
+    format: "zip",
+    match: "Diceroll-*-win.zip",
+  },
+  {
+    id: "lin",
+    platform: "linux",
+    arch: "x86_64",
+    format: "zip",
+    match: "Diceroll-*-linux.zip",
+  },
+  {
+    id: "snap",
+    platform: "linux",
+    arch: "x86_64",
+    format: "snap",
+    match: "diceroll_*.snap",
+  },
+  {
+    id: "apk",
+    platform: "android",
+    arch: "arm64",
+    format: "apk",
+    match: "Diceroll-*.apk",
+  },
+];
+
+async function repo(
+  distribution = DISTRIBUTION,
+  artifacts: object[] = [
+    {
+      id: "win",
+      platform: "windows",
+      arch: "x86_64",
+      format: "msi",
+      match: "Diceroll-*.msi",
+    },
+  ],
+): Promise<string> {
   const cwd = await mkdtemp(path.join(tmpdir(), "pkey-channel-sync-"));
   await mkdir(path.join(cwd, ".pkey"));
   const w = (f: string, v: unknown) =>
@@ -64,15 +108,7 @@ async function repo(distribution = DISTRIBUTION): Promise<string> {
       deliverables: {
         app: {
           kind: "app",
-          artifacts: [
-            {
-              id: "win",
-              platform: "windows",
-              arch: "x86_64",
-              format: "msi",
-              match: "Diceroll-*.msi",
-            },
-          ],
+          artifacts,
         },
       },
     },
@@ -312,5 +348,187 @@ describe("pkey channel sync (A-25.3)", () => {
     const r = await sync(cwd, []);
     expect(r.code).toBe(0);
     expect(r.out).toContain("Nothing to sync");
+  });
+});
+
+describe("pkey channel sync --dir (A-25.4)", () => {
+  const LOCAL =
+    "outlets:\n  itch:\n    target: vlad/diceroll\n  snap:\n    name: diceroll\n";
+  const ENV2 = {
+    ...ENV,
+    BUTLER_API_KEY: "butler-secret-value",
+    SNAPCRAFT_STORE_CREDENTIALS: "snap-secret-value",
+  };
+  async function build(files: string[], distribution = LOCAL) {
+    const cwd = await repo(distribution, ARTIFACTS);
+    await mkdir(path.join(cwd, "dist"));
+    for (const f of files) await writeFile(path.join(cwd, "dist", f), "x");
+    return cwd;
+  }
+  /** `channel sync` through the dispatcher, with a fake vendor tool and a fake ledger. */
+  async function run(
+    cwd: string,
+    args: string[],
+    env: Record<string, string> = ENV2,
+  ) {
+    const runs: string[][] = [];
+    const spawnTool: SpawnTool = async (tool, argv) => (
+      runs.push([tool, ...argv]),
+      0
+    );
+    const w = world();
+    let out = "";
+    const flags: Record<string, string | boolean> = { "base-url": BASE };
+    for (let i = 0; i < args.length; i++) {
+      const k = args[i]!.replace(/^--/, "");
+      flags[k] =
+        args[i + 1] && !args[i + 1]!.startsWith("--") ? args[++i]! : true;
+    }
+    const code = await cmdChannel(
+      { positional: ["sync"], flags, multi: {} },
+      {
+        cwd,
+        env,
+        stdout: { write: (s: string) => ((out += s), true) } as never,
+        stderr: { write: () => true } as never,
+        fetchImpl: w.fetchImpl,
+        sleep: async () => {},
+        spawnTool,
+      },
+    );
+    return { code, out, runs, w };
+  }
+
+  it("a windows and a linux zip push twice, one channel word each", async () => {
+    const cwd = await build([
+      "Diceroll-1.2.0-win.zip",
+      "Diceroll-1.2.0-linux.zip",
+    ]);
+    const r = await run(cwd, ["--dir", "dist", "--version", "1.2.0"]);
+    expect(r.code, r.out).toBe(0);
+    expect(r.runs).toEqual([
+      [
+        "butler",
+        "push",
+        "dist/Diceroll-1.2.0-win.zip",
+        "vlad/diceroll:windows",
+        "--userversion",
+        "1.2.0",
+      ],
+      [
+        "butler",
+        "push",
+        "dist/Diceroll-1.2.0-linux.zip",
+        "vlad/diceroll:linux",
+        "--userversion",
+        "1.2.0",
+      ],
+    ]);
+    expect(r.out).toContain("itch: pushed windows");
+    expect(r.out).toContain("itch: pushed linux");
+    expect(r.out).toContain("snap: skipped: no fitting file under --dir");
+    expect(r.out).not.toContain("butler-secret-value");
+    // each step is reported into the ledger around the run
+    expect(r.w.seen.filter((s) => s.url.endsWith("/report"))).toHaveLength(4);
+  });
+
+  it("a release channel suffixes the butler channel; a tag supplies the version", async () => {
+    const cwd = await build(["Diceroll-1.2.0-win.zip"]);
+    const r = await run(cwd, ["--dir", "dist", "--channel", "beta"], {
+      ...ENV2,
+      GITHUB_REF_TYPE: "tag",
+      GITHUB_REF_NAME: "v1.2.0",
+    });
+    expect(r.runs[0]).toContain("vlad/diceroll:windows-beta");
+    expect(r.runs[0]!.at(-1)).toBe("1.2.0");
+  });
+
+  it("a .snap uploads to the lanes the outlet maps the channel onto", async () => {
+    const cwd = await build(["diceroll_1.2.0_amd64.snap"]);
+    const r = await run(cwd, ["--dir", "dist"]);
+    expect(r.code, r.out).toBe(0);
+    expect(r.runs).toEqual([
+      [
+        "snapcraft",
+        "upload",
+        "dist/diceroll_1.2.0_amd64.snap",
+        "--release=stable",
+      ],
+    ]);
+    expect(r.out).toContain("snap: uploaded");
+    expect(r.out).toContain("itch: skipped: no fitting file under --dir");
+  });
+
+  it("no fitting file is a skip line, exit 0", async () => {
+    const cwd = await build(["README.txt"]);
+    const r = await run(cwd, ["--dir", "dist"]);
+    expect(r.code, r.out).toBe(0);
+    expect(r.runs).toHaveLength(0);
+    expect(r.out).toContain("itch: skipped: no fitting file under --dir");
+    expect(r.out).toContain("snap: skipped: no fitting file under --dir");
+  });
+
+  it("a missing secret skips by name; itch without a version fails after the rest ran", async () => {
+    const cwd = await build([
+      "Diceroll-1.2.0-win.zip",
+      "diceroll_1.2.0_amd64.snap",
+    ]);
+    const { SNAPCRAFT_STORE_CREDENTIALS: _s, ...noSnap } = ENV2;
+    const r = await run(cwd, ["--dir", "dist"], noSnap);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain("itch: failed: --version is required");
+    expect(r.out).toContain(
+      "snap: skipped: SNAPCRAFT_STORE_CREDENTIALS is not set",
+    );
+    expect(r.out).not.toContain("snap-secret-value");
+  });
+
+  it("--dry-run prints the checked argv and runs nothing", async () => {
+    const cwd = await build([
+      "Diceroll-1.2.0-linux.zip",
+      "diceroll_1.2.0_amd64.snap",
+    ]);
+    const r = await run(cwd, [
+      "--dir",
+      "dist",
+      "--version",
+      "1.2.0",
+      "--dry-run",
+    ]);
+    expect(r.code, r.out).toBe(0);
+    expect(r.runs).toHaveLength(0);
+    expect(r.w.seen).toHaveLength(0);
+    expect(r.out).toContain(
+      "itch: would run butler push dist/Diceroll-1.2.0-linux.zip vlad/diceroll:linux --userversion 1.2.0",
+    );
+    expect(r.out).toContain(
+      "snap: would run snapcraft upload dist/diceroll_1.2.0_amd64.snap --release=stable",
+    );
+  });
+
+  it("the allow-list is the control: a file name it refuses fails the row, nothing runs", async () => {
+    const cwd = await build(["Diceroll-1.2.0$(x)-win.zip"]);
+    const r = await run(cwd, ["--dir", "dist", "--version", "1.2.0"]);
+    expect(r.code).toBe(1);
+    expect(r.runs).toHaveLength(0);
+    expect(r.out).toMatch(/itch: failed: /);
+  });
+
+  it("the F-Droid row plans from an .apk and names the keystore env it waits on", async () => {
+    const dist = "outlets:\n  fdroid:\n    kind: fdroid-repo\n";
+    const cwd = await build(["Diceroll-1.2.0.apk"], dist);
+    const env = { ...ENV, PKEY_FDROID_KS_PASS: "ks-secret-value" };
+    const a = await run(cwd, ["--dir", "dist", "--dry-run"], env);
+    expect(a.out).toContain("fdroid: skipped: PKEY_FDROID_KEYSTORE is not set");
+    const b = await run(cwd, ["--dir", "dist", "--dry-run"], {
+      ...env,
+      PKEY_FDROID_KEYSTORE: "ci.jks",
+      PKEY_FDROID_ALIAS: "repo",
+    });
+    expect(b.code, b.out).toBe(0);
+    expect(b.out).toContain(
+      "fdroid: would run pkey storefront fdroid --product diceroll --channel stable --out fdroid-repo --keystore ci.jks --alias repo",
+    );
+    expect(a.out + b.out).not.toContain("ks-secret-value");
   });
 });

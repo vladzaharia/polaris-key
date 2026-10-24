@@ -2,10 +2,11 @@
  * `pkey channel …` (A-25.2, A-25.3): one command, one dispatcher.
  *
  *   channel add <id>    append the channel's outlet to .pkey/distribution (`channelAdd.ts`)
- *   channel sync        run the PR steps the declared channels have (`channelSync.ts`)
+ *   channel sync        run the steps the declared channels have: PR steps, and --dir uploads (`channelSync.ts`)
  */
 
 import type { Out, Sleep } from "./ci.js";
+import type { SpawnTool } from "./storefronts/run.js";
 import type { CiEnv } from "./oidc.js";
 import type { Term, TermOut } from "./terminal.js";
 import { UsageError } from "./errors.js";
@@ -30,6 +31,8 @@ export interface ChannelIo {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: Sleep;
+  /** The test seam for the vendor tool (butler, snapcraft). */
+  spawnTool?: SpawnTool;
   /** The terminal behind a stream (colour, symbols, width), honouring --no-color and --ascii. */
   term?: (out: TermOut) => Term;
 }

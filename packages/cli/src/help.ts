@@ -1051,7 +1051,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     summary: "Add a delivery channel to .pkey/distribution, and sync its steps",
     rows: [
       ["channel add <id>", "Append the channel to .pkey/distribution"],
-      ["channel sync", "Run the PR steps the declared channels have"],
+      ["channel sync", "Run the steps the declared channels have"],
     ],
     tree: { add: [], sync: [] },
     usage: [
@@ -1073,11 +1073,17 @@ export const COMMANDS: readonly PkeyCommand[] = [
         text:
           "channel sync plans one step per declared pr or ci channel (and F-Droid) and runs " +
           "the pull-request ones as pkey storefront <store> pr does, reported into the " +
-          "store's ledger. A channel whose secret is unset is skipped with the variable's " +
-          "name (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, " +
-          "PKEY_FDROID_KS_PASS); a failed step fails the command after the rest ran. " +
-          "--channel is the release channel (default stable). --dry-run plans and runs " +
-          "nothing.",
+          "store's ledger. With --dir it matches the build files against .pkey/release as " +
+          "release publish does and runs itch push once per matched platform (a zip, or an " +
+          "apk on android), snap upload for the .snap, and the F-Droid repository build for " +
+          "the apk (keystore in $PKEY_FDROID_KEYSTORE and $PKEY_FDROID_ALIAS, written to " +
+          "fdroid-repo); no fitting file is a skip. A channel whose secret is unset is " +
+          "skipped with the variable's name (PKEY_PR_TOKEN, BUTLER_API_KEY, " +
+          "SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS); a failed step fails the " +
+          "command after the rest ran. --channel is the release channel (default stable). " +
+          "--version is the --userversion itch records (default: the tag in GITHUB_REF_NAME); " +
+          "the pull-request steps use the channel's newest release. snap metadata stays a " +
+          "pre-build step. --dry-run runs nothing and prints each checked command line.",
       },
     ],
   },
