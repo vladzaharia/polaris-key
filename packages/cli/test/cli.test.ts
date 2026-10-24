@@ -455,7 +455,7 @@ describe("@polaris-key/cli", () => {
       "polaris_key.tres",
     ])
       expect(trust.out()).toContain(file);
-    expect(trust.out()).toContain("pinned_trust_keys = {");
+    expect(trust.out()).toContain("pinned_keys = {");
 
     const sdk = capture();
     expect(

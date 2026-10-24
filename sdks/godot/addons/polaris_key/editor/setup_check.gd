@@ -14,7 +14,7 @@ const FINGERPRINT_BYTES := 16
 
 
 ## The pins in pasted text: a JSON object of kid -> base64url key, or any snippet `pkey trust`
-## prints around one (`pinned_trust_keys = {...}`, `trust_keys = {...}`). The first
+## prints around one (`pinned_keys = {...}`, `trust_keys = {...}`). The first
 ## `{…}` span that is such an object wins. {ok, pins, message}.
 static func parse_pins(text: String) -> Dictionary:
 	var t := text.strip_edges()
@@ -163,9 +163,9 @@ static func save(path: String, product: String, base_url: String, pins: Dictiona
 			opts = existing
 	if opts == null:
 		opts = PKeyOptions.new()
-	opts.product = product
+	opts.product_slug = product
 	opts.base_url = base.detail
-	opts.pinned_trust_keys = pins.duplicate()
+	opts.pinned_keys = pins.duplicate()
 	opts.default_channel = editor_channel
 	var err := ResourceSaver.save(opts, path)
 	if err != OK:

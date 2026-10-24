@@ -182,7 +182,7 @@ static func next_patch(version: String) -> String:
 ## A copy of the generated polaris_key.tres, as `PolarisKey.boot()` reads it.
 func options() -> PKeyOptions:
 	var o: PKeyOptions = config.duplicate()
-	o.pinned_trust_keys = config.pinned_trust_keys.duplicate()
+	o.pinned_keys = config.pinned_keys.duplicate()
 	o.pinned_release_keys = config.pinned_release_keys.duplicate()
 	return o
 

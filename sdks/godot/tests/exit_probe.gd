@@ -13,7 +13,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var pk := root.get_node("PolarisKey")
 	var o := PKeyOptions.new()
-	o.product = "djdl"
+	o.product_slug = "djdl"
 	o.version = "1.0.0"
 	o.base_url = "http://127.0.0.1:9"
 	o.store = PKeyMemoryStore.new()

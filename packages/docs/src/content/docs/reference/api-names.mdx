@@ -97,8 +97,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `product` (planned: SP-35b) | — |
-| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `options.pinned_keys` | `core.pinnedKeys` | `core.pinnedKeys` | `pinned_trust_keys` (planned: SP-35b) | — |
+| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | — |
+| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `options.pinned_keys` | `core.pinnedKeys` | `core.pinnedKeys` | `options.pinned_keys` | — |
 | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
 | `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
 | `options.expectedServices` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
@@ -408,3 +408,5 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | React | `usePolarisKey().isEntitled` | `entitlements.has` | SP-35 |
 | Python | `trust` | `options.pinnedKeys` | SP-35 |
 | Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |
+| Godot | `options.product` | `options.productSlug` | SP-35b |
+| Godot | `options.pinned_trust_keys` | `options.pinnedKeys` | SP-35b |

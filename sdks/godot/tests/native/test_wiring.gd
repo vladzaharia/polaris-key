@@ -153,6 +153,6 @@ func _options(t: PKeyTestContext) -> void:
 
 static func _opts(key: String) -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = "djdl"
+	o.product_slug = "djdl"
 	o.update_eddsa_public_key = key
 	return o

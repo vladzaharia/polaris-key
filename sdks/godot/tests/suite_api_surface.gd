@@ -9,8 +9,8 @@ const SDK := preload("res://addons/polaris_key/polaris_key.gd")
 const ROWS := [
 	["client.create", SDK, "method", "configure"],
 	["client.boot", SDK, "method", "boot"],
-	["options.productSlug", "res://addons/polaris_key/core/options.gd", "property", "product"],
-	["options.pinnedKeys", "res://addons/polaris_key/core/options.gd", "property", "pinned_trust_keys"],
+	["options.productSlug", "res://addons/polaris_key/core/options.gd", "property", "product_slug"],
+	["options.pinnedKeys", "res://addons/polaris_key/core/options.gd", "property", "pinned_keys"],
 	["options.pinnedReleaseKeys", "res://addons/polaris_key/core/options.gd", "property", "pinned_release_keys"],
 	["options.baseUrl", "res://addons/polaris_key/core/options.gd", "property", "base_url"],
 	["options.expectedServices", "res://addons/polaris_key/core/options.gd", "property", "expected_services"],
@@ -170,7 +170,8 @@ const ROWS := [
 
 ## [concept, script, name]
 const REMOVED := [
-
+	["options.product", "res://addons/polaris_key/core/options.gd", "product"],
+	["options.pinned_trust_keys", "res://addons/polaris_key/core/options.gd", "pinned_trust_keys"],
 ]
 
 

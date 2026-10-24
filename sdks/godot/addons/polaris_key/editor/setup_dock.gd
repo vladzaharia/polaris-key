@@ -122,11 +122,11 @@ func _load() -> void:
 	if not (opts is PKeyOptions):
 		_say("[color=orange]%s is not a PKeyOptions resource.[/color]" % CONFIG_PATH)
 		return
-	_product.text = opts.product
+	_product.text = opts.product_slug
 	_base_url.text = opts.base_url
 	_channel.text = opts.default_channel
-	if not opts.pinned_trust_keys.is_empty():
-		_pins.text = JSON.stringify(opts.pinned_trust_keys, "  ", true)
+	if not opts.pinned_keys.is_empty():
+		_pins.text = JSON.stringify(opts.pinned_keys, "  ", true)
 
 
 func _on_pins_changed() -> void:

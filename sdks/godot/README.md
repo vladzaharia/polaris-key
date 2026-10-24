@@ -44,7 +44,7 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
 
 1. **Product**: your product slug, and the **Base URL** (default `https://key.plrs.im`).
 2. **Pinned trust keys**: paste the Godot line `pkey trust` prints
-   (`pinned_trust_keys = {...}`) or copy the keys from the console. Pins are compiled in
+   (`pinned_keys = {...}`) or copy the keys from the console. Pins are compiled in
    and never learned: **Fill from discovery** only pre-fills candidates.
 3. **Check** fetches the live trust manifest, verifies it against the pins and lists each key id
    with a SHA-256 fingerprint. Compare them with `pkey trust` or the console, tick the
@@ -610,7 +610,7 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   `PKeyOptions.build_stamp_path = ""` ignores the stamp (the tests do).
 - The setup dock (right dock; `add_dock` on 4.6+, `add_control_to_dock` on 4.4) edits
   `res://polaris_key.tres`: product, base URL, pinned keys pasted from `pkey trust` (its Godot
-  line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
+  line is `const PINNED_TRUST_KEYS := {...}`), editor channel (`product_slug` and `pinned_keys` in the file). "Check" verifies the live trust
   manifest against the pasted pins and lists each kid with a SHA-256 fingerprint. "Fill from
   discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
   `pkey trust` or the console. Its tools (`editor/setup_tools.gd`, PKeySetupTools) build the
