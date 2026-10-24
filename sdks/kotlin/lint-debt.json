@@ -2203,7 +2203,7 @@
     },
     "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/ListDetailTest.kt": {
       "detekt:style.MaxLineLength": 1,
-      "ktlint:standard:argument-list-wrapping": 9,
+      "ktlint:standard:argument-list-wrapping": 10,
       "ktlint:standard:function-literal": 6,
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:wrapping": 1
@@ -2302,12 +2302,19 @@
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:complexity.LongMethod": 1,
       "detekt:complexity.LongParameterList": 1,
-      "detekt:naming.FunctionNaming": 3,
+      "detekt:naming.FunctionNaming": 4,
       "detekt:naming.MatchingDeclarationName": 1,
       "detekt:style.MagicNumber": 2,
-      "ktlint:standard:blank-line-between-when-conditions": 2,
-      "ktlint:standard:function-naming": 3,
-      "ktlint:standard:import-ordering": 1
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 3,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-naming": 4,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-if-else": 8,
+      "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBoot.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,

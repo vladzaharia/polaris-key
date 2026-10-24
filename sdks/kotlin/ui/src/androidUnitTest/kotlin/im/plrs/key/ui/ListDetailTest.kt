@@ -25,16 +25,18 @@ class ListDetailTest {
 
     private val copy = sampleCopy
 
-    private fun show() {
+    private fun show(settings: PolarisSettingsUi = sampleSettings) {
         rule.setContent {
             StockHost(false) {
                 PolarisTheme(branding = PolarisBranding.PolarisKey, copy = copy, darkTheme = false) {
-                    PolarisAccountScreen(sampleSettings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {})
+                    PolarisAccountScreen(settings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {}, onChannel = ::noop)
                 }
             }
         }
         rule.waitForIdle()
     }
+
+    private fun noop(@Suppress("UNUSED_PARAMETER") id: String) = Unit
 
     private fun back() {
         rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
@@ -70,5 +72,38 @@ class ListDetailTest {
         back()
         rule.onNodeWithText("Pixel 9 Pro").assertDoesNotExist()
         rule.onNodeWithText(copy.devicesSubtitle).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
+    fun aTabletOpensTheChannelRowInTheEndPane() {
+        show(sampleSettings.copy(channel = sampleChannel))
+        rule.onNodeWithText("Release channel").assertIsDisplayed() // the list row
+        rule.onNodeWithText("Music volume").assertIsDisplayed()
+        rule.onNodeWithText("Beta").assertDoesNotExist()
+        rule.onNodeWithText("Release channel").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Beta").assertIsDisplayed()
+        rule.onNodeWithText("Music volume").assertDoesNotExist()
+        assert(!rule.activity.onBackPressedDispatcher.hasEnabledCallbacks())
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
+    fun aPhoneOpensTheChannelThenBackReturnsToTheList() {
+        show(sampleSettings.copy(channel = sampleChannel))
+        rule.onNodeWithText("Release channel").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Beta").assertIsDisplayed()
+        back()
+        rule.onNodeWithText("Beta").assertDoesNotExist()
+        rule.onNodeWithText(copy.devicesSubtitle).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
+    fun withoutAChannelThereIsNoChannelRow() {
+        show(sampleSettings.copy(channel = null))
+        rule.onNodeWithText("Release channel").assertDoesNotExist()
     }
 }

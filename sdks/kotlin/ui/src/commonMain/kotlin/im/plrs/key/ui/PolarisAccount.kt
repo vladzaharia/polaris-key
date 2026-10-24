@@ -40,10 +40,11 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import im.plrs.key.core.ErrorCode
 import kotlinx.serialization.json.JsonElement
 
 /** What the account list opens. */
-internal enum class AccountItem { Settings, Devices }
+internal enum class AccountItem { Settings, Channel, Devices }
 
 /** The list pane's width on a tablet (the board's 412 dp). */
 private val ListPaneWidth = 412.dp
@@ -101,13 +102,20 @@ public fun PolarisAccountScreen(
 ) {
     val copy = PolarisTheme.copy
     val accountTitle = KitCopy.bundled.format("account.title", kitLocale())
+    val channelTitle = KitCopy.bundled.format("channel.title", kitLocale())
+    val channelRowTitle = KitCopy.bundled.format("account.channel", kitLocale())
     var chosen by rememberSaveable { mutableStateOf<String?>(null) }
     PolarisSurface(modifier) { window, _ ->
         val split = window.wide
+        // The channel row exists only where the picker would draw (Release on, a choice or a lock).
+        val channelUi = settingsUi.channel?.takeIf { it.drawn }
+        val entries = AccountItem.entries.filter { it != AccountItem.Channel || channelUi != null }
+        val channelError = settingsUi.error?.takeIf { channelUi != null && it.code == ErrorCode.channelNotAllowed }?.let(copy::settingsFailureMessage)
         // Two panes always show an item; one pane shows the list until an item is chosen.
-        val item = chosen?.let { runCatching { AccountItem.valueOf(it) }.getOrNull() }
+        val item = chosen?.let { runCatching { AccountItem.valueOf(it) }.getOrNull() }?.takeIf { it in entries }
         val open = item ?: if (split) AccountItem.Settings else null
         val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
+        val detailTitle = detailPaneTitle(open, copy, channelTitle)
         val list: @Composable () -> Unit = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.group)) {
                 navigationIcon?.let {
@@ -118,10 +126,10 @@ public fun PolarisAccountScreen(
                 CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) { PolarisTitle(accountTitle) }
                 Spacer(Modifier.height(window.section))
                 Column(verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight)) {
-                    for (entry in AccountItem.entries) {
+                    for (entry in entries) {
                         AccountListItem(
-                            title = if (entry == AccountItem.Settings) copy.settingsTitle else copy.devicesTitle,
-                            supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else null,
+                            title = if (entry == AccountItem.Settings) copy.settingsTitle else if (entry == AccountItem.Channel) channelRowTitle else copy.devicesTitle,
+                            supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
                             selected = split && open == entry,
                             onClick = { chosen = entry.name },
                         )
@@ -133,13 +141,18 @@ public fun PolarisAccountScreen(
             CompositionLocalProvider(LocalPolarisEmbedded provides true, LocalPolarisArtInPane provides true) {
                 when (open) {
                     AccountItem.Settings -> PolarisSettingsScreen(
-                        settingsUi,
+                        // The channel has its own row, so its picker and its refusal leave this pane.
+                        if (channelUi == null) settingsUi else settingsUi.copy(
+                            channel = null,
+                            error = settingsUi.error?.takeIf { it.code != ErrorCode.channelNotAllowed },
+                        ),
                         entitlementLabel = entitlementLabel,
                         onRetry = onRetrySettings,
                         onSet = onSet,
                         onReset = onReset,
                         onChannel = onChannel,
                     )
+                    AccountItem.Channel -> ChannelPane(channelUi, onChannel, channelError)
                     AccountItem.Devices -> PolarisDevicesScreen(
                         devicesUi,
                         onRename = onRename,
@@ -163,7 +176,7 @@ public fun PolarisAccountScreen(
                         .fillMaxHeight()
                         .clip(PolarisTheme.cardShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                        .semantics { paneTitle = if (open == AccountItem.Devices) copy.devicesTitle else copy.settingsTitle },
+                        .semantics { paneTitle = detailTitle },
                 ) { detail() }
             }
         } else {
@@ -171,6 +184,18 @@ public fun PolarisAccountScreen(
                 if (open == null) list() else detail()
             }
         }
+    }
+}
+
+private fun detailPaneTitle(open: AccountItem?, copy: PolarisCopy, channelTitle: String): String =
+    if (open == AccountItem.Devices) copy.devicesTitle else if (open == AccountItem.Channel) channelTitle else copy.settingsTitle
+
+/** The channel row's end pane: the picker alone, scrolling with the pane. */
+@Composable
+private fun ChannelPane(channel: PolarisChannelUi?, onChannel: ((String) -> Unit)?, error: String?) {
+    if (channel == null) return
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PolarisSpace.group)) {
+        PolarisChannelPicker(channel, onSelect = onChannel, error = error)
     }
 }
 
