@@ -60,3 +60,16 @@ export {
   type TrustPin,
 } from "./setup.js";
 export { pinFingerprint, sdkAddCommand, type PinFingerprint } from "./pins.js";
+export {
+  isExecStep,
+  renderCombinedFeedSetup,
+  userConfigPlan,
+  type CombinedFeed,
+  type CombinedFeedContext,
+  type ExecStep,
+  type FeedEdit,
+  type FileStep,
+  type PlanSkip,
+  type PlanStep,
+  type UserConfigPlan,
+} from "./feeds.js";
