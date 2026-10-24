@@ -236,6 +236,12 @@ export interface ServiceRoute {
   path: string;
   /** Lower-case HTTP methods this route answers. */
   methods: readonly string[];
+  /**
+   * Browser-readable under the product's `web.origins` (`ServiceRouteDecl.cors`): `core/cors.ts`
+   * covers exactly the flagged paths, so the CORS surface is declared on the route row and
+   * nowhere else.
+   */
+  cors?: true;
 }
 
 /**

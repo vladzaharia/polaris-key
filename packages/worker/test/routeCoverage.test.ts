@@ -22,7 +22,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
-import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
+import {
+  CORE_ROUTES,
+  CORS_SERVICE_PATHS,
+  isCorsCoveredRoute,
+} from "../src/publicRoutes.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
@@ -74,21 +78,15 @@ const NARRATIVE_ONLY = new Set([
   "notFound",
 ]);
 
-/** Core route kinds → the spec paths (with methods) that document them. */
+/** Core route kinds → the spec paths (with methods) that document them: derived from the core
+ *  table (`publicRoutes.ts`), so a core route cannot be served and not declared (P0-25b). */
 const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
-  discovery: [["/{product}/.well-known/polaris.json", ["get"]]],
-  jwks: [["/{product}/.well-known/jwks.json", ["get"]]],
-  trustManifest: [["/{product}/.well-known/polaris-trust.jws", ["get"]]],
-  devices: [
-    ["/{product}/devices", ["get"]],
-    ["/{product}/devices/{deviceId}", ["get", "patch", "delete"]],
-  ],
-  report: [["/{product}/devices/report", ["post"]]],
-  register: [["/{product}/devices/register", ["post"]]],
-  attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
-  attest: [["/{product}/devices/attest", ["post"]]],
-  // HA-06: CI pushes files into hosted-asset slots (`assets:write`).
-  assetsPush: [["/{product}/assets", ["post"]]],
+  ...Object.fromEntries(
+    CORE_ROUTES.map((r) => [
+      r.kind,
+      r.surface.map((s): [string, string[]] => [s.path, [...s.methods]]),
+    ]),
+  ),
 };
 
 /**

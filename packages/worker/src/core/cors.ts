@@ -80,12 +80,19 @@ export const CORS_EXPOSE_HEADERS =
 export const CORS_MAX_AGE = "600";
 
 /**
- * The covered service paths, relative to `/<product>/`, in the OpenAPI spelling (`{name}` is one
- * non-empty segment). An INCLUSION list, so a new service route is not browser-readable until
- * someone decides it should be — `test/routeCoverage.test.ts` holds this table, the spec's
- * `options` operations and the router to one another.
+ * What decides whether a route answers CORS (P0-25b): a flag on the route's own table row.
  *
- * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
+ *   - a SERVICE route is covered when its row says `cors: true` (`ServiceRouteDecl.cors`), and
+ *     the descriptor's `surface` carries the flag out as `ServiceRoute.cors`. The covered paths
+ *     are therefore declared where the route is, once; there is no third list to keep in step.
+ *   - a CORE route is covered when its row in `publicRoutes.ts` says so.
+ *
+ * Both are INCLUSION flags (deny by default): a new route is not browser-readable until someone
+ * decides it should be. `test/routeCoverage.test.ts` holds the flags, the spec's `options`
+ * operations and the router to one another, and `test/publicRouteOracle.test.ts` pins each
+ * route's CORS answer against the answers recorded before the flag existed.
+ *
+ * Deliberately NOT flagged (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
  * `identity/authorize` (I-08, a navigation), `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
  * `identity/auth/device/verify`, `identity/auth/device/approve` (I-37), `identity/auth/choose` (I-26), `config/mint/{mintId}/auth`,
@@ -96,94 +103,20 @@ export const CORS_MAX_AGE = "600";
  * (`distribution/feeds/fdroid/{channel}`) — which a CI job calls with a `pkeyci_`
  * bearer and no browser page ever should — and the store webhooks
  * (`distribution/hooks/asc`, P5-02; `distribution/hooks/app-store` and
- * `distribution/hooks/play-rtdn`, P6-01), which only the store's servers call.
+ * `distribution/hooks/play-rtdn`, P6-01), which only the store's servers call. The attestation
+ * routes (P6-02) are core routes without the flag: no browser can attest (App Attest and Play
+ * Integrity are native-only), so a cross-origin attest request has nothing to reach.
  *
  * The permanent aliases resolve to the same `{kind:"service"}` route as their targets
- * (`router.ts`), so they are covered exactly when their targets are.
+ * (`router.ts`), so they are covered exactly when their targets are. On the bytes host CORS is
+ * applied by its own dispatcher.
  */
-export const CORS_SERVICE_PATHS: readonly string[] = [
-  "license/activate",
-  "license/enroll",
-  "license/token",
-  "license/deauthorize",
-  "license/document",
-  "config/document",
-  "config/schema",
-  "config/mint/{mintId}/token",
-  "release/changelog",
-  // P3-03: a CI-signed release record, and (below) the signed channel feed — what a browser SDK
-  // fetches and verifies to decide an update.
-  "release/records/{sha256}",
-  // P2b-04: all byte delivery is Distribution's (P2-05's byte routes and the legacy download and
-  // installer, moved). Their `/release/…` and `/<p>/install.sh` spellings are router aliases
-  // that resolve to these same routes, so they are covered exactly when these are. (On the bytes
-  // host CORS is applied by its own dispatcher.)
-  "distribution/install.sh",
-  "distribution/dl/{version}/{asset}",
-  "distribution/builds/{selector}/{buildId}",
-  "distribution/files/{releaseId}/{name}",
-  "distribution/blobs/sha256/{sha256}",
-  // P4-18: a pack's decoded container payload (Compression Dictionary Transport), fetched by a
-  // page cross-origin under the product's allowlist.
-  "distribution/packs/{pack}/{variant}/payload/{sha256}",
-  // P2b-05: the public storefront feeds — web tools (source browsers) read them; native clients
-  // ignore CORS. The F-Droid relay's one-segment files (`entry.jar`, `index-v2.json`) are
-  // covered; the CI route `distribution/feeds/fdroid/{channel}` is not.
-  "distribution/altstore/{channel}/source.json",
-  "distribution/altstore-pal/{channel}/source.json",
-  "distribution/obtainium/{channel}.json",
-  "distribution/fdroid/{channel}/repo/{path}",
-  "distribution/scoop/{channel}.json",
-  "distribution/flathub/{channel}.json",
-  // P2b-06: the download page's model, for SDK "get it here" prompts and web pages. The page
-  // itself (`distribution/download`, `/<p>`) is HTML on the bytes host and never answers CORS.
-  "distribution/download.json",
-  // SP-16: the commerce bridge (P6-01) for a bearer-mode page. Both take the device bearer
-  // (never ambient), so a listed origin reaches only what that page's own device token already
-  // can (THREAT-MODEL, the commerce bridge's browser-pages note). The store hooks beside them stay uncovered.
-  "commerce/binding",
-  "commerce/claim",
-  "update/appcast.xml",
-  "update/{channel}/appcast.xml",
-  "update/{channel}/feed.jws",
-  "update/version",
-  "identity/auth/device/start",
-  "identity/auth/device/poll",
-  // I-08: the token endpoint takes a form body from a listed page, never with credentials: the
-  // code and the PKCE verifier are the only proof, and the answer is a device token the page holds.
-  "identity/token",
-  // I-08b: the pending sign-in grant's four routes, called by the same page that redeemed the code.
-  // The grant in the body and the device id are the proof; no ambient credential exists to ride on.
-  "identity/choice/licenses",
-  "identity/choice/devices",
-  "identity/choice/complete",
-  "identity/choice/cancel",
-  // I-09: the account on the device wire. Each takes the device bearer (never ambient), so a
-  // listed origin reaches only what that page's own device token already can.
-  "identity/attach",
-  "identity/subject",
-  "identity/signout",
-  // U-05.12, U-05.13: the Cloud Sync pull and push. Both take the device bearer (never ambient),
-  // so a listed origin reaches only what that page's own device token already can.
-  "sync",
-  "sync/ops",
-];
 
-/** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no
- *  browser can attest (App Attest and Play Integrity are native-only), so a cross-origin
- *  attest request has nothing to reach. */
-const CORS_CORE_KINDS: ReadonlySet<string> = new Set<string>([
-  "discovery",
-  "jwks",
-  "trustManifest",
-  "devices",
-  "report",
-  "register",
-]);
-
-const SERVICE_TEMPLATES: readonly string[][] = CORS_SERVICE_PATHS.map((p) =>
-  p.split("/"),
-);
+/** A service route, as the descriptor's `surface` lists it: a spec template and the flag. */
+export interface CorsSurfaceRoute {
+  path: string;
+  cors?: true;
+}
 
 function matchesTemplate(template: string[], segments: string[]): boolean {
   if (template.length !== segments.length) return false;
@@ -203,13 +136,37 @@ export interface CorsRoute {
   rest?: readonly string[];
 }
 
-/** Does this route answer CORS at all? Decided from the path shape alone. */
-export function isCorsCoveredRoute(route: CorsRoute): boolean {
-  if (CORS_CORE_KINDS.has(route.kind)) return true;
-  if (route.kind !== "service") return false;
-  // A service route always carries both (`router.ts`).
-  const segments = [route.slug!, ...route.rest!];
-  return SERVICE_TEMPLATES.some((t) => matchesTemplate(t, segments));
+/** The covered service paths, relative to `/<product>/`, in the OpenAPI spelling (`{name}` is
+ *  one non-empty segment), from the flagged `surface` rows. */
+export function corsServicePaths(
+  surfaces: Iterable<CorsSurfaceRoute>,
+): string[] {
+  const out = new Set<string>();
+  for (const r of surfaces)
+    if (r.cors && r.path.startsWith("/{product}/"))
+      out.add(r.path.slice("/{product}/".length));
+  return [...out];
+}
+
+/**
+ * Build the "does this route answer CORS at all?" predicate, decided from the path shape alone.
+ * `coreKinds` are the core route kinds whose table row carries the flag; `surfaces` are every
+ * service's `surface`, in or out of enablement (a preflight must never reveal whether a service
+ * is on).
+ */
+export function corsCoverage(
+  coreKinds: Iterable<string>,
+  surfaces: Iterable<CorsSurfaceRoute>,
+): (route: CorsRoute) => boolean {
+  const kinds = new Set(coreKinds);
+  const templates = corsServicePaths(surfaces).map((p) => p.split("/"));
+  return (route) => {
+    if (kinds.has(route.kind)) return true;
+    if (route.kind !== "service") return false;
+    // A service route always carries both (`router.ts`).
+    const segments = [route.slug!, ...route.rest!];
+    return templates.some((t) => matchesTemplate(t, segments));
+  };
 }
 
 /** The product's allowlist, from `products.web_origins_json`. */

@@ -42,6 +42,7 @@ function hookRow(
 export const COMMERCE_ROUTES = serviceRoutes("commerce", [
   {
     path: "binding",
+    cors: true,
     methods: ["GET"],
     auth: { kind: "device" },
     other: "none",
@@ -50,6 +51,7 @@ export const COMMERCE_ROUTES = serviceRoutes("commerce", [
   },
   {
     path: "claim",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "device" },
     other: "none",

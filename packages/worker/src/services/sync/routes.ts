@@ -18,6 +18,9 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     path: "",
     methods: ["GET"],
     auth: { kind: "device" },
+    // U-05.12: the device bearer is never ambient, so a listed origin reaches only what that
+    // page's own device token already can.
+    cors: true,
     handler: (ctx) => handlePull(ctx),
   },
   // U-05.13: the push. The 256 KiB cap (`SYNC_MAX_PUSH_BYTES`) is applied in the handler, not as
@@ -28,6 +31,7 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     path: "ops",
     methods: ["POST"],
     auth: { kind: "device" },
+    cors: true, // U-05.13, as the pull
     handler: (ctx) => handlePush(ctx),
   },
 ]);

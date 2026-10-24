@@ -176,6 +176,7 @@ import { handleProfileApi } from "./profile.js";
 import { accountMayOpenConsole } from "../consoleAccount.js";
 import { consoleOrigin } from "../../../core/hosts.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
+import { bestRow } from "../../../core/http/routes.js";
 
 export function portalJson(
   body: unknown,
@@ -1757,6 +1758,780 @@ export async function handlePortalApi(
   }
 }
 
+/** What a portal API handler is given beside the request. */
+interface PortalApiCtx {
+  req: Request;
+  env: Env;
+  db: Db;
+  now: number;
+  /** One product's descriptor hooks (`dispatch.ts`); without them no download is offered. */
+  hooksFor: PortalHooksFor | undefined;
+  /** The settings registry (ST-04): what the app-consent view resolves product settings from. */
+  settings: SettingsRegistry | undefined;
+}
+
+/** The proven session a `session` row's handler is given. */
+interface PortalApiSession {
+  session: PortalSession;
+  sessionIdHash: string;
+}
+
+interface PortalApiMatch {
+  /** The `:name` segments, percent-decoded. */
+  params: Readonly<Record<string, string>>;
+  /** The segments a trailing `**` covered, percent-decoded. */
+  rest: readonly string[];
+}
+
+/**
+ * Whether the per-request licence-link sweep (`syncLicenseLinksAndNotify`) runs before the handler:
+ * `true` always, `false` never, `{ except }` for every method but one. Scheduling and cancelling
+ * an account deletion, the passkey / sign-in-method / token routes and the device-login approval
+ * skip it: re-deriving links cannot make them safer and must not block them.
+ */
+type LinkSweep = boolean | { except: string };
+
+/**
+ * A row of the portal API table. The path is a pattern over the `/api` tail's percent-decoded
+ * segments (`core/http/pathMatch.ts`: a literal beats `:name` beats `**`; `x/**` also matches
+ * `x`). Order is irrelevant. Every gate is on the row:
+ *
+ *   - `auth: "none"` is a route that proves no account session (the sign-in card, the binder
+ *     cookie of a sign-in request, a device-login code); the handler owns whatever it checks.
+ *     `auth: "session"` is proven by `requireSession` (401, or 503 with the erasure ledger
+ *     unreadable) before the CSRF check and the handler.
+ *   - `csrf` (session rows): `"change"` demands the `X-PKey-Portal-CSRF` header on every method
+ *     but GET and HEAD; `"always"` demands it on GET too (the two GETs that hand over personal
+ *     data, I-11, so a link or a cross-site navigation cannot start one). An absent or wrong
+ *     header is `403 csrf`, before the sweep and before any handler.
+ *   - `sweep` (session rows): see `LinkSweep`.
+ *
+ * Rows carry no method list: each handler keeps its own method policy, as the walk this table
+ * replaced left them. A path no row names is the `**` row: the session, the CSRF check and the
+ * sweep, then the not-found.
+ */
+type PortalApiRoute = {
+  path: string;
+  /** A path the row matches but this check refuses, as if the row were absent. */
+  accept?: (segments: readonly string[]) => boolean;
+} & (
+  | {
+      auth: "none";
+      handler: (c: PortalApiCtx, m: PortalApiMatch) => Promise<Response>;
+    }
+  | {
+      auth: "session";
+      csrf: "change" | "always";
+      sweep: LinkSweep;
+      handler: (
+        c: PortalApiCtx,
+        m: PortalApiMatch,
+        s: PortalApiSession,
+      ) => Promise<Response>;
+    }
+);
+
+const methodNotAllowedUnless = (
+  req: Request,
+  method: string,
+): Response | null =>
+  req.method === method ? null : err(405, "method_not_allowed");
+
+/** A caller the account-method routes act for. */
+const callerOf = (s: PortalApiSession) => ({
+  accountId: s.session.accountId,
+  authenticatedAt: portalSessionAuthenticatedAt(s.session),
+  sessionIdHash: s.sessionIdHash,
+});
+
+export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
+  // ── No session ────────────────────────────────────────────────────────────────────────────
+  {
+    path: "capabilities/**",
+    auth: "none",
+    handler: (c) =>
+      handleCapabilities(
+        c.env,
+        c.db,
+        new URL(c.req.url).searchParams.get("product"),
+        c.now,
+      ),
+  },
+  {
+    path: "magic/start/**",
+    auth: "none",
+    handler: (c) => handleMagicStart(c.req, c.env, c.db, c.now),
+  },
+  // PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the sign-in request the card renders. The binder cookie,
+  // not a session: the card shows it before anyone signs in (`passthrough/routes.ts`).
+  {
+    path: "signin/requests/:request",
+    auth: "none",
+    handler: async (c, m) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await signInRequestView(
+        c.env,
+        c.db,
+        c.req,
+        m.params.request!,
+        c.now,
+        c.hooksFor,
+      );
+      return view.status === 200 ? portalJson(view.body) : notFound();
+    },
+  },
+  // I-07: the login card's pre-authentication routes (email code and link, the email gate).
+  // `signin/requests/*` is PX-W13's: the request view above, and its app-consent, licence and
+  // continue views below, which need the session. `signin/requests` itself and anything deeper
+  // that no row names are the `**` row's.
+  {
+    path: "signin/**",
+    auth: "none",
+    accept: (s) => s[1] !== "requests",
+    handler: (c, m) =>
+      handleCardApi(c.req, c.env, c.db, ["signin", ...m.rest], c.now),
+  },
+  // PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8): the login card's signed-out key preview. Read-only and
+  // never counted; it charges its own per-network bucket (`selfService.ts`).
+  {
+    path: "key/preview",
+    auth: "none",
+    handler: (c) => handleKeyPreview(c.req, c.env, c.db, c.now, c.settings),
+  },
+  // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
+  // session yet. The signed-in half (`lookup`, `approve`) is below.
+  {
+    path: "device-login/start",
+    auth: "none",
+    // ST-34.5: the body is read on POST only, as the hand dispatch did.
+    handler: async (c) =>
+      handleDeviceLoginStart(
+        c.req,
+        c.env,
+        c.db,
+        c.now,
+        c.req.method === "POST" ? await readBody(c.req) : {},
+      ),
+  },
+  {
+    path: "device-login/:code",
+    auth: "none",
+    handler: (c, m) =>
+      handleDeviceLoginPoll(c.req, c.env, c.db, m.params.code!, c.now),
+  },
+
+  // ── Session, no licence-link sweep ────────────────────────────────────────────────────────
+  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
+  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
+  // guessing someone else's code however many addresses the guesser rotates through.
+  ...(["lookup", "approve"] as const).map(
+    (step): PortalApiRoute => ({
+      path: `device-login/${step}`,
+      auth: "session",
+      csrf: "change",
+      sweep: false,
+      handler: async (c, _m, s) => {
+        if (c.req.method !== "POST") return err(405, "method_not_allowed");
+        const allowed = await rateLimitOk(
+          c.env,
+          "_portal",
+          {
+            bucket: "portalDeviceApprove",
+            id: s.session.accountId,
+            limit: DEVICE_LOGIN_APPROVE_LIMIT,
+            windowSec: 60,
+          },
+          c.now,
+        );
+        if (!allowed) return err(429, "rate_limited", "too many attempts");
+        const body = await readBody(c.req);
+        return step === "lookup"
+          ? handleDeviceLoginLookup(c.req, c.env, s.session, body, c.now)
+          : handleDeviceLoginApprove(
+              c.req,
+              c.env,
+              c.db,
+              s.session,
+              body,
+              c.now,
+            );
+      },
+    }),
+  ),
+  // Scheduling and cancellation come before the per-request link sweep (see `LinkSweep`).
+  // `me` is a GET for everyone but the DELETE that schedules the deletion.
+  {
+    path: "me",
+    auth: "session",
+    csrf: "change",
+    sweep: { except: "DELETE" },
+    handler: async (c, _m, s) => {
+      if (c.req.method === "DELETE")
+        return handleMeDelete(c.req, c.env, c.db, s.session, c.now);
+      return (
+        methodNotAllowedUnless(c.req, "GET") ??
+        handleMe(c.req, c.env, c.db, s.session, c.now)
+      );
+    },
+  },
+  {
+    path: "me/deletion/cancel",
+    auth: "session",
+    csrf: "change",
+    sweep: { except: "POST" },
+    handler: async (c, _m, s) =>
+      c.req.method === "POST"
+        ? handleMeDeletionCancel(c.req, c.env, c.db, s.session, c.now)
+        : notFound(),
+  },
+  // I-16: the account's passkeys (list, add, remove). Adding and removing check step-up and the
+  // email rule themselves.
+  {
+    path: "me/passkeys/**",
+    auth: "session",
+    csrf: "change",
+    sweep: false,
+    handler: (c, m, s) =>
+      handleAccountPasskeys(
+        c.req,
+        c.env,
+        c.db,
+        callerOf(s),
+        [...m.rest],
+        c.now,
+      ),
+  },
+  // PX-W12 (G27): sign-in methods (list, connect, disconnect) and Link an existing account (join,
+  // undo). Each change checks step-up, the never-orphan guard and its own rate limit.
+  {
+    path: "me/methods/**",
+    auth: "session",
+    csrf: "change",
+    sweep: false,
+    handler: (c, m, s) =>
+      handleAccountMethods(c.req, c.env, c.db, callerOf(s), [...m.rest], c.now),
+  },
+  {
+    path: "me/link/**",
+    auth: "session",
+    csrf: "change",
+    sweep: false,
+    handler: (c, m, s) =>
+      handleAccountLink(c.req, c.env, c.db, callerOf(s), [...m.rest], c.now),
+  },
+  // F-33: Account → Packages, the person's own `pkeyp_` tokens (`personalTokens.ts`).
+  {
+    path: "me/tokens/**",
+    auth: "session",
+    csrf: "change",
+    sweep: false,
+    handler: (c, m, s) =>
+      handlePersonalTokens(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        [...m.rest],
+        c.now,
+        () => readableFeeds(c.db, c.hooksFor, s.session.accountId, c.now),
+        () => accountRegistryTokens(c.db, s.session.accountId, c.now),
+      ),
+  },
+
+  // ── Session, with the licence-link sweep ──────────────────────────────────────────────────
+  // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
+  {
+    path: "me/profile/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProfileApi(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        ["profile", ...m.rest],
+        c.now,
+      ),
+  },
+  // I-11: the full export (`dataRoutes.ts`). Only `/api/me` itself answers the summary: any other
+  // path below it that no row names is a 404, never the summary in its place (that is how a
+  // missing export once saved the summary as the person's "account data").
+  {
+    path: "me/export",
+    auth: "session",
+    csrf: "always",
+    sweep: true,
+    handler: (c, _m, s) =>
+      handleAccountExport(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        s.sessionIdHash,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "sessions/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleSessions(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        s.sessionIdHash,
+        [...m.rest],
+        c.now,
+      ),
+  },
+  // PX-W13 (§12.7.3): app consent for a sign-in request, for the signed-in account.
+  {
+    path: "signin/requests/:request/consent",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await signInConsentView(
+        c.env,
+        c.db,
+        c.req,
+        m.params.request!,
+        s.session.accountId,
+        c.now,
+        c.settings,
+      );
+      return view.status === 200 ? portalJson(view.body) : notFound();
+    },
+  },
+  // I-08b (§12.4.1): the licence choice and a full licence's devices, for the signed-in account.
+  {
+    path: "signin/requests/:request/licenses",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await signInLicensesView(
+        c.env,
+        c.db,
+        c.req,
+        m.params.request!,
+        s.session.accountId,
+        c.now,
+      );
+      return view.status === 200 ? portalJson(view.body) : notFound();
+    },
+  },
+  {
+    path: "signin/requests/:request/licenses/:license/devices",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await signInReplaceView(
+        c.env,
+        c.db,
+        c.req,
+        m.params.request!,
+        m.params.license!,
+        s.session.accountId,
+        c.now,
+      );
+      return view.status === 200 ? portalJson(view.body) : notFound();
+    },
+  },
+  // I-08 (§12.4): Continue and Cancel. The row's CSRF check has run; the handlers check the
+  // binder, the product and the account.
+  ...(["continue", "cancel"] as const).map(
+    (step): PortalApiRoute => ({
+      path: `signin/requests/:request/${step}`,
+      auth: "session",
+      csrf: "change",
+      sweep: true,
+      handler: async (c, m, s) => {
+        if (c.req.method !== "POST") return err(405, "method_not_allowed");
+        const caller = { accountId: s.session.accountId };
+        return step === "continue"
+          ? handleSignInContinue(
+              c.req,
+              c.env,
+              c.db,
+              caller,
+              m.params.request!,
+              c.now,
+              c.settings,
+            )
+          : handleSignInCancel(
+              c.req,
+              c.env,
+              c.db,
+              caller,
+              m.params.request!,
+              c.now,
+            );
+      },
+    }),
+  ),
+  {
+    path: "licenses/:product/:license/devices/:device/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      c.req.method === "PATCH" && m.rest.length === 0
+        ? handleDeviceRename(
+            c.req,
+            c.env,
+            c.db,
+            s.session,
+            m.params.product!,
+            m.params.license!,
+            m.params.device!,
+            c.now,
+          )
+        : handleDeviceDelete(
+            c.req,
+            c.env,
+            c.db,
+            s.session,
+            m.params.product!,
+            m.params.license!,
+            m.params.device!,
+            c.now,
+          ),
+  },
+  {
+    path: "licenses/:product/:license/keys",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleKeyReissue(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        m.params.license!,
+        c.now,
+      ),
+  },
+  ...(["registry-tokens", "registry-tokens/:token"] as const).map(
+    (tail): PortalApiRoute => ({
+      path: `licenses/:product/:license/${tail}`,
+      auth: "session",
+      csrf: "change",
+      sweep: true,
+      handler: (c, m, s) =>
+        handleRegistryTokens(
+          c.req,
+          c.env,
+          c.db,
+          s.session,
+          m.params.product!,
+          m.params.license!,
+          m.params.token,
+          c.now,
+          c.hooksFor,
+        ),
+    }),
+  ),
+  // PX-23 (S-24 D19): Remove from my library. The licence leaves the account and stays out.
+  {
+    path: "licenses/:product/:license",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      c.req.method === "DELETE"
+        ? handleLicenseRemove(
+            c.req,
+            c.env,
+            c.db,
+            s.session,
+            m.params.product!,
+            m.params.license!,
+            c.now,
+          )
+        : handleLicenses(
+            c.req,
+            c.env,
+            c.db,
+            s.session,
+            [m.params.product!, m.params.license!],
+            c.now,
+            c.hooksFor,
+          ),
+  },
+  {
+    path: "licenses/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleLicenses(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        [...m.rest],
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "claim/license-key/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, _m, s) =>
+      handleClaimKey(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        c.now,
+        c.hooksFor,
+        c.settings,
+      ),
+  },
+  {
+    path: "activate/preview",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, _m, s) =>
+      handleActivatePreview(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        c.now,
+        c.hooksFor,
+        c.settings,
+      ),
+  },
+  {
+    path: "releases/**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleReleases(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        [...m.rest],
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  // PX-W1: the library and the product page (`library.ts`). Reads only.
+  {
+    path: "library",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, _m, s) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await libraryView(
+        c.env,
+        c.db,
+        s.session.accountId,
+        c.now,
+        c.hooksFor,
+      );
+      return portalJson({
+        ...view,
+        // PX-W10: the Discover count in the nav (§4.16); the offers themselves are
+        // `GET /api/discover`. Never a product this same answer lists in the library.
+        discoverCount: await discoverCount(
+          c.env,
+          c.db,
+          s.session.accountId,
+          c.now,
+          new Set(view.products.map((p) => String(p.product))),
+          c.hooksFor,
+        ),
+      });
+    },
+  },
+  // PS-04: remove a library ENTRY (an open product added from the storefront); never a licence.
+  {
+    path: "library/:product",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleLibraryEntryRemove(
+        c.req,
+        c.db,
+        s.session.accountId,
+        m.params.product!,
+        c.now,
+      ),
+  },
+  // PX-W10 (G24, G25), PS-04: Discover's offers, the storefront product page and "Add to
+  // library" (`discover.ts`).
+  {
+    path: "discover",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, _m, s) =>
+      handleDiscover(c.req, c.env, c.db, s.session, c.now, c.hooksFor),
+  },
+  {
+    path: "discover/:product",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleStorefrontPage(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "discover/:product/claim",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleDiscoverClaim(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "products/:product",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) => {
+      if (c.req.method !== "GET") return err(405, "method_not_allowed");
+      const view = await productView(
+        c.env,
+        c.db,
+        s.session.accountId,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      );
+      return view ? portalJson(view) : notFound();
+    },
+  },
+  // PX-W2 (G2, G4): one product's downloads and store links, per platform (`downloads.ts`).
+  {
+    path: "products/:product/downloads",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProductDownloads(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "products/:product/email-download",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleEmailDownload(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+      ),
+  },
+  // I-11 (S-16 §5.5): this product's export, and "Remove my data from <Product>"
+  // (`dataRoutes.ts`).
+  {
+    path: "products/:product/export",
+    auth: "session",
+    csrf: "always",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProductExport(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  {
+    path: "products/:product/data",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProductDataRemove(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+      ),
+  },
+  // I-11 (S-16 §5.2): "Get a support code" on the product page (`supportCode.ts`).
+  {
+    path: "products/:product/support-code",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProductSupportCode(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        c.now,
+      ),
+  },
+  // Every other path: the session and the CSRF check still come first (a signed-out caller is
+  // told 401 whatever it asked for), then the not-found.
+  {
+    path: "**",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async () => notFound(),
+  },
+];
+
 async function dispatchPortalApi(
   req: Request,
   env: Env,
@@ -1777,453 +2552,35 @@ async function dispatchPortalApi(
   // `file%3AApp-1.0.dmg` and the token mint 404'd a file the downloads listing had offered.
   const segments = decodeSegments(p);
   if (segments === null) return notFound();
-  if (segments[0] === "capabilities") {
-    const requested = new URL(req.url).searchParams.get("product");
-    return handleCapabilities(env, db, requested, now);
-  }
-  if (segments[0] === "magic" && segments[1] === "start") {
-    return handleMagicStart(req, env, db, now);
-  }
-  // PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the sign-in request the card renders. The binder cookie,
-  // not a session: the card shows it before anyone signs in (`passthrough/routes.ts`).
-  if (
-    segments[0] === "signin" &&
-    segments[1] === "requests" &&
-    segments[2] &&
-    segments.length === 3
-  ) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await signInRequestView(
-      env,
-      db,
-      req,
-      segments[2],
-      now,
-      hooksFor,
-    );
-    return view.status === 200 ? portalJson(view.body) : notFound();
-  }
-  // I-07: the login card's pre-authentication routes (email code and link, the email gate).
-  // `signin/requests/*` is PX-W13's: the request view above, and its app-consent view below,
-  // which needs the session.
-  if (segments[0] === "signin" && segments[1] !== "requests") {
-    return handleCardApi(req, env, db, segments, now);
-  }
-  // PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8): the login card's signed-out key preview. Read-only and
-  // never counted; it charges its own per-network bucket (`selfService.ts`).
-  if (
-    segments[0] === "key" &&
-    segments[1] === "preview" &&
-    segments.length === 2
-  )
-    return handleKeyPreview(req, env, db, now, settings);
-  // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
-  // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
-  if (segments[0] === "device-login" && segments.length === 2) {
-    if (segments[1] === "start")
-      return handleDeviceLoginStart(
-        req,
-        env,
-        db,
-        now,
-        req.method === "POST" ? await readBody(req) : {},
-      );
-    if (segments[1] !== "lookup" && segments[1] !== "approve")
-      return handleDeviceLoginPoll(req, env, db, segments[1]!, now);
-  }
+  // The `**` row takes every path no other row does, so there is always a best row.
+  const best = bestRow(PORTAL_API_ROUTES, segments, (row) =>
+    row.accept ? row.accept(segments) : true,
+  )!;
+  const { row, matched } = best;
+  const ctx: PortalApiCtx = { req, env, db, now, hooksFor, settings };
+  if (row.auth === "none") return row.handler(ctx, matched);
 
-  const sessionResult = await requireSession(req, env, db, now);
-  if (sessionResult instanceof Response) return sessionResult;
-  const { session, sessionIdHash } = sessionResult;
-  // I-11: the two GETs that hand over personal data (`/api/me/export`, `/api/products/<p>/export`)
-  // demand the CSRF header as a change does. The SPA's download always sends it, so a link or a
-  // cross-site navigation cannot start one.
-  const downloadsPersonalData =
-    (segments.length === 2 &&
-      segments[0] === "me" &&
-      segments[1] === "export") ||
-    (segments.length === 3 &&
-      segments[0] === "products" &&
-      segments[2] === "export");
-  if (isMutation(req.method) || downloadsPersonalData) {
+  const proven = await requireSession(req, env, db, now);
+  if (proven instanceof Response) return proven;
+  const { session, sessionIdHash } = proven;
+  if (row.csrf === "always" || isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
     if (!presented || !constantTimeEqual(presented, session.csrf))
       return forbidden("csrf");
   }
-  // Scheduling and cancellation are dispatched before the per-request link sweep. Re-deriving
-  // links cannot make either account lifecycle action safer and must not block it.
-  if (
-    segments.length === 1 &&
-    segments[0] === "me" &&
-    req.method === "DELETE"
-  ) {
-    return handleMeDelete(req, env, db, session, now);
-  }
-  if (
-    segments.length === 3 &&
-    segments[0] === "me" &&
-    segments[1] === "deletion" &&
-    segments[2] === "cancel" &&
-    req.method === "POST"
-  ) {
-    return handleMeDeletionCancel(req, env, db, session, now);
-  }
-  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
-  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
-  // guessing someone else's code however many addresses the guesser rotates through.
-  if (
-    segments[0] === "device-login" &&
-    (segments[1] === "lookup" || segments[1] === "approve") &&
-    segments.length === 2
-  ) {
-    if (req.method !== "POST") return err(405, "method_not_allowed");
-    const allowed = await rateLimitOk(
-      env,
-      "_portal",
-      {
-        bucket: "portalDeviceApprove",
-        id: session.accountId,
-        limit: DEVICE_LOGIN_APPROVE_LIMIT,
-        windowSec: 60,
-      },
-      now,
-    );
-    if (!allowed) return err(429, "rate_limited", "too many attempts");
-    const body = await readBody(req);
-    return segments[1] === "lookup"
-      ? handleDeviceLoginLookup(req, env, session, body, now)
-      : handleDeviceLoginApprove(req, env, db, session, body, now);
-  }
-  // I-16: the account's passkeys (list, add, remove), before the licence-link sweep they never
-  // read. Adding and removing check step-up and the email rule themselves.
-  if (segments[0] === "me" && segments[1] === "passkeys") {
-    return handleAccountPasskeys(
-      req,
-      env,
-      db,
-      {
-        accountId: session.accountId,
-        authenticatedAt: portalSessionAuthenticatedAt(session),
-        sessionIdHash,
-      },
-      segments.slice(2),
-      now,
-    );
-  }
-  // PX-W12 (G27): sign-in methods (list, connect, disconnect) and Link an existing account (join,
-  // undo). Each change checks step-up, the never-orphan guard and its own rate limit.
-  if (
-    segments[0] === "me" &&
-    (segments[1] === "methods" || segments[1] === "link")
-  ) {
-    const caller = {
-      accountId: session.accountId,
-      authenticatedAt: portalSessionAuthenticatedAt(session),
-      sessionIdHash,
-    };
-    return segments[1] === "methods"
-      ? handleAccountMethods(req, env, db, caller, segments.slice(2), now)
-      : handleAccountLink(req, env, db, caller, segments.slice(2), now);
-  }
-  // F-33: Account → Packages, the person's own `pkeyp_` tokens (`personalTokens.ts`).
-  if (segments[0] === "me" && segments[1] === "tokens")
-    return handlePersonalTokens(
-      req,
-      env,
-      db,
-      session,
-      segments.slice(2),
-      now,
-      () => readableFeeds(db, hooksFor, session.accountId, now),
-      () => accountRegistryTokens(db, session.accountId, now),
-    );
-  await syncLicenseLinksAndNotify(
-    env,
-    db,
-    session.accountId,
-    now,
-    noticeOrigin(env, req),
-  );
-
-  const [head, ...rest] = segments;
-  // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
-  if (head === "me" && rest[0] === "profile")
-    return handleProfileApi(req, env, db, session, rest, now);
-  // I-11: the full export (`dataRoutes.ts`). Only `/api/me` itself answers the summary: any other
-  // path below it that no branch above claimed is a 404, never the summary in its place (that is
-  // how a missing export once saved the summary as the person's "account data").
-  if (head === "me" && rest.length === 1 && rest[0] === "export")
-    return handleAccountExport(
-      req,
-      env,
-      db,
-      session,
-      sessionIdHash,
-      now,
-      hooksFor,
-    );
-  if (head === "me" && rest.length === 0) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    return handleMe(req, env, db, session, now);
-  }
-  if (head === "sessions") {
-    return handleSessions(req, env, db, session, sessionIdHash, rest, now);
-  }
-  // PX-W13 (§12.7.3): app consent for a sign-in request, for the signed-in account.
-  if (
-    head === "signin" &&
-    rest[0] === "requests" &&
-    rest[1] &&
-    rest[2] === "consent" &&
-    rest.length === 3
-  ) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await signInConsentView(
-      env,
-      db,
-      req,
-      rest[1],
-      session.accountId,
-      now,
-      settings,
-    );
-    return view.status === 200 ? portalJson(view.body) : notFound();
-  }
-  // I-08b (§12.4.1): the licence choice and a full licence's devices, for the signed-in account.
-  if (
-    head === "signin" &&
-    rest[0] === "requests" &&
-    rest[1] &&
-    rest[2] === "licenses" &&
-    (rest.length === 3 ||
-      (rest.length === 5 && rest[3] && rest[4] === "devices"))
-  ) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view =
-      rest.length === 3
-        ? await signInLicensesView(
-            env,
-            db,
-            req,
-            rest[1],
-            session.accountId,
-            now,
-          )
-        : await signInReplaceView(
-            env,
-            db,
-            req,
-            rest[1],
-            rest[3]!,
-            session.accountId,
-            now,
-          );
-    return view.status === 200 ? portalJson(view.body) : notFound();
-  }
-  // I-08 (§12.4): Continue and Cancel. The dispatcher above has checked the CSRF header for
-  // these mutations; the handlers check the binder, the product and the account.
-  if (
-    head === "signin" &&
-    rest[0] === "requests" &&
-    rest[1] &&
-    (rest[2] === "continue" || rest[2] === "cancel") &&
-    rest.length === 3
-  ) {
-    if (req.method !== "POST") return err(405, "method_not_allowed");
-    const caller = { accountId: session.accountId };
-    return rest[2] === "continue"
-      ? handleSignInContinue(req, env, db, caller, rest[1], now, settings)
-      : handleSignInCancel(req, env, db, caller, rest[1], now);
-  }
-  if (
-    head === "licenses" &&
-    rest[2] === "devices" &&
-    rest[0] &&
-    rest[1] &&
-    rest[3] &&
-    rest.length === 4 &&
-    req.method === "PATCH"
-  ) {
-    return handleDeviceRename(
-      req,
-      env,
-      db,
-      session,
-      rest[0],
-      rest[1],
-      rest[3],
-      now,
-    );
-  }
-  if (
-    head === "licenses" &&
-    rest[2] === "keys" &&
-    rest[0] &&
-    rest[1] &&
-    rest.length === 3
-  ) {
-    return handleKeyReissue(req, env, db, session, rest[0], rest[1], now);
-  }
-  if (
-    head === "licenses" &&
-    rest[2] === "devices" &&
-    rest[0] &&
-    rest[1] &&
-    rest[3]
-  ) {
-    return handleDeviceDelete(
-      req,
-      env,
-      db,
-      session,
-      rest[0],
-      rest[1],
-      rest[3],
-      now,
-    );
-  }
-  if (
-    head === "licenses" &&
-    rest[2] === "registry-tokens" &&
-    rest[0] &&
-    rest[1] &&
-    rest.length <= 4
-  )
-    return handleRegistryTokens(
-      req,
-      env,
-      db,
-      session,
-      rest[0],
-      rest[1],
-      rest[3],
-      now,
-      hooksFor,
-    );
-  // PX-23 (S-24 D19): Remove from my library. The licence leaves the account and stays out.
-  if (
-    head === "licenses" &&
-    rest[0] &&
-    rest[1] &&
-    rest.length === 2 &&
-    req.method === "DELETE"
-  ) {
-    return handleLicenseRemove(req, env, db, session, rest[0], rest[1], now);
-  }
-  if (head === "licenses")
-    return handleLicenses(req, env, db, session, rest, now, hooksFor);
-  if (head === "claim" && rest[0] === "license-key") {
-    return handleClaimKey(req, env, db, session, now, hooksFor, settings);
-  }
-  if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
-    return handleActivatePreview(
-      req,
-      env,
-      db,
-      session,
-      now,
-      hooksFor,
-      settings,
-    );
-  }
-  if (head === "releases")
-    return handleReleases(req, env, db, session, rest, now, hooksFor);
-  // PX-W1: the library and the product page (`library.ts`). Reads only.
-  if (head === "library" && rest.length === 0) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await libraryView(env, db, session.accountId, now, hooksFor);
-    return portalJson({
-      ...view,
-      // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
-      // Never a product this same answer lists in the library.
-      discoverCount: await discoverCount(
-        env,
-        db,
-        session.accountId,
-        now,
-        new Set(view.products.map((p) => String(p.product))),
-        hooksFor,
-      ),
-    });
-  }
-  // PS-04: remove a library ENTRY (an open product added from the storefront); never a licence.
-  if (head === "library" && rest.length === 1 && rest[0]) {
-    return handleLibraryEntryRemove(req, db, session.accountId, rest[0], now);
-  }
-  // PX-W10 (G24, G25), PS-04: Discover's offers, the storefront product page and "Add to
-  // library" (`discover.ts`).
-  if (head === "discover" && rest.length === 0) {
-    return handleDiscover(req, env, db, session, now, hooksFor);
-  }
-  if (head === "discover" && rest.length === 1 && rest[0]) {
-    return handleStorefrontPage(req, env, db, session, rest[0], now, hooksFor);
-  }
-  if (
-    head === "discover" &&
-    rest.length === 2 &&
-    rest[0] &&
-    rest[1] === "claim"
-  ) {
-    return handleDiscoverClaim(req, env, db, session, rest[0], now, hooksFor);
-  }
-  if (head === "products" && rest.length === 1 && rest[0]) {
-    if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await productView(
+  const sweep =
+    typeof row.sweep === "boolean"
+      ? row.sweep
+      : req.method !== row.sweep.except;
+  if (sweep)
+    await syncLicenseLinksAndNotify(
       env,
       db,
       session.accountId,
-      rest[0],
       now,
-      hooksFor,
+      noticeOrigin(env, req),
     );
-    return view ? portalJson(view) : notFound();
-  }
-  // PX-W2 (G2, G4): one product's downloads and store links, per platform (`downloads.ts`).
-  if (head === "products" && rest.length === 2 && rest[1] === "downloads")
-    return handleProductDownloads(
-      req,
-      env,
-      db,
-      session,
-      rest[0]!,
-      now,
-      hooksFor,
-    );
-  if (
-    head === "products" &&
-    rest.length === 2 &&
-    rest[0] &&
-    rest[1] === "email-download"
-  ) {
-    return handleEmailDownload(req, env, db, session, rest[0], now);
-  }
-  // I-11 (S-16 §5.5): this product's export, and "Remove my data from <Product>" (`dataRoutes.ts`).
-  if (
-    head === "products" &&
-    rest.length === 2 &&
-    rest[0] &&
-    rest[1] === "export"
-  ) {
-    return handleProductExport(req, env, db, session, rest[0], now, hooksFor);
-  }
-  if (
-    head === "products" &&
-    rest.length === 2 &&
-    rest[0] &&
-    rest[1] === "data"
-  ) {
-    return handleProductDataRemove(req, env, db, session, rest[0], now);
-  }
-  // I-11 (S-16 §5.2): "Get a support code" on the product page (`supportCode.ts`).
-  if (
-    head === "products" &&
-    rest.length === 2 &&
-    rest[0] &&
-    rest[1] === "support-code"
-  ) {
-    return handleProductSupportCode(req, env, db, session, rest[0], now);
-  }
-  return notFound();
+  return row.handler(ctx, matched, { session, sessionIdHash });
 }
 
 export async function handlePortalDownload(
