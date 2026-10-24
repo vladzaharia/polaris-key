@@ -130,7 +130,7 @@ describe("desktopAdapter reads the v2 additions", () => {
     adapter.dispose();
   });
 
-  it("installs the bridge's capability map, and keeps expectServices when absent", async () => {
+  it("installs the bridge's capability map, and keeps expectedServices when absent", async () => {
     const reported = desktopAdapter({
       bridge: makeFakeBridge(
         okBridgeState({
@@ -147,7 +147,7 @@ describe("desktopAdapter reads the v2 additions", () => {
     const silent = desktopAdapter({
       bridge: makeFakeBridge({ activation: "token", doc: makeDoc() }),
       now: () => NOW_SEC,
-      expectServices: services("license"),
+      expectedServices: ["license"],
     });
     await ready(silent);
     expect(silent.snapshot().capabilities).toEqual(services("license"));
@@ -214,7 +214,7 @@ describe("a host-side re-register on 401 (P1b-06)", () => {
     // build that expects it.
     const adapter = desktopAdapter({
       bridge,
-      expectServices: services("config"),
+      expectedServices: ["config"],
       now: () => NOW_SEC,
     });
     await ready(adapter);

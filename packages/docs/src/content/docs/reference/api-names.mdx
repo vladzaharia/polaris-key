@@ -80,7 +80,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `trust` (planned: SP-35) | `core.pinnedKeys` | `core.pinnedKeys` | `pinned_trust_keys` (planned: SP-35b) | — |
 | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
 | `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
-| `options.expectedServices` | `options.expectedServices` | `expectServices` (planned: SP-35) | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
+| `options.expectedServices` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
 | `options.mode` | — | `options.mode` | — | — | — | — | — |
 | `options.bridge` | — | `options.bridge` | — | — | — | — | — |
 | `options.localOverrides` | — | `options.localOverrides` | — | — | — | — | — |
@@ -323,3 +323,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Python | `config.setting.enforced` | `config.setting.locked` | SP-35 |
 | Python | `config.setting.subscribe` | `config.setting.on` | SP-35 |
 | Python | `config.setting(key, fallback)` | `config.get` | SP-35 |
+| React | `expectServices` | `options.expectedServices` | SP-35 |
+| React | `usePolarisKey().getConfig` | `config.get` | SP-35 |
+| React | `usePolarisKey().isEntitled` | `entitlements.has` | SP-35 |

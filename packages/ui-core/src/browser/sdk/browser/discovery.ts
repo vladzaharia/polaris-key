@@ -13,7 +13,7 @@
 //     fail-open one.
 //
 // A rejected or unreachable document leaves the caller on its configured expectation
-// (`expectServices`), which is the other half of D-21.
+// (`expectedServices`), which is the other half of D-21.
 
 import {
   noServices,

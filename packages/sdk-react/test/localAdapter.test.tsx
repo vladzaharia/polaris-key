@@ -42,7 +42,7 @@ function make(over: Parameters<typeof localAdapter>[0] | object = {}) {
     productSlug: "acme",
     license: makeDoc(),
     config: makeConfig({ "theme.mode": entry("default", "dark") }),
-    expectServices: services("license", "config"),
+    expectedServices: ["license", "config"],
     storage: null,
     now: () => NOW_SEC,
     version: "1.0.0",
@@ -75,7 +75,7 @@ describe("core.local: the adapter never touches the network", () => {
   it("a product without License is not-applicable", () => {
     const a = make({
       license: null,
-      expectServices: services("config"),
+      expectedServices: ["config"],
     });
     expect(a.snapshot().status).toBe("not-applicable");
     a.dispose();
@@ -149,7 +149,7 @@ describe("core.local: the adapter never touches the network", () => {
   });
 
   it("supports() says runtime N/A for what needs the network, Supported for what does not", () => {
-    const a = make({ expectServices: services("license", "config", "update") });
+    const a = make({ expectedServices: ["license", "config", "update"] });
     expect(a.supports("core.local")).toMatchObject({ supported: true });
     expect(a.supports("update.bootguard")).toMatchObject({ supported: true });
     expect(a.supports("config.local")).toMatchObject({ supported: true });
@@ -264,7 +264,7 @@ describe("core.local: the adapter never touches the network", () => {
   it("the boot guard needs a version to count launches of", async () => {
     const a = localAdapter({
       productSlug: "acme",
-      expectServices: services("config"),
+      expectedServices: ["config"],
       storage: null,
     });
     expect(await a.markBootAttempt().catch((e: unknown) => e)).toMatchObject({

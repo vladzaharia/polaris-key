@@ -116,13 +116,11 @@ export interface UsePolarisKey {
   renameDevice: (deviceId: string, label: string | null) => Promise<void>;
   deauthorizeDevice: (deviceId: string) => Promise<void>;
   checkUpdate: (opts?: { channel?: string }) => Promise<VersionCheck>;
-  getConfig: PolarisAdapter["getConfig"];
   /** Config for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
   listUserConfig: () => UserConfigEntry[];
   /** The provenance of a key's effective value. */
   getConfigSource: (key: string) => ConfigSource;
   getSecret: PolarisAdapter["getSecret"];
-  isEntitled: (name: string) => boolean;
   /** Whether a parity feature works through this adapter (PARITY §2.2). Pure; it reads the
    *  capability map in `state`, so a component re-renders when discovery changes the answer. */
   supports: PolarisAdapter["supports"];
@@ -157,11 +155,9 @@ export function usePolarisKey(): UsePolarisKey {
       renameDevice: (deviceId, label) => adapter.renameDevice(deviceId, label),
       deauthorizeDevice: (deviceId) => adapter.deauthorizeDevice(deviceId),
       checkUpdate: (opts) => adapter.checkUpdate(opts),
-      getConfig: (key, fallback) => adapter.getConfig(key, fallback),
       listUserConfig: () => adapter.listUserConfig(),
       getConfigSource: (key) => adapter.getConfigSource(key),
       getSecret: (key) => adapter.getSecret(key),
-      isEntitled: (name) => adapter.isEntitled(name),
       supports: (feature) => adapter.supports(feature),
       caps: () => adapter.caps(),
     }),

@@ -25,6 +25,7 @@ export type Surface = [
   PolarisKeyConfig["productSlug"],
   NonNullable<PolarisKeyConfig["trust"]>["pinnedKeys"],
   PolarisKeyConfig["baseUrl"],
+  PolarisKeyConfig["expectedServices"],
   ReturnType<typeof useManagedConfig>["get"],
   ReturnType<typeof useManagedConfig>["getConfigSource"],
   ReturnType<typeof useManagedConfig>["set"],

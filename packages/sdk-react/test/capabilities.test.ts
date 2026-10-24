@@ -2,7 +2,7 @@
 // D-21 — capability negotiation, and the three ways it can go.
 //
 //   discovery succeeded   → the document's `services` map is the authority, absent = disabled
-//   discovery failed      → the host's `expectServices`
+//   discovery failed      → the host's `expectedServices`
 //   nothing configured    → license + config
 //
 // The one answer that must never appear is "everything is on", so most of this file is about
@@ -175,7 +175,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
     adapter.dispose();
   });
 
-  it("discovery failure falls back to expectServices, not all-true", async () => {
+  it("discovery failure falls back to expectedServices, not all-true", async () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/.well-known/polaris.json")) {
@@ -191,7 +191,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
-      expectServices: services("config", "update"),
+      expectedServices: ["config", "update"],
     });
     await ready(adapter);
     const caps = adapter.snapshot().capabilities;
@@ -225,7 +225,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
-      expectServices: servicesFromList(["config"]),
+      expectedServices: ["config"],
     });
     await ready(adapter);
     expect(adapter.snapshot().capabilities).toEqual(
@@ -234,7 +234,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
     adapter.dispose();
   });
 
-  it("no expectServices ⇒ license + config", async () => {
+  it("no expectedServices ⇒ license + config", async () => {
     const fetchImpl = (async () =>
       new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
