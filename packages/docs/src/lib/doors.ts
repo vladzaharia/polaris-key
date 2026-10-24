@@ -246,6 +246,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/localization",
               "build/ui/components/index",
               "build/ui/frameworks/index",
+              "build/ui/recipes",
               "build/ui/frameworks/react",
               "build/ui/frameworks/elements",
               "build/ui/frameworks/electron",

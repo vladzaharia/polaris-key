@@ -227,7 +227,7 @@
       "knip:exports": 1
     },
     "packages/docs/src/lib/uiKits.ts": {
-      "knip:exports": 3
+      "knip:exports": 2
     },
     "packages/docs/src/routeToc.ts": {
       "knip:files": 1

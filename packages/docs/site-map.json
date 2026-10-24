@@ -223,13 +223,6 @@
       "package": "DOC-08b"
     },
     {
-      "from": "build/ui/recipes",
-      "action": "delete",
-      "to": ["build/ui/frameworks/index"],
-      "pri": "P1",
-      "package": "DOC-08b"
-    },
-    {
       "from": "build/wire/index",
       "action": "move",
       "to": ["reference/protocol/index"],

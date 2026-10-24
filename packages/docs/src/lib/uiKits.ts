@@ -17,7 +17,11 @@
 export type Tier = "must" | "should";
 
 /** Where a kit is: it ships today, or the work package that builds it. */
-export type KitStatus = { ships: true } | { planned: string };
+export type KitStatus =
+  | { ships: true }
+  | { planned: string }
+  /** A sample over the web components, on /docs/build/ui/recipes/; the work package that built it. */
+  | { recipe: string };
 
 export interface UiKit {
   id: string;
@@ -29,10 +33,12 @@ export interface UiKit {
   tier: Tier;
   /** The package or module a host installs. */
   package: string;
-  /** "Shipped" or "Not built yet" (the badge); `planned` keeps the owning package for the lead. The package's rebuild (UK-05, UK-07, …) does not change
+  /** "Shipped", "Recipe" or "Not built yet" (the badge); `planned` keeps the owning package for the lead. The package's rebuild (UK-05, UK-07, …) does not change
    *  a shipped kit's status: the names it ships now are the ones its page documents. */
   status: KitStatus;
   current?: { label: string; href: string };
+  /** A caveat shown beside the badge, e.g. that the package is not published yet. */
+  note?: string;
   /** The sample folders, when the kit has more than one (`examples/ui/<id>/` otherwise). */
   samples?: readonly string[];
 }
@@ -45,7 +51,8 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "must",
     package: "@polaris-key/elements",
-    status: { planned: "UK-04" },
+    status: { ships: true },
+    note: "Package not published yet.",
   },
   {
     id: "react",
@@ -74,8 +81,9 @@ export const UI_KITS: readonly UiKit[] = [
     framework: "Vue 3 and Nuxt",
     sdk: "JS / TS",
     tier: "should",
-    package: "@polaris-key/vue",
-    status: { planned: "UK-17" },
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/vue/"],
   },
   {
     id: "svelte",
@@ -83,8 +91,9 @@ export const UI_KITS: readonly UiKit[] = [
     framework: "Svelte 5 and SvelteKit",
     sdk: "JS / TS",
     tier: "should",
-    package: "@polaris-key/svelte",
-    status: { planned: "UK-18" },
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/svelte/"],
   },
   {
     id: "angular",
@@ -92,8 +101,39 @@ export const UI_KITS: readonly UiKit[] = [
     framework: "Angular",
     sdk: "JS / TS",
     tier: "should",
-    package: "@polaris-key/angular",
-    status: { planned: "UK-19" },
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/angular/"],
+  },
+  {
+    id: "solid",
+    label: "Solid",
+    framework: "SolidJS",
+    sdk: "JS / TS",
+    tier: "should",
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/solid/"],
+  },
+  {
+    id: "preact",
+    label: "Preact",
+    framework: "Preact",
+    sdk: "JS / TS",
+    tier: "should",
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/preact/"],
+  },
+  {
+    id: "htmx",
+    label: "htmx",
+    framework: "htmx and plain pages",
+    sdk: "JS / TS",
+    tier: "should",
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    samples: ["examples/ui/recipes/htmx/"],
   },
   {
     id: "react-native",
@@ -110,8 +150,10 @@ export const UI_KITS: readonly UiKit[] = [
     framework: "Tauri v2",
     sdk: "JS / TS",
     tier: "should",
-    package: "tauri-plugin-polaris-key",
-    status: { planned: "UK-21" },
+    package: "@polaris-key/elements",
+    status: { recipe: "UK-31" },
+    note: "Front end only; the Rust bridge is not shipped.",
+    samples: ["examples/ui/recipes/tauri/"],
   },
   {
     id: "swiftui",
@@ -216,7 +258,8 @@ export const UI_KITS: readonly UiKit[] = [
 ];
 
 export function statusLabel(kit: UiKit): string {
-  return "ships" in kit.status ? "Shipped" : "Not built yet";
+  if ("ships" in kit.status) return "Shipped";
+  return "recipe" in kit.status ? "Recipe" : "Not built yet";
 }
 
 export function kitById(id: string): UiKit {
