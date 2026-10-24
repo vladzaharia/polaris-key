@@ -51,6 +51,36 @@ A one-line notice with its consequence and at most two actions. It times out aft
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate places its own toasts ("Signed in as …", "Copied"); other toasts are yours to place.
+
+    **Styled part.** `PolarisToast(message, kind, detail, actions)`, or `PolarisToastHost(spec, onDismiss)` over a `PolarisToastSpec`. Info, success and warning toasts time out after six seconds with a visible timer; an error stays until an action answers it.
+
+    **Headless.** `PolarisToastSpec` and `KitStates.resolve(KitComponent.toast, inputs)`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisToastAction
+    import im.plrs.key.ui.PolarisToastHost
+    import im.plrs.key.ui.PolarisToastKind
+    import im.plrs.key.ui.PolarisToastSpec
+
+    @Composable
+    fun MyToast(shown: Boolean, undo: () -> Unit, dismiss: () -> Unit) {
+        val spec = PolarisToastSpec(
+            message = "Device removed",
+            kind = PolarisToastKind.Success,
+            actions = listOf(PolarisToastAction("Undo", undo)),
+        )
+        PolarisToastHost(spec.takeIf { shown }, onDismiss = dismiss)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

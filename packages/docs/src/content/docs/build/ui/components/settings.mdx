@@ -90,7 +90,24 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
     **Headless.** `PolarisSettingsState` in `polaris-key-ui-core`.
 
-    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisSettings
+    import im.plrs.key.ui.PolarisSettingsState
+    import im.plrs.key.ui.settingsActions
+
+    @Composable
+    fun MySettings(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisSettingsState(client.settingsActions(), scope) }
+        PolarisSettings(state)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">
