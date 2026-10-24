@@ -35,7 +35,11 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
-import { ErrorCode, Feature } from "../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  SettingVisibility,
+} from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 
 export function useCtx(): PolarisContextValue {
@@ -303,6 +307,8 @@ export interface UseConfigSetting<T> {
   locked: boolean;
   /** True when a device-local override supplies the value. */
   overridden: boolean;
+  /** How the setting appears: `editable`, `readonly` (enforced) or `hidden`. */
+  visibility: SettingVisibility;
   set: (value: T) => Promise<void>;
   clear: () => Promise<void>;
 }
@@ -328,12 +334,22 @@ export function useConfigSetting<T = JSONValue>(
   );
   const own = Object.prototype.hasOwnProperty.call(state.config, key);
   const source = adapter.getConfigSource(key);
+  const entry = Object.prototype.hasOwnProperty.call(state.configEntries, key)
+    ? state.configEntries[key]
+    : undefined;
+  const visibility =
+    entry?.state === "enforced"
+      ? SettingVisibility.readonly
+      : entry?.state === "hidden"
+        ? SettingVisibility.hidden
+        : SettingVisibility.editable;
   return {
     key,
     value: own ? (state.config[key] as unknown as T) : fallback,
     source,
-    locked: setting.locked(),
+    locked: visibility !== SettingVisibility.editable,
     overridden: source === "local",
+    visibility,
     set: setting.set,
     clear: setting.clear,
   };

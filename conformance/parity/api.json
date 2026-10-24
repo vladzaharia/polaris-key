@@ -1229,10 +1229,7 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "get",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {},
         "react": {},
         "swift": {
@@ -1254,10 +1251,7 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "source",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {},
         "react": {},
         "swift": {
@@ -1277,10 +1271,7 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "locked",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "enforced",
           "planned": "SP-35"
@@ -1304,18 +1295,12 @@
       "feature": "config.resolve",
       "enum": "settingVisibility",
       "sdks": {
-        "node": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "node": {},
         "python": {
           "planned": "SP-35",
           "reason": "absent today; SP-35 adds it"
         },
-        "react": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "react": {},
         "swift": {
           "planned": "SP-35b",
           "reason": "absent today"
@@ -2873,6 +2858,33 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\bconfig\\.on_change\\s*\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.get",
+      "to": "config.setting.value",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.get\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.source\\(\\)"
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.locked()",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.locked\\(\\)"
       }
     }
   ]

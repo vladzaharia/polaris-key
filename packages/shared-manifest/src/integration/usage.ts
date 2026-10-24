@@ -251,7 +251,7 @@ const NODE_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       `// later: today the value stays on this device.`,
       `const volume = client.config.setting<${tsType(c.configFallback)}>(${q(c.configKey)});`,
       `await volume.set(${q(c.configFallback)});`,
-      `console.log(volume.get(${q(c.configFallback)}));`,
+      `console.log(volume.value);`,
     ),
   }),
   commerce: (c) => ({
