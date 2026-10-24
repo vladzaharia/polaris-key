@@ -125,6 +125,15 @@ jobs:
         run: pnpm lint:dupes
       # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
       - run: pnpm lint:knip
+      # AX-07.5: the agent kit's skills against the repo (check) and against a real Claude Code
+      # (validate). The CLI is pinned: the newest @anthropic-ai/claude-code published at least 14
+      # days before the pin was set (2.1.296, 2026-10-09); keep in step with PINNED_CLAUDE_CODE in
+      # tools/agent-kit-release.ts and with deploy.yml's verify job.
+      - run: pnpm skills:check
+      - name: Validate the agent kit
+        env:
+          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296 claude
+        run: pnpm skills:validate
       # P0-30.3: the 800-line budget for packages/worker/src, against tools/lint/debt/size.json.
       - name: Size budget
         run: pnpm lint:size
