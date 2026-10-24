@@ -225,6 +225,49 @@ export const STEPS = [
     heavy: true,
     argv: () => ["pnpm", "--filter", "@polaris-key/admin", "test:e2e"],
   },
+  // P0-46: the lint lanes, each against its committed ledger (lint-debt.json).
+  {
+    n: 18,
+    id: "lint-ts",
+    title: "TypeScript lint: knip and duplicate code",
+    lane: null,
+    argv: () => ["bash", "-c", "pnpm lint:knip && pnpm lint:dupes"],
+  },
+  {
+    n: 19,
+    id: "lint-python",
+    title: "Python lint: ruff and mypy",
+    lane: "python",
+    argv: () => ["sdks/python/tools/lint.sh", "check"],
+  },
+  {
+    n: 20,
+    id: "lint-swift",
+    title: "Swift lint: swift-format (Swift 6.3 only)",
+    lane: "swift-floor",
+    // swift-format is the toolchain's, pinned to 6.3: the script exits 2 on any other toolchain, which
+    // is not a finding. Skip with a note locally; CI selects Xcode 26.6 and runs it for real.
+    argv: () => [
+      "bash",
+      "-c",
+      'sdks/swift/tools/lint.sh check; rc=$?; if [ "$rc" -eq 2 ]; then echo "lint-swift skipped: needs the Swift 6.3 toolchain (sdks/swift/tools/select-xcode-26.sh); CI runs it."; exit 0; fi; exit "$rc"',
+    ],
+  },
+  {
+    n: 21,
+    id: "lint-kotlin",
+    title: "Kotlin lint: ktlint and detekt",
+    lane: "kotlin",
+    heavy: true,
+    argv: () => ["sdks/kotlin/tools/lint.sh", "check"],
+  },
+  {
+    n: 22,
+    id: "lint-godot",
+    title: "Godot lint: gdlint",
+    lane: "godot",
+    argv: () => ["sdks/godot/tools/lint.sh", "check"],
+  },
 ];
 
 /** Lanes some step runs locally; every other lane that is on is left to CI. */
