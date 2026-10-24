@@ -71,11 +71,16 @@ import PolarisKeyUpdate
             public var presentsWindow: Bool
             /// The clock the time-left estimate reads.
             public var now: @MainActor () -> Date
+            /// Opens a web page (an information-only update's): the default is the browser. Only
+            /// https, or http to the loopback, is ever passed to it.
+            public var openURL: @MainActor (URL) -> Void
 
             public init(
                 theme: PolarisKeyTheme = PolarisKeyTheme(), windowTitle: String? = nil,
-                presentsWindow: Bool = true, now: @escaping @MainActor () -> Date = { Date() }
+                presentsWindow: Bool = true, now: @escaping @MainActor () -> Date = { Date() },
+                openURL: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) }
             ) {
+                self.openURL = openURL
                 self.theme = theme
                 self.windowTitle = windowTitle
                 self.presentsWindow = presentsWindow
@@ -98,6 +103,8 @@ import PolarisKeyUpdate
         /// reply is waiting.
         private var closeAnswer: (@MainActor () -> Void)?
         private var retryAfterDismiss = false
+        /// Whether Sparkle checks by itself; without it there is no later to be reminded at.
+        var automaticChecks: () -> Bool = { true }
 
         public init(client: PolarisKeyClient, options: Options = Options()) {
             self.options = options
@@ -113,7 +120,10 @@ import PolarisKeyUpdate
             super.init()
         }
 
-        public func attach(updater: SPUUpdater) { self.updater = updater }
+        public func attach(updater: SPUUpdater) {
+            self.updater = updater
+            automaticChecks = { [weak updater] in updater?.automaticallyChecksForUpdates ?? true }
+        }
 
         /// The window, for a host that places it itself.
         public var nsWindow: NSWindow? { options.presentsWindow ? window.window : nil }
@@ -133,6 +143,7 @@ import PolarisKeyUpdate
             window.onUserClose = { [weak self] in self?.userClosedWindow() }
             // A check the person asked for brings the app forward; a scheduled offer does not steal
             // focus (Sparkle calls `showUpdateInFocus` when the person asks for it again).
+            window.closable = state.kind != .permission
             window.show(
                 title: options.windowTitle ?? model.gate.inputs.bundle.name
                     ?? model.gate.inputs.bundle.slug,
@@ -166,9 +177,9 @@ import PolarisKeyUpdate
             }
             present(
                 UpdateWindowState(kind: .permission),
+                // No close button in this state: the answer is always an explicit choice.
                 handlers: UpdateWindowHandlers(
-                    allow: { answer(true) }, notNow: { answer(false) }),
-                close: { answer(false) })
+                    allow: { answer(true) }, decline: { answer(false) }))
         }
 
         // MARK: A check
@@ -187,7 +198,7 @@ import PolarisKeyUpdate
             with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
             reply: @escaping (SPUUserUpdateChoice) -> Void
         ) {
-            showFound(appcastItem, reply: reply)
+            showFound(appcastItem, downloaded: state.stage != .notDownloaded, reply: reply)
         }
 
         /// An offered update, in plain values: what the found screen needs of Sparkle's item.
@@ -227,13 +238,22 @@ import PolarisKeyUpdate
         }
 
         /// The found screen (the entry the tests drive: `SPUUserUpdateState` has no public init).
-        func showFound(_ item: SUAppcastItem, reply: @escaping (SPUUserUpdateChoice) -> Void) {
-            showFound(Offer(item, current: Self.hostVersion(updater: updater)), reply: reply)
+        func showFound(
+            _ item: SUAppcastItem, downloaded: Bool = false,
+            reply: @escaping (SPUUserUpdateChoice) -> Void
+        ) {
+            showFound(
+                Offer(item, current: Self.hostVersion(updater: updater)), downloaded: downloaded,
+                reply: reply)
         }
 
-        func showFound(_ found: Offer, reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        func showFound(
+            _ found: Offer, downloaded: Bool = false,
+            reply: @escaping (SPUUserUpdateChoice) -> Void
+        ) {
             let reply = once(reply)
             let infoOnly = found.infoOnly
+            let openURL = options.openURL
             let size = found.size
             offer = KitUpdate(
                 action: "binary", version: found.version,
@@ -246,16 +266,19 @@ import PolarisKeyUpdate
             let url = infoOnly ? found.infoURL : nil
             present(
                 UpdateWindowState(
-                    kind: .found, update: offer, canSkip: !found.critical, infoOnly: infoOnly),
+                    kind: .found, update: offer, canSkip: !found.critical,
+                    canLater: !found.critical && automaticChecks(), downloaded: downloaded,
+                    infoOnly: infoOnly),
                 handlers: UpdateWindowHandlers(
                     install: { reply(.install) },
                     later: { reply(.dismiss) },
                     skip: { reply(.skip) },
                     learnMore: {
                         // An information-only update has a web page and nothing to install: the
-                        // page opens only when it is https, then the offer is set aside.
+                        // page opens only when it is https (KitLinks.valid also lets http to the
+                        // loopback through, for a local feed), then the offer is set aside.
                         if let url = KitLinks.valid(url?.absoluteString) {
-                            NSWorkspace.shared.open(url)
+                            openURL(url)
                         }
                         reply(.dismiss)
                     }),
@@ -295,8 +318,8 @@ import PolarisKeyUpdate
             switch reason {
             case .some(.systemIsTooOld), .some(.systemIsTooNew),
                 .some(.hardwareDoesNotSupportARM64):
-                // An update exists that this Mac cannot take: not "up to date".
-                showError(error, ack)
+                // An update exists that this Mac cannot take: not "up to date", and not retryable.
+                showError(error, ack, kind: .cannotInstall)
             default:
                 present(
                     UpdateWindowState(
@@ -309,10 +332,36 @@ import PolarisKeyUpdate
         }
 
         public func showUpdaterError(_ error: any Error, acknowledgement: @escaping () -> Void) {
-            showError(error, once { (_: Void) in acknowledgement() })
+            showError(error, once { (_: Void) in acknowledgement() }, kind: Self.errorKind(error))
         }
 
-        private func showError(_ error: any Error, _ ack: Reply<Void>) {
+        /// The kit's short copy for the Sparkle errors a person can act on.
+        static func errorKind(_ error: any Error) -> UpdateErrorKind {
+            let e = error as NSError
+            if e.domain == NSURLErrorDomain { return .network }
+            guard e.domain == SUSparkleErrorDomain else { return .other }
+            switch e.code {
+            case 1: return .security  // no public key
+            case 2: return .security  // insufficient signing
+            case 3001, 3002, 4009: return .security  // signature, validation, not a valid update
+            case 1002, 2001: return .network  // appcast, download
+            case 4006: return .cannotInstall  // downgrade
+            default: return .other
+            }
+        }
+
+        /// Sparkle's own words without its "Please try again later." sentence: Try Again says it.
+        static func plainDetail(_ error: any Error) -> String {
+            var text = error.localizedDescription
+            for tail in [" Please try again later.", "Please try again later."] {
+                text = text.replacingOccurrences(of: tail, with: "")
+            }
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        private func showError(
+            _ error: any Error, _ ack: Reply<Void>, kind: UpdateErrorKind
+        ) {
             // Nothing but the callout: the offer, the numbers and the notes are gone.
             offer = nil
             let retry: @MainActor () -> Void = { [weak self] in
@@ -325,8 +374,8 @@ import PolarisKeyUpdate
                     kind: .failed,
                     update: KitUpdate(
                         action: "binary", progress: KitUpdateProgress(phase: "failed")),
-                    detail: error.localizedDescription),
-                handlers: UpdateWindowHandlers(tryAgain: retry),
+                    detail: Self.plainDetail(error), errorKind: kind),
+                handlers: UpdateWindowHandlers(tryAgain: retry, done: { ack(()) }),
                 close: { ack(()) })
         }
 
@@ -381,8 +430,8 @@ import PolarisKeyUpdate
             var update = offer ?? KitUpdate(action: "binary")
             update.action = "binary"
             var progress = KitUpdateProgress(phase: "download")
+            progress.bytes = received > 0 ? Int(clamping: received) : nil
             if let total, received <= total {
-                progress.bytes = Int(clamping: received)
                 progress.totalBytes = Int(clamping: total)
                 progress.fraction = Double(received) / Double(total)
                 if let started = downloadStarted {
@@ -415,7 +464,7 @@ import PolarisKeyUpdate
             update.action = "code-ready"
             update.progress = nil
             present(
-                UpdateWindowState(kind: .ready, update: update),
+                UpdateWindowState(kind: .ready, update: update, downloaded: true),
                 handlers: UpdateWindowHandlers(
                     install: { reply(.install) }, later: { reply(.dismiss) }),
                 close: { reply(.dismiss) })
@@ -425,10 +474,19 @@ import PolarisKeyUpdate
             withApplicationTerminated applicationTerminated: Bool,
             retryTerminatingApplication: @escaping () -> Void
         ) {
-            // The retry is an offer Sparkle makes, not a reply it waits for: it is not called.
             var update = offer ?? KitUpdate(action: "binary")
             update.progress = KitUpdateProgress(phase: "install")
-            present(UpdateWindowState(kind: .installing, update: update))
+            if applicationTerminated {
+                present(UpdateWindowState(kind: .installing, update: update))
+            } else {
+                // The app did not quit by itself: "Quit and Install" is the person asking again.
+                // Sparkle offers the retry, it does not wait for it, so it may be pressed more
+                // than once and is never called unasked.
+                present(
+                    UpdateWindowState(kind: .quitToInstall, update: update),
+                    handlers: UpdateWindowHandlers(quitAndInstall: { retryTerminatingApplication() })
+                )
+            }
         }
 
         public func showUpdateInstalledAndRelaunched(
@@ -439,7 +497,8 @@ import PolarisKeyUpdate
                 UpdateWindowState(
                     kind: .upToDate,
                     update: KitUpdate(
-                        action: "none", currentVersion: Self.hostVersion(updater: updater))),
+                        action: "none",
+                        currentVersion: offer?.version ?? Self.hostVersion(updater: updater))),
                 handlers: UpdateWindowHandlers(done: { ack(()) }),
                 close: { ack(()) })
         }

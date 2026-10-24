@@ -1299,10 +1299,80 @@ msgstr "It installs through the store or platform you got {product} from."
 msgid "update.revokedContent"
 msgstr "Some of {product}'s content was withdrawn and can't be used. Update to keep going."
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
-msgstr "You're up to date"
+msgstr "You’re up to date"
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr "Install update"
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr "Install Update"
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr "Install on quit"
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr "Install on Quit"
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr "Don’t check"
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr "Don’t Check"
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr "Quit and install"
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr "Quit and Install"
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr "Quit {product} to finish installing."
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr "Downloading · {size}"
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr "Download"
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr "Couldn’t reach the update server. Check your connection and try again."
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr "This update can’t be installed on this Mac."
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr "The update didn’t pass its security check, so it wasn’t installed."
 
 #. Checking for updates…
 #. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
@@ -1314,10 +1384,10 @@ msgstr "Checking for updates…"
 msgid "common.updatePermissionTitle"
 msgstr "Check for updates automatically?"
 
-#. {product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.
+#. {product} can look for new versions in the background and tell you when one is ready.
 #. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "common.updatePermissionBody"
-msgstr "{product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent."
+msgstr "{product} can look for new versions in the background and tell you when one is ready."
 
 #. Check automatically
 #. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
@@ -1329,10 +1399,10 @@ msgctxt "macos"
 msgid "common.updatePermissionAllow"
 msgstr "Check Automatically"
 
-#. Couldn't update
+#. Couldn’t update
 #. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
 msgid "common.updateFailedTitle"
-msgstr "Couldn't update"
+msgstr "Couldn’t update"
 
 #. Learn more
 #. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.

@@ -66,10 +66,128 @@
             XCTAssertTrue(out.isEmpty)
             d.model.handlers.allow()
             d.model.handlers.allow()
-            d.model.handlers.notNow()
+            d.model.handlers.decline()
             XCTAssertEqual(out.count, 1)
             XCTAssertTrue(out[0].automaticUpdateChecks)
             XCTAssertFalse(out[0].sendSystemProfile)
+        }
+
+        func testDecliningTheAskNeverSendsTheProfileAndClosingAnswersNothing() {
+            let d = driver()
+            var out: [SUUpdatePermissionResponse] = []
+            d.show(SPUUpdatePermissionRequest(systemProfile: [["k": "v"]])) { out.append($0) }
+            d.userCloses()  // the close button is hidden in this state: even Command-W answers nothing
+            XCTAssertTrue(out.isEmpty)
+            d.model.handlers.decline()
+            d.model.handlers.allow()
+            XCTAssertEqual(out.count, 1)
+            XCTAssertFalse(out[0].automaticUpdateChecks)
+            XCTAssertFalse(out[0].sendSystemProfile)
+        }
+
+        // MARK: Stage, later, install on quit, quit and install
+
+        func testADownloadedOfferInstallsOnQuitAndHasNoSizeToDownload() throws {
+            let d = driver()
+            var replies: [SPUUserUpdateChoice] = []
+            d.showFound(try item(), downloaded: true) { replies.append($0) }
+            XCTAssertTrue(d.model.state.downloaded)
+            d.model.handlers.later()  // "Install on Quit" dismisses: Sparkle installs at quit
+            XCTAssertEqual(replies, [.dismiss])
+            d.showReady(toInstallAndRelaunch: { _ in })
+            XCTAssertTrue(d.model.state.downloaded)
+        }
+
+        func testNothingDownloadedYetIsInstallUpdate() throws {
+            let d = driver()
+            d.showFound(try item()) { _ in }
+            XCTAssertFalse(d.model.state.downloaded)
+            XCTAssertTrue(d.model.state.canLater)
+        }
+
+        func testNoLaterWithoutAutomaticChecksOrForACriticalUpdate() throws {
+            let d = driver()
+            d.automaticChecks = { false }
+            d.showFound(try item()) { _ in }
+            XCTAssertFalse(d.model.state.canLater)
+            d.automaticChecks = { true }
+            d.showFound(try item(extra: ["sparkle:criticalUpdate": ["sparkle:version": "1.0"]])) { _ in }
+            XCTAssertFalse(d.model.state.canLater)
+            XCTAssertFalse(d.model.state.canSkip)
+        }
+
+        func testAStuckInstallOffersQuitAndInstallThroughTheRetry() {
+            let d = driver()
+            var retries = 0
+            d.showInstallingUpdate(
+                withApplicationTerminated: false, retryTerminatingApplication: { retries += 1 })
+            XCTAssertEqual(d.model.state.kind, .quitToInstall)
+            XCTAssertEqual(retries, 0, "never called unasked")
+            d.model.handlers.quitAndInstall()
+            XCTAssertEqual(retries, 1)
+            d.showInstallingUpdate(withApplicationTerminated: true, retryTerminatingApplication: {})
+            XCTAssertEqual(d.model.state.kind, .installing)
+        }
+
+        // MARK: Errors
+
+        func testErrorsMapToTheKitsCopyAndOnlyRetryableOnesOfferTryAgain() {
+            func kind(_ domain: String, _ code: Int) -> UpdateErrorKind {
+                PolarisSparkleUserDriver.errorKind(NSError(domain: domain, code: code))
+            }
+            XCTAssertEqual(kind("SUSparkleErrorDomain", 3001), .security)
+            XCTAssertEqual(kind("SUSparkleErrorDomain", 2001), .network)
+            XCTAssertEqual(kind(NSURLErrorDomain, -1009), .network)
+            XCTAssertEqual(kind("SUSparkleErrorDomain", 4005), .other)
+            XCTAssertFalse(UpdateErrorKind.security.canRetry)
+            XCTAssertFalse(UpdateErrorKind.cannotInstall.canRetry)
+            XCTAssertTrue(UpdateErrorKind.network.canRetry)
+            let d = driver()
+            var acks = 0
+            d.showUpdaterError(
+                NSError(domain: "SUSparkleErrorDomain", code: 3001), acknowledgement: { acks += 1 })
+            XCTAssertEqual(d.model.state.errorKind, .security)
+            d.model.handlers.done()  // Done acknowledges
+            XCTAssertEqual(acks, 1)
+        }
+
+        func testSparklesTryAgainLaterSentenceIsDropped() {
+            let d = driver()
+            d.showUpdaterError(
+                NSError(
+                    domain: "SUSparkleErrorDomain", code: 4005,
+                    userInfo: [NSLocalizedDescriptionKey: "The installer failed. Please try again later."]),
+                acknowledgement: {})
+            XCTAssertEqual(d.model.state.detail, "The installer failed.")
+        }
+
+        func testTheOffersVersionAfterRelaunch() throws {
+            let d = driver()
+            d.showFound(try item(version: "2.5.0")) { _ in }
+            d.showUpdateInstalledAndRelaunched(true) {}
+            XCTAssertEqual(d.model.state.update?.currentVersion, "2.5.0")
+        }
+
+        // MARK: Learn more opens only a safe URL
+
+        func testLearnMoreRefusesAnyURLThatIsNotHTTPSOrLoopback() throws {
+            for (url, opens) in [
+                ("http://evil.example/p", false), ("file:///etc/passwd", false),
+                ("javascript:alert(1)", false), ("https://tidewater.example/p", true),
+                ("http://127.0.0.1:8080/p", true),
+            ] {
+                var opened: [URL] = []
+                let d = PolarisSparkleUserDriver(
+                    preview: KitInputs(bundle: KitBundle(slug: "t", name: "T")),
+                    options: .init(presentsWindow: false, openURL: { opened.append($0) }))
+                var replies: [SPUUserUpdateChoice] = []
+                d.showFound(
+                    .init(version: "2", infoURL: URL(string: url), infoOnly: true)
+                ) { replies.append($0) }
+                d.model.handlers.learnMore()
+                XCTAssertEqual(opened.count, opens ? 1 : 0, url)
+                XCTAssertEqual(replies, [.dismiss], url)
+            }
         }
 
         func testDownloadCountsRealBytesAndTime() throws {
@@ -99,7 +217,7 @@
             XCTAssertEqual(d.model.state.kind, .extracting)
             XCTAssertEqual(d.model.progress.state, .installing)
             XCTAssertNil(d.model.state.update?.progress?.fraction)
-            d.showInstallingUpdate(withApplicationTerminated: false, retryTerminatingApplication: {})
+            d.showInstallingUpdate(withApplicationTerminated: true, retryTerminatingApplication: {})
             XCTAssertEqual(d.model.state.kind, .installing)
             XCTAssertEqual(d.model.progress.state, .installing)
             XCTAssertNil(d.model.state.update?.progress?.fraction)

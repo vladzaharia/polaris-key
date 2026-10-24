@@ -13,6 +13,10 @@
         /// The close button or Command-W: the person closed the window.
         var onUserClose: (() -> Void)?
         private var placed = false
+        /// False while the window must be answered by a button (the permission ask).
+        var closable = true {
+            didSet { window.standardWindowButton(.closeButton)?.isHidden = !closable }
+        }
 
         init(model: UpdateWindowModel, options: PolarisSparkleUserDriver.Options) {
             let hosting = NSHostingController(
@@ -55,6 +59,7 @@
         }
 
         func windowShouldClose(_ sender: NSWindow) -> Bool {
+            guard closable else { return false }
             onUserClose?()
             return true
         }

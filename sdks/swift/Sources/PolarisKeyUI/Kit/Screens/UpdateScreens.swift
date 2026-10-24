@@ -323,24 +323,42 @@ public struct ReleaseNotesView: View {
 
     /// What the Mac update window is showing (UI-KITS §4.3 on macOS; the mockup `desktop-update`).
     public enum UpdateWindowKind: String, Sendable, CaseIterable {
-        /// The one-time ask: check for updates automatically?
+        /// The one-time ask: check for updates automatically? Answered by a button only.
         case permission
         /// A check is running; the offer is not known yet.
         case checking
-        /// An update is offered: Skip This Version, Remind Me Later, Install and Relaunch.
+        /// An update is offered: Skip This Version, Remind Me Later, Install Update (or, when it is
+        /// already downloaded, Install on Quit and Install and Relaunch).
         case found
         /// The download runs: real bytes, or an indeterminate bar while the total is unknown.
         case downloading
         /// The download is unpacked and checked: indeterminate.
         case extracting
-        /// Ready to install: Install and Relaunch.
+        /// Ready to install: Install on Quit, Install and Relaunch.
         case ready
         /// The installer runs: indeterminate.
         case installing
-        /// "You're up to date".
+        /// The installer waits for the app to quit: Quit and Install.
+        case quitToInstall
+        /// "You’re up to date".
         case upToDate
-        /// The error callout and Try Again; nothing else.
+        /// The error callout and Try Again (or Done, when trying again cannot help).
         case failed
+    }
+
+    /// What an error is, in the kit's own short copy.
+    public enum UpdateErrorKind: String, Sendable, CaseIterable {
+        /// The update server or the download could not be reached: trying again can help.
+        case network
+        /// The update needs a different macOS or hardware: trying again cannot help.
+        case cannotInstall
+        /// The signature or validation failed: trying again cannot help.
+        case security
+        /// Anything else: Sparkle's own words, trying again can help.
+        case other
+
+        /// Whether Try Again is offered.
+        public var canRetry: Bool { self == .network || self == .other }
     }
 
     /// One screen of the update window: the kind, the offer's facts (`update`) and the update
@@ -350,21 +368,31 @@ public struct ReleaseNotesView: View {
         /// The offer and its download, in the kit's own terms: `action` `binary` (an offer and its
         /// download), `code-ready` (ready), `none` (up to date); `progress` carries the phase.
         public var update: KitUpdate?
-        /// The error's own words (failed only).
+        /// The error's own words (failed, `other` only).
         public var detail: String?
+        public var errorKind: UpdateErrorKind
         /// False for a critical update: it cannot be skipped.
         public var canSkip: Bool
-        /// An update with only a web page: the primary opens it, nothing installs.
+        /// False for a critical update, or when Sparkle does not check by itself: there is no
+        /// later to be reminded at.
+        public var canLater: Bool
+        /// The update is already downloaded (Sparkle's stage): the primary installs it.
+        public var downloaded: Bool
+        /// An update with only a web page (the app cannot install it): the primary opens it.
         public var infoOnly: Bool
 
         public init(
             kind: UpdateWindowKind, update: KitUpdate? = nil, detail: String? = nil,
-            canSkip: Bool = true, infoOnly: Bool = false
+            errorKind: UpdateErrorKind = .other, canSkip: Bool = true, canLater: Bool = true,
+            downloaded: Bool = false, infoOnly: Bool = false
         ) {
             self.kind = kind
             self.update = update
             self.detail = detail
+            self.errorKind = errorKind
             self.canSkip = canSkip
+            self.canLater = canLater
+            self.downloaded = downloaded
             self.infoOnly = infoOnly
         }
 
@@ -393,8 +421,9 @@ public struct ReleaseNotesView: View {
         public var tryAgain: @MainActor () -> Void
         public var done: @MainActor () -> Void
         public var allow: @MainActor () -> Void
-        public var notNow: @MainActor () -> Void
+        public var decline: @MainActor () -> Void
         public var learnMore: @MainActor () -> Void
+        public var quitAndInstall: @MainActor () -> Void
 
         public init(
             install: @escaping @MainActor () -> Void = {},
@@ -404,8 +433,9 @@ public struct ReleaseNotesView: View {
             tryAgain: @escaping @MainActor () -> Void = {},
             done: @escaping @MainActor () -> Void = {},
             allow: @escaping @MainActor () -> Void = {},
-            notNow: @escaping @MainActor () -> Void = {},
-            learnMore: @escaping @MainActor () -> Void = {}
+            decline: @escaping @MainActor () -> Void = {},
+            learnMore: @escaping @MainActor () -> Void = {},
+            quitAndInstall: @escaping @MainActor () -> Void = {}
         ) {
             self.install = install
             self.later = later
@@ -414,8 +444,9 @@ public struct ReleaseNotesView: View {
             self.tryAgain = tryAgain
             self.done = done
             self.allow = allow
-            self.notNow = notNow
+            self.decline = decline
             self.learnMore = learnMore
+            self.quitAndInstall = quitAndInstall
         }
     }
 
@@ -441,14 +472,11 @@ public struct ReleaseNotesView: View {
     }
 
     /// The Mac update window's content: one column, the product icon over the facts, the download
-    /// beside its numbers, the actions in a trailing row. Hosted by an `NSWindow` that sizes to it.
+    /// beside its numbers, the actions in a row. Hosted by an `NSWindow` that sizes to it.
     public struct UpdateWindowView: View {
         let model: UpdateWindowModel
-        @Environment(\.openURL) private var openURL
-        @Environment(\.polarisKeyStrings) private var strings
 
-        /// The content's width: the window is this plus 24 pt a side. The mockup's 480 pt window plus
-        /// the kit's own button padding.
+        /// The content's width: 480 pt (528 pt with the padding): the mockup's three buttons need more than 432 pt at the kit's Mac button size.
         public static let contentWidth: CGFloat = 480
 
         public init(model: UpdateWindowModel) { self.model = model }
@@ -460,10 +488,13 @@ public struct ReleaseNotesView: View {
         }
     }
 
+    /// One button of the window's row.
+    private typealias UpdateControl = (key: String, action: @MainActor () -> Void)
+
     struct UpdateWindowContent: View {
         let model: UpdateWindowModel
-        @Environment(\.openURL) private var openURL
         @Environment(\.polarisKeyStrings) private var strings
+        @AccessibilityFocusState private var calloutFocused: Bool
 
         private var state: UpdateWindowState { model.state }
         private var handlers: UpdateWindowHandlers { model.handlers }
@@ -480,11 +511,11 @@ public struct ReleaseNotesView: View {
                         actions
                     }
                 }
-                // The title bar is transparent over the window's colour (raised in dark, the page in light:
-                // the secondary buttons are white): 16 pt under it, as the mockup.
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 24)
+                // The title bar is transparent over the window's colour (raised in dark, the page
+                // in light: the secondary buttons are white): 16 pt under it, as the mockup.
+                .padding(.horizontal, style.space(.lg))
+                .padding(.top, style.space(.md))
+                .padding(.bottom, style.space(.lg))
                 .frame(width: UpdateWindowView.contentWidth + 48, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .background((style.dark ? style.palette.raised : style.palette.page).ignoresSafeArea())
@@ -497,8 +528,11 @@ public struct ReleaseNotesView: View {
         private func header(_ style: KitResolvedStyle) -> some View {
             HStack(alignment: .center, spacing: style.space(.md)) {
                 ProductIcon(size: 64)
-                VStack(alignment: .leading, spacing: 2) {
-                    KitText(titleLine(style), .headline, color: .strong)
+                VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                    // 17 pt semibold, the mockup's title (the kit's headline step is 15 on the Mac).
+                    Text(strings.string(titleLine(style)))
+                        .font(.custom(PolarisKit.fontFamily, size: 17, relativeTo: .title3).weight(.semibold))
+                        .foregroundStyle(style.palette.textStrong)
                         .accessibilityAddTraits(.isHeader)
                     if let sub = subtitleLine { KitText(sub, .meta, color: .muted) }
                 }
@@ -512,6 +546,8 @@ public struct ReleaseNotesView: View {
             switch state.kind {
             case .permission: return CopyLine("common.updatePermissionTitle")
             case .checking: return CopyLine("common.updateChecking")
+            case .quitToInstall:
+                return CopyLine("common.updateQuitToInstall", ["product": .text(product)])
             case .ready:
                 return CopyLine(
                     "update.readyTitle", ["product": .text(product), "version": .text(version)])
@@ -524,18 +560,19 @@ public struct ReleaseNotesView: View {
             }
         }
 
-        /// "You have 2.4.1 · 61 MB download", or its no-size form.
+        /// "You have 2.4.1 · 61 MB download" while the offer is a download still to make; just
+        /// "You have 2.4.1" once it is under way, downloaded or installing, and when up to date.
         private var subtitleLine: CopyLine? {
             guard let current = state.update?.currentVersion else { return nil }
             switch state.kind {
-            case .found, .downloading, .extracting, .installing:
+            case .found where !state.downloaded:
                 guard let bytes = state.update?.sizeBytes else {
                     return CopyLine("common.updateCurrentNoSize", ["version": .text(current)])
                 }
                 return CopyLine(
                     "update.current",
                     ["version": .text(current), "size": .text(KitFormat.bytes(bytes))])
-            case .upToDate:
+            case .found, .downloading, .extracting, .installing, .ready, .upToDate:
                 return CopyLine("common.updateCurrentNoSize", ["version": .text(current)])
             default: return nil
             }
@@ -549,8 +586,6 @@ public struct ReleaseNotesView: View {
                 KitText(
                     CopyLine("common.updatePermissionBody", ["product": .text(style.identity.name)]),
                     .body, color: .default)
-            case .ready:
-                KitText(CopyLine("update.readyBody"), .body, color: .default)
             case .found, .downloading:
                 let notes = UpdatePromptView.noteLines(state.update?.notes)
                 let link = KitLinks.valid(state.update?.notesUrl)
@@ -561,14 +596,15 @@ public struct ReleaseNotesView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if let link, !state.infoOnly {
-                        Button {
-                            openURL(link)
-                        } label: {
-                            HStack(spacing: 4) {
+                        // KitLinks.valid above: https, or http to the loopback, only.
+                        Link(destination: link) {
+                            HStack(spacing: style.space(.xxs)) {
+                                // Sentence case, as the mockup: the link is not a button label.
                                 Text(
-                                    strings.string(
-                                        "update.allChanges",
-                                        ["version": .text(state.update?.version ?? "")])
+                                    strings.catalog.format(
+                                        "update.allChanges", locale: strings.locale,
+                                        args: ["version": .text(state.update?.version ?? "")],
+                                        variant: nil)
                                 )
                                 .font(style.font(.body))
                                 Image(systemName: "arrow.up.right").font(style.font(.footnote))
@@ -628,17 +664,19 @@ public struct ReleaseNotesView: View {
             ProgressView()
                 .progressViewStyle(.linear)
                 .tint(style.palette.accentSolid)
-                .accessibilityHidden(true)
+                .accessibilityLabel(Text(strings.string("common.updateProgressLabel")))
         }
 
-        /// "Downloading · 38 MB of 61 MB", only while both counts are known.
+        /// "Downloading · 38 MB of 61 MB" while both counts are known, "Downloading · 12 MB" while
+        /// only the bytes received are.
         private var downloadedLine: CopyLine? {
-            guard let p = state.update?.progress, let done = p.bytes, let total = p.totalBytes,
-                total > 0
-            else { return nil }
-            return CopyLine(
-                "update.downloading",
-                ["size": .text(KitFormat.bytes(done)), "total": .text(KitFormat.bytes(total))])
+            guard let p = state.update?.progress, let done = p.bytes, done > 0 else { return nil }
+            if let total = p.totalBytes, total > 0 {
+                return CopyLine(
+                    "update.downloading",
+                    ["size": .text(KitFormat.bytes(done)), "total": .text(KitFormat.bytes(total))])
+            }
+            return CopyLine("common.updateDownloadingBytes", ["size": .text(KitFormat.bytes(done))])
         }
 
         /// "About 20 seconds left", only while the download estimates it.
@@ -665,68 +703,85 @@ public struct ReleaseNotesView: View {
 
         // MARK: Actions
 
-        /// The buttons, in a trailing row; where a translation does not fit the row they stack, the
+        /// The row's controls: Skip at the leading edge, then (trailing) the dismissal, which
+        /// Escape takes, and the primary, which Return takes.
+        struct Controls {
+            var leading: (key: String, action: @MainActor () -> Void)?
+            var dismissing: (key: String, action: @MainActor () -> Void)?
+            var primary: (key: String, action: @MainActor () -> Void)?
+        }
+
+        private var controls: Controls {
+            switch state.kind {
+            case .permission:
+                return Controls(
+                    dismissing: ("common.updateDeclineChecks", handlers.decline),
+                    primary: ("common.updatePermissionAllow", handlers.allow))
+            case .checking, .downloading:
+                return Controls(dismissing: ("common.cancel", handlers.cancel))
+            case .found:
+                let skip = state.canSkip && !state.infoOnly ? ("update.skipVersion", handlers.skip) : nil
+                if state.infoOnly {
+                    return Controls(
+                        leading: skip,
+                        dismissing: state.canLater ? ("update.later", handlers.later) : nil,
+                        primary: ("common.updateLearnMore", handlers.learnMore))
+                }
+                if state.downloaded {
+                    return Controls(
+                        leading: skip, dismissing: ("common.updateInstallOnQuit", handlers.later),
+                        primary: ("update.install", handlers.install))
+                }
+                return Controls(
+                    leading: skip,
+                    dismissing: state.canLater ? ("update.later", handlers.later) : nil,
+                    primary: ("common.updateInstallUpdate", handlers.install))
+            case .ready:
+                return Controls(
+                    dismissing: ("common.updateInstallOnQuit", handlers.later),
+                    primary: ("update.restartNow", handlers.install))
+            case .quitToInstall:
+                return Controls(primary: ("common.updateQuitAndInstall", handlers.quitAndInstall))
+            case .upToDate:
+                return Controls(primary: ("common.done", handlers.done))
+            case .extracting, .installing, .failed:
+                return Controls()
+            }
+        }
+
+        /// The buttons in a row; where a translation does not fit the row they stack, the
         /// primary first, so a label never wraps.
         @ViewBuilder private var actions: some View {
-            if state.kind != .extracting && state.kind != .installing {
+            let c = controls
+            if c.leading != nil || c.dismissing != nil || c.primary != nil {
+                kitStyle { style in
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Spacer(minLength: 0)
-                        buttons(reversed: false)
+                    HStack(spacing: style.space(.xs)) {
+                        if let leading = c.leading { button(leading, .secondary, dismissing: false) }
+                        Spacer(minLength: style.space(.xs))
+                        if let d = c.dismissing { button(d, .secondary, dismissing: true) }
+                        if let p = c.primary { button(p, .primary, dismissing: false) }
                     }
                     .fixedSize(horizontal: false, vertical: true)
-                    VStack(spacing: 8) { buttons(reversed: true) }
+                    VStack(spacing: style.space(.xs)) {
+                        if let p = c.primary { button(p, .primary, dismissing: false) }
+                        if let d = c.dismissing { button(d, .secondary, dismissing: true) }
+                        if let leading = c.leading { button(leading, .secondary, dismissing: false) }
+                    }
+                }
                 }
             }
         }
 
-        /// Each control once, in the Mac order (dismissal first, the primary last), or reversed.
-        @ViewBuilder private func buttons(reversed: Bool) -> some View {
-            switch state.kind {
-            case .permission:
-                ordered(
-                    reversed,
-                    secondary: [("common.notNow", handlers.notNow)],
-                    primary: ("common.updatePermissionAllow", handlers.allow))
-            case .checking, .downloading:
-                ordered(reversed, secondary: [("common.cancel", handlers.cancel)], primary: nil)
-            case .found:
-                ordered(
-                    reversed,
-                    secondary: (state.canSkip && !state.infoOnly
-                        ? [("update.skipVersion", handlers.skip)] : [])
-                        + [("update.later", handlers.later)],
-                    primary: state.infoOnly
-                        ? ("common.updateLearnMore", handlers.learnMore)
-                        : ("update.install", handlers.install))
-            case .ready:
-                ordered(
-                    reversed, secondary: [("update.later", handlers.later)],
-                    primary: ("update.restartNow", handlers.install))
-            case .upToDate:
-                ordered(reversed, secondary: [], primary: ("common.done", handlers.done))
-            case .extracting, .installing, .failed:
-                EmptyView()
-            }
-        }
-
-        @ViewBuilder private func ordered(
-            _ reversed: Bool, secondary: [(String, @MainActor () -> Void)],
-            primary: (String, @MainActor () -> Void)?
+        @ViewBuilder private func button(
+            _ item: (key: String, action: @MainActor () -> Void), _ kind: KitButtonKind,
+            dismissing: Bool
         ) -> some View {
-            if reversed, let primary { button(primary, .primary) }
-            ForEach(Array((reversed ? secondary.reversed() : secondary).enumerated()), id: \.offset) {
-                button($0.element, .secondary)
-            }
-            if !reversed, let primary { button(primary, .primary) }
-        }
-
-        private func button(
-            _ item: (String, @MainActor () -> Void), _ kind: KitButtonKind
-        ) -> some View {
-            KitButton(
-                line: CopyLine(item.0), kind: kind, fullWidth: false, compact: true,
-                action: item.1)
+            let b = KitButton(
+                line: CopyLine(item.key), kind: kind, fullWidth: false, compact: false,
+                action: item.action)
+            // Escape takes the dismissing secondary of every state, never Skip; Return the primary.
+            if dismissing { b.keyboardShortcut(.cancelAction) } else { b }
         }
 
         // MARK: The error callout
@@ -735,11 +790,7 @@ public struct ReleaseNotesView: View {
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 VStack(alignment: .leading, spacing: style.space(.xs)) {
                     KitText(CopyLine("common.updateFailedTitle"), .label, color: .strong)
-                    if let detail = state.detail, !detail.isEmpty {
-                        Text(verbatim: detail).font(style.font(.meta))
-                            .foregroundStyle(style.palette.textDefault)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    errorBody(style)
                 }
                 .padding(style.space(.md))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -748,11 +799,34 @@ public struct ReleaseNotesView: View {
                         .fill(style.palette.sunken)
                 )
                 .accessibilityElement(children: .combine)
+                .accessibilityFocused($calloutFocused)
+                .onAppear { calloutFocused = true }
                 HStack {
                     Spacer(minLength: 0)
-                    KitButton(
-                        line: CopyLine("common.tryAgain"), kind: .primary, fullWidth: false,
-                        compact: true, action: handlers.tryAgain)
+                    if state.errorKind.canRetry {
+                        KitButton(
+                            line: CopyLine("common.tryAgain"), kind: .primary, fullWidth: false,
+                            compact: false, action: handlers.tryAgain)
+                    } else {
+                        KitButton(
+                            line: CopyLine("common.done"), kind: .primary, fullWidth: false,
+                            compact: false, action: handlers.done)
+                    }
+                }
+            }
+        }
+
+        @ViewBuilder private func errorBody(_ style: KitResolvedStyle) -> some View {
+            switch state.errorKind {
+            case .network: KitText(CopyLine("common.updateErrorNetwork"), .meta, color: .default)
+            case .cannotInstall:
+                KitText(CopyLine("common.updateErrorCannotInstall"), .meta, color: .default)
+            case .security: KitText(CopyLine("common.updateErrorSecurity"), .meta, color: .default)
+            case .other:
+                if let detail = state.detail, !detail.isEmpty {
+                    Text(verbatim: detail).font(style.font(.meta))
+                        .foregroundStyle(style.palette.textDefault)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

@@ -1295,10 +1295,80 @@ msgstr "通过你获取{product}的商店或平台安装。"
 msgid "update.revokedContent"
 msgstr "{product}的部分内容已被撤回，无法使用。请更新以继续。"
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "已是最新版本"
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr "安装更新"
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr "安装更新"
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr "退出时安装"
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr "退出时安装"
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr "不检查"
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr "不检查"
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr "退出并安装"
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr "退出并安装"
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr "退出 {product} 以完成安装。"
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr "正在下载 · {size}"
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr "下载"
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr "无法连接到更新服务器。请检查网络连接后重试。"
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr "此更新无法安装在这台 Mac 上。"
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr "更新未通过安全检查，因此没有安装。"
 
 #. Checking for updates…
 #. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
@@ -1310,10 +1380,10 @@ msgstr "正在检查更新…"
 msgid "common.updatePermissionTitle"
 msgstr "自动检查更新？"
 
-#. {product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.
+#. {product} can look for new versions in the background and tell you when one is ready.
 #. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "common.updatePermissionBody"
-msgstr "{product} 可以在后台查找新版本，并在新版本就绪时通知你。不会发送任何有关你的 Mac 的信息。"
+msgstr "{product} 可以在后台查找新版本，并在新版本就绪时通知你。"
 
 #. Check automatically
 #. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
@@ -1325,7 +1395,7 @@ msgctxt "macos"
 msgid "common.updatePermissionAllow"
 msgstr "自动检查"
 
-#. Couldn't update
+#. Couldn’t update
 #. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
 msgid "common.updateFailedTitle"
 msgstr "无法更新"

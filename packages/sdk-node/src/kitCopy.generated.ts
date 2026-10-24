@@ -253,13 +253,26 @@ export const KIT_COPY: Readonly<
       "It installs through the store or platform you got {product} from.",
     "update.revokedContent":
       "Some of {product}'s content was withdrawn and can't be used. Update to keep going.",
-    "update.upToDate": "You're up to date",
+    "update.upToDate": "You’re up to date",
+    "common.updateInstallUpdate": "Install update",
+    "common.updateInstallOnQuit": "Install on quit",
+    "common.updateDeclineChecks": "Don’t check",
+    "common.updateQuitAndInstall": "Quit and install",
+    "common.updateQuitToInstall": "Quit {product} to finish installing.",
+    "common.updateDownloadingBytes": "Downloading · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Couldn’t reach the update server. Check your connection and try again.",
+    "common.updateErrorCannotInstall":
+      "This update can’t be installed on this Mac.",
+    "common.updateErrorSecurity":
+      "The update didn’t pass its security check, so it wasn’t installed.",
     "common.updateChecking": "Checking for updates…",
     "common.updatePermissionTitle": "Check for updates automatically?",
     "common.updatePermissionBody":
-      "{product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.",
+      "{product} can look for new versions in the background and tell you when one is ready.",
     "common.updatePermissionAllow": "Check automatically",
-    "common.updateFailedTitle": "Couldn't update",
+    "common.updateFailedTitle": "Couldn’t update",
     "common.updateLearnMore": "Learn more",
     "update.checkNow": "Check for updates",
     "menu.manageLicense": "Manage license",
@@ -1832,10 +1845,24 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie, um fortzufahren.",
     "update.upToDate": "Sie sind auf dem neuesten Stand",
+    "common.updateInstallUpdate": "Update installieren",
+    "common.updateInstallOnQuit": "Beim Beenden installieren",
+    "common.updateDeclineChecks": "Nicht suchen",
+    "common.updateQuitAndInstall": "Beenden und installieren",
+    "common.updateQuitToInstall":
+      "{product} beenden, um die Installation abzuschließen.",
+    "common.updateDownloadingBytes": "Wird heruntergeladen · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Der Update-Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "common.updateErrorCannotInstall":
+      "Dieses Update kann auf diesem Mac nicht installiert werden.",
+    "common.updateErrorSecurity":
+      "Das Update hat die Sicherheitsprüfung nicht bestanden und wurde nicht installiert.",
     "common.updateChecking": "Nach Updates wird gesucht…",
     "common.updatePermissionTitle": "Automatisch nach Updates suchen?",
     "common.updatePermissionBody":
-      "{product} kann im Hintergrund nach neuen Versionen suchen und Sie benachrichtigen, wenn eine bereit ist. Es werden keine Angaben zu Ihrem Mac gesendet.",
+      "{product} kann im Hintergrund nach neuen Versionen suchen und Sie benachrichtigen, wenn eine bereit ist.",
     "common.updatePermissionAllow": "Automatisch suchen",
     "common.updateFailedTitle": "Update nicht möglich",
     "common.updateLearnMore": "Mehr erfahren",
@@ -3501,11 +3528,25 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Une partie du contenu de {product} a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.",
     "update.upToDate": "Vous êtes à jour",
+    "common.updateInstallUpdate": "Installer la mise à jour",
+    "common.updateInstallOnQuit": "Installer à la fermeture",
+    "common.updateDeclineChecks": "Ne pas rechercher",
+    "common.updateQuitAndInstall": "Quitter et installer",
+    "common.updateQuitToInstall":
+      "Quittez {product} pour terminer l’installation.",
+    "common.updateDownloadingBytes": "Téléchargement · {size}",
+    "common.updateProgressLabel": "Téléchargement",
+    "common.updateErrorNetwork":
+      "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion et réessayez.",
+    "common.updateErrorCannotInstall":
+      "Cette mise à jour ne peut pas être installée sur ce Mac.",
+    "common.updateErrorSecurity":
+      "La mise à jour n’a pas passé le contrôle de sécurité et n’a pas été installée.",
     "common.updateChecking": "Recherche de mises à jour…",
     "common.updatePermissionTitle":
       "Rechercher les mises à jour automatiquement ?",
     "common.updatePermissionBody":
-      "{product} peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête. Aucune information sur votre Mac n’est envoyée.",
+      "{product} peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête.",
     "common.updatePermissionAllow": "Rechercher automatiquement",
     "common.updateFailedTitle": "Mise à jour impossible",
     "common.updateLearnMore": "En savoir plus",
@@ -5158,10 +5199,23 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Parte del contenido de {product} se retiró y no se puede usar. Actualiza para continuar.",
     "update.upToDate": "Tienes la última versión",
+    "common.updateInstallUpdate": "Instalar actualización",
+    "common.updateInstallOnQuit": "Instalar al salir",
+    "common.updateDeclineChecks": "No buscar",
+    "common.updateQuitAndInstall": "Salir e instalar",
+    "common.updateQuitToInstall": "Cierra {product} para terminar de instalar.",
+    "common.updateDownloadingBytes": "Descargando · {size}",
+    "common.updateProgressLabel": "Descarga",
+    "common.updateErrorNetwork":
+      "No se pudo conectar con el servidor de actualizaciones. Comprueba tu conexión e inténtalo de nuevo.",
+    "common.updateErrorCannotInstall":
+      "Esta actualización no se puede instalar en este Mac.",
+    "common.updateErrorSecurity":
+      "La actualización no superó la comprobación de seguridad y no se instaló.",
     "common.updateChecking": "Buscando actualizaciones…",
     "common.updatePermissionTitle": "¿Buscar actualizaciones automáticamente?",
     "common.updatePermissionBody":
-      "{product} puede buscar nuevas versiones en segundo plano y avisarte cuando haya una lista. No se envía nada sobre tu Mac.",
+      "{product} puede buscar nuevas versiones en segundo plano y avisarte cuando haya una lista.",
     "common.updatePermissionAllow": "Buscar automáticamente",
     "common.updateFailedTitle": "No se pudo actualizar",
     "common.updateLearnMore": "Más información",
@@ -6807,10 +6861,24 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize para continuar.",
     "update.upToDate": "Você está atualizado",
+    "common.updateInstallUpdate": "Instalar atualização",
+    "common.updateInstallOnQuit": "Instalar ao sair",
+    "common.updateDeclineChecks": "Não verificar",
+    "common.updateQuitAndInstall": "Sair e instalar",
+    "common.updateQuitToInstall":
+      "Saia de {product} para concluir a instalação.",
+    "common.updateDownloadingBytes": "Baixando · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Não foi possível conectar ao servidor de atualizações. Verifique sua conexão e tente novamente.",
+    "common.updateErrorCannotInstall":
+      "Esta atualização não pode ser instalada neste Mac.",
+    "common.updateErrorSecurity":
+      "A atualização não passou na verificação de segurança e não foi instalada.",
     "common.updateChecking": "Verificando atualizações…",
     "common.updatePermissionTitle": "Verificar atualizações automaticamente?",
     "common.updatePermissionBody":
-      "O {product} pode procurar novas versões em segundo plano e avisar quando uma estiver pronta. Nada sobre o seu Mac é enviado.",
+      "O {product} pode procurar novas versões em segundo plano e avisar quando uma estiver pronta.",
     "common.updatePermissionAllow": "Verificar automaticamente",
     "common.updateFailedTitle": "Não foi possível atualizar",
     "common.updateLearnMore": "Saiba mais",
@@ -8414,11 +8482,25 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Alcuni contenuti di {product} sono stati ritirati e non possono essere usati. Aggiorna per continuare.",
     "update.upToDate": "Hai la versione più recente",
+    "common.updateInstallUpdate": "Installa aggiornamento",
+    "common.updateInstallOnQuit": "Installa all’uscita",
+    "common.updateDeclineChecks": "Non cercare",
+    "common.updateQuitAndInstall": "Esci e installa",
+    "common.updateQuitToInstall":
+      "Esci da {product} per completare l’installazione.",
+    "common.updateDownloadingBytes": "Download in corso · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Impossibile raggiungere il server degli aggiornamenti. Controlla la connessione e riprova.",
+    "common.updateErrorCannotInstall":
+      "Questo aggiornamento non può essere installato su questo Mac.",
+    "common.updateErrorSecurity":
+      "L’aggiornamento non ha superato il controllo di sicurezza e non è stato installato.",
     "common.updateChecking": "Ricerca di aggiornamenti…",
     "common.updatePermissionTitle":
       "Cercare gli aggiornamenti automaticamente?",
     "common.updatePermissionBody":
-      "{product} può cercare nuove versioni in background e avvisarti quando una è pronta. Non viene inviato nulla sul tuo Mac.",
+      "{product} può cercare nuove versioni in background e avvisarti quando una è pronta.",
     "common.updatePermissionAllow": "Cerca automaticamente",
     "common.updateFailedTitle": "Impossibile aggiornare",
     "common.updateLearnMore": "Scopri di più",
@@ -10054,10 +10136,24 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。",
     "update.upToDate": "最新の状態です",
+    "common.updateInstallUpdate": "アップデートをインストール",
+    "common.updateInstallOnQuit": "終了時にインストール",
+    "common.updateDeclineChecks": "確認しない",
+    "common.updateQuitAndInstall": "終了してインストール",
+    "common.updateQuitToInstall":
+      "インストールを完了するには {product} を終了してください。",
+    "common.updateDownloadingBytes": "ダウンロード中 · {size}",
+    "common.updateProgressLabel": "ダウンロード",
+    "common.updateErrorNetwork":
+      "アップデートサーバーに接続できませんでした。接続を確認して、もう一度お試しください。",
+    "common.updateErrorCannotInstall":
+      "このアップデートはこの Mac にインストールできません。",
+    "common.updateErrorSecurity":
+      "アップデートがセキュリティチェックに合格しなかったため、インストールされませんでした。",
     "common.updateChecking": "アップデートを確認中…",
     "common.updatePermissionTitle": "アップデートを自動的に確認しますか？",
     "common.updatePermissionBody":
-      "{product} はバックグラウンドで新しいバージョンを確認し、準備ができたらお知らせします。Mac の情報は送信されません。",
+      "{product} はバックグラウンドで新しいバージョンを確認し、準備ができたらお知らせします。",
     "common.updatePermissionAllow": "自動的に確認",
     "common.updateFailedTitle": "アップデートできませんでした",
     "common.updateLearnMore": "詳しく見る",
@@ -11697,10 +11793,23 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요.",
     "update.upToDate": "최신 버전이에요",
+    "common.updateInstallUpdate": "업데이트 설치",
+    "common.updateInstallOnQuit": "종료 시 설치",
+    "common.updateDeclineChecks": "확인 안 함",
+    "common.updateQuitAndInstall": "종료하고 설치",
+    "common.updateQuitToInstall": "설치를 마치려면 {product}을(를) 종료하세요.",
+    "common.updateDownloadingBytes": "다운로드 중 · {size}",
+    "common.updateProgressLabel": "다운로드",
+    "common.updateErrorNetwork":
+      "업데이트 서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+    "common.updateErrorCannotInstall":
+      "이 업데이트는 이 Mac에 설치할 수 없습니다.",
+    "common.updateErrorSecurity":
+      "업데이트가 보안 검사를 통과하지 못해 설치되지 않았습니다.",
     "common.updateChecking": "업데이트 확인 중…",
     "common.updatePermissionTitle": "업데이트를 자동으로 확인할까요?",
     "common.updatePermissionBody":
-      "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다. Mac에 대한 정보는 전송되지 않습니다.",
+      "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다.",
     "common.updatePermissionAllow": "자동으로 확인",
     "common.updateFailedTitle": "업데이트할 수 없음",
     "common.updateLearnMore": "자세히 알아보기",
@@ -13250,10 +13359,20 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}的部分内容已被撤回，无法使用。请更新以继续。",
     "update.upToDate": "已是最新版本",
+    "common.updateInstallUpdate": "安装更新",
+    "common.updateInstallOnQuit": "退出时安装",
+    "common.updateDeclineChecks": "不检查",
+    "common.updateQuitAndInstall": "退出并安装",
+    "common.updateQuitToInstall": "退出 {product} 以完成安装。",
+    "common.updateDownloadingBytes": "正在下载 · {size}",
+    "common.updateProgressLabel": "下载",
+    "common.updateErrorNetwork": "无法连接到更新服务器。请检查网络连接后重试。",
+    "common.updateErrorCannotInstall": "此更新无法安装在这台 Mac 上。",
+    "common.updateErrorSecurity": "更新未通过安全检查，因此没有安装。",
     "common.updateChecking": "正在检查更新…",
     "common.updatePermissionTitle": "自动检查更新？",
     "common.updatePermissionBody":
-      "{product} 可以在后台查找新版本，并在新版本就绪时通知你。不会发送任何有关你的 Mac 的信息。",
+      "{product} 可以在后台查找新版本，并在新版本就绪时通知你。",
     "common.updatePermissionAllow": "自动检查",
     "common.updateFailedTitle": "无法更新",
     "common.updateLearnMore": "了解更多",
@@ -14523,6 +14642,10 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.skipVersion": { macos: "Skip This Version" },
   "update.install": { macos: "Install and Relaunch" },
   "update.steam": { macos: "Get It on Steam" },
+  "common.updateInstallUpdate": { macos: "Install Update" },
+  "common.updateInstallOnQuit": { macos: "Install on Quit" },
+  "common.updateDeclineChecks": { macos: "Don’t Check" },
+  "common.updateQuitAndInstall": { macos: "Quit and Install" },
   "common.updatePermissionAllow": { macos: "Check Automatically" },
   "common.updateLearnMore": { macos: "Learn More" },
   "update.checkNow": { macos: "Check for Updates…" },

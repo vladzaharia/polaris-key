@@ -1295,10 +1295,80 @@ msgstr "{product}을(를) 받은 스토어나 플랫폼을 통해 설치돼요."
 msgid "update.revokedContent"
 msgstr "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요."
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "최신 버전이에요"
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr "업데이트 설치"
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr "업데이트 설치"
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr "종료 시 설치"
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr "종료 시 설치"
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr "확인 안 함"
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr "확인 안 함"
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr "종료하고 설치"
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr "종료하고 설치"
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr "설치를 마치려면 {product}을(를) 종료하세요."
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr "다운로드 중 · {size}"
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr "다운로드"
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr "업데이트 서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요."
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr "이 업데이트는 이 Mac에 설치할 수 없습니다."
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr "업데이트가 보안 검사를 통과하지 못해 설치되지 않았습니다."
 
 #. Checking for updates…
 #. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
@@ -1310,10 +1380,10 @@ msgstr "업데이트 확인 중…"
 msgid "common.updatePermissionTitle"
 msgstr "업데이트를 자동으로 확인할까요?"
 
-#. {product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.
+#. {product} can look for new versions in the background and tell you when one is ready.
 #. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "common.updatePermissionBody"
-msgstr "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다. Mac에 대한 정보는 전송되지 않습니다."
+msgstr "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다."
 
 #. Check automatically
 #. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
@@ -1325,7 +1395,7 @@ msgctxt "macos"
 msgid "common.updatePermissionAllow"
 msgstr "자동으로 확인"
 
-#. Couldn't update
+#. Couldn’t update
 #. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
 msgid "common.updateFailedTitle"
 msgstr "업데이트할 수 없음"

@@ -476,18 +476,42 @@
     <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_revokedContent">Some of %1$s's content was withdrawn and can't be used. Update to keep going.</string>
     <!-- UpdatePrompt: an app update. -->
-    <string name="update_upToDate">You're up to date</string>
+    <string name="update_upToDate">You’re up to date</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded. -->
+    <string name="common_updateInstallUpdate">Install update</string>
+    <string name="common_updateInstallUpdate__macos">Install Update</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits. -->
+    <string name="common_updateInstallOnQuit">Install on quit</string>
+    <string name="common_updateInstallOnQuit__macos">Install on Quit</string>
+    <!-- UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement. -->
+    <string name="common_updateDeclineChecks">Don’t check</string>
+    <string name="common_updateDeclineChecks__macos">Don’t Check</string>
+    <!-- UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish. -->
+    <string name="common_updateQuitAndInstall">Quit and install</string>
+    <string name="common_updateQuitAndInstall__macos">Quit and Install</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updateQuitToInstall">Quit %1$s to finish installing.</string>
+    <!-- UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=size. -->
+    <string name="common_updateDownloadingBytes">Downloading · %1$s</string>
+    <!-- UpdatePrompt: an app update. The accessibility name of the download's progress bar. -->
+    <string name="common_updateProgressLabel">Download</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network. -->
+    <string name="common_updateErrorNetwork">Couldn’t reach the update server. Check your connection and try again.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help. -->
+    <string name="common_updateErrorCannotInstall">This update can’t be installed on this Mac.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help. -->
+    <string name="common_updateErrorSecurity">The update didn’t pass its security check, so it wasn’t installed.</string>
     <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
     <string name="common_updateChecking">Checking for updates…</string>
     <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
     <string name="common_updatePermissionTitle">Check for updates automatically?</string>
     <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="common_updatePermissionBody">%1$s can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.</string>
+    <string name="common_updatePermissionBody">%1$s can look for new versions in the background and tell you when one is ready.</string>
     <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
     <string name="common_updatePermissionAllow">Check automatically</string>
     <string name="common_updatePermissionAllow__macos">Check Automatically</string>
     <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
-    <string name="common_updateFailedTitle">Couldn't update</string>
+    <string name="common_updateFailedTitle">Couldn’t update</string>
     <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
     <string name="common_updateLearnMore">Learn more</string>
     <string name="common_updateLearnMore__macos">Learn More</string>

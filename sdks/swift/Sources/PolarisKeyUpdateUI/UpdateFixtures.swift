@@ -16,8 +16,14 @@
         /// Bytes arriving, the total not known: an indeterminate bar.
         case downloadingUnknownTotal = "downloading-unknown"
         case extracting, ready, installing
+        /// Already downloaded: Install on Quit and Install and Relaunch.
+        case downloaded
+        /// The app did not quit by itself: Quit and Install.
+        case quitToInstall = "quit-to-install"
         case upToDate = "up-to-date"
         case error
+        /// An error trying again cannot fix: Done.
+        case errorCannotInstall = "error-cannot-install"
     }
 
     extension PolarisSparkleUserDriver {
@@ -58,7 +64,18 @@
                 showReady(toInstallAndRelaunch: { _ in })
             case .installing:
                 showFound(offer) { _ in }
+                showInstallingUpdate(withApplicationTerminated: true, retryTerminatingApplication: {})
+            case .downloaded:
+                showFound(offer, downloaded: true) { _ in }
+            case .quitToInstall:
+                showFound(offer) { _ in }
                 showInstallingUpdate(withApplicationTerminated: false, retryTerminatingApplication: {})
+            case .errorCannotInstall:
+                showUpdateNotFoundWithError(
+                    NSError(
+                        domain: "SUSparkleErrorDomain", code: 1001,
+                        userInfo: [SPUNoUpdateFoundReasonKey: NSNumber(value: 3)]),
+                    acknowledgement: {})
             case .upToDate:
                 showUpdateNotFoundWithError(
                     NSError(
@@ -68,10 +85,10 @@
             case .error:
                 showUpdaterError(
                     NSError(
-                        domain: "SUSparkleErrorDomain", code: 2001,
+                        domain: "SUSparkleErrorDomain", code: 4005,
                         userInfo: [
                             NSLocalizedDescriptionKey:
-                                "An error occurred while downloading the update. Please try again later."
+                                "An error occurred while installing the update. Please try again later."
                         ]),
                     acknowledgement: {})
             }

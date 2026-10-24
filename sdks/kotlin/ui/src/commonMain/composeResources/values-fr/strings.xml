@@ -481,12 +481,36 @@
     <string name="update_revokedContent">Une partie du contenu de %1$s a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Vous êtes à jour</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded. -->
+    <string name="common_updateInstallUpdate">Installer la mise à jour</string>
+    <string name="common_updateInstallUpdate__macos">Installer la mise à jour</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits. -->
+    <string name="common_updateInstallOnQuit">Installer à la fermeture</string>
+    <string name="common_updateInstallOnQuit__macos">Installer à la fermeture</string>
+    <!-- UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement. -->
+    <string name="common_updateDeclineChecks">Ne pas rechercher</string>
+    <string name="common_updateDeclineChecks__macos">Ne pas rechercher</string>
+    <!-- UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish. -->
+    <string name="common_updateQuitAndInstall">Quitter et installer</string>
+    <string name="common_updateQuitAndInstall__macos">Quitter et installer</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updateQuitToInstall">Quittez %1$s pour terminer l’installation.</string>
+    <!-- UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=size. -->
+    <string name="common_updateDownloadingBytes">Téléchargement · %1$s</string>
+    <!-- UpdatePrompt: an app update. The accessibility name of the download's progress bar. -->
+    <string name="common_updateProgressLabel">Téléchargement</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network. -->
+    <string name="common_updateErrorNetwork">Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion et réessayez.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help. -->
+    <string name="common_updateErrorCannotInstall">Cette mise à jour ne peut pas être installée sur ce Mac.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help. -->
+    <string name="common_updateErrorSecurity">La mise à jour n’a pas passé le contrôle de sécurité et n’a pas été installée.</string>
     <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
     <string name="common_updateChecking">Recherche de mises à jour…</string>
     <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
     <string name="common_updatePermissionTitle">Rechercher les mises à jour automatiquement ?</string>
     <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="common_updatePermissionBody">%1$s peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête. Aucune information sur votre Mac n’est envoyée.</string>
+    <string name="common_updatePermissionBody">%1$s peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête.</string>
     <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
     <string name="common_updatePermissionAllow">Rechercher automatiquement</string>
     <string name="common_updatePermissionAllow__macos">Rechercher automatiquement</string>
