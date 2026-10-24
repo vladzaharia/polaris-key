@@ -258,17 +258,6 @@ internal sealed interface DeviceRowMode {
     data object Confirming : DeviceRowMode
 }
 
-/** What this screen is: "tv", "tablet" or "phone". */
-@Composable
-internal fun ownFormFactor(): String {
-    val wide = androidx.compose.ui.platform.LocalConfiguration.current.smallestScreenWidthDp >= 600
-    return when {
-        isTelevision() -> "tv"
-        wide -> "tablet"
-        else -> "phone"
-    }
-}
-
 /** "This phone", "This tablet" or "This TV" by what the screen is (part.thisDeviceTitle), or the host's own line. */
 @Composable
 internal fun thisDeviceLabel(): String {
