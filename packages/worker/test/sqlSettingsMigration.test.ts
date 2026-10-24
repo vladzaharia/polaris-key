@@ -47,6 +47,15 @@ async function migrate(db: Db): Promise<void> {
 async function world(): Promise<Db> {
   const db = makeTestDb();
   for (const p of ["alpha", "beta", "gamma"]) await seedProduct(db, p);
+  // 0140 dropped both tables; the rehearsal rebuilds the old shape 0124 read from.
+  await db.run(
+    `CREATE TABLE lazy_delta_settings (product TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0,
+       hot_devices INTEGER, daily_cap INTEGER, updated_at INTEGER NOT NULL)`,
+  );
+  await db.run(
+    `CREATE TABLE email_product_caps (product TEXT PRIMARY KEY, daily_cap INTEGER NOT NULL,
+       modified_at INTEGER NOT NULL)`,
+  );
   await db.run(
     `INSERT INTO lazy_delta_settings (product, enabled, hot_devices, daily_cap, updated_at)
      VALUES ('alpha', 1, 7, 3, 111), ('beta', 0, NULL, NULL, 222)`,

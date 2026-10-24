@@ -342,8 +342,7 @@ export async function linkLicense(
  * means a TENANT-CONTROLLED issuer, whose `email` and `sub` claims the platform cannot vouch
  * for. The rule is "on for platform-issuer products, off for custom-issuer products", so a
  * tenant that stands up its own Keycloak/Authentik is opted out automatically rather than by an
- * operator remembering to. I-29 retired the per-product override (`auto_link_enabled` is no
- * longer read or written): the issuer is the whole decision.
+ * operator remembering to. I-29 retired the per-product override: the issuer is the whole decision.
  *
  * This is the PRODUCT-level rule, for the callers with no licence in hand (`autoLinkEnabled`,
  * the storefront's eligibility): it reads the provider as it stands now.
@@ -718,16 +717,23 @@ export async function listVisibleDevices(
 /**
  * A product's portal settings: the listing columns and branding of its `portal_product_settings`
  * row, with the three switches (`portal_enabled`, `key_reissue_enabled`, `claim_by_key`) read from
- * their settings rows (ST-14; `core/portalToggles.ts`). The table's own switch columns are no
- * longer read; ST-25 drops them.
+ * their settings rows (ST-14; `core/portalToggles.ts`). The table's own switch columns are
+ * dropped (migration 0140).
  */
 export async function getPortalProductSettings(
   db: Db,
   product: string,
 ): Promise<PortalProductSettingsRow> {
   const [row, toggles] = await Promise.all([
-    db.first<PortalProductSettingsRow>(
-      "SELECT * FROM portal_product_settings WHERE product = ?",
+    db.first<
+      Omit<
+        PortalProductSettingsRow,
+        "portal_enabled" | "key_reissue_enabled" | "claim_by_key"
+      >
+    >(
+      `SELECT product, discover_enabled, store_listed, store_audience, store_offer_paths_json,
+              store_group_labels_json, branding_json, created_at, modified_at
+         FROM portal_product_settings WHERE product = ?`,
       product,
     ),
     readPortalToggles(db, product),
@@ -938,11 +944,10 @@ export function releaseServiceEnabled(
 /**
  * What the customer portal offers for ONE product, or (without `product`) for the platform.
  *
- * I-29: the per-product toggles `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled` and
- * `auto_link_enabled` are retired and no longer read. Email and passkeys are always on, platform
+ * I-29: the per-product sign-in toggles (OIDC, magic link, key claim, auto-link) are retired and their columns dropped. Email and passkeys are always on, platform
  * single sign-on follows the platform's connections, and key claim is always on; a domain's
  * owner turns the email methods off for its addresses with an enforced domain (I-30), which the
- * sign-in routes check on their own. `releases_enabled` is retired too: downloads follow the
+ * sign-in routes check on their own. The releases toggle is retired too: downloads follow the
  * product's Release service (Ship builds).
  *
  * R5-06 stays: a `product` evaluates that one product's row with no cross-tenant term, and the

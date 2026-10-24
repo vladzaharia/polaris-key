@@ -1315,7 +1315,6 @@ describe("row-backed claimable settings (the value is the product_settings row)"
     default_max_offline_days: 14,
     default_device_limit: 3,
     admin_group: "acme-admins",
-    branding_json: null,
     release_source: "github",
     web_origins_json: null,
     services_json: null,

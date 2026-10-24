@@ -87,7 +87,6 @@ export async function seedProduct(
     default_max_offline_days: 30,
     default_device_limit: 5,
     admin_group: null,
-    branding_json: null,
     release_source: null,
     created_at: NOW,
     modified_at: NOW,

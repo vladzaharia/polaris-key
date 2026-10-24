@@ -84,8 +84,6 @@ export const SETTINGS_SHAPED_TABLES: readonly string[] = [
   "dist_store_products",
   "dist_transports",
   "edge_mint_config",
-  "email_product_caps",
-  "lazy_delta_settings",
   "oidc_config",
   "outlet_credentials",
   "platform_credentials",
@@ -392,15 +390,6 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
         "column:products.release_source",
         "column:product_sync_state.source",
       ],
-    },
-  },
-  {
-    thing: "Old lazy-delta and sign-in mail cap tables",
-    reason:
-      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
-    shows: "Product → Settings",
-    covers: {
-      ids: ["table:lazy_delta_settings", "table:email_product_caps"],
     },
   },
   {

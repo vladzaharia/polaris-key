@@ -46,6 +46,8 @@ async function world(): Promise<Db> {
     "UPDATE products SET release_source = 'github' WHERE slug = 'linked'",
   );
   await db.run("DELETE FROM product_settings");
+  // 0140 dropped the column; the rehearsal rebuilds the old shape 0126 read from.
+  await db.run("ALTER TABLE products ADD COLUMN branding_json TEXT");
   const row = async (
     product: string,
     cols: Record<string, number | string | null>,

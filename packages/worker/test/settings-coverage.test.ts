@@ -179,7 +179,7 @@ describe("settings coverage (ST-06)", () => {
     const ids = new Set(TARGETS.map((t) => t.id));
     for (const id of [
       "column:products.services_source",
-      "table:lazy_delta_settings",
+      "table:oidc_config",
       "env:LAZY_DELTAS",
       "manifest:product:web",
     ])

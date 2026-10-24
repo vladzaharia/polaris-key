@@ -60,10 +60,10 @@ export function seedOwner(persistTo, slug, name) {
   // No registry route signs anything, so both carry inert placeholders and nothing is sealed.
   const sql = [
     `INSERT OR IGNORE INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
+       default_max_offline_days, default_device_limit, admin_group, release_source,
        created_at, modified_at)
      VALUES ('${slug}', '${name}', '${slug}-kid', 'AAAA', '0.0.0', '99.0.0',
-       30, 5, NULL, NULL, NULL, ${now}, ${now});`,
+       30, 5, NULL, NULL, ${now}, ${now});`,
     `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status,
        created_at)
      VALUES ('${slug}', '${slug}-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,

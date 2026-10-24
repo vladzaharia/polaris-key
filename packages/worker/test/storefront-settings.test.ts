@@ -48,7 +48,10 @@ const FILES = readdirSync(DIR)
   .sort();
 const PS02 = "0085_storefront_listing.sql";
 const BEFORE = FILES.filter((f) => f < PS02);
-const AFTER = FILES.filter((f) => f > PS02);
+// 0140 dropped the switch columns the pre-PS-02 Worker's upsert names, so the old-Worker check
+// runs on the database as it stood before it.
+const RETIRE = "0140_retire_legacy_settings.sql";
+const AFTER = FILES.filter((f) => f > PS02 && f < RETIRE);
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
 
 /** The pre-PS-02 Worker's upsert, verbatim (its column list stops at `discover_enabled`). */
