@@ -51,6 +51,32 @@ The release channel choice. It shows only while Release is on. A build whose sto
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** Settings draws it for an app on the release service; it is hidden otherwise.
+
+    **Styled part.** `PolarisChannelPicker`, given a `PolarisChannelUi`: locked by a store, by the license, or free to pick. `onSelect` null draws nothing unless locked.
+
+    **Headless.** `PolarisChannelUi` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisChannelPicker
+    import im.plrs.key.ui.PolarisChannelUi
+
+    @Composable
+    fun Channels(switchTo: (String) -> Unit) {
+        PolarisChannelPicker(
+            channel = PolarisChannelUi(current = "stable", options = listOf("stable", "beta")),
+            onSelect = switchTo,
+        )
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the account list.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

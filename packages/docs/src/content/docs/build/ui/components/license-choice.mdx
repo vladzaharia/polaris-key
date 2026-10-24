@@ -51,6 +51,39 @@ Step three of the sign-in form: the account's licenses with their tier and devic
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The sign-in flow shows it when the person holds more than one license.
+
+    **Styled part.** `PolarisLicenseChoice`, drawn by `PolarisKitScreen` once its `rows` carry the `KitLicenseChoices`; a full license has no radio.
+
+    **Headless.** `KitStates.resolve(KitComponent.licenseChoice, inputs)` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitLicenseChoice
+    import im.plrs.key.ui.KitLicenseChoices
+    import im.plrs.key.ui.KitRowData
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisKitScreen
+
+    @Composable
+    fun Choice(inputs: KitInputs, pick: (String) -> Unit) {
+        val choices = KitLicenseChoices(listOf(KitLicenseChoice(id = "lic_1", tierName = "Pro")))
+        PolarisKitScreen(
+            KitStates.resolve(KitComponent.licenseChoice, inputs),
+            rows = KitRowData(choices = choices),
+            onContinue = pick,
+        )
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
