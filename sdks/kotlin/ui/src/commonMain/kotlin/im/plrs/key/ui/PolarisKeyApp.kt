@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
 import im.plrs.key.sdk.bootHost
@@ -116,10 +115,10 @@ public fun PolarisKeyApp(
     } else {
         null
     }
-    val prefs = LocalContext.current.getSharedPreferences("pkey_ui_update", android.content.Context.MODE_PRIVATE)
+    val prefs = rememberUpdatePrefs()
     remember(update, prefs) {
-        update.skippedVersion = prefs.getString("skipped_version", null)
-        update.onSkip = { prefs.edit().putString("skipped_version", it).apply() }
+        update.skippedVersion = prefs.skippedVersion
+        update.onSkip = prefs.saveSkipped
     }
     LaunchedEffect(client, bootOptions) {
         client.start()

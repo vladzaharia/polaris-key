@@ -320,7 +320,7 @@ async function prepareCreate(
       // a product has, so there must be no instant where a product row exists without it.
       services_json: serializeServices({ services: ctx.services }),
       services_source: ctx.servicesSource,
-      // The compat window is manifest-owned until an operator sets it in `update/settings`.
+      // The compat window is manifest-owned until an operator sets it through the settings API.
       compat_source: "manifest",
       // The CORS allowlist (P0-05). Validated by the manifest parser; NULL when undeclared.
       web_origins_json: serializeWebOrigins(manifest.webOrigins),
@@ -497,8 +497,8 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
     sql: `UPDATE products SET ${[...sets, "modified_at = ?"].join(", ")} WHERE slug = ?`,
     params: [...setParams, now, slug],
   });
-  // The compatibility window is operator-claimable (P0-01, 0022_a): once an operator sets it in
-  // `update/settings`, `compat_source = 'admin'` and this statement matches no row. The guard is
+  // The compatibility window is operator-claimable (P0-01, 0022_a): once an operator sets it through
+  // the settings API, `compat_source = 'admin'` and this statement matches no row. The guard is
   // the UPDATE's own WHERE clause, not a read-then-write.
   stmts.push({
     sql: `UPDATE products SET compat_min = ?, compat_max = ?

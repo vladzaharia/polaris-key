@@ -2,7 +2,7 @@ import * as React from "react";
 import type { DeliverableDto, ReleaseAccess } from "../../../../api.js";
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import {
-  ACCESS_DESCRIPTIONS,
+  PACK_ACCESS_DESCRIPTIONS,
   ACCESS_LABELS,
   label,
 } from "../../../../lib/labels.js";
@@ -111,7 +111,7 @@ export function PackGateForm({
         <FormField
           name="mode"
           label="Who may download"
-          help={ACCESS_DESCRIPTIONS[form.rhf.watch("mode")] ?? undefined}
+          help={PACK_ACCESS_DESCRIPTIONS[form.rhf.watch("mode")] ?? undefined}
         >
           {(f) => (
             <Select
@@ -119,7 +119,7 @@ export function PackGateForm({
               options={modes.map((m) => ({
                 value: m,
                 label: label(ACCESS_LABELS, m),
-                description: ACCESS_DESCRIPTIONS[m],
+                description: PACK_ACCESS_DESCRIPTIONS[m],
               }))}
             />
           )}

@@ -46,7 +46,7 @@ describe("Distribution → Access", () => {
     expect(
       (
         within(app).getByRole("radio", {
-          name: /Licensed/,
+          name: /^Licensed/,
         }) as HTMLButtonElement
       ).getAttribute("aria-checked"),
     ).toBe("true");

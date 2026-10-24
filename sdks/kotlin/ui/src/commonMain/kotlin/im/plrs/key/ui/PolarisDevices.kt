@@ -177,7 +177,7 @@ public fun PolarisDevicesScreen(
     val reopened = (failed as? PolarisDeviceActionError.Rename)?.takeIf { renaming == null && ui.busyId == null }
     val renameId = renaming ?: reopened?.deviceId
     // Back closes an open rename or confirm first, as Cancel does (UI-KITS.md DL9).
-    val back = polarisBack(enabled = renameId != null || removing != null) {
+    val back = PolarisBackHandler(enabled = renameId != null || removing != null) {
         if (renameId != null && reopened != null) onDismissError()
         renaming = null
         removing = null
@@ -256,17 +256,6 @@ internal sealed interface DeviceRowMode {
     data class Renaming(val text: String) : DeviceRowMode
 
     data object Confirming : DeviceRowMode
-}
-
-/** What this screen is: "tv", "tablet" or "phone". */
-@Composable
-internal fun ownFormFactor(): String {
-    val wide = androidx.compose.ui.platform.LocalConfiguration.current.smallestScreenWidthDp >= 600
-    return when {
-        isTelevision() -> "tv"
-        wide -> "tablet"
-        else -> "phone"
-    }
 }
 
 /** "This phone", "This tablet" or "This TV" by what the screen is (part.thisDeviceTitle), or the host's own line. */

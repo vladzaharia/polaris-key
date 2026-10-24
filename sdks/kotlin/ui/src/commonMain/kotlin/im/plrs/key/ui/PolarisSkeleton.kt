@@ -6,7 +6,6 @@
 
 package im.plrs.key.ui
 
-import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -31,7 +30,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -49,10 +47,7 @@ internal val LocalPolarisReduceMotion = compositionLocalOf<Boolean?> { null }
 @Composable
 internal fun rememberReduceMotion(): Boolean {
     LocalPolarisReduceMotion.current?.let { return it }
-    val resolver = LocalContext.current.contentResolver
-    return remember(resolver) {
-        runCatching { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
-    }
+    return rememberSystemReduceMotion()
 }
 
 /** The shimmer's sweep position (-0.3..1.3 across a shape), still at 0.35 under reduced motion. */

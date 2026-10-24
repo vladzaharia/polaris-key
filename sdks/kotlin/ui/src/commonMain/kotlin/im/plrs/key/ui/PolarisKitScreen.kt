@@ -10,12 +10,9 @@
 
 package im.plrs.key.ui
 
-import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +52,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -71,11 +67,7 @@ import kotlinx.serialization.json.JsonPrimitive
 /** The locale tag the catalog formats in: the device's first locale. */
 @Composable
 internal fun kitLocale(): String {
-    val configuration = LocalConfiguration.current
-    return remember(configuration) {
-        val locales = configuration.locales
-        if (locales.isEmpty) "en" else locales[0].toLanguageTag()
-    }
+    return systemLocaleTag()
 }
 
 /** What a line is on screen: a control, an announcement for assistive tech only, or text. */
@@ -289,7 +281,7 @@ private fun KitScreenBody(
     // account pane (the kit has no About); never on a gate.
     val attribution = lines.any { it.key == "part.poweredBy" } ||
         (PolarisTheme.current.showPoweredBy && component == KitComponent.accountAndLicense)
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     val semanticsModifier = modifier.semantics {
         if (announcement.isNotEmpty()) {
@@ -374,7 +366,7 @@ private fun KitScreenBody(
                 // The request QR sits under step 1, and only when the host gave the code to encode: a
                 // kit never makes up a code (DL14).
                 if (step == 1 && requestCode != null && qrLabel != null) {
-                    PolarisQrCode(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
+                    PolarisQr(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
                     Spacer(Modifier.height(8.dp))
                 }
                 val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
@@ -383,7 +375,7 @@ private fun KitScreenBody(
                         copyLine.text,
                         onClick = {
                             if (requestCode != null) {
-                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copyLine.text, requestCode))) }
+                                scope.launch { clipboard.setText(copyLine.text, requestCode) }
                             }
                             onAction(KitAction.forCopyKey(copyLine.key))
                         },
@@ -448,10 +440,10 @@ private fun KitKeyField(lines: List<KitLine>, busy: Boolean) {
 /** The paste control inside the key field: reads the clipboard text into the field. */
 @Composable
 internal fun PolarisPasteButton(description: String, onPaste: (String) -> Unit) {
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     PolarisIconButton(onClick = {
-        scope.launch { clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()?.trim()?.let(onPaste) }
+        scope.launch { clipboard.getText()?.trim()?.let(onPaste) }
     }) {
         Icon(PolarisPasteIcon, contentDescription = description, tint = PolarisTheme.accentText)
     }

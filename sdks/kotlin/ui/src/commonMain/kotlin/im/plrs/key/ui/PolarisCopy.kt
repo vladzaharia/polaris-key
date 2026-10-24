@@ -14,12 +14,8 @@
 
 package im.plrs.key.ui
 
-import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 
 /** User-facing copy for every screen of the kit. */
 @Immutable
@@ -286,30 +282,9 @@ public data class PolarisCopy(
         public fun resourceName(field: String): String =
             "pkey_ui_" + field.replace(Regex("([a-z0-9])([A-Z])"), "$1_$2").lowercase()
 
-        /**
-         * The copy from string resources: the kit's English defaults, or the app's translation of
-         * them for the current locale. Fields with no resource keep the English default.
-         */
-        public fun fromResources(resources: Resources, packageName: String): PolarisCopy {
-            val defaults = PolarisCopy()
-            val values = HashMap<String, String>()
-            for (field in FIELDS) {
-                @Suppress("DiscouragedApi") // the names are data (FIELDS), so ids cannot be static
-                val id = resources.getIdentifier(resourceName(field), "string", packageName)
-                if (id != 0) values[field] = resources.getString(id)
-            }
-            return defaults.with(values)
-        }
-
-        /** The copy for the current configuration (locale), read from string resources. */
+        /** The copy for the current configuration (locale), read from string resources where the platform has them. */
         @Composable
-        public fun localized(): PolarisCopy {
-            val context = LocalContext.current
-            val configuration = LocalConfiguration.current
-            return remember(context, configuration) {
-                fromResources(context.resources, context.packageName)
-            }
-        }
+        public fun localized(): PolarisCopy = polarisLocalizedCopy()
 
         /** Every field name, in declaration order. */
         public val FIELDS: List<String> by lazy {

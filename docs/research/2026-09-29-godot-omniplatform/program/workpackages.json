@@ -695,7 +695,7 @@
         "Split from P0-25 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/P0-25b-portal-public-route-tables.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-26",
@@ -1581,6 +1581,7 @@
         "P0-50",
         "CM-29",
         "ST-25b",
+        "ST-25c",
         "I-32b",
         "I-32c",
         "LX-41b",
@@ -9779,7 +9780,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.55],
-      "deps": ["ST-11", "ST-14", "ST-17", "ST-19b"],
+      "deps": ["ST-11", "ST-14", "ST-17", "ST-19b", "ST-32", "LX-16", "LX-40"],
       "planMode": false,
       "gates": ["migration", "table-owners", "rule-10"],
       "humanInputs": [],
@@ -9796,7 +9797,7 @@
     },
     {
       "id": "ST-25b",
-      "title": "Drop `products.admin_group` (the release after ST-25)",
+      "title": "Drop `products.admin_group` and `release_config.artifacts_access` (the release after ST-25)",
       "phase": "ST",
       "stage": "phase 5: governance and environments",
       "lane": "worker",
@@ -9813,6 +9814,27 @@
         "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
       ],
       "brief": "wp/ST-25b-drop-products-admin-group.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-25c",
+      "title": "Retire the legacy ownership markers (the `*_source` columns)",
+      "phase": "ST",
+      "stage": "phase 5: governance and environments",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["ST-25", "P0-49"],
+      "planMode": false,
+      "gates": ["migration", "table-owners"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/P0-25b-ST-25-slices.md S7 and D7 (lead decision 2026-10-23)",
+        "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
+      ],
+      "brief": "wp/ST-25c-retire-source-markers.md",
       "status": "todo"
     },
     {

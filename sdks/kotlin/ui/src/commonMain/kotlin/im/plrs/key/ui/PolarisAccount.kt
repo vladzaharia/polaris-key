@@ -107,7 +107,7 @@ public fun PolarisAccountScreen(
         // Two panes always show an item; one pane shows the list until an item is chosen.
         val item = chosen?.let { runCatching { AccountItem.valueOf(it) }.getOrNull() }
         val open = item ?: if (split) AccountItem.Settings else null
-        val back = polarisBack(enabled = !split && item != null) { chosen = null }
+        val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
         val list: @Composable () -> Unit = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.group)) {
                 navigationIcon?.let {

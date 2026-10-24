@@ -17,8 +17,6 @@
 
 package im.plrs.key.ui
 
-import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -31,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
  * the platform monospace instead.
  */
 @OptIn(ExperimentalTextApi::class)
-public val PolarisKitMono: FontFamily = if (android.os.Build.VERSION.SDK_INT >= 26) {
+public actual val PolarisKitMono: FontFamily = if (android.os.Build.VERSION.SDK_INT >= 26) {
     FontFamily(
         Font(R.font.polaris_jetbrains_mono_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     )
@@ -41,7 +39,7 @@ public val PolarisKitMono: FontFamily = if (android.os.Build.VERSION.SDK_INT >= 
 }
 
 /** Rubik at 400, 500 and 600, from the kit's variable font: each weight sets the font's wght axis. */
-public val PolarisRubik: FontFamily = polarisRubikFor(android.os.Build.VERSION.SDK_INT)
+public actual val PolarisRubik: FontFamily = polarisRubikFor(android.os.Build.VERSION.SDK_INT)
 
 /**
  * Rubik for an API level. FontVariation needs API 26: below it a variable font renders at its
@@ -60,30 +58,5 @@ internal fun polarisRubikFor(sdkInt: Int): FontFamily = if (sdkInt >= 26) {
         Font(R.font.polaris_rubik_regular, FontWeight.Normal),
         Font(R.font.polaris_rubik_regular, FontWeight.Medium),
         Font(R.font.polaris_rubik_bold, FontWeight.SemiBold),
-    )
-}
-
-/** [base] re-set in Rubik: 600 for display, headline and title roles, 500 for labels, 400 for body. */
-public fun polarisBrandTypography(base: Typography): Typography {
-    fun weight(style: TextStyle, weight: FontWeight) = style.copy(fontFamily = PolarisRubik, fontWeight = weight)
-    val heading = FontWeight.SemiBold
-    val label = FontWeight.Medium
-    val body = FontWeight.Normal
-    return Typography(
-        displayLarge = weight(base.displayLarge, heading),
-        displayMedium = weight(base.displayMedium, heading),
-        displaySmall = weight(base.displaySmall, heading),
-        headlineLarge = weight(base.headlineLarge, heading),
-        headlineMedium = weight(base.headlineMedium, heading),
-        headlineSmall = weight(base.headlineSmall, heading),
-        titleLarge = weight(base.titleLarge, heading),
-        titleMedium = weight(base.titleMedium, heading),
-        titleSmall = weight(base.titleSmall, heading),
-        bodyLarge = weight(base.bodyLarge, body),
-        bodyMedium = weight(base.bodyMedium, body),
-        bodySmall = weight(base.bodySmall, body),
-        labelLarge = weight(base.labelLarge, label),
-        labelMedium = weight(base.labelMedium, label),
-        labelSmall = weight(base.labelSmall, label),
     )
 }

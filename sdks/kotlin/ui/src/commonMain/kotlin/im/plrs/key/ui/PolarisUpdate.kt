@@ -346,7 +346,7 @@ private fun PolarisSkipRow(content: @Composable () -> Unit) {
 private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
-    val uri = androidx.compose.ui.platform.LocalUriHandler.current
+    val opener = rememberPolarisOpener()
     val lines = ui.notes.take(PolarisUpdateUi.MAX_NOTES)
     if (lines.isEmpty() && ui.notesUrl == null) return
     Spacer(Modifier.height(16.dp))
@@ -365,7 +365,7 @@ private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
             Row(
                 Modifier
                     .heightIn(min = 48.dp)
-                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { runCatching { uri.openUri(url) } },
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { opener(url) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.primary)
@@ -396,8 +396,7 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
         // The sheet and the card span the window: the dialog's own width would cap them.
         properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory, usePlatformDefaultWidth = false),
     ) {
-        val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
-        androidx.compose.runtime.SideEffect { dialogWindow?.setDimAmount(if (dark) 0.6f else 0.32f) }
+        PolarisDialogDim(if (dark) 0.6f else 0.32f)
         PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)
     }
 }

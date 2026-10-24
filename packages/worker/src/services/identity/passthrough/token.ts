@@ -7,7 +7,7 @@
  * The app redeems the code Continue handed it, with the PKCE verifier, and gets a device token.
  * The body is form-encoded (a JSON body is `invalid_request`), the answer is `no-store`, CORS
  * answers only the product's `web.origins` and never with credentials (`core/cors.ts`,
- * `identity/token` in `CORS_SERVICE_PATHS`). It needs `X-PKey-Device`; the device metadata
+ * the `cors: true` row of `identity/token`). It needs `X-PKey-Device`; the device metadata
  * headers are read when present, as on `license/activate`.
  *
  * ── THE ORDER ───────────────────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ Package feeds let a product publish libraries and tools to the package managers 
 
 ## Feeds set themselves up
 
-Declare a package in `.pkey/release.yaml` and sync: each ecosystem gets a feed at **Customers**, with a [derived namespace](#the-derived-namespace). There is no console step, and CI with `publishing.trustedPublisher` publishes into it at once. See [Publish a package](/docs/features/ship-builds/packages/publish/).
+Declare a package in `.pkey/release.yaml` and sync: each ecosystem gets a feed at **Licensed**, with a [derived namespace](#the-derived-namespace). There is no console step, and CI with `publishing.trustedPublisher` publishes into it at once. See [Publish a package](/docs/features/ship-builds/packages/publish/).
 
 | A sync        | Result                                                                                                                             |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -70,12 +70,12 @@ Every feed sits under its owner, the product slug, so a product never shadows an
 
 Every read runs one access check before the edge cache: the platform's switch for the ecosystem, then the owner's Distribution and package-feeds switch, then the feed's own switch, then the access mode. The stricter of the feed's mode and the package's delivery access applies.
 
-| Mode      | Who may install                                                                                                                                                                                          |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public    | Anyone. No credential is ever looked up                                                                                                                                                                  |
-| Customers | A registry token (`pkeyr_…`) of this product, or a personal token (`pkeyp_…`) of an account with an active license in it. An owner-bound or CI token passes; a license-bound one needs an active license |
+| Mode     | Who may install                                                                                                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public   | Anyone. No credential is ever looked up                                                                                                                                                                  |
+| Licensed | A registry token (`pkeyr_…`) of this product, or a personal token (`pkeyp_…`) of an account with an active license in it. An owner-bound or CI token passes; a license-bound one needs an active license |
 
-Customers is stored as `licensed`. The console writes only Public and Customers (`422`, reason `access_mode_unavailable`, for the rest). A feed from before the two options may read `authenticated` (the same strictness) or `entitled` (a license-bound or personal token also needs the package's gate flag; a package with no gate admits none). An operator's migration job moves them to Customers and gives each package its own gate row first, so no token gains access.
+The console writes only Public and Licensed (`422`, reason `access_mode_unavailable`, for the rest). A feed from before the two options may read `authenticated` (the same strictness) or `entitled` (a license-bound or personal token also needs the package's gate flag; a package with no gate admits none). An operator's migration job moves them to Licensed and gives each package its own gate row first, so no token gains access.
 
 A token that is absent, malformed, unknown, expired, revoked, another owner's or outside its feeds gets the registry's native `401`. A refused license token is `403`. Device tokens (`pkeyt_…`) and license keys (`pkey_…`) are never registry credentials. Setup for each client is under **Private feeds** on [Install the SDKs and the CLI](/docs/build/install/).
 
@@ -130,7 +130,7 @@ Every feed routes only its own names to itself, so no other name can resolve the
 
 Role required: platform admin. Both scopes use the same pages: **Platform → Package feeds** for the platform's own packages, and **Ship builds → Packages** for one product's feeds. The product page shows whenever Distribution is on. The platform policy, each ecosystem's switch and size ceiling above every product's own settings, is under **Platform → Settings → Storefront and hosting**; a feed's Settings page links to it.
 
-The product's **Packages** page has one card per feed with a **Customers** or **Public** chip, or **Waiting for the first package…**; with no package declared it shows the declaration and the CI publish command. In platform scope, the **Overview** has one row per ecosystem with its status, packages, versions, last publish, access mode and registry URL. A status is **Enabled**, **Off** (with the reason) or **Not available** (the platform policy switched the ecosystem off). Before the platform's feeds exist, **Set up platform feeds** creates the system product and one feed per ecosystem. Running it again changes nothing a member set.
+The product's **Packages** page has one card per feed with a **Licensed** or **Public** chip, or **Waiting for the first package…**; with no package declared it shows the declaration and the CI publish command. In platform scope, the **Overview** has one row per ecosystem with its status, packages, versions, last publish, access mode and registry URL. A status is **Enabled**, **Off** (with the reason) or **Not available** (the platform policy switched the ecosystem off). Before the platform's feeds exist, **Set up platform feeds** creates the system product and one feed per ecosystem. Running it again changes nothing a member set.
 
 Each feed page has four tabs and **Rebuild feed** under **More actions**:
 
@@ -149,7 +149,7 @@ Each feed page has four tabs and **Rebuild feed** under **More actions**:
 | Simple API              | PyPI only: **HTML pages**                                                                                         |
 | Signing and identifiers | Swift only: **Require signed releases** and **Repository URLs**                                                   |
 
-Moving **Access** from Customers to Public asks first. Maven always hides yanked versions, so it has no yank setting.
+Moving **Access** from Licensed to Public asks first. Maven always hides yanked versions, so it has no yank setting.
 
 ### Turn off package feeds
 

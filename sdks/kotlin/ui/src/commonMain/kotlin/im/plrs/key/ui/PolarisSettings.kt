@@ -315,7 +315,7 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, Json
         null -> Unit
     }
     // At large font scales the value moves under its name, so neither is squeezed into a sliver.
-    val stacked = LocalDensity.current.fontScale >= 1.5f
+    val stacked = polarisFontScale() >= 1.5f
     val value: @Composable (Modifier) -> Unit = { modifier ->
         Row(
             modifier,

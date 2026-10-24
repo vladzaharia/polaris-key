@@ -93,12 +93,13 @@ kotlin {
         publishLibraryVariants("release")
     }
 
-    // The desktop (JVM) target: ui-core and Compose only; :sdk joins in a later slice (UK-10.2+).
+    // The desktop (JVM) target: the whole kit compiles for it (UK-10.3); the kit's few Android edges are expect/actual.
     jvm("desktop")
 
     sourceSets {
         commonMain.dependencies {
             api(project(":ui-core"))
+            api(project(":sdk"))
             // The Compose Multiplatform plugin's coordinates (UK-10.1, K1): on Android they resolve to
             // the androidx artifacts, on desktop to the JetBrains ones. 1.8.2, built on Kotlin 2.1.
             api(compose.runtime)
@@ -110,7 +111,6 @@ kotlin {
         androidMain.dependencies {
             // Android keeps the androidx BOM, so its versions stay the ones the baselines were recorded on.
             api(project.dependencies.platform(libs.compose.bom))
-            api(project(":sdk"))
             implementation(libs.compose.ui.graphics)
             implementation(libs.compose.material.icons.core)
             implementation(libs.compose.ui.tooling.preview)
@@ -121,6 +121,7 @@ kotlin {
         }
         getByName("desktopTest") {
             dependencies {
+                implementation(project.dependencies.testFixtures(project(":core")))
                 implementation(compose.desktop.uiTestJUnit4)
                 implementation(compose.desktop.currentOs)
                 implementation(libs.roborazzi.compose.desktop)

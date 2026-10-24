@@ -14,7 +14,6 @@
 
 package im.plrs.key.ui
 
-import android.content.ClipData
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,8 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material.icons.materialIcon
-import androidx.compose.material.icons.materialPath
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,7 +44,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,10 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -74,72 +69,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.net.URI
 
-
-/**
- * The sign-in state kept by the Activity's ViewModel store, so a rotation keeps the same code (a new
- * one would kill the code the person is typing on their phone) and finishing the Activity releases
- * it. One per Activity; it follows the client it was made for and starts over for a different one.
- */
-internal class PolarisSignInViewModel : androidx.lifecycle.ViewModel() {
-    private var owner: Any? = null
-    var state: PolarisSignInState? = null
-        private set
-
-    /** The composition's "signed in" reaction; null while no screen is attached, so nothing stale runs. */
-    @Volatile
-    var onSignedIn: (() -> Unit)? = null
-
-    /** The state for [client]: the held one, or a fresh one for a new client. */
-    fun stateFor(client: Any, actions: PolarisSignInActions): PolarisSignInState {
-        val held = state
-        if (held != null && owner === client) return held
-        held?.cancel()
-        owner = client
-        return PolarisSignInState(actions, viewModelScope, onSignedIn = { onSignedIn?.invoke() }).also { state = it }
-    }
-
-    override fun onCleared() {
-        state?.cancel()
-        state = null
-        owner = null
-        onSignedIn = null
-    }
-}
-
-/** The ViewModelStoreOwner behind [this] context (the Activity), or null. */
-private tailrec fun android.content.Context.storeOwner(): androidx.lifecycle.ViewModelStoreOwner? = when (this) {
-    is androidx.lifecycle.ViewModelStoreOwner -> this
-    is android.content.ContextWrapper -> baseContext.storeOwner()
-    else -> null
-}
-
-/**
- * The sign-in state for [key] (the client), held by the Activity's ViewModel store (see
- * [PolarisSignInViewModel]); [onSignedIn] runs while this composition is attached.
- */
-@Composable
-internal fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val owner = remember(context) { context.storeOwner() }
-    val vm = remember(owner) {
-        owner?.let { androidx.lifecycle.ViewModelProvider(it)["polaris-key-sign-in", PolarisSignInViewModel::class.java] }
-            ?: PolarisSignInViewModel()
-    }
-    val latest by androidx.compose.runtime.rememberUpdatedState(onSignedIn)
-    DisposableEffect(vm) {
-        vm.onSignedIn = { latest() }
-        onDispose { vm.onSignedIn = null }
-    }
-    return remember(vm, key) { vm.stateFor(key, actions) }
-}
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -252,33 +185,30 @@ private fun PolarisCodeView(
 ) {
     val copy = PolarisTheme.copy
     val theme = PolarisTheme.current
-    val uriHandler = LocalUriHandler.current
+    val opener = rememberPolarisOpener()
     val link = ui.prompt.verificationUriComplete
     val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.prompt.verificationUri)
     var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
     // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
     val linkOk = isSafeSignInLink(link)
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val clipScope = rememberCoroutineScope()
     val copyLink: () -> Unit = copyLink@{
         // Only a validated link is ever copied.
         if (!linkOk) return@copyLink
         if (onCopyLink != null) onCopyLink(link)
-        else clipScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+        else clipScope.launch { clipboard.setText(copy.signInCopyLink, link) }
     }
     val open: () -> Unit = {
-        val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
+        val opened = linkOk && (if (onOpenBrowser != null) runCatching { onOpenBrowser(link) }.isSuccess else opener(link))
         noBrowser = !opened
     }
     // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
-    val back = polarisBack(onBack = onCancel)
+    val back = PolarisBackHandler(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
-    val view = LocalView.current
+    val announce = rememberPolarisAnnouncer()
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
-    LaunchedEffect(ui.prompt.userCode) {
-        @Suppress("DEPRECATION") // the one-off announcement API; a live region would repeat on every tick
-        view.announceForAccessibility(spoken)
-    }
+    LaunchedEffect(ui.prompt.userCode) { announce(spoken) }
     val countdown: @Composable () -> Unit = {
         Spacer(Modifier.height(PolarisSpace.controls))
         PolarisCountdown(ui.fractionLeft, copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)))
@@ -326,7 +256,7 @@ private fun PolarisCodeView(
         },
         detail = {
             if (showQr) {
-                if (linkOk) PolarisQrCode(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
+                if (linkOk) PolarisQr(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
                 deviceLine()
             } else {
                 PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
@@ -363,16 +293,11 @@ private fun PolarisCodeView(
     )
 }
 
-/** The longest link the screen opens or encodes (a QR code holds more, but nothing legitimate is longer). */
-internal const val MAX_SIGN_IN_LINK: Int = 2048
+/** The longest link the screen opens or encodes. */
+internal const val MAX_SIGN_IN_LINK: Int = MAX_LINK_LENGTH
 
-/** An https link of at most [MAX_SIGN_IN_LINK] characters with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
-internal fun isSafeSignInLink(raw: String): Boolean = try {
-    val u = URI(raw)
-    raw.length <= MAX_SIGN_IN_LINK && u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
-} catch (e: Exception) {
-    false
-}
+/** An https link the opener accepts ([isSafeHttpsLink]): the only kind the sign-in screen opens, encodes or copies. */
+internal fun isSafeSignInLink(raw: String): Boolean = isSafeHttpsLink(raw)
 
 /** A lede template (`%1$s` for the address) with the address set inline at 600 weight, unbroken. */
 @Composable
@@ -485,7 +410,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
 @Composable
 internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?) {
     val copy = PolarisTheme.copy
-    val clipboard = LocalClipboard.current
+    val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) {
@@ -500,7 +425,7 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
             if (onCopyLink != null) {
                 onCopyLink(link)
             } else {
-                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+                scope.launch { clipboard.setText(copy.signInCopyLink, link) }
             }
             copied = true
         },
@@ -542,95 +467,52 @@ internal fun PolarisCountdown(fraction: Float, label: String) {
     }
 }
 
+/** What Material's `materialIcon { materialPath { } }` builds, without the Android-only icon set: one black path on a 24 dp grid. */
+private fun polarisMaterialIcon(name: String, pathBuilder: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector =
+    ImageVector.Builder(name = name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+        .path(fill = SolidColor(Color.Black), pathBuilder = pathBuilder) // polaris-lint: allow-colour (the Icon tints it)
+        .build()
+
 /** Material's "content copy" glyph, drawn by the kit (the legacy icon set is not used). */
 internal val PolarisCopyIcon: ImageVector by lazy {
-    materialIcon(name = "Polaris.ContentCopy") {
-        materialPath {
-            moveTo(16.0f, 1.0f)
-            lineTo(4.0f, 1.0f)
-            curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
-            verticalLineToRelative(14.0f)
-            horizontalLineToRelative(2.0f)
-            lineTo(4.0f, 3.0f)
-            horizontalLineToRelative(12.0f)
-            lineTo(16.0f, 1.0f)
-            close()
-            moveTo(19.0f, 5.0f)
-            lineTo(8.0f, 5.0f)
-            curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
-            verticalLineToRelative(14.0f)
-            curveToRelative(0.0f, 1.1f, 0.9f, 2.0f, 2.0f, 2.0f)
-            horizontalLineToRelative(11.0f)
-            curveToRelative(1.1f, 0.0f, 2.0f, -0.9f, 2.0f, -2.0f)
-            lineTo(21.0f, 7.0f)
-            curveToRelative(0.0f, -1.1f, -0.9f, -2.0f, -2.0f, -2.0f)
-            close()
-            moveTo(19.0f, 21.0f)
-            lineTo(8.0f, 21.0f)
-            lineTo(8.0f, 7.0f)
-            horizontalLineToRelative(11.0f)
-            verticalLineToRelative(14.0f)
-            close()
-        }
+    polarisMaterialIcon("Polaris.ContentCopy") {
+        moveTo(16.0f, 1.0f)
+        lineTo(4.0f, 1.0f)
+        curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
+        verticalLineToRelative(14.0f)
+        horizontalLineToRelative(2.0f)
+        lineTo(4.0f, 3.0f)
+        horizontalLineToRelative(12.0f)
+        lineTo(16.0f, 1.0f)
+        close()
+        moveTo(19.0f, 5.0f)
+        lineTo(8.0f, 5.0f)
+        curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
+        verticalLineToRelative(14.0f)
+        curveToRelative(0.0f, 1.1f, 0.9f, 2.0f, 2.0f, 2.0f)
+        horizontalLineToRelative(11.0f)
+        curveToRelative(1.1f, 0.0f, 2.0f, -0.9f, 2.0f, -2.0f)
+        lineTo(21.0f, 7.0f)
+        curveToRelative(0.0f, -1.1f, -0.9f, -2.0f, -2.0f, -2.0f)
+        close()
+        moveTo(19.0f, 21.0f)
+        lineTo(8.0f, 21.0f)
+        lineTo(8.0f, 7.0f)
+        horizontalLineToRelative(11.0f)
+        verticalLineToRelative(14.0f)
+        close()
     }
 }
 
 /** Material's "check" glyph, drawn by the kit: the copy button's "Link copied" state. */
 internal val PolarisCheckIcon: ImageVector by lazy {
-    materialIcon(name = "Polaris.Check") {
-        materialPath {
-            moveTo(9.0f, 16.17f)
-            lineTo(4.83f, 12.0f)
-            lineToRelative(-1.42f, 1.41f)
-            lineTo(9.0f, 19.0f)
-            lineTo(21.0f, 7.0f)
-            lineToRelative(-1.41f, -1.41f)
-            close()
-        }
-    }
-}
-
-/** The modules of a QR code for [content]: a square of booleans, true for dark. */
-public fun qrModules(content: String): Array<BooleanArray> {
-    val hints = mapOf(EncodeHintType.MARGIN to 0, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M)
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints)
-    return Array(matrix.height) { y -> BooleanArray(matrix.width) { x -> matrix[x, y] } }
-}
-
-/**
- * A QR code of [content] on its own tile: 92 % white with an 8 dp quiet zone (UI-KITS.md §4.3),
- * dark modules, in both themes. Size it with the kit's one QR size (the window's `qrSize`).
- */
-@Composable
-public fun PolarisQrCode(content: String, contentDescription: String, modifier: Modifier = Modifier) {
-    // A link the encoder refuses draws no code (the screen still has the code and Copy link).
-    val modules = remember(content) { runCatching { qrModules(content) }.getOrNull() } ?: return
-    val status = PolarisTheme.status
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(MaterialTheme.shapes.small)
-            .background(status.qrPlate)
-            .padding(8.dp)
-            .semantics {
-                this.contentDescription = contentDescription
-                role = Role.Image
-            },
-    ) {
-        Canvas(Modifier.matchParentSize()) {
-            val cell = size.minDimension / modules.size
-            for (y in modules.indices) {
-                val row = modules[y]
-                for (x in row.indices) {
-                    if (!row[x]) continue
-                    drawRect(
-                        color = status.qrModules,
-                        topLeft = Offset(x * cell, y * cell),
-                        // A hair of overlap so neighbouring modules never show a seam.
-                        size = Size(cell + 0.5f, cell + 0.5f),
-                    )
-                }
-            }
-        }
+    polarisMaterialIcon("Polaris.Check") {
+        moveTo(9.0f, 16.17f)
+        lineTo(4.83f, 12.0f)
+        lineToRelative(-1.42f, 1.41f)
+        lineTo(9.0f, 19.0f)
+        lineTo(21.0f, 7.0f)
+        lineToRelative(-1.41f, -1.41f)
+        close()
     }
 }
