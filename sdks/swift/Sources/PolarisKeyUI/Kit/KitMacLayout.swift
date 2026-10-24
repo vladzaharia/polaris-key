@@ -59,7 +59,7 @@
 
     /// The narrow window's one-line header strip: the icon and the product's name.
     struct KitMacStrip: View {
-        /// Room for the traffic lights when the content runs under the title bar.
+        /// The icon's inset in the strip.
         var leading: CGFloat
 
         var body: some View {
@@ -108,7 +108,7 @@
             switch arrangement {
             case .strip:
                 VStack(spacing: 0) {
-                    KitMacStrip(leading: safeTop > 0 ? 84 : 16)
+                    KitMacStrip(leading: KitMacArrangement.stripInset)
                         .padding(.horizontal, KitMacArrangement.artMargin)
                         .padding(.top, KitMacArrangement.artMargin)
                     endPane(style, height: geo.size.height - 78, safeTop: 0)

@@ -67,6 +67,8 @@ public enum KitMacArrangement: Sendable, Equatable {
     public static let sheetWidth: CGFloat = 440
     /// The art pane's margin from the window (and the strip's from the top and sides).
     public static let artMargin: CGFloat = 14
+    /// The icon's inset in the header strip.
+    public static let stripInset: CGFloat = 16
     /// The gap between the Welcome capsules.
     public static let actsSpacing: CGFloat = 8
     /// The sheet form's padding.

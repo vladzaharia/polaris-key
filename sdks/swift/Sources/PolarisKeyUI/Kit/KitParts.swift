@@ -272,6 +272,7 @@ private struct KeyFieldSurface: ViewModifier {
 
     private func filled(_ content: Content) -> some View {
         content
+            .textFieldStyle(.plain)
             .padding(.horizontal, style.space(.md))
             .frame(minHeight: style.controlHeight)
             .background(
