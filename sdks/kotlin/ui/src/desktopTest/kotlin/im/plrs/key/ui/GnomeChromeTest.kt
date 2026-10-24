@@ -25,6 +25,12 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.requestFocus
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -49,7 +55,7 @@ class GnomeChromeTest {
 
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun controlsAre34HighAtRadius8AndTheSuggestedActionIsAPill() = withPlatform("Gnome") {
+    fun bothActionsOfAPairAre40HighPills() = withPlatform("Gnome") {
         runDesktopComposeUiTest(width = 420, height = 200) {
             setContent {
                 PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
@@ -62,16 +68,13 @@ class GnomeChromeTest {
                 }
             }
             waitForIdle()
+            // Both actions of a pair are 40 px pills; 34 px at radius 8 is for entries and aux controls.
             for (tag in listOf("suggested", "plain")) {
-                assertEquals(34.dp, onNodeWithTag(tag).getBoundsInRoot().height, "$tag is 34 dp tall")
+                assertEquals(40.dp, onNodeWithTag(tag).getBoundsInRoot().height, "$tag is 40 dp tall")
+                // (3,3) is outside a pill's corner (centre 20,20: distance 24) and its (0,0) is outside any rounding.
+                val node = onNodeWithTag(tag)
+                assertEquals(node.pixel(0, 0), node.pixel(3, 3), "$tag is a pill: (3,3) is outside it")
             }
-            // The corner pixel (0,0) is outside any rounding. (3,3) is inside a radius-8 corner (its
-            // centre is at 8,8: distance 7.1) and outside a pill's (centre 17,17: distance 19.8).
-            val plain = onNodeWithTag("plain")
-            assertNotEquals(plain.pixel(0, 0), plain.pixel(3, 3), "the secondary button has a radius-8 corner")
-            assertEquals(plain.pixel(0, 0), plain.pixel(1, 1), "radius 8 clips (1,1)")
-            val suggested = onNodeWithTag("suggested")
-            assertEquals(suggested.pixel(0, 0), suggested.pixel(3, 3), "the suggested action is a pill: (3,3) is outside it")
         }
     }
 
@@ -196,7 +199,9 @@ class GnomeChromeTest {
             val s = onNodeWithTag("suggested").getBoundsInRoot()
             val p = onNodeWithTag("plain").getBoundsInRoot()
             assertTrue(s.bottom <= p.top, "stacked, the suggested action on top")
-            assertTrue(s.width <= 320.dp, "at most 320 wide")
+            assertTrue(s.width <= 240.dp, "at most 240 wide")
+            assertEquals(40.dp, s.height, "a pill")
+            assertEquals(40.dp, p.height, "a pill")
             assertEquals(s.left, p.left, "one column")
             val centre = (s.left + s.right) / 2
             assertEquals(550f, centre.value, 2f, "centred in a wide window, not a start-aligned block")
@@ -222,6 +227,170 @@ class GnomeChromeTest {
             assertEquals(1f, px.alpha, "an opaque page")
             // The portal's blue, resolved for contrast on a dark ground: still blue.
             assertTrue(primary.blue > primary.red, "the accent is the portal's blue, got $primary")
+        }
+    }
+
+    // ----- UK-10.6 fix round: Replace alert wiring, entry, type, focus ring, status icon -----
+
+    private fun replaceScreen() = KitScreen(
+        component = KitComponent.signIn,
+        state = "replace",
+        copy = listOf(
+            CopyLine("signin.replace.open"),
+            CopyLine("signin.replace.lede", mapOf("thisDevice" to CopyArgument.Text("this computer"))),
+            CopyLine("signin.replace.title", mapOf("device" to CopyArgument.Text("Work laptop"))),
+        ),
+        actions = emptyList(),
+    )
+
+    @OptIn(ExperimentalTestApi::class)
+    private fun withReplaceScreen(block: androidx.compose.ui.test.ComposeUiTest.(actions: MutableList<KitAction?>) -> Unit) = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 700, height = 700) {
+            val actions = mutableListOf<KitAction?>()
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    PolarisKitScreen(replaceScreen(), onAction = { actions += it })
+                }
+            }
+            waitForIdle()
+            block(actions)
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun replaceOpensTheAlertWithBackFocusedAndADestructiveConfirm() = withReplaceScreen { actions ->
+        onNodeWithText("Replace Work laptop").assertDoesNotExist()
+        onNodeWithText("Replace…").performClick()
+        waitForIdle()
+        onNodeWithText("Replace Work laptop").assertExists()
+        onNodeWithText("Back").assertIsFocused()
+        // The confirm is destructive-styled: its pill is the error colour.
+        val confirm = onNodeWithText("Replace Work laptop")
+        val b = confirm.getBoundsInRoot()
+        val px = onRoot().captureToImage().toPixelMap()
+        var error = Color.Unspecified
+        // sample inside the confirm pill, left of its label
+        val sample = px[b.left.value.toInt() + 6, ((b.top.value + b.bottom.value) / 2).toInt()]
+        assertTrue(sample.red > sample.blue && sample.red > 0.5f, "the confirm is destructive red, got $sample")
+        confirm.performClick()
+        waitForIdle()
+        assertEquals(listOf(KitAction.forCopyKey("signin.replace.confirm")), actions)
+        onNodeWithText("Replace Work laptop").assertDoesNotExist()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun escapeIsBackAndFocusIsTrapped() = withReplaceScreen { _ ->
+        onNodeWithText("Replace…").performClick()
+        waitForIdle()
+        onNodeWithText("Back").assertIsFocused()
+        // Tab cycles Back -> Replace -> Back: it never reaches the window behind the alert.
+        onRoot().performKeyInput { keyDown(Key.Tab); keyUp(Key.Tab) }
+        waitForIdle()
+        onNodeWithText("Replace Work laptop").assertIsFocused()
+        onRoot().performKeyInput { keyDown(Key.Tab); keyUp(Key.Tab) }
+        waitForIdle()
+        onNodeWithText("Back").assertIsFocused()
+        onRoot().performKeyInput { keyDown(Key.Escape); keyUp(Key.Escape) }
+        waitForIdle()
+        onNodeWithText("Replace Work laptop").assertDoesNotExist()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theEntryHasItsLabelAboveRadius8AndAnAccentFocusOutline() = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 500, height = 300) {
+            var accentFocus = Color.Unspecified
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    accentFocus = PolarisTheme.focusColor
+                    PolarisSurface { _, _ -> Column(Modifier.padding(24.dp)) { PolarisTextField("", {}, "Licence key", placeholder = "pkey_…") } }
+                }
+            }
+            waitForIdle()
+            val label = onNodeWithText("Licence key").getBoundsInRoot()
+            val field = onNodeWithContentDescription("Licence key").getBoundsInRoot()
+            assertTrue(label.bottom <= field.top + 8.dp, "the label sits above the field, not inside it")
+            assertTrue(label.top < field.top, "label above")
+            assertTrue(onNodeWithTag("polaris.gnome.entry").getBoundsInRoot().height >= 34.dp, "a 34 px entry")
+            val rest = onNodeWithTag("polaris.gnome.entry").captureToImage().toPixelMap()
+            onNodeWithContentDescription("Licence key").requestFocus()
+            waitForIdle()
+            val focused = onNodeWithTag("polaris.gnome.entry").captureToImage().toPixelMap()
+            val mid = focused.width / 2
+            // The 2 px outline is the accent (the theme's focus colour), inside the edge; at rest it is a hairline.
+            assertEquals(accentFocus, focused[mid, 0], "the focused entry's top edge is the accent")
+            assertEquals(accentFocus, focused[mid, 1], "2 px wide")
+            assertNotEquals(rest[mid, 1], focused[mid, 1], "the outline appears on focus")
+            // Radius 8: the corner pixel is outside the rounded field.
+            assertNotEquals(focused[mid, 0], focused[0, 0], "the corner is cut by radius 8")
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theTypeScaleIsGnomes() = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 500, height = 300) {
+            var body = 0f
+            var bodyLine = 0f
+            var title = 0f
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    PolarisSurface { _, _ ->
+                        body = MaterialTheme.typography.bodyLarge.fontSize.value
+                        bodyLine = MaterialTheme.typography.bodyLarge.lineHeight.value
+                        title = MaterialTheme.typography.headlineSmall.fontSize.value
+                    }
+                }
+            }
+            waitForIdle()
+            assertEquals(15f, body); assertEquals(21f, bodyLine); assertEquals(22f, title)
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theFocusRingIsTwoPxInsideTheEdge() = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 300, height = 120) {
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    PolarisSurface { _, _ -> Box(Modifier.padding(24.dp)) { PolarisPrimaryButton("Go", {}, Modifier.testTag("b")) } }
+                }
+            }
+            waitForIdle()
+            val rest = onNodeWithTag("b").captureToImage().toPixelMap()
+            onNodeWithTag("b").requestFocus()
+            waitForIdle()
+            val node = onNodeWithTag("b")
+            val focus = node.captureToImage().toPixelMap()
+            val h = node.getBoundsInRoot().height.value.toInt()
+            // The ring is drawn on the control's own pixels (offset -2): the box is unchanged and its edge pixel changes.
+            assertEquals(40, h)
+            // Ring (2) then a 1 px page-coloured line: the pixels 2..3 in from the edge change on focus.
+            assertTrue((2..3).any { rest[it, h / 2] != focus[it, h / 2] }, "the ring is drawn inside the edge")
+            assertTrue((2..3).any { rest[h / 2, it] != focus[h / 2, it] }, "and inside the top edge")
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theOfflineStatusPageUsesNetworkOffline() = withPlatform("Gnome") {
+        runDesktopComposeUiTest(width = 400, height = 300) {
+            var icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+            var other: androidx.compose.ui.graphics.vector.ImageVector? = null
+            setContent {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                    PolarisSurface { _, _ ->
+                        icon = polarisMessageIcon(PolarisMessageKind.Offline)
+                        other = polarisMessageIcon(PolarisMessageKind.Info)
+                    }
+                }
+            }
+            waitForIdle()
+            assertEquals(PolarisGnome.networkOffline, icon)
+            assertNotEquals(PolarisSymbols.Refresh, icon)
+            assertEquals(PolarisSymbols.Info, other)
         }
     }
 }

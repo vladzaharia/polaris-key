@@ -39,7 +39,14 @@ class GnomeBoardShotsTest {
             )
         },
         Board("device-limit") { PolarisActivationScreen(limit) },
-        Board("replace-alert", DEFAULT_SIZES + (480 to 640)) {
+        // The wired path: the sign-in step with its "Replace…", and the confirm state drawn as the alert.
+        Board("replace-step", DEFAULT_SIZES + (480 to 640)) {
+            PolarisKitScreen(replaceStep("replace"))
+        },
+        Board("replace-wired", DEFAULT_SIZES + (480 to 640) + (320 to 640)) {
+            PolarisKitScreen(replaceStep("replace-open"))
+        },
+        Board("replace-alert", DEFAULT_SIZES + (480 to 640) + (320 to 640)) {
             Box(Modifier.fillMaxSize()) {
                 PolarisActivationScreen(limit)
                 PolarisReplaceAlertOverlay("Mara's Mac", "this computer", BoardFixtures.PRODUCT, {}, {})
@@ -63,6 +70,27 @@ class GnomeBoardShotsTest {
                 PolarisSecondaryButton("Continue offline", {})
             }
         },
+    )
+
+    private fun replaceStep(state: String) = KitScreen(
+        component = if (state == "replace") KitComponent.signIn else KitComponent.licenseChoice,
+        state = state,
+        copy = listOf(
+            CopyLine("signin.replace.open"),
+            CopyLine("signin.replace.lede", mapOf("thisDevice" to CopyArgument.Text("this computer"))),
+            CopyLine("signin.replace.title", mapOf("device" to CopyArgument.Text("Work laptop"))),
+            CopyLine(
+                "signin.replace.consequence",
+                mapOf(
+                    "device" to CopyArgument.Text("Work laptop"),
+                    "product" to CopyArgument.Text(BoardFixtures.PRODUCT),
+                    "thisDevice" to CopyArgument.Text("this computer"),
+                ),
+            ),
+            CopyLine("signin.replace.confirm"),
+            CopyLine("signin.replace.back"),
+        ),
+        actions = emptyList(),
     )
 
     @Test

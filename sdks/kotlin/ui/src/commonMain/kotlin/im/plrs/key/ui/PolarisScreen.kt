@@ -200,7 +200,7 @@ internal fun PolarisSurface(
         // A pane of a list-detail screen: the host surface already set the background and the insets.
         BoxWithConstraints(modifier.fillMaxSize()) {
             val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
-            CompositionLocalProvider(LocalPolarisWindow provides window) { content(window, maxHeight) }
+            CompositionLocalProvider(LocalPolarisWindow provides window) { PolarisGnomeTypeScope(window) { content(window, maxHeight) } }
         }
         return
     }
@@ -210,7 +210,7 @@ internal fun PolarisSurface(
             val height = maxHeight
             CompositionLocalProvider(LocalPolarisWindow provides window) {
                 if (window.textScale == 1f) {
-                    content(window, height)
+                    PolarisGnomeTypeScope(window) { content(window, height) }
                 } else {
                     // A copy of the type scale, not a density override: the platform's own
                     // (non-linear) font scaling keeps applying on top of it.
@@ -218,7 +218,7 @@ internal fun PolarisSurface(
                         colorScheme = MaterialTheme.colorScheme,
                         shapes = MaterialTheme.shapes,
                         typography = MaterialTheme.typography.scaled(window.textScale),
-                    ) { content(window, height) }
+                    ) { PolarisGnomeTypeScope(window) { content(window, height) } }
                 }
             }
         }
@@ -474,6 +474,11 @@ internal fun Typography.scaled(factor: Float): Typography {
     )
 }
 
+/** The icon a message kind shows in this window: GNOME's offline status page draws network-offline (a state, not an action). */
+@Composable
+internal fun polarisMessageIcon(kind: PolarisMessageKind): ImageVector =
+    if (polarisWindow.isGnome && kind == PolarisMessageKind.Offline) PolarisGnome.networkOffline else kind.icon()
+
 /** The icon a message kind shows. */
 internal fun PolarisMessageKind.icon(): ImageVector = when (this) {
     PolarisMessageKind.Info -> PolarisSymbols.Info
@@ -656,6 +661,15 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
             drawContent()
             if (show && fluent) {
                 drawFluentFocusRing(shape, fluentOuter, fluentInner)
+            } else if (show && window.isGnome) {
+                // GNOME: the ring sits inside the control's edge (offset -2, width 2).
+                val stroke = PolarisGnome.focusWidth.toPx()
+                val outline = shape.createOutline(Size(size.width - stroke, size.height - stroke), layoutDirection, this)
+                translate(stroke / 2, stroke / 2) { drawOutline(outline, color, style = Stroke(stroke)) }
+                // A thin page-coloured line inside the ring keeps it readable on a fill of its own colour (the ink pill).
+                val gap = 1.dp.toPx()
+                val inner = shape.createOutline(Size(size.width - 2 * stroke - gap, size.height - 2 * stroke - gap), layoutDirection, this)
+                translate(stroke + gap / 2, stroke + gap / 2) { drawOutline(inner, fluentInner, style = Stroke(gap)) }
             } else if (show) {
                 val stroke = ring.toPx()
                 val inset = 2.dp.toPx() + stroke / 2
@@ -684,8 +698,8 @@ private fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
     val sized = if (row) this else this.fillMaxWidth()
-    // Material's button holds a 40 dp floor of its own; GNOME's 34 px control needs the height fixed to get under it.
-    return if (polarisWindow.isGnome) sized.height(height) else sized.heightIn(min = height)
+    // GNOME: both actions of a pair are 40 px pills (the lead's decision); a fixed height, not Material's floor.
+    return if (polarisWindow.isGnome) sized.height(PolarisGnome.actionHeight) else sized.heightIn(min = height)
 }
 
 /** The primary action: filled, full round, 56 dp tall (60 on TV), full width in a stacked group. */
@@ -807,7 +821,7 @@ public fun PolarisTextButton(
         return
     }
     val interaction = remember { MutableInteractionSource() }
-    val shape = polarisActionShape(suggested = false)
+    val shape = polarisActionShape(suggested = false, aux = true)
     val tv = polarisWindow.tv
     if (polarisWindow.fluent) {
         PolarisFluentButton(
@@ -902,7 +916,7 @@ public fun PolarisMessageScreen(
 ) {
     PolarisMessageLayout(
         modifier = modifier,
-        emblem = { PolarisIconBadge(message.kind.icon(), message.kind.tint().first, message.kind.glyph()) },
+        emblem = { PolarisIconBadge(polarisMessageIcon(message.kind), message.kind.tint().first, message.kind.glyph()) },
         title = message.title,
         body = message.body,
         actions = actions,
@@ -1033,6 +1047,8 @@ internal fun PolarisTextField(
                 value, onValueChange, label, Modifier, placeholder, enabled, error != null, trailing, focusRequester,
                 keyboardOptions, keyboardActions,
             )
+        } else if (polarisWindow.isGnome) {
+            PolarisGnomeEntry(value, onValueChange, label, placeholder, enabled, error != null, trailing, focusRequester, keyboardOptions, keyboardActions)
         } else TextField(
             value = value,
             onValueChange = onValueChange,
