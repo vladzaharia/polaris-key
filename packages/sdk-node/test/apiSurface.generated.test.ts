@@ -30,8 +30,7 @@ it("client.create", () =>
   expect(typeof PolarisKeyClient.create).toBe("function"));
 it("client.boot", () =>
   expect("boot" in PolarisKeyClient.prototype).toBe(true));
-it("config.get", () =>
-  expect("getConfig" in ConfigClient.prototype).toBe(true));
+it("config.get", () => expect("get" in ConfigClient.prototype).toBe(true));
 it("config.getConfigSource", () =>
   expect("getConfigSource" in ConfigClient.prototype).toBe(true));
 it("config.getSecret", () =>
@@ -40,6 +39,8 @@ it("config.mintToken", () =>
   expect("mintToken" in ConfigClient.prototype).toBe(true));
 it("config.set", () => expect("set" in ConfigClient.prototype).toBe(true));
 it("config.clear", () => expect("clear" in ConfigClient.prototype).toBe(true));
+it("config.clearAll", () =>
+  expect("clearAll" in ConfigClient.prototype).toBe(true));
 it("config.onConfigChange", () =>
   expect("onConfigChange" in ConfigClient.prototype).toBe(true));
 it("config.setting", () =>
@@ -144,3 +145,7 @@ it("license.status", () =>
   expect("status" in LicenseClient.prototype).toBe(true));
 it("license.isLicensed", () =>
   expect("isLicensed" in LicenseClient.prototype).toBe(true));
+it("removed: config.getConfig", () =>
+  expect("getConfig" in ConfigClient.prototype).toBe(false));
+it("removed: PolarisKeyClient.getConfig", () =>
+  expect("getConfig" in PolarisKeyClient.prototype).toBe(false));

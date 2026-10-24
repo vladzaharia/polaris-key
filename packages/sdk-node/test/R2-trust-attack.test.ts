@@ -837,7 +837,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
     expect(client.license.getEntitlements()).toEqual({});
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(client.getConfig("quality.floor", 1)).toBe(1);
+    expect(client.config.get("quality.floor", 1)).toBe(1);
     client.close();
   });
 
@@ -1137,7 +1137,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.license.getEntitlements()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
     expect(client.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(client.getConfig("quality.floor", "mp3")).toBe("mp3");
+    expect(client.config.get("quality.floor", "mp3")).toBe("mp3");
     // Never read ⇒ never rewritten: the v2 record is still sitting there verbatim, and no v3
     // record was synthesised from it.
     const persisted = JSON.parse(readFileSync(cachePath, "utf8")) as {
@@ -1243,7 +1243,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.license.getLicenseId()).toBeNull();
     expect(client.license.getEntitlements()).toEqual({});
     // …and the honest config slice is unaffected.
-    expect(client.getConfig("quality.floor", 1)).toBe(9999);
+    expect(client.config.get("quality.floor", 1)).toBe(9999);
     expect(client.config.getSecret("serviceA.oauth")).toBe("REAL-SECRET");
     client.close();
 
@@ -1272,7 +1272,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(mirrored.status().status).toBe("ok");
     expect(mirrored.license.isEntitled("polarisVpn")).toBe(true);
     expect(mirrored.config.getSecret("serviceA.oauth")).toBeNull();
-    expect(mirrored.getConfig("quality.floor", 1)).toBe(1);
+    expect(mirrored.config.get("quality.floor", 1)).toBe(1);
     expect(mirrored.config.schemaVersion()).toBeNull();
     mirrored.close();
   });

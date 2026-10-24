@@ -34239,7 +34239,7 @@ var NODE_LIBRARY = {
       NODE_HEAD(c),
       ``,
       `await client.sync();`,
-      `const value = client.config.getConfig(${q2(c.configKey)}, ${q2(c.configFallback)});`,
+      `const value = client.config.get(${q2(c.configKey)}, ${q2(c.configFallback)});`,
       `const secret = client.config.getSecret(${q2(c.secretKey)});`,
       `const minted = await client.config.mintToken(${q2(c.mintRecipe)});`,
       `client.events.on("config", () => console.log("settings changed"));`,

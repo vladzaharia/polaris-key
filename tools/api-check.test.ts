@@ -114,6 +114,11 @@ describe("api-check rule 1 (surface scanners)", () => {
           (!c.id.startsWith("config.") || c.id === "config.get") &&
           !c.sdks?.[sdk]?.sdkOnly,
       );
+      // The fixtures spell the call `getConfig`, as Node did before SP-35.14.
+      if (sdk === "node")
+        a.concepts.find((c: any) => c.id === "config.get").sdks.node = {
+          spelling: "getConfig",
+        };
       mutate(a);
     });
 
@@ -381,7 +386,7 @@ describe("api-check rule 2 (removed names)", () => {
   const scanRoot = join(root, "tools/fixtures/api/repo");
   const removed = (...rows: any[]): string[] => {
     const api = real();
-    api.removed.push(...rows);
+    api.removed = rows; // the fixture tree, not the real removed rows
     return checkApi(root, { api, scanRoot });
   };
   const node = {
