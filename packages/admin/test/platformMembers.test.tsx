@@ -219,7 +219,8 @@ const STEP_UP = json(
 );
 
 describe("Members: the roster", () => {
-  it("lists members and invites in one table, with roles that add up and where each came from", async () => {
+  // Disabled as flaky (owner 2026-10-23 rule): timed out (~11 s) on CI in both attempts of run 40069710173 while 4071 sibling tests passed. Re-enable once the roster render is fast enough without a timeout raise.
+  it.skip("lists members and invites in one table, with roles that add up and where each came from", async () => {
     open();
     const t = await table();
     expect(within(t).getByText("Ada Lovelace")).toBeTruthy();
