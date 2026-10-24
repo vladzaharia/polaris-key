@@ -46,6 +46,12 @@ const KB = 1000;
  * settings rows, the account pane, the channel picker: -3.4 KB) load on demand (`kit/lazy.ts`,
  * `kit/rows.tsx`), as a copy pack does. The budget stays at 71.2: the headroom is for the
  * milestones' growth, not a licence to raise it.
+ *
+ * polaris-key-gate 71.2 -> 72.0 KB (v0.9.17): the desktop kit (UK-06) grew the gate to 77.6 KB;
+ * its chrome stylesheet (`kit/desktopCss.js`) and the menu-opened Settings and update drivers
+ * (`kit/openedViews.tsx`) now load on demand (-5.9 KB). What stays is web-path code every gate
+ * runs (platform variant, desktop button order, the desktop-sheet hook): 71.67 KB. To take back
+ * out: the offline, paywall and settings steps still in the entry.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),
