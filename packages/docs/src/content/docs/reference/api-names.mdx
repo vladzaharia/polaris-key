@@ -155,9 +155,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `entitlements.has` | `entitlements.has` | `useEntitlement` | `license.is_entitled` (planned: SP-35) | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `entitlements.value` | — | `license.entitlement_value` (planned: SP-35) | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `entitlements.all` | — | `license.get_entitlements` (planned: SP-35) | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | — | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | — | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -349,3 +349,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Node | `license.isEntitled` | `entitlements.has` | SP-35 |
 | Node | `license.entitlementValue` | `entitlements.value` | SP-35 |
 | Node | `license.getEntitlements` | `entitlements.all` | SP-35 |
+| Python | `license.is_entitled` | `entitlements.has` | SP-35 |
+| Python | `license.entitlement_value` | `entitlements.value` | SP-35 |
+| Python | `license.get_entitlements` | `entitlements.all` | SP-35 |

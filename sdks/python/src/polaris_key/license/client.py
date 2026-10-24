@@ -132,29 +132,6 @@ class LicenseClient:
     def doc(self) -> Optional[LicenseDoc]:
         return self._cache.license_doc()
 
-    def is_entitled(self, name: str, now: Optional[int] = None) -> bool:
-        """Whether the licence grants the boolean flag ``name``.
-
-        ``False`` whenever the gate is not usable (S-19 G11): a revoked, expired, blocked or
-        never-activated install answers ``False`` even while a previously verified document
-        still names the flag. Before this, a revoked device kept its unlocks until the cache
-        was cleared.
-        """
-        doc = self.doc
-        if doc is None or not self.is_licensed(now):
-            return False
-        entry = doc.entitlements.get(name)
-        return bool(entry is not None and entry.value is True)
-
-    def entitlement_value(self, name: str, now: Optional[int] = None) -> Any:
-        """The raw value of entitlement ``name`` (a string, number, list or bool), or ``None``
-        when the document does not carry it or the gate is not usable (S-19 G11)."""
-        doc = self.doc
-        if doc is None or not self.is_licensed(now):
-            return None
-        entry = doc.entitlements.get(name)
-        return entry.value if entry is not None else None
-
     def license_info(self) -> Optional[LicenseInfo]:
         """The verified licence's summary (:class:`LicenseInfo`), or ``None`` without one.
         Read regardless of the gate, so an account screen can show WHICH licence was revoked."""
@@ -177,12 +154,6 @@ class LicenseClient:
             profile=doc.profile,
             entitledChannels=tuple(self.entitled_channels()),
         )
-
-    def get_entitlements(self) -> Dict[str, Any]:
-        doc = self.doc
-        if doc is None:
-            return {}
-        return {k: v.value for k, v in doc.entitlements.items()}
 
     def entitled_channels(self) -> List[str]:
         """The channels this licence grants: the ``channels`` entitlement's string values,

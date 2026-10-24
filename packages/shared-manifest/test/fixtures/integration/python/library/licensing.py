@@ -18,4 +18,4 @@ def activate(key: str) -> Optional[str]:
 client.sync()
 if not client.is_licensed():
     print(client.status().status)
-pro = client.license.is_entitled("pro")
+pro = client.entitlements.has("pro")

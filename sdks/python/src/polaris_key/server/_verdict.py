@@ -332,7 +332,7 @@ def check_requirements(
     for r in require:
         if r.kind == "entitlement":
             if r.test is None:
-                ok = license.is_entitled(r.name)
+                ok = license.is_entitled(r.name)  # api-allow: server verdict object (L4), not the client namespace
             else:
                 entry = license._doc.entitlements.get(r.name)
                 try:

@@ -91,7 +91,7 @@ client.devices.register()
 if client.is_licensed():
     concurrency = client.config.get("run.concurrency", 4)
     vpn_url = client.config.get_secret("proxy.subscriptionUrl")
-    if client.license.is_entitled("polarisVpn"):
+    if client.entitlements.has("polarisVpn"):
         ...
 
 # One Core pass: trust refresh -> enabled documents -> verify -> cache -> floor -> report.
@@ -309,7 +309,7 @@ per key; any other tag adds a locale that falls back to English.
 
 ### Entitlements
 
-`license.is_entitled(name)` is false, and `entitlement_value(name)` is `None`, whenever the gate
+`entitlements.has(name)` is false, and `entitlements.value(name)` is `None`, whenever the gate
 is `revoked` or `expired`, whatever the cached document still says (S-19 G11).
 `license.license_info()` returns a `LicenseInfo` (`licenseId`, `tier`, `tierLabel`,
 `deviceLimit`, `profile`, `entitledChannels`; `deviceCount` and `expiresAt` stay `None` until
