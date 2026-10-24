@@ -198,7 +198,19 @@ fail-closed validator supports); do not confuse the two schema layers.`,
 }
 
 // ── 3. Wire error codes ────────────────────────────────────────────────────────
+// The Help column: the code's message in Help when help-messages.json holds it, else the
+// developer-only note. Same URL shape as helpMessageUrl() in src/lib/helpMessages.ts.
+function helpCell(helpMap, code) {
+  const entry = helpMap.messages[code];
+  return entry
+    ? `[Help](/docs/help/messages/${entry.page}/#${code})`
+    : "developer only";
+}
+
 function errorCodes() {
+  const helpMap = JSON.parse(
+    readFileSync(join(docsRoot, "help-messages.json"), "utf8"),
+  );
   const core = read("packages", "shared-protocol", "src", "core.ts");
   const match = core.match(/export type PolarisErrorCode =([\s\S]*?);/);
   const codes = [...(match?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map(
@@ -211,7 +223,11 @@ function errorCodes() {
     workerErrors.match(/export const ErrorCode = \{([\s\S]*?)\n\};/);
   const enumRows = [
     ...(enumMatch?.[1] ?? "").matchAll(/([A-Za-z]+):\s*"([a-z_]+)"/g),
-  ].map((m) => [`\`${m[2]}\``, `\`ErrorCode.${m[1]}\``]);
+  ].map((m) => [
+    `\`${m[2]}\``,
+    `\`ErrorCode.${m[1]}\``,
+    helpCell(helpMap, m[2]),
+  ]);
   // The registry (P1b-02): every code, wire and client. `pnpm gen constants` generates each
   // SDK's ErrorCode constants from it; the client codes are listed here because no Worker
   // source names them.
@@ -224,6 +240,7 @@ function errorCodes() {
       `\`${entry.code}\``,
       `\`${entry.service}\``,
       mdxProse(entry.description),
+      helpCell(helpMap, entry.code),
     ]);
   // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
   // as its fragment, so each code a backend answers with gets its own heading (its anchor).
@@ -244,7 +261,7 @@ function errorCodes() {
   ].flatMap((entry) => [
     `### \`${entry.code}\``,
     "",
-    `${mdxProse(entry.description)} Service: \`${entry.service}\`.`,
+    `${mdxProse(entry.description)} Service: \`${entry.service}\`. Help: ${helpCell(helpMap, entry.code)}.`,
     "",
   ]);
   return page(
@@ -265,14 +282,14 @@ from it. A new code needs an entry there first.`,
       "## Worker enum (`packages/worker/src/core/errors.ts`)",
       "",
       enumRows.length
-        ? table(["Wire code", "Enum member"], enumRows)
+        ? table(["Wire code", "Enum member", "Help"], enumRows)
         : "_(enum not found)_",
       "",
       "## Client codes (`conformance/parity/errors.json`)",
       "",
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
-      table(["Code", "Service", "Meaning"], clientRows),
+      table(["Code", "Service", "Meaning", "Help"], clientRows),
       "",
       "## Backend codes (`conformance/parity/errors.json`)",
       "",
@@ -1134,7 +1151,46 @@ ${removed}
 `;
 }
 
+// ── Publish Action ─────────────────────────────────────────────────────────────
+// Read from actions/publish/action.yml, never copied: the file is the source of truth.
+function githubAction() {
+  const action = loadYaml(read("actions", "publish", "action.yml"), {
+    schema: CORE_SCHEMA,
+  });
+  const cell = (s) => escapeCell(mdxProse(String(s).trim()));
+  const inputs = Object.entries(action.inputs ?? {}).map(([name, spec]) => [
+    `\`${name}\``,
+    spec.required ? "yes" : "no",
+    spec.default === undefined ? "—" : `\`${spec.default}\``,
+    cell(spec.description ?? ""),
+  ]);
+  const outputs = Object.entries(action.outputs ?? {}).map(([name, spec]) => [
+    `\`${name}\``,
+    cell(spec.description ?? ""),
+  ]);
+  const runs = action.runs ?? {};
+  return page(
+    "GitHub Action",
+    "The publish Action's inputs and outputs, generated from action.yml.",
+    `\`polaris-key/publish\` publishes a release from a GitHub Actions job. ${mdxProse(action.description)} The CI guide is [Ship builds from CI](/docs/features/ship-builds/ci/).`,
+    [
+      "## Inputs",
+      "",
+      table(["Input", "Required", "Default", "Description"], inputs),
+      "",
+      "## Outputs",
+      "",
+      table(["Output", "Description"], outputs),
+      "",
+      "## Runs",
+      "",
+      `Runs on \`${runs.using}\`, entry point \`${runs.main}\`.`,
+    ].join("\n"),
+  );
+}
+
 export const EMITTERS = {
+  "reference/github-action.mdx": githubAction,
   "reference/api-names.mdx": apiNames,
   "reference/validation-codes.mdx": manifestValidationCodes,
   "reference/config-entry.mdx": configEntryReference,
