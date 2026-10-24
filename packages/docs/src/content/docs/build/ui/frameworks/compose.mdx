@@ -106,6 +106,10 @@ The kit reads the OS (macOS, Windows or a Linux desktop with the GNOME portals) 
 
 Under high contrast the kit draws in the system's colors. Reduced transparency makes the sheets and scrims opaque. `PolarisTheme` renders the Polaris look by default; `branding = PolarisBranding.None` inherits your `MaterialTheme`. The kit's text follows the OS font scale, and the screens adapt from the window's minimum up to a full screen.
 
+### Screen readers and sandboxes
+
+Compose Desktop has no AT-SPI on Linux, so Linux screen readers such as Orca can't read the window. Where people need assistive technology on Linux, use the Qt or Electron kit. On Windows and macOS the packaged runtime includes `jdk.accessibility`. In a Flatpak sandbox, links open through the OpenURI portal, and the scheme, accent and contrast come from the Settings portal.
+
 ## Piecemeal on the desktop
 
 Place the windows yourself when the app owns its window or its menu. Hold the same state the drop-in holds (`PolarisUpdateState`, `PolarisSettingsState`, `PolarisDevicesState` and a `PolarisSettingsWindowState`) and call the windows from your `application` block. Each window is open while its state holds something to show.
