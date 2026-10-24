@@ -562,7 +562,7 @@ export function renderNotes(api: unknown, pkg: string): string {
     const sp = c?.sdks?.[r.sdk];
     const to = c
       ? cell(sp && !sp.planned ? (sp.spelling ?? sp.path ?? c.id) : c.id)
-      : (r.note ?? "").replace(/\|/g, "\\|");
+      : (r.note ?? (r.to ? cell(r.to) : "")).replace(/\|/g, "\\|");
     lines.push(`| ${r.sdk} | ${cell(r.from)} | ${to} |`);
   }
   if (rows.length === 0) lines.push("| none | | |");

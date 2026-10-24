@@ -4,7 +4,7 @@ All notable changes to the Polaris Key Swift SDK. Versions follow the monorepo's
 tags; before 1.0 a minor version may change the API, and a changed API ships as the only API (no
 deprecated aliases).
 
-## Unreleased (LK-16)
+## Unreleased
 
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
@@ -12,8 +12,6 @@ deprecated aliases).
   are gone (`size(width:)` replaces it). `PolarisPoweredBy` and `PolarisTheme(poweredBy:)` are removed (the legacy
   gate never draws the attribution; the kit theme's `poweredBy` is the opt-in). New: `PolarisPoweredByAttribution`, `PolarisPoweredByStyle`.
   The legacy gate no longer draws the attribution, and the Key "Powered by" PNGs are no longer bundled.
-
-## Unreleased
 
 - **`events` is the stream; getters take `get` (SP-35b).** `PolarisKeyClient.changes` is removed (`events` is the one stream). Renamed: `syncState()` is `getSyncState()`, `startRefreshLoop(onChange:)` is `startRefresh(onChange:)`, `LicenseClient.profile()` is `getProfile()`, `licenseId()` is `getLicenseId()`, `licenseUser()` is `getLicenseUser()`, `ReleaseClient.installURL()`/`downloadURL(...)` are `installUrl()`/`downloadUrl(...)`, and `UpdateClient.buildURL(...)` is `buildUrl(...)`. Core's top-level `licenseUser(_:)` helpers stay. No aliases.
   Migrating: `client.changes` becomes `client.events`; rename each call to the new spelling, e.g. `await client.license.profile()` becomes `await client.license.getProfile()`.
