@@ -27,7 +27,7 @@ Each file has a page: [product](/docs/build/manifest/product/), [catalog](/docs/
 
 `modules` in `.pkey/product` declares which services the product runs. With no `modules` block, or none enabled, a product runs License and Config. A service whose requirement is off is refused at ingest and on a live change as `<service>_requires_<requirement>`. [How it works](/docs/start/how-it-works/#coherence-rules) has the one table of those rules.
 
-The service slugs are `license`, `config`, `release`, `distribution`, `update`, `identity` and `sync`. The old names `licensing`, `releases`, `oidc` and `edgeMint` still parse and warn with `deprecated_spelling`; the [product page](/docs/build/manifest/product/#enabled-services-modules) lists what each maps to.
+The service slugs are `license`, `config`, `release`, `distribution`, `update`, `identity`, `sync` and `commerce`. The old names `licensing`, `releases`, `oidc` and `edgeMint` still parse and warn with `deprecated_spelling`; the [product page](/docs/build/manifest/product/#enabled-services-modules) lists what each maps to.
 
 ## Size and depth caps
 

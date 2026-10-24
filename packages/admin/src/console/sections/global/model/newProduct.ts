@@ -3,14 +3,18 @@
  * set of answers implies, and the words of a refusal. Pure: the page owns the state and the calls.
  */
 
-import { isReservedProductSlug } from "@polaris-key/manifest";
+import {
+  featureNeeds,
+  featureUnlocked,
+  isReservedProductSlug,
+  servicesForFeatures,
+  toggleFeature,
+} from "@polaris-key/manifest";
 import type { CreateChoices } from "../../../../api.js";
 import type { ErrorCopy } from "../../../../lib/errorCopy.js";
 import { slugError } from "../../../../lib/products.js";
 import {
   FEATURES,
-  SERVICE_REQUIRES,
-  SERVICE_TABLE,
   type FeatureId,
   type ServiceSlug,
 } from "../../../../services.generated.js";
@@ -236,67 +240,18 @@ export function featureCopy(id: FeatureId, name: string): string {
   }[id];
 }
 
-/** The features a feature needs on first: the owners of the services its own services require. */
-export function needsOf(id: FeatureId): FeatureId[] {
-  const f = FEATURES.find((x) => x.id === id)!;
-  const out = new Set<FeatureId>();
-  for (const s of f.primary)
-    for (const req of SERVICE_REQUIRES[s]) {
-      const owner = FEATURES.find((x) => x.primary.includes(req));
-      if (owner && owner.id !== id) out.add(owner.id);
-    }
-  return FEATURES.filter((x) => out.has(x.id)).map((x) => x.id);
-}
-
-/** A feature can be chosen once everything it needs is chosen. */
-export const unlocked = (
-  id: FeatureId,
-  chosen: readonly FeatureId[],
-): boolean => needsOf(id).every((n) => chosen.includes(n));
-
-/**
- * Turn a feature on or off. Turning one off turns off whatever needs it, and says which (the
- * mockup: "clearing Licensing also clears Commerce").
- */
-export function toggleFeature(
-  chosen: readonly FeatureId[],
-  id: FeatureId,
-  on: boolean,
-): { features: FeatureId[]; cleared: FeatureId[] } {
-  if (on)
-    return {
-      features: unlocked(id, chosen)
-        ? [...new Set([...chosen, id])]
-        : [...chosen],
-      cleared: [],
-    };
-  let next = chosen.filter((f) => f !== id);
-  const cleared: FeatureId[] = [];
-  for (;;) {
-    const drop = next.filter((f) => !unlocked(f, next));
-    if (drop.length === 0) break;
-    cleared.push(...drop);
-    next = next.filter((f) => !drop.includes(f));
-  }
-  return { features: next, cleared };
-}
-
-/** The services a set of features turns on (each feature's own; the cards keep it closed). */
-export function servicesFor(features: readonly FeatureId[]): {
-  services: ServiceSlug[];
-} {
-  const own = new Set<ServiceSlug>();
-  for (const f of FEATURES)
-    if (features.includes(f.id)) for (const s of f.primary) own.add(s);
-  return {
-    services: SERVICE_TABLE.map((r) => r.slug).filter((s) => own.has(s)),
-  };
-}
+/** The feature rules live in shared-manifest (ST-46.1), so `pkey init` asks with the same ones. */
+export {
+  featureNeeds as needsOf,
+  featureUnlocked as unlocked,
+  servicesForFeatures as servicesFor,
+  toggleFeature,
+};
 
 /** What Create writes for these answers: the same facts the body below sends. */
 export function choicesFor(d: ProductDraft): CreateChoices {
   if (d.later) return { services: [], starterTier: "none" };
-  const { services } = servicesFor(d.features);
+  const { services } = servicesForFeatures(d.features);
   return {
     services,
     ...(d.platforms.length > 0 && services.includes("release")

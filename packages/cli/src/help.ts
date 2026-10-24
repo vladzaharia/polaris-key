@@ -242,7 +242,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
       "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] " +
-        "[--release-owner owner] [--release-repo repo] [--force]",
+        "[--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]",
     ],
     about: [
       {
@@ -252,8 +252,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       },
       {
         text:
-          `--modules takes feature slugs (${SERVICE_SLUGS.join(", ")}); the default is ` +
-          "license,config. The old names licensing, releases, oidc and edgeMint still work. " +
+          `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is ` +
+          "license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. " +
           "--product (or --slug) defaults to the directory name, --name to that name in title case.",
       },
     ],

@@ -18,7 +18,7 @@ A product that keeps its manifest in its own repo is registered by linking that 
 
 ## Steps
 
-1. **CLI** In the repo's root, scaffold the manifest. `--modules` takes the service slugs; without it you get `license,config`.
+1. **CLI** In the repo's root, scaffold the manifest. `--modules` takes the service slugs; without it you get `license,config`. With License on you also get a Free tier; `--starter-tier none` leaves it out.
 
    ```sh title="Terminal"
    pkey init --product tidewater --name "Tidewater Studio" --modules license,config

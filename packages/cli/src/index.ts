@@ -964,11 +964,19 @@ async function cmdInit(
     flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules(flagString(parsed, "modules"));
+  const starterTier = flagString(parsed, "starter-tier");
+  if (
+    starterTier !== undefined &&
+    starterTier !== "free" &&
+    starterTier !== "none"
+  )
+    throw new UsageError("--starter-tier takes free or none.");
   const result = await initManifest({
     cwd,
     slug,
     name,
     modules,
+    starterTier,
     adminGroup: flagString(parsed, "admin-group"),
     releaseOwner: flagString(parsed, "release-owner"),
     releaseRepo: flagString(parsed, "release-repo"),
