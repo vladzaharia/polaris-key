@@ -9,6 +9,11 @@ import "@polaris-key/react/fonts.css";
 import "@polaris-key/react/styles.css";
 import "./app.css";
 
+// The e2e harness forces a chrome with PKEY_KIT_PLATFORM; the main process passes it as ?platform=.
+const CHROMES = ["windows", "macos", "linux"] as const;
+const forced = new URLSearchParams(location.search).get("platform");
+const platform = CHROMES.find((c) => c === forced) ?? "auto";
+
 function App() {
   return (
     <main className="studio">
@@ -27,7 +32,7 @@ createRoot(document.getElementById("root")!).render(
         version: __APP_VERSION__,
       }}
     >
-      <PolarisKeyGate theme={{ platform: "auto" }}>
+      <PolarisKeyGate theme={{ platform }}>
         <App />
       </PolarisKeyGate>
     </PolarisKeyProvider>
