@@ -11871,7 +11871,7 @@
         "plans/SP-35.md §7 slice 2 and Appendix A (approved 2026-10-08)"
       ],
       "brief": "wp/SP-35b-sdk-api-renames-godot-swift-kotlin.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "SP-35"
     },
     {
