@@ -108,7 +108,7 @@ func _save(t: PKeyTestContext) -> void:
 	var r := PKeySetupCheck.save(path, "djdl", "https://key.plrs.im", F["trust"], "dev", true)
 	t.check("save: confirmed, written", r["ok"], r["message"])
 	var back = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
-	t.check("save: the four fields", back is PKeyOptions and back.product == "djdl" and back.base_url == "https://key.plrs.im" and back.pinned_trust_keys == F["trust"] and back.default_channel == "dev")
+	t.check("save: the four fields", back is PKeyOptions and back.product_slug == "djdl" and back.base_url == "https://key.plrs.im" and back.pinned_keys == F["trust"] and back.default_channel == "dev")
 	t.check("save: the rest of the file survives", back is PKeyOptions and back.refresh_interval_seconds == 120.0)
 	t.check("save: a bad channel is refused", not PKeySetupCheck.save(path, "djdl", "https://key.plrs.im", {}, "Beta", true)["ok"])
 	t.check("save: an insecure base URL is refused", not PKeySetupCheck.save(path, "djdl", "http://example.com", {}, "", true)["ok"])

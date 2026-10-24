@@ -134,7 +134,7 @@ func _decide(t: PKeyTestContext) -> void:
 	}
 	var inst := S.install("boot-decide", S.bytes(100, 1), "macos", "Game")
 	var sdk: Node = await sup.launch(inst, "1.4.0", func(o: PKeyOptions) -> void:
-		o.pinned_trust_keys = trust
+		o.pinned_keys = trust
 		o.pinned_release_keys = keys
 		o.build_stamp_path = "res://tests/fixtures/build_stamp_update.json"
 		o.expected_services = PackedStringArray(["update", "release", "distribution"])

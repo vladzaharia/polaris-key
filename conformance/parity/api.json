@@ -2233,10 +2233,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "product",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2258,10 +2255,7 @@
         "kotlin": {
           "path": "core.pinnedKeys"
         },
-        "godot": {
-          "spelling": "pinned_trust_keys",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -5734,6 +5728,26 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\.getCurrentDevice\\s*\\("
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.product",
+      "to": "options.productSlug",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "(?:\\b(?:o|opts|options|cfg)\\.product\\b(?!_)|^\\s*product\\s*=\\s*\")",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.pinned_trust_keys",
+      "to": "options.pinnedKeys",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bpinned_trust_keys\\b",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
       }
     }
   ]

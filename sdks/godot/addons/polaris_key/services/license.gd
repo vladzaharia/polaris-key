@@ -232,7 +232,7 @@ static func unverified(core: PKeyCore, synced: Variant, what := "the token was m
 	var status := int(e.get("status", 0))
 	var code := String(e.get("code", ""))
 	if status == 200 or code == String(PKeyErrors.INVALID_RESPONSE):
-		push_error("Polaris Key: %s but the license document did not verify. Check that the pinned trust keys (pinned_trust_keys, polaris_key.tres) are the product's signing keys and that this device's clock is right (a document is only valid inside its window)." % what)
+		push_error("Polaris Key: %s but the license document did not verify. Check that the pinned trust keys (pinned_keys, polaris_key.tres) are the product's signing keys and that this device's clock is right (a document is only valid inside its window)." % what)
 		return {"code": PKeyErrors.INVALID_RESPONSE, "message": "The license document did not verify.", "status": 200}
 	return {}
 

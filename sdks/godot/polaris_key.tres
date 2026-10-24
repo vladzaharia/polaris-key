@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1")
-product = "pkey-harness"
+product_slug = "pkey-harness"
 base_url = "https://key.plrs.im"
 default_channel = "dev"

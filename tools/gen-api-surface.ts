@@ -487,6 +487,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   backend: `"res://addons/polaris_key/services/backend.gd"`,
   packs: `"res://addons/polaris_key/services/packs.gd"`,
   presentation: `"res://addons/polaris_key/core/presentation.gd"`,
+  options: `"res://addons/polaris_key/core/options.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;

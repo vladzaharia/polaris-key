@@ -93,17 +93,24 @@ var copy: PKeyCopy = PKeyCopy.shared()
 static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKeyResult:
 	if opts == null:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "No PKeyOptions given.")
-	if not RegEx.create_from_string("\\A[a-z0-9][a-z0-9_-]*\\z").search(opts.product):
-		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "product must be a lower-case slug, got '%s'." % opts.product)
+	var removed := opts.removed_names()
+	if not removed.is_empty():
+		var now_names := PackedStringArray()
+		for n in removed:
+			now_names.append("`product_slug`" if n == "product" else "`pinned_keys`")
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "%s %s renamed in 0.9: use %s (/docs/reference/api-names/)." % [
+			" and ".join(PackedStringArray(Array(removed).map(func(n): return "`%s`" % n))), "was" if removed.size() == 1 else "were", " and ".join(now_names)])
+	if not RegEx.create_from_string("\\A[a-z0-9][a-z0-9_-]*\\z").search(opts.product_slug):
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "product_slug must be a lower-case slug, got '%s'." % opts.product_slug)
 	var base := PKeyTransport.check_base_url(opts.base_url if opts.base_url != "" else DEFAULT_BASE)
 	if not base.ok:
 		return base
 	var v := opts.resolved_version()
 	if not PKeySemver.is_valid(v):
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "version must be semver (PKeyOptions.version or application/config/version), got '%s'." % v)
-	for k in opts.pinned_trust_keys:
-		if not (k is String and opts.pinned_trust_keys[k] is String):
-			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pinned_trust_keys must map kid strings to base64url key strings.")
+	for k in opts.pinned_keys:
+		if not (k is String and opts.pinned_keys[k] is String):
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pinned_keys must map kid strings to base64url key strings.")
 	var update_refusal := check_update_options(opts)
 	if update_refusal != "":
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, update_refusal)
@@ -125,7 +132,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pack_attachable entry '%s' is %s: an entry is a res:// script path, a res://…/ directory or a canonical uid://." % [a, why])
 	var core := PKeyCore.new()
 	core.options = opts
-	core.product = opts.product
+	core.product = opts.product_slug
 	core.base_url = base.detail
 	core.storage_namespace = store_namespace_for(core.product, core.base_url)
 	core.version = v
@@ -143,7 +150,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.transport.timeout = opts.request_timeout_seconds
 	core.transport.local_only = opts.local_only
 	core.clock = PKeyClock.new(opts.now_source)
-	core.trust = PKeyTrust.new(opts.pinned_trust_keys)
+	core.trust = PKeyTrust.new(opts.pinned_keys)
 	core.tokens = PKeyTokenManager.new(core.store)
 	core.tokens.core_ref = weakref(core)
 	core._expected_services = opts.expected_services if not opts.expected_services.is_empty() else null
@@ -160,9 +167,9 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 ## `not-configured`.
 static func check_update_options(opts: PKeyOptions) -> String:
 	var trust_raw := {}
-	for k in opts.pinned_trust_keys:
-		var raw = PKeyB64Url.decode_lenient(String(opts.pinned_trust_keys[k]))
-		trust_raw[raw.hex_encode() if raw != null else "text:" + String(opts.pinned_trust_keys[k])] = true
+	for k in opts.pinned_keys:
+		var raw = PKeyB64Url.decode_lenient(String(opts.pinned_keys[k]))
+		trust_raw[raw.hex_encode() if raw != null else "text:" + String(opts.pinned_keys[k])] = true
 	for k in opts.pinned_release_keys:
 		var key = opts.pinned_release_keys[k]
 		if not (k is String and key is String):

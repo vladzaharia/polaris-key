@@ -34049,6 +34049,9 @@ public object PolarisConfig {
 }
 var GODOT_SCRIPT_ID = "1";
 var GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
+var MIN_SDK_VERSION = { godot: "v0.9.18" };
+var GODOT_REMOVED_FIELDS = ["product", "pinned_trust_keys"];
+var GODOT_NAMES_NOTE = `; 0.9 names (product_slug, pinned_keys): Polaris Key SDK ${MIN_SDK_VERSION.godot} or later. https://key.plrs.im/docs/reference/api-names/`;
 function tresDict(map) {
   const rows = Object.entries(map);
   if (rows.length === 0) return "{}";
@@ -34058,9 +34061,9 @@ ${rows.map(([k, v]) => `${q(k)}: ${q(v)}`).join(",\n")}
 }
 function godotOptionFields(facts) {
   return [
-    ["product", q(facts.product)],
+    ["product_slug", q(facts.product)],
     ["base_url", q(facts.baseUrl)],
-    ["pinned_trust_keys", tresDict(facts.pinnedKeys)],
+    ["pinned_keys", tresDict(facts.pinnedKeys)],
     ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
     [
       "expected_services",
@@ -34076,6 +34079,7 @@ function renderGodot(facts) {
     ``,
     `[resource]`,
     `script = ExtResource("${GODOT_SCRIPT_ID}")`,
+    GODOT_NAMES_NOTE,
     ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
     ``
   ].join("\n");
@@ -34119,6 +34123,16 @@ function mergeGodotOptions(existing, facts) {
     const end = tresValueEnd(existing, prop.lastIndex);
     const key = pm[1];
     const next = owned.get(key);
+    if (GODOT_REMOVED_FIELDS.includes(key)) {
+      const lineStart = existing.lastIndexOf("\n", pm.index - 1) + 1;
+      const after = existing[end] === "\n" ? end + 1 : end;
+      edits.push({ from: lineStart, to: after, text: "" });
+      pos = end;
+      continue;
+    } else if (key === "script" && !existing.includes(GODOT_NAMES_NOTE)) {
+      edits.push({ from: end, to: end, text: `
+${GODOT_NAMES_NOTE}` });
+    }
     if (next !== void 0) {
       seen.add(key);
       edits.push({ from: prop.lastIndex, to: end, text: next });
