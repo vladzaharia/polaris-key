@@ -443,6 +443,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           ...leaves(
             "reference/http-api",
             "reference/cli",
+            "reference/github-action",
             "reference/error-codes",
             "reference/validation-codes",
             "reference/settings",
@@ -455,6 +456,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             "reference/api-names",
             "reference/channels",
             "reference/changelog/index",
+            "reference/compatibility",
             "reference/what-apps-collect",
           ),
           {
