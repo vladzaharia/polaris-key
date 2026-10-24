@@ -416,3 +416,77 @@ describe("what never gets a pane or art", () => {
     }
   });
 });
+
+/**
+ * MO-13.3 (the guide's check on a sign-in): with motion on, the hosted sign-in and consent controls
+ * (`signin/RequestFlow.tsx`, `ConsentStep.tsx`) are enabled on their first paint and none has a running animation of its own or on an ancestor, bar the focus ring easing in, a
+ * step slide (`pk-step-*`) and the card's height ease between steps. Nothing is gated behind an entrance.
+ */
+describe("sign-in controls on first paint (motion on)", () => {
+  for (const id of ["app-signin", "app-consent"])
+    for (const theme of ["dark", "light"] as Theme[])
+      it(`${id}: every control is enabled and nothing around it animates (${theme})`, async ({
+        expect,
+      }) => {
+        const state = REQUEST_STATES.find((s) => s.id === id)!;
+        const o = await portal.open(state.scenario, state.path, {
+          theme,
+          width: 1440,
+          height: 900,
+          reducedMotion: "no-preference",
+          routes: state.routes,
+        });
+        try {
+          await state.ready(o.page);
+          // The very first paint of the step: no settle, no wait for rest.
+          const found = await o.page.evaluate(() => {
+            const controls = [
+              ...document.querySelectorAll<HTMLElement>(
+                "main button, main a[href], main input",
+              ),
+            ].filter((el) => el.getClientRects().length > 0);
+            return {
+              count: controls.length,
+              disabled: controls
+                .filter(
+                  (el) =>
+                    (el as HTMLButtonElement).disabled ||
+                    el.getAttribute("aria-disabled") === "true",
+                )
+                .map((el) => (el.textContent ?? "").trim().slice(0, 30)),
+              // Only the focus ring easing in on the autofocused field, and the step-to-step
+              // slide (`pk-step-*`) of a step reached from another, are allowed: both leave the
+              // controls usable. Anything else around a control is a gate.
+              animating: controls.flatMap((el) => {
+                const names: string[] = [];
+                for (let n: Element | null = el; n; n = n.parentElement)
+                  for (const a of n.getAnimations()) {
+                    // AuthCard's own height ease between steps (ui/auth/AuthCard.tsx) is a
+                    // script animation with no name: it resizes the card, not a control.
+                    const frames = (
+                      a.effect as KeyframeEffect | null
+                    )?.getKeyframes();
+                    const name =
+                      (a as CSSAnimation).animationName ??
+                      (a as CSSTransition).transitionProperty ??
+                      (frames?.[0] && "height" in frames[0]
+                        ? "card-height"
+                        : "script");
+                    if (!/^(outline-color|card-height|pk-step-)/.test(name))
+                      names.push(`${n.tagName.toLowerCase()}.${name}`);
+                  }
+                return names.length
+                  ? [`${(el.textContent ?? "").trim()}: ${names.join(", ")}`]
+                  : [];
+              }),
+            };
+          });
+          expect(found.count).toBeGreaterThan(0);
+          expect(found.disabled, "disabled on first paint").toEqual([]);
+          expect(found.animating, "animating on first paint").toEqual([]);
+          expect(await o.violations()).toEqual([]);
+        } finally {
+          await o.close();
+        }
+      });
+});

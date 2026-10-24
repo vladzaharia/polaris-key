@@ -221,3 +221,13 @@ Checked against staging at 8a8548da2. The code is the fact; these override the t
 - Always-on assertions (motion.e2e, dark, light, reduced): sibling route keeps the canvas, masthead origin and width and the section rule; record masthead keeps its box across a tab change; the sidebar's active marker has no colour transition above `micro`; the approve drawer's notice leaves the drawer and its title where they are.
 - Not in the console: inline-confirm expand (portal only, MO-13.3's strips).
 - Observation for MO-13.5: the status-pill strip (a licence record going Waiting to Disabled) is identical from frame 1 to 6, so the changed-word pop is not visible in it.
+
+### MO-13.3 portal strips and the guide's three checks
+
+- Evidence (not committed): `/Users/vlad/Repos/pk-wt/_evidence/MO-13/strips/`.
+- Strips: `mo13-tile-hero-<1440x900|390x844>-<dark|light|reduced>-<n>.png` (libraryMotion, Nightfall's tile into the product hero), and `mo06-expand-<dark|light|reduced>-<n>.png` (deviceMotion, the portal's inline-confirm expand; the console has none).
+- Stable buttons (libraryMotion, both sizes, dark, light, reduced): the product page's "Download for" and "More for" buttons sampled every frame through Library to product to Library and the art fade-in; each keeps one box. The Library's own tile buttons are left out on purpose: the tile lifts 2 px under the pointer (MO-07).
+- First paint (portalPassport, `app-signin` and `app-consent`, dark and light, motion on): every control is enabled and nothing around it animates, bar the focus ring easing in on the autofocused field, the step slide (`pk-step-*`) and AuthCard's height ease.
+- Hidden tab (shellMotion): the second page's `bringToFront()` makes the first report `visibilityState === "hidden"` in headless Chromium; during the Platform skeleton's shimmer, app code makes 0 rAF calls. Not N/A.
+- Workspace entrance: N/A, not built (B9).
+- Observation for the follow-up list: on the 390 px product page the "Download my data" button moves 294 px while the page loads (a lower card settles); on 1440 the SHA-256 buttons widen 0.5 px and the "Remove my data" and "Get a support code" buttons shift 10 and 24 px. None is a download or primary button; owner: MO-13.5's list audit.

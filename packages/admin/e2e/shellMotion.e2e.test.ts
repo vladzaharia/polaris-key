@@ -277,6 +277,47 @@ describe("shell motion at 390 px (motion on)", () => {
   });
 });
 
+describe("a hidden tab (MO-13.3, the guide's check; BRAND.md: nothing loops in JS)", () => {
+  it("while the skeleton shimmers in a tab that is not in front, app code makes zero rAF calls", async () => {
+    // Hold the Platform chunk long enough that the skeleton is up for the whole measurement.
+    const page = await open({ holdChunkMs: 2500 });
+    await page.evaluate(() => {
+      const w = window as unknown as { __raf: number };
+      w.__raf = 0;
+      const original = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) => {
+        w.__raf++;
+        return original(cb);
+      };
+      location.hash = "#/platform/settings";
+    });
+    const fallback = page.locator("#content [data-page-loading]");
+    await fallback.waitFor({ state: "attached" });
+    const front = await page.context().newPage();
+    await front.goto("about:blank");
+    await front.bringToFront();
+    const visibility = await page.evaluate(() => document.visibilityState);
+    if (visibility !== "hidden") {
+      // N/A: headless Chromium keeps every page of a context "visible"; recorded in the QA record.
+      console.warn(
+        `hidden-tab check N/A: the first page reports visibilityState "${visibility}" after bringToFront()`,
+      );
+      await closeContext(page.context());
+      return;
+    }
+    expect(await fallback.count(), "the skeleton is showing").toBe(1);
+    await page.evaluate(() => {
+      (window as unknown as { __raf: number }).__raf = 0;
+    });
+    await front.waitForTimeout(600);
+    expect(
+      await page.evaluate(() => (window as unknown as { __raf: number }).__raf),
+      "rAF calls from app code while hidden",
+    ).toBe(0);
+    await closeContext(page.context());
+  });
+});
+
 describe("shell motion under reduced motion: instant swaps", () => {
   for (const mode of ["prefers-reduced-motion", "data-motion"] as const) {
     const opts: OpenOptions =

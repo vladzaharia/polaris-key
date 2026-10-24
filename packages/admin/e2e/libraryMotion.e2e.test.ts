@@ -232,6 +232,8 @@ interface OpenOptions {
   /** The in-app Reduce motion preference (MO-12: html[data-motion="reduce"]) on top of `motion`. */
   dataMotion?: boolean;
   theme?: "dark" | "light";
+  width?: number;
+  height?: number;
   /** Hold every /media/ response until the returned release() is called. */
   holdMedia?: boolean;
 }
@@ -248,6 +250,8 @@ async function open(
 ): Promise<Session> {
   const opened = await portal.open(scenario, path, {
     theme: o.theme ?? "dark",
+    width: o.width,
+    height: o.height,
     reducedMotion: o.motion ?? "no-preference",
   });
   let release = (): void => undefined;
@@ -934,4 +938,151 @@ describe("reduced motion: every Library and Discover change is an instant swap",
       expect(await s.violations()).toEqual([]);
       await s.close();
     });
+});
+
+// ── Tile → hero strips and the stable buttons (MO-13.3) ───────────────────────────────────────────
+
+const SIZES = [
+  { label: "1440x900", width: 1440, height: 900 },
+  { label: "390x844", width: 390, height: 844 },
+] as const;
+
+describe("Library → product: the tile flies into the hero (MO-05) at two sizes", () => {
+  for (const size of SIZES)
+    for (const [theme, motion] of [
+      ["dark", "no-preference"],
+      ["light", "no-preference"],
+      ["reduced", "reduce"],
+    ] as const)
+      it(`saves the tile → hero frames (${size.label}, ${theme}) (PK_SHOTS_DIR)`, async () => {
+        if (!SHOTS) return;
+        const s = await open("three", "/", {
+          theme: theme === "light" ? "light" : "dark",
+          motion,
+          width: size.width,
+          height: size.height,
+        });
+        const { page } = s;
+        await page.getByRole("article", { name: "Nightfall" }).waitFor();
+        await artShown(page);
+        await atRest(page);
+        await frameStrip(
+          page,
+          `mo13-tile-hero-${size.label}`,
+          () =>
+            page
+              .getByRole("article", { name: "Nightfall" })
+              .getByRole("link", { name: "Nightfall", exact: true })
+              .click(),
+          {
+            theme,
+            offsets: motion === "reduce" ? [300] : undefined,
+            rest: false,
+          },
+        );
+        await s.close();
+      });
+});
+
+describe("Library → product → Library: no download or primary button changes its box", () => {
+  for (const size of SIZES)
+    for (const [theme, motion] of [
+      ["dark", "no-preference"],
+      ["light", "no-preference"],
+      ["reduced", "reduce"],
+    ] as const)
+      it(`${size.label}, ${theme}: through both transitions and the art fade-in`, async () => {
+        const s = await open("three", "/", {
+          theme: theme === "light" ? "light" : "dark",
+          motion,
+          width: size.width,
+          height: size.height,
+          holdMedia: true,
+        });
+        const { page } = s;
+        await page.getByRole("article", { name: "Nightfall" }).waitFor();
+        await atRest(page);
+        // Sample every download button's box each frame (the CTA and its menu), keyed by page, label and position.
+        await page.evaluate(() => {
+          const w = window as unknown as {
+            __bx: Map<string, Set<string>>;
+            __bxOn: boolean;
+          };
+          w.__bx = new Map();
+          w.__bxOn = true;
+          const tick = (): void => {
+            const seen = new Map<string, number>();
+            for (const b of document.querySelectorAll<HTMLElement>(
+              "main button",
+            )) {
+              const r = b.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) continue;
+              const label = (
+                b.getAttribute("aria-label") ??
+                b.textContent ??
+                ""
+              ).trim();
+              if (!/^(Download for|More for|Install)/.test(label)) continue;
+              // The Library's tiles lift 2 px under the pointer by design (MO-07): the product page's
+              // CTA is what must hold still.
+              if (document.querySelector("h1")?.textContent !== "Nightfall")
+                continue;
+              // Keyed by the page showing (its h1), not the hash, which moves before the DOM.
+              const base = `${document.querySelector("h1")?.textContent ?? ""} | ${label}`;
+              const n = seen.get(base) ?? 0;
+              seen.set(base, n + 1);
+              const key = `${base} #${n}`;
+              const set = w.__bx.get(key) ?? new Set<string>();
+              set.add(
+                [r.x, r.y + scrollY, r.width, r.height]
+                  .map((v) => Math.round(v * 2) / 2)
+                  .join(","),
+              );
+              w.__bx.set(key, set);
+            }
+            if (w.__bxOn) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        await page
+          .getByRole("article", { name: "Nightfall" })
+          .getByRole("link", { name: "Nightfall", exact: true })
+          .click();
+        await page
+          .getByRole("heading", { level: 1, name: "Nightfall" })
+          .waitFor();
+        await page.waitForTimeout(500);
+        s.release();
+        await page.waitForFunction(
+          () =>
+            document.querySelectorAll("img.pk-img-in[data-loaded]").length > 0,
+        );
+        await atRest(page);
+        await page.goBack();
+        await page.getByRole("article", { name: "Nightfall" }).waitFor();
+        await atRest(page);
+        const moved = await page.evaluate(() => {
+          const w = window as unknown as {
+            __bx: Map<string, Set<string>>;
+            __bxOn: boolean;
+          };
+          w.__bxOn = false;
+          return {
+            keys: w.__bx.size,
+            moved: [...w.__bx]
+              .filter(([, boxes]) => boxes.size > 1)
+              .map(([key, boxes]) => `${key}: ${[...boxes].join(" | ")}`),
+            product: [...w.__bx.keys()].filter((k) =>
+              k.startsWith("Nightfall |"),
+            ),
+          };
+        });
+        expect(
+          moved.product.length,
+          "the product page's buttons were sampled",
+        ).toBeGreaterThan(0);
+        expect(moved.moved, "a button changed its box").toEqual([]);
+        expect(await s.violations()).toEqual([]);
+        await s.close();
+      });
 });
