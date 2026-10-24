@@ -1133,7 +1133,7 @@ msgstr "Reiniciar cuando esté lista"
 msgid "update.restartNow"
 msgstr "Reiniciar ahora"
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr "Reiniciar ahora"
@@ -1307,6 +1307,46 @@ msgstr "Parte del contenido de {product} se retiró y no se puede usar. Actualiz
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "Tienes la última versión"
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr "Buscando actualizaciones…"
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr "¿Buscar actualizaciones automáticamente?"
+
+#. {product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr "{product} puede buscar nuevas versiones en segundo plano y avisarte cuando haya una lista. No se envía nada sobre tu Mac."
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr "Buscar automáticamente"
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr "Buscar automáticamente"
+
+#. Couldn't update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr "No se pudo actualizar"
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr "Más información"
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
+msgstr "Más información"
 
 #. Check for updates
 #. UpdatePrompt: an app update. Menu item and settings button.

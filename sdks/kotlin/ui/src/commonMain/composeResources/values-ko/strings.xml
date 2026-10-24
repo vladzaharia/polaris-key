@@ -473,6 +473,20 @@
     <string name="update_revokedContent">%1$s의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">최신 버전이에요</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">업데이트 확인 중…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">업데이트를 자동으로 확인할까요?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다. Mac에 대한 정보는 전송되지 않습니다.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">자동으로 확인</string>
+    <string name="common_updatePermissionAllow__macos">자동으로 확인</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">업데이트할 수 없음</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">자세히 알아보기</string>
+    <string name="common_updateLearnMore__macos">자세히 알아보기</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">업데이트 확인</string>
     <string name="update_checkNow__macos">업데이트 확인</string>

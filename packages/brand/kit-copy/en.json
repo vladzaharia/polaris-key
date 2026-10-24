@@ -846,12 +846,18 @@
     "update.restartNow": {
       "value": "Restart now",
       "role": "button",
-      "note": "UpdatePrompt: an app update. The update is downloaded."
+      "note": "UpdatePrompt: an app update. The update is downloaded.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
     },
     "update.skipVersion": {
       "value": "Skip this version",
       "role": "button",
-      "note": "UpdatePrompt: an app update."
+      "note": "UpdatePrompt: an app update.",
+      "variants": {
+        "macos": "Skip This Version"
+      }
     },
     "update.install": {
       "value": "Update now",
@@ -1005,6 +1011,39 @@
       "value": "You're up to date",
       "role": "body",
       "note": "UpdatePrompt: an app update."
+    },
+    "common.updateChecking": {
+      "value": "Checking for updates…",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists."
+    },
+    "common.updatePermissionTitle": {
+      "value": "Check for updates automatically?",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check."
+    },
+    "common.updatePermissionBody": {
+      "value": "{product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "common.updatePermissionAllow": {
+      "value": "Check automatically",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.",
+      "variants": {
+        "macos": "Check Automatically"
+      }
+    },
+    "common.updateFailedTitle": {
+      "value": "Couldn't update",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain."
+    },
+    "common.updateLearnMore": {
+      "value": "Learn more",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser."
     },
     "update.checkNow": {
       "value": "Check for updates",

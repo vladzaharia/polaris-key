@@ -8,6 +8,8 @@
 //   macOS only: -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
 //   (hands the activation to Finder once the window is up, so the window is on screen but not
 //   active: the inactive look, UK-08.1 S2)
+//   macOS only: -pkeyUpdate <state> the update window in one state (UK-08.6): permission, checking,
+//   found, downloading, downloading-unknown, extracting, ready, installing, up-to-date, error
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -17,6 +19,11 @@ import PolarisKey
 import PolarisKeyUI
 import PolarisKeyUICore
 import SwiftUI
+
+#if os(macOS)
+    import PolarisKeyUpdate
+    import PolarisKeyUpdateUI
+#endif
 
 #if os(macOS)
     import AppKit
@@ -79,8 +86,34 @@ struct Root: View {
 
     var body: some View {
         Group {
+            #if os(macOS)
+                if let id = value("-pkeyUpdate"), let fixture = UpdateFixture(rawValue: id) {
+                    UpdateWindowHost(fixture: fixture, theme: theme)
+                } else {
+                    content
+                }
+            #else
+                content
+            #endif
+        }
+        .polarisKeyTheme(theme)
+        .environment(\.polarisKeyMaterialFallback, args.contains("-pkeyMaterial"))
+        #if os(macOS)
+            .frame(
+                width: MacWindow.size?.width, height: MacWindow.size?.height
+            )
+            .onAppear { MacWindow.deactivateIfAsked() }
+        #endif
+    }
+
+    @ViewBuilder private var content: some View {
+        Group {
             if args.contains("--live"), let client = LiveClient.make() {
                 SessionsView().polarisKeyGate(client)
+                    #if os(macOS)
+                        // `--live` also runs Sparkle on the kit's own update window.
+                        .task { await LiveUpdates.start(client, theme: theme) }
+                    #endif
             } else if let id = value("-pkeyState"),
                 let state = PolarisKeyPreviewState.all.first(where: { $0.id == id })
             {
@@ -91,14 +124,6 @@ struct Root: View {
                 PolarisKeyGallery()
             }
         }
-        .polarisKeyTheme(theme)
-        .environment(\.polarisKeyMaterialFallback, args.contains("-pkeyMaterial"))
-        #if os(macOS)
-            .frame(
-                width: MacWindow.size?.width, height: MacWindow.size?.height
-            )
-            .onAppear { MacWindow.deactivateIfAsked() }
-        #endif
     }
 }
 
@@ -178,3 +203,48 @@ struct TidewaterIconArt: View {
         .frame(width: 180, height: 180)
     }
 }
+
+#if os(macOS)
+    /// `-pkeyUpdate <state>`: the update window in one state, drawn by the driver itself. The sample's
+    /// own window stays out of the way, so the update window is the only one on screen.
+    struct UpdateWindowHost: View {
+        let fixture: UpdateFixture
+        let theme: PolarisKeyTheme
+        @State private var driver: PolarisSparkleUserDriver?
+
+        var body: some View {
+            Color.clear.frame(width: 1, height: 1)
+                .onAppear {
+                    let inputs = KitInputs(
+                        bundle: KitBundle(slug: "tidewater", name: "Tidewater Studio", icon: true))
+                    let driver = PolarisSparkleUserDriver(
+                        preview: inputs, iconData: TidewaterIcon.png,
+                        options: .init(theme: theme))
+                    self.driver = driver
+                    driver.present(fixture: fixture)
+                    DispatchQueue.main.async {
+                        for window in NSApp.windows where window !== driver.nsWindow {
+                            window.orderOut(nil)
+                        }
+                    }
+                }
+        }
+    }
+
+    /// `--live`: Sparkle on the kit's user driver. The sample's bundle carries no `SUPublicEDKey`
+    /// (it is not a shipped app), so `start` refuses and says why: the anchor is not bypassed.
+    @MainActor enum LiveUpdates {
+        static var sparkle: PolarisSparkle?
+
+        static func start(_ client: PolarisKeyClient, theme: PolarisKeyTheme) async {
+            do {
+                sparkle = try await PolarisSparkle.start(
+                    client: client,
+                    userDriver: PolarisSparkleUserDriver(
+                        client: client, options: .init(theme: theme)))
+            } catch {
+                NSLog("Sparkle not started: \(error)")
+            }
+        }
+    }
+#endif

@@ -89,6 +89,10 @@ targets:
         product: PolarisKeyUI
       - package: PolarisKey
         product: PolarisKeyUICore
+      - package: PolarisKey
+        product: PolarisKeyUpdate
+      - package: PolarisKey
+        product: PolarisKeyUpdateUI
     info:
       path: build/generated/Info-Mac.plist
       properties:

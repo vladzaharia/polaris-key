@@ -481,6 +481,20 @@
     <string name="update_revokedContent">Alcuni contenuti di %1$s sono stati ritirati e non possono essere usati. Aggiorna per continuare.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Hai la versione più recente</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Ricerca di aggiornamenti…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Cercare gli aggiornamenti automaticamente?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s può cercare nuove versioni in background e avvisarti quando una è pronta. Non viene inviato nulla sul tuo Mac.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Cerca automaticamente</string>
+    <string name="common_updatePermissionAllow__macos">Cerca automaticamente</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Impossibile aggiornare</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Scopri di più</string>
+    <string name="common_updateLearnMore__macos">Scopri di più</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Controlla aggiornamenti</string>
     <string name="update_checkNow__macos">Controlla aggiornamenti</string>

@@ -1125,7 +1125,7 @@ msgstr "准备就绪后重启"
 msgid "update.restartNow"
 msgstr "立即重启"
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr "立即重启"
@@ -1299,6 +1299,46 @@ msgstr "{product}的部分内容已被撤回，无法使用。请更新以继续
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "已是最新版本"
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr "正在检查更新…"
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr "自动检查更新？"
+
+#. {product} can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr "{product} 可以在后台查找新版本，并在新版本就绪时通知你。不会发送任何有关你的 Mac 的信息。"
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr "自动检查"
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr "自动检查"
+
+#. Couldn't update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr "无法更新"
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr "了解更多"
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
+msgstr "了解更多"
 
 #. Check for updates
 #. UpdatePrompt: an app update. Menu item and settings button.

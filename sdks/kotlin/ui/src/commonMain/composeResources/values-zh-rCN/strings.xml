@@ -473,6 +473,20 @@
     <string name="update_revokedContent">%1$s的部分内容已被撤回，无法使用。请更新以继续。</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">已是最新版本</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">正在检查更新…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">自动检查更新？</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s 可以在后台查找新版本，并在新版本就绪时通知你。不会发送任何有关你的 Mac 的信息。</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">自动检查</string>
+    <string name="common_updatePermissionAllow__macos">自动检查</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">无法更新</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">了解更多</string>
+    <string name="common_updateLearnMore__macos">了解更多</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">检查更新</string>
     <string name="update_checkNow__macos">检查更新</string>

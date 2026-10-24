@@ -481,6 +481,20 @@
     <string name="update_revokedContent">Parte do conteúdo de %1$s foi retirada e não pode ser usada. Atualize para continuar.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Você está atualizado</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Verificando atualizações…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Verificar atualizações automaticamente?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">O %1$s pode procurar novas versões em segundo plano e avisar quando uma estiver pronta. Nada sobre o seu Mac é enviado.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Verificar automaticamente</string>
+    <string name="common_updatePermissionAllow__macos">Verificar automaticamente</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Não foi possível atualizar</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Saiba mais</string>
+    <string name="common_updateLearnMore__macos">Saiba mais</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Verificar atualizações</string>
     <string name="update_checkNow__macos">Verificar atualizações</string>

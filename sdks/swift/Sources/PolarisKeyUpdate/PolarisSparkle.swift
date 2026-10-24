@@ -60,6 +60,13 @@ import PolarisKeyCore
         }
     }
 
+    /// A user driver that wants the updater it runs under, to start a check again (the update
+    /// window's Try Again). `PolarisSparkle` hands it over when it builds the updater.
+    @MainActor
+    public protocol PolarisSparkleUpdaterAware: AnyObject {
+        func attach(updater: SPUUpdater)
+    }
+
     @MainActor
     public final class PolarisSparkle {
         /// The standard controller; `nil` when an app injected its own `userDriver`.
@@ -86,6 +93,7 @@ import PolarisKeyCore
                 self.updater = SPUUpdater(
                     hostBundle: bundle, applicationBundle: bundle, userDriver: userDriver,
                     delegate: delegate)
+                (userDriver as? any PolarisSparkleUpdaterAware)?.attach(updater: updater)
             } else {
                 let controller = SPUStandardUpdaterController(
                     startingUpdater: false, updaterDelegate: delegate, userDriverDelegate: nil)
@@ -99,6 +107,10 @@ import PolarisKeyCore
         /// the app's lifetime (it owns the updater and its delegate, and Sparkle holds the
         /// `userDriver` it is given). `userDriver` replaces Sparkle's standard UI only: the feed,
         /// the EdDSA check and the install path are Sparkle's, as without it.
+        ///
+        /// `bundle` is the bundle the updater reads and replaces when a `userDriver` is given. With
+        /// no `userDriver` the standard controller always updates `Bundle.main` and `bundle` only
+        /// supplies the `SUPublicEDKey` check, so pass a custom `bundle` together with a driver.
         public static func start(
             client: PolarisKeyClient, channel: String? = nil, bundle: Foundation.Bundle = .main,
             userDriver: (any SPUUserDriver)? = nil

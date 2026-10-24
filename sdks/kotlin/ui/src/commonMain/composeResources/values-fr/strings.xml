@@ -481,6 +481,20 @@
     <string name="update_revokedContent">Une partie du contenu de %1$s a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Vous êtes à jour</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Recherche de mises à jour…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Rechercher les mises à jour automatiquement ?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête. Aucune information sur votre Mac n’est envoyée.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Rechercher automatiquement</string>
+    <string name="common_updatePermissionAllow__macos">Rechercher automatiquement</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Mise à jour impossible</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">En savoir plus</string>
+    <string name="common_updateLearnMore__macos">En savoir plus</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Rechercher des mises à jour</string>
     <string name="update_checkNow__macos">Rechercher des mises à jour</string>

@@ -473,6 +473,20 @@
     <string name="update_revokedContent">%1$sの一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">最新の状態です</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">アップデートを確認中…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">アップデートを自動的に確認しますか？</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s はバックグラウンドで新しいバージョンを確認し、準備ができたらお知らせします。Mac の情報は送信されません。</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">自動的に確認</string>
+    <string name="common_updatePermissionAllow__macos">自動的に確認</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">アップデートできませんでした</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">詳しく見る</string>
+    <string name="common_updateLearnMore__macos">詳しく見る</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">アップデートを確認</string>
     <string name="update_checkNow__macos">アップデートを確認</string>

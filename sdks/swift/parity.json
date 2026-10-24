@@ -224,7 +224,7 @@
           "reason": "outlet"
         }
       ],
-      "note": "Sparkle on macOS."
+      "note": "Sparkle on macOS: PolarisSparkle.start(client:channel:bundle:userDriver:) (PolarisKeyUpdate), and PolarisSparkleUserDriver (PolarisKeyUpdateUI, UK-08.6), the SwiftUI SPUUserDriver and its one update window; SparkleUserDriverTests and SparkleUserDriverMappingTests (the mapping table, every reply once, no invented percentage, nothing after an error)."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -417,7 +417,7 @@
     },
     "ui.update": {
       "status": "implemented",
-      "note": "The update family; UpdatePromptView (the glass banner, the mandatory screen), UpdateProgressView and ReleaseNotesView rendered on the simulator."
+      "note": "The update family; UpdatePromptView (the glass banner, the mandatory screen), UpdateProgressView and ReleaseNotesView rendered on the simulator; the Mac update window (UpdateWindowView, UK-08.6) is drawn by PolarisSparkleUserDriver."
     },
     "ui.settings": {
       "status": "implemented",

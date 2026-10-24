@@ -481,6 +481,20 @@
     <string name="update_revokedContent">Parte del contenido de %1$s se retiró y no se puede usar. Actualiza para continuar.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Tienes la última versión</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Buscando actualizaciones…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">¿Buscar actualizaciones automáticamente?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s puede buscar nuevas versiones en segundo plano y avisarte cuando haya una lista. No se envía nada sobre tu Mac.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Buscar automáticamente</string>
+    <string name="common_updatePermissionAllow__macos">Buscar automáticamente</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">No se pudo actualizar</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Más información</string>
+    <string name="common_updateLearnMore__macos">Más información</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Buscar actualizaciones</string>
     <string name="update_checkNow__macos">Buscar actualizaciones</string>

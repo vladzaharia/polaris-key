@@ -477,6 +477,20 @@
     <string name="update_revokedContent">Einige Inhalte von %1$s wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie, um fortzufahren.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Sie sind auf dem neuesten Stand</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Nach Updates wird gesucht…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Automatisch nach Updates suchen?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s kann im Hintergrund nach neuen Versionen suchen und Sie benachrichtigen, wenn eine bereit ist. Es werden keine Angaben zu Ihrem Mac gesendet.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Automatisch suchen</string>
+    <string name="common_updatePermissionAllow__macos">Automatisch suchen</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Update nicht möglich</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Mehr erfahren</string>
+    <string name="common_updateLearnMore__macos">Mehr erfahren</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Nach Updates suchen</string>
     <string name="update_checkNow__macos">Nach Updates suchen</string>

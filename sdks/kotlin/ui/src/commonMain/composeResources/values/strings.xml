@@ -411,7 +411,7 @@
     <string name="update_restartWhenReady__macos">Install and Relaunch</string>
     <!-- UpdatePrompt: an app update. The update is downloaded. -->
     <string name="update_restartNow">Restart now</string>
-    <string name="update_restartNow__macos">Restart Now</string>
+    <string name="update_restartNow__macos">Install and Relaunch</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_skipVersion">Skip this version</string>
     <string name="update_skipVersion__macos">Skip This Version</string>
@@ -477,6 +477,20 @@
     <string name="update_revokedContent">Some of %1$s's content was withdrawn and can't be used. Update to keep going.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">You're up to date</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Checking for updates…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Check for updates automatically?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s can look for new versions in the background and tell you when one is ready. Nothing about your Mac is sent.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Check automatically</string>
+    <string name="common_updatePermissionAllow__macos">Check Automatically</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Couldn't update</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Learn more</string>
+    <string name="common_updateLearnMore__macos">Learn More</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Check for updates</string>
     <string name="update_checkNow__macos">Check for Updates…</string>
