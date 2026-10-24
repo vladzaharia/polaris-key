@@ -344,12 +344,15 @@ Package-feed setup and feed pruning.
 
 ```text
 pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]
+pkey feeds setup --write [--owner slug] [--no-browser] [--base-url url] [--json]
 pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
 ```
 
 pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed cleanup, which is on by default after a one-time dry-run notice. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants.
 
 pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme, groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the registry token from that environment variable. Offline: nothing is sent anywhere.
+
+pkey feeds setup --write signs in with a code and a read-only personal token that you approve in Polaris Locker, then sets up the tools it finds on PATH. It changes only the lines it owns, in files under your home directory at 0600, and keeps the first version of a changed file as &lt;file&gt;.pkey-backup. It refuses (exit 4) in CI and without a terminal, where you print the setup instead; --owner limits it to one product's feeds. A Godot feed is skipped: the editor needs its own URL, made in Polaris Locker under Packages.
 
 A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
 

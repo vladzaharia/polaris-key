@@ -826,10 +826,12 @@ export const COMMANDS: readonly PkeyCommand[] = [
     name: "feeds",
     group: "feeds",
     json: true,
+    valueless: ["no-browser"],
     context: ["product", "baseUrl"],
     summary: "Package-feed setup and feed pruning",
     rows: [
       ["feeds setup", "Print the setup for one package feed"],
+      ["feeds setup --write", "Sign in and set up your package tools"],
       ["feeds prune", "Delete main builds below the newest stable"],
     ],
     tree: { setup: [], prune: [] },
@@ -837,6 +839,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
+      "pkey feeds setup --write [--owner slug] [--no-browser] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
     ],
     about: [
@@ -862,6 +865,17 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, " +
           "reading the registry token from that environment variable. Offline: nothing is sent " +
           "anywhere.",
+      },
+      {
+        subs: ["setup"],
+        text:
+          "pkey feeds setup --write signs in with a code and a read-only personal token that you " +
+          "approve in Polaris Locker, then sets up the tools it finds on PATH. It changes only " +
+          "the lines it owns, in files under your home directory at 0600, and keeps the first " +
+          "version of a changed file as <file>.pkey-backup. It refuses (exit 4) in CI and " +
+          "without a terminal, where you print the setup instead; --owner limits it to one " +
+          "product's feeds. A Godot feed is skipped: the editor needs its own URL, made in " +
+          "Polaris Locker under Packages.",
       },
       { subs: ["prune"], text: CI_PARA },
     ],
