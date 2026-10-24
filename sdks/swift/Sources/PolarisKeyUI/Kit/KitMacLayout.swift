@@ -32,7 +32,12 @@
             kitStyle { style in
                 let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 shape
-                    .fill(style.isNative ? style.palette.sunken : style.palette.accentSubtle)
+                    .fill(style.isNative ? Color.primary.opacity(0.06) : style.palette.accentSubtle)
+                    .overlay {
+                        if style.isNative {
+                            shape.strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        }
+                    }
                     .overlay {
                         if !style.isNative {
                             RadialGradient(
@@ -61,6 +66,8 @@
     struct KitMacStrip: View {
         /// The icon's inset in the strip.
         var leading: CGFloat
+        /// The window's width, when known: at the minimum (480) the name is dropped.
+        var iconOnly = false
 
         var body: some View {
             kitStyle { style in
@@ -68,10 +75,13 @@
                     KitMacArtFill()
                     HStack(spacing: style.space(.sm)) {
                         ProductIcon(size: 40)
-                        Text(style.identity.name)
-                            .font(style.font(.label))
-                            .foregroundStyle(style.palette.textStrong)
-                            .lineLimit(1)
+                        // At the minimum width the strip is the icon alone.
+                        if !iconOnly {
+                            Text(style.identity.name)
+                                .font(style.font(.label))
+                                .foregroundStyle(style.palette.textStrong)
+                                .lineLimit(1)
+                        }
                     }
                     .padding(.leading, leading)
                     .accessibilityElement(children: .combine)
@@ -108,7 +118,9 @@
             switch arrangement {
             case .strip:
                 VStack(spacing: 0) {
-                    KitMacStrip(leading: KitMacArrangement.stripInset)
+                    KitMacStrip(
+                        leading: KitMacArrangement.stripInset,
+                        iconOnly: geo.size.width <= KitMacArrangement.minimumWindow.width)
                         .padding(.horizontal, KitMacArrangement.artMargin)
                         .padding(.top, KitMacArrangement.artMargin)
                     endPane(style, height: geo.size.height - 78, safeTop: 0)
@@ -122,7 +134,7 @@
                     )
                     .background(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(style.palette.page)
+                            .fill(style.dark ? style.palette.page.mix(with: .white, by: 0.06) : style.palette.page)
                             .shadow(color: .black.opacity(0.28), radius: 20, y: 12)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,35 +161,53 @@
             // The measures are the mockup's, drawn with the title bar; a titled window's content
             // starts under it, so the system's 28 pt comes off the top.
             let top = arrangement.isStrip ? ins.top : max(ins.top - 28, 20) + safeTop
+            let pinned = arrangement.isStrip
             return ScrollView {
                 VStack(alignment: .leading, spacing: style.space(.lg)) {
-                    if header && !hero && !arrangement.isStrip {
+                    if header && !hero && !pinned {
                         ProductHeader(tier: tier)
                     }
                     VStack(alignment: .leading, spacing: hero ? 8 : style.space(.md)) {
                         heading()
                         content()
                     }
-                    if arrangement.isStrip { Spacer(minLength: style.space(.md)) }
-                    VStack(alignment: .leading, spacing: style.space(.md)) {
-                        actions()
-                        footer()
+                    if !pinned {
+                        VStack(alignment: .leading, spacing: style.space(.md)) {
+                            actions()
+                            footer()
+                        }
                     }
                 }
                 .frame(
-                    maxWidth: arrangement.isStrip ? .infinity : KitMacArrangement.formMaxWidth,
+                    maxWidth: pinned ? .infinity : KitMacArrangement.formMaxWidth,
                     alignment: .leading
                 )
                 .padding(.top, top)
                 .padding(.leading, ins.leading)
                 .padding(.trailing, ins.trailing)
-                .padding(.bottom, ins.bottom)
+                .padding(.bottom, pinned ? style.space(.md) : ins.bottom)
                 .frame(
                     maxWidth: .infinity,
-                    minHeight: max(0, height - (arrangement.isStrip ? 0 : 28)),
+                    minHeight: max(0, height - (pinned ? 0 : 28)),
                     alignment: .topLeading)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // In the strip the actions are outside the scroll view, so they never fall below the
+            // fold of a 480 x 520 window.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if pinned {
+                    VStack(alignment: .leading, spacing: style.space(.md)) {
+                        actions()
+                        footer()
+                    }
+                    .padding(.leading, ins.leading)
+                    .padding(.trailing, ins.trailing)
+                    .padding(.top, style.space(.sm))
+                    .padding(.bottom, ins.bottom)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(style.palette.page)
+                }
+            }
         }
     }
 
@@ -199,6 +229,11 @@
                     actions()
                     footer()
                 }
+                // Children never lay out wider than the form (the sheet is 440 pt).
+                .frame(
+                    maxWidth: KitMacArrangement.sheetWidth - 2 * KitMacArrangement.sheetInsets.side,
+                    alignment: .leading
+                )
                 .padding(.top, KitMacArrangement.sheetInsets.top)
                 .padding(.horizontal, KitMacArrangement.sheetInsets.side)
                 .padding(.bottom, KitMacArrangement.sheetInsets.bottom)

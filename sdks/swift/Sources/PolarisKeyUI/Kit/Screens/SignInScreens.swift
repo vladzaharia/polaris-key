@@ -160,7 +160,14 @@ public struct SignInView: View {
                 }
                 ReplaceDeviceView(
                     screen: model.licenseChoice, view: model.inputs.replaceView,
-                    confirmInSystem: true, onReplace: {})
+                    confirmInSystem: true,
+                    onReplaceDevice: model.handlers.replaceDevice.map { handler in
+                        { (id: String?) in
+                            if let id { handler(id) }
+                        }
+                    },
+                    onBrowser: replaceInBrowser,
+                    cancel: Self.isMac ? { cancelSignInStep() } : nil)
             }
         case .key:
             ActivateBody(
@@ -243,7 +250,7 @@ public struct SignInView: View {
                     KitButton(
                         line: CopyLine("signin.replace.open"), kind: .primary,
                         glyph: PolarisKitGlyph.newWindow
-                    ) { openURL(link) }
+                    ) { open(link) }
                     .keyboardShortcut(.defaultAction)
                 }
                 if model.licenseChoice.shows("signin.choice.continue") {
@@ -264,9 +271,30 @@ public struct SignInView: View {
                 .keyboardShortcut(.defaultAction)
                 cancelButton
             case .replace:
-                cancelButton
+                // On a Mac Cancel sits in the same row as Replace… (inside the list's view).
+                if !Self.isMac { cancelButton }
             }
         }
+    }
+
+    /// Replace a Device in the browser: the license's own page.
+    private var replaceInBrowser: (() -> Void)? {
+        let link =
+            KitLinks.valid(model.inputs.activation?.manageUrl)
+            ?? model.inputs.choices?.choices.lazy.compactMap { KitLinks.valid($0.freeDeviceUrl) }.first
+        guard let link else { return nil }
+        return { open(link) }
+    }
+
+    /// The one place this form opens a link (the card's page, already validated).
+    private func open(_ link: URL) { openURL(link) }
+
+    private static var isMac: Bool {
+        #if os(macOS)
+            return true
+        #else
+            return false
+        #endif
     }
 
     @ViewBuilder private var handoffActions: some View {
@@ -286,15 +314,24 @@ public struct SignInView: View {
         cancelButton
     }
 
-    private var cancelButton: some View {
-        KitButton(line: CopyLine("common.cancel"), kind: .quiet) {
-            if model.signInScreen.state == .methods {
-                model.backToWelcome()
-                onClose?()
-            } else {
-                model.cancelSignIn()
-            }
+    private func cancelSignInStep() {
+        if model.signInScreen.state == .methods {
+            model.backToWelcome()
+            onClose?()
+        } else {
+            model.cancelSignIn()
         }
+    }
+
+    @Environment(\.kitInSheet) private var inSheet
+
+    /// Cancel: a quiet link on iOS; on a Mac "Back" inline and "Cancel" in a sheet, a bordered
+    /// secondary directly left of the default.
+    private var cancelButton: some View {
+        KitButton(
+            line: CopyLine(Self.isMac && !inSheet ? "common.back" : "common.cancel"),
+            kind: Self.isMac ? .secondary : .quiet
+        ) { cancelSignInStep() }
         .keyboardShortcut(.cancelAction)
     }
 }
@@ -353,7 +390,7 @@ public struct SignInMethodsView: View {
                 if let lede = screen.line("signin.methods.ledeApp") {
                     KitText(lede, .body, color: .default)
                 }
-                KitActionStack {
+                KitMethodsStack {
                     if let email = screen.line("signin.email.continue")
                         ?? screen.line("signin.desktop.continue")
                     {
@@ -506,6 +543,8 @@ public struct SignInHandoffView: View {
         }
         if let request {
             CodeDisplay(code: request.userCode)
+            // "Check the code there matches this one" sits with the code it asks about (§4.3).
+            KitText(CopyLine("signin.handoff.check"), .meta, color: .muted)
             if let url = screen.line("signin.handoff.url") {
                 HStack {
                     KitText(url, .meta, color: .default)
@@ -514,9 +553,16 @@ public struct SignInHandoffView: View {
                         Button {
                             KitPasteboard.copy(request.verificationUri)
                         } label: {
-                            Image(systemName: "doc.on.doc")
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
+                            #if os(macOS)
+                                Text(strings.string("signin.handoff.copyLink"))
+                                    .font(style.font(.label))
+                                    .frame(minHeight: 28)
+                                    .contentShape(Rectangle())
+                            #else
+                                Image(systemName: "doc.on.doc")
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            #endif
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(style.palette.textMuted)
@@ -524,8 +570,6 @@ public struct SignInHandoffView: View {
                     }
                 }
             }
-            // "Check the code there matches this one" sits with the code it asks about (§4.3).
-            KitText(CopyLine("signin.handoff.check"), .meta, color: .muted)
             CountdownRing(
                 expiresAt: Date(timeIntervalSince1970: TimeInterval(request.expiresAt)),
                 total: 600)
@@ -693,10 +737,16 @@ public struct ReplaceDeviceView: View {
     let screen: KitScreen<LicenseChoiceState>
     let view: KitReplaceView?
     var confirmInSystem: Bool
-    var onReplace: () -> Void
+    /// Confirmed: the chosen device's id. Nil hides Replace… (no way to do it in the app).
+    var onReplace: ((String?) -> Void)?
+    /// The browser path, offered when the app cannot replace (Replace a Device ↗).
+    var onBrowser: (() -> Void)?
+    /// Cancel, drawn beside Replace… on a Mac.
+    var cancel: (() -> Void)?
     @State private var selection: String?
     @State private var confirming = false
     @Environment(\.polarisKeyStrings) private var strings
+    @Environment(\.kitInSheet) private var inSheet
 
     private static var formFactor: String {
         #if os(macOS)
@@ -719,7 +769,20 @@ public struct ReplaceDeviceView: View {
         self.screen = screen
         self.view = view
         self.confirmInSystem = confirmInSystem
-        self.onReplace = onReplace
+        self.onReplace = { _ in onReplace() }
+    }
+
+    /// With the host's device-aware handler (nil: the form offers the browser path instead).
+    init(
+        screen: KitScreen<LicenseChoiceState>, view: KitReplaceView?, confirmInSystem: Bool = true,
+        onReplaceDevice: ((String?) -> Void)?, onBrowser: (() -> Void)?, cancel: (() -> Void)? = nil
+    ) {
+        self.screen = screen
+        self.view = view
+        self.confirmInSystem = confirmInSystem
+        self.onReplace = onReplaceDevice
+        self.onBrowser = onBrowser
+        self.cancel = cancel
     }
 
     public var body: some View {
@@ -752,12 +815,33 @@ public struct ReplaceDeviceView: View {
                         RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
                             .fill(style.palette.raised))
                 }
-                KitButton(
-                    line: CopyLine(
-                        confirmInSystem ? "signin.replace.openSystem" : "signin.replace.confirm"),
-                    kind: .primary,
-                    action: { if confirmInSystem { confirming = true } else { onReplace() } }
-                )
+                KitActionStack {
+                    if let cancel {
+                        KitButton(
+                            line: CopyLine(inSheet ? "common.cancel" : "common.back"),
+                            kind: .secondary, action: cancel
+                        )
+                        .keyboardShortcut(.cancelAction)
+                    }
+                    if onReplace != nil {
+                        KitButton(
+                            line: CopyLine(
+                                confirmInSystem
+                                    ? "signin.replace.openSystem" : "signin.replace.confirm"),
+                            kind: .primary,
+                            action: {
+                                if confirmInSystem { confirming = true } else { onReplace?(target?.id) }
+                            }
+                        )
+                        .keyboardShortcut(.defaultAction)
+                    } else if let onBrowser {
+                        KitButton(
+                            line: CopyLine("signin.replace.open"), kind: .primary,
+                            glyph: PolarisKitGlyph.newWindow, action: onBrowser
+                        )
+                        .keyboardShortcut(.defaultAction)
+                    }
+                }
                 .confirmationDialog(
                     strings.string(
                         "signin.replace.title", ["device": .text(target?.label ?? "")]),
@@ -766,7 +850,7 @@ public struct ReplaceDeviceView: View {
                     Button(
                         strings.string(
                             "signin.replace.confirmNamed", ["device": .text(target?.label ?? "")]),
-                        role: .destructive, action: onReplace)
+                        role: .destructive, action: { onReplace?(target?.id) })
                     Button(strings.string("common.cancel"), role: .cancel) {}
                 } message: {
                     Text(

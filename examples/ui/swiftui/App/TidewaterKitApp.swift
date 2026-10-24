@@ -146,10 +146,18 @@ struct Root: View {
             if args.contains("--live"), let client = LiveClient.make() {
                 SessionsView().polarisKeyGate(client)
             } else if let id = value("-pkeyState"),
-                let state = PolarisKeyPreviewState.all.first(where: { $0.id == id })
+                let found = PolarisKeyPreviewState.all.first(where: { $0.id == id })
             {
+                // A Mac says "this Mac", never "this iPhone".
                 #if os(macOS)
-                    if args.contains("-pkeySheet"), let welcome = PolarisKeyPreviewState.named(.welcome, "default") {
+                    let state = found.on(PolarisKeyPreviewState.mac)
+                #else
+                    let state = found
+                #endif
+                #if os(macOS)
+                    if args.contains("-pkeySheet"),
+                    let welcome = PolarisKeyPreviewState.named(.welcome, "default")?.on(PolarisKeyPreviewState.mac)
+                {
                         PolarisKeyPreview(
                             welcome, iconData: TidewaterIcon.png,
                             frozenTime: args.contains("-pkeyFreezeTime")

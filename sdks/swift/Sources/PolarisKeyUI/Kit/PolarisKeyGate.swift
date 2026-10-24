@@ -23,6 +23,7 @@ public struct PolarisKeyGate<Content: View>: View {
 
     @State private var graceDismissed = false
     @State private var manageOpened = false
+    @State private var cameBack = false
 
     /// Gate `content` on `client`'s license.
     public init(
@@ -56,6 +57,7 @@ public struct PolarisKeyGate<Content: View>: View {
                 overlays
             }
         }
+        .onChange(of: model.route) { old, new in cameBack = new == .welcome && old != .welcome }
         .sheet(isPresented: mandatoryUpdate) {
             // No dismiss (§4.3): no drag, no Escape, no close button; only the verb.
             PolarisKeyScope(model: model) {
@@ -145,6 +147,9 @@ public struct PolarisKeyGate<Content: View>: View {
         }
     }
 
+    /// Back or Escape from a step: Welcome puts focus on "Use a License Key" again.
+    private var returnedToWelcome: Bool { cameBack }
+
     private var welcome: some View {
         WelcomeView(
             screen: model.welcome, onSignIn: { model.beginSignIn() },
@@ -169,8 +174,10 @@ public struct PolarisKeyGate<Content: View>: View {
             inlineActions: {
                 ActivateActions(
                     screen: model.activate, onSubmit: { Task { await model.submitKey() } },
-                    onReplaceDevice: replaceDevice, onCancel: nil)
-            })
+                    onReplaceDevice: replaceDevice, onCancel: nil,
+                    onDifferentKey: { model.keyText = "" })
+            },
+            refocusUseKey: returnedToWelcome)
     }
 
     /// The licensed app is showing: the only time the banner and the update sheet draw.

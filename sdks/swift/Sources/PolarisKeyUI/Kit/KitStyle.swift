@@ -380,9 +380,16 @@ enum KitPaletteResolver {
             dark
             ? (PolarisBrand.Dark.success, PolarisBrand.Dark.warning, PolarisBrand.Dark.danger)
             : (PolarisBrand.Light.success, PolarisBrand.Light.warning, PolarisBrand.Light.danger)
-        let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+        #if os(macOS)
+            // A Mac window's dark ground is the system's (about #1f1f22), not the phone's black,
+            // so the field's fill stays one step above it.
+            let page = dark ? BrandColor(hex: 0x1f1f22) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x2b2d34) : BrandColor(hex: 0xffffff)
+        #else
+            let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
+        #endif
         let raised = dark ? BrandColor(hex: 0x16181d) : BrandColor(hex: 0xffffff)
-        let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
 
         var p = KitPalette(
             page: page.color, raised: raised.color, sunken: sunken.color,

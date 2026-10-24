@@ -119,6 +119,38 @@ final class KitRulesTests: XCTestCase {
         }
     }
 
+    func testTheGlassPrimarysInactiveLookKeepsContrastToo() {
+        // The glass path (`inactiveFollowsSystem && !appearsActive`) draws the same neutral look
+        // as the solid capsule: textStrong on raised, 4.5:1 or more (S2, review round 2).
+        for dark in [true, false] {
+            let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+            let p = KitPaletteResolver.palette(
+                identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                increaseContrast: false)
+            let look = KitInactiveLook.neutral(p)
+            XCTAssertEqual(look.label, p.textStrong)
+            XCTAssertEqual(look.fill, p.raised)
+            let label = dark ? PolarisBrand.Dark.textStrong : PolarisBrand.Light.textStrong
+            let raised = dark ? "#16181d" : "#ffffff"
+            XCTAssertGreaterThanOrEqual(
+                PolarisAccent.contrast(String(format: "#%06x", label.hex), raised), 4.5)
+        }
+    }
+
+    @MainActor
+    func testAMacStatesCopyNeverSaysIPhone() {
+        let strings = KitStrings()
+        for state in PolarisKeyPreviewState.all {
+            let mac = state.on(PolarisKeyPreviewState.mac)
+            for line in mac.screen.copy {
+                let text = strings.string(line)
+                XCTAssertFalse(
+                    text.localizedCaseInsensitiveContains("this iPhone"),
+                    "\(mac.id): \(line.key) says \(text)")
+            }
+        }
+    }
+
     func testTheMacButtonRowPutsCancelDirectlyLeftOfTheDefault() {
         let slots: [KitActionSlot] = [
             KitActionSlot(kind: .primary),

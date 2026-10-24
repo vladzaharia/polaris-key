@@ -250,12 +250,6 @@
     {
       "kit": "swiftui",
       "rule": "swiftui-initial-focus",
-      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/GateScreens.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-initial-focus",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift",
       "count": 1
     },

@@ -167,6 +167,9 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
     @ViewBuilder var inlineActions: () -> InlineActions
 
     @AccessibilityFocusState private var titleFocused: Bool
+    @FocusState private var useKeyFocused: Bool
+    /// Back or Escape from a step: focus returns to "Use a License Key" (macOS).
+    var refocusUseKey = false
 
     /// `inline` and `inlineActions` carry the one path of a one-path product (the key field and
     /// Activate for a key-only product), under the lede and in the act's place.
@@ -174,8 +177,10 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         screen: KitScreen<WelcomeState>, onSignIn: @escaping () -> Void,
         onUseKey: @escaping () -> Void, onExtra: @escaping (String) -> Void = { _ in },
         @ViewBuilder inline: @escaping () -> Inline,
-        @ViewBuilder inlineActions: @escaping () -> InlineActions
+        @ViewBuilder inlineActions: @escaping () -> InlineActions,
+        refocusUseKey: Bool = false
     ) {
+        self.refocusUseKey = refocusUseKey
         self.screen = screen
         self.onSignIn = onSignIn
         self.onUseKey = onUseKey
@@ -215,6 +220,12 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
     }
 
     public var body: some View {
+        scaffold
+            .onAppear { if refocusUseKey { useKeyFocused = true } }
+            .onChange(of: refocusUseKey) { _, now in if now { useKeyFocused = true } }
+    }
+
+    private var scaffold: some View {
         KitScreenScaffold(hero: true, header: false) {
             VStack(alignment: Self.headingAlignment, spacing: 6) {
                 KitText(
@@ -257,6 +268,7 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                         line: screen.lineOrKey("welcome.useKey"), kind: .secondary, hero: heroSize,
                         action: onUseKey
                     )
+                    .focused($useKeyFocused)
                 }
             } else if screen.state == .capabilityLimited,
                 screen.shows("welcome.ledeSignInOnly") || screen.shows("common.signInToContinue")

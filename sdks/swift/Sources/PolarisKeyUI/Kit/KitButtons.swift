@@ -145,11 +145,12 @@ struct KitButtonSkin: ViewModifier {
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
                 #if compiler(>=6.2)
                 content
-                    .buttonStyle(.glassProminent)
-                    .buttonBorderShape(.capsule)
-                    .controlSize(compact ? .regular : largeSize)
-                    .tint(kind == .destructive ? fill : p.primaryGlassFill)
-                    .modifier(KitLabelTint(color: label, inactiveFollowsSystem: true))
+                    .modifier(
+                        KitGlassPrimary(
+                            tint: kind == .destructive ? fill : p.primaryGlassFill, label: label,
+                            size: compact ? .regular : largeSize,
+                            inactive: KitInactiveLook.neutral(p),
+                            reduceMotion: style.reduceMotion, height: height))
                 #endif
             } else {
                 content
@@ -157,7 +158,7 @@ struct KitButtonSkin: ViewModifier {
                         KitCapsuleStyle(
                             fill: AnyShapeStyle(fill), label: label,
                             reduceMotion: style.reduceMotion, height: height,
-                            inactive: KitInactiveLook(fill: p.raised, label: p.textStrong, hairline: p.border)))
+                            inactive: KitInactiveLook.neutral(p)))
             }
         case .secondary:
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
@@ -215,6 +216,13 @@ struct KitInactiveLook {
     let fill: Color
     let label: Color
     let hairline: Color
+
+
+    /// The one inactive look, for the solid and the glass primary alike: the raised fill, the
+    /// strong text colour (4.5:1 or more in both schemes) and a hairline.
+    static func neutral(_ p: KitPalette) -> KitInactiveLook {
+        KitInactiveLook(fill: p.raised, label: p.textStrong, hairline: p.border)
+    }
 }
 
 /// Sets a button label's colour. On macOS, a filled button's label follows the system while the
@@ -285,6 +293,47 @@ struct KitCapsuleStyle: ButtonStyle {
 }
 
 #if compiler(>=6.2)
+/// The iOS 26 / macOS 26 primary: `.glassProminent` in the accent. In an inactive Mac window the
+/// system drops the tint and leaves a white label on grey (S2), so the glass gives way to the
+/// neutral capsule with `textStrong`, as `KitCapsuleStyle`'s inactive look does.
+@available(iOS 26.0, macOS 26.0, *)
+struct KitGlassPrimary: ViewModifier {
+    let tint: Color
+    let label: Color
+    let size: ControlSize
+    let inactive: KitInactiveLook
+    let reduceMotion: Bool
+    let height: CGFloat
+    #if os(macOS)
+        @Environment(\.appearsActive) private var appearsActive
+    #endif
+
+    private var showsInactive: Bool {
+        #if os(macOS)
+            return !appearsActive
+        #else
+            return false
+        #endif
+    }
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if showsInactive {
+            content.buttonStyle(
+                KitCapsuleStyle(
+                    fill: AnyShapeStyle(inactive.fill), label: inactive.label,
+                    reduceMotion: reduceMotion, height: height, hairline: inactive.hairline,
+                    inactive: inactive))
+        } else {
+            content
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.capsule)
+                .controlSize(size)
+                .tint(tint)
+                .foregroundStyle(label)
+        }
+    }
+}
+
 /// The iOS 26 secondary: a Liquid Glass capsule, interactive, with an opaque label.
 @available(iOS 26.0, macOS 26.0, *)
 struct KitGlassStyle: ButtonStyle {
@@ -374,8 +423,10 @@ enum KitActionOrder {
         func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
             let s = sizes(subviews)
             let w = s.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(0, s.count - 1))
-            return CGSize(
-                width: max(w, proposal.width ?? 0), height: s.map(\.height).max() ?? 0)
+            // Never wider than offered: an ideal-size query (no width, or an unbounded one) gets
+            // the row's own width, so `ViewThatFits` can see that it does not fit and stack.
+            let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? w
+            return CGSize(width: width, height: s.map(\.height).max() ?? 0)
         }
 
         func placeSubviews(
@@ -412,13 +463,37 @@ struct KitActionStack<Content: View>: View {
     var body: some View {
         kitStyle { style in
             #if os(macOS)
-                KitMacActionRow(spacing: style.space(.sm)) { content() }
-                    .frame(maxWidth: .infinity)
+                // One row while it fits; a group that does not fit stacks whole, primary first.
+                ViewThatFits(in: .horizontal) {
+                    KitMacActionRow(spacing: style.space(.sm)) { content() }
+                    VStack(spacing: style.space(.sm)) { content() }
+                }
+                .frame(maxWidth: .infinity)
             #else
                 VStack(spacing: style.space(.sm)) {
                     content()
                 }
                 .frame(maxWidth: .infinity)
+            #endif
+        }
+    }
+}
+
+/// The sign-in methods: a vertical stack of full-width buttons (320 pt inline, the form's width in
+/// the sheet) on macOS, where `KitActionStack` would be one row; the standard stack elsewhere.
+struct KitMethodsStack<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.kitInSheet) private var inSheet
+
+    var body: some View {
+        kitStyle { style in
+            #if os(macOS)
+                VStack(alignment: .leading, spacing: style.space(.sm)) { content() }
+                    .frame(
+                        maxWidth: inSheet ? .infinity : KitMacArrangement.actsMaxWidth,
+                        alignment: .leading)
+            #else
+                KitActionStack { content() }
             #endif
         }
     }
