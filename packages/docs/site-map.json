@@ -1609,6 +1609,7 @@
   ],
   "extraRedirects": {
     "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/",
-    "/help/what-is-polaris-key": "/docs/help/what-is-polaris-locker/"
+    "/help/what-is-polaris-key": "/docs/help/what-is-polaris-locker/",
+    "/features/ship-builds/ci-stores": "/docs/features/ship-builds/channels/"
   }
 }

@@ -317,13 +317,7 @@ const DOCS_HOMES: Record<string, string> = {
   "altstore-pal": "channels/feeds#altstore-sidestore-and-altstore-pal",
   obtainium: "channels/feeds#obtainium",
   fdroid: "channels/feeds#the-f-droid-repository",
-  scoop: "channels/feeds#scoop",
-  flathub: "channels/feeds#flathub",
   "app-installer": "updates/updater-feeds#msix-app-installer",
-  winget: "ci-stores#pull-request-steps-winget-homebrew-scoop-and-flathub",
-  homebrew: "ci-stores#pull-request-steps-winget-homebrew-scoop-and-flathub",
-  itch: "ci-stores#storefront-steps-itchio-and-snap",
-  snap: "ci-stores#storefront-steps-itchio-and-snap",
   web: "channels/index#channels-and-transports",
 };
 
