@@ -264,6 +264,14 @@ export const STEPS = [
     lane: "godot",
     argv: () => ["sdks/godot/tools/lint.sh", "check"],
   },
+  // AX-07.6 (D-K12): the agent kit's skills, checked and (where `claude` exists) validated.
+  {
+    n: 23,
+    id: "skills",
+    title: "Agent kit skills: skills:check and skills:validate",
+    lane: null,
+    argv: () => ["pnpm", "skills:all"],
+  },
 ];
 
 /** Lanes some step runs locally; every other lane that is on is left to CI. */

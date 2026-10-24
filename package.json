@@ -22,6 +22,7 @@
     "skills:validate": "tsx tools/agent-kit-release.ts --validate",
     "parity:check": "tsx tools/parity-check.ts",
     "skills:check": "tsx tools/skills-check.ts",
+    "skills:all": "pnpm skills:check && pnpm skills:validate",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
