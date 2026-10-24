@@ -967,9 +967,28 @@ describe("no publishing anywhere else (owner decision 2026-10-04, feeds only)", 
         .split("\n")
         .filter((line) => !/^\s*#/.test(line))
         .join("\n");
-      for (const [re, what] of FORBIDDEN)
+      for (const [re, what] of FORBIDDEN) {
+        // AX-07.5: the agent kit is attached to the tag's GitHub Release by deploy.yml's
+        // `agent-kit-release` job, the one place (pinned by the next test); not a package feed.
+        if (file === "deploy.yml" && what === "a GitHub Release") continue;
         expect(re.test(text), `${file} publishes to ${what}`).toBe(false);
+      }
     }
+  });
+
+  it("only deploy.yml's agent-kit-release job touches a GitHub Release, with contents: write alone and no checkout", () => {
+    const job = workflow("deploy.yml").jobs["agent-kit-release"]!;
+    expect(job).toBeDefined();
+    expect(job.permissions).toEqual({ contents: "write" });
+    expect(job.environment).toBeUndefined();
+    expect(job.needs).toEqual(["verify", "deploy-worker"]);
+    const steps = JSON.stringify(job.steps);
+    expect(steps).not.toContain("actions/checkout");
+    expect(steps).not.toContain("secrets.");
+    for (const file of workflowFiles)
+      for (const [id, j] of Object.entries(workflow(file).jobs ?? {}))
+        if (/gh release (create|upload)/.test(JSON.stringify(j.steps ?? [])))
+          expect(`${file}:${id}`).toBe("deploy.yml:agent-kit-release");
   });
 
   it("the root .npmrc routes no scope to a public registry", () => {
