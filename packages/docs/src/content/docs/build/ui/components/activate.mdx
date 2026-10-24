@@ -81,6 +81,18 @@ License key entry with a live verdict: the field names the product and tier once
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate shows it when the license needs activation.
+
+    **Styled part.** `PolarisActivationScreen`, given the gate state's `activation` value, with `onKeyChange` and `onActivate` wired to the state.
+
+    **Headless.** `PolarisGateState.activation` in `polaris-key-ui-core`.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

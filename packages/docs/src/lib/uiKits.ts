@@ -144,7 +144,7 @@ export const UI_KITS: readonly UiKit[] = [
   {
     id: "compose",
     label: "Compose",
-    framework: "Jetpack Compose (Android)",
+    framework: "Jetpack Compose (Android) and Compose Desktop",
     sdk: "Kotlin",
     tier: "must",
     package: "im.plrs.key:polaris-key-ui",

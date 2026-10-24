@@ -1,9 +1,9 @@
-# Polaris Key UI for Jetpack Compose
+# Polaris Key UI for Jetpack Compose and Compose Desktop
 
 `polaris-key-ui` (`im.plrs.key:polaris-key-ui`, the Kotlin SDK's `:ui` module) is a set of
 Material 3 screens over the Kotlin SDK: a boot shell, the license gate, activation, sign-in with a
-QR code, settings, devices, an update banner and prompt, and pack progress. It is Android only and
-needs Compose with Material 3. It depends on `polaris-key-sdk` and renders the state the SDK
+QR code, settings, devices, an update banner and prompt, and pack progress. It runs on Android and
+on Compose Desktop (macOS, Windows and Linux) and needs Compose with Material 3. It depends on `polaris-key-sdk` and renders the state the SDK
 resolves. It never calls the network itself, and it never depends on the platform module or the
 Android glue.
 
@@ -216,6 +216,30 @@ navigation keeps the same code: when `PolarisSignIn` comes back it resumes polli
 rather than asking for a new one. `PolarisKeyApp(client, signIn = true)` (or `PolarisGate(state,
 signIn = ...)`) runs sign-in inside the gate instead, and its "Use a license key instead" comes
 back to the key field.
+
+## On the desktop
+
+A desktop app adds `im.plrs.key:polaris-key-desktop` (the OS keyring and the desktop updater) next
+to `polaris-key-ui`. `PolarisKeyWindow` is `PolarisKeyApp` as an OS window, and opens
+`PolarisUpdateWindow` and `PolarisSettingsWindow` when they are needed. The window's menu bar holds
+**Check for updates** and **Manage license** (`PolarisMenuItems`).
+
+```kotlin desktop
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.application
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.desktop.PolarisKeyDesktop
+import im.plrs.key.ui.PolarisKeyWindow
+
+fun main() = application {
+    val client = remember { PolarisKeyDesktop.client(PolarisConfig.clientOptions("1.4.2")) }
+    PolarisKeyWindow(client) { Text("Licensed") }
+}
+```
+
+The kit draws the chrome of the OS it runs on (macOS, Fluent or GNOME), and the sample in
+`examples/ui/compose-desktop/` runs every window. The Compose page of the docs has the rest.
 
 ## Copy and translation
 

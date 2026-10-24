@@ -79,6 +79,18 @@ The device list: an icon for the form factor, the name, platform and last seen, 
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisDevices(devices)`; the desktop Settings window shows it as its Devices pane.
+
+    **Styled part.** `PolarisDevicesScreen`, over `PolarisDevicesState(client.devicesActions(), scope)`.
+
+    **Headless.** `PolarisDevicesState` in `polaris-key-ui-core`.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
