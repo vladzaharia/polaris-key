@@ -605,9 +605,8 @@ clear 4.5:1, and so does the accent text, in both color schemes.
 the Locker `powered-by` badge (320 × 104 points, never narrower) where 320 points are free, else
 the line. `PolarisPoweredByBadge` draws the badge alone.
 
-Release note: the 0.8 gate family is gone. `PolarisGate`, `PolarisLoginView`, `PolarisGateModel`,
-`PolarisSignIn`, `PolarisOfflineActivation` and `GateOptions` are replaced by `PolarisKeyGate`,
-`KitGateOptions` and the kit's own screens; see the [CHANGELOG](CHANGELOG.md).
+Release note: the 0.8 gate family is gone; `PolarisKeyGate`, `KitGateOptions` and the kit's own
+screens replace it. The [CHANGELOG](CHANGELOG.md) lists the removed names.
 
 ## Updates (macOS)
 
