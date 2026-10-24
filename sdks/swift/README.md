@@ -697,6 +697,11 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
 `SUPublicEDKey`, starts a standard updater controller, and re-derives the feed, the headers and the
 channels on every `license` event. Keep the object it returns for the app's lifetime.
 
+To draw your own update UI, pass an `SPUUserDriver`: `PolarisSparkle.start(client:userDriver:)` builds
+an `SPUUpdater` on it instead of the standard controller (`controller` is then `nil`; `updater` is
+set on both paths). Only the UI changes: the feed, the `SUPublicEDKey` check and the install path
+stay Sparkle's. Sparkle keeps the driver for you; keep the returned object as before.
+
 ```swift
 #if os(macOS)
 import PolarisKey
