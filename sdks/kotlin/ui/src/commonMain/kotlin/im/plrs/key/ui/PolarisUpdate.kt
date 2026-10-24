@@ -191,19 +191,23 @@ private fun PolarisUpdatePromptCard(
     val downloading = ui.progress != null && ui.kind == PolarisUpdateUi.Kind.Install
     // GNOME: the sheet is an AdwDialog (opaque, radius 12, a soft shadow, a 7 % edge in light), never a bottom sheet.
     val gnome = window.isGnome
+    // macOS (UK-10.7): the inset Mac sheet, 440 wide, rounded on every side, with its buttons in a trailing row.
+    val mac = window.isMac
     Surface(
         // A card (not the phone's sheet) is the 560 dp message block, so its three actions fit one row.
         modifier = if (gnome) {
             modifier.widthIn(max = PolarisGnome.dialogWidth).fillMaxWidth().polarisGnomeDialogChrome()
         } else {
-            modifier.widthIn(max = if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth()
+            modifier.widthIn(max = if (mac) PolarisMac.sheetWidth else if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth()
         },
         // A bottom sheet rounds its top edge only (radius 28); a card rounds all four.
-        shape = if (gnome) polarisRadiusShape(PolarisGnome.dialogRadius) else if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
+        shape = if (gnome) polarisRadiusShape(PolarisGnome.dialogRadius) else if (mac) polarisMacSheetShape else if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
+        border = if (mac) polarisMacSheetBorder() else null,
+        shadowElevation = if (mac) 12.dp else 0.dp,
         // One step lower than the tonal Later button's container, so Later stays visible.
         color = if (gnome) polarisGnomeDialogColor() else scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
-        tonalElevation = if (gnome) 0.dp else 6.dp,
+        tonalElevation = if (gnome || mac) 0.dp else 6.dp,
     ) {
         Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val content: @Composable () -> Unit = {
@@ -287,7 +291,7 @@ private fun PolarisUpdatePromptCard(
             }
             val showLater = onLater != null && !ui.mandatory
             val showSkip = onSkip != null && !ui.mandatory && !downloading && ui.kind == PolarisUpdateUi.Kind.Install && ui.version != null
-            if (!sheet && (window.compactHeight || footer) && showSkip) {
+            if (!sheet && !mac && (window.compactHeight || footer) && showSkip) {
                 // Skip stays a quiet text link at the start edge; Later and the verb end the row (DL4).
                 // Where the three do not fit one row they stack, the verb first and Skip last.
                 PolarisSkipRow {
@@ -298,11 +302,16 @@ private fun PolarisUpdatePromptCard(
                     }
                 }
             } else {
-                PolarisActionGroup(row = window.compactHeight || gnome) {
+                PolarisActionGroup(row = window.compactHeight || gnome || mac) {
                     // While the download runs the primary queues the restart, so it is never disabled.
                     PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
                     if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, initialFocus = laterFirst)
-                    if (showSkip) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                    if (showSkip && !mac) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                }
+                // macOS: Cancel and the default are the row; Skip is the quiet link under it.
+                if (showSkip && mac) {
+                    Spacer(Modifier.height(8.dp))
+                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
                 }
             }
         }
@@ -407,7 +416,8 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
         // A Windows or GNOME dialog carries its own dim and the Mac sheet none; the window's 60 % black must not stack on it.
         properties = polarisPromptDialogProperties(dismissible = !ui.mandatory, scrim = dialogWindowDraws(autoPlatformVariant())),
     ) {
-        PolarisDialogDim(if (dark) 0.6f else 0.32f)
+        // The Mac sheet dims nothing (UK-10.7): the parent stays as it was.
+        if (autoPlatformVariant() != PolarisPlatformVariant.MacOS) PolarisDialogDim(if (dark) 0.6f else 0.32f)
         PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)
     }
 }
@@ -422,7 +432,7 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
     // the dialog measures its own window, so a short one lays the actions out as a row.
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val window = PolarisWindow(maxWidth, maxHeight, isTelevision())
-        val sheet = maxWidth < PolarisSheetBelow && !window.isGnome
+        val sheet = maxWidth < PolarisSheetBelow && !window.isGnome && !window.isMac
         val available = maxHeight
         CompositionLocalProvider(LocalPolarisWindow provides window) {
             if (window.fluent) {
@@ -434,7 +444,7 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
             Box(
                 Modifier.fillMaxSize().then(if (window.isGnome) Modifier.polarisGnomeScrim() else Modifier)
                     .pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } },
-                contentAlignment = if (sheet) Alignment.BottomCenter else Alignment.Center,
+                contentAlignment = if (window.isMac) Alignment.TopCenter else if (sheet) Alignment.BottomCenter else Alignment.Center,
             ) {
                 if (sheet) {
                     PolarisUpdatePromptCard(
@@ -449,7 +459,8 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
                 } else {
                     PolarisUpdatePromptCard(
                         ui,
-                        Modifier.padding(16.dp).heightIn(max = available).pointerInput(Unit) { detectTapGestures {} },
+                        Modifier.padding(top = if (window.isMac) PolarisMac.sheetTop else 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .heightIn(max = available).pointerInput(Unit) { detectTapGestures {} },
                         onUpdate,
                         onLater,
                         footer = true,

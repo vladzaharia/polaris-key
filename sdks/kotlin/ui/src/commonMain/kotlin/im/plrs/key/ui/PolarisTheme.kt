@@ -317,16 +317,20 @@ private fun PolarisThemeResolved(
             // Windows (UK-10.5): a contrast theme draws the system colours, whatever the product accent.
             val fluent = autoPlatformVariant() == PolarisPlatformVariant.Windows
             val contrast = fluent && rememberThemeHostFacts()?.highContrast == true
-            val scheme = remember(darkTheme, resolved, contrast) {
+            // macOS (UK-10.7): Mac scale type, and Increase Contrast draws full-contrast hairlines.
+            val mac = autoPlatformVariant() == PolarisPlatformVariant.MacOS
+            val macContrast = mac && rememberMacHostFacts().highContrast
+            val scheme = remember(darkTheme, resolved, contrast, macContrast) {
                 if (contrast) {
                     windowsContrastScheme(darkTheme)
                 } else {
                     polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand.withInk(darkTheme) }
+                        .let { if (macContrast) it.withMacContrast() else it }
                 }
             }
             val system = if (contrast) FluentSystemColors.forTheme(darkTheme) else null
             val inkText = if (darkTheme) PolarisBrandTokens.Dark.textStrong else PolarisBrandTokens.Light.textStrong
-            val typography = polarisBrandTypography(MaterialTheme.typography)
+            val typography = polarisBrandTypography(MaterialTheme.typography).let { if (mac) it.forMacScale() else it }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
@@ -338,7 +342,7 @@ private fun PolarisThemeResolved(
                 // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields; Windows: radius 4.
                 controlShape = if (fluent) PolarisFluent.controlShape else CircleShape,
                 accentText = system?.hotlight ?: resolved?.let { colorOf(it.fg) } ?: inkText,
-                fieldShape = if (fluent) PolarisFluent.controlShape else RoundedCornerShape(16.dp),
+                fieldShape = if (fluent) PolarisFluent.controlShape else if (mac) polarisRadiusShape(PolarisKitTokens.MacOS.radiusForm.dp) else RoundedCornerShape(16.dp),
                 focus = system?.windowText ?: resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,

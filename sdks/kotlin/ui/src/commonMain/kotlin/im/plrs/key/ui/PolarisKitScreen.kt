@@ -237,6 +237,7 @@ private fun KitScreenBody(
     if (screen.isHidden) return
     val component = screen.component
     val product = productName ?: screen.productName()
+    val variant = polarisCopyVariant()
     val kept = remember(screen, catalog, locale) {
         val shown = screen.copy.filter { it.key !in kitLeftOut }
         // Row fragments are left out unless nothing else would be left to say.
@@ -246,7 +247,7 @@ private fun KitScreenBody(
         offered.filterNot { catalog.isDangling(it) }
     }
     val lines = remember(kept, screen, catalog, locale) {
-        val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale), line.args) }
+        val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale, variant), line.args) }
         // A state whose every sentence lost an argument still says what happened, without the name.
         val fallback = screen.copy.firstOrNull { it.key in sentenceWithoutName }
         if (fallback != null && formatted.none { it.role == KitLineRole.Text }) {
