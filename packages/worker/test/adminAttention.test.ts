@@ -4,19 +4,15 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { NOW, seedProduct } from "./seed.js";
+import { adminWorld, type AdminWorld } from "./adminWorld.js";
 import type { Env } from "../src/platform/env.js";
-import { handleAdmin } from "../src/console/index.js";
 import { listProducts } from "../src/core/products/store.js";
 import { platformReady } from "../src/console/lib/platformReady.js";
 import { attentionAcross } from "../src/console/lib/attention.js";
 import { canSeeProduct } from "../src/console/authz.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { ADMIN_COOKIE } from "../src/core/console/session.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const DAY = 86_400;
@@ -28,13 +24,11 @@ const day = (t: number) =>
     timeZone: "UTC",
   });
 
-let db: ReturnType<typeof makeTestDb>;
+let world: AdminWorld;
+let db: AdminWorld["db"];
 
 function adminEnv(): Env {
-  const e = makeEnv(new KvMock(), []);
-  e.ADMIN_SESSION_SECRET = "test-admin-session-secret";
-  e.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  return e;
+  return world.env;
 }
 
 async function get(
@@ -42,23 +36,13 @@ async function get(
   groups: string[] = [PLATFORM_GROUP],
   method = "GET",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const env = adminEnv();
-  const { token } = await consoleTestSession(
-    env,
-    db,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
-    NOW,
-  );
-  const res = await handleAdmin(
-    new Request(`https://key.plrs.im/manage${path}`, {
-      method,
-      headers: { cookie: `${ADMIN_COOKIE}=${token}` },
-    }),
-    env,
-    db,
-    path,
-    { now: NOW },
-  );
+  const as = await world.login({
+    sub: "u1",
+    name: "Ada",
+    email: "ada@x.io",
+    groups,
+  });
+  const res = await world.call(method, path, { as });
   return {
     status: res.status,
     json: (await res.json()) as Record<string, unknown>,
@@ -74,9 +58,11 @@ interface Item {
 }
 
 beforeEach(async () => {
-  db = makeTestDb();
-  await seedProduct(db, "djdl");
-  await seedProduct(db, "acme");
+  world = await adminWorld({
+    products: ["djdl", "acme"],
+    groups: { platform: PLATFORM_GROUP },
+  });
+  db = world.db;
 });
 
 describe("GET /manage/api/attention", () => {

@@ -8,18 +8,13 @@
  *   - at most 20 of each kind; a LIKE wildcard in the query is literal; short queries answer empty.
  */
 import { describe, expect, it, vi } from "vitest";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { NOW, seedLicenseWithKey } from "./seed.js";
+import { adminWorld } from "./adminWorld.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
-import type { Env } from "../src/platform/env.js";
 import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { handleAdminApi } from "../src/console/api.js";
-import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { SEARCH_KIND_CAP } from "../src/console/handlers/search.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SYNTHETIC = new Map<string, unknown>();
 vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
@@ -35,47 +30,28 @@ vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
 for (const p of Object.values(PRINCIPALS)) if (p) SYNTHETIC.set(p.memberId, p);
 
 async function world() {
-  const db = makeTestDb();
-  const env: Env = makeEnv(new KvMock(), ["alpha", "beta"]);
-  env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
-  env.PLATFORM_ADMIN_GROUP = "admins";
-  for (const slug of ["alpha", "beta"]) await seedProduct(db, slug);
+  const { db, env, login, call } = await adminWorld({
+    products: ["alpha", "beta"],
+    groups: { platform: "admins" },
+  });
   const alpha = await seedLicenseWithKey(db, "alpha");
   const beta = await seedLicenseWithKey(db, "beta");
   const acct = await getOrCreateAccountByEmail(db, "mara@tidewater.io", NOW);
   const subject = await subjectFor(db, acct.id, "alpha", NOW);
-  return { db, env, alpha, beta, subject };
+  return { db, env, login, call, alpha, beta, subject };
 }
 type World = Awaited<ReturnType<typeof world>>;
 
-async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
-  const { token, session } = await consoleTestSession(
-    w.env,
-    w.db,
-    {
-      sub: PRINCIPALS[as]!.memberId,
-      name: as,
-      email: `${as}@x.test`,
-      groups: [],
-    },
-    NOW,
-  );
+async function search(w: World, q: string, who: keyof typeof PRINCIPALS) {
+  const as = await w.login({
+    sub: PRINCIPALS[who]!.memberId,
+    name: who,
+    email: `${who}@x.test`,
+    groups: [],
+  });
   // The console resolves the member id from the account; the seam is keyed by it.
-  SYNTHETIC.set(session.sub, PRINCIPALS[as]!);
-  const res = await handleAdminApi(
-    new Request("https://key.plrs.im/manage/api/search", {
-      method: "POST",
-      headers: {
-        cookie: `${ADMIN_COOKIE}=${token}`,
-        [CSRF_HEADER]: session.csrf,
-      },
-      body: JSON.stringify({ q }),
-    }),
-    w.env,
-    w.db,
-    "/api/search",
-    NOW,
-  );
+  SYNTHETIC.set(as.sub, PRINCIPALS[who]!);
+  const res = await w.call("POST", "/api/search", { body: { q }, as });
   return {
     status: res.status,
     text: await res.clone().text(),
@@ -159,26 +135,13 @@ describe("GET /manage/api/search", () => {
 
   it("no longer answers GET", async () => {
     const w = await world();
-    const { token } = await consoleTestSession(
-      w.env,
-      w.db,
-      {
-        sub: PRINCIPALS.alphaAdmin.memberId,
-        name: "a",
-        email: "a@x.test",
-        groups: [],
-      },
-      NOW,
-    );
-    const res = await handleAdminApi(
-      new Request("https://key.plrs.im/manage/api/search?q=ada", {
-        headers: { cookie: `${ADMIN_COOKIE}=${token}` },
-      }),
-      w.env,
-      w.db,
-      "/api/search",
-      NOW,
-    );
+    const as = await w.login({
+      sub: PRINCIPALS.alphaAdmin.memberId,
+      name: "a",
+      email: "a@x.test",
+      groups: [],
+    });
+    const res = await w.call("GET", "/api/search?q=ada", { as });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
