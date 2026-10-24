@@ -44,7 +44,8 @@
  *
  * ST-34.5: a second PURPOSE, `cli` (`pkey login`), shares the store, the code and the binding
  * cookie, and nothing else. A CLI record is answered by the portal's `lookup` and `approve` exactly
- * like an expired request (a portal session is never strong, so it can never mint an admin token);
+ * like an expired request for the `admin` scope (a portal session is never strong, so it can never
+ * mint an admin token; the `packages:read` scope below is the portal's own);
  * only the console's `cliDeviceLoginLookup` / `cliDeviceLoginDecide` (public.ts) see it. The poll
  * that takes an approved CLI record mints an `admin` personal token through Core, once, and the
  * plaintext exists only in that response.
@@ -586,8 +587,9 @@ export async function handleDeviceLoginPoll(
   }
   if (taken.purpose === "cli") {
     // ST-34.5: the CLI's answer is a token, not a session. The record was taken above (one poll
-    // ever gets here), the approver was a stepped-up console session (cliDeviceLoginDecide's
-    // caller), and the plaintext is in this response only.
+    // ever gets here) and the plaintext is in this response only. For the `admin` scope the approver
+    // was a stepped-up console session (cliDeviceLoginDecide's caller); for `packages:read`, the
+    // portal's approval (F-37.1).
     const packages = taken.scope === PACKAGES_READ_SCOPE;
     if ((taken.scope !== ADMIN_SCOPE && !packages) || !taken.client)
       return err(403, "account_disabled", "this account cannot sign in");

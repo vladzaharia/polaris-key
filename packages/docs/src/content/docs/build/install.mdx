@@ -125,7 +125,15 @@ A product's own feeds are **Licensed** by default: installing needs a token, and
 | A person with a license | A personal token (`pkeyp_…`) from **Account → Packages** in Polaris Locker: one token reads every feed your licenses reach. See [Install packages with a personal token](/docs/help/packages/) |
 | The product's own CI    | A service token (`pkeyci_…`, scope `packages:read`) from **Packages → Tokens** in the console; creating one needs a sign-in from the last 5 minutes                                            |
 
-Store the token as a secret, expose it as `PKEY_REGISTRY_TOKEN`, and print the setup for any client:
+On your own computer, one command signs in and sets up every package tool it finds:
+
+```sh title="Terminal"
+pkey feeds setup --write
+```
+
+It needs no token on your side: you approve pkey's request in Polaris Locker. The files and tools are listed in [Set up a machine](/docs/features/ship-builds/packages/#set-up-a-machine).
+
+In CI, store the service token as a secret, expose it as `PKEY_REGISTRY_TOKEN`, and print the setup for any client:
 
 ```sh title="Terminal"
 pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_REGISTRY_TOKEN
