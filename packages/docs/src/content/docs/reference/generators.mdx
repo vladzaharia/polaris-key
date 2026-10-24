@@ -178,14 +178,14 @@ Docs reference pages generated from the validators, routes, migrations and corpu
 
 ### registry-docs
 
-This registry as a docs page and AGENTS.md's generated blocks.
+This registry as a docs page, AGENTS.md's generated blocks and the lint-debt exclusion snapshot.
 
 - Run: default, pre-commit.
 - Regenerate: `pnpm gen registry-docs`.
 - Check: `pnpm gen registry-docs --check`.
 - Underlying: `pnpm exec tsx tools/gen-generators-doc.ts`.
 - Reads: `tools/generators.ts`, `tools/gen-generators-doc.ts`, `pnpm-workspace.yaml`, `{packages,sdks}/*/README.md`, `{conformance,tools,products,examples,docs}/README.md`, `actions/publish/README.md`, `docs/*/README.md`.
-- Writes: `packages/docs/src/content/docs/reference/generators.mdx`, `AGENTS.md`.
+- Writes: `packages/docs/src/content/docs/reference/generators.mdx`, `AGENTS.md`, `tools/lint/generated.json`.
 
 ### readme-work
 

@@ -264,7 +264,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 - `brand`: Brand tokens, launch kit, kit copy and per-SDK theme files
 - `action-bundle`: The publish Action's committed esbuild bundle of the CLI
 - `docs-reference`: Docs reference pages generated from the validators, routes, migrations and corpus
-- `registry-docs`: This registry as a docs page and AGENTS.md's generated blocks
+- `registry-docs`: This registry as a docs page, AGENTS.md's generated blocks and the lint-debt exclusion snapshot
 - `readme-work`: The Work on it block of each internal README
 - `parity`: Parity gate: every SDK's parity.json against the feature registry
 - `api`: SDK API surface tests: every api.json row asserted in Node, React, Python, Swift, Kotlin and Godot
