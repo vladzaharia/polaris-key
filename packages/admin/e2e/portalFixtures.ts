@@ -464,7 +464,7 @@ export function portalMedia(pathname: string): Buffer | null {
     return squirclePng(256, art.bands, art.disc, art.icon.squircle);
   return m[2] === "icon"
     ? artPng(256, 256, art.bands, art.disc)
-    : artPng(640, 360, art.bands, art.disc);
+    : artPng(1280, 720, art.bands, art.disc);
 }
 
 type Lic = ReturnType<typeof lic>;

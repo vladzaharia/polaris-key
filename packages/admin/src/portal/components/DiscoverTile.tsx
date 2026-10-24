@@ -130,9 +130,7 @@ export function DiscoverTile({
           variant="tile"
           letter={noArt && !offer.iconUrl}
           liftArt
-          // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
-          // copy of itself where the column is wider), as on Library tiles.
-          fit="contain"
+          // The cover fills the band edge to edge, as on Library tiles.
           className="aspect-[5/2] w-full"
         >
           {noArt && offer.iconUrl ? (

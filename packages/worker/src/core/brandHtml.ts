@@ -681,6 +681,8 @@ export const BRAND_LOCKUP_HEIGHT = {
   key: 52,
   /** Locker: 437 x 80 canvas, so about 262 px wide (guide p.7 minimum 180). */
   locker: 48,
+  /** Locker in a top bar or on a bare landing: the portal header's 33 px (180 px wide, the guide's floor). */
+  lockerBar: 33,
 } as const;
 
 /**

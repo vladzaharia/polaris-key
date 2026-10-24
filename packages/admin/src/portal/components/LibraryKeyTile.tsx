@@ -13,31 +13,35 @@ export function LibraryKeyTile(): React.ReactElement {
   const activate = useActivate();
   return (
     <li aria-labelledby="key-tile-h" className="grid @container">
-      {/* A cell: the key and the title, the button at the foot, level with the tiles' actions.
-          Under 13 rem the icon sits above the title. */}
-      <div className="flex flex-col gap-3 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3 @max-[13rem]:flex-col @max-[13rem]:items-start @max-[13rem]:gap-2">
-          <span
-            aria-hidden
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg"
-          >
-            <KeyRound className="size-5" />
+      {/* The product tiles' shape: the same 5:2 band holding the key, the title on the names'
+          line, one helper line, the button at the foot, level with the tiles' actions. */}
+      <div className="flex flex-col overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent">
+        <div
+          aria-hidden
+          className="flex aspect-[5/2] w-full items-center justify-center @max-[13rem]:aspect-auto @max-[13rem]:py-4"
+        >
+          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-accent-subtle text-accent-fg">
+            <KeyRound className="size-7" />
           </span>
+        </div>
+        <div className="flex flex-1 flex-col px-3 pb-3">
           <h3
             id="key-tile-h"
-            className="text-base font-semibold text-fg-strong"
+            className="pt-1 text-base font-semibold text-fg-strong"
           >
             {t("signin.link.key")}
           </h3>
+          <p className="mt-1 text-sm text-fg-muted">{t("activate.lede")}</p>
+          <div className="mt-auto" />
+          <Button
+            variant="quiet"
+            className="mt-3 h-auto min-h-10 w-full whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden"
+            iconStart={<KeyRound aria-hidden />}
+            onClick={() => activate.open()}
+          >
+            {t("common.activateLicense")}
+          </Button>
         </div>
-        <Button
-          variant="quiet"
-          className="h-auto min-h-10 w-full max-w-64 shrink-0 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden"
-          iconStart={<KeyRound aria-hidden />}
-          onClick={() => activate.open()}
-        >
-          {t("common.activateLicense")}
-        </Button>
       </div>
     </li>
   );

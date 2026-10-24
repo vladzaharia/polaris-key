@@ -338,10 +338,11 @@ describe("Library on today's data (PX-02)", () => {
     const tile = await screen.findByRole("listitem", {
       name: "Have a license key?",
     });
-    // The title and the button only (portal.library): no line between them.
-    expect(within(tile).queryByText(/Activate it to add/)).toBeNull();
-    // One grid cell, the size of a product tile, at every width (it no longer spans the row).
-    expect(tile.className).not.toMatch(/col-span-/);
+    // One cell at every width, with one helper line between the title and the button.
+    expect(tile.className).not.toMatch(/col-span/);
+    expect(
+      within(tile).getByText("You'll find it in your purchase email."),
+    ).toBeTruthy();
     expect(tile.firstElementChild!.className).toContain("border-dashed");
     expect(
       within(tile).getByRole("heading", {
