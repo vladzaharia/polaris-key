@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { API_PATH, checkApi, renderNotes, scanKotlin } from "./api-check.js";
+import {
+  API_PATH,
+  checkApi,
+  renderNotes,
+  scanGodot,
+  scanKotlin,
+} from "./api-check.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const real = (): any => JSON.parse(readFileSync(join(root, API_PATH), "utf8"));
@@ -122,14 +128,31 @@ describe("api-check rule 1 (surface scanners)", () => {
       mutate(a);
     });
 
-  it("the real registry records the Node, React, Python, Swift and Kotlin surfaces and the rest are still empty (SP-35.8, .9, .10, .11, .12)", () => {
+  it("the real registry records every SDK's surface (SP-35.8, .9, .10, .11, .12, .13)", () => {
     expect(Object.keys(real().surfaces)).toEqual([
       "node",
       "react",
       "python",
       "swift",
       "kotlin",
+      "godot",
     ]);
+  });
+
+  it("scans a GDScript file's column-0 func, static func and signal, and skips _names and nested classes (SP-35.13)", () => {
+    const src = [
+      "extends RefCounted",
+      "signal done(x: int)",
+      "func one() -> void:",
+      "\tpass",
+      "static func two(a := 1):",
+      "func _private():",
+      "class Inner:",
+      "\tfunc nested():",
+      "\t\tpass",
+      "var not_a_verb := 1",
+    ].join("\n");
+    expect(scanGodot(src)).toEqual(["done", "one", "two"]);
   });
 
   it("scans a Kotlin class whose constructor spans lines, a companion, and top-level extensions (SP-35.12)", () => {

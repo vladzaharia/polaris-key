@@ -476,6 +476,14 @@ const GODOT_SCRIPT: Record<string, string> = {
   config: `"res://addons/polaris_key/services/config.gd"`,
   license: `"res://addons/polaris_key/services/license.gd"`,
   identity: `"res://addons/polaris_key/services/identity.gd"`,
+  devices: `"res://addons/polaris_key/services/devices.gd"`,
+  release: `"res://addons/polaris_key/services/release.gd"`,
+  distribution: `"res://addons/polaris_key/services/distribution.gd"`,
+  update: `"res://addons/polaris_key/services/update.gd"`,
+  commerce: `"res://addons/polaris_key/services/commerce.gd"`,
+  backend: `"res://addons/polaris_key/services/backend.gd"`,
+  packs: `"res://addons/polaris_key/services/packs.gd"`,
+  presentation: `"res://addons/polaris_key/core/presentation.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;
