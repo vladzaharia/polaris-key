@@ -16,6 +16,7 @@
     "lint": "turbo run lint",
     "dev": "turbo run dev --no-cache --continue",
     "gen": "tsx tools/gen.ts",
+    "gate": "node tools/gate.mjs",
     "parity:check": "tsx tools/parity-check.ts",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
