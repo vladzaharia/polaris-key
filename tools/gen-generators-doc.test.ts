@@ -88,14 +88,26 @@ describe("AGENTS.md generated blocks", () => {
     expect(Buffer.byteLength(map)).toBeLessThanOrEqual(REPO_MAP_BUDGET);
   });
 
-  it("takes the first sentence of a README, cut on a word boundary", () => {
+  it("takes the lead clause of a README's first sentence, cut on a word boundary", () => {
     const r = readmeSummary(
       "# t\n\nOne line that wraps\nacross two. Second sentence.\n",
     );
-    expect(r).toEqual({ title: "t", line: "One line that wraps across two." });
-    const long = readmeSummary(`# t\n\n${"word ".repeat(40)}end.\n`);
-    expect(long.line.length).toBeLessThanOrEqual(101);
-    expect(long.line.endsWith("…")).toBe(true);
+    expect(r).toEqual({ title: "t", line: "One line that wraps across two" });
+    expect(
+      readmeSummary("# t\n\nThe one Cloudflare Worker: services and more.\n")
+        .line,
+    ).toBe("The one Cloudflare Worker");
+    const long = readmeSummary(`# t\n\n${"word ".repeat(40)}end.\n`, 60);
+    expect(long.line?.length).toBeLessThanOrEqual(61);
+    expect(long.line?.endsWith("…")).toBe(true);
+    const span = readmeSummary(
+      `# t\n\n${"w ".repeat(28)}\`a b c d e\` end.\n`,
+      60,
+    );
+    expect((span.line?.match(/`/g) ?? []).length % 2).toBe(0);
+    expect(
+      readmeSummary("# t\n\nInstall it:\n\n```sh\nx\n```\n").line,
+    ).toBeNull();
   });
 
   it("lists every gate step, with the full gen form", () => {

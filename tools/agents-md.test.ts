@@ -423,15 +423,7 @@ const PATH_BASES = [
 const INTENTIONALLY_ABSENT = new Set([
   ".opencode",
   ".polaris",
-  "docs/CONCEPTS.md",
-  "docs/ADOPTER-GUIDE.md",
-  "docs/CONFIG-AUTHORING.md",
-  "products/README.md",
   "key.plrs.im/docs",
-  "sdks/swift/Tests/PolarisKeyTests/Resources",
-  "pkey-chunks/1",
-  "sdks/python/.venv", // created by the Python lane's setup, never tracked
-  "_mockups", // the lead's directory, outside the repo
 ]);
 
 describe("names cited by AGENTS.md exist", () => {
@@ -476,7 +468,15 @@ describe("names cited by AGENTS.md exist", () => {
   for (const dir of INSTRUCTION_ROOTS) {
     const file = join(dir, "AGENTS.md");
     const text = read(file);
-    const spans = [...text.matchAll(/`([^`\n]+)`/g)].map((m) => m[1] as string);
+    // The repo map quotes each README's own words, relative to that README; its links are built
+    // from directories that exist.
+    const cited = text.replace(
+      /<!-- repo-map:start[\s\S]*?<!-- repo-map:end -->/,
+      "",
+    );
+    const spans = [...cited.matchAll(/`([^`\n]+)`/g)].map(
+      (m) => m[1] as string,
+    );
 
     it(`${file}: every backticked repo path resolves`, () => {
       const missing = spans
@@ -543,4 +543,66 @@ describe("names cited by AGENTS.md exist", () => {
       expect(bad).toEqual([]);
     });
   }
+});
+
+/** D-R6: the root stays under 24 KB, generated blocks included. */
+export const AGENTS_MD_CAP = 24_576;
+
+describe("the root AGENTS.md shape", () => {
+  const text = read("AGENTS.md");
+
+  it(`is at most ${AGENTS_MD_CAP} bytes`, () => {
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(AGENTS_MD_CAP);
+  });
+
+  it("anchors the hard rules as rule-1 … rule-N, in order", () => {
+    const ids = [...text.matchAll(/<a id="rule-(\d+)"><\/a>\*\*(\d+)\. /g)];
+    expect(ids.length).toBeGreaterThan(0);
+    ids.forEach((m, i) => {
+      expect(m[1], m[0]).toBe(String(i + 1));
+      expect(m[2], m[0]).toBe(String(i + 1));
+    });
+    // Every "rule N" link resolves to an anchor.
+    for (const m of text.matchAll(/\]\(#rule-(\d+)\)/g))
+      expect(Number(m[1])).toBeLessThanOrEqual(ids.length);
+  });
+
+  it("routes tasks: every row names a task, an existing skill or —, files and a check", () => {
+    const rows = section(text, "Task router")
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith("|"))
+      .slice(2)
+      .map((l) =>
+        l
+          .slice(1, -1)
+          .split("|")
+          .map((c) => c.trim()),
+      );
+    expect(rows.length).toBeGreaterThanOrEqual(10);
+    for (const [task, skill, files, check] of rows) {
+      expect(task, "task").toBeTruthy();
+      expect(files, `${task}: files`).toBeTruthy();
+      expect(check, `${task}: check`).toBeTruthy();
+      if (skill === "—") continue;
+      const name = /^`([a-z0-9-]+)`$/.exec(skill ?? "")?.[1];
+      expect(name, `${task}: skill cell ${skill}`).toBeTruthy();
+      expect(
+        existsSync(join(ROOT, ".claude/skills", name as string, "SKILL.md")),
+        `${task}: skill ${name}`,
+      ).toBe(true);
+    }
+  });
+
+  it("has no typed repo tree (the repo map is generated)", () => {
+    expect(text).not.toMatch(/^```\r?\npackages\//m);
+  });
+
+  it("has no tool-specific copies: those tools read AGENTS.md", () => {
+    const copies = tracked.filter((file) =>
+      /^(\.cursor\/|\.cursorrules$|\.windsurfrules$|\.github\/copilot-instructions\.md$)/.test(
+        file,
+      ),
+    );
+    expect(copies).toEqual([]);
+  });
 });

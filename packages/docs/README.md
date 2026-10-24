@@ -42,7 +42,7 @@ test/snippets/          snippet compile lane: covered.ts, extract.ts, lanes.ts, 
 - Moving a page is a row in `site-map.json`, then `node scripts/site-map.mjs apply`. The console's help-link tables follow in the same change (`../admin/src/console/nav.ts`, `../admin/src/lib/docsLinks.ts`).
 - Lint debt: `pnpm --filter @polaris-key/docs lint:docs` fails on a hit `lint-debt.json` does not hold and on an entry nothing hits. Clear a page's entries in the change that rewrites it. `tsx scripts/lint-docs.ts --update` rewrites the file.
 - Snippets: a `ts`, `tsx`, `js` or `python` fence on a page listed in `test/snippets/covered.ts` compiles in its SDK lane against the built packages; the Python lane needs `sdks/python/.venv`. Other pages are held to `test/snippets/advisory-baseline.json`, which only shrinks. Conventions are in `test/snippets/extract.ts`.
-- Page rules (frontmatter, quoting, MDX braces, link form, page types): follow the writing page and the AGENTS.md docs conventions, not a copy here.
+- Page rules (frontmatter, quoting, MDX braces, link form, page types): follow the writing page and [AGENTS.md](AGENTS.md), not a copy here.
 
 ## Work on it
 
