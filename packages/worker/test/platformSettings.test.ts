@@ -1381,6 +1381,17 @@ describe("identity.reservedDisplayTerms (PX-W13c): the list kind", () => {
       });
       expect(r.status).toBe(422);
     }
+    // The term and the list are named, not the generic "not a valid value".
+    const long = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: ["x".repeat(65)], expectedVersion: 0 },
+    });
+    expect(JSON.stringify(long.body)).toContain("is over 64 characters");
+    const many = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: Array(66).fill("a"), expectedVersion: 0 },
+    });
+    expect(JSON.stringify(many.body)).toContain("remove 2 (limit 64)");
     expect((await listPlatformAudit(db, { limit: 10 })).length).toBe(0);
   });
 });

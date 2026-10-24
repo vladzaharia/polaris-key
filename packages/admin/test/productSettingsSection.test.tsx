@@ -181,7 +181,9 @@ describe("ProductSettingsSection", () => {
     const card = await screen.findByRole("region", { name: "Display name" });
     await within(card).findByText("Approved display name");
     expect(within(card).queryByRole("switch")).toBeNull();
-    expect(within(card).getByText(/Read-only/)).toBeTruthy();
+    expect(
+      within(card).getByText(/^Only platform admins change this\./),
+    ).toBeTruthy();
     unmount();
 
     testQueryClient().setQueryData(qk.me(), me(["console", "platform"]));

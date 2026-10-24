@@ -27,6 +27,8 @@ import { toast } from "../../../../ui/toast.js";
 import { SettingRow } from "../../../../ui/settings/SettingRow.js";
 import {
   LEVEL_RANK,
+  listDelta,
+  listDeltaWords,
   confirmLevel,
   fieldUnit,
   formatSettingValue,
@@ -128,7 +130,8 @@ function consequencesOf(
   setting: PlatformSetting,
   after: string | number | string[],
   propagationSeconds: number,
-): string[] {
+  displayMode?: string,
+): React.ReactNode[] {
   const before = formatPlatformValue(setting, setting.value);
   const next = formatPlatformValue(setting, after);
   const reach =
@@ -136,12 +139,32 @@ function consequencesOf(
       ? `Takes effect within ${propagationSeconds} seconds in both Worker scripts.`
       : `Takes effect within ${propagationSeconds} seconds.`;
   switch (setting.key) {
-    case "identity.reservedDisplayTerms":
+    case "identity.reservedDisplayTerms": {
+      const { added, removed } = listDelta(setting.value, after);
+      const names = (t: string[]) => (
+        <>
+          {t.slice(0, 3).map((n, i) => (
+            <React.Fragment key={n}>
+              {i > 0 ? ", " : null}
+              <bdi>{n}</bdi>
+            </React.Fragment>
+          ))}
+          {t.length > 3 ? ` and ${t.length - 3} more` : null}
+        </>
+      );
       return [
-        "A name that uses a listed term is reserved like a built-in one: a warning, or refused when reserved display names is set to Refuse.",
-        "Terms only add to the built-in list; none can be removed from it.",
-        reach,
+        <>
+          {added.length > 0 ? <>Adds {names(added)}</> : null}
+          {added.length > 0 && removed.length > 0 ? " · " : null}
+          {removed.length > 0 ? (
+            <>{added.length > 0 ? "removes" : "Removes"} {names(removed)}</>
+          ) : null}
+        </>,
+        "Products whose name uses a listed term show their slug on the sign-in card unless approved.",
+        `New manifests and listings that use one are ${displayMode === "error" ? "refused" : "warned"}.`,
+        `Within ${propagationSeconds} seconds.`,
       ];
+    }
     case "LAZY_DELTAS":
       return after === "on"
         ? [
@@ -357,10 +380,13 @@ export function EditableRow({
   setting,
   storeAvailable,
   propagationSeconds,
+  displayMode,
 }: {
   setting: PlatformSetting;
   storeAvailable: boolean;
   propagationSeconds: number;
+  /** `IDENTITY_RESERVED_DISPLAY_NAMES` in force: what a listed term does to a new name. */
+  displayMode?: string;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const write = useWriteGate("platform");
@@ -431,7 +457,7 @@ export function EditableRow({
       }
       bounds={
         setting.kind === "list"
-          ? `Up to ${setting.max} terms, one per line. They add to the built-in list.`
+          ? `One per line, up to ${setting.max}.`
           : setting.kind === "integer"
             ? bytes
               ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
@@ -477,6 +503,7 @@ export function EditableRow({
           setting,
           to as string | number | string[],
           propagationSeconds,
+          displayMode,
         )
       }
       save={(value, ctx) =>
@@ -488,7 +515,10 @@ export function EditableRow({
       }
       onSaved={(res, done) => {
         const written = res as PlatformSetting;
-        const text = `${setting.label} set to ${fmt(written.value)}`;
+        const text =
+          setting.kind === "list"
+            ? `Reserved terms saved: ${listDeltaWords(setting.value, written.value)}`
+            : `${setting.label} set to ${fmt(written.value)}`;
         if (done.level === "L0")
           toast.success(text, {
             action: { label: "Undo", onClick: () => undo(setting, written) },

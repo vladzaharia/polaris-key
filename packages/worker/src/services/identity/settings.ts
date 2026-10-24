@@ -390,7 +390,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "identity.signIn",
       label: "Approved display name",
       description:
-        "Lets this product use a name that matches a reserved term. Covers every name the product uses. Only platform admins can set it.",
+        "Lets this product use a name that matches a reserved term. Covers every name the product uses.",
       keywords: ["reserved", "display name", "reserved_display_name"],
       docs: "/docs/build/manifest/product/",
       value: { kind: "boolean" },

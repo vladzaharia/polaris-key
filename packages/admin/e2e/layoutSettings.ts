@@ -253,7 +253,7 @@ export const SETTINGS_ROUTES: Record<string, unknown> = {
         service: "identity",
         label: "Approved display name",
         description:
-          "Lets this product use a name that matches a reserved term. Covers every name the product uses. Only platform admins can set it.",
+          "Lets this product use a name that matches a reserved term. Covers every name the product uses.",
         docs: "/docs/build/manifest/product/",
         spec: { kind: "boolean" },
         confirm: { on: "L1", off: "L0" },

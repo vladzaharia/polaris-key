@@ -374,23 +374,26 @@ function normalisedTerms(
   max: number,
   maxLength: number,
 ): { terms: string[] } | { message: string } | null {
-  // Over the bound as sent, or a term too long: `writeSetting()` refuses it, not de-duplication.
-  if (
-    !Array.isArray(value) ||
-    value.length > max ||
-    !value.every((v) => typeof v === "string" && v.length <= maxLength)
-  )
+  if (!Array.isArray(value) || !value.every((v) => typeof v === "string"))
     return null;
+  const clip = (t: string) => (t.length > 20 ? `${t.slice(0, 20)}…` : t);
+  // Judged as sent, before de-duplication: the operator's list is what is too long.
+  if (value.length > max)
+    return {
+      message: `${value.length} terms: remove ${value.length - max} (limit ${max}).`,
+    };
   const seen = new Set<string>();
   const terms: string[] = [];
   for (const raw of value as string[]) {
     const term = raw.trim();
     if (term === "") continue;
+    if (term.length > maxLength)
+      return {
+        message: `"${clip(term)}" is over ${maxLength} characters.`,
+      };
     const skeleton = displayNameSkeleton(term).join(" ");
     if (skeleton === "" || invalidDisplayText(term))
-      return {
-        message: `"${term}" is not a usable term: use letters or digits`,
-      };
+      return { message: `"${clip(term)}" needs a letter or digit.` };
     if (seen.has(skeleton)) continue;
     seen.add(skeleton);
     terms.push(term);
