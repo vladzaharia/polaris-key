@@ -2688,7 +2688,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "HEAD /djdl/identity/auth/device": {
     "status": 405,
@@ -2705,7 +2705,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "POST+body /djdl/identity/auth/device": {
     "status": 200,
@@ -2714,7 +2714,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "PUT /djdl/identity/auth/device": {
     "status": 405,
@@ -5597,7 +5597,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "HEAD+commerce-off /djdl/identity/auth/device": {
     "status": 405,
@@ -5614,7 +5614,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "POST+body+commerce-off /djdl/identity/auth/device": {
     "status": 200,
@@ -5623,7 +5623,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "PUT+commerce-off /djdl/identity/auth/device": {
     "status": 405,
@@ -8378,7 +8378,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "HEAD+license-off /djdl/identity/auth/device": {
     "status": 405,
@@ -8395,7 +8395,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "POST+body+license-off /djdl/identity/auth/device": {
     "status": 200,
@@ -8404,7 +8404,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "31897:17f2d10bfcc2ddee"
+    "body": "31915:e0671cdbcf2ee7c0"
   },
   "PUT+license-off /djdl/identity/auth/device": {
     "status": 405,

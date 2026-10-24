@@ -12,7 +12,7 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { portalAudit } from "../accounts/portalAudit.js";
 import { deliverEmail } from "./emailDelivery.js";
-import { whatIsLockerLink } from "../helpLinks.js";
+import { linkText, whatIsLockerLink } from "../helpLinks.js";
 import { emailAssetOrigin, renderEmail } from "./render.js";
 import { securityNoticeRecipients } from "./recipients.js";
 import type { NoticeMessage } from "./templates.js";
@@ -67,8 +67,7 @@ function helpLinks(origin: string | null) {
 }
 function helpText(origin: string | null): string {
   if (!origin) return "";
-  const l = whatIsLockerLink(origin);
-  return `\n\n${l.label}: ${l.url}`;
+  return `\n\n${linkText(whatIsLockerLink(origin))}`;
 }
 
 /**

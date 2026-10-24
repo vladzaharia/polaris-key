@@ -41,6 +41,7 @@ import { platformLabel } from "@polaris-key/manifest";
 import { PERSONAL_TOKEN_DAYS } from "../accounts/personalTokens.js";
 import {
   aboutThisEmailLink,
+  linkText,
   secureHelpLink,
   whatIsLockerLink,
 } from "../helpLinks.js";
@@ -132,19 +133,16 @@ function lockerHelp(
   if (!base) return {};
   return {
     footerLinks: [
+      ...(secure ? [secureHelpLink(base)] : []),
       whatIsLockerLink(base),
       aboutThisEmailLink(base, anchor),
-      ...(secure ? [secureHelpLink(base)] : []),
     ],
   };
 }
 
 /** The plain-text part's matching `label: url` lines after the small print. */
 function withHelpText(text: string, c: EmailContent): string {
-  return [
-    text,
-    ...(c.footerLinks ?? []).map((l) => `${l.label}: ${l.url}`),
-  ].join("\n\n");
+  return [text, ...(c.footerLinks ?? []).map(linkText)].join("\n\n");
 }
 
 function buildNotice(spec: NoticeSpec): NoticeMessage {
@@ -164,7 +162,7 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
     spec.help && (spec.brand ?? "locker") === "locker"
       ? lockerHelp(spec.origin, spec.help, Boolean(spec.secureUrl))
       : {};
-  for (const l of helped.footerLinks ?? []) lines.push(`${l.label}: ${l.url}`);
+  for (const l of helped.footerLinks ?? []) lines.push(linkText(l));
   const content: EmailContent = {
     subject: spec.subject,
     heading,
