@@ -401,8 +401,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
          */
         public suspend fun attest(): AttestResult = core.attestDevice(attestation())
 
-        /** Why this install cannot attest, or null when it can. Offline. */
-        public fun attestUnavailable(): im.plrs.key.core.Unsupported? = attestation().unavailable()
+        /** Whether [attest] can run here, as `supports(devices.attest)` would answer it. Offline. */
+        public fun attestSupport(): im.plrs.key.core.Support {
+            val u = attestation().unavailable() ?: return im.plrs.key.core.Support.Supported(im.plrs.key.core.Feature.devicesAttest)
+            return im.plrs.key.core.Support.Unavailable(u)
+        }
 
         public suspend fun register(): RegisterResult = this@PolarisKeyClient.register()
 
@@ -487,7 +490,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
                 }
             }
         }
-        startRefreshLoop()
+        startRefresh()
     }
 
     /**
@@ -705,7 +708,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     /** The bridge contract, assembled from the managers that own each piece. */
-    public suspend fun syncState(): SyncState {
+    public suspend fun getSyncState(): SyncState {
         val cache = core.cache()
         return SyncState(
             activation = license.activation(),
@@ -808,7 +811,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────
     /** Start polling on `refreshIntervalSeconds` (no-op when unset, already running or local-only). */
     @Synchronized
-    public fun startRefreshLoop() {
+    public fun startRefresh() {
         val seconds = refreshIntervalSeconds ?: return
         if (seconds <= 0 || refreshJob != null || core.localOnly) return
         refreshJob = scope.launch {

@@ -136,7 +136,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
     // verificationUriComplete. Never show deviceCode.
     show(prompt.userCode, prompt.verificationUri, prompt.verificationUriComplete)
     return when (val result = client.identity.waitForSignIn(prompt)) {
-        is SignInResult.Ready -> "Signed in as ${client.license.licenseUser()?.subject}"
+        is SignInResult.Ready -> "Signed in as ${client.license.getLicenseUser()?.subject}"
         is SignInResult.Expired -> "The code expired. Start again."
         is SignInResult.Error -> result.message
     }
@@ -144,7 +144,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
 ```
 
 `waitForSignIn` paces its polls and stops when its coroutine is canceled; when it answers `Ready`,
-the token is stored and the first sync is done. `licenseUser()` is the pairwise subject only (it
+the token is stored and the first sync is done. `getLicenseUser()` is the pairwise subject only (it
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
 call throws `service-unavailable` before any request. `client.deactivate()` signs this device out and
@@ -166,7 +166,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
-    client.startRefreshLoop() // a no-op unless refreshIntervalSeconds is set; start() already calls it
+    client.startRefresh() // a no-op unless refreshIntervalSeconds is set; start() already calls it
     scope.launch {
         client.events.collect { event ->
             when (event) {

@@ -167,7 +167,7 @@ suspend fun start(key: String) {
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
   floor), `activateWithKey`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
   `licenseInfo` (license id, tier, tier label,
-  device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
+  device limit, profile, channels), `getProfile`, `getLicenseId`, `getLicenseUser`, `entitledChannels` (the grants, raw, or
   `["stable"]`). The `entitlements` namespace (`has`, `value`, `all`, in `EntitlementsClient`) reads the held document; **`entitlements.has` answers `false` whenever the gate is not usable** (revoked,
   expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
   the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the

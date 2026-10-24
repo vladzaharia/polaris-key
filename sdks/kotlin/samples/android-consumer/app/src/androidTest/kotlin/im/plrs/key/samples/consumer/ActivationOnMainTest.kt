@@ -73,7 +73,7 @@ class ActivationOnMainTest {
             val client = PolarisKeyAndroid.client(context, options)
             val activation = client.license.activateWithKey("pkey_${product}_key")
             val sync = client.sync()
-            listOf(activation, sync, client.status().status, client.license.licenseId())
+            listOf(activation, sync, client.status().status, client.license.getLicenseId())
         }
         val (activation, sync, status, licenseId) = outcome
         assertTrue("$activation", activation is ActivationResult.Ok)

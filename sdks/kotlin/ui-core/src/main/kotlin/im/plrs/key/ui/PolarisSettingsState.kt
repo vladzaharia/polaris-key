@@ -175,7 +175,7 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
 
         override suspend fun license(): PolarisLicenseSummary {
             val state: LicenseState = client.status()
-            val profile = client.license.profile()
+            val profile = client.license.getProfile()
             val granted = client.entitlements.all().filter { (_, v) -> !(v is JsonPrimitive && v.booleanOrNull == false) }.keys.sorted()
             return PolarisLicenseSummary(state.status, profile?.name?.takeIf { it.isNotBlank() }, granted)
         }

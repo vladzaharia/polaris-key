@@ -80,8 +80,8 @@ class LicenseClientTest {
         assertTrue(EntitlementsClient(client).has("polarisVpn"))
         assertFalse(EntitlementsClient(client).has("seats")) // present but not `true`
         assertFalse(EntitlementsClient(client).has("absent"))
-        assertEquals("lic_42", client.licenseId())
-        assertEquals("Ada", client.profile()?.firstName)
+        assertEquals("lic_42", client.getLicenseId())
+        assertEquals("Ada", client.getProfile()?.firstName)
     }
 
     @Test
@@ -99,7 +99,7 @@ class LicenseClientTest {
         val client = LicenseClient(core)
         assertEquals(LicenseStatus.needsActivation, client.status().status)
         assertTrue(EntitlementsClient(client).all().isEmpty())
-        assertNull(client.licenseId())
+        assertNull(client.getLicenseId())
         assertEquals(listOf("stable"), client.entitledChannels())
     }
 
@@ -296,7 +296,7 @@ class LicenseClientTest {
             profile,
         )
         val info = client.licenseInfo()!!
-        assertEquals(LicenseInfo("lic_42", "pro", "Pro", 3, null, null, client.profile(), listOf("stable", "beta")), info)
+        assertEquals(LicenseInfo("lic_42", "pro", "Pro", 3, null, null, client.getProfile(), listOf("stable", "beta")), info)
         assertEquals("Ada", info.profile?.firstName)
         val (core, _) = core(InMemoryStore("djdl", "dev1")) { respond(404) }
         core.start()

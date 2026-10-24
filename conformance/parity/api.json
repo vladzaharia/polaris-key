@@ -3143,10 +3143,7 @@
           "spelling": "syncState",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "syncState",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3258,10 +3255,7 @@
           "spelling": "startRefreshLoop",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "startRefreshLoop",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3367,10 +3361,7 @@
           "spelling": "profile",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "profile",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3385,10 +3376,7 @@
           "spelling": "licenseId",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "licenseId",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -4124,10 +4112,7 @@
           "spelling": "licenseUser",
           "planned": "SP-35b"
         },
-        "kotlin": {
-          "spelling": "licenseUser",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -4600,10 +4585,7 @@
       "kind": "method",
       "sdks": {
         "swift": {},
-        "kotlin": {
-          "spelling": "attestUnavailable",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -5512,6 +5494,66 @@
     }
   ],
   "removed": [
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.syncState\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.startRefreshLoop()",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.startRefreshLoop\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "DevicesFacet.attestUnavailable()",
+      "to": "devices.attestSupport",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.attestUnavailable\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
     {
       "sdk": "kotlin",
       "from": "license.isEntitled",

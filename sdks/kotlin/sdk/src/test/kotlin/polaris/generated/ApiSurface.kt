@@ -52,7 +52,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::supports  // client.supports
     PolarisKeyClient::caps  // client.caps
     PolarisKeyClient::sync  // client.sync
-    PolarisKeyClient::syncState  // client.getSyncState
+    PolarisKeyClient::getSyncState  // client.getSyncState
     PolarisKeyClient::importBundle  // client.importBundle
     PolarisKeyClient::crashTags  // client.crashTags
     PolarisKeyClient::status  // client.status
@@ -61,7 +61,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::listDevices  // client.listDevices
     PolarisKeyClient::deauthorizeDevice  // client.deauthorizeDevice
     PolarisKeyClient::renameDevice  // client.renameDevice
-    PolarisKeyClient::startRefreshLoop  // client.startRefresh
+    PolarisKeyClient::startRefresh  // client.startRefresh
     PolarisKeyClient::close  // client.close
     ConfigClient::listUserConfig  // config.listUserConfig
     ConfigClient::schemaVersion  // config.schemaVersion
@@ -69,8 +69,8 @@ internal suspend fun apiSurface() {
     LicenseClient::activation  // license.activation
     LicenseClient::licenseInfo  // license.licenseInfo
     LicenseClient::entitledChannels  // license.entitledChannels
-    LicenseClient::profile  // license.getProfile
-    LicenseClient::licenseId  // license.getLicenseId
+    LicenseClient::getProfile  // license.getProfile
+    LicenseClient::getLicenseId  // license.getLicenseId
     LicenseClient::enroll  // license.enroll
     LicenseClient::deactivate  // license.deactivate
     IdentityClient::beginSignIn  // identity.beginSignIn
@@ -113,7 +113,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient::register  // client.register
     PolarisKeyClient::currentDevice  // client.currentDevice
     PolarisKeyClient::deactivate  // client.deactivate
-    LicenseClient::licenseUser  // license.getLicenseUser
+    LicenseClient::getLicenseUser  // license.getLicenseUser
     CommerceClient::hiddenHere  // commerce.hiddenHere
     CommerceClient::isUnlocked  // commerce.isUnlocked
     LicenseClient::status  // license.status
@@ -124,7 +124,7 @@ internal suspend fun apiSurface() {
     PolarisKeyClient.Companion::createFromBundle  // client.createFromBundle
     ConfigClient::fetchCatalog  // config.fetchCatalog
     PolarisKeyClient.DevicesFacet::attest  // devices.attest
-    PolarisKeyClient.DevicesFacet::attestUnavailable  // devices.attestSupport
+    PolarisKeyClient.DevicesFacet::attestSupport  // devices.attestSupport
     UpdateClient::channelFeed  // update.channelFeed
     CommerceClient::products  // commerce.products
     PolarisKeyClient::channelChoices  // client.channelChoices

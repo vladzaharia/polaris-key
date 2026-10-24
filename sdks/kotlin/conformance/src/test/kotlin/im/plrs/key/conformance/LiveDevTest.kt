@@ -176,7 +176,7 @@ class LiveDevTest : ConformanceSuite() {
         assertTrue(isUsable(client.status()))
         assertEquals(LicenseStatus.ok, client.status().status)
         assertEquals(ActivationSource.token, client.license.activation())
-        assertNotNull(client.license.licenseId())
+        assertNotNull(client.license.getLicenseId())
         assertTrue("the ok licence carries exportPro", client.entitlements.has("exportPro"))
         assertTrue(device.transport.sent.any { it.startsWith("POST ${live.origin}/${live.quickstart.productSlug}/license/activate") })
     }
@@ -270,7 +270,7 @@ class LiveDevTest : ConformanceSuite() {
         // The licence it brought is the signed-in person's: the fake identity provider's, named in the signed document.
         assertEquals(LicenseStatus.ok, client.status().status)
         val person = live.server.info().obj("idp").obj("person")
-        val profile = client.syncState().doc?.profile
+        val profile = client.getSyncState().doc?.profile
         assertEquals(person.string("name"), profile?.name)
         assertEquals(person.string("email"), profile?.email)
     }

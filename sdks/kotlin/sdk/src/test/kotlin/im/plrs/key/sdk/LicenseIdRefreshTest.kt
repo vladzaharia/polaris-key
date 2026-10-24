@@ -83,7 +83,7 @@ class LicenseIdRefreshTest {
         }
         val client = PolarisKeyClient.create(options(store, transport))
         assertTrue(client.license.activateWithKey("pkey_djdl_test") is ActivationResult.Ok)
-        assertEquals("lic_trial", client.license.licenseId())
+        assertEquals("lic_trial", client.license.getLicenseId())
         assertFalse(client.entitlements.has("pro"))
         val sentBefore = transport.requests().size
 
@@ -98,7 +98,7 @@ class LicenseIdRefreshTest {
 
         // cache
         assertEquals(DocOutcome.Applied, result.documents[DocumentSlice.license])
-        assertEquals("lic_pro", client.license.licenseId())
+        assertEquals("lic_pro", client.license.getLicenseId())
         assertTrue(client.entitlements.has("pro"))
         assertEquals(JsonPrimitive("pro"), client.entitlements.all()["license.tier"])
         // activation state
@@ -118,7 +118,7 @@ class LicenseIdRefreshTest {
 
         // The following refresh revalidates the new licence's document normally.
         assertEquals(DocOutcome.Unchanged, client.sync().documents[DocumentSlice.license])
-        assertEquals("lic_pro", client.license.licenseId())
+        assertEquals("lic_pro", client.license.getLicenseId())
         client.close()
 
         // A fresh client on the same store, fully offline, restores the re-anchored document.
@@ -130,7 +130,7 @@ class LicenseIdRefreshTest {
                 },
             ),
         )
-        assertEquals("lic_pro", offline.license.licenseId())
+        assertEquals("lic_pro", offline.license.getLicenseId())
         assertTrue(offline.entitlements.has("pro"))
         assertEquals(LicenseStatus.ok, offline.status().status)
         offline.close()
