@@ -17,6 +17,11 @@ export const WORKER_HELP_LINKS = {
   approveASignIn: "/docs/help/approve-a-sign-in/",
 } as const;
 
+/** One plain-text line for a link: `Label: url`, no colon after a label that ends in punctuation. */
+export function linkText(l: FooterLink): string {
+  return `${l.label}${/[?!.]$/.test(l.label) ? "" : ":"} ${l.url}`;
+}
+
 /** A link in an email footer: fixed label, absolute URL. */
 export interface FooterLink {
   label: string;
@@ -39,10 +44,10 @@ export function aboutThisEmailLink(origin: string, anchor: string): FooterLink {
   };
 }
 
-/** "Secure your account": the Help article (a security notice's footer; the callout keeps the app link). */
+/** "How to secure your account": the Help article (a security notice's footer; the callout keeps the app link). */
 export function secureHelpLink(origin: string): FooterLink {
   return {
-    label: "Secure your account",
+    label: "How to secure your account",
     url: `${origin}${WORKER_HELP_LINKS.secureYourAccount}`,
   };
 }

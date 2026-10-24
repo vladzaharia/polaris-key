@@ -11,7 +11,7 @@ Deleting it doesn't cancel your licenses: they stay with each developer, and you
 
 You are receiving this because your Polaris Locker account was deleted. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#account-deleted",
 }
@@ -30,11 +30,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#account-deletion-cancelled
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#account-deletion-cancelled",
 }
 `;
 
@@ -55,11 +55,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#account-deletion-scheduled
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#account-deletion-scheduled",
 }
 `;
 
@@ -76,7 +76,7 @@ Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
 You are receiving this because a developer issued a license to this email address.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-assigned-to-you",
 }
@@ -97,11 +97,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#device-removed
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#device-removed",
 }
 `;
 
@@ -118,11 +118,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#device-replaced
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#device-replaced",
 }
 `;
 
@@ -139,7 +139,7 @@ Download Mossgarden: https://key.plrs.im/#/p/mossgarden/download?platform=macos
 
 You are receiving this because you asked Polaris Locker to email you a download link. If you didn't, you can ignore it: the link only opens your own library.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#download-link",
 }
@@ -196,7 +196,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="#060912" style="border-radius:6px;background-color:#060912"><a class="pk-btn-a" href="https://key.plrs.im/#/account/methods" style="display:inline-block;padding:12px 24px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:20px;font-weight:500;color:#ffffff;text-decoration:none;border-radius:6px">See your sign-in methods</a></td></tr></table><p class="pk-muted" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#48536b">If the button does not work, paste this link into your browser:</p><p style="margin:0;font-family:'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#060912;text-decoration:underline">https://key.plrs.im/#/account/methods</a></p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 16px"><tr><td class="pk-callout" bgcolor="#f6f8ff" style="padding:12px 16px;background-color:#f6f8ff;border:1px solid #dadee9;border-radius:6px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:22px;color:#262d40"><span class="pk-text"><strong style="font-weight:600">Wasn&#x27;t you?</strong> <a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#060912;text-decoration:underline">Secure your account</a></span></td></tr></table>
 </td></tr>
-<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:13px;line-height:20px;color:#48536b">You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.<br><a class="pk-link" href="https://key.plrs.im/docs/help/what-is-polaris-locker/" style="color:#48536b;text-decoration:underline">What is Polaris Locker?</a> &middot; <a class="pk-link" href="https://key.plrs.im/docs/help/emails/#sign-in-method-removed" style="color:#48536b;text-decoration:underline">About this email</a> &middot; <a class="pk-link" href="https://key.plrs.im/docs/help/secure-your-account/" style="color:#48536b;text-decoration:underline">Secure your account</a></td></tr>
+<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:13px;line-height:20px;color:#48536b">You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.<br><a class="pk-link" href="https://key.plrs.im/docs/help/secure-your-account/" style="color:#48536b;text-decoration:underline">How to secure your account</a> &middot; <a class="pk-link" href="https://key.plrs.im/docs/help/what-is-polaris-locker/" style="color:#48536b;text-decoration:underline">What is Polaris Locker?</a> &middot; <a class="pk-link" href="https://key.plrs.im/docs/help/emails/#sign-in-method-removed" style="color:#48536b;text-decoration:underline">About this email</a></td></tr>
 </table>
 </td></tr>
 </table>
@@ -245,7 +245,7 @@ Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
 You are receiving this because of a change to your Polaris Locker account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-added",
 }
@@ -264,7 +264,7 @@ Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
 You are receiving this because of a change to your Polaris Locker account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-from-developer",
 }
@@ -283,7 +283,7 @@ Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
 You are receiving this because of a change to your Polaris Locker account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-from-developer",
 }
@@ -302,11 +302,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#license-made-floating
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#license-made-floating",
 }
 `;
 
@@ -321,7 +321,7 @@ If you did not expect this, contact the developer's support now: they can undo i
 
 You are receiving this because a developer issued a license to this email address.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-made-floating",
 }
@@ -340,11 +340,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#sign-in-method-added
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#sign-in-method-added",
 }
 `;
 
@@ -361,11 +361,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#sign-in-method-removed
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#sign-in-method-removed",
 }
 `;
 
@@ -382,11 +382,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#new-device-sign-in
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#new-device-sign-in",
 }
 `;
 
@@ -403,11 +403,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#packages-token
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#packages-token",
 }
 `;
 
@@ -424,11 +424,11 @@ Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+How to secure your account: https://key.plrs.im/docs/help/secure-your-account/
 
-About this email: https://key.plrs.im/docs/help/emails/#license-reassigned-away
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
-Secure your account: https://key.plrs.im/docs/help/secure-your-account/",
+About this email: https://key.plrs.im/docs/help/emails/#license-reassigned-away",
 }
 `;
 
@@ -443,7 +443,7 @@ If you did not expect this, contact the developer's support now: they can undo i
 
 You are receiving this because a developer issued a license to this email address.
 
-What is Polaris Locker?: https://key.plrs.im/docs/help/what-is-polaris-locker/
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-reassigned-away",
 }

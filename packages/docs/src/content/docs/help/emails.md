@@ -9,10 +9,8 @@ sidebar:
 ---
 
 Account emails come from Polaris Locker, at `noreply@auth.plrs.im` or `noreply@plrs.im`. None asks for your full license key.
-In a security email, choose **Secure your account** if it was not you.
 
-If you didn't ask, ignore it. Code didn't arrive? See [Your
-sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
+Didn't ask for a sign-in code or link? Ignore it; nothing changes until it is used. Code didn't arrive? See [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 
 ## Your library
 
@@ -42,7 +40,7 @@ The old key cannot activate new devices; existing ones keep working. If unexpect
 
 ### <a id="download-link"></a>Download <var>App</var> for <var>System</var>
 
-Open the link on the device you install on. You may need to sign in first.
+Open the link on the device you're installing on. You may need to sign in first.
 
 ## Devices and sign-in
 
@@ -64,15 +62,15 @@ A command line got read-only access to your packages. Revoke it under **Packages
 
 ### <a id="sign-in-method-added"></a><var>Method</var> was connected to your Polaris Locker account
 
-A sign-in method was added.
+Not you? [Secure your account](/docs/help/secure-your-account/).
 
 ### <a id="sign-in-method-removed"></a><var>Method</var> was disconnected from your Polaris Locker account
 
-A sign-in method was removed.
+Not you? [Secure your account](/docs/help/secure-your-account/).
 
 ### <a id="primary-email-changed"></a>Your Polaris Locker primary email was changed
 
-Another verified email is now the primary, and security emails go there.
+Another verified email is now the primary, and security emails go there. Not you? [Secure your account](/docs/help/secure-your-account/).
 
 ## Your account
 
@@ -90,11 +88,11 @@ Your account, its email addresses and its sign-in methods were erased as you ask
 
 ### <a id="accounts-merged"></a>Two Polaris Locker accounts were joined
 
-Their sign-in methods and licenses are now together.
+Not you? [Secure your account](/docs/help/secure-your-account/).
 
 ### <a id="accounts-separated"></a>Your Polaris Locker accounts were separated
 
-Two joined accounts are separate again.
+Not you? [Secure your account](/docs/help/secure-your-account/).
 
 ## License changes
 

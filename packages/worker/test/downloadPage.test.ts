@@ -802,13 +802,18 @@ describe("escaping", () => {
     });
     const foot = html.slice(html.indexOf("<footer>"));
     expect(foot).toContain(
-      '<a href="https://polaris.locker/docs/help/check-a-download/">Check a download</a>',
+      '<a href="https://polaris.locker/docs/help/check-a-download/">check the download is genuine</a>.',
     );
+    expect(foot).not.toContain("SHA-256");
     expect(foot).toContain(
       '<a href="https://polaris.locker/docs/help/">Help</a>',
     );
     // No origin to resolve on (the bytes host serves no docs): no links, same text.
-    expect(renderDownloadPage(m, det)).not.toContain("/docs/help/");
+    const bare = renderDownloadPage(m, det);
+    expect(bare).not.toContain("/docs/help/");
+    expect(bare).toContain(
+      "Verify a download's SHA-256 before you install it.",
+    );
   });
 
   it("a model with hostile values in every string renders inert", () => {

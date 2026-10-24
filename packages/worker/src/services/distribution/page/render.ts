@@ -621,10 +621,10 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.${
+    `<footer><p>${
       helpOrigin
-        ? ` <a href="${esc(helpOrigin + WORKER_HELP_LINKS.checkADownload)}">Check a download</a>`
-        : ""
+        ? `Before you install, <a href="${esc(helpOrigin + WORKER_HELP_LINKS.checkADownload)}">check the download is genuine</a>.`
+        : "Verify a download's SHA-256 before you install it."
     }</p><p>Polaris Locker${
       helpOrigin
         ? ` · <a href="${esc(helpOrigin + WORKER_HELP_LINKS.help)}">Help</a>`

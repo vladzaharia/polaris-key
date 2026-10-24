@@ -20,7 +20,7 @@ Have the file you downloaded, and the app's download page or your library, open.
 
 ## Find the listed value
 
-- On the app's public download page, find **All downloads**. The **SHA-256** column shows the full value for each file.
+- On the app's public download page, open **All files and checksums**. The **SHA-256** column shows the full value for each file.
 - In your library, each file shows a short SHA-256. Select it to see the full value. A phone may not show it, so use the download page there.
 
 ## Get your file's value
