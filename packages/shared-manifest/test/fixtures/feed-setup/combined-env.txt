@@ -1,0 +1,178 @@
+# npm feed: acme
+
+# npm and pnpm: route the scope to this feed (.npmrc)
+# Only @acme packages are looked up here; every other package stays on its usual registry.
+@acme:registry=https://pkg.plrs.im/npm/acme/
+//pkg.plrs.im/npm/acme/:_authToken=${PKEY_REGISTRY_TOKEN}
+
+# Yarn Berry (.yarnrc.yml)
+npmScopes:
+  acme:
+    npmRegistryServer: "https://pkg.plrs.im/npm/acme/"
+    npmAuthToken: "${PKEY_REGISTRY_TOKEN}"
+    npmAlwaysAuth: true
+
+# Bun (bunfig.toml)
+[install.scopes]
+"@acme" = { url = "https://pkg.plrs.im/npm/acme/", token = "$PKEY_REGISTRY_TOKEN" }
+
+# Install
+npm install @acme/<package>
+
+# pypi feed: acme
+
+# uv: an explicit index for this project only (pyproject.toml)
+# explicit = true keeps every other dependency on its usual index.
+[[tool.uv.index]]
+name = "acme"
+url = "https://pkg.plrs.im/pypi/acme/simple/"
+explicit = true
+authenticate = "always"
+
+[tool.uv.sources]
+"acme-sdk" = { index = "acme" }
+
+# uv: the index credentials
+export UV_INDEX_ACME_USERNAME=__token__
+export UV_INDEX_ACME_PASSWORD="$PKEY_REGISTRY_TOKEN"
+
+# Poetry 2: an explicit source
+poetry source add --priority=explicit acme https://pkg.plrs.im/pypi/acme/simple/
+poetry config http-basic.acme __token__ "$PKEY_REGISTRY_TOKEN"
+poetry add --source acme acme-sdk
+
+# pip: the package alone, without its dependencies
+# Warning: Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.
+# pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.
+pip install --no-deps --index-url https://__token__:${PKEY_REGISTRY_TOKEN}@pkg.plrs.im/pypi/acme/simple/ acme-sdk
+
+# swift feed: acme
+
+# Route the scope to this feed and refuse an unsigned release (.swiftpm/configuration/registries.json)
+# The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.
+{
+  "version": 1,
+  "registries": {
+    "acme": {
+      "url": "https://pkg.plrs.im/swift/acme"
+    }
+  },
+  "security": {
+    "default": {
+      "signing": {
+        "onUnsigned": "error",
+        "onUntrustedCertificate": "error"
+      }
+    }
+  }
+}
+
+# Sign in to the feed
+# After the file above: login adds its authentication entry to it.
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_REGISTRY_TOKEN" --no-confirm
+
+# Depend on the package (Package.swift)
+.package(id: "acme.<Package>", from: "1.0.0")
+
+# Add it in an Xcode project
+# With the registries file above in place: File, Add Package Dependencies, then search for the package by its identity. Choose the products you use.
+acme.<Package>
+
+# maven feed: acme
+
+# Gradle: this feed, for its groups only (settings.gradle.kts)
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "acme"
+                    url = uri("https://pkg.plrs.im/maven/acme/")
+                    credentials(PasswordCredentials::class)
+                }
+            }
+            filter {
+                includeGroupAndSubgroups("gg.acme")
+            }
+        }
+        mavenCentral()
+    }
+}
+
+# Gradle: the repository credentials
+export ORG_GRADLE_PROJECT_acmeUsername=__token__
+export ORG_GRADLE_PROJECT_acmePassword="$PKEY_REGISTRY_TOKEN"
+
+# Depend on the artifact (build.gradle.kts)
+implementation("gg.acme:<artifact>:<version>")
+
+# Maven: the repository, with a fatal checksum policy (pom.xml)
+# Warning: Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.
+<repositories>
+  <repository>
+    <id>acme</id>
+    <url>https://pkg.plrs.im/maven/acme/</url>
+    <releases><checksumPolicy>fail</checksumPolicy></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+</repositories>
+
+# Maven: the server credentials (~/.m2/settings.xml)
+<servers>
+  <server>
+    <id>acme</id>
+    <username>__token__</username>
+    <password>${env.PKEY_REGISTRY_TOKEN}</password>
+  </server>
+</servers>
+
+# oci feed: acme
+
+# Pull by the fully qualified reference
+# podman pull and crane pull take the same reference; it never resolves on another registry.
+echo "$PKEY_REGISTRY_TOKEN" | docker login pkg.plrs.im -u __token__ --password-stdin
+docker pull pkg.plrs.im/acme/<repository>:latest
+
+# godot feed: acme
+
+# Godot 4.6 and earlier: Asset Library → Available URLs
+# Editor Settings, asset_library/available_urls.
+https://pkg.plrs.im/godot/acme/asset-library/api
+
+# Godot 4.7 and later: asset_store/available_urls
+# Editor Settings, asset_store/available_urls.
+https://pkg.plrs.im/godot/acme/store/api/v1
+
+# GodotEnv: copy a version's addons.json entry from the index
+https://pkg.plrs.im/godot/acme/index.json
+
+# cargo feed: acme
+
+# Cargo: name the feed as a registry (.cargo/config.toml)
+# A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =.
+[registries.acme]
+index = "sparse+https://pkg.plrs.im/cargo/acme/"
+credential-provider = "cargo:token"
+
+# Cargo: the registry token
+# Cargo sends it on every request to a feed whose config.json says auth-required.
+export CARGO_REGISTRIES_ACME_TOKEN="$PKEY_REGISTRY_TOKEN"
+
+# Depend on the crate from this registry (Cargo.toml)
+[dependencies]
+<crate> = { version = "*", registry = "acme" }
+
+# go feed: acme
+
+# Go: this feed first, then the public proxy
+# Warning: Do not list these modules in GOPRIVATE: it sets GONOPROXY too, so Go skips every proxy, this feed included, and goes to the module path's host directly.
+# The feed answers only for its own modules (go.acme.dev) and 404s every other path, so Go moves on to the public proxy for everything else. GONOSUMDB keeps these modules away from the public checksum database, which cannot see them; go.sum still pins every hash.
+go env -w GOPROXY=https://pkg.plrs.im/go/acme,https://proxy.golang.org,direct
+go env -w GONOSUMDB=go.acme.dev
+
+# Depend on the module
+go get go.acme.dev/<module>@latest
+
+# The feed credentials, once per host
+# pip, uv, Poetry and the go command read a .netrc entry's login and password as HTTP Basic credentials for the host.
+printf 'machine %s login __token__ password %s\n' pkg.plrs.im "$PKEY_REGISTRY_TOKEN" >> ~/.netrc
