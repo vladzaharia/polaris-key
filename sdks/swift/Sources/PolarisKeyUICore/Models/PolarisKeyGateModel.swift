@@ -73,11 +73,16 @@ public struct KitGateHandlers {
     public var continueFree: (@MainActor () -> Void)?
     /// The update verb ("Update now", "Update on the App Store", "Restart now").
     public var update: (@MainActor () -> Void)?
+    /// Replace a device in the sign-in form's list: called with the chosen device's id once the
+    /// person confirms. Without it the form hides Replace… and offers the browser path.
+    public var replaceDevice: (@MainActor (String) -> Void)?
 
     public init(
         trial: (@MainActor () -> Void)? = nil, restore: (@MainActor () -> Void)? = nil,
-        continueFree: (@MainActor () -> Void)? = nil, update: (@MainActor () -> Void)? = nil
+        continueFree: (@MainActor () -> Void)? = nil, update: (@MainActor () -> Void)? = nil,
+        replaceDevice: (@MainActor (String) -> Void)? = nil
     ) {
+        self.replaceDevice = replaceDevice
         self.trial = trial
         self.restore = restore
         self.continueFree = continueFree
@@ -87,6 +92,7 @@ public struct KitGateHandlers {
     /// Whether the host passed any handler.
     public var isEmpty: Bool {
         trial == nil && restore == nil && continueFree == nil && update == nil
+            && replaceDevice == nil
     }
 }
 

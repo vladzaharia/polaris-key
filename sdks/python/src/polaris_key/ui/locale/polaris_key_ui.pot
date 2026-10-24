@@ -1128,7 +1128,7 @@ msgstr ""
 msgid "update.restartNow"
 msgstr ""
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr ""
@@ -1298,9 +1298,119 @@ msgstr ""
 msgid "update.revokedContent"
 msgstr ""
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
+msgstr ""
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr ""
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr ""
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr ""
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr ""
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr ""
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr ""
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr ""
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr ""
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr ""
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr ""
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr ""
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr ""
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr ""
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr ""
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr ""
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr ""
+
+#. {product} can look for new versions in the background and tell you when one is ready.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr ""
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr ""
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr ""
+
+#. Couldn’t update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr ""
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr ""
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
 msgstr ""
 
 #. Check for updates
@@ -1321,6 +1431,31 @@ msgstr ""
 #. macos: Manage License…
 msgctxt "macos"
 msgid "menu.manageLicense"
+msgstr ""
+
+#. Sign out
+#. App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).
+msgid "menu.signOut"
+msgstr ""
+
+#. macos: Sign Out…
+msgctxt "macos"
+msgid "menu.signOut"
+msgstr ""
+
+#. Account
+#. The Account tab of the macOS Settings window, and the window's title while it is selected.
+msgid "menu.account"
+msgstr ""
+
+#. Sign out
+#. Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.
+msgid "signin.signout.confirm"
+msgstr ""
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "signin.signout.confirm"
 msgstr ""
 
 #. Update ready
@@ -3156,6 +3291,16 @@ msgstr ""
 #. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
+msgstr ""
+
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr ""
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
 msgstr ""
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}

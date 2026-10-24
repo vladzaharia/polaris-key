@@ -12,12 +12,20 @@ import SwiftUI
 public struct PolarisKeyPreview: View {
     let state: PolarisKeyPreviewState
     let frozen: Date?
+    let asSheet: Bool
     @State private var model: PolarisKeyGateModel
 
     /// `frozenTime` stops the countdowns at the moment the preview was made, for renders that
     /// must match a baseline.
-    public init(_ state: PolarisKeyPreviewState, iconData: Data? = nil, frozenTime: Bool = false) {
+    ///
+    /// `asSheet` draws the state as the content of a sheet (the form alone, fitted to 440 pt on a
+    /// Mac) for a host that presents it with `.sheet`.
+    public init(
+        _ state: PolarisKeyPreviewState, iconData: Data? = nil, frozenTime: Bool = false,
+        asSheet: Bool = false
+    ) {
         self.state = state
+        self.asSheet = asSheet
         let now = Date()
         self.frozen = frozenTime ? now : nil
         let route: KitGateRoute
@@ -42,6 +50,7 @@ public struct PolarisKeyPreview: View {
         PolarisKeyScope(model: model) {
             screen
         }
+        .environment(\.kitInSheet, asSheet)
         .environment(\.polarisKeyNow, frozen)
     }
 

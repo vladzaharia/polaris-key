@@ -224,7 +224,7 @@ public struct AccountAndLicenseSection: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .frame(minHeight: 64)
+                .kitRowHeight(64)
                 .accessibilityElement(children: .combine)
                 if screen.shows("common.manage"), canManage {
                     Button(action: onManage) {
@@ -235,7 +235,7 @@ public struct AccountAndLicenseSection: View {
                                 .foregroundStyle(style.palette.textMuted)
                                 .accessibilityLabel(strings.string("a11y.externalLink"))
                         }
-                        .frame(minHeight: 52)
+                        .kitRowHeight(52)
                     }
                     .tint(style.palette.accentFg)
                 }
@@ -245,7 +245,7 @@ public struct AccountAndLicenseSection: View {
                     } label: {
                         PaneText(CopyLine("account.devices"), .body, color: .default)
                     }
-                    .frame(minHeight: 52)
+                    .kitRowHeight(52)
                 }
                 // Cloud Sync has no value and no destination here yet (CloudSyncStatus is the
                 // second wave): no row, rather than a label that does nothing.
@@ -256,7 +256,7 @@ public struct AccountAndLicenseSection: View {
                             CopyLine("account.version", ["version": .text(version)]), .body,
                             color: .default
                         )
-                        .frame(minHeight: 52, alignment: .leading)
+                        .kitRowHeight(52, alignment: .leading)
                     }
                     Button(action: onCheckNow) {
                         HStack {
@@ -266,7 +266,7 @@ public struct AccountAndLicenseSection: View {
                                 ProgressView().accessibilityLabel(strings.string("a11y.busy"))
                             }
                         }
-                        .frame(minHeight: 52, alignment: .leading)
+                        .kitRowHeight(52, alignment: .leading)
                     }
                     .tint(style.palette.accentFg)
                     .disabled(checking)
@@ -284,14 +284,14 @@ public struct AccountAndLicenseSection: View {
                             PaneText(CopyLine("account.autoUpdate"), .body, color: .default)
                         }
                         .tint(style.palette.accentSolid)
-                        .frame(minHeight: 52)
+                        .kitRowHeight(52)
                     }
                     if let version, screen.shows("account.version") {
                         PaneText(
                             CopyLine("account.version", ["version": .text(version)]), .body,
                             color: .default
                         )
-                        .frame(minHeight: 52, alignment: .leading)
+                        .kitRowHeight(52, alignment: .leading)
                     }
                     if screen.shows("account.channel") { channelRow(style) }
                     if screen.shows("update.checkNow") {
@@ -304,7 +304,7 @@ public struct AccountAndLicenseSection: View {
                                         .accessibilityLabel(strings.string("a11y.busy"))
                                 }
                             }
-                            .frame(minHeight: 52, alignment: .leading)
+                            .kitRowHeight(52, alignment: .leading)
                         }
                         .tint(style.palette.accentFg)
                         .disabled(checking)
@@ -315,7 +315,7 @@ public struct AccountAndLicenseSection: View {
                         if checkFailed {
                             Button(action: onCheckNow) {
                                 PaneText(CopyLine("common.tryAgain"), .body, color: .accent)
-                                    .frame(minHeight: 52, alignment: .leading)
+                                    .kitRowHeight(52, alignment: .leading)
                             }
                             .tint(style.palette.accentFg)
                             .disabled(checking)
@@ -339,7 +339,7 @@ public struct AccountAndLicenseSection: View {
                         confirmingSignOut = true
                     } label: {
                         PaneText(CopyLine("common.signOut"), .body, color: .danger)
-                            .frame(minHeight: 52, alignment: .leading)
+                            .kitRowHeight(52, alignment: .leading)
                     }
                     .confirmationDialog(
                         strings.string("common.signOut"), isPresented: $confirmingSignOut,
@@ -373,7 +373,7 @@ public struct AccountAndLicenseSection: View {
             } label: {
                 PaneText(CopyLine("account.channel"), .body, color: .default)
             }
-            .frame(minHeight: 52)
+            .kitRowHeight(52)
         case .choose(let current, let options):
             Picker(
                 selection: Binding(get: { current }, set: { onChannel?($0) })
@@ -384,7 +384,7 @@ public struct AccountAndLicenseSection: View {
             }
             .pickerStyle(.menu)
             .tint(style.palette.accentSolid)
-            .frame(minHeight: 52)
+            .kitRowHeight(52)
         case .locked(let current, let reason):
             LabeledContent {
                 HStack(spacing: style.space(.xxs)) {
@@ -399,7 +399,7 @@ public struct AccountAndLicenseSection: View {
                     PaneText(reason, .footnote, color: .muted)
                 }
             }
-            .frame(minHeight: 64)
+            .kitRowHeight(64)
         }
     }
 
@@ -462,10 +462,10 @@ public struct DevicesSection: View {
                     }
                     Button(strings.string("common.tryAgain"), action: onRetry)
                         .tint(style.palette.accentFg)
-                        .frame(minHeight: 52, alignment: .leading)
+                        .kitRowHeight(52, alignment: .leading)
                 case .empty:
                     PaneText(CopyLine("devices.empty"), .body, color: .default)
-                        .frame(minHeight: 52, alignment: .leading)
+                        .kitRowHeight(52, alignment: .leading)
                 case .browserMode:
                     // The sentence and the way there: never a dead end.
                     PaneText(CopyLine("devices.browser"), .body, color: .muted)
@@ -562,10 +562,16 @@ public struct DevicesSection: View {
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
+                #if os(macOS)
+                    // One control: the ellipsis opens the menu; no second chevron beside it.
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                #endif
                 .accessibilityLabel(name(device))
             }
         }
-        .frame(minHeight: 64)
+        .kitRowHeight(64)
         .swipeActions {
             if !device.current {
                 Button(strings.string("devices.remove"), role: .destructive) { removing = device }
@@ -625,7 +631,7 @@ public struct DevicesSection: View {
             .tint(style.palette.accentFg)
         }
         .padding(.vertical, style.space(.xs))
-        .frame(minHeight: 64)
+        .kitRowHeight(64)
         .onAppear { focused = true }
     }
 
@@ -656,7 +662,7 @@ struct SettingsFieldRow: View {
                 .frame(minHeight: 44)
                 .accessibilityLabel(title)
         }
-        .frame(minHeight: 52)
+        .kitRowHeight(52)
         .onChange(of: focused) { _, now in if !now { commit() } }
     }
 }
@@ -732,7 +738,7 @@ public struct SettingsSection: View {
                     if let line = screen.copy.first { PaneText(line, .body, color: .danger) }
                     if let onRetry {
                         Button(strings.string("common.tryAgain"), action: onRetry)
-                            .frame(minHeight: 52, alignment: .leading)
+                            .kitRowHeight(52, alignment: .leading)
                     }
                 } header: {
                     head(.yours, style)
@@ -741,7 +747,7 @@ public struct SettingsSection: View {
             if screen.shows("settings.search"), !rows.isEmpty {
                 Section {
                     TextField(strings.string("settings.search"), text: $query)
-                        .frame(minHeight: 52)
+                        .kitRowHeight(52)
                 }
             }
             ForEach([Group.yours, .developer, .managed], id: \.self) { group in
@@ -846,7 +852,7 @@ public struct SettingsSection: View {
                             ?? CopyLine("settings.setByGuardian"), .footnote, color: .muted)
                 }
             }
-            .frame(minHeight: 64)
+            .kitRowHeight(64)
         } else if Self.control(row, options: options) == .select, case .string(let chosen)? = current(row),
             let choices = options[row.key]
         {
@@ -859,7 +865,7 @@ public struct SettingsSection: View {
             }
             .pickerStyle(.menu)
             .tint(style.palette.accentSolid)
-            .frame(minHeight: 52)
+            .kitRowHeight(52)
         } else if Self.control(row, options: options) == .field {
             SettingsFieldRow(
                 title: title(row),
@@ -873,7 +879,7 @@ public struct SettingsSection: View {
                 isOn: Binding(get: { on }, set: { set(row, .bool($0)) })
             )
             .tint(style.palette.accentSolid)
-            .frame(minHeight: 52)
+            .kitRowHeight(52)
         } else if Self.control(row) != .text, case .number(let n)? = current(row) {
             if Self.control(row) == .slider, let lo = row.min, let hi = row.max {
                 VStack(alignment: .leading, spacing: 2) {
@@ -891,7 +897,7 @@ public struct SettingsSection: View {
                     .accessibilityLabel(title(row))
                     .accessibilityValue(n.formatted())
                 }
-                .frame(minHeight: 64)
+                .kitRowHeight(64)
             } else {
                 Stepper(
                     value: Binding(get: { n }, set: { set(row, .number($0)) }),
@@ -902,13 +908,13 @@ public struct SettingsSection: View {
                             .monospacedDigit()
                     }
                 }
-                .frame(minHeight: 52)
+                .kitRowHeight(52)
             }
         } else {
             LabeledContent(title(row)) {
                 Text(value(row)).foregroundStyle(style.palette.textMuted)
             }
-            .frame(minHeight: 52)
+            .kitRowHeight(52)
         }
     }
 
@@ -1023,5 +1029,16 @@ public struct EntitlementGate<Content: View, Locked: View>: View {
         case .loading: LoadingIndicator(CopyLine("common.loading"))
         default: locked()
         }
+    }
+}
+
+extension View {
+    /// The iOS row height (52 or 64 pt touch rows); a Mac Form row takes its content's height.
+    @ViewBuilder func kitRowHeight(_ height: CGFloat, alignment: Alignment = .center) -> some View {
+        #if os(macOS)
+            self
+        #else
+            frame(minHeight: height, alignment: alignment)
+        #endif
     }
 }

@@ -846,12 +846,18 @@
     "update.restartNow": {
       "value": "Restart now",
       "role": "button",
-      "note": "UpdatePrompt: an app update. The update is downloaded."
+      "note": "UpdatePrompt: an app update. The update is downloaded.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
     },
     "update.skipVersion": {
       "value": "Skip this version",
       "role": "button",
-      "note": "UpdatePrompt: an app update."
+      "note": "UpdatePrompt: an app update.",
+      "variants": {
+        "macos": "Skip This Version"
+      }
     },
     "update.install": {
       "value": "Update now",
@@ -1002,9 +1008,92 @@
       "note": "UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.upToDate": {
-      "value": "You're up to date",
+      "value": "You’re up to date",
       "role": "body",
       "note": "UpdatePrompt: an app update."
+    },
+    "common.updateInstallUpdate": {
+      "value": "Install update",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded."
+    },
+    "common.updateInstallOnQuit": {
+      "value": "Install on quit",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits."
+    },
+    "common.updateDeclineChecks": {
+      "value": "Don’t check",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement."
+    },
+    "common.updateQuitAndInstall": {
+      "value": "Quit and install",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish."
+    },
+    "common.updateQuitToInstall": {
+      "value": "Quit {product} to finish installing.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "common.updateDownloadingBytes": {
+      "value": "Downloading · {size}",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”)."
+    },
+    "common.updateProgressLabel": {
+      "value": "Download",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. The accessibility name of the download's progress bar."
+    },
+    "common.updateErrorNetwork": {
+      "value": "Couldn’t reach the update server. Check your connection and try again.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network."
+    },
+    "common.updateErrorCannotInstall": {
+      "value": "This update can’t be installed on this Mac.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help."
+    },
+    "common.updateErrorSecurity": {
+      "value": "The update didn’t pass its security check, so it wasn’t installed.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help."
+    },
+    "common.updateChecking": {
+      "value": "Checking for updates…",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists."
+    },
+    "common.updatePermissionTitle": {
+      "value": "Check for updates automatically?",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check."
+    },
+    "common.updatePermissionBody": {
+      "value": "{product} can look for new versions in the background and tell you when one is ready.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "common.updatePermissionAllow": {
+      "value": "Check automatically",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.",
+      "variants": {
+        "macos": "Check Automatically"
+      }
+    },
+    "common.updateFailedTitle": {
+      "value": "Couldn’t update",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain."
+    },
+    "common.updateLearnMore": {
+      "value": "Learn more",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser."
     },
     "update.checkNow": {
       "value": "Check for updates",
@@ -1020,6 +1109,27 @@
       "note": "App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.",
       "variants": {
         "macos": "Manage License…"
+      }
+    },
+    "menu.signOut": {
+      "value": "Sign out",
+      "role": "menu",
+      "note": "App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).",
+      "variants": {
+        "macos": "Sign Out…"
+      }
+    },
+    "menu.account": {
+      "value": "Account",
+      "role": "windowTitle",
+      "note": "The Account tab of the macOS Settings window, and the window's title while it is selected."
+    },
+    "signin.signout.confirm": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.",
+      "variants": {
+        "macos": "Sign Out"
       }
     },
     "notify.updateReady.title": {
@@ -2569,6 +2679,16 @@
       "value": "{product} stops using your {tier} license on this device and frees room for another device.",
       "role": "body",
       "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated)."
+    },
+    "signin.signout.titleMac": {
+      "value": "Sign out of {product} on this Mac?",
+      "role": "title",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.signout.releasedMac": {
+      "value": "This frees your {tier} license for another device.",
+      "role": "body",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated)."
     },
     "signin.signout.unsynced": {
       "value": "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",

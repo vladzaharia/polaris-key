@@ -481,12 +481,58 @@
     <string name="update_revokedContent">Parte do conteúdo de %1$s foi retirada e não pode ser usada. Atualize para continuar.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Você está atualizado</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded. -->
+    <string name="common_updateInstallUpdate">Instalar atualização</string>
+    <string name="common_updateInstallUpdate__macos">Instalar atualização</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits. -->
+    <string name="common_updateInstallOnQuit">Instalar ao sair</string>
+    <string name="common_updateInstallOnQuit__macos">Instalar ao sair</string>
+    <!-- UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement. -->
+    <string name="common_updateDeclineChecks">Não verificar</string>
+    <string name="common_updateDeclineChecks__macos">Não verificar</string>
+    <!-- UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish. -->
+    <string name="common_updateQuitAndInstall">Sair e instalar</string>
+    <string name="common_updateQuitAndInstall__macos">Sair e instalar</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updateQuitToInstall">Saia de %1$s para concluir a instalação.</string>
+    <!-- UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=size. -->
+    <string name="common_updateDownloadingBytes">Baixando · %1$s</string>
+    <!-- UpdatePrompt: an app update. The accessibility name of the download's progress bar. -->
+    <string name="common_updateProgressLabel">Download</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network. -->
+    <string name="common_updateErrorNetwork">Não foi possível conectar ao servidor de atualizações. Verifique sua conexão e tente novamente.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help. -->
+    <string name="common_updateErrorCannotInstall">Esta atualização não pode ser instalada neste Mac.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help. -->
+    <string name="common_updateErrorSecurity">A atualização não passou na verificação de segurança e não foi instalada.</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Verificando atualizações…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Verificar atualizações automaticamente?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">O %1$s pode procurar novas versões em segundo plano e avisar quando uma estiver pronta.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Verificar automaticamente</string>
+    <string name="common_updatePermissionAllow__macos">Verificar automaticamente</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Não foi possível atualizar</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Saiba mais</string>
+    <string name="common_updateLearnMore__macos">Saiba mais</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Verificar atualizações</string>
     <string name="update_checkNow__macos">Verificar atualizações</string>
     <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="menu_manageLicense">Gerenciar a licença</string>
     <string name="menu_manageLicense__macos">Gerenciar a licença</string>
+    <!-- App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71). -->
+    <string name="menu_signOut">Sair</string>
+    <string name="menu_signOut__macos">Sair</string>
+    <!-- The Account tab of the macOS Settings window, and the window's title while it is selected. -->
+    <string name="menu_account">Conta</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out. -->
+    <string name="signin_signout_confirm">Sair</string>
+    <string name="signin_signout_confirm__macos">Sair</string>
     <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
     <string name="notify_updateReady_title">Atualização pronta</string>
     <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
@@ -1180,6 +1226,10 @@
     <string name="signin_signout_title">Sair de %1$s neste dispositivo?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
     <string name="signin_signout_released">%1$s deixa de usar sua licença %2$s aqui e libera espaço para outro dispositivo.</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_titleMac">Sair de %1$s neste Mac?</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_signout_releasedMac">Isso libera sua licença %1$s para outro dispositivo.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="one">%1$d alteração ainda não foi sincronizada.</item>

@@ -1125,7 +1125,7 @@ msgstr "준비되면 재시작"
 msgid "update.restartNow"
 msgstr "지금 재시작"
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr "지금 재시작"
@@ -1295,10 +1295,120 @@ msgstr "{product}을(를) 받은 스토어나 플랫폼을 통해 설치돼요."
 msgid "update.revokedContent"
 msgstr "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요."
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "최신 버전이에요"
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr "업데이트 설치"
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr "업데이트 설치"
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr "종료 시 설치"
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr "종료 시 설치"
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr "확인 안 함"
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr "확인 안 함"
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr "종료하고 설치"
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr "종료하고 설치"
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr "설치를 마치려면 {product}을(를) 종료하세요."
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr "다운로드 중 · {size}"
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr "다운로드"
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr "업데이트 서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요."
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr "이 업데이트는 이 Mac에 설치할 수 없습니다."
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr "업데이트가 보안 검사를 통과하지 못해 설치되지 않았습니다."
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr "업데이트 확인 중…"
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr "업데이트를 자동으로 확인할까요?"
+
+#. {product} can look for new versions in the background and tell you when one is ready.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다."
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr "자동으로 확인"
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr "자동으로 확인"
+
+#. Couldn’t update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr "업데이트할 수 없음"
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr "자세히 알아보기"
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
+msgstr "자세히 알아보기"
 
 #. Check for updates
 #. UpdatePrompt: an app update. Menu item and settings button.
@@ -1319,6 +1429,31 @@ msgstr "라이선스 관리"
 msgctxt "macos"
 msgid "menu.manageLicense"
 msgstr "라이선스 관리"
+
+#. Sign out
+#. App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).
+msgid "menu.signOut"
+msgstr "로그아웃"
+
+#. macos: Sign Out…
+msgctxt "macos"
+msgid "menu.signOut"
+msgstr "로그아웃"
+
+#. Account
+#. The Account tab of the macOS Settings window, and the window's title while it is selected.
+msgid "menu.account"
+msgstr "계정"
+
+#. Sign out
+#. Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.
+msgid "signin.signout.confirm"
+msgstr "로그아웃"
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "signin.signout.confirm"
+msgstr "로그아웃"
 
 #. Update ready
 #. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
@@ -3149,6 +3284,16 @@ msgstr "이 기기의 {product}에서 로그아웃할까요?"
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
 msgstr "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요."
+
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr "이 Mac에서 {product}에서 로그아웃할까요?"
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
+msgstr "{tier} 라이선스가 해제되어 다른 기기에서 사용할 수 있습니다."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.

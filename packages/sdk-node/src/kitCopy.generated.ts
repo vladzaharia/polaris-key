@@ -253,9 +253,32 @@ export const KIT_COPY: Readonly<
       "It installs through the store or platform you got {product} from.",
     "update.revokedContent":
       "Some of {product}'s content was withdrawn and can't be used. Update to keep going.",
-    "update.upToDate": "You're up to date",
+    "update.upToDate": "You’re up to date",
+    "common.updateInstallUpdate": "Install update",
+    "common.updateInstallOnQuit": "Install on quit",
+    "common.updateDeclineChecks": "Don’t check",
+    "common.updateQuitAndInstall": "Quit and install",
+    "common.updateQuitToInstall": "Quit {product} to finish installing.",
+    "common.updateDownloadingBytes": "Downloading · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Couldn’t reach the update server. Check your connection and try again.",
+    "common.updateErrorCannotInstall":
+      "This update can’t be installed on this Mac.",
+    "common.updateErrorSecurity":
+      "The update didn’t pass its security check, so it wasn’t installed.",
+    "common.updateChecking": "Checking for updates…",
+    "common.updatePermissionTitle": "Check for updates automatically?",
+    "common.updatePermissionBody":
+      "{product} can look for new versions in the background and tell you when one is ready.",
+    "common.updatePermissionAllow": "Check automatically",
+    "common.updateFailedTitle": "Couldn’t update",
+    "common.updateLearnMore": "Learn more",
     "update.checkNow": "Check for updates",
     "menu.manageLicense": "Manage license",
+    "menu.signOut": "Sign out",
+    "menu.account": "Account",
+    "signin.signout.confirm": "Sign out",
     "notify.updateReady.title": "Update ready",
     "notify.updateReady.body": "Restart to finish updating.",
     "notify.signedIn.title": "Signed in",
@@ -610,6 +633,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Sign out of {product} on this device?",
     "signin.signout.released":
       "{product} stops using your {tier} license on this device and frees room for another device.",
+    "signin.signout.titleMac": "Sign out of {product} on this Mac?",
+    "signin.signout.releasedMac":
+      "This frees your {tier} license for another device.",
     "signin.signout.unsynced":
       "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",
     "signin.signout.waitSync": "Wait for sync",
@@ -1825,8 +1851,32 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie, um fortzufahren.",
     "update.upToDate": "Sie sind auf dem neuesten Stand",
+    "common.updateInstallUpdate": "Update installieren",
+    "common.updateInstallOnQuit": "Beim Beenden installieren",
+    "common.updateDeclineChecks": "Nicht suchen",
+    "common.updateQuitAndInstall": "Beenden und installieren",
+    "common.updateQuitToInstall":
+      "{product} beenden, um die Installation abzuschließen.",
+    "common.updateDownloadingBytes": "Wird heruntergeladen · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Der Update-Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "common.updateErrorCannotInstall":
+      "Dieses Update kann auf diesem Mac nicht installiert werden.",
+    "common.updateErrorSecurity":
+      "Das Update hat die Sicherheitsprüfung nicht bestanden und wurde nicht installiert.",
+    "common.updateChecking": "Nach Updates wird gesucht…",
+    "common.updatePermissionTitle": "Automatisch nach Updates suchen?",
+    "common.updatePermissionBody":
+      "{product} kann im Hintergrund nach neuen Versionen suchen und Sie benachrichtigen, wenn eine bereit ist.",
+    "common.updatePermissionAllow": "Automatisch suchen",
+    "common.updateFailedTitle": "Update nicht möglich",
+    "common.updateLearnMore": "Mehr erfahren",
     "update.checkNow": "Nach Updates suchen",
     "menu.manageLicense": "Lizenz verwalten",
+    "menu.signOut": "Abmelden",
+    "menu.account": "Konto",
+    "signin.signout.confirm": "Abmelden",
     "notify.updateReady.title": "Update bereit",
     "notify.updateReady.body":
       "Starten Sie neu, um die Aktualisierung abzuschließen.",
@@ -2213,6 +2263,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Auf diesem Gerät von {product} abmelden?",
     "signin.signout.released":
       "{product} verwendet Ihre {tier}-Lizenz auf diesem Gerät nicht mehr und schafft Platz für ein weiteres Gerät.",
+    "signin.signout.titleMac": "Auf diesem Mac von {product} abmelden?",
+    "signin.signout.releasedMac":
+      "Dadurch wird Ihre {tier}-Lizenz für ein anderes Gerät frei.",
     "signin.signout.unsynced":
       "{n, plural, one {# Änderung wurde noch nicht synchronisiert.} other {# Änderungen wurden noch nicht synchronisiert.}}",
     "signin.signout.waitSync": "Auf Synchronisierung warten",
@@ -3487,8 +3540,33 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Une partie du contenu de {product} a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.",
     "update.upToDate": "Vous êtes à jour",
+    "common.updateInstallUpdate": "Installer la mise à jour",
+    "common.updateInstallOnQuit": "Installer à la fermeture",
+    "common.updateDeclineChecks": "Ne pas rechercher",
+    "common.updateQuitAndInstall": "Quitter et installer",
+    "common.updateQuitToInstall":
+      "Quittez {product} pour terminer l’installation.",
+    "common.updateDownloadingBytes": "Téléchargement · {size}",
+    "common.updateProgressLabel": "Téléchargement",
+    "common.updateErrorNetwork":
+      "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion et réessayez.",
+    "common.updateErrorCannotInstall":
+      "Cette mise à jour ne peut pas être installée sur ce Mac.",
+    "common.updateErrorSecurity":
+      "La mise à jour n’a pas passé le contrôle de sécurité et n’a pas été installée.",
+    "common.updateChecking": "Recherche de mises à jour…",
+    "common.updatePermissionTitle":
+      "Rechercher les mises à jour automatiquement ?",
+    "common.updatePermissionBody":
+      "{product} peut rechercher de nouvelles versions en arrière-plan et vous prévenir quand l’une d’elles est prête.",
+    "common.updatePermissionAllow": "Rechercher automatiquement",
+    "common.updateFailedTitle": "Mise à jour impossible",
+    "common.updateLearnMore": "En savoir plus",
     "update.checkNow": "Rechercher des mises à jour",
     "menu.manageLicense": "Gérer la licence",
+    "menu.signOut": "Se déconnecter",
+    "menu.account": "Compte",
+    "signin.signout.confirm": "Se déconnecter",
     "notify.updateReady.title": "Mise à jour prête",
     "notify.updateReady.body": "Redémarrez pour terminer la mise à jour.",
     "notify.signedIn.title": "Connecté",
@@ -3868,6 +3946,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Se déconnecter de {product} sur cet appareil ?",
     "signin.signout.released":
       "{product} cesse d’utiliser votre licence {tier} ici et libère de la place pour un autre appareil.",
+    "signin.signout.titleMac": "Se déconnecter de {product} sur ce Mac ?",
+    "signin.signout.releasedMac":
+      "Cela libère votre licence {tier} pour un autre appareil.",
     "signin.signout.unsynced":
       "{n, plural, one {# modification n’a pas encore été synchronisée.} many {# de modifications n’ont pas encore été synchronisées.} other {# modifications n’ont pas encore été synchronisées.}}",
     "signin.signout.waitSync": "Attendre la synchronisation",
@@ -5136,8 +5217,31 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Parte del contenido de {product} se retiró y no se puede usar. Actualiza para continuar.",
     "update.upToDate": "Tienes la última versión",
+    "common.updateInstallUpdate": "Instalar actualización",
+    "common.updateInstallOnQuit": "Instalar al salir",
+    "common.updateDeclineChecks": "No buscar",
+    "common.updateQuitAndInstall": "Salir e instalar",
+    "common.updateQuitToInstall": "Cierra {product} para terminar de instalar.",
+    "common.updateDownloadingBytes": "Descargando · {size}",
+    "common.updateProgressLabel": "Descarga",
+    "common.updateErrorNetwork":
+      "No se pudo conectar con el servidor de actualizaciones. Comprueba tu conexión e inténtalo de nuevo.",
+    "common.updateErrorCannotInstall":
+      "Esta actualización no se puede instalar en este Mac.",
+    "common.updateErrorSecurity":
+      "La actualización no superó la comprobación de seguridad y no se instaló.",
+    "common.updateChecking": "Buscando actualizaciones…",
+    "common.updatePermissionTitle": "¿Buscar actualizaciones automáticamente?",
+    "common.updatePermissionBody":
+      "{product} puede buscar nuevas versiones en segundo plano y avisarte cuando haya una lista.",
+    "common.updatePermissionAllow": "Buscar automáticamente",
+    "common.updateFailedTitle": "No se pudo actualizar",
+    "common.updateLearnMore": "Más información",
     "update.checkNow": "Buscar actualizaciones",
     "menu.manageLicense": "Administrar la licencia",
+    "menu.signOut": "Cerrar sesión",
+    "menu.account": "Cuenta",
+    "signin.signout.confirm": "Cerrar sesión",
     "notify.updateReady.title": "Actualización lista",
     "notify.updateReady.body": "Reinicia para terminar de actualizar.",
     "notify.signedIn.title": "Sesión iniciada",
@@ -5511,6 +5615,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "¿Cerrar sesión de {product} en este dispositivo?",
     "signin.signout.released":
       "{product} dejará de usar aquí tu licencia {tier} y liberará espacio para otro dispositivo.",
+    "signin.signout.titleMac": "¿Cerrar sesión de {product} en este Mac?",
+    "signin.signout.releasedMac":
+      "Esto libera tu licencia {tier} para otro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# cambio aún no se ha sincronizado.} many {# de cambios aún no se han sincronizado.} other {# cambios aún no se han sincronizado.}}",
     "signin.signout.waitSync": "Esperar a sincronizar",
@@ -6778,8 +6885,32 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize para continuar.",
     "update.upToDate": "Você está atualizado",
+    "common.updateInstallUpdate": "Instalar atualização",
+    "common.updateInstallOnQuit": "Instalar ao sair",
+    "common.updateDeclineChecks": "Não verificar",
+    "common.updateQuitAndInstall": "Sair e instalar",
+    "common.updateQuitToInstall":
+      "Saia de {product} para concluir a instalação.",
+    "common.updateDownloadingBytes": "Baixando · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Não foi possível conectar ao servidor de atualizações. Verifique sua conexão e tente novamente.",
+    "common.updateErrorCannotInstall":
+      "Esta atualização não pode ser instalada neste Mac.",
+    "common.updateErrorSecurity":
+      "A atualização não passou na verificação de segurança e não foi instalada.",
+    "common.updateChecking": "Verificando atualizações…",
+    "common.updatePermissionTitle": "Verificar atualizações automaticamente?",
+    "common.updatePermissionBody":
+      "O {product} pode procurar novas versões em segundo plano e avisar quando uma estiver pronta.",
+    "common.updatePermissionAllow": "Verificar automaticamente",
+    "common.updateFailedTitle": "Não foi possível atualizar",
+    "common.updateLearnMore": "Saiba mais",
     "update.checkNow": "Verificar atualizações",
     "menu.manageLicense": "Gerenciar a licença",
+    "menu.signOut": "Sair",
+    "menu.account": "Conta",
+    "signin.signout.confirm": "Sair",
     "notify.updateReady.title": "Atualização pronta",
     "notify.updateReady.body": "Reinicie para concluir a atualização.",
     "notify.signedIn.title": "Login concluído",
@@ -7148,6 +7279,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Sair de {product} neste dispositivo?",
     "signin.signout.released":
       "{product} deixa de usar sua licença {tier} aqui e libera espaço para outro dispositivo.",
+    "signin.signout.titleMac": "Sair de {product} neste Mac?",
+    "signin.signout.releasedMac":
+      "Isso libera sua licença {tier} para outro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# alteração ainda não foi sincronizada.} many {# de alterações ainda não foram sincronizadas.} other {# alterações ainda não foram sincronizadas.}}",
     "signin.signout.waitSync": "Aguardar sincronização",
@@ -8378,8 +8512,33 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "Alcuni contenuti di {product} sono stati ritirati e non possono essere usati. Aggiorna per continuare.",
     "update.upToDate": "Hai la versione più recente",
+    "common.updateInstallUpdate": "Installa aggiornamento",
+    "common.updateInstallOnQuit": "Installa all’uscita",
+    "common.updateDeclineChecks": "Non cercare",
+    "common.updateQuitAndInstall": "Esci e installa",
+    "common.updateQuitToInstall":
+      "Esci da {product} per completare l’installazione.",
+    "common.updateDownloadingBytes": "Download in corso · {size}",
+    "common.updateProgressLabel": "Download",
+    "common.updateErrorNetwork":
+      "Impossibile raggiungere il server degli aggiornamenti. Controlla la connessione e riprova.",
+    "common.updateErrorCannotInstall":
+      "Questo aggiornamento non può essere installato su questo Mac.",
+    "common.updateErrorSecurity":
+      "L’aggiornamento non ha superato il controllo di sicurezza e non è stato installato.",
+    "common.updateChecking": "Ricerca di aggiornamenti…",
+    "common.updatePermissionTitle":
+      "Cercare gli aggiornamenti automaticamente?",
+    "common.updatePermissionBody":
+      "{product} può cercare nuove versioni in background e avvisarti quando una è pronta.",
+    "common.updatePermissionAllow": "Cerca automaticamente",
+    "common.updateFailedTitle": "Impossibile aggiornare",
+    "common.updateLearnMore": "Scopri di più",
     "update.checkNow": "Controlla aggiornamenti",
     "menu.manageLicense": "Gestisci la licenza",
+    "menu.signOut": "Esci",
+    "menu.account": "Account",
+    "signin.signout.confirm": "Esci",
     "notify.updateReady.title": "Aggiornamento pronto",
     "notify.updateReady.body": "Riavvia per completare l'aggiornamento.",
     "notify.signedIn.title": "Accesso eseguito",
@@ -8753,6 +8912,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "Uscire da {product} su questo dispositivo?",
     "signin.signout.released":
       "{product} smette di usare qui la tua licenza {tier} e libera spazio per un altro dispositivo.",
+    "signin.signout.titleMac": "Disconnettersi da {product} su questo Mac?",
+    "signin.signout.releasedMac":
+      "Questo libera la tua licenza {tier} per un altro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# modifica non è ancora sincronizzata.} many {# di modifiche non sono ancora sincronizzate.} other {# modifiche non sono ancora sincronizzate.}}",
     "signin.signout.waitSync": "Attendi la sincronizzazione",
@@ -10010,8 +10172,32 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。",
     "update.upToDate": "最新の状態です",
+    "common.updateInstallUpdate": "アップデートをインストール",
+    "common.updateInstallOnQuit": "終了時にインストール",
+    "common.updateDeclineChecks": "確認しない",
+    "common.updateQuitAndInstall": "終了してインストール",
+    "common.updateQuitToInstall":
+      "インストールを完了するには {product} を終了してください。",
+    "common.updateDownloadingBytes": "ダウンロード中 · {size}",
+    "common.updateProgressLabel": "ダウンロード",
+    "common.updateErrorNetwork":
+      "アップデートサーバーに接続できませんでした。接続を確認して、もう一度お試しください。",
+    "common.updateErrorCannotInstall":
+      "このアップデートはこの Mac にインストールできません。",
+    "common.updateErrorSecurity":
+      "アップデートがセキュリティチェックに合格しなかったため、インストールされませんでした。",
+    "common.updateChecking": "アップデートを確認中…",
+    "common.updatePermissionTitle": "アップデートを自動的に確認しますか？",
+    "common.updatePermissionBody":
+      "{product} はバックグラウンドで新しいバージョンを確認し、準備ができたらお知らせします。",
+    "common.updatePermissionAllow": "自動的に確認",
+    "common.updateFailedTitle": "アップデートできませんでした",
+    "common.updateLearnMore": "詳しく見る",
     "update.checkNow": "アップデートを確認",
     "menu.manageLicense": "ライセンスを管理",
+    "menu.signOut": "サインアウト",
+    "menu.account": "アカウント",
+    "signin.signout.confirm": "サインアウト",
     "notify.updateReady.title": "アップデートの準備ができました",
     "notify.updateReady.body": "再起動してアップデートを完了します。",
     "notify.signedIn.title": "サインインしました",
@@ -10383,6 +10569,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "このデバイスで{product}からサインアウトしますか？",
     "signin.signout.released":
       "{product}はこのデバイスで{tier}ライセンスの使用を停止し、別のデバイス用に空きを作ります。",
+    "signin.signout.titleMac": "このMacで{product}からサインアウトしますか？",
+    "signin.signout.releasedMac":
+      "{tier}ライセンスが解放され、別のデバイスで使えるようになります。",
     "signin.signout.unsynced":
       "{n, plural, other {#件の変更がまだ同期されていません。}}",
     "signin.signout.waitSync": "同期を待つ",
@@ -11646,8 +11835,31 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요.",
     "update.upToDate": "최신 버전이에요",
+    "common.updateInstallUpdate": "업데이트 설치",
+    "common.updateInstallOnQuit": "종료 시 설치",
+    "common.updateDeclineChecks": "확인 안 함",
+    "common.updateQuitAndInstall": "종료하고 설치",
+    "common.updateQuitToInstall": "설치를 마치려면 {product}을(를) 종료하세요.",
+    "common.updateDownloadingBytes": "다운로드 중 · {size}",
+    "common.updateProgressLabel": "다운로드",
+    "common.updateErrorNetwork":
+      "업데이트 서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+    "common.updateErrorCannotInstall":
+      "이 업데이트는 이 Mac에 설치할 수 없습니다.",
+    "common.updateErrorSecurity":
+      "업데이트가 보안 검사를 통과하지 못해 설치되지 않았습니다.",
+    "common.updateChecking": "업데이트 확인 중…",
+    "common.updatePermissionTitle": "업데이트를 자동으로 확인할까요?",
+    "common.updatePermissionBody":
+      "{product}이(가) 백그라운드에서 새 버전을 확인하고 준비되면 알려 드립니다.",
+    "common.updatePermissionAllow": "자동으로 확인",
+    "common.updateFailedTitle": "업데이트할 수 없음",
+    "common.updateLearnMore": "자세히 알아보기",
     "update.checkNow": "업데이트 확인",
     "menu.manageLicense": "라이선스 관리",
+    "menu.signOut": "로그아웃",
+    "menu.account": "계정",
+    "signin.signout.confirm": "로그아웃",
     "notify.updateReady.title": "업데이트 준비 완료",
     "notify.updateReady.body": "다시 시작하면 업데이트가 완료됩니다.",
     "notify.signedIn.title": "로그인됨",
@@ -12003,6 +12215,9 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "이 기기의 {product}에서 로그아웃할까요?",
     "signin.signout.released":
       "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요.",
+    "signin.signout.titleMac": "이 Mac에서 {product}에서 로그아웃할까요?",
+    "signin.signout.releasedMac":
+      "{tier} 라이선스가 해제되어 다른 기기에서 사용할 수 있습니다.",
     "signin.signout.unsynced":
       "{n, plural, other {변경 사항 #개가 아직 동기화되지 않았어요.}}",
     "signin.signout.waitSync": "동기화 기다리기",
@@ -13192,8 +13407,28 @@ export const KIT_COPY: Readonly<
     "update.revokedContent":
       "{product}的部分内容已被撤回，无法使用。请更新以继续。",
     "update.upToDate": "已是最新版本",
+    "common.updateInstallUpdate": "安装更新",
+    "common.updateInstallOnQuit": "退出时安装",
+    "common.updateDeclineChecks": "不检查",
+    "common.updateQuitAndInstall": "退出并安装",
+    "common.updateQuitToInstall": "退出 {product} 以完成安装。",
+    "common.updateDownloadingBytes": "正在下载 · {size}",
+    "common.updateProgressLabel": "下载",
+    "common.updateErrorNetwork": "无法连接到更新服务器。请检查网络连接后重试。",
+    "common.updateErrorCannotInstall": "此更新无法安装在这台 Mac 上。",
+    "common.updateErrorSecurity": "更新未通过安全检查，因此没有安装。",
+    "common.updateChecking": "正在检查更新…",
+    "common.updatePermissionTitle": "自动检查更新？",
+    "common.updatePermissionBody":
+      "{product} 可以在后台查找新版本，并在新版本就绪时通知你。",
+    "common.updatePermissionAllow": "自动检查",
+    "common.updateFailedTitle": "无法更新",
+    "common.updateLearnMore": "了解更多",
     "update.checkNow": "检查更新",
     "menu.manageLicense": "管理许可证",
+    "menu.signOut": "退出登录",
+    "menu.account": "账户",
+    "signin.signout.confirm": "退出登录",
     "notify.updateReady.title": "更新已就绪",
     "notify.updateReady.body": "重启以完成更新。",
     "notify.signedIn.title": "已登录",
@@ -13530,6 +13765,8 @@ export const KIT_COPY: Readonly<
     "signin.signout.title": "要在此设备上退出登录{product}吗？",
     "signin.signout.released":
       "{product}将停止在此设备上使用你的{tier}许可证，以便其他设备使用。",
+    "signin.signout.titleMac": "要在此 Mac 上退出 {product} 吗？",
+    "signin.signout.releasedMac": "这会释放你的 {tier} 许可，供其他设备使用。",
     "signin.signout.unsynced": "{n, plural, other {#项更改尚未同步。}}",
     "signin.signout.waitSync": "等待同步",
     "signin.session.toastTitle": "你已被退出登录",
@@ -14454,12 +14691,20 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.allChanges": { macos: "All Changes in {version}" },
   "update.later": { macos: "Remind Me Later" },
   "update.restartWhenReady": { macos: "Install and Relaunch" },
-  "update.restartNow": { macos: "Restart Now" },
+  "update.restartNow": { macos: "Install and Relaunch" },
   "update.skipVersion": { macos: "Skip This Version" },
   "update.install": { macos: "Install and Relaunch" },
   "update.steam": { macos: "Get It on Steam" },
+  "common.updateInstallUpdate": { macos: "Install Update" },
+  "common.updateInstallOnQuit": { macos: "Install on Quit" },
+  "common.updateDeclineChecks": { macos: "Don’t Check" },
+  "common.updateQuitAndInstall": { macos: "Quit and Install" },
+  "common.updatePermissionAllow": { macos: "Check Automatically" },
+  "common.updateLearnMore": { macos: "Learn More" },
   "update.checkNow": { macos: "Check for Updates…" },
   "menu.manageLicense": { macos: "Manage License…" },
+  "menu.signOut": { macos: "Sign Out…" },
+  "signin.signout.confirm": { macos: "Sign Out" },
   "updateProgress.resume": { macos: "Download Now" },
   "status.useAnotherLicense": { macos: "Use Another License" },
   "status.switchChannel": { macos: "Switch Channel" },

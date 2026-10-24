@@ -167,6 +167,9 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
     @ViewBuilder var inlineActions: () -> InlineActions
 
     @AccessibilityFocusState private var titleFocused: Bool
+    @FocusState private var useKeyFocused: Bool
+    /// Back or Escape from a step: focus returns to "Use a License Key" (macOS).
+    var refocusUseKey = false
 
     /// `inline` and `inlineActions` carry the one path of a one-path product (the key field and
     /// Activate for a key-only product), under the lede and in the act's place.
@@ -174,8 +177,10 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         screen: KitScreen<WelcomeState>, onSignIn: @escaping () -> Void,
         onUseKey: @escaping () -> Void, onExtra: @escaping (String) -> Void = { _ in },
         @ViewBuilder inline: @escaping () -> Inline,
-        @ViewBuilder inlineActions: @escaping () -> InlineActions
+        @ViewBuilder inlineActions: @escaping () -> InlineActions,
+        refocusUseKey: Bool = false
     ) {
+        self.refocusUseKey = refocusUseKey
         self.screen = screen
         self.onSignIn = onSignIn
         self.onUseKey = onUseKey
@@ -188,9 +193,41 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         ["welcome.trial", "welcome.continueFree", "welcome.restore", "welcome.offline"]
     }
 
+    /// The heading block's alignment: a Mac window reads from the leading edge.
+    private static var headingAlignment: HorizontalAlignment {
+        #if os(macOS)
+            return .leading
+        #else
+            return .center
+        #endif
+    }
+
+    /// The Welcome act: the stacked full-width hero capsules on a Mac (at most 320 pt, sign in
+    /// first; the short window uses the 28 pt control), the standard action stack elsewhere.
+    @ViewBuilder private func heroActions<A: View>(
+        @ViewBuilder _ content: @escaping (Bool) -> A
+    ) -> some View {
+        #if os(macOS)
+            KitArrangementReader { arrangement in
+                VStack(spacing: KitMacArrangement.actsSpacing) { content(arrangement.heroCapsules) }
+                    .frame(
+                        maxWidth: arrangement.isStrip
+                            ? .infinity : KitMacArrangement.actsMaxWidth)
+            }
+        #else
+            KitActionStack { content(false) }
+        #endif
+    }
+
     public var body: some View {
+        scaffold
+            .onAppear { if refocusUseKey { useKeyFocused = true } }
+            .onChange(of: refocusUseKey) { _, now in if now { useKeyFocused = true } }
+    }
+
+    private var scaffold: some View {
         KitScreenScaffold(hero: true, header: false) {
-            VStack(spacing: 6) {
+            VStack(alignment: Self.headingAlignment, spacing: 6) {
                 KitText(
                     screen.line("common.welcomeNoProductTitle") ?? screen.lineOrKey("welcome.title"),
                     .display, color: .strong, alignment: .center
@@ -206,7 +243,12 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                 if let lede = screen.line("welcome.lede") ?? screen.line("welcome.ledeKeyOnly")
                     ?? screen.line("welcome.ledeSignInOnly") ?? screen.line("common.signInToContinue")
                 {
-                    KitText(lede, .body, color: .default, alignment: .center)
+                    KitArrangementReader { arrangement in
+                        // The lede gives way first in a short Mac window (DL3).
+                        if arrangement.showsLede {
+                            KitText(lede, .body, color: .default, alignment: .center)
+                        }
+                    }
                 }
                 if screen.state == .capabilityLimited, screen.shows("welcome.ledeKeyOnly") {
                     inline()
@@ -216,20 +258,28 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
             if screen.state == .busy {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, busy: true) {}
             } else if screen.state == .default {
-                KitActionStack {
+                heroActions { heroSize in
                     KitButton(
-                        line: screen.lineOrKey("welcome.signIn"), kind: .primary, action: onSignIn
+                        line: screen.lineOrKey("welcome.signIn"), kind: .primary, hero: heroSize,
+                        action: onSignIn
                     )
                     .keyboardShortcut(.defaultAction)
                     KitButton(
-                        line: screen.lineOrKey("welcome.useKey"), kind: .secondary, action: onUseKey
+                        line: screen.lineOrKey("welcome.useKey"), kind: .secondary, hero: heroSize,
+                        action: onUseKey
                     )
+                    .focused($useKeyFocused)
                 }
             } else if screen.state == .capabilityLimited,
                 screen.shows("welcome.ledeSignInOnly") || screen.shows("common.signInToContinue")
             {
-                KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
+                heroActions { heroSize in
+                    KitButton(
+                        line: CopyLine("welcome.signIn"), kind: .primary, hero: heroSize,
+                        action: onSignIn
+                    )
                     .keyboardShortcut(.defaultAction)
+                }
             } else if screen.state == .capabilityLimited {
                 inlineActions()
             }
