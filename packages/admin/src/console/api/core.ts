@@ -3,11 +3,8 @@
  * Types and the `coreApi` methods live together; `api.ts` re-exports the types and spreads the methods.
  */
 import type { ServiceSlug } from "../../services.generated.js";
-import type {
-  LicenseHolderMoveKind,
-  SettingConfirmSpec,
-  SettingValueSpec,
-} from "../../api.js";
+import type { LicenseHolderMoveKind } from "./license.js";
+import type { SettingConfirmSpec, SettingValueSpec } from "./settings.js";
 import type {
   ManagedEntry,
   ManagedSecretView,

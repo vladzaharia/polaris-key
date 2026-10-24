@@ -3,7 +3,7 @@
  * alerts, platform settings, operations, connections and store connections. Types and the
  * `platformApi` methods live together; `api.ts` re-exports the types and spreads the methods.
  */
-import type { ActivityFilters } from "../../api.js";
+import type { ActivityFilters } from "./activity.js";
 import { call, enc, p } from "./transport.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────

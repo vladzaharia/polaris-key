@@ -3,7 +3,7 @@
  * every `console/api/*` module calls through. Importable only by `api.ts` and its siblings.
  */
 import { markSessionEnded, waitForSessionBack } from "../shell/endedState.js";
-import type { PackageFeedsSwitch } from "../../api.js";
+import type { PackageFeedsSwitch } from "./feeds.js";
 import { createHttpClient, HttpError } from "../../lib/http.js";
 import { startStepUp } from "../../lib/stepUp.js";
 
