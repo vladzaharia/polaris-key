@@ -202,9 +202,23 @@ internal actual fun thumbnailArgb32(image: ImageBitmap): IntArray {
     return thumb.getRGB(0, 0, 32, 32, null, 0, 32)
 }
 
-// A Compose dialog draws no window dim on the desktop; the kit's own scrim is inside the dialog.
+// The desktop dialog (CMP 1.8.2) draws its own black 60 % scrim unless told otherwise; a chrome with a
+// scrim of its own turns it off (polarisPromptDialogProperties), so this window dim has nothing to set.
 @Composable
 internal actual fun PolarisDialogDim(amount: Float) = Unit
+
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+internal actual fun polarisPromptDialogProperties(
+    dismissible: Boolean,
+    scrim: Boolean,
+    dismissOnClickOutside: Boolean,
+): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(
+        dismissOnBackPress = dismissible,
+        dismissOnClickOutside = dismissOnClickOutside,
+        usePlatformDefaultWidth = false,
+        scrimColor = if (scrim) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f) else androidx.compose.ui.graphics.Color.Transparent, // polaris-lint: allow-colour (the desktop dialog's own default scrim)
+    )
 
 @Composable
 internal actual fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {

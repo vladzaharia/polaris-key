@@ -149,6 +149,13 @@ internal actual fun thumbnailArgb32(image: ImageBitmap): IntArray {
     return argb
 }
 
+internal actual fun polarisPromptDialogProperties(
+    dismissible: Boolean,
+    scrim: Boolean,
+    dismissOnClickOutside: Boolean,
+): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(dismissOnBackPress = dismissible, dismissOnClickOutside = dismissOnClickOutside, usePlatformDefaultWidth = false)
+
 @Composable
 internal actual fun PolarisDialogDim(amount: Float) {
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window

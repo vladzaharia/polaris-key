@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -346,6 +347,7 @@ public fun PolarisActivationScreen(
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onActivate() }),
+            monospace = true,
         )
     }
     // Opening the key path puts the cursor in the field, so the person can type or paste at once.
@@ -401,7 +403,11 @@ public fun PolarisActivationScreen(
                     )
                     Spacer(Modifier.height(PolarisSpace.tight))
                 }
-                PolarisTitle(notice?.title ?: copy.format(copy.activationTitle, copy.productName))
+                if (notice == null && autoPlatformVariant() == PolarisPlatformVariant.MacOS) {
+                    PolarisMacWelcomeTitle(copy.format(copy.activationTitle, copy.productName))
+                } else {
+                    PolarisTitle(notice?.title ?: copy.format(copy.activationTitle, copy.productName))
+                }
                 // "by <Developer>" under the title, on the Welcome only (UI-KITS.md 1.2), when it is known.
                 val developer = PolarisTheme.current.developer
                 if (notice == null && developer != null) {
@@ -420,12 +426,68 @@ public fun PolarisActivationScreen(
         },
         actions = {
             val replace = limit != null && manage != null && !manageAsQr
+            if (polarisWindow.isMac && (limit != null || showKey)) {
+                // macOS (B1): a trailing row sized to its labels, Cancel and Back directly left of the default,
+                // emitted left to right so Tab runs the same way; Return fires the default.
+                val openManage = {
+                    val opened = isSafeHttpsLink(manage!!) && (if (onOpenManage != null) runCatching { onOpenManage(manage) }.isSuccess else opener(manage))
+                    noBrowser = !opened
+                }
+                if (limit == null) {
+                    keyField()
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(if (ui.busy) null else onActivate)) {
+                        if (onSignIn != null) PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
+                        PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy, initialFocus = true)
+                    }
+                } else {
+                    if (noBrowser) {
+                        PolarisInlineNotice(copy.signInNoBrowser)
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                    }
+                    val copyLink = noBrowser && ManageLink.isValid(manage)
+                    val default: (() -> Unit)? = when {
+                        ui.busy -> null
+                        copyLink -> ({ scope.launch { clipboard.setText(copy.signInCopyLink, manage!!) }; onCopied() })
+                        replace && !noBrowser -> openManage
+                        else -> onActivate
+                    }
+                    PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(default)) {
+                        PolarisSecondaryButton(text = copy.back, onClick = { onKeyChange(ui.key) }, enabled = !ui.busy)
+                        if (onSignIn != null) PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
+                        if (replace) {
+                            PolarisSecondaryButton(text = copy.retry, onClick = onActivate, busy = ui.busy)
+                            if (copyLink) {
+                                PolarisSecondaryButton(text = copy.openInBrowser, onClick = openManage, enabled = !ui.busy, external = true)
+                                PolarisPrimaryButton(
+                                    text = copy.signInCopyLink,
+                                    initialFocus = true,
+                                    onClick = {
+                                        scope.launch { clipboard.setText(copy.signInCopyLink, manage!!) }
+                                        onCopied()
+                                    },
+                                )
+                            } else {
+                                PolarisPrimaryButton(text = copy.openInBrowser, onClick = openManage, enabled = !ui.busy, initialFocus = true, external = true)
+                            }
+                        } else {
+                            PolarisPrimaryButton(text = copy.retry, onClick = onActivate, busy = ui.busy, initialFocus = true)
+                        }
+                    }
+                }
+                return@PolarisScaffold
+            }
             if (limit == null) {
                 if (!showKey) {
                     // The Welcome: Sign in is the one primary, the key path is the secondary.
-                    PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn!!, enabled = !ui.busy, initialFocus = true)
-                    Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisSecondaryButton(text = copy.useKey, onClick = { keyOpen = true; openedByTap = true }, enabled = !ui.busy)
+                    // macOS (S5): the hero buttons are 36 pt tall and at most 320 wide.
+                    val hero = polarisWindow.isMac
+                    val heroModifier = if (hero) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
+                    CompositionLocalProvider(LocalPolarisMacHero provides hero) {
+                        PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn!!, modifier = heroModifier, enabled = !ui.busy, initialFocus = true)
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                        PolarisSecondaryButton(text = copy.useKey, onClick = { keyOpen = true; openedByTap = true }, modifier = heroModifier, enabled = !ui.busy)
+                    }
                     return@PolarisScaffold
                 }
                 // The key path: Activate is the primary once a key is being entered; Sign in steps down to tonal.

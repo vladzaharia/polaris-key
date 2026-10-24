@@ -284,7 +284,8 @@ public data class PolarisCopy(
 
         /** The copy for the current configuration (locale), read from string resources where the platform has them. */
         @Composable
-        public fun localized(): PolarisCopy = polarisLocalizedCopy()
+        public fun localized(): PolarisCopy =
+            polarisLocalizedCopy().let { if (polarisCopyVariant() == CopyVariant.macos) it.forMac() else it }
 
         /** Every field name, in declaration order. */
         public val FIELDS: List<String> by lazy {
