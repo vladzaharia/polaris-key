@@ -1,5 +1,5 @@
 /**
- * P2b-05 — `pkey feeds fdroid` (`feeds.ts`): the index it builds validates against F-Droid's
+ * P2b-05 — `pkey storefront fdroid` (`feeds.ts`): the index it builds validates against F-Droid's
  * index-v2 model, `entry.json`'s index hash matches the index bytes, a diff is written against
  * the index the relay serves now, beta versions are tagged, the two notes/E2 §C2 rules are
  * enforced, and the whole run reads, signs, uploads and registers against a fake Polaris Key.
@@ -350,7 +350,7 @@ function serverWithInputs(body: FdroidInputs = inputs()) {
   return server;
 }
 
-describe("pkey feeds fdroid", () => {
+describe("pkey storefront fdroid", () => {
   it(`reads, builds, signs${REAL_SIGNING ? " (real apksigner)" : " (fake)"}, uploads and registers`, async () => {
     const cwd = await tempDir();
     const server = serverWithInputs();
@@ -585,23 +585,55 @@ describe("pkey feeds fdroid", () => {
     );
   });
 
+  it("pkey feeds fdroid moved: exit 2, nothing runs", async () => {
+    const cwd = await tempDir();
+    const io = capture();
+    const server = serverWithInputs();
+    expect(
+      await runPkey(
+        [
+          "feeds",
+          "fdroid",
+          "--product",
+          SLUG,
+          "--channel",
+          "beta",
+          "--out",
+          "repo",
+        ],
+        {
+          cwd,
+          stdout: io.stdout,
+          stderr: io.stderr,
+          env: { PKEY_CI_TOKEN: CI_TOKEN },
+          fetchImpl: server.fetchImpl,
+          sleep: instant,
+        },
+      ),
+    ).toBe(2);
+    expect(io.err()).toContain(
+      "pkey feeds fdroid moved. Run pkey storefront fdroid.",
+    );
+    expect(io.out()).toBe("");
+  });
+
   it("runs from the CLI, and needs --channel and --out", async () => {
     const cwd = await tempDir();
     const io = capture();
     expect(
-      await runPkey(["feeds", "fdroid", "--product", SLUG], {
+      await runPkey(["storefront", "fdroid", "--product", SLUG], {
         cwd,
         stdout: io.stdout,
         stderr: io.stderr,
         env: {},
       }),
     ).toBe(2);
-    expect(io.err()).toContain("Usage: pkey feeds fdroid");
+    expect(io.err()).toContain("Usage: pkey storefront fdroid");
     const server = serverWithInputs();
     const io2 = capture();
     const code = await runPkey(
       [
-        "feeds",
+        "storefront",
         "fdroid",
         "--product",
         SLUG,

@@ -64,6 +64,15 @@ A license's own config and secret overrides stay: they are layer 4 of the merge,
 
 Provisioned secrets now live on the owner's account row when the signing identity is linked to the license's owner. The tables `override_migration` and `override_migration_report` are neither read nor written; a later release drops them.
 
+## 0.9.0 — Moved: `pkey feeds fdroid`
+
+**Action required:** Change the command in your CI. `pkey feeds fdroid` exits 2 and runs nothing.
+The flags are the same.
+
+| Removed             | Use instead                                   |
+| ------------------- | --------------------------------------------- |
+| `pkey feeds fdroid` | `pkey storefront fdroid`, with the same flags |
+
 ## Check the result
 
 Run [`pkey validate`](/docs/reference/cli/#pkey-validate) from the product repository. If a

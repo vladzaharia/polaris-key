@@ -340,15 +340,12 @@ No `--json`: the answer is text.
 
 ### `pkey feeds`
 
-The F-Droid feed, package-feed setup and feed pruning.
+Package-feed setup and feed pruning.
 
 ```text
-pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
 pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]
 pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
 ```
-
-pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed cleanup, which is on by default after a one-time dry-run notice. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants.
 
@@ -439,6 +436,7 @@ pkey storefront itch push --platform windows|linux|mac|android --dir dir --versi
 pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
 pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
 pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
+pkey storefront fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
 pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
 pkey storefront allow-list [--store s] [--json]
 pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]] [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
@@ -447,6 +445,8 @@ pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command 
 ```
 
 pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list admits (pkey storefront allow-list prints them): itch push is butler push &lt;dir&gt; &lt;user/game&gt;:&lt;platform[-channel]&gt; --userversion &lt;v&gt;, the target from the itch outlet's identity (BUTLER_API_KEY in the environment); snap upload is snapcraft upload &lt;snap&gt; --release=&lt;snap channels&gt;, only the channels the snap outlet's channels map declares, and snap upload-metadata sends the summary, description and icon the snap carries, which snap metadata writes into snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script may set live only a named branch; msstore publish, refused while the console has a staged draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and after it runs (distribution:report), so the store's ledger shows it beside console steps; a step already done in the same run is skipped. --dry-run checks and prints the command lines.
+
+pkey storefront fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey storefront &lt;store&gt; pr writes winget's manifests (schema 1.12.0), the cask in your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch.
 

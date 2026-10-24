@@ -4807,7 +4807,7 @@ paths:
       tags: [distribution]
       summary: The F-Droid generator's inputs (CI)
       description: >
-        P2b-05. What `pkey feeds fdroid` builds `index-v2.json`, `entry.json` and diffs from: the
+        P2b-05. What `pkey storefront fdroid` builds `index-v2.json`, `entry.json` and diffs from: the
         repository address and the `fdroid-repo` fingerprints of the key inventory, the outlet's
         package name and listing, the APKs the channel's F-Droid feed selects (newest first, each
         with its release, a `stable` flag, notes, delivery URL and the APK metadata from the
@@ -5459,7 +5459,7 @@ paths:
       summary: Obtain an upload ticket and R2 temporary credentials (trusted publishing)
       description: >
         P2-02. Requires a `pkeyci_` token with `release:publish` — or, for the F-Droid repository
-        files `pkey feeds fdroid` uploads, `distribution:feeds` (P2b-05), or, for the listing assets
+        files `pkey storefront fdroid` uploads, `distribution:feeds` (P2b-05), or, for the listing assets
         `pkey listing assets` derived, `distribution:listing` (A-18d). The body lists the objects CI
         intends to upload (`sha256`, `size`, optional `gated` for `gated/blobs/…`; at most 256,
         each one single-part, at most 5 GiB less 5 MiB). The answer is a one-shot ticket

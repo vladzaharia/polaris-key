@@ -24379,23 +24379,17 @@ var COMMANDS = [
     group: "feeds",
     json: true,
     context: ["product", "baseUrl"],
-    summary: "The F-Droid feed, package-feed setup and feed pruning",
+    summary: "Package-feed setup and feed pruning",
     rows: [
-      ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
       ["feeds setup", "Print the setup for one package feed"],
       ["feeds prune", "Delete main builds below the newest stable"]
     ],
-    tree: { fdroid: [], setup: [], prune: [] },
+    tree: { setup: [], prune: [] },
     usage: [
-      "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
     ],
     about: [
-      {
-        subs: ["fdroid"],
-        text: "pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops."
-      },
       {
         subs: ["prune"],
         text: "pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed cleanup, which is on by default after a one-time dry-run notice. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants."
@@ -24404,9 +24398,9 @@ var COMMANDS = [
         subs: ["setup"],
         text: "pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme, groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the registry token from that environment variable. Offline: nothing is sent anywhere."
       },
-      { subs: ["fdroid", "prune"], text: CI_PARA }
+      { subs: ["prune"], text: CI_PARA }
     ],
-    env: [ciEnvFor(["fdroid", "prune"])]
+    env: [ciEnvFor(["prune"])]
   },
   {
     name: "listing",
@@ -24539,6 +24533,10 @@ var COMMANDS = [
         "storefront snap upload-metadata",
         "Send the snap's summary, description and icon"
       ],
+      [
+        "storefront fdroid",
+        "Build, sign and register a channel's F-Droid repo"
+      ],
       ["storefront exec", "Run another allow-listed store command"],
       ["storefront allow-list", "Print the commands each store's CI admits"],
       [
@@ -24551,6 +24549,7 @@ var COMMANDS = [
     tree: {
       itch: ["push"],
       snap: ["metadata", "upload", "upload-metadata"],
+      fdroid: [],
       exec: [],
       "allow-list": [],
       winget: ["pr", "status"],
@@ -24563,6 +24562,7 @@ var COMMANDS = [
       "pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]",
       "pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]",
       "pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]",
+      "pkey storefront fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...",
       "pkey storefront allow-list [--store s] [--json]",
       "pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]] [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]",
@@ -24573,6 +24573,10 @@ var COMMANDS = [
       {
         subs: ["itch", "snap", "exec", "allow-list"],
         text: "pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list admits (pkey storefront allow-list prints them): itch push is butler push <dir> <user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity (BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata sends the summary, description and icon the snap carries, which snap metadata writes into snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script may set live only a named branch; msstore publish, refused while the console has a staged draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and after it runs (distribution:report), so the store's ledger shows it beside console steps; a step already done in the same run is skipped. --dry-run checks and prints the command lines."
+      },
+      {
+        subs: ["fdroid"],
+        text: "pkey storefront fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops."
       },
       {
         subs: STORE_SUBS,
@@ -43016,8 +43020,8 @@ async function steamVdf(o) {
 
 // src/storefronts/command.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir9, stat as stat7 } from "node:fs/promises";
-import path25 from "node:path";
+import { readdir as readdir10, stat as stat7 } from "node:fs/promises";
+import path26 from "node:path";
 
 // src/storefronts/ciPlane.generated.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -45701,446 +45705,6 @@ async function writeFlathubInit(o) {
   return files;
 }
 
-// src/storefronts/outlets.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-async function loadStepProduct(cwd, product) {
-  const loaded2 = await loadManifest(cwd);
-  const validation = validateLoadedManifest(loaded2);
-  if (!validation.ok)
-    throw new Error(
-      `.pkey/ is invalid; run pkey validate:
-${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
-    );
-  const files = {};
-  for (const [name, doc] of Object.entries({
-    product: loaded2.product,
-    schema: loaded2.schema,
-    release: loaded2.release,
-    distribution: loaded2.distribution
-  }))
-    if (doc !== void 0) files[name] = JSON.stringify(doc);
-  const parsed = parseManifest(files);
-  if (!parsed.ok)
-    throw new Error(`.pkey/ does not parse:
-  ${parsed.errors.join("\n  ")}`);
-  const m = parsed.manifest;
-  if (product && product !== m.product.slug)
-    throw new UsageError(
-      `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`
-    );
-  return {
-    slug: m.product.slug,
-    outlets: (m.distribution?.outlets ?? []).map((o) => ({
-      id: o.id,
-      kind: o.kind,
-      identity: withDefaultLanes(o.kind, {
-        ...o.identity
-      })
-    }))
-  };
-}
-function withDefaultLanes(kind, identity) {
-  const field = kind === "snap" ? "channels" : kind === "steam" ? "branches" : null;
-  if (field === null) return identity;
-  const declared = identity[field];
-  return {
-    ...identity,
-    [field]: effectiveTrackMap(
-      kind,
-      declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
-    )
-  };
-}
-function pickOutlet(p, kinds, outletId, label) {
-  if (outletId) {
-    const o = p.outlets.find((x) => x.id === outletId);
-    if (!o)
-      throw new UsageError(
-        `--outlet ${outletId} is not declared in .pkey/distribution.`
-      );
-    if (!kinds.includes(o.kind))
-      throw new UsageError(
-        `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`
-      );
-    return o;
-  }
-  const matching = p.outlets.filter((o) => kinds.includes(o.kind));
-  if (matching.length === 1) return matching[0];
-  throw new Error(
-    matching.length === 0 ? `.pkey/distribution declares no ${label} outlet (${kinds.join(", ")}).` : `.pkey/distribution declares ${matching.length} ${label} outlets (${matching.map((o) => o.id).join(", ")}); pass --outlet.`
-  );
-}
-
-// src/storefronts/snap.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml6 = __toESM(require_dist(), 1);
-import { readFile as readFile20, writeFile as writeFile17 } from "node:fs/promises";
-function snapReleaseChannels(outlet, channels2) {
-  const declared = outlet.identity.channels;
-  const map = effectiveTrackMap(
-    "snap",
-    declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
-  );
-  if (channels2.length === 0)
-    throw new UsageError(
-      "--channel is required: the release channel(s) to release to."
-    );
-  const out = [];
-  for (const c of channels2) {
-    const snapChannel = map[c];
-    if (typeof snapChannel !== "string")
-      throw new Error(
-        `outlet ${outlet.id} maps no snap channel for ${c} (channels: ${Object.keys(map).join(", ") || "none"}).`
-      );
-    if (!out.includes(snapChannel)) out.push(snapChannel);
-  }
-  return out;
-}
-function snapUploadStep(o) {
-  const store = ciStore("snap");
-  return {
-    store: "snap",
-    op: "uploadBuild",
-    command: "upload",
-    tool: store.list.tool,
-    argv: [
-      "upload",
-      o.snap,
-      `--release=${snapReleaseChannels(o.outlet, o.channels).join(",")}`
-    ],
-    outlet: o.outlet
-  };
-}
-function snapUploadMetadataStep(snap) {
-  const store = ciStore("snap");
-  return {
-    store: "snap",
-    op: "writeListingText",
-    command: "upload-metadata",
-    tool: store.list.tool,
-    argv: ["upload-metadata", snap]
-  };
-}
-function snapMetadataFields(p) {
-  if (!p.payload) {
-    const blocking = p.issues.map((i) => `${i.field}${i.locale ? ` (${i.locale})` : ""}: ${i.issue}`).join("; ");
-    throw new Error(
-      `The listing's Snap projection is blocked${p.exists ? "" : " (the product has no listing yet)"}: ${blocking || "fix it in the console's Listing editor"}.`
-    );
-  }
-  const locale = p.payload.locales[p.defaultLocale] ?? {};
-  const summary = locale.summary;
-  const description = locale.description;
-  if (typeof summary !== "string" || typeof description !== "string")
-    throw new Error(
-      `The listing's Snap projection has no ${typeof summary !== "string" ? "summary" : "description"} in its default locale ${p.defaultLocale}.`
-    );
-  return { summary, description };
-}
-function applySnapMetadata(yamlText, fields) {
-  const doc = (0, import_yaml6.parseDocument)(yamlText);
-  if (doc.errors.length)
-    throw new Error(`snapcraft.yaml does not parse: ${doc.errors[0].message}`);
-  if (!doc.contents || typeof doc.get !== "function" || !doc.has("name"))
-    throw new Error(
-      "snapcraft.yaml has no top-level name: is this a snapcraft.yaml?"
-    );
-  doc.set("summary", fields.summary);
-  const description = doc.createNode(fields.description.replace(/\r\n/g, "\n"));
-  description.type = "BLOCK_LITERAL";
-  doc.set("description", description);
-  return doc.toString();
-}
-async function writeSnapMetadata(o) {
-  const token = await resolveCiToken({
-    baseUrl: o.baseUrl,
-    product: o.product,
-    env: o.env,
-    out: o.stdout,
-    log: o.stderr,
-    fetchImpl: o.fetchImpl,
-    sleep: o.sleep
-  });
-  const client = ciClient({
-    baseUrl: o.baseUrl,
-    product: o.product,
-    token,
-    fetchImpl: o.fetchImpl,
-    sleep: o.sleep,
-    log: o.stderr,
-    env: o.env
-  });
-  const body = await client.getJson(
-    "distribution/listing/snap",
-    { what: "Reading the listing's Snap projection" }
-  );
-  const fields = snapMetadataFields(body.listing);
-  const current = await readFile20(o.yamlPath, "utf8");
-  const next = applySnapMetadata(current, fields);
-  if (o.dryRun) {
-    o.stdout.write(
-      `Would write into ${o.yamlPath}:
-  summary: ${untrusted(fields.summary, o.env)}
-  description: ${fields.description.length} characters
-`
-    );
-    return fields;
-  }
-  if (next !== current) await writeFile17(o.yamlPath, next, "utf8");
-  o.stdout.write(
-    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
-`
-  );
-  return fields;
-}
-
-// src/storefronts/command.ts
-var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
-function str5(a, name) {
-  const v = a.flags[name];
-  return typeof v === "string" && v.trim() ? v : void 0;
-}
-function bool(a, name) {
-  return a.flags[name] === true || a.flags[name] === "true";
-}
-function need(a, name, why) {
-  const v = str5(a, name);
-  if (!v)
-    throw new UsageError(`--${name} is required: ${why}.
-${STOREFRONT_USAGE}`);
-  return v;
-}
-async function resolveSnapFile(cwd, p) {
-  const abs = path25.resolve(cwd, p);
-  if ((await stat7(abs)).isFile()) return p;
-  const snaps = (await readdir9(abs)).filter((f) => f.endsWith(".snap"));
-  if (snaps.length !== 1)
-    throw new Error(
-      `${p} holds ${snaps.length} .snap files; name one (${snaps.join(", ") || "none"}).`
-    );
-  return path25.join(p, snaps[0]);
-}
-async function resolveSnapcraftYaml(cwd, p) {
-  const abs = path25.resolve(cwd, p);
-  if ((await stat7(abs)).isFile()) return abs;
-  for (const candidate of ["snapcraft.yaml", "snap/snapcraft.yaml"]) {
-    const f = path25.join(abs, candidate);
-    try {
-      if ((await stat7(f)).isFile()) return f;
-    } catch {
-    }
-  }
-  throw new Error(`${p} has no snapcraft.yaml (or snap/snapcraft.yaml).`);
-}
-function printAllowList(a, io) {
-  const only = str5(a, "store");
-  if (only && !ciStore(only))
-    throw new UsageError(
-      `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`
-    );
-  const stores = CI_PLANE.stores.filter((s) => !only || s.store === only);
-  if (bool(a, "json")) {
-    io.stdout.write(
-      `${JSON.stringify({ stores, adapters: CI_PLANE.adapters }, null, 2)}
-`
-    );
-    return 0;
-  }
-  for (const s of stores) {
-    io.stdout.write(`${s.label} (${s.store}): ${s.list.tool}
-`);
-    for (const [id, rule] of Object.entries(s.list.commands)) {
-      const argv2 = rule.argv.map(
-        (x) => typeof x === "string" ? x : `${x.prefix ?? ""}<${x.param}${x.identity ? ` = identity ${x.identity.field}` : ""}>`
-      );
-      io.stdout.write(
-        `  ${id}: ${s.list.tool} ${argv2.join(" ")}
-    ${rule.why}
-`
-      );
-    }
-  }
-  return 0;
-}
-async function cmdStorefront(a, io) {
-  const [store, step] = a.positional;
-  if (store === "allow-list") return printAllowList(a, io);
-  const productFlag = str5(a, "product");
-  const run2 = async (steps, slug) => {
-    await runStoreSteps(steps, {
-      cwd: io.cwd,
-      product: slug,
-      baseUrl: str5(a, "base-url"),
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep,
-      dryRun: bool(a, "dry-run"),
-      report: !bool(a, "no-report"),
-      toolPath: str5(a, "tool-path")
-    });
-    return 0;
-  };
-  const outletFor = async (storeId) => {
-    const p = await loadStepProduct(io.cwd, productFlag);
-    const s = ciStore(storeId);
-    return {
-      slug: p.slug,
-      outlet: pickOutlet(p, s.outletKinds, str5(a, "outlet"), s.label)
-    };
-  };
-  switch (`${store ?? ""} ${step ?? ""}`) {
-    case "itch push": {
-      const { slug, outlet } = await outletFor("itch");
-      return run2(
-        [
-          itchPushStep({
-            outlet,
-            dir: need(a, "dir", "the directory of the build to push"),
-            platform: need(
-              a,
-              "platform",
-              "the platform word the channel starts with"
-            ),
-            channel: str5(a, "channel"),
-            version: need(a, "version", "the --userversion butler records")
-          })
-        ],
-        slug
-      );
-    }
-    case "snap upload": {
-      const { slug, outlet } = await outletFor("snap");
-      const snap = await resolveSnapFile(
-        io.cwd,
-        need(a, "snap", "the built .snap")
-      );
-      const channels2 = need(
-        a,
-        "channel",
-        "the release channel(s) to release to"
-      ).split(",").map((c) => c.trim()).filter(Boolean);
-      return run2([snapUploadStep({ outlet, snap, channels: channels2 })], slug);
-    }
-    case "snap upload-metadata": {
-      const p = await loadStepProduct(io.cwd, productFlag);
-      const snap = await resolveSnapFile(
-        io.cwd,
-        need(a, "snap", "the built .snap")
-      );
-      return run2([snapUploadMetadataStep(snap)], p.slug);
-    }
-    case "snap metadata": {
-      const p = await loadStepProduct(io.cwd, productFlag);
-      await writeSnapMetadata({
-        yamlPath: await resolveSnapcraftYaml(
-          io.cwd,
-          need(a, "yaml", "the snapcraft.yaml to update")
-        ),
-        product: p.slug,
-        baseUrl: str5(a, "base-url"),
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep,
-        dryRun: bool(a, "dry-run")
-      });
-      return 0;
-    }
-    default:
-      break;
-  }
-  const pr = store ? prStore(store) : null;
-  if (pr && (step === "pr" || step === "status" || step === "init" && pr.store === "flathub")) {
-    const generator = {
-      ...str5(a, "portable") ? { portable: str5(a, "portable") } : {},
-      ...str5(a, "command") ? { command: str5(a, "command") } : {},
-      ...str5(a, "license") ? { license: str5(a, "license") } : {},
-      ...str5(a, "app") ? { app: str5(a, "app") } : {},
-      ...str5(a, "project-license") ? { projectLicense: str5(a, "project-license") } : {},
-      ...str5(a, "runtime-version") ? { runtimeVersion: str5(a, "runtime-version") } : {}
-    };
-    const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
-    const common = {
-      store: pr.store,
-      product: slug,
-      channel: str5(a, "channel") ?? "stable",
-      ...str5(a, "outlet") ? { outlet: str5(a, "outlet") } : {},
-      ...str5(a, "version") ? { version: str5(a, "version") } : {},
-      generator,
-      baseUrl: str5(a, "base-url"),
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep,
-      dryRun: bool(a, "dry-run"),
-      report: !bool(a, "no-report"),
-      ...str5(a, "out") ? { outDir: str5(a, "out") } : {},
-      cwd: io.cwd
-    };
-    if (step === "pr") await runPrStep(common);
-    else if (step === "status") await runPrStatus(common);
-    else
-      await writeFlathubInit({ ...common, outDir: str5(a, "out") ?? "flathub" });
-    return 0;
-  }
-  if (store && !pr && (step === "pr" || step === "status"))
-    throw new Error(
-      `${store} is not a PR-plane store: ${prStoreIds().join(", ")}.
-${STOREFRONT_USAGE}`
-    );
-  if (store === "exec") {
-    const [, storeId, command] = a.positional;
-    const s = storeId ? ciStore(storeId) : null;
-    if (!s)
-      throw new Error(
-        `pkey storefront exec needs a CI-plane store: ${ciStoreIds().join(", ")}.
-${STOREFRONT_USAGE}`
-      );
-    if (!command || !Object.hasOwn(s.list.commands, command))
-      throw new Error(
-        `${s.label}'s allow-list has the commands ${Object.keys(s.list.commands).join(", ")}.
-${STOREFRONT_USAGE}`
-      );
-    const op = need(
-      a,
-      "op",
-      "the storefront operation the command performs (uploadBuild, release, writeListingText)"
-    );
-    const adapter = ciAdapter(s.store);
-    if (adapter && !(adapter.ciOps[op] ?? []).includes(command))
-      throw new Error(
-        `${adapter.label} runs ${command} for ${Object.entries(adapter.ciOps).filter(([, c]) => c.includes(command)).map(([o]) => o).join(", ") || "no operation"}, not ${op}.`
-      );
-    let slug;
-    let outlet;
-    if (bindsIdentity(s.list, command) || str5(a, "outlet")) {
-      const r = await outletFor(s.store);
-      slug = r.slug;
-      outlet = r.outlet;
-    } else slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
-    return run2(
-      [
-        {
-          store: s.store,
-          op,
-          command,
-          tool: s.list.tool,
-          argv: [...a.rest],
-          ...outlet ? { outlet } : {}
-        }
-      ],
-      slug
-    );
-  }
-  io.stderr.write(`${STOREFRONT_USAGE}
-`);
-  return 2;
-}
-
 // src/feeds.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash14 } from "node:crypto";
@@ -46149,15 +45713,15 @@ import { existsSync } from "node:fs";
 import {
   lstat as lstat3,
   mkdir as mkdir10,
-  readdir as readdir10,
-  readFile as readFile21,
+  readdir as readdir9,
+  readFile as readFile20,
   rm as rm5,
   rmdir,
-  writeFile as writeFile18
+  writeFile as writeFile17
 } from "node:fs/promises";
-import path26 from "node:path";
+import path25 from "node:path";
 import { promisify } from "node:util";
-var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
+var FEEDS_USAGE = "Usage: pkey storefront fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
 var FDROID_INDEX_VERSION = 3e4;
 var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
 var LOCALE = "en-US";
@@ -46428,13 +45992,13 @@ async function findApksigner(explicit, env) {
   if (explicit) return explicit;
   const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
   if (sdk) {
-    const bt = path26.join(sdk, "build-tools");
+    const bt = path25.join(sdk, "build-tools");
     try {
-      const versions = (await readdir10(bt)).sort(
+      const versions = (await readdir9(bt)).sort(
         (a, b) => a.localeCompare(b, void 0, { numeric: true })
       );
       for (const v of versions.reverse()) {
-        const p = path26.join(bt, v, "apksigner");
+        const p = path25.join(bt, v, "apksigner");
         if (existsSync(p)) return p;
       }
     } catch {
@@ -46449,7 +46013,7 @@ async function signEntryJar(jar, opts) {
       `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
     );
   const unsigned = `${jar}.unsigned`;
-  await writeFile18(unsigned, await readFile21(jar));
+  await writeFile17(unsigned, await readFile20(jar));
   try {
     await promisify(execFile)(
       tool,
@@ -46490,8 +46054,8 @@ var OUT_DIRS = {
   icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
 };
 async function staleOutFiles(dir, cwd) {
-  const up = path26.relative(dir, path26.resolve(cwd));
-  if (up === "" || up.split(path26.sep)[0] !== ".." && !path26.isAbsolute(up))
+  const up = path25.relative(dir, path25.resolve(cwd));
+  if (up === "" || up.split(path25.sep)[0] !== ".." && !path25.isAbsolute(up))
     throw new UsageError(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
@@ -46506,8 +46070,8 @@ async function staleOutFiles(dir, cwd) {
   const files = [];
   const dirs = [];
   const foreign = [];
-  for (const name of (await readdir10(dir)).sort()) {
-    const full = path26.join(dir, name);
+  for (const name of (await readdir9(dir)).sort()) {
+    const full = path25.join(dir, name);
     const st = await lstat3(full);
     if (OUT_FILES.has(name) && st.isFile()) {
       files.push(full);
@@ -46516,11 +46080,11 @@ async function staleOutFiles(dir, cwd) {
     const pattern2 = OUT_DIRS[name];
     if (pattern2 && st.isDirectory()) {
       let clean2 = true;
-      for (const inner of (await readdir10(full)).sort()) {
-        const f = path26.join(full, inner);
+      for (const inner of (await readdir9(full)).sort()) {
+        const f = path25.join(full, inner);
         if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
         else {
-          foreign.push(path26.join(name, inner));
+          foreign.push(path25.join(name, inner));
           clean2 = false;
         }
       }
@@ -46531,7 +46095,7 @@ async function staleOutFiles(dir, cwd) {
   }
   if (foreign.length)
     throw new UsageError(
-      `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
+      `--out ${dir} holds files pkey storefront fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
     );
   return { files, dirs };
 }
@@ -46558,7 +46122,7 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new UsageError(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
-  const dir = path26.resolve(opts.cwd, opts.out);
+  const dir = path25.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -46597,8 +46161,8 @@ ${FEEDS_USAGE}`);
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
   const icon2 = opts.icon ? {
-    name: path26.basename(opts.icon),
-    bytes: await readFile21(path26.resolve(opts.cwd, opts.icon))
+    name: path25.basename(opts.icon),
+    bytes: await readFile20(path25.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
     throw new UsageError(
@@ -46613,13 +46177,13 @@ ${FEEDS_USAGE}`);
   for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
-    const file = path26.join(dir, ...p.split("/"));
-    await mkdir10(path26.dirname(file), { recursive: true });
-    await writeFile18(file, bytes);
+    const file = path25.join(dir, ...p.split("/"));
+    await mkdir10(path25.dirname(file), { recursive: true });
+    await writeFile17(file, bytes);
     written[p] = file;
   }
-  const jar = path26.join(dir, "entry.jar");
-  await writeFile18(
+  const jar = path25.join(dir, "entry.jar");
+  await writeFile17(
     jar,
     zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
   );
@@ -46635,13 +46199,13 @@ ${FEEDS_USAGE}`);
   };
   if (!opts.keystore || !opts.alias) {
     out.write(
-      `Wrote the unsigned repository to ${path26.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+      `Wrote the unsigned repository to ${path25.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
 `
     );
     return result;
   }
   await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path26.resolve(opts.cwd, opts.keystore),
+    keystore: path25.resolve(opts.cwd, opts.keystore),
     alias: opts.alias,
     passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
     env: opts.env,
@@ -46660,7 +46224,7 @@ ${FEEDS_USAGE}`);
   }
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
-      const bytes = await readFile21(file);
+      const bytes = await readFile20(file);
       return { path: p, file, sha256: sha2564(bytes), size: bytes.length };
     })
   );
@@ -46723,6 +46287,472 @@ ${FEEDS_USAGE}`);
       "warning: the key inventory has no fdroid-repo key; record the repo key's fingerprint in the console so users can verify the repository.\n"
     );
   return result;
+}
+
+// src/storefronts/outlets.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+async function loadStepProduct(cwd, product) {
+  const loaded2 = await loadManifest(cwd);
+  const validation = validateLoadedManifest(loaded2);
+  if (!validation.ok)
+    throw new Error(
+      `.pkey/ is invalid; run pkey validate:
+${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
+    );
+  const files = {};
+  for (const [name, doc] of Object.entries({
+    product: loaded2.product,
+    schema: loaded2.schema,
+    release: loaded2.release,
+    distribution: loaded2.distribution
+  }))
+    if (doc !== void 0) files[name] = JSON.stringify(doc);
+  const parsed = parseManifest(files);
+  if (!parsed.ok)
+    throw new Error(`.pkey/ does not parse:
+  ${parsed.errors.join("\n  ")}`);
+  const m = parsed.manifest;
+  if (product && product !== m.product.slug)
+    throw new UsageError(
+      `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`
+    );
+  return {
+    slug: m.product.slug,
+    outlets: (m.distribution?.outlets ?? []).map((o) => ({
+      id: o.id,
+      kind: o.kind,
+      identity: withDefaultLanes(o.kind, {
+        ...o.identity
+      })
+    }))
+  };
+}
+function withDefaultLanes(kind, identity) {
+  const field = kind === "snap" ? "channels" : kind === "steam" ? "branches" : null;
+  if (field === null) return identity;
+  const declared = identity[field];
+  return {
+    ...identity,
+    [field]: effectiveTrackMap(
+      kind,
+      declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
+    )
+  };
+}
+function pickOutlet(p, kinds, outletId, label) {
+  if (outletId) {
+    const o = p.outlets.find((x) => x.id === outletId);
+    if (!o)
+      throw new UsageError(
+        `--outlet ${outletId} is not declared in .pkey/distribution.`
+      );
+    if (!kinds.includes(o.kind))
+      throw new UsageError(
+        `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`
+      );
+    return o;
+  }
+  const matching = p.outlets.filter((o) => kinds.includes(o.kind));
+  if (matching.length === 1) return matching[0];
+  throw new Error(
+    matching.length === 0 ? `.pkey/distribution declares no ${label} outlet (${kinds.join(", ")}).` : `.pkey/distribution declares ${matching.length} ${label} outlets (${matching.map((o) => o.id).join(", ")}); pass --outlet.`
+  );
+}
+
+// src/storefronts/snap.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var import_yaml6 = __toESM(require_dist(), 1);
+import { readFile as readFile21, writeFile as writeFile18 } from "node:fs/promises";
+function snapReleaseChannels(outlet, channels2) {
+  const declared = outlet.identity.channels;
+  const map = effectiveTrackMap(
+    "snap",
+    declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
+  );
+  if (channels2.length === 0)
+    throw new UsageError(
+      "--channel is required: the release channel(s) to release to."
+    );
+  const out = [];
+  for (const c of channels2) {
+    const snapChannel = map[c];
+    if (typeof snapChannel !== "string")
+      throw new Error(
+        `outlet ${outlet.id} maps no snap channel for ${c} (channels: ${Object.keys(map).join(", ") || "none"}).`
+      );
+    if (!out.includes(snapChannel)) out.push(snapChannel);
+  }
+  return out;
+}
+function snapUploadStep(o) {
+  const store = ciStore("snap");
+  return {
+    store: "snap",
+    op: "uploadBuild",
+    command: "upload",
+    tool: store.list.tool,
+    argv: [
+      "upload",
+      o.snap,
+      `--release=${snapReleaseChannels(o.outlet, o.channels).join(",")}`
+    ],
+    outlet: o.outlet
+  };
+}
+function snapUploadMetadataStep(snap) {
+  const store = ciStore("snap");
+  return {
+    store: "snap",
+    op: "writeListingText",
+    command: "upload-metadata",
+    tool: store.list.tool,
+    argv: ["upload-metadata", snap]
+  };
+}
+function snapMetadataFields(p) {
+  if (!p.payload) {
+    const blocking = p.issues.map((i) => `${i.field}${i.locale ? ` (${i.locale})` : ""}: ${i.issue}`).join("; ");
+    throw new Error(
+      `The listing's Snap projection is blocked${p.exists ? "" : " (the product has no listing yet)"}: ${blocking || "fix it in the console's Listing editor"}.`
+    );
+  }
+  const locale = p.payload.locales[p.defaultLocale] ?? {};
+  const summary = locale.summary;
+  const description = locale.description;
+  if (typeof summary !== "string" || typeof description !== "string")
+    throw new Error(
+      `The listing's Snap projection has no ${typeof summary !== "string" ? "summary" : "description"} in its default locale ${p.defaultLocale}.`
+    );
+  return { summary, description };
+}
+function applySnapMetadata(yamlText, fields) {
+  const doc = (0, import_yaml6.parseDocument)(yamlText);
+  if (doc.errors.length)
+    throw new Error(`snapcraft.yaml does not parse: ${doc.errors[0].message}`);
+  if (!doc.contents || typeof doc.get !== "function" || !doc.has("name"))
+    throw new Error(
+      "snapcraft.yaml has no top-level name: is this a snapcraft.yaml?"
+    );
+  doc.set("summary", fields.summary);
+  const description = doc.createNode(fields.description.replace(/\r\n/g, "\n"));
+  description.type = "BLOCK_LITERAL";
+  doc.set("description", description);
+  return doc.toString();
+}
+async function writeSnapMetadata(o) {
+  const token = await resolveCiToken({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    env: o.env,
+    out: o.stdout,
+    log: o.stderr,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep
+  });
+  const client = ciClient({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    token,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep,
+    log: o.stderr,
+    env: o.env
+  });
+  const body = await client.getJson(
+    "distribution/listing/snap",
+    { what: "Reading the listing's Snap projection" }
+  );
+  const fields = snapMetadataFields(body.listing);
+  const current = await readFile21(o.yamlPath, "utf8");
+  const next = applySnapMetadata(current, fields);
+  if (o.dryRun) {
+    o.stdout.write(
+      `Would write into ${o.yamlPath}:
+  summary: ${untrusted(fields.summary, o.env)}
+  description: ${fields.description.length} characters
+`
+    );
+    return fields;
+  }
+  if (next !== current) await writeFile18(o.yamlPath, next, "utf8");
+  o.stdout.write(
+    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
+`
+  );
+  return fields;
+}
+
+// src/storefronts/command.ts
+var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront fdroid --product <slug> --channel <c> --out <dir> [--keystore <path> --alias <a>]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
+function str5(a, name) {
+  const v = a.flags[name];
+  return typeof v === "string" && v.trim() ? v : void 0;
+}
+function bool(a, name) {
+  return a.flags[name] === true || a.flags[name] === "true";
+}
+function need(a, name, why) {
+  const v = str5(a, name);
+  if (!v)
+    throw new UsageError(`--${name} is required: ${why}.
+${STOREFRONT_USAGE}`);
+  return v;
+}
+async function resolveSnapFile(cwd, p) {
+  const abs = path26.resolve(cwd, p);
+  if ((await stat7(abs)).isFile()) return p;
+  const snaps = (await readdir10(abs)).filter((f) => f.endsWith(".snap"));
+  if (snaps.length !== 1)
+    throw new Error(
+      `${p} holds ${snaps.length} .snap files; name one (${snaps.join(", ") || "none"}).`
+    );
+  return path26.join(p, snaps[0]);
+}
+async function resolveSnapcraftYaml(cwd, p) {
+  const abs = path26.resolve(cwd, p);
+  if ((await stat7(abs)).isFile()) return abs;
+  for (const candidate of ["snapcraft.yaml", "snap/snapcraft.yaml"]) {
+    const f = path26.join(abs, candidate);
+    try {
+      if ((await stat7(f)).isFile()) return f;
+    } catch {
+    }
+  }
+  throw new Error(`${p} has no snapcraft.yaml (or snap/snapcraft.yaml).`);
+}
+function printAllowList(a, io) {
+  const only = str5(a, "store");
+  if (only && !ciStore(only))
+    throw new UsageError(
+      `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`
+    );
+  const stores = CI_PLANE.stores.filter((s) => !only || s.store === only);
+  if (bool(a, "json")) {
+    io.stdout.write(
+      `${JSON.stringify({ stores, adapters: CI_PLANE.adapters }, null, 2)}
+`
+    );
+    return 0;
+  }
+  for (const s of stores) {
+    io.stdout.write(`${s.label} (${s.store}): ${s.list.tool}
+`);
+    for (const [id, rule] of Object.entries(s.list.commands)) {
+      const argv2 = rule.argv.map(
+        (x) => typeof x === "string" ? x : `${x.prefix ?? ""}<${x.param}${x.identity ? ` = identity ${x.identity.field}` : ""}>`
+      );
+      io.stdout.write(
+        `  ${id}: ${s.list.tool} ${argv2.join(" ")}
+    ${rule.why}
+`
+      );
+    }
+  }
+  return 0;
+}
+async function cmdStorefront(a, io) {
+  const [store, step] = a.positional;
+  if (store === "allow-list") return printAllowList(a, io);
+  const productFlag = str5(a, "product");
+  const run2 = async (steps, slug) => {
+    await runStoreSteps(steps, {
+      cwd: io.cwd,
+      product: slug,
+      baseUrl: str5(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+      dryRun: bool(a, "dry-run"),
+      report: !bool(a, "no-report"),
+      toolPath: str5(a, "tool-path")
+    });
+    return 0;
+  };
+  const outletFor = async (storeId) => {
+    const p = await loadStepProduct(io.cwd, productFlag);
+    const s = ciStore(storeId);
+    return {
+      slug: p.slug,
+      outlet: pickOutlet(p, s.outletKinds, str5(a, "outlet"), s.label)
+    };
+  };
+  if (store === "fdroid") {
+    const product = str5(a, "product");
+    const channel = str5(a, "channel");
+    const out = str5(a, "out");
+    if (step !== void 0 || !product || !channel || !out)
+      throw new UsageError(FEEDS_USAGE);
+    await buildFdroidFeed({
+      cwd: io.cwd,
+      product,
+      channel,
+      out,
+      keystore: str5(a, "keystore"),
+      alias: str5(a, "alias"),
+      ksPassEnv: str5(a, "ks-pass-env"),
+      apksigner: str5(a, "apksigner"),
+      icon: str5(a, "icon"),
+      dryRun: bool(a, "dry-run"),
+      baseUrl: str5(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep
+    });
+    return 0;
+  }
+  switch (`${store ?? ""} ${step ?? ""}`) {
+    case "itch push": {
+      const { slug, outlet } = await outletFor("itch");
+      return run2(
+        [
+          itchPushStep({
+            outlet,
+            dir: need(a, "dir", "the directory of the build to push"),
+            platform: need(
+              a,
+              "platform",
+              "the platform word the channel starts with"
+            ),
+            channel: str5(a, "channel"),
+            version: need(a, "version", "the --userversion butler records")
+          })
+        ],
+        slug
+      );
+    }
+    case "snap upload": {
+      const { slug, outlet } = await outletFor("snap");
+      const snap = await resolveSnapFile(
+        io.cwd,
+        need(a, "snap", "the built .snap")
+      );
+      const channels2 = need(
+        a,
+        "channel",
+        "the release channel(s) to release to"
+      ).split(",").map((c) => c.trim()).filter(Boolean);
+      return run2([snapUploadStep({ outlet, snap, channels: channels2 })], slug);
+    }
+    case "snap upload-metadata": {
+      const p = await loadStepProduct(io.cwd, productFlag);
+      const snap = await resolveSnapFile(
+        io.cwd,
+        need(a, "snap", "the built .snap")
+      );
+      return run2([snapUploadMetadataStep(snap)], p.slug);
+    }
+    case "snap metadata": {
+      const p = await loadStepProduct(io.cwd, productFlag);
+      await writeSnapMetadata({
+        yamlPath: await resolveSnapcraftYaml(
+          io.cwd,
+          need(a, "yaml", "the snapcraft.yaml to update")
+        ),
+        product: p.slug,
+        baseUrl: str5(a, "base-url"),
+        env: io.env,
+        stdout: io.stdout,
+        stderr: io.stderr,
+        fetchImpl: io.fetchImpl,
+        sleep: io.sleep,
+        dryRun: bool(a, "dry-run")
+      });
+      return 0;
+    }
+    default:
+      break;
+  }
+  const pr = store ? prStore(store) : null;
+  if (pr && (step === "pr" || step === "status" || step === "init" && pr.store === "flathub")) {
+    const generator = {
+      ...str5(a, "portable") ? { portable: str5(a, "portable") } : {},
+      ...str5(a, "command") ? { command: str5(a, "command") } : {},
+      ...str5(a, "license") ? { license: str5(a, "license") } : {},
+      ...str5(a, "app") ? { app: str5(a, "app") } : {},
+      ...str5(a, "project-license") ? { projectLicense: str5(a, "project-license") } : {},
+      ...str5(a, "runtime-version") ? { runtimeVersion: str5(a, "runtime-version") } : {}
+    };
+    const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
+    const common = {
+      store: pr.store,
+      product: slug,
+      channel: str5(a, "channel") ?? "stable",
+      ...str5(a, "outlet") ? { outlet: str5(a, "outlet") } : {},
+      ...str5(a, "version") ? { version: str5(a, "version") } : {},
+      generator,
+      baseUrl: str5(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+      dryRun: bool(a, "dry-run"),
+      report: !bool(a, "no-report"),
+      ...str5(a, "out") ? { outDir: str5(a, "out") } : {},
+      cwd: io.cwd
+    };
+    if (step === "pr") await runPrStep(common);
+    else if (step === "status") await runPrStatus(common);
+    else
+      await writeFlathubInit({ ...common, outDir: str5(a, "out") ?? "flathub" });
+    return 0;
+  }
+  if (store && !pr && (step === "pr" || step === "status"))
+    throw new Error(
+      `${store} is not a PR-plane store: ${prStoreIds().join(", ")}.
+${STOREFRONT_USAGE}`
+    );
+  if (store === "exec") {
+    const [, storeId, command] = a.positional;
+    const s = storeId ? ciStore(storeId) : null;
+    if (!s)
+      throw new Error(
+        `pkey storefront exec needs a CI-plane store: ${ciStoreIds().join(", ")}.
+${STOREFRONT_USAGE}`
+      );
+    if (!command || !Object.hasOwn(s.list.commands, command))
+      throw new Error(
+        `${s.label}'s allow-list has the commands ${Object.keys(s.list.commands).join(", ")}.
+${STOREFRONT_USAGE}`
+      );
+    const op = need(
+      a,
+      "op",
+      "the storefront operation the command performs (uploadBuild, release, writeListingText)"
+    );
+    const adapter = ciAdapter(s.store);
+    if (adapter && !(adapter.ciOps[op] ?? []).includes(command))
+      throw new Error(
+        `${adapter.label} runs ${command} for ${Object.entries(adapter.ciOps).filter(([, c]) => c.includes(command)).map(([o]) => o).join(", ") || "no operation"}, not ${op}.`
+      );
+    let slug;
+    let outlet;
+    if (bindsIdentity(s.list, command) || str5(a, "outlet")) {
+      const r = await outletFor(s.store);
+      slug = r.slug;
+      outlet = r.outlet;
+    } else slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
+    return run2(
+      [
+        {
+          store: s.store,
+          op,
+          command,
+          tool: s.list.tool,
+          argv: [...a.rest],
+          ...outlet ? { outlet } : {}
+        }
+      ],
+      slug
+    );
+  }
+  io.stderr.write(`${STOREFRONT_USAGE}
+`);
+  return 2;
 }
 
 // src/feedSetup.ts
@@ -49606,6 +49636,11 @@ function adminIo(parsed, rt) {
 }
 function unknownCommand(name, term, parent) {
   const sub = parent ? name.slice(parent.length + 1) : name;
+  if (parent === "feeds" && sub === "fdroid")
+    return failLine(
+      "pkey feeds fdroid moved. Run pkey storefront fdroid.",
+      term
+    );
   const near = nearest(
     sub,
     parent ? Object.keys(findCommand(parent)?.tree ?? {}) : COMMANDS.map((c) => c.name)
@@ -50785,34 +50820,8 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
     });
     return report2.totals.failed > 0 ? 1 : 0;
   }
-  const product = flagString(parsed, "product");
-  const channel = flagString(parsed, "channel");
-  const out = flagString(parsed, "out");
-  if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(
-      `${FEEDS_USAGE}
-${FEEDS_SETUP_USAGE}
-${FEEDS_PRUNE_USAGE}`
-    );
-  await buildFdroidFeed({
-    cwd,
-    product,
-    channel,
-    out,
-    keystore: flagString(parsed, "keystore"),
-    alias: flagString(parsed, "alias"),
-    ksPassEnv: flagString(parsed, "ks-pass-env"),
-    apksigner: flagString(parsed, "apksigner"),
-    icon: flagString(parsed, "icon"),
-    dryRun: flagBool(parsed, "dry-run"),
-    baseUrl: flagString(parsed, "base-url"),
-    env: ci.env,
-    stdout,
-    stderr,
-    fetchImpl: ci.fetchImpl,
-    sleep: ci.sleep
-  });
-  return 0;
+  throw new UsageError(`${FEEDS_SETUP_USAGE}
+${FEEDS_PRUNE_USAGE}`);
 }
 async function cmdListing(parsed, cwd, stdout, stderr, ci, g, admin) {
   switch (parsed.positional[0]) {
