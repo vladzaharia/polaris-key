@@ -3,13 +3,16 @@
  * output.
  */
 
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as detekt } from "./adapters/detekt.mjs";
 import { parse as ktlint } from "./adapters/ktlint.mjs";
 
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FIX = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const fixture = (n: string) => readFileSync(join(FIX, n), "utf8");
 
@@ -83,5 +86,27 @@ describe("detekt adapter", () => {
     expect(() => detekt(JSON.stringify(out), { root: "/repo" })).toThrow(
       /outside/,
     );
+  });
+});
+
+describe("kotlin lint.sh", () => {
+  it("refuses to run a jar whose checksum does not match", () => {
+    const dir = mkdtempSync(join(tmpdir(), "lint-tools-"));
+    try {
+      writeFileSync(join(dir, "ktlint-cli-1.8.0-all.jar"), "junk");
+      const r = spawnSync(
+        "bash",
+        [join(ROOT, "sdks/kotlin/tools/lint.sh"), "check"],
+        {
+          cwd: join(ROOT, "sdks/kotlin"),
+          env: { ...process.env, LINT_TOOLS_DIR: dir },
+          encoding: "utf8",
+        },
+      );
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain("refusing to run it");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

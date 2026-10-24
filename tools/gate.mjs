@@ -231,7 +231,7 @@ export const STEPS = [
     id: "lint-ts",
     title: "TypeScript lint: knip and duplicate code",
     lane: null,
-    argv: () => ["bash", "-c", "pnpm lint:knip && pnpm lint:dupes"],
+    argv: () => ["pnpm", "lint:ts"],
   },
   {
     n: 19,

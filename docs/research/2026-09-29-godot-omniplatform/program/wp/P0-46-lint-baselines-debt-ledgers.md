@@ -69,3 +69,15 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-46 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-46 done`.
+
+## Corrections (2026-10-24)
+
+From the approved plan (§0 L1–L6, decisions D-L1–D-L7):
+
+- **L1.** No language linter existed before this package: no knip or jscpd config, no ruff, mypy only in the docs snippet lane, no ktlint or detekt, no `.swift-format`, no gdtoolkit.
+- **L2.** The ledger is not report-only (D-L2): a new finding fails from the first commit, and a recorded finding the tool no longer reports fails too, so ledgers only shrink. The docs (`lint-debt.json`) and UI-kit (`kit-debt.json`) ledgers already had these semantics in other shapes.
+- **L3.** Each lane is a plain-Node first step with no pnpm install, as `kit-lint.mjs` is.
+- **L4.** Tool availability: `swift format` ships with the toolchain and cannot be pinned apart from Xcode; ruff and gdlint come from pip, ktlint and detekt from checksum-verified jars (detekt 1.23's Gradle plugin targets Kotlin 2.0, the repo is on 2.1.21, so the CLI jars are used, D-L7).
+- **L5.** The Verify section above is boilerplate: this package does not touch the CLI. The tests that cover it are `pnpm exec vitest run tools/lint tools/gate.test.ts tools/agents-md.test.ts`, plus each lane's `check` (`pnpm lint:ts`, `sdks/<lang>/tools/lint.sh check`).
+- **L6.** Generated files are not linted: the registry's `outputs` (`tools/generators.ts`) are the exclusion list.
+- **Rule set.** Ruff selects `E, F, W, B, I` at 120 columns (`sdks/python/pyproject.toml`), not ruff's defaults, and mypy checks `src/polaris_key` with `platform = "linux"`.

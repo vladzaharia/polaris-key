@@ -141,7 +141,7 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/e2e/motion.e2e.test.ts": {
-      "jscpd:duplicate": 31
+      "jscpd:duplicate": 32
     },
     "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
       "jscpd:duplicate": 16
@@ -1148,6 +1148,9 @@
     "packages/cli/test/bundle.test.ts": {
       "jscpd:duplicate": 6
     },
+    "packages/cli/test/channelAdd.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/cli/test/cli.test.ts": {
       "jscpd:duplicate": 6
     },
@@ -1161,7 +1164,7 @@
       "jscpd:duplicate": 1
     },
     "packages/cli/test/distribution.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/cli/test/distributionCi.test.ts": {
       "jscpd:duplicate": 3
@@ -1171,6 +1174,9 @@
     },
     "packages/cli/test/feeds.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/cli/test/feedsWrite.test.ts": {
+      "jscpd:duplicate": 12
     },
     "packages/cli/test/godotFixtures.test.ts": {
       "jscpd:duplicate": 5
@@ -1182,7 +1188,7 @@
       "jscpd:duplicate": 1
     },
     "packages/cli/test/login.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/cli/test/packArtifacts.test.ts": {
       "jscpd:duplicate": 4
@@ -1988,6 +1994,9 @@
     "packages/shared-manifest/src/descriptor.ts": {
       "jscpd:duplicate": 6
     },
+    "packages/shared-manifest/src/distribution.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/shared-manifest/src/distribution.ts": {
       "jscpd:duplicate": 1
     },
@@ -2005,6 +2014,9 @@
     },
     "packages/shared-manifest/test/deviceLimit.test.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/shared-manifest/test/outletBlock.test.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/shared-manifest/test/schema-parity.test.ts": {
       "jscpd:duplicate": 3
@@ -2286,7 +2298,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/core/notify/templates.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/worker/src/core/oidc/client.ts": {
       "jscpd:duplicate": 1
@@ -3267,7 +3279,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/customerHost.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/defaultTierMigration.test.ts": {
       "jscpd:duplicate": 4
@@ -3604,6 +3616,9 @@
     },
     "packages/worker/test/listingImport.test.ts": {
       "jscpd:duplicate": 8
+    },
+    "packages/worker/test/lockerLink.test.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/lockerMail.test.ts": {
       "jscpd:duplicate": 1
@@ -4083,7 +4098,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/signInCardShell.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/singleUse.test.ts": {
       "jscpd:duplicate": 1

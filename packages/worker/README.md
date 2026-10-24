@@ -94,7 +94,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 - Never hand-edit the recorded transcripts: `test/transcripts.test.ts` records them, `pnpm gen transcripts` rewrites them. See [AGENTS.md](../../AGENTS.md).
 - A new error code needs an entry in `conformance/parity/errors.json` first: `pnpm gen constants` refuses a Worker code it lacks. See [AGENTS.md](../../AGENTS.md).
 - The docs site is tiered: `DOCS_TIERS` in `src/docs.ts` mirrors `TIER_PREFIXES` in the docs package; `test/docsGate.test.ts` pins it. See [AGENTS.md](../../AGENTS.md).
-- Toolchain constraint (Node 22): see [AGENTS.md](../../AGENTS.md).
+- Toolchain constraint (Node 22): see [packages/worker/AGENTS.md](./AGENTS.md).
 
 ## Docs
 

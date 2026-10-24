@@ -2401,6 +2401,7 @@
       "ktlint:standard:function-signature": 1,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:multiline-if-else": 3,
       "ktlint:standard:statement-wrapping": 3
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisHostFactsTheme.kt": {
@@ -2786,9 +2787,37 @@
       "detekt:style.MagicNumber": 3,
       "ktlint:standard:argument-list-wrapping": 5
     },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/PresetIdentityContrastTest.kt": {
+      "detekt:style.MagicNumber": 30,
+      "detekt:style.MaxLineLength": 14,
+      "ktlint:standard:argument-list-wrapping": 87,
+      "ktlint:standard:binary-expression-wrapping": 10,
+      "ktlint:standard:function-literal": 13,
+      "ktlint:standard:function-signature": 8,
+      "ktlint:standard:max-line-length": 13,
+      "ktlint:standard:multiline-loop": 8,
+      "ktlint:standard:parameter-list-wrapping": 7,
+      "ktlint:standard:statement-wrapping": 15,
+      "ktlint:standard:trailing-comma-on-call-site": 1,
+      "ktlint:standard:wrapping": 3
+    },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/SignInAddressTest.kt": {
       "detekt:style.MagicNumber": 11,
       "ktlint:standard:multiline-loop": 1
+    },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/SizeMatrixTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:style.MagicNumber": 31,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 22,
+      "ktlint:standard:binary-expression-wrapping": 1,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1,
+      "ktlint:standard:wrapping": 5
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/UpdateProgressDesktopTest.kt": {
       "detekt:style.MagicNumber": 4

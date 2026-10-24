@@ -11,21 +11,21 @@ verify it identically.**
 Find the task, load its skill if one is named, start at the files, and run the check while you
 build. The gate runs once, at hand-off.
 
-| Task                                         | Skill                              | Start at                                                                     | Check                                                  |
-| -------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Add a route ([rule 10](#rule-10))            | —                                  | `packages/worker/openapi/polaris-key.v3.yaml`, the descriptor's `surface`    | `packages/worker/test/routeCoverage.test.ts`           |
-| Add a validator rule ([rule 9](#rule-9))     | —                                  | `packages/shared-manifest/src/index.ts`                                      | `packages/shared-manifest/test/schema-parity.test.ts`  |
-| Add a catalog entry                          | `adding-a-catalog-entry`           | `products/<slug>/catalog.json` or the `.pkey/` schema                        | `pnpm --filter @polaris-key/manifest test`             |
-| Edit a `.pkey/` manifest                     | `authoring-pkey-manifests`         | the product repo's `.pkey/`                                                  | `pkey validate`                                        |
-| Change a generator input ([rule 3](#rule-3)) | —                                  | `tools/generators.ts`                                                        | `pnpm gen --changed --check`                           |
-| Change the wire ([rule 2](#rule-2))          | —                                  | a plan first (`CLAUDE.md`), then `docs/security/WIRE-CONTRACT-V4.md`         | `pnpm gen corpus`, then every SDK's conformance runner |
-| Add an error code                            | —                                  | `conformance/parity/errors.json`, first                                      | `pnpm gen constants --check`                           |
-| Add a D1 table ([rule 6](#rule-6))           | —                                  | `packages/worker/src/db/owners.ts`                                           | `packages/worker/test/tableCrossings.test.ts`          |
-| Add a service                                | —                                  | `tools/services.json`, `packages/docs/src/content/docs/contribute/layout.md` | `pnpm gen services --check`                            |
-| Write or move a docs page                    | —                                  | `packages/docs/AGENTS.md`                                                    | `pnpm --filter @polaris-key/docs lint:docs`            |
-| Change a UI kit                              | —                                  | `docs/design/UI-KITS.md`, `packages/ui-core/`                                | `pnpm ui:lint`                                         |
-| Fix a lint finding in CI                     | —                                  | `sdks/<lang>/tools/lint.sh`; TS: `pnpm lint:knip`, `pnpm lint:dupes`         | `lint.sh record` after the fix; ledgers only shrink    |
-| Run a work package                           | `running-the-omniplatform-program` | `docs/research/2026-09-29-godot-omniplatform/program/`                       | `pnpm gate`                                            |
+| Task                                         | Skill                              | Start at                                                                        | Check                                                                                                  |
+| -------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Add a route ([rule 10](#rule-10))            | —                                  | `packages/worker/openapi/polaris-key.v3.yaml`, the descriptor's `surface`       | `packages/worker/test/routeCoverage.test.ts`                                                           |
+| Add a validator rule ([rule 9](#rule-9))     | —                                  | `packages/shared-manifest/src/index.ts`, `packages/shared-manifest/schemas/v1/` | `packages/shared-manifest/test/schema-parity.test.ts`                                                  |
+| Add a catalog entry                          | `adding-a-catalog-entry`           | `products/<slug>/catalog.json` or the `.pkey/` schema                           | `pnpm --filter @polaris-key/manifest test`                                                             |
+| Edit a `.pkey/` manifest                     | `authoring-pkey-manifests`         | the product repo's `.pkey/`                                                     | `pkey validate`                                                                                        |
+| Change a generator input ([rule 3](#rule-3)) | —                                  | `tools/generators.ts`                                                           | `pnpm gen --changed --check`                                                                           |
+| Change the wire ([rule 2](#rule-2))          | —                                  | a plan first (`CLAUDE.md`), then `docs/security/WIRE-CONTRACT-V4.md`            | `pnpm gen corpus`, then every SDK's conformance runner                                                 |
+| Add an error code                            | —                                  | `conformance/parity/errors.json`, first                                         | `pnpm gen constants --check`                                                                           |
+| Add a D1 table ([rule 6](#rule-6))           | —                                  | `packages/worker/src/db/owners.ts`                                              | `packages/worker/test/tableCrossings.test.ts`                                                          |
+| Add a service                                | —                                  | `tools/services.json`, `packages/docs/src/content/docs/contribute/layout.md`    | `pnpm gen services --check`                                                                            |
+| Write or move a docs page                    | —                                  | `packages/docs/AGENTS.md`                                                       | `pnpm --filter @polaris-key/docs lint:docs`                                                            |
+| Change a UI kit                              | —                                  | `docs/design/UI-KITS.md`, `packages/ui-core/`                                   | `pnpm ui:lint`                                                                                         |
+| Fix a lint finding in CI                     | —                                  | `sdks/<lang>/tools/lint.sh`; TS: `pnpm lint:ts`                                 | `lint.sh record`; TS: `pnpm lint:knip:record`, `node tools/lint/dupes.mjs record`; ledgers only shrink |
+| Run a work package                           | `running-the-omniplatform-program` | `docs/research/2026-09-29-godot-omniplatform/program/`                          | `pnpm gate`                                                                                            |
 
 ## Repo map
 
@@ -102,7 +102,7 @@ then fails to collect instead of failing at the relevant change.
 | 15  | godot             | lane `godot` (heavy)              | `sdks/godot/tools/run_tests.sh`                                                  |
 | 16  | format            | `--full` only                     | `pnpm format`                                                                    |
 | 17  | admin-e2e         | lane `console` (heavy)            | `pnpm --filter @polaris-key/admin test:e2e`                                      |
-| 18  | lint-ts           | always                            | `bash -c pnpm lint:knip && pnpm lint:dupes`                                      |
+| 18  | lint-ts           | always                            | `pnpm lint:ts`                                                                   |
 | 19  | lint-python       | lane `python`                     | `sdks/python/tools/lint.sh check`                                                |
 | 20  | lint-swift        | lane `swift-floor`                | `sdks/swift/tools/lint.sh check-or-skip`                                         |
 | 21  | lint-kotlin       | lane `kotlin` (heavy)             | `sdks/kotlin/tools/lint.sh check`                                                |
@@ -189,7 +189,7 @@ glossary wins. Customers see **Polaris Locker** (the customer site, customer mai
 presentation, badges); **Polaris Key** is the platform (the console at key.plrs.im, the developer
 docs, the CLI, the API) and names every identifier. Device, not machine. Tier, not plan. The
 **product** is the record in Polaris Key; the **app** is the developer's build that embeds an SDK.
-"Profile" is taken twice already; do not overload it. Enforced by the docs lints and in review;
+"Profile" is taken twice already (the managed-payload baseline and `DocProfile` in the signed payload); do not overload it. Enforced by the docs lints and in review;
 detail: `packages/docs/AGENTS.md`.
 
 <a id="rule-5"></a>**5. Products are DATA. Never add a product-specific key to code.** A product
