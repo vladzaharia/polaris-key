@@ -337,6 +337,15 @@ const SWIFT_ASYNC_HANDLE = new Set([
   "config.setting.locked",
   "config.setting.visibility",
 ]);
+/**
+ * Synchronous methods on the client actor: Swift 6.3 refuses an unapplied reference to one from a
+ * nonisolated context, so each is called (all-default arguments) inside an async closure that is never run.
+ */
+const SWIFT_ACTOR_SYNC = new Set([
+  "client.startRefresh",
+  "client.close",
+  "client.syncOnForeground",
+]);
 const SWIFT_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
   pinnedReleaseKeys: "PolarisKeyClientOptions",
@@ -358,6 +367,10 @@ function renderSwift(api: Api): string {
           ? (SWIFT_OPTION_HOLDER[r.path.split(".")[0]!] ?? "CoreOptions")
           : (SWIFT_OPTION_HOLDER[r.name] ?? "CoreOptions");
       lines.push(`_ = \\${holder}.${r.name}  // ${r.id}`);
+    } else if (SWIFT_ACTOR_SYNC.has(r.id)) {
+      lines.push(
+        `_ = { (c: PolarisKeyClient) async in await c.${r.name}() }  // ${r.id}`,
+      );
     } else if (r.handle && SWIFT_ASYNC_HANDLE.has(r.id)) {
       lines.push(
         `_ = { (s: ConfigSetting) async in _ = await s.${r.name} }  // ${r.id}`,
