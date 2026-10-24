@@ -17681,7 +17681,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03b)"
       ],
       "brief": "wp/AX-03b-agents-md-router-repo-map-nested-files.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "AX-04",

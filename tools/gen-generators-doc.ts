@@ -47,9 +47,10 @@ export function markers(name: string): { start: string; end: string } {
 /** One generated block of AGENTS.md: the text between the markers, from the checkout at `root`. */
 export type Block = { name: string; render: (root: string) => string };
 
-/** The repo map stays under this many bytes; above it, rows fall back to the README title. */
+/** The repo map stays under this many bytes: rows are cut shorter, then fall back to the README title. */
 export const REPO_MAP_BUDGET = 3584;
-const SENTENCE_MAX = 100;
+/** Row lengths the repo map tries, longest first. */
+const SENTENCE_CUTS = [80, 60] as const;
 
 const sorted = (): Generator[] =>
   [...GENERATORS].sort((a, b) => a.order - b.order);
@@ -110,11 +111,22 @@ function cut(t: string, max: number): string {
   if (t.length <= max) return t;
   const head = t.slice(0, max + 1);
   const at = head.lastIndexOf(" ");
-  return `${head.slice(0, at > 0 ? at : max).replace(/[,;:\s]+$/, "")}…`;
+  let s = head.slice(0, at > 0 ? at : max);
+  // Never leave a code span open.
+  if ((s.match(/`/g) ?? []).length % 2 === 1)
+    s = s.slice(0, s.lastIndexOf("`"));
+  return `${s.replace(/[,;:(—\s]+$/, "")}…`;
 }
 
-/** The README's H1 and the first sentence of its first paragraph. */
-export function readmeSummary(text: string): { title: string; line: string } {
+/**
+ * The README's H1 and the lead clause of its first sentence: what precedes the first colon, dash
+ * or semicolon is the description, the rest is detail. `line` is null when the first paragraph is
+ * not a sentence (an install line ending in a colon, say).
+ */
+export function readmeSummary(
+  text: string,
+  max: number = SENTENCE_CUTS[0],
+): { title: string; line: string | null } {
   const lines = text.split("\n");
   const h = lines.findIndex((l) => l.startsWith("# "));
   const title = plain(lines[h]?.slice(2) ?? "");
@@ -129,7 +141,12 @@ export function readmeSummary(text: string): { title: string; line: string } {
   }
   const body = plain(para.join(" "));
   const m = /^.*?[.!?](?=\s|$)/.exec(body);
-  return { title, line: cut(m ? m[0] : body, SENTENCE_MAX) };
+  if (!m) return { title, line: null };
+  const clause = /^(.{20,}?)(?:: | — |; )/.exec(m[0]);
+  return {
+    title,
+    line: cut(clause?.[1] ?? m[0].replace(/[.!?]$/, ""), max),
+  };
 }
 
 function subdirs(root: string, dir: string): string[] {
@@ -167,26 +184,33 @@ export function repoMap(root = ROOT): string {
   );
   for (const n of subdirs(root, "docs")) dirs.push(`docs/${n}`);
   const layout = docsLayout(root);
-  const rows = (full: boolean): string[] =>
+  const shortest = SENTENCE_CUTS[1];
+  // `max` null: every README row is its title.
+  const rows = (max: number | null): string[] =>
     dirs.map((d) => {
       const text = readme(root, d);
-      if (text === null) {
-        const line = layout.get(d.replace(/^docs\//, ""));
+      // A docs/*/ row reads its docs/README.md Layout line, written as exactly this description.
+      const line = d.startsWith("docs/") ? layout.get(d.slice(5)) : undefined;
+      if (line !== undefined || text === null) {
         if (line === undefined)
           throw new Error(
             `repo map: ${d}/ has no README.md and no docs/README.md Layout line`,
           );
-        return `- [\`${d}/\`](${d}/): ${cut(line, SENTENCE_MAX)}`;
+        const link = text === null ? `${d}/` : `${d}/README.md`;
+        return `- [\`${d}/\`](${link}): ${cut(line, max ?? shortest)}`;
       }
-      const s = readmeSummary(text);
-      return `- [\`${d}/\`](${d}/README.md): ${full ? s.line : s.title}`;
+      const s = readmeSummary(text, max ?? shortest);
+      return `- [\`${d}/\`](${d}/README.md): ${max === null ? s.title : (s.line ?? s.title)}`;
     });
   const wrap = (r: string[]): string => {
     const { start, end } = markers("repo-map");
     return [start, "", ...r, "", end].join("\n");
   };
-  const full = wrap(rows(true));
-  return Buffer.byteLength(full) <= REPO_MAP_BUDGET ? full : wrap(rows(false));
+  for (const max of SENTENCE_CUTS) {
+    const map = wrap(rows(max));
+    if (Buffer.byteLength(map) <= REPO_MAP_BUDGET) return map;
+  }
+  return wrap(rows(null));
 }
 
 /** The scoped and full command of a gate step, with `<base>` and `<files>` standing for the run's values. */

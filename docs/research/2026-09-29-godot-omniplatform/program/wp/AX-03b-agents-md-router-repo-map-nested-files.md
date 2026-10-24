@@ -57,10 +57,10 @@
 
 ## Acceptance criteria
 
-- [ ] `agents-md.test.ts` passes: every path, script and skill named exists; `AGENTS.md` is under 24 KB.
+- [x] `agents-md.test.ts` passes: every path, script and skill named exists; `AGENTS.md` is under 24 KB.
 - [ ] A session started in `packages/worker` loads its `AGENTS.md` through the one-line `CLAUDE.md`.
-- [ ] The router, repo map and command lists are generated or checked, not typed.
-- [ ] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
+- [x] The router, repo map and command lists are generated or checked, not typed.
+- [x] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
 - [ ] Any skill or README it writes or changes is reviewed against the plan's principle 9 (terse: each fact once, in the reader's words).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
@@ -91,3 +91,9 @@ Checked against the code; the code wins.
 - R9. `registry-docs` already owns an `AGENTS.md` marker block; further generated blocks belong to it.
 - R10. Stale lines: the gate.sh "not yet switched" note (AX-04 fixes it); the `plans/P4-10.md` path, now its full path.
 - R11. No nested `AGENTS.md` or `CLAUDE.md` existed before AX-03b.1.
+
+## Eval note (D-E1)
+
+Suite: the platform suite P, arms A0 (the old root) → A1 (router, short rules, nested files). Not
+measured: AX-05 has not shipped; AX-05 measures it at its baseline. The item is N/A and does not
+block.
