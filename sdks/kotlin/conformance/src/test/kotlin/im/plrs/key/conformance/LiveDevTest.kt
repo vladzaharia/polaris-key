@@ -220,7 +220,7 @@ class LiveDevTest : ConformanceSuite() {
         client.sync()
 
         // A value other than the one in force, so a rerun against the same server still changes something.
-        val next = JsonPrimitive(if (client.config(CONFIG_KEY, JsonPrimitive("draft")) == JsonPrimitive("high")) "standard" else "high")
+        val next = JsonPrimitive(if (client.config.get(CONFIG_KEY, JsonPrimitive("draft")) == JsonPrimitive("high")) "standard" else "high")
 
         // Listening before the change, on the multi-subscriber stream a UI layer reads.
         val event = CompletableDeferred<PolarisEvent.Config>()
@@ -245,7 +245,7 @@ class LiveDevTest : ConformanceSuite() {
         assertEquals(CONFIG_KEY, change.key)
         assertEquals(next, change.value)
         assertEquals(ConfigSource.enforced, change.source)
-        assertEquals(next, client.config(CONFIG_KEY, JsonPrimitive("draft")))
+        assertEquals(next, client.config.get(CONFIG_KEY, JsonPrimitive("draft")))
     }
 
     // ── b4 ───────────────────────────────────────────────────────────────────────────────────

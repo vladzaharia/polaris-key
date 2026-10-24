@@ -28,9 +28,9 @@ internal suspend fun apiSurface() {
     UpdateClientOptions::pinnedReleaseKeys  // options.pinnedReleaseKeys
     CoreOptions::baseUrl  // options.baseUrl
     CoreOptions::expectedServices  // options.expectedServices
-    ConfigClient::config  // config.get
-    ConfigClient::configSource  // config.getConfigSource
-    ConfigClient::secret  // config.getSecret
+    ConfigClient::get  // config.get
+    ConfigClient::getConfigSource  // config.getConfigSource
+    ConfigClient::getSecret  // config.getSecret
     ConfigClient::mintToken  // config.mintToken
     ConfigClient::set  // config.set
     ConfigClient::clear  // config.clear

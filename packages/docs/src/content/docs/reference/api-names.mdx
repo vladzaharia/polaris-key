@@ -114,9 +114,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config.get` | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
-| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `config.getConfigSource` | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
-| `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `config.getSecret` | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
+| `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config.get` | `config.get` | `get_value` | `config.resolve` |
+| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `config.getConfigSource` | `config.getConfigSource` | `get_source` (planned: SP-35b) | `config.resolve` |
+| `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `config.getSecret` | `config.getSecret` | `config.get_secret` | `config.secret` |
 | `config.mintToken` | `config.mintToken` | planned (U-20) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
 | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
@@ -385,6 +385,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | SDK | Old name | New name or note | Package |
 | --- | --- | --- | --- |
+| Kotlin | `config.config` | `config.get` | SP-35b |
+| Kotlin | `PolarisKeyClient.config(key, default)` | `config.get` | SP-35b |
+| Kotlin | `config.configSource` | `config.getConfigSource` | SP-35b |
+| Kotlin | `config.secret` | `config.getSecret` | SP-35b |
 | Swift | `config.config` | `config.get` | SP-35b |
 | Swift | `PolarisKeyClient.config(_:default:)` | `config.get` | SP-35b |
 | Swift | `config.configSource` | `config.getConfigSource` | SP-35b |

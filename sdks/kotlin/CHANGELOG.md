@@ -6,6 +6,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(key, default)`, `client.config.getConfigSource(key)` and `client.config.getSecret(key)` replace `config(key, default)`, `configSource(key)` and `secret(key)`; the `PolarisKeyClient.config(key, default)` shortcut is removed, and `PolarisKeyFutures.config` is now `getConfig`. No aliases.
+  Migrating: `client.config(k, d)` and `client.config.config(k, d)` become `client.config.get(k, d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`; `futures.config(k, d)` becomes `futures.getConfig(k, d)`.
+
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you pass `onRenew` to `PolarisGate` or `PolarisGateScreen`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
   Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and `onRenew` to get Renew.
 - **Compose UI kit: the Polaris look is the default, and the spec's remaining parts are drawn**

@@ -63,18 +63,18 @@ class ConfigClientTest {
     @Test
     fun secretsComeOffTheVerifiedDocumentAsStringsOnly() = runBlocking {
         val (config, _) = client(handler = ::documents)
-        assertEquals("s3cret", config.secret("api.key"))
-        assertNull(config.secret("api.number"))
-        assertNull(config.secret("absent"))
+        assertEquals("s3cret", config.getSecret("api.key"))
+        assertNull(config.getSecret("api.number"))
+        assertNull(config.getSecret("absent"))
         // A secret is never a config value, and is never listed.
-        assertEquals(JsonPrimitive("fallback"), config.config("api.key", JsonPrimitive("fallback")))
+        assertEquals(JsonPrimitive("fallback"), config.get("api.key", JsonPrimitive("fallback")))
         assertTrue(config.listUserConfig().none { it.key == "api.key" })
     }
 
     @Test
     fun withoutADocumentThereAreNoSecrets() = runBlocking {
         val (config, _) = client { respond(404) }
-        assertNull(config.secret("api.key"))
+        assertNull(config.getSecret("api.key"))
         assertNull(config.schemaVersion())
     }
 
@@ -87,13 +87,13 @@ class ConfigClientTest {
             ),
             handler = ::documents,
         )
-        assertEquals(JsonPrimitive("dark"), config.config("ui.theme", JsonPrimitive("system")))
-        assertEquals(ConfigSource.enforced, config.configSource("ui.theme"))
-        assertEquals(JsonPrimitive(8), config.config("run.concurrency", JsonPrimitive(1)))
-        assertEquals(ConfigSource.local, config.configSource("run.concurrency"))
-        assertEquals(JsonPrimitive(true), config.config("secret.flag", JsonPrimitive(false)))
-        assertEquals(ConfigSource.hidden, config.configSource("secret.flag"))
-        assertEquals(ConfigSource.fallback, config.configSource("absent"))
+        assertEquals(JsonPrimitive("dark"), config.get("ui.theme", JsonPrimitive("system")))
+        assertEquals(ConfigSource.enforced, config.getConfigSource("ui.theme"))
+        assertEquals(JsonPrimitive(8), config.get("run.concurrency", JsonPrimitive(1)))
+        assertEquals(ConfigSource.local, config.getConfigSource("run.concurrency"))
+        assertEquals(JsonPrimitive(true), config.get("secret.flag", JsonPrimitive(false)))
+        assertEquals(ConfigSource.hidden, config.getConfigSource("secret.flag"))
+        assertEquals(ConfigSource.fallback, config.getConfigSource("absent"))
         assertEquals(
             listOf(UserConfigEntry("run.concurrency", JsonPrimitive(8), false), UserConfigEntry("ui.theme", JsonPrimitive("dark"), true)),
             config.listUserConfig().sortedBy { it.key },

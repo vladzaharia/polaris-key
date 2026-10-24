@@ -2342,10 +2342,7 @@
         "swift": {
           "labels": ["_", "default"]
         },
-        "kotlin": {
-          "spelling": "config",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "get_value",
           "reason": "Object.get is a native method"
@@ -2369,10 +2366,7 @@
         "react": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "configSource",
-          "planned": "SP-35b"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "get_source",
           "planned": "SP-35b"
@@ -2395,10 +2389,7 @@
         "python": {},
         "godot": {},
         "swift": {},
-        "kotlin": {
-          "spelling": "secret",
-          "planned": "SP-35b"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -5539,6 +5530,46 @@
     }
   ],
   "removed": [
+    {
+      "sdk": "kotlin",
+      "from": "config.config",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "PolarisKeyClient.config(key, default)",
+      "to": "config.get",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bclient\\.config\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.configSource",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:config|client)\\.configSource\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "config.secret",
+      "to": "config.getSecret",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.kt", "*.kts", "fence:kotlin"]
+      }
+    },
     {
       "sdk": "swift",
       "from": "config.config",

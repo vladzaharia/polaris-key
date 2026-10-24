@@ -184,7 +184,7 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
             val catalog = if (editable) client.config.catalog ?: client.config.fetchCatalog() else client.config.catalog
             return client.config.listUserConfig().map { entry ->
                 val item = catalog?.entry(entry.key)
-                val source = if (entry.enforced) ConfigSource.enforced else client.config.configSource(entry.key)
+                val source = if (entry.enforced) ConfigSource.enforced else client.config.getConfigSource(entry.key)
                 PolarisSettingEntry(
                     key = entry.key,
                     label = labels[entry.key] ?: item?.label ?: entry.key,

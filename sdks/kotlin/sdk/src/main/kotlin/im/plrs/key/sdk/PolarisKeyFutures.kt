@@ -67,7 +67,7 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     // ── Config ───────────────────────────────────────────────────────────────────────────────
 
-    public fun config(key: String, default: JsonElement): CompletableFuture<JsonElement> = call { client.config(key, default) }
+    public fun getConfig(key: String, default: JsonElement): CompletableFuture<JsonElement> = call { client.config.get(key, default) }
 
     /** A persisted local override (`config.local`). */
     public fun setConfig(key: String, value: JsonElement): CompletableFuture<Unit> = call { client.config.set(key, value) }

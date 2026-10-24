@@ -157,7 +157,7 @@ suspend fun start(key: String) {
     )
     client.activate(key)                       // license: stores the token, then syncs (forced)
     if (!isUsable(client.status())) showGate()
-    val theme = client.config("ui.theme", JsonPrimitive("dark"))
+    val theme = client.config.get("ui.theme", JsonPrimitive("dark"))
     val notes = client.release.changelog()
     val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
     client.identity.waitForSignIn(prompt)
@@ -177,8 +177,8 @@ suspend fun start(key: String) {
   other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
   `DeviceLimit` (notes/SDK-PARITY-PASS.md §3.1). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
   for a registered-without-license device (P1b-06).
-- **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
-  local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
+- **`:config`**: `ConfigClient.get(key, default)` and `getConfigSource` (enforced or hidden, then
+  local, environment, remote default, fallback), `listUserConfig`, `getSecret`, `fetchSchema` (null
   on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
   `ConfigResolution` is the pure resolver `config-matrix.json` pins. **Local overrides**
   (notes/SDK-PARITY-PASS.md §3.11): `set(key, value)` persists one (it beats a remote default,

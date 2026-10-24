@@ -46,7 +46,7 @@ public suspend fun run(client: PolarisKeyClient, command: List<String>, out: Pri
             }
             "config" -> {
                 val key = command.getOrNull(1) ?: return usage(out)
-                out.println("$key = ${client.config(key, JsonNull)} (${client.config.configSource(key)?.name ?: "unset"})")
+                out.println("$key = ${client.config.get(key, JsonNull)} (${client.config.getConfigSource(key)?.name ?: "unset"})")
             }
             "set" -> {
                 val key = command.getOrNull(1) ?: return usage(out)
