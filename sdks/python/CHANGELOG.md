@@ -6,6 +6,8 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **The setting handle follows the shared registry (SP-35.19).** `client.config.setting(key)` takes no fallback: `value` is `None` when no layer has one (source `fallback`), and a default goes through `client.config.get(key, fallback)`. `enforced` is `locked`, `subscribe(fn)` is `on(fn)`, and the new `visibility` reads `editable`, `readonly` or `hidden` (`SettingVisibility`) from the document's state. There are no deprecated aliases.
+
 - **Config names follow the shared registry (SP-35.18).** `client.config.get_config(key, fallback)` is `client.config.get(key, fallback)`, `client.config.on_change(key, fn)` is `client.config.on_config_change(key, fn)`, and `client.config.clear_all()` forgets every value the player chose. `client.get_config` and `client.on_config_change` are removed: use the `client.config` namespace. There are no deprecated aliases.
 
 - **The terminal kit matches the Node kit.** `--no-color` and `NO_COLOR` win over `FORCE_COLOR`: on a pipe no bold or reverse-video escape is written either (a real terminal keeps weight under `NO_COLOR`, as before). The usage result of `activate --json` and `devices` carries `usage` and `message`, and the devices usage line is `devices rename <deviceId> [label...]`. `activate` refuses a malformed or cut-short key on this machine (exit 1, `"kind": "malformed"` or `"cut-short"`) instead of sending it. `status --json` has `tier`. `deactivate` asks `(y/N)` on a terminal, skipped by `-y/--yes`, and never asks off a terminal or under `--json`. `portal.json` is written `0600` in a `0700` directory.

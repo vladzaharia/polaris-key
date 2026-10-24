@@ -69,6 +69,32 @@ def test_enforced_keys_refuse_a_local_value() -> None:
     c.close()
 
 
+def test_setting_handle_properties_and_visibility() -> None:
+    cfg = {
+        "run.concurrency": {"state": "enforced", "value": 4, "updatedAt": 1699990000},
+        "ui.theme": {"state": "default", "value": "light", "updatedAt": 1699990000},
+        "ui.secretMode": {"state": "hidden", "value": True, "updatedAt": 1699990000},
+    }
+    c = make_client(
+        routes(
+            license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+            config_jws=lambda r: sign_config(r.headers["X-PKey-Device"], config=cfg),
+        )
+    )
+    c.license.activate_with_key("k")
+    theme = c.config.setting("ui.theme")
+    assert (theme.value, theme.source, theme.locked, theme.visibility) == ("light", "remote-default", False, "editable")
+    run = c.config.setting("run.concurrency")
+    assert (run.value, run.source, run.locked, run.visibility) == (4, "enforced", True, "readonly")
+    hidden = c.config.setting("ui.secretMode")
+    assert (hidden.value, hidden.locked, hidden.visibility) == (True, True, "hidden")
+    nothing = c.config.setting("no.such.key")
+    assert (nothing.value, nothing.source, nothing.locked, nothing.visibility) == (None, "fallback", False, "editable")
+    with pytest.raises(TypeError):
+        c.config.setting("no.such.key", 3)  # type: ignore[call-arg]
+    c.close()
+
+
 def test_set_validates_against_the_catalog() -> None:
     c = make_client(_ok())
     with pytest.raises(PolarisError) as e:
@@ -102,7 +128,7 @@ def test_events_for_config_license_and_entitlements() -> None:
     seen = []
     c.subscribe(seen.append)
     theme = []
-    c.config.setting("ui.theme").subscribe(theme.append)
+    c.config.setting("ui.theme").on(theme.append)
     c.license.activate_with_key("k")
     kinds = [e.kind for e in seen]
     assert "license" in kinds and "entitlement" in kinds and "config" in kinds

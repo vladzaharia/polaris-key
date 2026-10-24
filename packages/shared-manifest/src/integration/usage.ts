@@ -251,7 +251,7 @@ const NODE_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       `// later: today the value stays on this device.`,
       `const volume = client.config.setting<${tsType(c.configFallback)}>(${q(c.configKey)});`,
       `await volume.set(${q(c.configFallback)});`,
-      `console.log(volume.get(${q(c.configFallback)}));`,
+      `console.log(volume.value);`,
     ),
   }),
   commerce: (c) => ({
@@ -699,7 +699,7 @@ const PY_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       ``,
       `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
       `# later: today the value stays on this device.`,
-      `volume = client.config.setting(${q(c.configKey)}, ${py(c.configFallback)})`,
+      `volume = client.config.setting(${q(c.configKey)})`,
       `volume.set(${py(c.configFallback)})`,
       `print(volume.value)`,
     ),

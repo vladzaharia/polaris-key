@@ -209,6 +209,128 @@
         "ns": "boot",
         "file": "sdks/python/src/polaris_key/boot.py"
       }
+    ],
+    "swift": [
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/PolarisKeyClient.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/ClientBundle.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/Events.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/SignIn.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/ClientUpdate.swift"
+      },
+      {
+        "ns": "client",
+        "type": "PolarisKeyClient",
+        "file": "sdks/swift/Sources/PolarisKey/Boot.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigClient.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigClient",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigSetting.swift"
+      },
+      {
+        "ns": "config",
+        "type": "ConfigSetting",
+        "file": "sdks/swift/Sources/PolarisKeyConfig/ConfigSetting.swift"
+      },
+      {
+        "ns": "license",
+        "type": "LicenseClient",
+        "file": "sdks/swift/Sources/PolarisKeyLicense/LicenseClient.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/IdentityClient.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/SignIn.swift"
+      },
+      {
+        "ns": "devices",
+        "type": "DevicesClient",
+        "file": "sdks/swift/Sources/PolarisKey/DevicesClient.swift"
+      },
+      {
+        "ns": "release",
+        "type": "ReleaseClient",
+        "file": "sdks/swift/Sources/PolarisKeyRelease/ReleaseClient.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/UpdateClient.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyUpdate/Install.swift"
+      },
+      {
+        "ns": "update",
+        "type": "UpdateClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/UpdatePacks.swift"
+      },
+      {
+        "ns": "distribution",
+        "type": "DistributionClient",
+        "file": "sdks/swift/Sources/PolarisKey/DistributionClient.swift"
+      },
+      {
+        "ns": "commerce",
+        "type": "CommerceClient",
+        "file": "sdks/swift/Sources/PolarisKey/CommerceClient.swift"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/PacksClient.swift"
+      },
+      {
+        "ns": "packs",
+        "type": "PacksClient",
+        "file": "sdks/swift/Sources/PolarisKeyPacks/UpdateContentSource.swift"
+      },
+      {
+        "ns": "events",
+        "type": "PolarisEventHub",
+        "file": "sdks/swift/Sources/PolarisKey/Events.swift"
+      },
+      {
+        "ns": "store",
+        "type": "Store",
+        "file": "sdks/swift/Sources/PolarisKeyCore/Store.swift"
+      },
+      {
+        "ns": "presentation",
+        "type": "PresentationSource",
+        "file": "sdks/swift/Sources/PolarisKeyCore/Presentation.swift"
+      }
     ]
   },
   "ignore": [
@@ -833,6 +955,376 @@
       "sdk": "react",
       "path": "options.now",
       "reason": "test seam forwarded to the constructed adapter"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.product",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.core",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.license",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.config",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.devices",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.identity",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.release",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.update",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.distribution",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.commerce",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.backend",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.attachments",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.eventHub",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.bootGuard",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.bootHooks",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.setBootHooks",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.report",
+      "reason": "wiring the boot and update flows and the UI kits call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.pinnedReleaseKeys",
+      "reason": "the option echoed back; the row is options.pinnedReleaseKeys"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.activate",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.enroll",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.licenseInfo",
+      "reason": "facade of the license namespace (license.activateWithKey, enroll, licenseInfo); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.signInWithBrowser",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.signOut",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.currentIdentity",
+      "reason": "facade of the identity namespace (identity.signInWithBrowser, signOut, current); follows those rows"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.events",
+      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.changes",
+      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.emit",
+      "reason": "the in-process event hub behind client.changes; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.emit",
+      "reason": "the in-process event hub behind client.changes; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.stream",
+      "reason": "the in-process event hub behind client.changes; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "events.subscriberCount",
+      "reason": "the in-process event hub behind client.changes; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.isEnabled",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.localValues",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.snapshot",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.settingState",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.deliver",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.setChangeObserver",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "config.key",
+      "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.networkError",
+      "reason": "error-code constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.serverError",
+      "reason": "error-code constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installSignOut",
+      "reason": "wiring the client installs; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "devices.current",
+      "reason": "the namespace form of client.currentDevice"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.content",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.core",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.detected",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.outlet",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "update.packs",
+      "reason": "accessors for the update machinery's parts; not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootFetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootOptions",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.contentInput",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.ensureReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.noteFeedDeltas",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.packSetId",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.recordRevocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.recoverState",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.refusedEmbedded",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.zstd",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootFetchStage",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.bootPackLists",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "packs.installReleases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.appStore",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.play",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "commerce.steam",
+      "reason": "store id constants, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.clearCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.clearToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.getDeviceId",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.getToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.readCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.readRecord",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.setToken",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.writeCache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "store.writeRecord",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
     }
   ],
   "concepts": [
@@ -1229,10 +1721,7 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "get",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {},
         "react": {},
         "swift": {
@@ -1254,10 +1743,7 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "source",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {},
         "react": {},
         "swift": {
@@ -1277,14 +1763,8 @@
       "kind": "property",
       "feature": "config.resolve",
       "sdks": {
-        "node": {
-          "spelling": "locked",
-          "planned": "SP-35"
-        },
-        "python": {
-          "spelling": "enforced",
-          "planned": "SP-35"
-        },
+        "node": {},
+        "python": {},
         "react": {},
         "swift": {
           "spelling": "isLocked",
@@ -1304,18 +1784,9 @@
       "feature": "config.resolve",
       "enum": "settingVisibility",
       "sdks": {
-        "node": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
-        "python": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
-        "react": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "node": {},
+        "python": {},
+        "react": {},
         "swift": {
           "planned": "SP-35b",
           "reason": "absent today"
@@ -1380,10 +1851,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "spelling": "subscribe",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "onChange",
           "planned": "SP-35b"
@@ -1684,7 +2152,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1716,6 +2185,10 @@
           "spelling": "usePresentation",
           "shape": "hook",
           "reason": "a hook returns a render value"
+        },
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
         }
       },
       "layer": "client"
@@ -1725,7 +2198,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1733,9 +2207,10 @@
       "id": "client.presentationSource",
       "kind": "method",
       "sdks": {
-        "node": {
-          "sdkOnly": true,
-          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        "node": {},
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
         }
       },
       "layer": "client"
@@ -1776,7 +2251,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1790,7 +2266,8 @@
           "spelling": "useCapabilities",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1799,7 +2276,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1808,7 +2286,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1817,7 +2296,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1826,7 +2306,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "syncState",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -1840,7 +2324,8 @@
           "spelling": "useImportBundle",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1849,7 +2334,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1858,7 +2344,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1867,7 +2354,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1876,7 +2364,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1896,7 +2385,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1905,7 +2395,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1914,7 +2405,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1922,9 +2414,10 @@
       "id": "client.startRefresh",
       "kind": "method",
       "sdks": {
-        "node": {
-          "sdkOnly": true,
-          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
+        "node": {},
+        "swift": {
+          "spelling": "startRefreshLoop",
+          "planned": "SP-35b"
         }
       },
       "layer": "client"
@@ -1934,7 +2427,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1943,7 +2437,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1952,7 +2447,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1961,7 +2457,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1969,10 +2466,8 @@
       "id": "config.isLocked",
       "kind": "method",
       "sdks": {
-        "node": {
-          "sdkOnly": true,
-          "reason": "Node-only until the other SDKs confirm it (SP-35.8 inventory); .10-.13 promote it to a shared row or leave it SDK-specific"
-        }
+        "node": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1981,7 +2476,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1990,7 +2486,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -1999,7 +2496,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2008,7 +2506,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "profile",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -2017,7 +2519,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "licenseId",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -2026,7 +2532,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2035,7 +2542,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2044,7 +2552,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2064,7 +2573,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2073,7 +2583,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2082,7 +2593,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2091,7 +2603,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2109,7 +2622,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2118,7 +2632,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2127,7 +2642,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2136,7 +2652,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "update.fetch",
+          "reason": "the verified build download lives on UpdateClient in Swift"
+        }
       },
       "layer": "client"
     },
@@ -2150,7 +2670,8 @@
           "spelling": "useChangelog",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2159,7 +2680,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "installURL",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -2168,7 +2693,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "downloadURL",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -2199,7 +2728,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2213,7 +2743,8 @@
           "spelling": "useLatestVersion",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2231,7 +2762,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2245,7 +2777,8 @@
           "spelling": "useUpdateDecision",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2254,7 +2787,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2263,7 +2797,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2272,7 +2807,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "buildURL",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -2312,7 +2851,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "client.confirmBoot",
+          "reason": "a client method in Swift (ClientUpdate.swift)"
+        }
       },
       "layer": "client"
     },
@@ -2321,7 +2864,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "spelling": "client.markBootAttempt",
+          "reason": "a client method in Swift (ClientUpdate.swift)"
+        }
       },
       "layer": "client"
     },
@@ -2330,7 +2877,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2339,7 +2887,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2348,7 +2897,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2357,7 +2907,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2366,7 +2917,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2375,7 +2927,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2384,7 +2937,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2393,7 +2947,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2402,7 +2957,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2411,7 +2967,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2420,7 +2977,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2429,7 +2987,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2438,7 +2997,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2447,7 +3007,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2456,7 +3017,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2465,7 +3027,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2474,7 +3037,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2494,7 +3058,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2555,10 +3120,8 @@
       "id": "client.register",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2566,10 +3129,8 @@
       "id": "client.currentDevice",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2577,10 +3138,8 @@
       "id": "client.deactivate",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2588,9 +3147,10 @@
       "id": "license.getLicenseUser",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
+        "python": {},
+        "swift": {
+          "spelling": "licenseUser",
+          "planned": "SP-35b"
         }
       },
       "layer": "client"
@@ -2599,10 +3159,8 @@
       "id": "identity.acceptSignIn",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2660,7 +3218,8 @@
           "spelling": "useLicense",
           "shape": "hook",
           "reason": "a hook returns a render value"
-        }
+        },
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2669,7 +3228,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2678,7 +3238,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -2830,6 +3391,381 @@
         }
       },
       "layer": "client"
+    },
+    {
+      "id": "client.isEnabled",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.start",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeFailure",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.createLocal",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.createFromBundle",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.fromBundle",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.options",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bundleVersion",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncOnForeground",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.stopForegroundSync",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncIfStale",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.installUpdateBootHooks",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.configureUpdate",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.bool",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.int",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.double",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.string",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.decode",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.fetchCatalog",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.configChanges",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.attest",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.attestSupport",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelFeed",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.feedHeaders",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.purchase",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.restore",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.storeProducts",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.startTransactionUpdates",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.stopTransactionUpdates",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.progress",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.changes",
+      "kind": "property",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row",
+          "shape": "property"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.current",
+      "kind": "method",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.listening",
+      "kind": "property",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.products",
+      "kind": "property",
+      "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
     }
   ],
   "removed": [
@@ -2873,6 +3809,60 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\bconfig\\.on_change\\s*\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.get",
+      "to": "config.setting.value",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.get\\("
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.source\\(\\)"
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "ConfigSetting.locked()",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\b(?:setting|theme|volume)\\w*\\.locked\\(\\)"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.enforced",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.enforced\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.subscribe",
+      "to": "config.setting.on",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.subscribe\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting(key, fallback)",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
       }
     }
   ]

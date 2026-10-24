@@ -61,4 +61,21 @@ mise exec node@22 -- ./node_modules/.bin/electron-forge start -- --smoke
 mise exec node@22 -- ./node_modules/.bin/tsc --noEmit -p tsconfig.repo.json
 ```
 
+## The end-to-end harness
+
+`packages/sdk-node/test/electron-e2e/` launches this app with Playwright's `_electron` and checks
+the kit's layout (three forced chromes, the window rows, 200 % zoom, both schemes) and the wiring.
+`PKEY_KIT_PLATFORM=windows|macos|linux` forces the chrome (main passes it to the renderer as
+`?platform=`); leave it unset for `platform: "auto"`.
+
+```sh
+mise exec node@22 -- pnpm build
+mise exec node@22 -- pnpm --filter @polaris-key/node test:electron:setup   # install + build this sample
+mise exec node@22 -- pnpm --filter @polaris-key/node test:electron
+```
+
+The setup installs this folder's dependencies with the two unpublished `@polaris-key` entries left
+out of `package.json` for the install (the Vite configs alias them to the repo's builds), then runs
+`electron-forge package`. Re-run it after changing the sample or the kit.
+
 For your own UI on the same bridge see [`../../node-electron`](../../node-electron).

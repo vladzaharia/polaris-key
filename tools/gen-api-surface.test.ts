@@ -45,7 +45,7 @@ describe("gen-api-surface", () => {
     const files = await renderAll(loadApi());
     const node = files.get(NODE_OUT)!;
     expect(node).toContain('"clearAll" in ConfigClient.prototype');
-    expect(node).not.toContain("visibility");
+    expect(node).toContain("visibility");
     expect(node).not.toContain("fromConfig");
     expect(node).toContain('"get" in ConfigClient.prototype');
     expect(files.get(PYTHON_OUT)).toContain('"get_config"');

@@ -34311,7 +34311,7 @@ var NODE_LIBRARY = {
       `// later: today the value stays on this device.`,
       `const volume = client.config.setting<${tsType(c.configFallback)}>(${q2(c.configKey)});`,
       `await volume.set(${q2(c.configFallback)});`,
-      `console.log(volume.get(${q2(c.configFallback)}));`
+      `console.log(volume.value);`
     )
   }),
   commerce: (c) => ({
@@ -34744,7 +34744,7 @@ var PY_LIBRARY = {
       ``,
       `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
       `# later: today the value stays on this device.`,
-      `volume = client.config.setting(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `volume = client.config.setting(${q2(c.configKey)})`,
       `volume.set(${py(c.configFallback)})`,
       `print(volume.value)`
     )
