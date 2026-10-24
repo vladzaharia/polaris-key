@@ -104,9 +104,31 @@ public fun PolarisKeyApp(
     onQuit: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val update = remember(client) { PolarisUpdateState() }
     val updateActions = remember(client) { client.updateActions() }
+    PolarisKeyAppHost(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions, optionalUpdateInDialog = true, content)
+}
+
+/**
+ * [PolarisKeyApp] over an update state the caller holds. The desktop window ([PolarisKeyWindow]) shows an
+ * optional update in its own window, so it turns [optionalUpdateInDialog] off; a mandatory update is
+ * always a dialog inside this window (UK-10.8, K3).
+ */
+@Composable
+internal fun PolarisKeyAppHost(
+    client: PolarisKeyClient,
+    modifier: Modifier,
+    bootOptions: BootOptions,
+    onSignIn: (() -> Unit)?,
+    packs: Boolean,
+    signIn: Boolean,
+    onQuit: (() -> Unit)?,
+    update: PolarisUpdateState,
+    updateActions: PolarisUpdateActions,
+    optionalUpdateInDialog: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
     val boot = remember(client, bootOptions) { PolarisBootState(bootOptions) }
     val gate = remember(client) { PolarisGateState(client.gateActions(), scope) }
     val packState = remember(client, packs) { if (packs) PolarisPackProgressState(client.packProgressSource()) else null }
@@ -158,7 +180,7 @@ public fun PolarisKeyApp(
                 }
                 content()
             }
-            offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Install }?.let { ui ->
+            offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Install && (optionalUpdateInDialog || it.mandatory) }?.let { ui ->
                 PolarisUpdatePromptDialog(
                     ui,
                     onUpdate = { update.install(updateActions, scope, onQuit) },

@@ -176,7 +176,7 @@ internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, Str
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun PolarisUpdatePromptCard(
+internal fun PolarisUpdatePromptCard(
     ui: PolarisUpdateUi,
     modifier: Modifier,
     onUpdate: () -> Unit,
