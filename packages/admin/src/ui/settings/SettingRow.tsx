@@ -3,6 +3,8 @@ import { formatCount } from "../../lib/format.js";
 import { Lock } from "lucide-react";
 import { Button } from "../Button.js";
 import { RowRevertContext } from "../SourceBadge.js";
+import { ListField } from "./ListField.js";
+import { draftError, listDeltaWords } from "./model.js";
 import { NumberInput } from "../NumberInput.js";
 import { SegmentedControl } from "../SegmentedControl.js";
 import { Select } from "../Select.js";
@@ -69,6 +71,8 @@ export interface SettingRowProps extends Omit<SettingWriteOptions, "commit"> {
    * lock glyph, the reason is its description, and Revert is gone. The page says why once.
    */
   readOnly?: string;
+  /** Say the read-only reason under the row (one row of an editable page is read-only). */
+  readOnlyVisible?: boolean;
   align?: "end" | "stretch" | "block";
 }
 
@@ -99,6 +103,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     details,
     chip,
     readOnly,
+    readOnlyVisible,
     align,
     spec,
     label,
@@ -168,6 +173,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           : "default";
 
   const reasonId = `${id}-readonly`;
+  // A list is checked as it is typed: the message names the term, Save waits for it.
+  const draftProblem =
+    spec.kind === "list" && !viewOnly ? draftError(spec, w.draft) : null;
   const asText = viewOnly;
   let control: React.ReactNode;
   if (asText)
@@ -178,7 +186,14 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
         aria-describedby={reasonId}
       >
         <Lock aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
-        {fmt(value)}
+        {spec.kind === "list" && Array.isArray(value) && value.length > 0
+          ? value.map((t, i) => (
+              <React.Fragment key={i}>
+                {i > 0 ? ", " : null}
+                <bdi>{String(t)}</bdi>
+              </React.Fragment>
+            ))
+          : fmt(value)}
       </span>
     );
   else if (display === "text")
@@ -285,6 +300,36 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
         )}
       </div>
     );
+  } else if (spec.kind === "list") {
+    const terms = Array.isArray(w.draft) ? (w.draft as string[]) : [];
+    control = (
+      <div className="w-full text-start sm:w-80">
+        <ListField
+          id={id}
+          label={label}
+          value={terms}
+          onChange={(next) => w.setDraft(next)}
+          disabled={off}
+          readOnly={frozen}
+          describedBy={draftProblem ? errId : hintId}
+          invalid={draftProblem || (w.error && !w.conflict) ? true : undefined}
+        />
+        {draftProblem ? (
+          <p
+            id={errId}
+            role="alert"
+            className="mt-1 text-xs font-medium text-danger [overflow-wrap:anywhere]"
+          >
+            {draftProblem}
+          </p>
+        ) : (
+          <p id={hintId} className="mt-1 text-xs text-fg-muted">
+            {bounds ?? `One per line, up to ${spec.max}.`} {terms.length} of{" "}
+            {spec.max}
+          </p>
+        )}
+      </div>
+    );
   } else control = <code className="font-mono text-xs">{fmt(value)}</code>;
 
   const changed = w.dirty && commit === "explicit" && display === "control";
@@ -310,13 +355,22 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           <StatusPill tone="neutral" icon={false}>
             Not saved
           </StatusPill>
-          <span>was {fmt(value)}</span>
+          <span>
+            {spec.kind === "list"
+              ? listDeltaWords(value, w.draft)
+              : `was ${fmt(value)}`}
+          </span>
         </span>
       ) : null}
     </>
   );
 
-  const draftText = changed && w.draft !== null ? fmt(w.draft) : undefined;
+  const draftText =
+    changed && w.draft !== null
+      ? spec.kind === "list"
+        ? listDeltaWords(value, w.draft)
+        : fmt(w.draft)
+      : undefined;
 
   const footer = (
     <>
@@ -347,7 +401,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
             <Button
               size="sm"
               loading={w.busy}
-              disabled={locked !== undefined || disabled}
+              disabled={
+                locked !== undefined || disabled || draftProblem !== null
+              }
               onClick={() => w.commit()}
             >
               {w.asks ? "Save…" : "Save"}
@@ -409,9 +465,18 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       }
     >
       {viewOnly ? (
-        <span id={reasonId} className="sr-only">
-          Read-only. {readOnly}
-        </span>
+        readOnlyVisible ? (
+          <p
+            id={reasonId}
+            className="w-full max-w-[68ch] text-start text-xs text-fg-muted"
+          >
+            {readOnly}
+          </p>
+        ) : (
+          <span id={reasonId} className="sr-only">
+            Read-only. {readOnly}
+          </span>
+        )
       ) : null}
       {control}
       {history ? (

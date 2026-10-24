@@ -10072,7 +10072,12 @@ closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed de
   (product, operator-only, L1 to grant, audited) clears `reserved_display_name` for that one
   product at those same three checks. It never clears `invalid_display_text`, never reaches
   another product or the platform, and a manifest cannot set it (it is not manifest-claimable).
-  A product being created has no approval, so its first ingest is judged without one.
+  A product being created has no approval, so its first ingest is judged without one. PX-W13c:
+  "operator-only" is enforced, not only declared: the entry is `platformOnly`, so a console
+  write also needs `platform` edit, and a product's own admin, whatever areas they hold, cannot
+  approve their own product (the area check alone would have let a `signin` holder do it).
+  Extra terms go through the same skeleton as the floor and a term with no letter or digit is
+  refused.
 - **Label injection.** A device reports its own label (`deviceName`), so the card frames it as
   "reported by the device", never as a verified fact. §12.7.1 deletes bidi overrides, isolates and
   zero-width characters and folds whitespace controls before the label is stored, in every SDK

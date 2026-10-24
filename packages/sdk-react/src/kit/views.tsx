@@ -152,7 +152,14 @@ function contentFor(c: KitCtx): ReactNode {
     case "ReleaseNotes":
       return rowsOf()?.releaseNotes(c) ?? null;
     case "Settings":
-      return rowsOf()?.settingsRows(c) ?? null;
+      return c.account ? (
+        <>
+          {c.account}
+          {rowsOf()?.settingsRows(c) ?? null}
+        </>
+      ) : (
+        (rowsOf()?.settingsRows(c) ?? null)
+      );
     case "OfflineActivation":
       return rowsOf()?.offlineSteps(c) ?? null;
     case "UpdatePrompt": {
@@ -391,9 +398,17 @@ export function withBase(c: KitCtx): View {
       ...(rows.some((r) => r.source === "local") ? [] : ["settings.reset"]),
       ...(rows.some((r) => r.advanced) ? [] : ["settings.advanced"]),
     ]);
-    return gone.size === 0
-      ? titled
-      : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
+    const trimmed =
+      gone.size === 0
+        ? titled
+        : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
+    // The dialog the host opened closes on Done (the scrim and Escape answer too).
+    if (!c.dialog || !c.copy.has("common.done")) return trimmed;
+    return {
+      ...trimmed,
+      copy: [...trimmed.copy, "common.done"],
+      decisions: { ...trimmed.decisions, primary: "common.done" },
+    };
   }
   return view;
 }

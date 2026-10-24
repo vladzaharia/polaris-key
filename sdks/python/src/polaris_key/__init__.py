@@ -6,7 +6,7 @@ Core plus one sub-client per service, mirroring ``@polaris-key/node``::
 
     client = polaris_key.create(product_slug="djdl", version="1.2.0", trust=PINS)  # + discovery
     client.status()                      # the licence gate
-    client.config.get_config("ui.theme") # layered settings
+    client.config.get("ui.theme") # layered settings
     client.devices.register()            # keyless device mint (§6)
     client.release.changelog()           # the truth store
     client.update.check()                # the feed over it

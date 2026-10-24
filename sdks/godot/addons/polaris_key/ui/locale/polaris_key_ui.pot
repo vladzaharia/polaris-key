@@ -1148,7 +1148,7 @@ msgstr ""
 msgid "update.install"
 msgstr ""
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr ""

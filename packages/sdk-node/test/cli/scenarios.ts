@@ -1506,7 +1506,7 @@ export const SCENARIOS: Scenario[] = [
         h.ctx,
         stubClient({
           config: {
-            getConfig: () => "light",
+            get: () => "light",
             getConfigSource: () => "local",
           },
         }),

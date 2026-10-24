@@ -11296,7 +11296,7 @@ KIT_COPY_VARIANTS: Final[Mapping[str, Mapping[str, str]]] = {
     "update.restartWhenReady": {"macos": "Install and Relaunch"},
     "update.restartNow": {"macos": "Restart Now"},
     "update.skipVersion": {"macos": "Skip This Version"},
-    "update.install": {"macos": "Update Now"},
+    "update.install": {"macos": "Install and Relaunch"},
     "update.steam": {"macos": "Get It on Steam"},
     "update.checkNow": {"macos": "Check for Updates…"},
     "menu.manageLicense": {"macos": "Manage License…"},

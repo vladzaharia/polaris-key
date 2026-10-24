@@ -1145,7 +1145,7 @@ msgstr "跳过此版本"
 msgid "update.install"
 msgstr "立即更新"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "立即更新"

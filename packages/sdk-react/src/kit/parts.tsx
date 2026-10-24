@@ -52,6 +52,8 @@ export interface KitCtx {
   embedded?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** Settings, opened by the host: the account pane drawn above the settings rows. */
+  account?: ReactNode;
   /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
   dialog?: boolean;
   /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
@@ -830,6 +832,12 @@ export function actions(
   const last =
     primaryLast ||
     (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    // A short Mac window docks the bar as one row: the default last, so Tab follows the eye.
+    (!c.dialog &&
+      c.shape === "short" &&
+      controls.length === 2 &&
+      group !== "choices" &&
+      platformVariant(c.resolved.theme) === "macos") ||
     (group !== "choices" &&
       controls.length === 2 &&
       c.view.component !== "StatusScreen" &&

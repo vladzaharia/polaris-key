@@ -33,13 +33,31 @@ def test_set_persists_across_clients(tmp_path) -> None:
     c = make_client(_ok(), state_dir=str(tmp_path))
     c.license.activate_with_key("k")
     c.config.set("ui.theme", "dark")
-    assert c.config.get_config("ui.theme") == "dark" and c.config.get_config_source("ui.theme") == "local"
+    assert c.config.get("ui.theme") == "dark" and c.config.get_config_source("ui.theme") == "local"
     c.close()
     again = make_client(_ok(), state_dir=str(tmp_path))
-    assert again.config.get_config("ui.theme") == "dark"
+    assert again.config.get("ui.theme") == "dark"
     again.config.clear("ui.theme")
     assert "ui.theme" not in again.config.local_values()
     again.close()
+
+
+def test_clear_all_forgets_every_local_value_and_announces_each(tmp_path) -> None:
+    c = make_client(_ok(), state_dir=str(tmp_path))
+    c.license.activate_with_key("k")
+    c.config.set("ui.theme", "dark")
+    c.config.set("ui.extra", 1)
+    seen = []
+    off = c.config.on_config_change("*", lambda e: seen.append(e.data["key"]))
+    c.config.clear_all()
+    off()
+    assert c.config.local_values() == {}
+    assert c.config.get("ui.theme") != "dark"
+    assert sorted(seen) == ["ui.extra", "ui.theme"]
+    # the removed 0.9 spellings are gone from the client and the namespace
+    assert not hasattr(c, "get_config") and not hasattr(c, "on_config_change")
+    assert not hasattr(c.config, "get_config") and not hasattr(c.config, "on_change")
+    c.close()
 
 
 def test_enforced_keys_refuse_a_local_value() -> None:

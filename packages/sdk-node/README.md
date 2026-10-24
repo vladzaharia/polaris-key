@@ -51,7 +51,7 @@ if (!client.isLicensed()) {
 }
 
 // Layered config: enforced|hidden > local > env > remote-default > fallback.
-const concurrency = client.config.getConfig<number>("run.concurrency", 3);
+const concurrency = client.config.get<number>("run.concurrency", 3);
 const vpnUrl = client.config.getSecret("proxy.subscriptionUrl");
 const hasVpn = client.license.isEntitled("polarisVpn");
 
@@ -165,23 +165,23 @@ decrypts.
 
 ## Shape
 
-| Surface               | Subpath                          | What it owns                                                                                                                |
-| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `client.core`         | `@polaris-key/node/core`         | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                   |
-| `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                        |
-| `client.config`       | `@polaris-key/node/config`       | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint)    |
-| `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas         |
-| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                             |
-| `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                  |
-| `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
-| `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
-| —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                             |
-| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                       |
-| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                       |
-| `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
-| `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
-| —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
-| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                     |
+| Surface               | Subpath                          | What it owns                                                                                                                    |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `client.core`         | `@polaris-key/node/core`         | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                       |
+| `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                            |
+| `client.config`       | `@polaris-key/node/config`       | `get` / `clearAll` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint) |
+| `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas             |
+| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                                 |
+| `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                      |
+| `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)                  |
+| `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe     |
+| —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                                 |
+| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                           |
+| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                           |
+| `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                              |
+| `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                                |
+| —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                            |
+| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                         |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's for the
@@ -440,7 +440,7 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 
 - **`enforced` / `hidden`** are **locked to the server** — `localOverrides` and env vars are
   ignored for those keys. `hidden` additionally withholds the key from `listUserConfig()` (but
-  `getConfig` still applies it).
+  `get` still applies it).
 - A **`default`** (or absent) key can be overridden locally, then by an env var, then falls back
   to the remote value, then to the caller's `fallback`.
 

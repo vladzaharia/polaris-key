@@ -33,7 +33,7 @@ def run(_args: argparse.Namespace) -> int:
     try:
         # @require_license has already refused an unlicensed run (exit 4), so the work starts here.
         client.boot()
-        print("Working with", client.config.get_config("run.concurrency", 4), "workers")
+        print("Working with", client.config.get("run.concurrency", 4), "workers")
         return 0
     finally:
         client.close()

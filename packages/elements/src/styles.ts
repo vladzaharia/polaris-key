@@ -375,6 +375,14 @@ const KIT_CSS = String.raw`
   margin-block: 0;
   padding-block: 0;
 }
+/* A split's docked bar stays in the end column: its band never spans the window, which would cut
+   through the identity panel beside it. The window-filling stage centres the card. */
+.pk-root[data-shape="short"] .stage[data-split][data-kind="screen"] .card > .actions::before {
+  content: none;
+}
+.pk-root[data-shape="short"][data-fill] .stage {
+  align-content: center;
+}
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
   display: grid;
@@ -2069,6 +2077,12 @@ dialog.sheet .identity {
 }
 .pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions[data-group] .btn {
   inline-size: 100%;
+}
+/* A short window's docked bar: the default last in the DOM, so a plain row (no reversing) puts it
+   at the trailing edge and Tab runs left to right. */
+.pk-root[data-pk-platform="macos"][data-shape="short"] .stage[data-kind="screen"] .card > .actions[data-primary="last"] {
+  flex-direction: row;
+  justify-content: flex-end;
 }
 /* A choice between actions in page content: content-sized at the trailing edge, in DOM order. */
 .pk-root[data-pk-platform="macos"] .actions[data-layout="row"] {

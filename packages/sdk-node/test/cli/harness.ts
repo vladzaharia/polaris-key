@@ -418,7 +418,7 @@ export function stubClient(
     config: {
       listUserConfig: () => [],
       getConfigSource: () => "default",
-      getConfig: (_k: string, fallback: unknown) => fallback,
+      get: (_k: string, fallback: unknown) => fallback,
       getSecret: () => null,
       set: async () => undefined,
       clear: async () => undefined,

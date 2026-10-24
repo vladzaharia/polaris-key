@@ -291,6 +291,10 @@ export function PlatformSettingsPage(): React.ReactElement {
         setting={s}
         storeAvailable={view.storeAvailable}
         propagationSeconds={view.propagationSeconds}
+        displayMode={
+          view.settings.find((x) => x.key === "IDENTITY_RESERVED_DISPLAY_NAMES")
+            ?.value as string | undefined
+        }
       />
     ));
   const has = (names: readonly string[]) => names.some((n) => deploy.has(n));
@@ -335,7 +339,7 @@ export function PlatformSettingsPage(): React.ReactElement {
         <SettingsSection
           id="platform-signin"
           title="Sign-in"
-          description="Reserved display names save on their own. The identity provider is under Advanced; a console session can never widen its own access."
+          description="The identity provider is under Advanced; a console session can never widen its own access."
         >
           {rows("platform-signin")}
           <ConstantRow view={view} name="ADMIN_SESSION_TTL_SECONDS" />

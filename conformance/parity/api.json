@@ -648,11 +648,6 @@
     },
     {
       "sdk": "node",
-      "path": "client.getConfig",
-      "reason": "facade of config.get; follows its SP-35 rename"
-    },
-    {
-      "sdk": "node",
       "path": "license.isEntitled",
       "reason": "row entitlements.has (spelling license.isEntitled, planned SP-35); rule 1 matches rows by the surface namespace only"
     },
@@ -670,16 +665,6 @@
       "sdk": "node",
       "path": "license.onDeactivated",
       "reason": "an event-emitter field, not a verb; deactivation reaches apps through the events stream"
-    },
-    {
-      "sdk": "python",
-      "path": "client.on_config_change",
-      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
-    },
-    {
-      "sdk": "python",
-      "path": "client.get_config",
-      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
     },
     {
       "sdk": "python",
@@ -1518,19 +1503,13 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "spelling": "getConfig",
-          "planned": "SP-35"
-        },
+        "node": {},
         "react": {
           "spelling": "useManagedConfig().get",
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "spelling": "get_config",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "config",
           "planned": "SP-35b",
@@ -1673,14 +1652,8 @@
       "kind": "method",
       "feature": "config.local",
       "sdks": {
-        "node": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
-        "python": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "node": {},
+        "python": {},
         "react": {},
         "swift": {},
         "kotlin": {},
@@ -1705,10 +1678,7 @@
       "sdks": {
         "node": {},
         "swift": {},
-        "python": {
-          "spelling": "on_change",
-          "planned": "SP-35"
-        },
+        "python": {},
         "kotlin": {
           "spelling": "changes",
           "shape": "flow",
@@ -3822,5 +3792,48 @@
       "layer": "client"
     }
   ],
-  "removed": []
+  "removed": [
+    {
+      "sdk": "node",
+      "from": "config.getConfig",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "PolarisKeyClient.getConfig",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "(?<![\\w.])(?:client|mirrored)\\.getConfig\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.on_config_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "config.on_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bconfig\\.on_change\\s*\\("
+      }
+    }
+  ]
 }

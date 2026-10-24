@@ -134,19 +134,19 @@ export class ConfigClient {
   }
 
   /** Resolve the effective value for a key, honouring management state + override layers. */
-  getConfig<T = JSONValue>(key: string, fallback: T): T {
+  get<T = JSONValue>(key: string, fallback: T): T {
     const v = resolveValue(this.context(), key);
     return v === undefined ? fallback : (v as unknown as T);
   }
 
-  /** Where `getConfig(key)` would source its value from (for diagnostics/settings UIs). */
+  /** Where `get(key)` would source its value from (for diagnostics/settings UIs). */
   getConfigSource(key: string): ConfigSource {
     return resolveSource(this.context(), key);
   }
 
   /** The catalog entries for a settings UI (WIRE-CONTRACT-V3 §2.2.1 rule 4): every document
    *  entry MINUS the `hidden` ones, each marked `{ key, value, enforced }` with its resolved
-   *  value. (`hidden` keys are still APPLIED by `getConfig`; they are merely withheld from this
+   *  value. (`hidden` keys are still APPLIED by `get`; they are merely withheld from this
    *  enumeration.) A key only a local override or the environment supplies is not listed. */
   listUserConfig(): UserConfigEntry[] {
     return listUserEntries(this.context());
@@ -255,6 +255,12 @@ export class ConfigClient {
     await this.writeLocal(key, undefined);
   }
 
+  /** Drop every device-local override in one write (the keys fall back to env, the remote
+   *  defaults, the fallbacks). Host overrides stay. Fires one change per key that moved. */
+  async clearAll(): Promise<void> {
+    await this.writeLocal(undefined, undefined);
+  }
+
   /** The persisted local overrides. */
   localValues(): Record<string, JSONValue> {
     return { ...this.persisted };
@@ -264,7 +270,7 @@ export class ConfigClient {
   setting<T = JSONValue>(key: string): ConfigSetting<T> {
     return {
       key,
-      get: (fallback: T) => this.getConfig<T>(key, fallback),
+      get: (fallback: T) => this.get<T>(key, fallback),
       source: () => this.getConfigSource(key),
       locked: () => this.isLocked(key),
       set: (value: T) => this.set(key, value as unknown as JSONValue),
@@ -329,13 +335,17 @@ export class ConfigClient {
   }
 
   private async writeLocal(
-    key: string,
+    key: string | undefined,
     value: JSONValue | undefined,
   ): Promise<void> {
     const before = this.snapshot();
-    const next = { ...this.persisted };
-    if (value === undefined) delete next[key];
-    else next[key] = value;
+    // `key === undefined` drops every local override (clearAll).
+    const next: Record<string, JSONValue> =
+      key === undefined ? {} : { ...this.persisted };
+    if (key !== undefined) {
+      if (value === undefined) delete next[key];
+      else next[key] = value;
+    }
     if (this.localFile) await writeJson(this.localFile, next);
     this.persisted = next;
     this.localOverrides = { ...this.hostOverrides, ...next };
