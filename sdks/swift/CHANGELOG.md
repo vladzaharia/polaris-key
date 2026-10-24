@@ -15,6 +15,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **The setting handle is async properties (SP-35b).** `client.config.setting(key)` exposes `value` (nil when no layer has one, source `fallback`), `source`, `locked` and the new `visibility` (`SettingVisibility`: `editable`, `readonly` for `enforced`, `hidden`) as `async` properties, and `on(_:)` subscribes. `value(default:)`, `source()`, `isLocked()` and `onChange(_:)` are removed. No aliases.
+  Migrating: `await setting.value(default: d)` becomes `await setting.value ?? d` (or `config.get(k, default: d)`); `await setting.source()` becomes `await setting.source`; `await setting.isLocked()` becomes `await setting.locked`; `setting.onChange { ... }` becomes `setting.on { ... }`.
+
 - **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(_:default:)`, `client.config.getConfigSource(_:)` and `client.config.getSecret(_:)` replace `config(_:default:)`, `configSource(_:)` and `secret(_:)`; the `PolarisKeyClient.config(_:default:)` shortcut is removed. No aliases.
   Migrating: `client.config(k, default: d)` and `client.config.config(k, default: d)` become `client.config.get(k, default: d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`.
 

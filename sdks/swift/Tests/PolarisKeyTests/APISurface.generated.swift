@@ -21,12 +21,13 @@ func apiSurface() async {
     _ = ConfigClient.clearAll  // config.clearAll
     _ = ConfigClient.onConfigChange  // config.onConfigChange
     _ = ConfigClient.setting  // config.setting
-    _ = ConfigSetting.value(default:)  // config.setting.value
-    _ = ConfigSetting.source  // config.setting.source
-    _ = ConfigSetting.isLocked  // config.setting.locked
+    _ = { (s: ConfigSetting) async in _ = await s.value }  // config.setting.value
+    _ = { (s: ConfigSetting) async in _ = await s.source }  // config.setting.source
+    _ = { (s: ConfigSetting) async in _ = await s.locked }  // config.setting.locked
+    _ = { (s: ConfigSetting) async in _ = await s.visibility }  // config.setting.visibility
     _ = ConfigSetting.set  // config.setting.set
     _ = ConfigSetting.clear  // config.setting.clear
-    _ = ConfigSetting.onChange  // config.setting.on
+    _ = ConfigSetting.on  // config.setting.on
     _ = LicenseClient.activate(key:)  // license.activateWithKey
     _ = LicenseClient.isEntitled  // entitlements.has
     _ = LicenseClient.entitlementValue  // entitlements.value

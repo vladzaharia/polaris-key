@@ -283,6 +283,16 @@ public actor ConfigClient {
             locked: state == .enforced || state == .hidden)
     }
 
+    /// How `key` appears (`SettingVisibility`): `enforced` is readonly, `hidden` is hidden; a
+    /// `default` entry or none is editable (`setting(key).visibility`).
+    func settingVisibility(_ key: String) async -> String {
+        switch await doc()?.config[key]?.state {
+        case .enforced: return SettingVisibility.readonly
+        case .hidden: return SettingVisibility.hidden
+        default: return SettingVisibility.editable
+        }
+    }
+
     /// The values `set` kept, by key.
     public func localValues() -> [String: JSONValue] { persisted }
 

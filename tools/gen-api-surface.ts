@@ -329,6 +329,13 @@ const SWIFT_UNASSERTED = new Set([
   "commerce.products",
   "config.decode",
 ]);
+/** The handle's async properties: no key path reaches them, so each is read inside an async closure. */
+const SWIFT_ASYNC_HANDLE = new Set([
+  "config.setting.value",
+  "config.setting.source",
+  "config.setting.locked",
+  "config.setting.visibility",
+]);
 const SWIFT_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
   pinnedReleaseKeys: "PolarisKeyClientOptions",
@@ -350,6 +357,10 @@ function renderSwift(api: Api): string {
           ? (SWIFT_OPTION_HOLDER[r.path.split(".")[0]!] ?? "CoreOptions")
           : (SWIFT_OPTION_HOLDER[r.name] ?? "CoreOptions");
       lines.push(`_ = \\${holder}.${r.name}  // ${r.id}`);
+    } else if (r.handle && SWIFT_ASYNC_HANDLE.has(r.id)) {
+      lines.push(
+        `_ = { (s: ConfigSetting) async in _ = await s.${r.name} }  // ${r.id}`,
+      );
     } else if (r.handle) {
       lines.push(
         r.entry.shape === "property"

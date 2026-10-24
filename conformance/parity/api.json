@@ -2554,9 +2554,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "value",
-          "planned": "SP-35b",
-          "labels": ["default"]
+          "shape": "property"
         },
         "kotlin": {
           "spelling": "value",
@@ -2576,8 +2574,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "source",
-          "planned": "SP-35b"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2596,8 +2593,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "spelling": "isLocked",
-          "planned": "SP-35b"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2617,8 +2613,7 @@
         "python": {},
         "react": {},
         "swift": {
-          "planned": "SP-35b",
-          "reason": "absent today"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-07",
@@ -2687,10 +2682,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "onChange",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07",
           "reason": "a StateFlow until U-07"
@@ -5576,6 +5568,46 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\bconfig\\.secret\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.value(default:)",
+      "to": "config.setting.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.value\\(default:",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.source()",
+      "to": "config.setting.source",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.source\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.isLocked()",
+      "to": "config.setting.locked",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.isLocked\\(\\)",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ConfigSetting.onChange(_:)",
+      "to": "config.setting.on",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.setting\\([^)]*\\)\\s*\\.onChange\\s*[({]",
         "files": ["*.swift", "fence:swift"]
       }
     },
