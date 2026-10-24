@@ -174,9 +174,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `entitlements.has` | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | `entitlements.value` | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `entitlements.all` | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -411,3 +411,5 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Godot | `options.product` | `options.productSlug` | SP-35b |
 | Godot | `options.pinned_trust_keys` | `options.pinnedKeys` | SP-35b |
 | Godot | `config.get_source` | `config.getConfigSource` | SP-35b |
+| Godot | `license.is_entitled` | `entitlements.has` | SP-35b |
+| Godot | `license.get_entitlements` | `entitlements.all` | SP-35b |

@@ -446,6 +446,10 @@
         "file": "sdks/godot/addons/polaris_key/services/license.gd"
       },
       {
+        "ns": "entitlements",
+        "file": "sdks/godot/addons/polaris_key/services/entitlements.gd"
+      },
+      {
         "ns": "identity",
         "file": "sdks/godot/addons/polaris_key/services/identity.gd"
       },
@@ -1807,6 +1811,11 @@
     },
     {
       "sdk": "godot",
+      "path": "entitlements.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.default_device_name",
       "reason": "wiring the boot and update flows call; not an app verb"
     },
@@ -2767,10 +2776,7 @@
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
         },
-        "godot": {
-          "spelling": "license.is_entitled",
-          "planned": "SP-35b"
-        },
+        "godot": {},
         "react": {
           "spelling": "useEntitlement",
           "shape": "hook",
@@ -2799,10 +2805,7 @@
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
         },
-        "godot": {
-          "planned": "SP-35b",
-          "reason": "absent today"
-        },
+        "godot": {},
         "react": {
           "planned": "LX-19",
           "reason": "useEntitlement returns a boolean only"
@@ -2825,10 +2828,7 @@
           "spelling": "license.entitlements",
           "planned": "SP-35b"
         },
-        "godot": {
-          "spelling": "license.get_entitlements",
-          "planned": "SP-35b"
-        },
+        "godot": {},
         "react": {
           "planned": "LX-19",
           "reason": "no React hook lists the grants"
@@ -5753,6 +5753,26 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\bget_source\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.is_entitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.is_entitled\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.get_entitlements",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.get_entitlements\\s*\\(",
         "files": ["*.gd", "*.tres", "fence:gdscript"]
       }
     }

@@ -31,8 +31,9 @@ const ROWS := [
 	["config.setting.clear", "res://addons/polaris_key/services/config/setting.gd", "method", "clear"],
 	["config.setting.on", "res://addons/polaris_key/services/config/setting.gd", "signal", "changed"],
 	["license.activateWithKey", "res://addons/polaris_key/services/license.gd", "method", "activate_with_key"],
-	["entitlements.has", "res://addons/polaris_key/services/license.gd", "method", "is_entitled"],
-	["entitlements.all", "res://addons/polaris_key/services/license.gd", "method", "get_entitlements"],
+	["entitlements.has", "res://addons/polaris_key/services/entitlements.gd", "method", "has"],
+	["entitlements.value", "res://addons/polaris_key/services/entitlements.gd", "method", "value"],
+	["entitlements.all", "res://addons/polaris_key/services/entitlements.gd", "method", "all"],
 	["identity.signOut", "res://addons/polaris_key/services/identity.gd", "method", "sign_out"],
 	["client.discover", SDK, "method", "discover"],
 	["client.presentation", SDK, "method", "presentation"],
@@ -174,6 +175,8 @@ const REMOVED := [
 	["options.product", "res://addons/polaris_key/core/options.gd", "product"],
 	["options.pinned_trust_keys", "res://addons/polaris_key/core/options.gd", "pinned_trust_keys"],
 	["config.get_source", "res://addons/polaris_key/services/config.gd", "get_source"],
+	["license.is_entitled", "res://addons/polaris_key/services/license.gd", "is_entitled"],
+	["license.get_entitlements", "res://addons/polaris_key/services/license.gd", "get_entitlements"],
 ]
 
 

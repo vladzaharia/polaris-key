@@ -103,7 +103,7 @@ var steam: Object = null
 var store_override := ""
 
 var _core_ref: WeakRef = null
-var _license_ref: WeakRef = null
+var _entitlements_ref: WeakRef = null
 ## The product list from the last successful get_binding().
 var products: Array = []
 ## The binding from the last successful get_binding() ("" until then).
@@ -114,9 +114,9 @@ var _watched_apple: Object = null
 var _update_ids := {}
 
 
-func attach(core: PKeyCore, license: Object = null) -> void:
+func attach(core: PKeyCore, entitlements: Object = null) -> void:
 	_core_ref = weakref(core)
-	_license_ref = weakref(license) if license != null else null
+	_entitlements_ref = weakref(entitlements) if entitlements != null else null
 	if current_store() == "app-store":
 		watch_app_store_updates()
 
@@ -549,10 +549,10 @@ static func hidden_on(flag: String, list: Array) -> bool:
 
 ## The licence holds `flag` and this outlet does not hide it.
 func is_unlocked(flag: String) -> bool:
-	var license = _license_ref.get_ref() if _license_ref != null else null
-	if license == null or not license.has_method("is_entitled"):
+	var ents = _entitlements_ref.get_ref() if _entitlements_ref != null else null
+	if ents == null or not ents.has_method("has"):
 		return false
-	return license.is_entitled(flag) and not hidden_here(flag)
+	return ents.has(flag) and not hidden_here(flag)
 
 
 static func _is_uuid(s: String) -> bool:
