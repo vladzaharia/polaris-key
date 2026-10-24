@@ -13,7 +13,7 @@ extends PKeyUiView
 ## plus buttons; left and right on a pad change the value and the focus stays (up and down move).
 ##
 ## An edit writes PolarisKey.config's override store (the player's layer), so get_value() and
-## get_source() change at once (source `local`). Without a store the panel installs an in-memory
+## get_config_source() change at once (source `local`). Without a store the panel installs an in-memory
 ## PKeyOverrideStore; give PolarisKey.config a PKeyConfigFileStore to keep the values across
 ## launches. Catalog labels and descriptions are the operator's data, passed through tr() so a
 ## game can still translate them.

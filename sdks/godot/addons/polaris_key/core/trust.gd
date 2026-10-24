@@ -2,7 +2,7 @@ class_name PKeyTrust
 extends RefCounted
 ## The trust set (WIRE-CONTRACT-V4 §1, §2.3, §4.1): a port of `client-core/src/trust.ts`. Two tiers:
 ##
-##   pinned    compiled into the game (PKeyOptions.pinned_trust_keys). Terminal unless TOMBSTONED:
+##   pinned    compiled into the game (PKeyOptions.pinned_keys). Terminal unless TOMBSTONED:
 ##             a verified manifest signed by another usable pin that lists the pin's exact bytes
 ##             as `revoked` removes it from the usable pins, permanently, on this install. The
 ##             tombstone is kept as SIGNED EVIDENCE (the revoking manifest, verbatim, in the cache's

@@ -17,8 +17,8 @@ const DEFAULT_STORE_ROOT := "user://pkey"
 const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 
 
-## The product slug (`aud`, `/<product>/…`).
-@export var product := ""
+## The product slug (`aud`, `/<product>/…`). Named `product` before 0.9.
+@export var product_slug := ""
 ## https only; plain http is accepted for localhost, 127.0.0.1 and [::1] alone.
 @export var base_url := "https://key.plrs.im"
 ## The game's version, sent as X-PKey-Version and gated on by the server. Empty: the project's
@@ -32,10 +32,10 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## `dev`/`beta`/`pr` for 0.0.0-* versions; the server narrows `pr` to the build's number).
 @export var default_channel := ""
 ## kid -> raw Ed25519 public key (base64url). The ONLY trust root; never taken from discovery.
-@export var pinned_trust_keys: Dictionary = {}
+@export var pinned_keys: Dictionary = {}
 ## kid -> raw Ed25519 release key (base64url): the ONLY keys a release record
 ## (`pkey-release+jws`) verifies against (WIRE-CONTRACT-V4 §2.6). CI holds the private half;
-## never a product key, never merged with pinned_trust_keys, never extended from the network.
+## never a product key, never merged with pinned_keys, never extended from the network.
 ## Empty: PolarisKey.update.decide() answers `not-configured`. A key that is also a trust pin
 ## makes `configure` refuse (`invalid-options`). Two keys are valid at once during a rotation.
 @export var pinned_release_keys: Dictionary = {}
@@ -203,6 +203,40 @@ var now_source: Callable = Callable()
 ## Where the build stamp is read (PKeyBuildStamp). "" means no stamp (tests that must not see
 ## the exported one). Not exported.
 var build_stamp_path := PKeyBuildStamp.PATH
+
+## The pre-0.9 property names, captured by `_set` so a file that still carries them is refused,
+## never read (SP-35 D7).
+# api-allow: the D7 refusal has to name the removed options
+const REMOVED_NAMES := ["product", "pinned_trust_keys"]
+## Name -> the value the file held.
+var _removed: Dictionary = {}
+var _warned := false
+
+
+## An unknown property lands here when a resource loads. The two renamed in 0.9 are kept apart
+## from the live options: nothing is ever copied from `_removed` into them.
+func _set(property: StringName, value: Variant) -> bool:
+	if not REMOVED_NAMES.has(String(property)):
+		return false
+	_removed[String(property)] = value
+	if Engine.is_editor_hint() and not _warned:
+		_warned = true
+		push_warning("Polaris Key: this PKeyOptions uses names removed in 0.9 (%s). Open the Polaris Key dock and Save, or run `pkey sdk --lang godot --write`, to rewrite it with product_slug and pinned_keys." % ", ".join(REMOVED_NAMES))
+	return true
+
+
+## The pre-0.9 option names this resource was loaded with, in a stable order. Empty: none.
+func removed_names() -> PackedStringArray:
+	var out := PackedStringArray()
+	for n in REMOVED_NAMES:
+		if _removed.has(n):
+			out.append(n)
+	return out
+
+
+## What a removed option held, for the setup dock's pre-fill only (never for the SDK).
+func removed_value(name: String) -> Variant:
+	return _removed.get(name)
 
 
 ## The host outlet option for PKeyDecision.resolve_update_outlet: null when `update_outlet` is

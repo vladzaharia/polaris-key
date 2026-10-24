@@ -9,7 +9,7 @@ extends RefCounted
 ## PKeyOptions.expected_services, else licence and config only (PKeyServices.DEFAULT_ENABLED).
 ##
 ## The document may grow: the fields read here are validated and the rest is kept verbatim.
-## Never pin from `trust.pinnedKeys`: pins come only from PKeyOptions.pinned_trust_keys.
+## Never pin from `trust.pinnedKeys`: pins come only from PKeyOptions.pinned_keys.
 
 
 ## A full map, every slug in canonical order: slug -> {"enabled": bool}.

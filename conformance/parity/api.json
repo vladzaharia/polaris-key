@@ -446,6 +446,10 @@
         "file": "sdks/godot/addons/polaris_key/services/license.gd"
       },
       {
+        "ns": "entitlements",
+        "file": "sdks/godot/addons/polaris_key/services/entitlements.gd"
+      },
+      {
         "ns": "identity",
         "file": "sdks/godot/addons/polaris_key/services/identity.gd"
       },
@@ -1762,6 +1766,16 @@
     },
     {
       "sdk": "godot",
+      "path": "config.config_changes",
+      "reason": "the detail behind config_changed that the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pack_phase",
+      "reason": "the pack progress the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "config.attach",
       "reason": "internal wiring or the override-store hook the host sets; not an app verb"
     },
@@ -1803,6 +1817,11 @@
     {
       "sdk": "godot",
       "path": "identity.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "entitlements.attach",
       "reason": "wiring the boot and update flows call; not an app verb"
     },
     {
@@ -2233,10 +2252,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "product",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2258,10 +2274,7 @@
         "kotlin": {
           "path": "core.pinnedKeys"
         },
-        "godot": {
-          "spelling": "pinned_trust_keys",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2379,8 +2392,7 @@
           "planned": "SP-35b"
         },
         "godot": {
-          "spelling": "get_source",
-          "planned": "SP-35b"
+          "spelling": "get_config_source"
         }
       },
       "layer": "client"
@@ -2632,10 +2644,7 @@
           "planned": "U-07",
           "reason": "absent today"
         },
-        "godot": {
-          "planned": "SP-35b",
-          "reason": "absent today"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2777,10 +2786,7 @@
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
         },
-        "godot": {
-          "spelling": "license.is_entitled",
-          "planned": "SP-35b"
-        },
+        "godot": {},
         "react": {
           "spelling": "useEntitlement",
           "shape": "hook",
@@ -2809,10 +2815,7 @@
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
         },
-        "godot": {
-          "planned": "SP-35b",
-          "reason": "absent today"
-        },
+        "godot": {},
         "react": {
           "planned": "LX-19",
           "reason": "useEntitlement returns a boolean only"
@@ -2835,10 +2838,7 @@
           "spelling": "license.entitlements",
           "planned": "SP-35b"
         },
-        "godot": {
-          "spelling": "license.get_entitlements",
-          "planned": "SP-35b"
-        },
+        "godot": {},
         "react": {
           "planned": "LX-19",
           "reason": "no React hook lists the grants"
@@ -2924,8 +2924,10 @@
         },
         "kotlin": {},
         "godot": {
-          "planned": "SP-35b",
-          "reason": "gains signal event(kind, data)"
+          "spelling": "event",
+          "path": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         },
         "react": {
           "spelling": "hooks and subscribe",
@@ -3659,10 +3661,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "apply",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3850,10 +3849,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "get_binding",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4122,10 +4118,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "spelling": "devices.get_current_device",
-          "planned": "SP-35b"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -5734,6 +5727,86 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\.getCurrentDevice\\s*\\("
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.product",
+      "to": "options.productSlug",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "(?:\\b(?:o|opts|options|cfg)\\.product\\b(?!_)|^\\s*product\\s*=\\s*\")",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "options.pinned_trust_keys",
+      "to": "options.pinnedKeys",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bpinned_trust_keys\\b",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "config.get_source",
+      "to": "config.getConfigSource",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bget_source\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.is_entitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.is_entitled\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "license.get_entitlements",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\b(?:license|lic)\\.get_entitlements\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "devices.get_current_device",
+      "to": "client.currentDevice",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdevices\\.get_current_device\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "commerce.get_binding",
+      "to": "commerce.binding",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bcommerce\\.get_binding\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "update.apply",
+      "to": "update.install",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bupdate\\.apply\\s*\\(",
+        "files": ["*.gd", "*.tres", "fence:gdscript"]
       }
     }
   ]

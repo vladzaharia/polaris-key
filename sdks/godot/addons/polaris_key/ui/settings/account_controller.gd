@@ -35,8 +35,8 @@ static func facts(sdk: Node) -> Dictionary:
 		return out
 	var st: Dictionary = sdk.status() if sdk.has_method("status") else {}
 	out["status"] = String(st.get("status", ""))
-	if sdk.get("license") != null:
-		var ents: Dictionary = sdk.license.get_entitlements()
+	if sdk.get("entitlements") != null:
+		var ents: Dictionary = sdk.entitlements.all()
 		for k in TIER_KEYS:
 			if ents.get(k) is String and ents[k] != "":
 				out["tier"] = ents[k]

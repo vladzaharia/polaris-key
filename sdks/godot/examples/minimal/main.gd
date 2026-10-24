@@ -5,7 +5,7 @@ extends Control
 ##    the licence (the activation and sign-in card appear on their own), checks for an update and
 ##    fetches packs, on the PKeyBoot screen. `await` returns at READY: a stop keeps its card and
 ##    Try again on screen, and the await waits through the retries.
-## 2. The game then reads its licence (`is_entitled`), its config (`get_value`) and offers the
+## 2. The game then reads its licence (`entitlements.has`), its config (`get_value`) and offers the
 ##    kit's settings panel and a store purchase of one licence flag.
 ##
 ## Replace SKINS_FLAG with a flag your product maps to a store product, and "difficulty" with a
@@ -49,7 +49,7 @@ func _add_button(text: String, cb: Callable) -> Button:
 
 ## Gate: what this licence unlocks, read from the verified licence document.
 func _render() -> void:
-	var skins := PolarisKey.license.is_entitled(SKINS_ENTITLEMENT) or PolarisKey.commerce.is_unlocked(SKINS_FLAG)
+	var skins := PolarisKey.entitlements.has(SKINS_ENTITLEMENT) or PolarisKey.commerce.is_unlocked(SKINS_FLAG)
 	var difficulty = PolarisKey.config.get_value(DIFFICULTY_KEY)
 	_status.text = "Dice skins: %s\nDifficulty: %s" % ["unlocked" if skins else "locked", str(difficulty)]
 	_buy.disabled = skins

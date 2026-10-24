@@ -26,7 +26,7 @@ const EXPORT_PRESETS := "res://export_presets.cfg"
 const CONFIG_PATH := "res://polaris_key.tres"
 const LEGACY_CONFIG := "res://polaris_key_config.gd"
 ## The PKeyOptions properties `pkey sdk --lang godot --write` sets.
-const CLI_FIELDS := ["product", "base_url", "pinned_trust_keys", "pinned_release_keys", "expected_services"]
+const CLI_FIELDS := ["product_slug", "base_url", "pinned_keys", "pinned_release_keys", "expected_services"]
 const MIRROR_DIR := "res://"
 const DEFAULT_PKEY := "pkey"
 

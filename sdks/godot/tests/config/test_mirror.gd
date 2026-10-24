@@ -50,7 +50,7 @@ func run(t: PKeyTestContext) -> void:
 
 	var sdk: Node = await S.sdk_with({"ui.theme": S.entry("enforced", "light")})
 	sdk.config.set_compiled_catalog(script)
-	t.check("mirror: get_value without a fallback uses DEFAULTS", sdk.config.get_value("dice.animSpeed") == 1.25 and sdk.config.get_source("dice.animSpeed") == &"fallback")
+	t.check("mirror: get_value without a fallback uses DEFAULTS", sdk.config.get_value("dice.animSpeed") == 1.25 and sdk.config.get_config_source("dice.animSpeed") == &"fallback")
 	t.check("mirror: the document still wins", sdk.config.get_value("ui.theme") == "light")
 	var tuning: Dictionary = sdk.config.get_value("difficulty.tuning")
 	tuning["easy"] = 9

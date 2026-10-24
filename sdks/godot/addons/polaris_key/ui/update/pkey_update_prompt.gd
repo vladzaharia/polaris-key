@@ -16,7 +16,7 @@ extends PKeyUiView
 ## source page, Steam, itch and the other platforms stay silent with their own message, a web
 ## export reloads, and a direct build installs through its native updater (or the download
 ## link), downloads a code pack, or restarts into a staged one ("Restart now"). With an SDK the
-## button runs PolarisKey.update.apply(result); every link it opens is https.
+## button runs PolarisKey.update.install(result); every link it opens is https.
 ##
 ## In play (`PolarisKey.in_play`, the game sets it) a dismissable answer is only a toast at the
 ## `toast_anchor` (PolarisKey.toasts()): Update now and Dismiss, and the download's counted bar
@@ -34,7 +34,7 @@ extends PKeyUiView
 
 ## The player chose the action (after the URL, if any, was opened).
 signal action_taken(result: PKeyResult)
-## What the action did (PolarisKey.update.apply(), for a v4 answer with an SDK).
+## What the action did (PolarisKey.update.install(), for a v4 answer with an SDK).
 signal action_applied(applied: PKeyApplyResult)
 ## The player dismissed a dismissable answer.
 signal dismissed()
@@ -557,10 +557,10 @@ func _on_action() -> void:
 		else:
 			show_result(again)
 		return
-	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
+	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("install") and outlet == "":
 		action_taken.emit(result)
 		_installing = true
-		var applied: PKeyApplyResult = await sdk.update.apply(result)
+		var applied: PKeyApplyResult = await sdk.update.install(result)
 		_installing = false
 		action_applied.emit(applied)
 		return

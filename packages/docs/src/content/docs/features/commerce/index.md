@@ -52,7 +52,7 @@ Commerce → Overview shows each store's status, its mapped products and the lat
 
 ## How it works
 
-1. **Bind before buying.** The game calls `PolarisKey.commerce.get_binding()`
+1. **Bind before buying.** The game calls `PolarisKey.commerce.binding()`
    (`GET /<product>/commerce/binding`, device token) and gets the license's
    **binding** — a random UUID, not the license id and not personal data — plus the store products
    on sale. It hands the binding to the store with the purchase: Apple's `appAccountToken`, Play's

@@ -55,7 +55,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
 | `client.outletId` | — | — | `client.outlet_id` | — | — | — | — |
 | `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
-| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
+| `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `client.current_device` | — |
 | `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
 | `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
 | `client.start` | — | — | — | `client.start` | `client.start` | `client.start` | — |
@@ -97,8 +97,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `product` (planned: SP-35b) | — |
-| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `options.pinned_keys` | `core.pinnedKeys` | `core.pinnedKeys` | `pinned_trust_keys` (planned: SP-35b) | — |
+| `options.productSlug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | `options.productSlug` | `options.productSlug` | `options.product_slug` | — |
+| `options.pinnedKeys` | `trust.pinnedKeys` | `trust.pinnedKeys` | `options.pinned_keys` | `core.pinnedKeys` | `core.pinnedKeys` | `options.pinned_keys` | — |
 | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `update.pinned_release_keys` | `options.pinnedReleaseKeys` | `update.pinnedReleaseKeys` | `options.pinned_release_keys` | — |
 | `options.baseUrl` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | `options.baseUrl` | `options.baseUrl` | `options.base_url` | — |
 | `options.expectedServices` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | `options.expectedServices` | `options.expectedServices` | `options.expected_services` | — |
@@ -115,7 +115,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config` (planned: SP-35b) | `config` (planned: SP-35b) | `get_value` | `config.resolve` |
-| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_source` (planned: SP-35b) | `config.resolve` |
+| `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `configSource` (planned: SP-35b) | `configSource` (planned: SP-35b) | `get_config_source` | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `secret` (planned: SP-35b) | `secret` (planned: SP-35b) | `config.get_secret` | `config.secret` |
 | `config.mintToken` | `config.mintToken` | planned (U-20) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
@@ -126,7 +126,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
 | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
-| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | `config.setting.visibility` | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | planned (U-07) | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | planned (U-07) | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
@@ -174,9 +174,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `entitlements.has` | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | `entitlements.value` | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `entitlements.all` | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -211,7 +211,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `events` | planned (SP-35b) | — |
+| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `events` | `client.event` | — |
 
 ## cloudSync
 
@@ -262,7 +262,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `update.onUpdateAvailable` | `update.onUpdateAvailable` | — | — | — | `offers` | `update_available` | — |
 | `update.decidable` | `update.decidable` | — | — | — | — | — | — |
-| `update.install` | `update.install` | — | `update.install` | `update.install` | `update.install` | `apply` (planned: SP-35b) | — |
+| `update.install` | `update.install` | — | `update.install` | `update.install` | `update.install` | `update.install` | — |
 | `update.check` | `update.check` | `useLatestVersion` | `update.check` | `update.check` | `update.check` | `update.check` | — |
 | `update.appcastUrl` | `update.appcastUrl` | — | `update.appcast_url` | — | `update.appcastUrl` | `update.appcast_url` | — |
 | `update.feedUrl` | `update.feedUrl` | — | `update.feed_url` | `update.feedUrl` | `update.feedUrl` | `update.feed_url` | — |
@@ -299,7 +299,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | `commerce.binding` | `get_binding` (planned: SP-35b) | — |
+| `commerce.binding` | `commerce.binding` | — | `commerce.binding` | `commerce.binding` | `commerce.binding` | `commerce.binding` | — |
 | `commerce.claim` | `commerce.claim` | — | `commerce.claim` | `commerce.claim` | `commerce.claim` | `commerce.claim` | — |
 | `commerce.claimSteam` | `commerce.claimSteam` | — | `commerce.claim_steam` | `commerce.claimSteam` | `commerce.claimSteam` | `commerce.claim_steam` | — |
 | `commerce.claimAppStore` | `commerce.claimAppStore` | — | `commerce.claim_app_store` | `commerce.claimAppStore` | `commerce.claimAppStore` | `commerce.claim_app_store` | — |
@@ -408,3 +408,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | React | `usePolarisKey().isEntitled` | `entitlements.has` | SP-35 |
 | Python | `trust` | `options.pinnedKeys` | SP-35 |
 | Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |
+| Godot | `options.product` | `options.productSlug` | SP-35b |
+| Godot | `options.pinned_trust_keys` | `options.pinnedKeys` | SP-35b |
+| Godot | `config.get_source` | `config.getConfigSource` | SP-35b |
+| Godot | `license.is_entitled` | `entitlements.has` | SP-35b |
+| Godot | `license.get_entitlements` | `entitlements.all` | SP-35b |
+| Godot | `devices.get_current_device` | `client.currentDevice` | SP-35b |
+| Godot | `commerce.get_binding` | `commerce.binding` | SP-35b |
+| Godot | `update.apply` | `update.install` | SP-35b |
