@@ -515,6 +515,35 @@ struct GatedRoot: View {
 }
 ```
 
+### On a Mac
+
+The same gate runs on macOS 15 and later. Add `PolarisKeyUI` (and `PolarisKeyUpdate` plus
+`PolarisKeyUpdateUI` for the kit's Sparkle update window), then two lines wire the Settings tab and
+the app menu:
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUI
+import SwiftUI
+
+struct MacScenes: Scene {
+    let client: PolarisKeyClient
+
+    var body: some Scene {
+        WindowGroup { Text("Licensed").polarisKeyGate(client) }
+            .commands { PolarisKeyCommands(client) }
+        Settings { PolarisKeySettingsPane(client) }
+    }
+}
+#endif
+```
+
+`PolarisSparkleUserDriver(client:)` passed as `PolarisSparkle.start(client:userDriver:)` draws
+Sparkle's flow in the kit's update window. The Settings tab, the commands, the AppKit hosting recipe
+(`NSHostingController`, `beginSheet`) and Replace a Device are on the
+[SwiftUI kit](https://key.plrs.im/docs/build/ui/frameworks/swiftui/#macos) page.
+
 ### The earlier gate: `.polarisKey`
 
 The first SwiftUI gate still ships beside it. One modifier gates the app: it puts the model in the

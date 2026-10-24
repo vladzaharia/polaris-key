@@ -65,6 +65,8 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
 
     **Headless.** `KitStates.signIn(_:)`; `PolarisKeyGateModel.beginSignIn()`, `reopenBrowser()`, `useCode()` (the same request's code) and `cancelSignIn()`. Until the SDK's grant API lands, a sign-in ends on Done or the toast; the in-app choice renders when the inputs carry it.
 
+    **On a Mac.** The form is one 440 pt sheet, or an `NSHostingController` window you present with `beginSheet` ([Hosting in AppKit](/docs/build/ui/frameworks/swiftui/#hosting-in-appkit)).
+
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>

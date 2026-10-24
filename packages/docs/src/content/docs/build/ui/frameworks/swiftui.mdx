@@ -1,6 +1,6 @@
 ---
 title: "SwiftUI"
-description: "PolarisKeyUI and PolarisKeyUICore: the Swift SDK's SwiftUI kit for iOS and iPadOS 18 and later, Liquid Glass on 26, with a SwiftUI-free presentation core for a UI of your own."
+description: "PolarisKeyUI and PolarisKeyUICore: the Swift SDK's SwiftUI kit for iOS, iPadOS and macOS, Liquid Glass on 26, with a SwiftUI-free presentation core for a UI of your own."
 type: "reference"
 lastReviewed: "2026-10-10"
 sidebar:
@@ -10,15 +10,16 @@ lanes: ["kit"]
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
+import StatesToHandle from "../../../../../components/docs/StatesToHandle.astro";
 
-The Swift SDK's SwiftUI kit. One modifier gates an iPhone or iPad app and runs every screen the
+The Swift SDK's SwiftUI kit. One modifier gates an iPhone, iPad or Mac app and runs every screen the
 license needs: Welcome, the one sign-in form, the key field with its live verdict, Replace a
 device, the blocking states with their fixes, offline grace and the toast. On iOS and iPadOS 26
 the controls are Liquid Glass; on 18 the same layout runs on system materials. Every screen is
 drawn from **PolarisKeyUICore**, a SwiftUI-free presentation core that runs the shared
 [UI state matrix](/docs/reference/corpus/) for every component, so a UIKit app or a UI of your
 own gets the same states, copy and actions. The rest of the Swift SDK is on the
-[Swift](/docs/build/sdks/swift/) page; the Mac pass of the kit follows.
+[Swift](/docs/build/sdks/swift/) page; the Mac scenes are under [macOS](#macos).
 
 <KitFacts kit="swiftui" />
 
@@ -46,6 +47,8 @@ let package = Package(
     ]
 )
 ```
+
+A Mac app that updates through Sparkle adds `PolarisKeyUpdate`, and `PolarisKeyUpdateUI` for the kit's update window ([macOS](#macos)).
 
 The kit bundles Rubik and JetBrains Mono (both OFL) and registers them itself.
 
@@ -149,6 +152,151 @@ state) instead of stretching it across the window. Every screen carries the prod
 name) from the presentation, and a product with no name reads "Welcome". Boot draws the loading
 shimmer after the 250 ms grace, and it stays still under Reduce Motion.
 
+## macOS
+
+The same gate runs on a Mac (macOS 15 and later), in Mac proportions: the Welcome window splits the product's identity from the form at 760 by 520 pt and up, and the sign-in sheet is one 440 pt form fitted to its content (`.presentationSizing(.fitted)`). Two more pieces are Mac-only: a Settings tab and the app-menu commands. Nothing needs a platform check; the iOS build leaves them out.
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUI
+import SwiftUI
+
+struct MacScenes: Scene {
+    let client: PolarisKeyClient
+
+    var body: some Scene {
+        WindowGroup { Text("Licensed").polarisKeyGate(client) }
+            .commands { PolarisKeyCommands(client) }
+        Settings { PolarisKeySettingsPane(client) }
+    }
+}
+#endif
+```
+
+`PolarisKeySettingsPane` is one Settings tab, Account: the license, Devices, the version with **Check for Updates…**, the publisher's channel and automatic-update rows, the catalog's managed settings, and **Sign Out…** behind a confirmation. It takes `handlers:` (`KitSettingsHandlers`: `manage`, `autoUpdate`, `selectChannel`, `signedOut`), `options:` (`KitSettingsOptions`), a `cloudSync:` status line for the Cloud Sync row and a `checkForUpdates:` closure. `PolarisKeyCommands` adds **Check for Updates…** and **Manage License…** under About and **Sign Out…** after Settings…; it takes `theme:`, `handlers:` and `checkForUpdates:`. Both also take a `PolarisKeySettingsModel` you hold (`model:`), for previews.
+
+**Replace a device.** Set `KitGateHandlers.replaceDevice` to a closure that receives the chosen device's id, and the sign-in form lists your devices with Replace…. Without it the form offers the browser path.
+
+### Settings with other tabs
+
+Put the pane in your own `TabView`. **Manage License…** sets `PolarisKeySettingsRoute.shared.selection` to `PolarisKeySettingsPane.tag` before it opens Settings, so bind your selection to it. A Settings scene that holds only the pane needs nothing.
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUI
+import SwiftUI
+
+struct Preferences: View {
+    let client: PolarisKeyClient
+    @State private var route = PolarisKeySettingsRoute.shared
+
+    var body: some View {
+        TabView(
+            selection: Binding(
+                get: { route.selection ?? "general" },
+                set: { route.selection = $0 })
+        ) {
+            Text("General").tabItem { Text("General") }.tag("general")
+            PolarisKeySettingsPane(client)
+        }
+        .frame(width: 650)
+    }
+}
+#endif
+```
+
+### Updates on a Mac
+
+**Check for Updates…** goes to `PolarisKeyUpdateHook.present`. With no handler set, the pane and the menu check on the client and say "You're up to date" or what failed. Two ways to set it, and both keep Sparkle's feed, signature check and install.
+
+The kit's driver. Add the `PolarisKeyUpdateUI` product and pass `PolarisSparkleUserDriver` to `PolarisSparkle.start`. The driver draws Sparkle's flow in one utility window (permission, found, download, extracting, ready, up to date, and an error with Try Again), answers Sparkle only from a control the person pressed, and sets the hook itself. `PolarisSparkleUserDriver.Options` takes a theme and a window title; with `presentsWindow: false` you place `UpdateWindowView(model:)` yourself.
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUpdate
+import PolarisKeyUpdateUI
+
+@MainActor
+func startUpdates(_ client: PolarisKeyClient) async throws -> PolarisSparkle {
+    let driver = PolarisSparkleUserDriver(client: client)
+    return try await PolarisSparkle.start(client: client, userDriver: driver)
+}
+#endif
+```
+
+Your own `SPUUserDriver`. Pass it as `userDriver:`, and set the hook to start the check. A driver that adopts `PolarisSparkleUpdaterAware` is handed the updater.
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUI
+import PolarisKeyUpdate
+import Sparkle
+
+@MainActor
+func startUpdates(_ client: PolarisKeyClient, driver: any SPUUserDriver) async throws
+    -> PolarisSparkle
+{
+    let sparkle = try await PolarisSparkle.start(client: client, userDriver: driver)
+    PolarisKeyUpdateHook.present = { sparkle.updater.checkForUpdates() }
+    return sparkle
+}
+#endif
+```
+
+`PolarisSparkle.updater` is set on both paths; `controller` is `nil` when you pass a driver. Keep the returned object for the app's lifetime, and keep `SUPublicEDKey` in your `Info.plist` ([Swift SDK](/docs/build/sdks/swift/)).
+
+### Hosting in AppKit
+
+An AppKit app hosts the same views. Put the gate in an `NSHostingController` for the window's content. For the sign-in form as a sheet, host `SignInView` in its own window and call `beginSheet`; the SwiftUI `.polarisKeySignIn` modifier does the sizing for you, and here you size it. The form is 440 pt wide and as tall as its content.
+
+```swift
+#if os(macOS)
+import AppKit
+import PolarisKey
+import PolarisKeyUI
+import PolarisKeyUICore
+import SwiftUI
+
+@MainActor
+final class MainWindowController {
+    let model: PolarisKeyGateModel
+    let window: NSWindow
+
+    init(client: PolarisKeyClient) {
+        model = PolarisKeyGateModel(client: client)
+        let gate = PolarisKeyGate(model: model) { Text("Licensed") }
+        window = NSWindow(contentViewController: NSHostingController(rootView: gate))
+    }
+
+    /// The sign-in form as a sheet over the main window, from your own menu item.
+    func presentSignIn() {
+        var sheet: NSWindow?
+        let model = self.model
+        let window = self.window
+        let form = PolarisKeyScope(model: model) {
+            SignInView(model: model) {
+                if let sheet { window.endSheet(sheet) }
+            }
+        }
+        .frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
+        let host = NSHostingController(rootView: form)
+        host.sizingOptions = [.preferredContentSize]
+        let panel = NSWindow(contentViewController: host)
+        sheet = panel
+        model.route = .signIn
+        window.beginSheet(panel) { [model] _ in model.cancelSignIn() }
+    }
+}
+#endif
+```
+
+The gate model drives both windows, so a sign-in finished in the sheet clears the gate behind it. `cancelSignIn()` runs when the sheet ends however it ends. To show the Settings tab from AppKit, host `PolarisKeySettingsPane(client)` in a `TabView` in your preferences window controller.
+
 ## Headless
 
 `PolarisKeyUICore` imports no SwiftUI. `PolarisKeyGateModel` is an `@Observable` view of the client
@@ -202,6 +350,22 @@ table, the English override, then English.
 ## Baselines
 
 <KitCoverage kit="swiftui" />
+
+## States to handle
+
+Whatever the screens, the app has to handle these gate states, on a Mac as on an iPhone. If you draw your own UI, read each line from the copy catalog.
+
+<StatesToHandle
+  states={[
+    { state: "Offline grace", copyKey: "gate.grace" },
+    { state: "License expired", copyKey: "gate.expired" },
+    { state: "License revoked", copyKey: "gate.revoked" },
+    { state: "Activate", copyKey: "gate.needs-activation" },
+    { state: "Update required", copyKey: "gate.version-too-old" },
+    { state: "Build not on this license", copyKey: "gate.version-too-new" },
+    { state: "Channel not included", copyKey: "gate.channel-not-entitled" },
+  ]}
+/>
 
 ## Sample
 
