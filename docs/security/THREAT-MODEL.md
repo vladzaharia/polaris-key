@@ -2928,9 +2928,17 @@ generated copy (`ciPlane.generated.ts`, `prStores`) and runs `pkey storefront <s
 | Store      | Repository                           | A PR may write                                                     | Never                                                                   |
 | ---------- | ------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | `winget`   | `microsoft/winget-pkgs`, from a fork | `manifests/<p>/<Pub>/<Pkg>/<v>/<id>{,.installer,.locale.<l>}.yaml` | another repository; merge, close, delete a branch                       |
-| `homebrew` | the identity's `homebrewTap`         | `Casks/<homebrewCask>.rb`                                          | `homebrew/cask` or any `Homebrew` organisation repo                     |
+| `homebrew` | the identity's `homebrewTap`         | `Casks/<homebrewCask>.rb`; `Formula/<homebrewFormula>.rb` (A-29.1) | `homebrew/cask`, `homebrew/core` or any `Homebrew` organisation repo    |
 | `scoop`    | the identity's `scoopBucket`         | `bucket/<app>.json`                                                | a `ScoopInstaller` bucket                                               |
 | `flathub`  | `flathub/<identity appId>`           | `<appId>.{yml,yaml,json}`, `<appId>.metainfo.xml`                  | `flathub/flathub` (the first submission is a person's); closing the app |
+
+**Formula commands (A-29.1).** Homebrew adds `formula-pull-request` and `formula-status`: the same
+`pull-request` / `status` argv over `--formula <homebrewFormula>` (bound to the identity, name
+pattern without `..`), so the cask's argv is unchanged and older CLIs keep working. A path rule
+belongs to one command (`PrPathRule.command`): the formula command may write `Formula/<formula>.rb`
+only, the cask command `Casks/<cask>.rb` only, and a command that opens no pull request writes
+nothing (`prPathAllowed`, `core/storefront/prPlane.ts`, and its CLI copy). Natural key
+`pr:<formula>:<version>`. Reviewing this table row means reviewing that function.
 
 **New CI secret (owner decision 7).** `PKEY_PR_TOKEN`, a GitHub token held as a CI environment
 secret and never in the Worker: fine-grained, `contents:write` and `pull_requests:write` on the

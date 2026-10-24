@@ -155,6 +155,61 @@ export const HOMEBREW_INPUTS: PrInputs = base({
   selfUpdates: true,
 });
 
+const FORMULA_IDENTITY = {
+  platforms: ["macos", "linux"],
+  homebrewFormula: "diceroll-cli",
+  homebrewTap: "vlad/homebrew-games",
+};
+
+const tool = (
+  platform: string,
+  arch: string,
+  name: string,
+  c: string,
+): PrInputBuild => ({
+  platform,
+  arch,
+  name,
+  url: `${DIST}/blobs/sha256/${sha(c)}`,
+  sha256: sha(c),
+  size: 5_000_000,
+});
+
+/** A command-line tool: arm64 and x86_64 for macOS, one universal archive for Linux (A-29.3). */
+export const FORMULA_INPUTS: PrInputs = base({
+  store: "homebrew",
+  outlet: { id: "direct", kind: "direct", identity: FORMULA_IDENTITY },
+  release: {
+    releaseId: "app@1.2.0",
+    version: "1.2.0",
+    publishedAt: 1790000000,
+    builds: [
+      tool("macos", "arm64", "diceroll-1.2.0-macos-arm64.tar.gz", "d"),
+      tool("macos", "x86_64", "diceroll-1.2.0-macos-x86_64.tar.gz", "e"),
+      tool("linux", "universal", "diceroll-1.2.0-linux.zip", "f"),
+    ],
+  },
+});
+
+/** The same outlet declaring a cask too: two pull requests. */
+export const FORMULA_AND_CASK_INPUTS: PrInputs = base({
+  store: "homebrew",
+  outlet: {
+    id: "direct",
+    kind: "direct",
+    identity: { ...FORMULA_IDENTITY, homebrewCask: "diceroll" },
+  },
+  release: {
+    releaseId: "app@1.2.0",
+    version: "1.2.0",
+    publishedAt: 1790000000,
+    builds: [
+      ...HOMEBREW_INPUTS.release!.builds,
+      ...FORMULA_INPUTS.release!.builds,
+    ],
+  },
+});
+
 export const SCOOP_INPUTS: PrInputs = base({
   store: "scoop",
   outlet: { id: "direct", kind: "direct", identity: DIRECT_IDENTITY },

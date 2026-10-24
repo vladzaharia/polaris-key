@@ -24581,7 +24581,7 @@ var COMMANDS = [
       },
       {
         subs: STORE_SUBS,
-        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
+        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a .tar.gz or .zip build for macOS and Linux, and --command names its executable, default the formula's name), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
       },
       { text: CI_PARA }
     ],
@@ -43520,17 +43520,84 @@ var CI_PLANE = {
             ],
             confirm: "plain",
             why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          },
+          "formula-pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "the formula in the product's own tap; never homebrew/core, which has notability rules and needs the owner"
+          },
+          "formula-status": {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
           }
         }
       },
       commandOps: {
         "pull-request": ["uploadBuild", "release", "writeListingText"],
-        status: ["status"]
+        status: ["status"],
+        "formula-pull-request": ["uploadBuild", "release", "writeListingText"],
+        "formula-status": ["status"]
       },
       paths: [
         {
           template: "Casks/{cask}.rb",
           why: "the cask"
+        },
+        {
+          command: "formula-pull-request",
+          template: "Formula/{formula}.rb",
+          why: "the formula"
         }
       ],
       naturalKey: ["cask", "version"],
@@ -43554,6 +43621,44 @@ var CI_PLANE = {
           "--repo",
           "homebrew/homebrew-core",
           "--cask",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "Homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "formula-pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--cask",
+          "dice",
+          "--formula",
           "dice",
           "--version",
           "1.0.0"
@@ -43934,17 +44039,22 @@ function prParams(list2, command, argv2) {
   });
   return out;
 }
-function prPathAllowed(store, argv2, path32) {
-  if (path32.length > 512 || path32.includes("..") || path32.startsWith("/"))
+function prPathAllowed(store, argv2, path32, command = "pull-request") {
+  if (!prWritesFiles(command) || path32.length > 512 || path32.includes("..") || path32.includes("\\") || path32.startsWith("/"))
     return false;
-  const values = prParams(store.list, "pull-request", argv2);
+  const values = prParams(store.list, command, argv2);
   return store.paths.some(
-    (rule) => prPathPattern(rule.template, values)?.test(path32) ?? false
+    (rule) => (rule.command ?? "pull-request") === command && (prPathPattern(rule.template, values)?.test(path32) ?? false)
   );
+}
+function prWritesFiles(command) {
+  return command === "pull-request" || command === "formula-pull-request";
 }
 function prNaturalKey(store, command, argv2) {
   const values = prParams(store.list, command, argv2);
-  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  const [pkg, version] = (store.commandKeys?.[command] ?? store.naturalKey).map(
+    (k) => values[k]
+  );
   return pkg && version ? `pr:${pkg}:${version}` : null;
 }
 function prVerdict(store, pr) {
@@ -43972,9 +44082,9 @@ function checkPrCommand(store, command, argv2, identity) {
     `Refused by the PR plane's allow-list: ${store.list.tool} ${argv2.join(" ")} ${why[refusal]}.`
   );
 }
-function checkPrPaths(store, argv2, paths) {
+function checkPrPaths(store, argv2, paths, command = "pull-request") {
   for (const p of paths)
-    if (!prPathAllowed(store, argv2, p))
+    if (!prPathAllowed(store, argv2, p, command))
       throw new Error(
         `Refused by the PR plane: ${p} is not a path ${store.label}'s pull request may write (${store.paths.map((r) => r.template).join(", ")}).`
       );
@@ -44630,13 +44740,39 @@ function githubClient(o = {}) {
 
 // src/storefronts/homebrew.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function rubyString(s) {
-  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#\{/g, "\\#{").replace(/\n/g, "\\n")}"`;
+function homebrewKinds(i) {
+  const id = i.outlet.identity;
+  const kinds = [];
+  if (typeof id.homebrewCask === "string" && id.homebrewCask)
+    kinds.push("cask");
+  if (typeof id.homebrewFormula === "string" && id.homebrewFormula)
+    kinds.push("formula");
+  if (!kinds.length)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares neither homebrewCask nor homebrewFormula in .pkey/distribution.`
+    );
+  return kinds;
 }
+function rubyString(s) {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#(?=[{@$])/g, "\\#").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t").replace(new RegExp("\\p{Cf}", "gu"), "").replace(
+    /[\u0000-\u001f\u007f]/g,
+    (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`
+  )}"`;
+}
+var SHA256 = /^[0-9a-f]{64}$/;
+function plainHttps(u) {
+  if (!isHttps(u) || !URL_SAFE.test(u)) return false;
+  const url = new URL(u);
+  const authority = u.slice(u.indexOf("//") + 2).split(/[/?#]/)[0];
+  return !url.username && !url.password && !authority.includes("@");
+}
+var URL_SAFE = /^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
 function checkBuild(b) {
-  if (!isHttps(b.url))
-    throw new Error(`${b.name}: a cask needs an HTTPS URL (got ${b.url}).`);
-  if (!b.sha256)
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a cask needs a plain HTTPS URL (got ${b.url}).`
+    );
+  if (!b.sha256 || !SHA256.test(b.sha256))
     throw new Error(`${b.name}: the release records no SHA-256 for it.`);
   if (!/\.(dmg|zip)$/i.test(b.name))
     throw new Error(
@@ -44718,6 +44854,130 @@ function generateCask(i, o = {}) {
   if (i.selfUpdates) lines4.push("  auto_updates true", "");
   lines4.push(`  app ${rubyString(app)}`, "end", "");
   return { path: `Casks/${cask}.rb`, content: lines4.join("\n") };
+}
+var ARCHIVE = /\.(tar\.gz|zip)$/i;
+var FORMULA_NAME = /^(?!.*\.\.)[a-z0-9][a-z0-9.@+_-]{0,99}$/;
+var COMMAND_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$/;
+var SPDX = /^[A-Za-z0-9][A-Za-z0-9.+-]*(?: (?:AND|OR|WITH) [A-Za-z0-9][A-Za-z0-9.+-]*)*$/;
+function formulaClass(name) {
+  const cls = name.replace(/@/g, "-AT-").replace(/\+/g, "-x").split(/[-_.]+/).filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("");
+  if (!/^[A-Z][A-Za-z0-9]*$/.test(cls))
+    throw new Error(
+      `${name}: no Ruby class name for the formula (it must start with a letter).`
+    );
+  return cls;
+}
+function formulaSource(b) {
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a formula needs a plain HTTPS URL without credentials (got ${b.url}).`
+    );
+  if (!b.sha256 || !SHA256.test(b.sha256))
+    throw new Error(`${b.name}: the release records no SHA-256 for it.`);
+  return { url: b.url, sha256: b.sha256 };
+}
+var ARM = ["arm64", "aarch64"];
+var INTEL = ["x86_64", "x64"];
+var ANY = ["universal", "neutral"];
+function generateFormula(i, o = {}) {
+  const name = i.outlet.identity.homebrewFormula;
+  if (typeof name !== "string" || !name)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no homebrewFormula in .pkey/distribution.`
+    );
+  if (!FORMULA_NAME.test(name))
+    throw new Error(`homebrewFormula ${name} is not a Homebrew formula name.`);
+  const command = o.command ?? name;
+  if (command.includes("/") || command.includes("\\") || command.includes("..") || !COMMAND_NAME.test(command))
+    throw new UsageError(
+      `--command must be a bare file name, the executable in the archive (got ${command}).`
+    );
+  if (o.projectLicense !== void 0 && !SPDX.test(o.projectLicense))
+    throw new UsageError(
+      `--project-license must be an SPDX expression (got ${o.projectLicense}).`
+    );
+  const release = needRelease(i);
+  const candidates = release.builds.filter(
+    (b) => b.platform === "macos" || b.platform === "linux"
+  );
+  if (!candidates.length)
+    throw new Error(
+      `${release.version} has no macOS or Linux build on the ${i.outlet.id} outlet.`
+    );
+  const archives = candidates.filter((b) => ARCHIVE.test(b.name));
+  if (!archives.length)
+    throw new Error(
+      `${candidates.map((b) => b.name).join(", ")}: a formula installs a .tar.gz or .zip archive (a .dmg or .pkg is the cask's).`
+    );
+  const pick = (platform, archs) => archives.filter((b) => b.platform === platform && archs.includes(b.arch)).sort(
+    (a, b) => Number(/\.zip$/i.test(a.name)) - Number(/\.zip$/i.test(b.name))
+  )[0];
+  const stanza = (indent, b) => {
+    const src = formulaSource(b);
+    return [
+      `${indent}url ${rubyString(src.url)}`,
+      `${indent}sha256 ${rubyString(src.sha256)}`
+    ];
+  };
+  const blocks = [];
+  for (const [platform, block2] of [
+    ["macos", "on_macos"],
+    ["linux", "on_linux"]
+  ]) {
+    const any = pick(platform, ANY);
+    const arm = pick(platform, ARM);
+    const intel = pick(platform, INTEL);
+    if (!any && !arm && !intel) continue;
+    const body = [];
+    const a = any ?? arm;
+    const x = any ?? intel;
+    if (a) body.push("    on_arm do", ...stanza("      ", a), "    end");
+    if (x) body.push("    on_intel do", ...stanza("      ", x), "    end");
+    blocks.push(`  ${block2} do`, ...body, "  end", "");
+  }
+  const raw = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name).trim().replace(/\.$/, "").replace(/^(?:a|an|the)\s+/i, "");
+  const desc = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const lines4 = [
+    `class ${formulaClass(name)} < Formula`,
+    `  desc ${rubyString(desc)}`
+  ];
+  if (i.app.website) {
+    if (!isHttps(i.app.website))
+      throw new Error(`The listing's website is not an HTTPS URL.`);
+    lines4.push(`  homepage ${rubyString(i.app.website)}`);
+  }
+  lines4.push(`  version ${rubyString(release.version)}`);
+  if (o.projectLicense) lines4.push(`  license ${rubyString(o.projectLicense)}`);
+  lines4.push("");
+  if (i.channel === "stable")
+    lines4.push(
+      "  livecheck do",
+      `    url ${rubyString(i.links.downloadJson)}`,
+      "    strategy :json do |json|",
+      '      json.dig("release", "version")',
+      "    end",
+      "  end"
+    );
+  else
+    lines4.push(
+      "  livecheck do",
+      `    skip ${rubyString(`follows the ${i.channel} channel through pkey storefront homebrew pr`)}`,
+      "  end"
+    );
+  lines4.push("", ...blocks.slice(0, -1));
+  lines4.push(
+    "",
+    "  def install",
+    `    bin.install ${rubyString(command)}`,
+    "  end",
+    "",
+    "  test do",
+    `    assert_path_exists bin/${rubyString(command)}`,
+    "  end",
+    "end",
+    ""
+  );
+  return { path: `Formula/${name}.rb`, content: lines4.join("\n") };
 }
 
 // src/storefronts/run.ts
@@ -45253,7 +45513,13 @@ function identityString(i, field) {
     );
   return v;
 }
-function prArgv(store, i, command, version, o = {}) {
+function prCommandKey(command, kind) {
+  return kind === "formula" ? `formula-${command}` : command;
+}
+function prKinds(store, i) {
+  return store.store === "homebrew" ? homebrewKinds(i) : [null];
+}
+function prArgv(store, i, command, version, o = {}, kind) {
   switch (store.store) {
     case "winget":
       return [
@@ -45265,16 +45531,21 @@ function prArgv(store, i, command, version, o = {}) {
         "--version",
         version
       ];
-    case "homebrew":
+    case "homebrew": {
+      kind ??= homebrewKinds(i)[0];
       return [
         command,
         "--repo",
         identityString(i, "homebrewTap"),
-        "--cask",
-        identityString(i, "homebrewCask"),
+        kind === "formula" ? "--formula" : "--cask",
+        identityString(
+          i,
+          kind === "formula" ? "homebrewFormula" : "homebrewCask"
+        ),
         "--version",
         version
       ];
+    }
     case "scoop":
       return [
         command,
@@ -45297,9 +45568,9 @@ function prArgv(store, i, command, version, o = {}) {
       throw new Error(`${store.store} is not a PR-plane store.`);
   }
 }
-async function planPr(store, i, o, gh) {
+async function planPr(store, i, o, gh, kind = prKinds(store, i)[0] ?? null) {
   const version = needRelease(i).version;
-  const argv2 = prArgv(store, i, "pull-request", version, o);
+  const argv2 = prArgv(store, i, "pull-request", version, o, kind ?? void 0);
   const repo = argv2[2];
   let files;
   let warnings = [];
@@ -45316,10 +45587,16 @@ async function planPr(store, i, o, gh) {
       break;
     }
     case "homebrew": {
-      const cask = argv2[4];
-      files = [generateCask(i, o)];
-      title = `${cask} ${version}`;
-      branch = `pkey/${cask}-${version}`;
+      const name = argv2[4];
+      if (kind === "formula") {
+        files = [generateFormula(i, o)];
+        title = `${name} ${version} (formula)`;
+        branch = `pkey/f/${name}-${version}`;
+      } else {
+        files = [generateCask(i, o)];
+        title = `${name} ${version}`;
+        branch = `pkey/${name}-${version}`;
+      }
       break;
     }
     case "scoop": {
@@ -45362,6 +45639,7 @@ async function planPr(store, i, o, gh) {
   return {
     store,
     repo,
+    command: prCommandKey("pull-request", kind),
     argv: argv2,
     version,
     branch,
@@ -45459,13 +45737,27 @@ async function runPrStep(o) {
   );
   const gh = gitHub(o, !o.dryRun);
   const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
-  const plan = await planPr(store, inputs, o.generator, canRead ? gh : null);
-  checkPrCommand(store, "pull-request", plan.argv, inputs.outlet.identity);
-  checkPrPaths(
-    store,
-    plan.argv,
-    plan.files.map((f) => f.path)
-  );
+  const plans = [];
+  for (const kind of prKinds(store, inputs))
+    plans.push(
+      await planPr(store, inputs, o.generator, canRead ? gh : null, kind)
+    );
+  for (const plan of plans) {
+    checkPrCommand(store, plan.command, plan.argv, inputs.outlet.identity);
+    checkPrPaths(
+      store,
+      plan.argv,
+      plan.files.map((f) => f.path),
+      plan.command
+    );
+  }
+  const outcomes = [];
+  for (const plan of plans)
+    outcomes.push(await runPlan(o, store, inputs, gh, plan));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first, also: rest } : first;
+}
+async function runPlan(o, store, inputs, gh, plan) {
   const u = (v) => untrusted(v, o.env);
   for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}
 `);
@@ -45501,7 +45793,7 @@ async function runPrStep(o) {
     type: "store-step",
     store: store.store,
     op: "release",
-    command: "pull-request",
+    command: plan.command,
     argv: plan.argv,
     outlet: inputs.outlet.id,
     runId,
@@ -45509,7 +45801,7 @@ async function runPrStep(o) {
     ...runUrl ? { runUrl } : {},
     ...extra
   });
-  const key = prNaturalKey(store, "pull-request", plan.argv);
+  const key = prNaturalKey(store, plan.command, plan.argv);
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
     o.stdout.write(
@@ -45631,14 +45923,29 @@ async function runPrStatus(o) {
     o.channel,
     o.outlet
   );
+  const outcomes = [];
+  for (const kind of prKinds(store, inputs))
+    outcomes.push(await statusOne(o, store, inputs, kind));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first, also: rest } : first;
+}
+async function statusOne(o, store, inputs, kind) {
   const version = o.version ?? needRelease(inputs).version;
-  const argv2 = prArgv(store, inputs, "status", version, o.generator);
-  checkPrCommand(store, "status", argv2, inputs.outlet.identity);
+  const argv2 = prArgv(
+    store,
+    inputs,
+    "status",
+    version,
+    o.generator,
+    kind ?? void 0
+  );
+  const command = prCommandKey("status", kind);
+  checkPrCommand(store, command, argv2, inputs.outlet.identity);
   const gh = gitHub(o, false);
   const repo = argv2[2];
-  const key = prNaturalKey(store, "status", argv2);
+  const key = prNaturalKey(store, command, argv2);
   const pkg = argv2[4] ?? "";
-  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${pkg}-${version}`;
+  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${kind === "formula" ? "f/" : ""}${pkg}-${version}`;
   const headOwner = store.fork ? o.env.PKEY_PR_TOKEN ? await gh.login() : null : repo.split("/")[0];
   const candidates = [
     ...headOwner ? await gh.pullsFromHead(repo, `${headOwner}:${branch}`) : [],
@@ -45659,7 +45966,7 @@ async function runPrStatus(o) {
         type: "store-step",
         store: store.store,
         op: "status",
-        command: "status",
+        command,
         argv: argv2,
         outlet: inputs.outlet.id,
         runId: stepRunId(o.env),
@@ -45673,6 +45980,7 @@ async function runPrStatus(o) {
   const plan = {
     store,
     repo,
+    command,
     argv: argv2,
     version,
     branch,
