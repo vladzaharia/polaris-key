@@ -4,8 +4,8 @@
  *
  * The step names are the Operations page's and the tests' keys; they are unchanged from when
  * `scheduled.ts` ran them inline. Order inside a slot is the order the steps ran in then: the
- * erasure ledger is replayed BEFORE the legacy catch-up (I-11), so a restored account is
- * re-erased before the catch-up looks at it.
+ * erasure ledger is replayed first (I-11), so a restored account is re-erased before anything
+ * else in the slot reads it.
  */
 
 import type {

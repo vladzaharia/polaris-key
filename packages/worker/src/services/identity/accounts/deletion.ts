@@ -205,8 +205,7 @@ function failure(step: string, e: unknown): ErasureFailure {
  *   3. ERASED. Only when every hook succeeded, one atomic batch removes every row naming the
  *      person: links, subjects (ALL of the account's, so a subject minted during the run is not
  *      orphaned) and aliases, grants, terms acceptances, passkeys, library entries,
- *      the account, and the pre-I-05 `portal_*` rows (so a Worker rollback cannot resurrect
- *      them), then the progress row. The product `audit` rows that name the person as actor
+ *      the account, then the progress row. The product `audit` rows that name the person as actor
  *      (`accountAudit.ts`) are anonymised first in the same batch, ahead of the statements that
  *      delete the links and detach the licences their scope reads. What remains is an id-only
  *      tombstone and one `portal.account.delete` receipt with no email, name or product.
@@ -244,7 +243,7 @@ async function reapplyErasure(
 /**
  * One bounded pass over the erasure ledger (`erasureLedger.ts`): the D1 tombstone of every erased
  * account is recreated, an account a restore brought back is re-erased, and an erasure tombstone
- * the ledger lacks is copied into it. Run by both cron ticks, before the legacy catch-up.
+ * the ledger lacks is copied into it. Run by both cron ticks.
  */
 export function replayErasures(ctx: AccountContext): Promise<ReplayResult> {
   return replayErasureLedger(ctx, (accountId) =>

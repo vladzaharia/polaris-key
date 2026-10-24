@@ -73,9 +73,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Precondition query clean in production
-- [ ] No portal\_\* reference remains
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [ ] Precondition query clean in production (the script and RUNBOOK gate ship in I-28.1/.4; the production zero reading is the lead's, recorded under RUNBOOK Entries before release N)
+- [x] No portal\_\* reference remains (`RETIRED_TABLES` plus the `tableCrossings` assertion, I-28.3/.4)
+- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches (slices ran the scoped gate under the owner test budget; CI runs the full matrix).
 
 ## Verify
 

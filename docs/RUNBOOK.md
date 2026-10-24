@@ -1992,13 +1992,13 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 | Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Standalone licensing tables | The lead  | A second release drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Portal tables               | The lead  | Release N: `scripts/portal-contract-check.sql` reads four zeros before the release, and the guarded purge (`0141_a_portal_contract_purge`) empties the four `portal_*` tables. A second release (I-28b) drops them once all four are still empty in production and **14 days** after release N is live.                                                                                                                      |
+| Portal tables               | The lead  | Release N: `scripts/portal-contract-check.sql` reads four zeros before the release, and the guarded purge (`0141_a_portal_contract_purge`) empties the four `portal_*` tables. A second release (I-28b) drops them once all four are still empty in production and **14 days** after release N is live.                                                                                                                                                                                                                                                                      |
 | Credential tables           | The lead  | A second release drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Distribution listing        | The lead  | Phase 1: the model is the truth and `dist_listing` the fallback. A production dry run of `distribution.listing-truth` reports no missing and no refused field (or each listed one is accepted), and it is applied. A second release (phase 2) stops reading and writing `dist_listing` and drops it after the check. Then prune the ledger `dist_listing_truth_moves` (it holds listing text and contact emails until then).                                                                                                                                                 |
 | Storefront close-out        | The lead  | No code reads `discover_enabled`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Product admin group         | The lead  | Nothing reads `products.admin_group` and every `adminGroup` offer has an outcome. A second release drops it once the previous deploy is the one that stopped the reads or later.                                                                                                                                                                                                                                                                                                                                                                                             |
 | Legacy settings stores      | The lead  | Contract done in ST-25.3 (migration `0140_retire_legacy_settings`, number assigned at merge): drops `lazy_delta_settings`, `email_product_caps`, `products.branding_json` and the five retired `portal_product_settings` switch columns. Fact: production's rollback targets v0.9.15 and v0.9.16 both contain ST-11 (`f8a95bd96`) and ST-14 (`b8c69e523`), so neither reads the dropped objects. Down script `scripts/rollback/0140_retire_legacy_settings.down.sql` recreates them empty. `portal_enabled`, `key_reissue_enabled` and `claim_by_key` stay one more release. |
-| Portal-to-account catch-up  | The lead  | No Worker built before the account model can still serve. Then `services/identity/accounts/legacy.ts` goes (the `LICENSE_WRITE_SEAMS` row names this ledger).                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Portal-to-account catch-up  | The lead  | Closed by I-28 (release N): `services/identity/accounts/legacy.ts`, its nightly step and the `LICENSE_WRITE_SEAMS` row are gone. The lead records the Entry at merge.                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Durations and subscriptions | The lead  | None. It has no contract step, and its down script only reports.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ### Rollback ladder (licensing)
@@ -2172,6 +2172,17 @@ npx wrangler d1 execute <DATABASE> --env <ENV> --remote --file packages/worker/s
 
 The Time Travel bookmark from step 3 keeps the purged end-user data (emails, identities, links) for its retention window. An erasure request received in that window is still held there: do not restore to that bookmark without re-running the erasure afterwards (see Account erasure ledger and D1 restore).
 
+**The zero reading is a hard gate.** The release that carries I-28 does not deploy until the check
+reads 0 on all four counts. The Worker of that release has no portal-to-account catch-up and no
+settlement of a pre-existing unsettled licence link (the revoke, email and audit it ran are gone);
+the zero reading is what guarantees there is nothing left for either to do.
+
+If the purge was skipped (a non-zero count at deploy), erasure no longer clears
+`portal_account_emails` or `portal_account_identities`: an erased person's email and OIDC subject
+stay in those two tables until the purge empties them or I-28b drops them. Do not leave it so:
+re-run the check, send the leftovers to the lead to settle, then redeploy so the guarded purge
+runs, and read the four tables at 0 again (step 4). Until then the 14 days do not start.
+
 **Roll back.** Roll the Worker back, then run `scripts/rollback/0068_accounts.down.sql`: with the
 tables empty it rebuilds all four exactly from the account model.
 
@@ -2236,16 +2247,16 @@ request-time fence" below; none applies it.) The ticks are:
 
 - every 15 minutes, on the connector tick (`*/15 * * * *`), as the first of the erasure steps,
   before the due-deletion and retry sweeps;
-- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge and before the legacy
-  `accountsCatchUp`.
+- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge, in the early slot of the
+  services' maintenance.
 
 One pass reads the ledger in key order, in pages of 1,000 keys, at most 5 pages (5,000 ids) a
 pass; a longer ledger is continued from where the last pass stopped (a KV resume marker that
 expires on its own; losing it only restarts the walk). For each page, in this order:
 
 1. **Tombstones.** An id-only `account_tombstones` row is created for every listed id that has none
-   (`INSERT OR IGNORE`: an existing row is never rewritten), so the legacy catch-up cannot copy the
-   account back.
+   (`INSERT OR IGNORE`: an existing row is never rewritten), so nothing can recreate the account
+   under that id. (The portal-to-account catch-up that once copied accounts back is gone since I-28.)
 2. **Re-erasure.** Every listed account that is live again (`status <> 'deleted'`) is handed to the
    erasure state machine, at most **25 accounts per pass**; the rest are counted as deferred, and a
    pass that stopped at its page bound with accounts deferred resumes from the same point, so they

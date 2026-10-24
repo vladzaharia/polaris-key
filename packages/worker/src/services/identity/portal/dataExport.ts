@@ -28,10 +28,10 @@
  *   other people  no operator or developer identity (who revoked a token, who relinked a
  *                 licence), no other account's row, no relink history (a developer's record).
  *   machinery     the account-join undo snapshot (it copies the absorbed account's passkey user
- *                 handle), the pre-I-05 `portal_*` mirrors (the same data again), the legacy
- *                 `accounts.terms_json`, device fingerprints and software facts (hashed hardware
- *                 components the developer's product keeps for licence enforcement), store
- *                 purchase records, a licence's `overrides_json` and `groups_json`, and the
+ *                 handle), the retired pre-I-05 `portal_*` tables (no code reads them since
+ *                 I-28), the legacy `accounts.terms_json`, device fingerprints and software
+ *                 facts (hashed hardware components the developer's product keeps for licence
+ *                 enforcement), store purchase records, a licence's `overrides_json` and `groups_json`, and the
  *                 developer's own audit log.
  *
  * Secrets that live in a product's registered stores stay sealed: a store's `export` names a

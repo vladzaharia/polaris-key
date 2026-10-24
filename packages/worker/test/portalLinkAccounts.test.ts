@@ -19,6 +19,7 @@ import {
 } from "../src/core/accounts/accountSubjects.js";
 import {
   ACCOUNT_COLUMNS,
+  DORMANT_ACCOUNT_COLUMNS,
   MERGE_UNDO_SECONDS,
   pruneAccountMerges,
   undoMerge,
@@ -1180,7 +1181,9 @@ describe("the undo snapshot covers every column it restores", () => {
       const rows = await w.db.all<{ name: string }>(
         `SELECT name FROM pragma_table_info('${table}')`,
       );
-      expect([...columns].sort()).toEqual(rows.map((r) => r.name).sort());
+      expect([...columns, ...DORMANT_ACCOUNT_COLUMNS].sort()).toEqual(
+        rows.map((r) => r.name).sort(),
+      );
     },
   );
 });

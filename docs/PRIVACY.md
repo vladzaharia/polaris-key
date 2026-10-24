@@ -319,7 +319,7 @@ What the sections above do not promise, stated plainly:
   only the device label.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
   deleted after 90 days; an erasure tombstone holds only the account id and is kept, so an erased
-  account is never recreated by the legacy catch-up. Subject events (`subject_events`) are deleted
+  account is never recreated. Subject events (`subject_events`) are deleted
   after 180 days.
 - **Store connector events** (raw Apple payloads, Play notifications) are deleted after 30 days.
   Purchase records keep a hashed purchase key, but the re-check ids (a Play purchase token, a
@@ -353,7 +353,7 @@ What the sections above do not promise, stated plainly:
   and starts the resumable hard-erasure state machine (`account_erasures`); it deletes
   account-linked data and the request's account activity, retains only the id-only erasure
   tombstone and final receipt, and detaches licenses. The tombstone is kept and reapplied after a
-  D1 restore so legacy catch-up cannot recreate the account, and a restored deleted account is
+  D1 restore so nothing can recreate the account, and a restored deleted account is
   refused at sign-in and on every request before that cleanup erases it again. Data is not
   encrypted per person (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to
   30 days.
@@ -390,7 +390,7 @@ twice. The steps that delete or scrub personal data:
 | Lazy-delta demand rows                                                                                                                            | 30 days after the device last reported the pair                                                                                                                                       |
 
 The same job also prunes housekeeping tables (operations job runs and heartbeats, the refusal log,
-CI credentials, registry tokens, the blob collector) and runs the account catch-up and erasure
+CI credentials, registry tokens, the blob collector) and runs the account erasure
 steps described above.
 
 ## Per-product opt-out
