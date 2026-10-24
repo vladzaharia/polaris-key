@@ -63,8 +63,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] A CLI release opens a formula PR
-- [ ] Linux shows Homebrew only for formula-fit products
+- [x] A CLI release opens a formula PR (A-29.3: `generateFormula`; `planPr`/`prArgv` plan the cask, the formula or both)
+- [x] Linux shows Homebrew only for formula-fit products
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
