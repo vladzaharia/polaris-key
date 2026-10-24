@@ -1,0 +1,16 @@
+[package]
+name = "tidewater-studio"
+version = "1.0.0"
+edition = "2021"
+description = "Reference shell for the Tidewater Studio recipe. Not compiled in CI."
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "=2.7.2", features = [] }
+
+# Exact versions, each at least 14 days old when pinned. No shell, fs or http plugin.
+[dependencies]
+tauri = { version = "=2.12.3", features = [] }
+tauri-plugin-opener = "=2.7.1"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"

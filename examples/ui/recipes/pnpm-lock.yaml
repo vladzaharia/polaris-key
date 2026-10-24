@@ -42,6 +42,12 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  byo-design-system:
+    devDependencies:
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)
+
   htmx:
     dependencies:
       htmx.org:
@@ -87,6 +93,19 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: 7.3.1
         version: 7.3.1(svelte@5.57.2)(vite@8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1))
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)
+
+  tauri:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: 2.12.3
+        version: 2.12.3
+      '@tauri-apps/plugin-opener':
+        specifier: 2.7.1
+        version: 2.7.1
+    devDependencies:
       vite:
         specifier: 8.3.4
         version: 8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)
@@ -1673,6 +1692,12 @@ packages:
     peerDependencies:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
+
+  '@tauri-apps/api@2.12.3':
+    resolution: {integrity: sha512-9s0PKw0p4r3kFq92jhpivYSp+cSht15o0gXpZxuQd0+dV9KCexEVkNaLELVoLdJWyoH4KlfQo5h3W2LIM8siJg==}
+
+  '@tauri-apps/plugin-opener@2.7.1':
+    resolution: {integrity: sha512-XkXdt30rontti9TII/gBBxFRXWfj8DiprFW7RgBFRBj1OhdfjBNVcFqSEWkkZ4hXafHnuEnB7F1sFsmu6uyywQ==}
 
   '@tufjs/canonical-json@2.0.0':
     resolution: {integrity: sha512-yVtV8zsdo8qFHe+/3kw81dSLyF7D576A5cCFCi4X7B39tWT7SekaEFUnvnWJHz+9qO7qJTah1JbrDjWKqFtdWA==}
@@ -4706,6 +4731,12 @@ snapshots:
       svelte: 5.57.2
       vite: 8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)
       vitefu: 1.1.3(vite@8.3.4(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1))
+
+  '@tauri-apps/api@2.12.3': {}
+
+  '@tauri-apps/plugin-opener@2.7.1':
+    dependencies:
+      '@tauri-apps/api': 2.12.3
 
   '@tufjs/canonical-json@2.0.0': {}
 
