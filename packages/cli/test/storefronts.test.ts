@@ -346,7 +346,7 @@ describe("the itch.io and Snap command plans", () => {
     );
   });
 
-  it("keeps the CI token and OIDC request variables from the vendor tool", () => {
+  it("keeps the CI token, OIDC request variables and the Action's inputs from the vendor tool", () => {
     expect(
       toolEnv({
         PATH: "/usr/bin",
@@ -354,6 +354,9 @@ describe("the itch.io and Snap command plans", () => {
         PKEY_TOKEN: "t",
         ACTIONS_ID_TOKEN_REQUEST_URL: "u",
         ACTIONS_ID_TOKEN_REQUEST_TOKEN: "r",
+        "INPUT_RELEASE-KEY": "-----BEGIN PRIVATE KEY-----",
+        "INPUT_CONTENT-KEY": "c",
+        INPUT_ARGS: "--dir dist",
       }),
     ).toEqual({ PATH: "/usr/bin", BUTLER_API_KEY: "k" });
   });

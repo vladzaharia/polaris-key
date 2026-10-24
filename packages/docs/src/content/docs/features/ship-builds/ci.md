@@ -75,16 +75,16 @@ jobs:
 Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
-| Input               | Default               | Meaning                                                                                                                      |
-| ------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `command`           | `release publish`     | The `pkey` command to run; another is `assets push` or `channel sync`.                                                       |
-| `args`              |                       | The command's flags, split on whitespace and newlines. Quotes group; there is no shell.                                      |
-| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                         |
-| `content-key`       |                       | A delegated content key's PEM, for a data-only pack release.                                                                 |
-| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                      |
-| `working-directory` | the workspace         | Where the command runs.                                                                                                      |
-| `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                       |
-| `channels`          | `auto`                | `auto` runs `pkey channel sync` once after a successful app publish; a pack or package publish never syncs. `none` skips it. |
+| Input               | Default               | Meaning                                                                                                                                                                                                        |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `command`           | `release publish`     | The `pkey` command to run; another is `assets push` or `channel sync`.                                                                                                                                         |
+| `args`              |                       | The command's flags, split on whitespace and newlines. Quotes group; there is no shell. Never put untrusted text in it, such as a pull request title: a flag like `--base-url` would redirect the job's token. |
+| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                                                                                                           |
+| `content-key`       |                       | A delegated content key's PEM, for a data-only pack release.                                                                                                                                                   |
+| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                                                                                                        |
+| `working-directory` | the workspace         | Where the command runs.                                                                                                                                                                                        |
+| `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                                                                                                         |
+| `channels`          | `auto`                | `auto` runs `pkey channel sync` once after a successful app publish; a pack or package publish never syncs. `none` skips it.                                                                                   |
 
 The product comes from `.pkey/product`. Every flag of `pkey release publish` goes in `args`:
 `--tag`, `--version`, `--channel`, `--deliverable`, `--dir`, `--source`, `--meta`,

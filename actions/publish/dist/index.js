@@ -46986,7 +46986,7 @@ async function runFileChecks(step, cwd) {
 function toolEnv(env) {
   const out = {};
   for (const [k, v] of Object.entries(env))
-    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_"))
+    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_") && !k.startsWith("INPUT_"))
       out[k] = v;
   return out;
 }
