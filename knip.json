@@ -21,7 +21,8 @@
         "tools/**/*.test.mjs",
         "tools/corpus/*.ts"
       ],
-      "project": ["tools/**/*.{ts,mjs}"]
+      "project": ["tools/**/*.{ts,mjs}"],
+      "ignoreDependencies": ["jscpd"]
     },
     "packages/worker": {
       "entry": [
