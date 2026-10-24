@@ -301,6 +301,8 @@ export const GENERATORS: Generator[] = [
     inputs: [
       "packages/docs/scripts/gen-reference.mjs",
       "packages/docs/scripts/console-nav.mjs",
+      "packages/docs/help-messages.json",
+      "actions/publish/action.yml",
       "packages/admin/src/console/nav.ts",
       "packages/worker/src/**",
       "packages/worker/migrations/**",
@@ -313,7 +315,7 @@ export const GENERATORS: Generator[] = [
       "conformance/transcripts/**",
     ],
     outputs: [
-      "packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,parity,routes,validation-codes}.mdx",
+      "packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,github-action,parity,routes,validation-codes}.mdx",
       "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
       "packages/docs/src/content/docs/contribute/data-model.mdx",
       "packages/docs/src/content/docs/operate/console/tour.mdx",

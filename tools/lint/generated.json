@@ -34,7 +34,7 @@
     "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
     "packages/docs/src/content/docs/reference/roles.mdx",
     "packages/docs/src/content/docs/reference/settings.mdx",
-    "packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,parity,routes,validation-codes}.mdx",
+    "packages/docs/src/content/docs/reference/{api-names,config-entry,error-codes,github-action,parity,routes,validation-codes}.mdx",
     "packages/docs/src/lib/features.generated.ts",
     "packages/sdk-node/src/cli/tokens.generated.ts",
     "packages/sdk-node/src/constants.generated.ts",

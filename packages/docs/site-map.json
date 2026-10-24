@@ -1063,15 +1063,6 @@
       "pri": "P1"
     },
     {
-      "path": "reference/github-action",
-      "type": "reference",
-      "title": "GitHub Action",
-      "description": "The publish Action's inputs and outputs, generated from action.yml.",
-      "nearest": "/docs/reference/",
-      "package": "DOC-12a",
-      "pri": "P1"
-    },
-    {
       "path": "reference/compatibility",
       "type": "reference",
       "title": "Compatibility and versions",
