@@ -193,7 +193,7 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
-/** `productBranding` read for the listing fields it may carry; today's Worker sends null. */
+/** The listing fields of a presentation, validated: only well-formed values survive. */
 export function readPresentation(branding: unknown): Presentation {
   const b =
     branding && typeof branding === "object"
@@ -251,7 +251,7 @@ export function mediaUrl(v: string | null | undefined): string | null {
     : null;
 }
 
-/** The server-side library's presentation (PX-W1), validated like the branding fallback. */
+/** The server-side library's presentation (PX-W1), validated by `readPresentation`. */
 export function presentationFrom(item: PortalPresentation): Presentation {
   const base = readPresentation({
     developerName: item.developerName,
