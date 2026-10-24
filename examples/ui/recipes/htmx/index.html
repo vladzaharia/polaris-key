@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tidewater Studio</title>
+    <link rel="stylesheet" href="./src/app.css" />
+    <script type="module" src="./src/main.js"></script>
+  </head>
+  <body>
+    <pk-gate>
+      <main>
+        <h1>Tidewater Studio</h1>
+        <p>The license holds. This is the app.</p>
+        <button id="refresh" type="button">Refresh</button>
+        <section
+          id="recent"
+          aria-live="polite"
+          hx-get="./recent.html"
+          hx-trigger="load, click from:#refresh"
+          hx-swap="innerHTML"
+        >
+          Loading...
+        </section>
+      </main>
+    </pk-gate>
+  </body>
+</html>
