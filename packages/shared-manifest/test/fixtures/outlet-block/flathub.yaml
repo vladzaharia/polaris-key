@@ -2,5 +2,5 @@ outlets:
   # Flathub
   flathub:
     kind: flathub
-    # Steam app id, or the Flatpak application id for Flathub.
+    # Flatpak application id, like com.example.App.
     appId: com.acme.Dice

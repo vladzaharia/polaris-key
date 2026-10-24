@@ -22,6 +22,7 @@ import {
   isOutletKind,
   type OutletIdentityField,
 } from "./distribution.js";
+import type { OutletKind } from "@polaris-key/protocol/distribution";
 
 /** The one-line comment each identity field carries in the YAML block. */
 export const OUTLET_FIELD_LABELS: Readonly<
@@ -39,20 +40,56 @@ export const OUTLET_FIELD_LABELS: Readonly<
   artifact: "Artifact id from .pkey/release.",
   marketplaceId: "AltStore PAL marketplace id.",
   packageName: "Android package name.",
-  tracks: "Channel to Play track.",
+  tracks: "Release track to Play track.",
   productId: "Microsoft Store product id.",
-  flights: "Channel to package flight.",
+  flights: "Release track to package flight.",
   packageFamilyName: "MSIX package family name, <Name>_<PublisherId>.",
   publisher: "MSIX Publisher, the signing certificate's subject (CN=...).",
-  updateSettings: "App Installer update behaviour.",
-  appId: "Steam app id, or the Flatpak application id for Flathub.",
-  branches: "Channel to Steam branch.",
+  updateSettings: "App Installer update behavior.",
+  appId: "App id.",
+  branches: "Release track to Steam branch.",
   target: "butler target, user/game.",
   gameId: "itch.io game id (digits).",
   name: "Snap name.",
-  channels: "Channel to the snap channel it may release to.",
+  channels: "Release track to the Snap channel it releases to.",
   packageIdentifier: "winget package identifier.",
 };
+
+/** Labels that differ per outlet kind; the rest read the same everywhere. */
+const KIND_FIELD_LABELS: Readonly<
+  Partial<Record<OutletKind, Partial<Record<OutletIdentityField, string>>>>
+> = {
+  steam: { appId: "Steam app id." },
+  flathub: { appId: "Flatpak application id, like com.example.App." },
+};
+
+/** The one-line comment for a field of a kind. */
+export function outletFieldLabel(
+  kind: OutletKind,
+  field: OutletIdentityField,
+): string {
+  return KIND_FIELD_LABELS[kind]?.[field] ?? OUTLET_FIELD_LABELS[field];
+}
+
+/** `direct` serves two package managers; each reads only its own fields. */
+const DIRECT_FIELDS: Readonly<Record<string, readonly OutletIdentityField[]>> =
+  {
+    homebrew: ["homebrewTap", "homebrewCask", "homebrewFormula"],
+    scoop: ["scoopBucket", "scoop"],
+  };
+
+/** The identity fields `channel add` takes for a channel, in write order. */
+export function channelIdentityFields(
+  channelId: string,
+): readonly OutletIdentityField[] {
+  const channel = channelFor(channelId);
+  const kind = channel.outlet.kind;
+  if (!isOutletKind(kind)) return [];
+  return (
+    (kind === "direct" ? DIRECT_FIELDS[channel.id] : undefined) ??
+    OUTLET_IDENTITY_FIELDS[kind]
+  );
+}
 
 export interface RenderOutletBlockOptions {
   format: "yaml" | "json";
@@ -99,7 +136,7 @@ export function outletBlockEntry(
       `outlet id "${id}" must match ${OUTLET_ID_PATTERN.source}.`,
     );
   }
-  const fields = OUTLET_IDENTITY_FIELDS[kind];
+  const fields = channelIdentityFields(channelId);
   const unknown = Object.keys(identity).filter(
     (k) => !(fields as readonly string[]).includes(k),
   );
@@ -113,7 +150,7 @@ export function outletBlockEntry(
   for (const field of fields) {
     if (identity[field] === undefined) continue;
     entry[field] = identity[field];
-    comments[field] = OUTLET_FIELD_LABELS[field];
+    comments[field] = outletFieldLabel(kind, field);
   }
   return { id, entry, label: channel.label, comments };
 }

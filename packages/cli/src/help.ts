@@ -9,13 +9,18 @@
  * pkey is a developer tool: its words are English and live here, not in the kit's copy catalog.
  */
 
-import { SERVICE_SLUGS } from "@polaris-key/manifest";
+import { CHANNELS, SERVICE_SLUGS, isOutletKind } from "@polaris-key/manifest";
 import { cellWidth, wrapSpans, type Line } from "@polaris-key/node/terminal";
 import { ADMIN_TOKEN_ENV, DEFAULT_BASE_URL } from "./bundle.js";
 import { CI_TOKEN_ENV } from "./oidc.js";
 import { LOGO_COLS, LOGO_STAR_GLYPH, logoLines, logoMode } from "./logo.js";
 import type { Term } from "./terminal.js";
 import { CLI_VERSION } from "./version.js";
+
+/** The channels `pkey channel add` takes: those with an outlet kind. */
+export const ADDABLE_CHANNELS: readonly string[] = CHANNELS.filter((c) =>
+  isOutletKind(c.outlet.kind),
+).map((c) => c.id);
 
 export type GroupId =
   | "account"
@@ -1048,42 +1053,47 @@ export const COMMANDS: readonly PkeyCommand[] = [
     name: "channel",
     group: "storefront",
     json: true,
-    summary: "Add a delivery channel to .pkey/distribution, and sync its steps",
+    context: ["product", "baseUrl"],
+    summary: "Declare a delivery channel and sync it from CI",
     rows: [
-      ["channel add <id>", "Append the channel to .pkey/distribution"],
-      ["channel sync", "Run the steps the declared channels have"],
+      ["channel add <id>", "Declare a channel in .pkey/distribution"],
+      [
+        "channel sync",
+        "Open the declared channels' store pull requests and upload their builds",
+      ],
     ],
     tree: { add: [], sync: [] },
     usage: [
-      "pkey channel add id [--field name=value ...] [--outlet-id id] [--json]",
-      "pkey channel sync [--channel c] [--version v] [--dir d] [--dry-run] [--json]",
+      "pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]",
     ],
     about: [
       {
         subs: ["add"],
         text:
-          "channel add writes one outlet, with a comment on every field, into " +
-          ".pkey/distribution (created when absent; comments already there stay). --field " +
-          "sets an identity field; a value starting [ or { is JSON. The outlet is named for " +
-          "the channel unless --outlet-id says otherwise. Nothing is written if the id is " +
-          "taken or .pkey/ would stop validating.",
+          "channel add declares one channel in .pkey/distribution, creating the file when " +
+          "absent and keeping the comments already there, with a comment on every field. " +
+          `Channels: ${ADDABLE_CHANNELS.join(", ")}. --field sets one of the channel's fields (a ` +
+          "value starting [ or { is JSON); the answer names the ones still unset. " +
+          "--outlet-id names the entry when you declare a channel twice. Nothing is " +
+          "written if the id is taken or .pkey/ would stop validating.",
       },
       {
         subs: ["sync"],
         text:
-          "channel sync plans one step per declared pr or ci channel (and F-Droid) and runs " +
-          "the pull-request ones as pkey storefront <store> pr does, reported into the " +
-          "store's ledger. With --dir it matches the build files against .pkey/release as " +
-          "release publish does and runs itch push once per matched platform (a zip, or an " +
-          "apk on android), snap upload for the .snap, and the F-Droid repository build for " +
-          "the apk (keystore in $PKEY_FDROID_KEYSTORE and $PKEY_FDROID_ALIAS, written to " +
-          "fdroid-repo); no fitting file is a skip. A channel whose secret is unset is " +
-          "skipped with the variable's name (PKEY_PR_TOKEN, BUTLER_API_KEY, " +
-          "SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS); a failed step fails the " +
-          "command after the rest ran. --channel is the release channel (default stable). " +
-          "--version is the --userversion itch records (default: the tag in GITHUB_REF_NAME); " +
-          "the pull-request steps use the channel's newest release. snap metadata stays a " +
-          "pre-build step. --dry-run runs nothing and prints each checked command line.",
+          "channel sync runs what each declared channel needs: a pull request for " +
+          "winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and " +
+          "with --dir an itch.io push per platform, a Snap upload and the F-Droid " +
+          "repository build, from the files .pkey/release maps (no fitting file is a " +
+          "skip). --channel is the release track (default stable); --version is what " +
+          "itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose " +
+          "credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, " +
+          "BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, " +
+          "PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first " +
+          "submission (pkey storefront flathub init). A failed step fails the command " +
+          "after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write " +
+          "in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs " +
+          "nothing and prints each checked command.",
       },
     ],
   },

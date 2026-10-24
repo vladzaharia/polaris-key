@@ -257,7 +257,7 @@ describe("pkey channel sync (A-25.3)", () => {
     expect(r.out).toContain(
       "opened https://github.com/microsoft/winget-pkgs/pull/9001",
     );
-    expect(r.out).toContain("1 done");
+    expect(r.out).toContain("diceroll · track stable: 1 done");
     const states = r.w.seen
       .filter((s) => s.url.endsWith("/distribution/report"))
       .map((s) => s.body.state);
@@ -296,7 +296,11 @@ describe("pkey channel sync (A-25.3)", () => {
     expect(r.out).toContain(
       "winget: opened https://github.com/microsoft/winget-pkgs/pull/9001",
     );
-    expect(r.out).toContain("1 done, 2 skipped, 1 failed");
+    // the verdict comes first, failures before the rest, and no closing count
+    expect(r.out.split("\n")[0]).toBe(
+      "✗  diceroll · track stable: 1 failed, 1 done, 2 skipped",
+    );
+    expect(r.out).not.toMatch(/^1 done/m);
   });
 
   it("--dry-run runs nothing", async () => {
@@ -305,7 +309,9 @@ describe("pkey channel sync (A-25.3)", () => {
     expect(r.code).toBe(0);
     expect(r.w.seen).toHaveLength(0);
     expect(r.out).toContain("flathub: would open a pull request");
-    expect(r.out).toContain("2 planned, 2 skipped");
+    expect(r.out.split("\n")[0]).toBe(
+      "◆  diceroll · track stable · dry run: 2 planned, 2 skipped",
+    );
   });
 
   it("--json: one object, the rows with their state and reason", async () => {
@@ -313,12 +319,18 @@ describe("pkey channel sync (A-25.3)", () => {
     const { PKEY_PR_TOKEN: _t, ...env } = ENV;
     const r = await sync(cwd, ["--json", "--dry-run"], { env });
     const j = JSON.parse(r.out);
+    expect(r.out.trimEnd().split("\n")).toHaveLength(1);
     expect(j).toMatchObject({
+      v: 1,
+      command: "channel sync",
+      event: "result",
       ok: true,
+      exit: 0,
       dryRun: true,
       product: "diceroll",
-      channel: "stable",
+      track: "stable",
     });
+    expect(j.channel).toBeUndefined();
     const by = (id: string) =>
       j.steps.find((x: { outlet: string }) => x.outlet === id);
     expect(j.steps.map((x: { outlet: string }) => x.outlet)).toEqual([
@@ -331,7 +343,6 @@ describe("pkey channel sync (A-25.3)", () => {
       outlet: "winget",
       channel: "winget",
       step: "pr",
-      store: "winget",
       state: "skipped",
       reason: "missing-secret",
       secret: "PKEY_PR_TOKEN",
@@ -347,7 +358,117 @@ describe("pkey channel sync (A-25.3)", () => {
     const cwd = await repo("outlets:\n  steam:\n    appId: 480\n");
     const r = await sync(cwd, []);
     expect(r.code).toBe(0);
-    expect(r.out).toContain("Nothing to sync");
+    expect(r.out).toBe(
+      "Nothing to sync. Sync covers winget, Homebrew, Scoop, Flathub, itch.io, Snap and F-Droid; add one with pkey channel add <id>.\n",
+    );
+  });
+
+  it("an option it does not know exits 2 before anything runs", async () => {
+    const cwd = await repo();
+    const r = await sync(cwd, ["--dryrun"]);
+    expect(r.code).toBe(2);
+    expect(r.err).toBe("✗  Unknown option --dryrun. Did you mean --dry-run?\n");
+    expect(r.out).toBe("");
+    expect(r.w.seen).toHaveLength(0);
+    const extra = await sync(cwd, ["extra"]);
+    expect(extra.code).toBe(2);
+    expect(extra.err).toContain("pkey channel sync");
+    expect(extra.err).not.toContain("channel add");
+  });
+
+  it("PKEY_BASE_URL and --product come from the context, like the other commands", async () => {
+    const cwd = await repo(
+      "outlets:\n  winget:\n    packageIdentifier: Vlad.Diceroll\n",
+    );
+    const w = world();
+    let out = "";
+    const code = await runPkey(["channel", "sync"], {
+      cwd,
+      stdout: { write: (s: string) => ((out += s), true) } as never,
+      stderr: { write: () => true } as never,
+      env: { ...ENV, PKEY_BASE_URL: BASE },
+      fetchImpl: w.fetchImpl,
+      sleep: async () => {},
+    });
+    expect(code, out).toBe(0);
+    expect(w.seen[0]!.url.startsWith(BASE)).toBe(true);
+    const other = await sync(cwd, ["--product", "elsewhere"]);
+    expect(other.code).toBe(2);
+    expect(other.err).toContain("--product elsewhere does not match");
+  });
+
+  it("--channel is the release track: a distribution channel id is refused", async () => {
+    const cwd = await repo();
+    const r = await sync(cwd, ["--channel", "itch", "--dry-run"]);
+    expect(r.code).toBe(2);
+    expect(r.err).toBe(
+      "--channel is the release track (stable, beta, dev, …); itch is a distribution channel.\n",
+    );
+    const beta = await sync(cwd, ["--channel", "beta", "--dry-run"]);
+    expect(beta.code).toBe(0);
+    expect(beta.out).toContain("diceroll · track beta · dry run");
+  });
+
+  it("a missing CI credential fails once, before any step, --dry-run too", async () => {
+    const cwd = await repo();
+    const { PKEY_CI_TOKEN: _t, ...env } = ENV;
+    for (const args of [[], ["--dry-run"]]) {
+      const r = await sync(cwd, args, { env });
+      expect(r.code).toBe(1);
+      expect(r.err).toBe(
+        "✗  No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.\n",
+      );
+      expect(r.out).toBe("");
+      expect(r.w.seen).toHaveLength(0);
+    }
+    const j = await sync(cwd, ["--json"], { env });
+    expect(JSON.parse(j.out)).toMatchObject({
+      ok: false,
+      exit: 1,
+      error: "no-ci-credential",
+    });
+    // the job's OIDC grant counts
+    const oidc = await sync(cwd, ["--dry-run"], {
+      env: {
+        ...env,
+        ACTIONS_ID_TOKEN_REQUEST_URL: "https://x.invalid/t",
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: "t",
+      },
+    });
+    expect(oidc.code).toBe(0);
+  });
+
+  it("with no manifest, --json prints validate's no-manifest shape", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "pkey-channel-sync-"));
+    const r = await sync(cwd, ["--json"]);
+    expect(r.code).toBe(1);
+    expect(JSON.parse(r.out)).toMatchObject({
+      ok: false,
+      exit: 1,
+      error: "no-manifest",
+    });
+  });
+
+  it("Flathub before its first submission is a skip with its fix, not a failure", async () => {
+    const cwd = await repo(
+      "outlets:\n  flathub:\n    appId: gg.vlad.Diceroll\n  winget:\n    packageIdentifier: Vlad.Diceroll\n",
+    );
+    const r = await sync(cwd, []);
+    expect(r.code, r.out + r.err).toBe(0);
+    expect(r.out).toContain(
+      "▲  flathub: skipped: the first submission is by hand (pkey storefront flathub init)",
+    );
+    expect(r.out.split("\n")[0]).toBe(
+      "✓  diceroll · track stable: 1 done, 1 skipped",
+    );
+  });
+
+  it("rows are named by channel, with the outlet id when it differs", async () => {
+    const cwd = await repo(
+      "outlets:\n  homebrew:\n    kind: direct\n    scoopBucket: vlad/bucket\n",
+    );
+    const r = await sync(cwd, ["--dry-run"]);
+    expect(r.out).toContain("scoop (homebrew): would open a pull request");
   });
 });
 

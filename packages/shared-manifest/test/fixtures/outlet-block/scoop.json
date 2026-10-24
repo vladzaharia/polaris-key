@@ -2,11 +2,10 @@
   "outlets": {
     "scoop": {
       "kind": "direct",
-      "platforms": ["windows"],
+      "scoopBucket": "acme/scoop-bucket",
       "scoop": {
         "bin": "dice.exe"
-      },
-      "scoopBucket": "acme/scoop-bucket"
+      }
     }
   }
 }

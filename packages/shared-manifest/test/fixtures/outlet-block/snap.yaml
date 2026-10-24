@@ -4,6 +4,6 @@ outlets:
     kind: snap
     # Snap name.
     name: dice
-    # Channel to the snap channel it may release to.
+    # Release track to the Snap channel it releases to.
     channels:
       stable: stable
