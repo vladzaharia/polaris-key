@@ -382,7 +382,6 @@ export const GENERATORS: Generator[] = [
       "packages/elements/src/**",
       "examples/**",
       "sdks/*/examples/**",
-      "sdks/swift/Examples/**",
       "sdks/kotlin/samples/**",
       "sdks/*/README.md",
       "packages/sdk-*/README.md",
