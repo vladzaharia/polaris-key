@@ -252,12 +252,13 @@ jobs:
           PKEY_PR_TOKEN: ${{ secrets.PKEY_PR_TOKEN }}
 ```
 
-| Store      | Repository                           | What the pull request writes                                                                                                                     |
-| ---------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `winget`   | `microsoft/winget-pkgs`, from a fork | The version's manifests at schema 1.12.0: version, installer (the release's HTTPS download URLs), default locale and one file per further locale |
-| `homebrew` | `direct.homebrewTap`                 | `Casks/<homebrewCask>.rb`: version, sha256, url, name, desc, homepage, livecheck, auto_updates, app                                              |
-| `scoop`    | `direct.scoopBucket`                 | `bucket/<app>.json`: the Scoop feed's manifest, with `checkver` and `autoupdate` pointing at the feed                                            |
-| `flathub`  | `flathub/<appId>`                    | The app repository's manifest with each `extra-data` source moved to the new build, and the MetaInfo                                             |
+| Store      | Repository                           | What the pull request writes                                                                                                                                                                                                                                                             |
+| ---------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `winget`   | `microsoft/winget-pkgs`, from a fork | The version's manifests at schema 1.12.0: version, installer (the release's HTTPS download URLs), default locale and one file per further locale                                                                                                                                         |
+| `homebrew` | `direct.homebrewTap`                 | `Casks/<homebrewCask>.rb`: version, sha256, url, name, desc, homepage, livecheck, auto_updates, app                                                                                                                                                                                      |
+| `homebrew` | `direct.homebrewTap`                 | `Formula/<homebrewFormula>.rb`: a `.tar.gz` or `.zip` for macOS and Linux (`on_macos`, `on_linux`; `on_arm`, `on_intel`), url, sha256, version, desc, homepage, livecheck, `bin.install` of `--command` (default the formula name). An outlet that declares both opens two pull requests |
+| `scoop`    | `direct.scoopBucket`                 | `bucket/<app>.json`: the Scoop feed's manifest, with `checkver` and `autoupdate` pointing at the feed                                                                                                                                                                                    |
+| `flathub`  | `flathub/<appId>`                    | The app repository's manifest with each `extra-data` source moved to the new build, and the MetaInfo                                                                                                                                                                                     |
 
 - **The repositories come from `.pkey/distribution`.** Set `homebrewTap` (`<owner>/homebrew-<name>`)
   and `scoopBucket` (`<owner>/<repo>`) on the `direct` distribution channel, `packageIdentifier` on the `winget`

@@ -32,7 +32,11 @@ import {
   oarsAttributes,
   updateFlathubManifest,
 } from "../src/storefronts/flathub.js";
-import { generateCask, rubyString } from "../src/storefronts/homebrew.js";
+import {
+  generateCask,
+  generateFormula,
+  rubyString,
+} from "../src/storefronts/homebrew.js";
 import type { GeneratedFile, PrInputs } from "../src/storefronts/prInputs.js";
 import {
   checkPrCommand,
@@ -51,6 +55,8 @@ import {
 import {
   BASE,
   FLATHUB_INPUTS,
+  FORMULA_AND_CASK_INPUTS,
+  FORMULA_INPUTS,
   HOMEBREW_INPUTS,
   SCOOP_INPUTS,
   WINGET_INPUTS,
@@ -287,6 +293,70 @@ describe("PR-plane generator rules (A-18i)", () => {
     expect(cask).toContain('app "Dice Roll.app"');
     expect(rubyString('a "#{x}" \\')).toBe('"a \\"\\#{x}\\" \\\\"');
     expect(() => generateCask(split, { app: "../evil.app" })).toThrow(/--app/);
+  });
+
+  it("A-29.3: the formula, mac and Linux, both arches and universal", async () => {
+    await golden("homebrew-formula", [generateFormula(FORMULA_INPUTS)]);
+    const mac = structuredClone(FORMULA_INPUTS);
+    mac.release!.builds = mac.release!.builds.filter(
+      (b) => b.platform === "macos",
+    );
+    const macRb = generateFormula(mac, { projectLicense: "MIT" }).content;
+    expect(macRb).toContain("  on_macos do\n    on_arm do\n");
+    expect(macRb).toContain('  license "MIT"\n');
+    expect(macRb).not.toContain("on_linux");
+    const linux = structuredClone(FORMULA_INPUTS);
+    linux.channel = "beta";
+    linux.release!.builds = linux.release!.builds.filter(
+      (b) => b.platform === "linux",
+    );
+    const linuxRb = generateFormula(linux, { command: "dice" }).content;
+    expect(linuxRb).toContain("  on_linux do\n    on_arm do\n");
+    expect(linuxRb).toContain("    on_intel do\n");
+    expect(linuxRb).not.toContain("on_macos");
+    expect(linuxRb).toContain('skip "follows the beta channel');
+    expect(linuxRb).toContain('bin.install "dice"');
+    expect(linuxRb).toContain("class DicerollCli < Formula");
+    // arm64 only: no on_intel block
+    const arm = structuredClone(mac);
+    arm.release!.builds = arm.release!.builds.filter((b) => b.arch === "arm64");
+    expect(generateFormula(arm).content).not.toContain("on_intel");
+  });
+
+  it("A-29.3: a dmg is refused for a formula, a traversal --command is refused, Ruby is escaped", () => {
+    const dmg = structuredClone(FORMULA_INPUTS);
+    dmg.release!.builds = HOMEBREW_INPUTS.release!.builds;
+    expect(() => generateFormula(dmg)).toThrow(/\.tar\.gz or \.zip/);
+    for (const bad of ["../x", "a/b", "..", "a\\b", "-x", ""])
+      expect(
+        () => generateFormula(FORMULA_INPUTS, { command: bad }),
+        bad,
+      ).toThrow(/--command/);
+    expect(() =>
+      generateFormula(FORMULA_INPUTS, { projectLicense: 'MIT"; system("x")' }),
+    ).toThrow(/SPDX/);
+    // an http URL, a bad hash and credentials never reach the Ruby
+    for (const patch of [
+      { url: "http://x.example.test/a.tar.gz" },
+      { url: 'https://x.example.test/a"#{`id`}.tar.gz' },
+      { url: "https://u:p@x.example.test/a.tar.gz" },
+      { sha256: "z".repeat(64) },
+      { sha256: "a".repeat(63) },
+      { sha256: null },
+    ]) {
+      const bad = structuredClone(FORMULA_INPUTS);
+      bad.release!.builds[0] = { ...bad.release!.builds[0]!, ...patch };
+      expect(() => generateFormula(bad), JSON.stringify(patch)).toThrow();
+    }
+    const evil = structuredClone(FORMULA_INPUTS);
+    evil.app.shortDescription = 'x"\n#{`id`} #@a #$b \\ \u0000';
+    evil.app.website = "https://ok.example.test/";
+    const rb = generateFormula(evil).content;
+    expect(rb).toContain('desc "X\\"\\n\\#{`id`} \\#@a \\#$b \\\\ \\x00"');
+    expect(rb.split("\n").filter((l) => l.includes("id`"))).toHaveLength(1);
+    expect(rubyString("#@a #$b #{c} #d")).toBe('"\\#@a \\#$b \\#{c} #d"');
+    evil.outlet.identity.homebrewFormula = 'x"; system("id")';
+    expect(() => generateFormula(evil)).toThrow(/formula name/);
   });
 
   it("A-20.6: a Windows arm64-only product's winget manifest has no x64 installer", () => {
@@ -966,6 +1036,60 @@ describe("pkey storefront <store> pr (A-18i)", () => {
     const r2 = await runPrStep(stepOptions("homebrew", same.fetchImpl).o);
     expect(r2.outcome).toBe("unchanged");
     expect(reports(same.seen)).toEqual([]);
+  });
+
+  it("A-29.3 homebrew: a formula outlet opens a formula PR; formula and cask open two", async () => {
+    const w = fakeWorld(FORMULA_INPUTS);
+    const r = await runPrStep(stepOptions("homebrew", w.fetchImpl).o);
+    expect(r.outcome).toBe("opened");
+    expect(r.plan.command).toBe("formula-pull-request");
+    expect(r.plan.argv).toEqual([
+      "pull-request",
+      "--repo",
+      "vlad/homebrew-games",
+      "--formula",
+      "diceroll-cli",
+      "--version",
+      "1.2.0",
+    ]);
+    expect(r.also).toBeUndefined();
+    const tree = w.seen.find((s) => s.url.endsWith("/git/trees"))!;
+    expect((tree.body.tree as { path: string }[]).map((t) => t.path)).toEqual([
+      "Formula/diceroll-cli.rb",
+    ]);
+    expect(reports(w.seen)[0]).toMatchObject({
+      command: "formula-pull-request",
+      state: "pending",
+    });
+    const both = fakeWorld(FORMULA_AND_CASK_INPUTS);
+    const r2 = await runPrStep(stepOptions("homebrew", both.fetchImpl).o);
+    expect(r2.plan.command).toBe("pull-request");
+    expect(r2.also).toHaveLength(1);
+    expect(r2.also![0]!.plan.command).toBe("formula-pull-request");
+    expect(r2.also![0]!.plan.branch).toBe("pkey/formula-diceroll-cli-1.2.0");
+    expect(
+      both.seen.filter((s) => s.method === "POST" && s.url.endsWith("/pulls")),
+    ).toHaveLength(2);
+  });
+
+  it("A-29.3 homebrew: the dry run writes Formula/<f>.rb without a GitHub token", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "pkey-pr-"));
+    const w = fakeWorld(FORMULA_AND_CASK_INPUTS);
+    const r = await runPrStep(
+      stepOptions("homebrew", w.fetchImpl, {
+        dryRun: true,
+        outDir: out,
+        env: { PKEY_CI_TOKEN: CI_TOKEN },
+      }).o,
+    );
+    expect(r.outcome).toBe("dry-run");
+    expect(
+      await readFile(path.join(out, "Formula/diceroll-cli.rb"), "utf8"),
+    ).toBe(generateFormula(FORMULA_AND_CASK_INPUTS, WINGET_OPTS).content);
+    expect(existsSync(path.join(out, "Casks/diceroll.rb"))).toBe(true);
+    expect(
+      w.seen.every((s) => !s.url.startsWith("https://api.github.com/")),
+    ).toBe(true);
   });
 
   it("flathub: updates the app repository's manifest and MetaInfo", async () => {

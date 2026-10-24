@@ -33,7 +33,13 @@ import {
   type FlathubOptions,
 } from "./flathub.js";
 import { githubClient, type GitHubClient, type GitHubPull } from "./github.js";
-import { generateCask, type HomebrewOptions } from "./homebrew.js";
+import {
+  generateCask,
+  generateFormula,
+  homebrewKinds,
+  type HomebrewKind,
+  type HomebrewOptions,
+} from "./homebrew.js";
 import {
   fetchPrInputs,
   needRelease,
@@ -93,6 +99,8 @@ export interface PrStepOptions {
 export interface PrPlan {
   store: PrPlaneStore;
   repo: string;
+  /** The allow-list command: `pull-request`, or Homebrew's `formula-pull-request`. */
+  command: string;
   /** The `pull-request` argv (the pseudo-tool `github` excluded). */
   argv: string[];
   version: string;
@@ -115,6 +123,22 @@ function identityString(i: PrInputs, field: string): string {
   return v;
 }
 
+/** The allow-list command of a step: Homebrew's formula pair has its own names. */
+export function prCommandKey(
+  command: "pull-request" | "status",
+  kind: HomebrewKind | null,
+): string {
+  return kind === "formula" ? `formula-${command}` : command;
+}
+
+/** The pull requests a run plans for the outlet: the cask, the formula, or both (Homebrew). */
+export function prKinds(
+  store: PrPlaneStore,
+  i: PrInputs,
+): (HomebrewKind | null)[] {
+  return store.store === "homebrew" ? homebrewKinds(i) : [null];
+}
+
 /** The argv of `command` (`pull-request` or `status`) for the inputs' outlet and `version`. */
 export function prArgv(
   store: PrPlaneStore,
@@ -122,6 +146,7 @@ export function prArgv(
   command: "pull-request" | "status",
   version: string,
   o: PrGeneratorOptions = {},
+  kind?: HomebrewKind,
 ): string[] {
   switch (store.store) {
     case "winget":
@@ -134,16 +159,21 @@ export function prArgv(
         "--version",
         version,
       ];
-    case "homebrew":
+    case "homebrew": {
+      kind ??= homebrewKinds(i)[0];
       return [
         command,
         "--repo",
         identityString(i, "homebrewTap"),
-        "--cask",
-        identityString(i, "homebrewCask"),
+        kind === "formula" ? "--formula" : "--cask",
+        identityString(
+          i,
+          kind === "formula" ? "homebrewFormula" : "homebrewCask",
+        ),
         "--version",
         version,
       ];
+    }
     case "scoop":
       return [
         command,
@@ -176,9 +206,10 @@ export async function planPr(
   i: PrInputs,
   o: PrGeneratorOptions,
   gh: GitHubClient | null,
+  kind: HomebrewKind | null = prKinds(store, i)[0] ?? null,
 ): Promise<PrPlan> {
   const version = needRelease(i).version;
-  const argv = prArgv(store, i, "pull-request", version, o);
+  const argv = prArgv(store, i, "pull-request", version, o, kind ?? undefined);
   const repo = argv[2]!;
   let files: GeneratedFile[];
   let warnings: string[] = [];
@@ -195,10 +226,16 @@ export async function planPr(
       break;
     }
     case "homebrew": {
-      const cask = argv[4]!;
-      files = [generateCask(i, o)];
-      title = `${cask} ${version}`;
-      branch = `pkey/${cask}-${version}`;
+      const name = argv[4]!;
+      if (kind === "formula") {
+        files = [generateFormula(i, o)];
+        title = `${name} ${version} (formula)`;
+        branch = `pkey/formula-${name}-${version}`;
+      } else {
+        files = [generateCask(i, o)];
+        title = `${name} ${version}`;
+        branch = `pkey/${name}-${version}`;
+      }
       break;
     }
     case "scoop": {
@@ -241,6 +278,7 @@ export async function planPr(
   return {
     store,
     repo,
+    command: prCommandKey("pull-request", kind),
     argv,
     version,
     branch,
@@ -359,9 +397,14 @@ export interface PrStepOutcome {
   plan: PrPlan;
   pr: GitHubPull | null;
   verdict: PrVerdict | null;
+  /** The further pull requests of an outlet that declares a cask and a formula (the first is above). */
+  also?: PrStepOutcome[];
 }
 
-/** `pkey storefront <store> pr`. */
+/**
+ * `pkey storefront <store> pr`. An outlet that declares both a Homebrew cask and a formula opens
+ * two pull requests, the cask's first; each is planned, admitted and ledgered on its own.
+ */
 export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
   const store = needStore(o.store);
   const inputs = await fetchPrInputs(
@@ -372,13 +415,35 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
   );
   const gh = gitHub(o, !o.dryRun);
   const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
-  const plan = await planPr(store, inputs, o.generator, canRead ? gh : null);
-  checkPrCommand(store, "pull-request", plan.argv, inputs.outlet.identity);
-  checkPrPaths(
-    store,
-    plan.argv,
-    plan.files.map((f) => f.path),
-  );
+  const plans: PrPlan[] = [];
+  for (const kind of prKinds(store, inputs))
+    plans.push(
+      await planPr(store, inputs, o.generator, canRead ? gh : null, kind),
+    );
+  // Every plan is admitted before the first pull request opens.
+  for (const plan of plans) {
+    checkPrCommand(store, plan.command, plan.argv, inputs.outlet.identity);
+    checkPrPaths(
+      store,
+      plan.argv,
+      plan.files.map((f) => f.path),
+      plan.command,
+    );
+  }
+  const outcomes: PrStepOutcome[] = [];
+  for (const plan of plans)
+    outcomes.push(await runPlan(o, store, inputs, gh, plan));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first!, also: rest } : first!;
+}
+
+async function runPlan(
+  o: PrStepOptions,
+  store: PrPlaneStore,
+  inputs: PrInputs,
+  gh: GitHubClient | null,
+  plan: PrPlan,
+): Promise<PrStepOutcome> {
   // The plan is built from the server's inputs and GitHub's answers: what it shows is cleaned.
   const u = (v: unknown) => untrusted(v, o.env);
   for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}\n`);
@@ -414,7 +479,7 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
     type: "store-step",
     store: store.store,
     op: "release",
-    command: "pull-request",
+    command: plan.command,
     argv: plan.argv,
     outlet: inputs.outlet.id,
     runId,
@@ -422,7 +487,7 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
     ...(runUrl ? { runUrl } : {}),
     ...extra,
   });
-  const key = prNaturalKey(store, "pull-request", plan.argv);
+  const key = prNaturalKey(store, plan.command, plan.argv);
 
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
@@ -551,15 +616,38 @@ export async function runPrStatus(
     o.channel,
     o.outlet,
   );
+  const outcomes: (PrStepOutcome & { verdict: PrVerdict })[] = [];
+  for (const kind of prKinds(store, inputs))
+    outcomes.push(await statusOne(o, store, inputs, kind));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first!, also: rest } : first!;
+}
+
+async function statusOne(
+  o: PrStepOptions,
+  store: PrPlaneStore,
+  inputs: PrInputs,
+  kind: HomebrewKind | null,
+): Promise<PrStepOutcome & { verdict: PrVerdict }> {
   const version = o.version ?? needRelease(inputs).version;
-  const argv = prArgv(store, inputs, "status", version, o.generator);
-  checkPrCommand(store, "status", argv, inputs.outlet.identity);
+  const argv = prArgv(
+    store,
+    inputs,
+    "status",
+    version,
+    o.generator,
+    kind ?? undefined,
+  );
+  const command = prCommandKey("status", kind);
+  checkPrCommand(store, command, argv, inputs.outlet.identity);
   const gh = gitHub(o, false)!;
   const repo = argv[2]!;
-  const key = prNaturalKey(store, "status", argv);
+  const key = prNaturalKey(store, command, argv);
   const pkg = argv[4] ?? "";
   const branch =
-    store.store === "flathub" ? `pkey/${version}` : `pkey/${pkg}-${version}`;
+    store.store === "flathub"
+      ? `pkey/${version}`
+      : `pkey/${kind === "formula" ? "formula-" : ""}${pkg}-${version}`;
   const headOwner = store.fork
     ? o.env.PKEY_PR_TOKEN
       ? await gh.login()
@@ -592,7 +680,7 @@ export async function runPrStatus(
         type: "store-step",
         store: store.store,
         op: "status",
-        command: "status",
+        command,
         argv,
         outlet: inputs.outlet.id,
         runId: stepRunId(o.env),
@@ -606,6 +694,7 @@ export async function runPrStatus(
   const plan: PrPlan = {
     store,
     repo,
+    command,
     argv,
     version,
     branch,
