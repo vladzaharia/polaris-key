@@ -3,7 +3,7 @@
  * schema, every settings-shaped table, every `Env` member and every top-level `.pkey/` field is
  * declared by a registry entry, explained by `NOT_A_SETTING`, or listed in `PENDING` with the
  * work package that will register it. `PENDING` only shrinks: an entry that is already declared,
- * names nothing, or pushes the list past `PENDING_CEILING` fails here. ST-25 empties it.
+ * names nothing, or pushes the list past `PENDING_CEILING` fails here. P0-51 empties it (owners: A-22, P0-28, CM-23).
  */
 
 import Database from "better-sqlite3";

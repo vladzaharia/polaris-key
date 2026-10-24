@@ -1,16 +1,16 @@
 # ST-32 SSO rules and the adminGroup conversion
 
-| Field       | Value                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | ST: Settings, access control and console shell (DX consolidation D: Administration, access control and console identity) |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                   |
-| Depends on  | [ST-31](ST-31-roles-bindings-invites-members-pages.md), [I-30](I-30-connections-one-oidc-relying-party.md)               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-35](ST-35-rbac-docs-lockout-recovery-docs-gate.md)                           |
-| Role        | `pkey-implementer`                                                                                                       |
-| Plan mode   | no                                                                                                                       |
-| Gates       | `threat-model`, `rule-9`                                                                                                 |
-| Human input | none                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                |
+| Field       | Value                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (DX consolidation D: Administration, access control and console identity)            |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                              |
+| Depends on  | [ST-31](ST-31-roles-bindings-invites-members-pages.md), [I-30](I-30-connections-one-oidc-relying-party.md)                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-25](ST-25-legacy-retirement.md), [ST-35](ST-35-rbac-docs-lockout-recovery-docs-gate.md) |
+| Role        | `pkey-implementer`                                                                                                                  |
+| Plan mode   | no                                                                                                                                  |
+| Gates       | `threat-model`, `rule-9`                                                                                                            |
+| Human input | none                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                           |
 
 ## Consolidation 2026-10-07
 
