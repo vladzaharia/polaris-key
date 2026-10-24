@@ -311,10 +311,7 @@ describe("actions/publish/README.md workflow", () => {
       expect.objectContaining({
         uses: "vladzaharia/polaris-key/actions/publish@d49e25a51ecc70e0335075a970b2d35868ec2e38",
         with: expect.objectContaining({
-          product: "your-product",
-          tag: "${{ github.ref_name }}",
-          channel: "beta",
-          dir: "dist",
+          args: "--tag ${{ github.ref_name }} --channel beta --dir dist",
           "release-key": "${{ secrets.PKEY_RELEASE_KEY }}",
         }),
       }),

@@ -71,6 +71,11 @@ const andList = (xs: readonly string[]): string =>
     : (xs[0] ?? "");
 
 /** The prompts may run: both streams are terminals, not CI, not TERM=dumb. */
+/** The keyboard init reads: the runtime's own, else the process's (the one place init touches it). */
+export function initInput(given?: TerminalInput): TerminalInput {
+  return given ?? process.stdin;
+}
+
 export function mayPrompt(term: Term, stdin: { isTTY?: boolean }): boolean {
   return term.caps.interactive && stdin.isTTY === true;
 }
