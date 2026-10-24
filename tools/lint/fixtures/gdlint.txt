@@ -1,0 +1,15 @@
+addons/polaris_key/core/caps.gd:102: Error: Max allowed line length (100) exceeded (max-line-length)
+addons/polaris_key/core/caps.gd:140: Error: Max allowed line length (100) exceeded (max-line-length)
+addons/polaris_key/core/caps.gd:7: Error: Constant (load/preload) name "_Activate" is not valid (load-constant-name)
+addons/polaris_key/ui/pkey_ui_view.gd:
+
+	if b.indeterminate == not still:
+                                  ^
+
+Unexpected token Token('TYPE_HINT', 'still') at line 2240, column 28.
+Expected one of: 
+	* AS
+	* LPAR
+
+tests/runner.gd:3: Error: Definition out of order in global scope (class-definitions-order)
+Failure: 5 problems found

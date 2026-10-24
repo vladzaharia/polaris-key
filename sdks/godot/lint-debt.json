@@ -1,0 +1,738 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    "sdks/godot/addons/polaris_key/core/b64url.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/core/copy.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/addons/polaris_key/core/core.gd": {
+      "gdlint:class-definitions-order": 32,
+      "gdlint:max-line-length": 2,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/core/crypto/ed25519.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:function-argument-name": 2,
+      "gdlint:function-variable-name": 7,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 8
+    },
+    "sdks/godot/addons/polaris_key/core/crypto/ed25519_job.gd": {
+      "gdlint:class-variable-name": 1
+    },
+    "sdks/godot/addons/polaris_key/core/crypto/ed25519_ref.gd": {
+      "gdlint:function-name": 5
+    },
+    "sdks/godot/addons/polaris_key/core/crypto/sha512.gd": {
+      "gdlint:function-variable-name": 2
+    },
+    "sdks/godot/addons/polaris_key/core/crypto/sha512_stream.gd": {
+      "gdlint:function-variable-name": 2
+    },
+    "sdks/godot/addons/polaris_key/core/device_label.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/addons/polaris_key/core/fingerprint.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/json_strict.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:enum-element-name": 7
+    },
+    "sdks/godot/addons/polaris_key/core/jws.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/core/options.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/presentation.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/release_record.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/addons/polaris_key/core/stages.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/store/keyring_store.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/sync_result.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/core/token.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/core/transport.gd": {
+      "gdlint:max-returns": 2
+    },
+    "sdks/godot/addons/polaris_key/core/version.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/decision.gd": {
+      "gdlint:class-variable-name": 6,
+      "gdlint:function-variable-name": 2
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlet.gd": {
+      "gdlint:class-variable-name": 3
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlet_env.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlet_signals.gd": {
+      "gdlint:class-variable-name": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/altstore.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/apk.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/app_store.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/appimage.gd": {
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/direct.gd": {
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/native_bridge.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/outlet_adapter.gd": {
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/distribution/outlets/play.gd": {
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/editor/setup_check.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/editor/setup_dock.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/export/export_plugin.gd": {
+      "gdlint:max-line-length": 3,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/native/apple_export.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/native/native_facade.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/native/pkey_android.gd": {
+      "gdlint:class-definitions-order": 6,
+      "gdlint:max-public-methods": 1
+    },
+    "sdks/godot/addons/polaris_key/native/pkey_apple.gd": {
+      "gdlint:class-definitions-order": 7,
+      "gdlint:max-public-methods": 1
+    },
+    "sdks/godot/addons/polaris_key/native/pkey_sparkle.gd": {
+      "gdlint:max-line-length": 3,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/native/pkey_velopack.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/addons/polaris_key/native/pkey_winsparkle.gd": {
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/apply.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/chunks.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/engine.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/godot_pck_handler.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/handler.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/job.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/l10n_parse.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/pack_claims.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/pck.gd": {
+      "gdlint:class-definitions-order": 29,
+      "gdlint:max-file-lines": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/select.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/storage.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/transport_apple_ba.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/transport_play_pad.gd": {
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/packs/zstd.gd": {
+      "gdlint:class-definitions-order": 3
+    },
+    "sdks/godot/addons/polaris_key/polaris_key.gd": {
+      "gdlint:class-definitions-order": 11,
+      "gdlint:max-public-methods": 1
+    },
+    "sdks/godot/addons/polaris_key/services/backend.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/commerce.gd": {
+      "gdlint:class-definitions-order": 3,
+      "gdlint:max-line-length": 4,
+      "gdlint:max-returns": 2
+    },
+    "sdks/godot/addons/polaris_key/services/config.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/devices.gd": {
+      "gdlint:max-line-length": 4,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/distribution.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/services/identity.gd": {
+      "gdlint:max-returns": 2,
+      "gdlint:signal-name": 1
+    },
+    "sdks/godot/addons/polaris_key/services/license.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/services/packs.gd": {
+      "gdlint:class-definitions-order": 7,
+      "gdlint:max-public-methods": 1,
+      "gdlint:signal-name": 1
+    },
+    "sdks/godot/addons/polaris_key/services/release.gd": {
+      "gdlint:max-returns": 2
+    },
+    "sdks/godot/addons/polaris_key/services/update.gd": {
+      "gdlint:class-definitions-order": 7,
+      "gdlint:max-line-length": 2,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1,
+      "gdlint:signal-name": 1
+    },
+    "sdks/godot/addons/polaris_key/services/update/flow.gd": {
+      "gdlint:function-argument-name": 1,
+      "gdlint:function-variable-name": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/activation/activation_controller.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:load-constant-name": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/activation/pkey_activation_panel.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/badge/pkey_entitlement_badge.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/banner/pkey_status_banner.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:function-variable-name": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/boot/pkey_boot.gd": {
+      "gdlint:class-definitions-order": 4,
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 1,
+      "gdlint:signal-name": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/copy/pkey_ui_copy.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/dev_menu/dev_menu_controller.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/dev_menu/pkey_dev_menu_section.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/device_limit/pkey_device_limit.gd": {
+      "gdlint:class-definitions-order": 7,
+      "gdlint:expression-not-assigned": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/gate/pkey_gate.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/input/pkey_input_glyphs.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/model/activate.gd": {
+      "gdlint:class-definitions-order": 9
+    },
+    "sdks/godot/addons/polaris_key/ui/model/copy_format.gd": {
+      "gdlint:class-definitions-order": 5,
+      "gdlint:load-constant-name": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/model/gate.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/model/settings.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/addons/polaris_key/ui/model/sign_in.gd": {
+      "gdlint:class-definitions-order": 4
+    },
+    "sdks/godot/addons/polaris_key/ui/model/sign_in_session.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/parts/pkey_focus_ring.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/pkey_ui_view.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/product/pkey_product_header.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/progress/pkey_progress_block.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/release_notes/pkey_release_notes.gd": {
+      "gdlint:class-definitions-order": 3
+    },
+    "sdks/godot/addons/polaris_key/ui/settings/pkey_account_tab.gd": {
+      "gdlint:function-argument-name": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd": {
+      "gdlint:class-definitions-order": 39,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 1,
+      "gdlint:unused-argument": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/sign_in/pkey_sign_in_dialog.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:function-argument-name": 1,
+      "gdlint:unused-argument": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/theme/pkey_kit_glyphs.gd": {
+      "gdlint:max-line-length": 8
+    },
+    "sdks/godot/addons/polaris_key/ui/theme/pkey_ui_motion.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/theme/pkey_ui_theme.gd": {
+      "gdlint:class-definitions-order": 72,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 4,
+      "gdlint:unused-argument": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/toast/pkey_toast.gd": {
+      "gdlint:class-definitions-order": 26
+    },
+    "sdks/godot/addons/polaris_key/ui/update/pkey_update_prompt.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/ui/update/update_prompt_controller.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/addons/polaris_key/updater/apk_update.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/addons/polaris_key/updater/apply_result.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/updater/sidecar_swap.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/updater/updater.gd": {
+      "gdlint:max-line-length": 1,
+      "gdlint:max-public-methods": 1
+    },
+    "sdks/godot/tests/build_stamp/test_dock.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/build_stamp/test_stamp.gd": {
+      "gdlint:max-line-length": 22
+    },
+    "sdks/godot/tests/build_stamp/test_tools.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/config/test_changed.gd": {
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/config/test_client.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/config/test_env.gd": {
+      "gdlint:max-line-length": 7
+    },
+    "sdks/godot/tests/config/test_local.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/config/test_mint.gd": {
+      "gdlint:max-line-length": 4
+    },
+    "sdks/godot/tests/config/test_mirror.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/config/test_resolve.gd": {
+      "gdlint:max-line-length": 14
+    },
+    "sdks/godot/tests/config/test_sdk_config.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/config/test_store.gd": {
+      "gdlint:function-variable-name": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_autoload.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/core/test_cache.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/core/test_caps.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_copy.gd": {
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/core/test_errors.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_events.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_json.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_local.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/core/test_local_trust.gd": {
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/core/test_pin_custody.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/core/test_sync.gd": {
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/dev_live/test_config.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/dev_live/test_quickstart.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/dev_live/test_refusals.gd": {
+      "gdlint:max-line-length": 4
+    },
+    "sdks/godot/tests/dev_live/test_signin.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/dev_live/test_update.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/devices/test_attest.gd": {
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/devices/test_service.gd": {
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/identity/support.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:class-variable-name": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/identity/test_account.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/identity/test_confirm.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/identity/test_flow.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/license/support.gd": {
+      "gdlint:class-variable-name": 1
+    },
+    "sdks/godot/tests/license/test_activation.gd": {
+      "gdlint:max-line-length": 11
+    },
+    "sdks/godot/tests/license/test_deactivate.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/license/test_entitlements.gd": {
+      "gdlint:max-line-length": 5
+    },
+    "sdks/godot/tests/license/test_license_id_refresh.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/license/test_manage.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/license/test_reregister.gd": {
+      "gdlint:max-line-length": 5
+    },
+    "sdks/godot/tests/native/fakes.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/tests/native/test_export.gd": {
+      "gdlint:max-line-length": 8
+    },
+    "sdks/godot/tests/native/test_facades.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/tests/native/test_wiring.gd": {
+      "gdlint:max-line-length": 7
+    },
+    "sdks/godot/tests/packs/fixtures.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/packs/test_bake.gd": {
+      "gdlint:max-line-length": 8
+    },
+    "sdks/godot/tests/packs/test_boot.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/tests/packs/test_chunks.gd": {
+      "gdlint:class-definitions-order": 4,
+      "gdlint:max-line-length": 19
+    },
+    "sdks/godot/tests/packs/test_content.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/packs/test_delegation.gd": {
+      "gdlint:max-line-length": 13
+    },
+    "sdks/godot/tests/packs/test_engine.gd": {
+      "gdlint:max-line-length": 22
+    },
+    "sdks/godot/tests/packs/test_feed_deltas.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/packs/test_guard.gd": {
+      "gdlint:max-line-length": 10
+    },
+    "sdks/godot/tests/packs/test_http.gd": {
+      "gdlint:parse-error": 1
+    },
+    "sdks/godot/tests/packs/test_pck.gd": {
+      "gdlint:max-line-length": 20
+    },
+    "sdks/godot/tests/packs/test_revocations.gd": {
+      "gdlint:max-line-length": 19
+    },
+    "sdks/godot/tests/packs/test_state.gd": {
+      "gdlint:max-line-length": 11
+    },
+    "sdks/godot/tests/packs/test_types.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:function-variable-name": 3,
+      "gdlint:max-line-length": 21
+    },
+    "sdks/godot/tests/packs/test_uid.gd": {
+      "gdlint:max-line-length": 5
+    },
+    "sdks/godot/tests/parity/test_commerce.gd": {
+      "gdlint:function-name": 3,
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/parity/test_distribution.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/runner.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/suite_backend.gd": {
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/suite_boot.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:function-variable-name": 3,
+      "gdlint:max-line-length": 7
+    },
+    "sdks/godot/tests/suite_brand.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 13
+    },
+    "sdks/godot/tests/suite_conformance.gd": {
+      "gdlint:class-definitions-order": 4,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 11
+    },
+    "sdks/godot/tests/suite_dev_live.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/suite_dropin.gd": {
+      "gdlint:max-line-length": 13,
+      "gdlint:unused-argument": 2
+    },
+    "sdks/godot/tests/suite_export_stamps.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/suite_keyring.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/suite_native_android.gd": {
+      "gdlint:max-line-length": 10
+    },
+    "sdks/godot/tests/suite_native_apple.gd": {
+      "gdlint:function-variable-name": 1,
+      "gdlint:max-line-length": 5
+    },
+    "sdks/godot/tests/suite_packs.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/suite_presentation.gd": {
+      "gdlint:max-line-length": 12
+    },
+    "sdks/godot/tests/suite_profile.gd": {
+      "gdlint:function-variable-name": 9,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/suite_qr.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/suite_stage_matrix.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/suite_transcripts.gd": {
+      "gdlint:function-variable-name": 1
+    },
+    "sdks/godot/tests/suite_transports.gd": {
+      "gdlint:max-line-length": 10
+    },
+    "sdks/godot/tests/suite_ui.gd": {
+      "gdlint:class-definitions-order": 6,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 59
+    },
+    "sdks/godot/tests/suite_ui_components.gd": {
+      "gdlint:max-line-length": 32
+    },
+    "sdks/godot/tests/suite_ui_core.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/suite_ui_lint.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/tests/suite_ui_locales.gd": {
+      "gdlint:function-variable-name": 1,
+      "gdlint:loop-variable-name": 1
+    },
+    "sdks/godot/tests/suite_ui_matrix.gd": {
+      "gdlint:max-line-length": 3
+    },
+    "sdks/godot/tests/suite_ui_png.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/support/fake_android_native.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-line-length": 3,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/support/fake_apple_native.gd": {
+      "gdlint:class-definitions-order": 4,
+      "gdlint:max-line-length": 2,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/support/fake_boot_host.gd": {
+      "gdlint:signal-name": 1
+    },
+    "sdks/godot/tests/support/fake_steam.gd": {
+      "gdlint:function-name": 7
+    },
+    "sdks/godot/tests/support/ui_lint.gd": {
+      "gdlint:class-definitions-order": 2
+    },
+    "sdks/godot/tests/ui/matrix.gd": {
+      "gdlint:class-definitions-order": 19,
+      "gdlint:max-file-lines": 1
+    },
+    "sdks/godot/tests/ui/scenarios.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 27,
+      "gdlint:max-public-methods": 1
+    },
+    "sdks/godot/tests/update/support.gd": {
+      "gdlint:class-variable-name": 1
+    },
+    "sdks/godot/tests/update/test_check.gd": {
+      "gdlint:max-line-length": 4
+    },
+    "sdks/godot/tests/update/test_decide.gd": {
+      "gdlint:max-line-length": 20
+    },
+    "sdks/godot/tests/update/test_feeds.gd": {
+      "gdlint:max-line-length": 2
+    },
+    "sdks/godot/tests/update/test_outlet.gd": {
+      "gdlint:max-line-length": 15
+    },
+    "sdks/godot/tests/update/test_release.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/update/test_urls.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/updater/test_adapters.gd": {
+      "gdlint:max-line-length": 2,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/updater/test_boot.gd": {
+      "gdlint:max-line-length": 5
+    },
+    "sdks/godot/tests/updater/test_bridges.gd": {
+      "gdlint:max-line-length": 13
+    },
+    "sdks/godot/tests/updater/test_download.gd": {
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/updater/test_grep.gd": {
+      "gdlint:max-line-length": 1
+    },
+    "sdks/godot/tests/updater/test_guard.gd": {
+      "gdlint:max-line-length": 12,
+      "gdlint:unused-argument": 1
+    },
+    "sdks/godot/tests/updater/test_swap.gd": {
+      "gdlint:max-line-length": 22
+    }
+  }
+}

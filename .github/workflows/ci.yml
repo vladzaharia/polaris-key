@@ -1402,6 +1402,11 @@ jobs:
       # engine control icon themed, is tests/support/ui_lint.gd (suite ui_lint).
       - name: UI kit source lint (godot)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=godot
+      # P0-46.7: gdlint (gdtoolkit, pinned in sdks/godot/tools/lint-requirements.txt) against
+      # sdks/godot/lint-debt.json. One leg only (Linux, newest editor): the lint needs no engine.
+      - name: GDScript lint (gdlint)
+        if: runner.os == 'Linux' && matrix.godot == '4.7.2'
+        run: sdks/godot/tools/lint.sh check
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pkey-godot/${{ matrix.godot }}
