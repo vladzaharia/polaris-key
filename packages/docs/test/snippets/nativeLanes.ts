@@ -6,7 +6,8 @@
  * - Swift: `swift build` of `sdks/swift`, then one `swiftc -typecheck` per block (a block is a
  *   `main.swift`, so it may have top-level code and `await`; a block with `@main` is a library file).
  * - Kotlin: blocks are written to the `:docs-snippets` Gradle module (JVM) or, with `android` in the
- *   info string, to `:docs-snippets-android`; one `compileKotlin` reports every block.
+ *   info string, to `:docs-snippets-android`, or, with `desktop`, to `:docs-snippets-desktop` (Compose
+ *   Desktop over `:ui`); one `compileKotlin` reports every block.
  * - GDScript: a throwaway Godot project with the addon linked in and the `unsafe_*` warnings raised
  *   to errors (an unknown method on a typed value is a warning by default); one headless run loads
  *   every block.
@@ -382,7 +383,11 @@ async function gradleKotlin(
 
 export async function compileKotlin(snippets: Snippet[]): Promise<Failure[]> {
   const android = snippets.filter((s) => /(^|\s)android(\s|$)/.test(s.meta));
-  const jvm = snippets.filter((s) => !android.includes(s));
+  // `desktop`: Compose Desktop windows, over :ui's desktop target (which exists with the Android SDK).
+  const desktop = snippets.filter((s) => /(^|\s)desktop(\s|$)/.test(s.meta));
+  const jvm = snippets.filter(
+    (s) => !android.includes(s) && !desktop.includes(s),
+  );
   const out = await gradleKotlin(jvm, "docs-snippets", "compileKotlin");
   if (android.length > 0) {
     if (!kotlinAndroidAvailable())
@@ -397,6 +402,22 @@ export async function compileKotlin(snippets: Snippet[]): Promise<Failure[]> {
           android,
           "docs-snippets-android",
           "compileDirectDebugKotlin",
+        )),
+      );
+  }
+  if (desktop.length > 0) {
+    if (!kotlinAndroidAvailable())
+      out.push(
+        harnessFailure(
+          "blocks tagged desktop need the Android SDK (ANDROID_HOME): :ui exists only with it",
+        ),
+      );
+    else
+      out.push(
+        ...(await gradleKotlin(
+          desktop,
+          "docs-snippets-desktop",
+          "compileKotlin",
         )),
       );
   }

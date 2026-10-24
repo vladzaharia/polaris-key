@@ -96,4 +96,6 @@ if (!jvmOnly && androidSdk) {
     project(":sample-compose-desktop").projectDir = file("../../examples/ui/compose-desktop")
     include(":billing")
     include(":docs-snippets-android")
+    // The Compose Desktop blocks of the docs (tagged desktop): JVM, over :ui's desktop target.
+    include(":docs-snippets-desktop")
 }

@@ -81,6 +81,18 @@ Compact download and install progress for app updates and content packs, as a to
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The update window's install button runs the client's install driver, and its bar follows the driver's `InstallProgressSource`: determinate when the size is known. Pack downloads are `PolarisPackProgress(packs)`.
+
+    **Styled part.** `PolarisPackProgressScreen` for packs.
+
+    **Headless.** `PolarisUpdateState`, and `PolarisPackProgressState(client.packProgressSource())` for packs.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

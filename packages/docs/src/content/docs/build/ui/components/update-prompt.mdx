@@ -79,6 +79,18 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisUpdateBanner` and `PolarisUpdatePromptDialog` on Android. On the desktop an optional update opens `PolarisUpdateWindow`; a mandatory one is a dialog in the gate window.
+
+    **Styled part.** `PolarisUpdatePrompt`, over `PolarisUpdateState` fed `client.update.decide()`.
+
+    **Headless.** `PolarisUpdateState` in `polaris-key-ui-core`.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
