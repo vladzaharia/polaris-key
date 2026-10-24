@@ -110,6 +110,7 @@ const NODE_CLASS: Record<string, string> = {
   client: "PolarisKeyClient",
   config: "ConfigClient",
   license: "LicenseClient",
+  entitlements: "EntitlementsClient",
   identity: "IdentityClient",
 };
 
@@ -159,6 +160,7 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ConfigClient,`,
+    `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
     `  PolarisKeyClient,`,

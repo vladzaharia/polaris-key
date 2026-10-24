@@ -450,8 +450,8 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
     expect(client.config.getSecret("any")).toBeNull();
     expect(client.config.schemaVersion()).toBeNull();
     // The license-side reads are doc-less too — entitlements ride that document (D-20).
-    expect(client.license.isEntitled("any")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("any")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
     expect(client.license.getLicenseId()).toBeNull();
   });

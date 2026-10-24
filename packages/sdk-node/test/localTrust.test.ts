@@ -139,7 +139,7 @@ describe("a hard 401 / a build block deletes the document it answered for", () =
     });
     expect(restarted.status().status).toBe("needs-activation");
     expect(restarted.isLicensed()).toBe(false);
-    expect(restarted.license.isEntitled("pro")).toBe(false);
+    expect(restarted.entitlements.has("pro")).toBe(false);
   });
 
   it("401 on the config deletes docs.config and leaves the license alone", async () => {
