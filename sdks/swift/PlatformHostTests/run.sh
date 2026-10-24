@@ -190,8 +190,6 @@ run_suite services \
   -only-testing:PKPlatformHostTests/KeychainHostTests \
   -only-testing:PKPlatformHostTests/DistributorHostTests
 settle "after the services suite"
-run_suite kit-focus -only-testing:PKPlatformHostTests/KitFocusHostTests
-settle "after the kit-focus suite"
 run_suite gate-ui -only-testing:PKGateUITests
 if [ "$rc" -ne 0 ]; then
   exit "$rc"

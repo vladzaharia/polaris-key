@@ -1,5 +1,5 @@
 // Theming for the drop-in login/gate. A product passes its logo, accent colour, palette, type and
-// copy; everything else (layout, status routing) is provided by `PolarisLoginView`. The defaults
+// copy; everything else (layout, status routing) is provided by the kit gate. The defaults
 // are native and neutral; the Polaris Key brand (docs/design/BRAND.md, read from the generated
 // `PolarisBrand` tokens) is an opt-in. The headless API stays on `LicenseClient` — this is purely
 // presentation.

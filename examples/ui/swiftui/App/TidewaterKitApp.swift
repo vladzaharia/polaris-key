@@ -20,6 +20,8 @@
 //   the 200 % stand-in, M6), -pkeyPresentation (the product's accent #ff6a3d and icon arrive as a
 //   presentation document would deliver them: no integrator theme, UK-08.7)
 //   macOS only: -pkeySettings the Settings pane (Account) as the window's content, at its own size
+//   -pkeyOneGate          the one-line drop-in: `.polarisKey(client)` over an offline client (no
+//                         Worker), so the gate shows the kit's Welcome (SP-52b.2)
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -234,6 +236,8 @@ struct Root: View {
         Group {
             if args.contains("-pkeySettings") {
                 settingsPane
+            } else if args.contains("-pkeyOneGate"), let client = LiveClient.offline() {
+                SessionsView().polarisKey(client)
             } else if args.contains("--live"), let client = LiveClient.make() {
                 SessionsView().polarisKeyGate(client)
                     #if os(macOS)
@@ -295,6 +299,14 @@ struct SessionsView: View {
 }
 
 enum LiveClient {
+    /// A client that never reaches a Worker: no pins, no trust refresh, no network (`-pkeyOneGate`).
+    @MainActor static func offline() -> PolarisKeyClient? {
+        let options = PolarisKeyClientOptions(
+            productSlug: "tidewater", baseUrl: "https://key.invalid", version: "2.4.1",
+            pinnedKeys: [:], trustRefresh: false)
+        return try? PolarisKeyClient(options: options)
+    }
+
     @MainActor static func make() -> PolarisKeyClient? {
         let env = ProcessInfo.processInfo.environment
         guard let pinsJSON = env["PKEY_PINS"], let data = pinsJSON.data(using: .utf8),

@@ -6076,6 +6076,56 @@
         "pattern": "\\.licenseChanges\\b",
         "files": ["*.kt", "*.kts", "fence:kotlin"]
       }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisLoginView",
+      "note": "PolarisKeyGate",
+      "package": "SP-52b",
+      "scan": {
+        "pattern": "\\bPolarisLoginView\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisGateModel",
+      "note": "PolarisKeyGate",
+      "package": "SP-52b",
+      "scan": {
+        "pattern": "\\bPolarisGateModel\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisSignIn",
+      "note": "the kit's sign-in screens (PolarisKeyGate)",
+      "package": "SP-52b",
+      "scan": {
+        "pattern": "\\bPolarisSignIn\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisOfflineActivation",
+      "note": "the kit's offline screens (PolarisKeyGate)",
+      "package": "SP-52b",
+      "scan": {
+        "pattern": "\\bPolarisOfflineActivation\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "GateOptions",
+      "note": "KitGateOptions",
+      "package": "SP-52b",
+      "scan": {
+        "pattern": "\\bGateOptions\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
     }
   ]
 }

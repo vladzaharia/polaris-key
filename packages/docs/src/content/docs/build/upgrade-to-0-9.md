@@ -109,6 +109,9 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 
 | SDK | Removed | Use instead | Since |
 | --- | --- | --- | --- |
+| swift | `PolarisLoginView`, `PolarisGateModel` | `PolarisKeyGate` (or `.polarisKey(client)`, which now draws it) | 0.9.18 |
+| swift | `PolarisSignIn`, `PolarisOfflineActivation` | The kit's sign-in and offline screens, inside `PolarisKeyGate` | 0.9.18 |
+| swift | `GateOptions` | `KitGateOptions` (`keyEntry`, `offlineActivation`); `returnURL`, `renewURL` and `blockedAction` have no counterpart | 0.9.18 |
 | swift | `config.config` | `config.get` | 0.9 |
 | swift | `PolarisKeyClient.config(_:default:)` | `config.get` | 0.9 |
 | swift | `config.configSource` | `config.getConfigSource` | 0.9 |
@@ -178,6 +181,11 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | kotlin | `config.secret` | `config.getSecret` | 0.9 |
 | kotlin | `license.activate` | `license.activateWithKey` | 0.9 |
 | kotlin | `client.licenseChanges` | `undefined` | 0.9 |
+| swift | `PolarisLoginView` | `undefined` | 0.9 |
+| swift | `PolarisGateModel` | `undefined` | 0.9 |
+| swift | `PolarisSignIn` | `undefined` | 0.9 |
+| swift | `PolarisOfflineActivation` | `undefined` | 0.9 |
+| swift | `GateOptions` | `undefined` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->

@@ -299,7 +299,7 @@ complete the sign-in on the verification page, so the player must be able to see
 `.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
 (or `LicenseClient.getProfile()`) returns the signed license profile too. Show "Signed in as Ada
-Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
+Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
 `SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
@@ -390,12 +390,10 @@ func replaceDeviceLink(_ client: PolarisKeyClient, key: String) async -> String?
 }
 ```
 
-The SwiftUI gates do this for you. `.polarisKeyGate` shows **Replace a device** under the error,
-opens the link as the portal served it, and retries the key once when the app becomes active again.
-The earlier `.polarisKey` gate takes `GateOptions(returnURL:)` and adds the key and the return URL
-itself; on tvOS it shows the link as a QR code that never carries the key (anyone who can see the
-screen can scan it), so the phone's page asks for it. Leave `withKey` out of any QR you draw
-yourself. Release note: the case gained a third associated value, so an exhaustive
+The SwiftUI gate does this for you. `.polarisKeyGate` (and `.polarisKey`) shows **Replace a
+device** under the error, opens the link as the portal served it, and retries the key once when the
+app becomes active again. Leave `withKey` out of any QR you draw yourself: anyone who can see the
+screen can scan it, so the phone's page asks for the key. Release note: the case gained a third associated value, so an exhaustive
 `case .deviceLimit(let l, let c)` binding needs a third pattern.
 
 ## supports() and capabilities
@@ -544,18 +542,18 @@ Sparkle's flow in the kit's update window. The Settings tab, the commands, the A
 (`NSHostingController`, `beginSheet`) and Replace a Device are on the
 [SwiftUI kit](https://key.plrs.im/docs/build/ui/frameworks/swiftui/#macos) page.
 
-### The earlier gate: `.polarisKey`
+### `.polarisKey`: the model and the gate in one modifier
 
-The first SwiftUI gate still ships beside it. One modifier gates the app: it puts the model in the
-environment, syncs when the scene becomes active and wraps your content in the gate. The gate
-draws nothing but its ground until the client has been read, shows the activation form when a
-license is needed, an offline-grace banner over your content, and for a blocking state the actions
-that can change it, then your own UI once usable (`ok` / `grace` / `not-applicable`). Its words are
-English unless you set them through `PolarisTheme(copy:)`. The rest of this section describes it.
+`.polarisKey(client)` is `.polarisKeyGate(client)` plus the observable `PolarisKeyModel` in the
+environment: it syncs when the scene becomes active (at most once a minute) and wraps your content
+in `PolarisKeyGate`, so there is one gate, whichever modifier you use. Read the model with
+`@Environment(PolarisKeyModel.self)` for the license state, the signed profile and `refresh()`.
+Pass `gate: false` for the model and the sync alone.
 
 ```swift
 import PolarisKey
 import PolarisKeyUI
+import PolarisKeyUICore
 import SwiftUI
 
 @main
@@ -568,8 +566,8 @@ struct MyApp: App {
                 if let client {
                     MyAppRootView().polarisKey(
                         client,
-                        theme: PolarisTheme(copy: PolarisCopy(productName: "DJDL")),
-                        options: GateOptions(returnURL: "myapp://activated"))
+                        theme: PolarisTheme(branding: .native),
+                        options: KitGateOptions(keyEntry: false))
                 }
             }
             .task {
@@ -586,94 +584,30 @@ struct MyAppRootView: View {
 }
 ```
 
-`GateOptions` is what you decide about the gate (`PolarisTheme` is how it looks):
+`KitGateOptions` is what you decide about the gate: `keyEntry` (off where the store's rules forbid
+key entry, App Store 3.1.1), `offlineActivation` (off on iOS), `trial`, `restore`, `enroll`, the
+`signInPresentation` and `replace` modes and the `integrator` identity. `offersFreeTier: true`
+turns on **Continue free** (keyless enrolment). `handlers:` carries your Trial, Restore, update
+and Replace a device actions. How the gate looks is `.polarisKeyTheme(PolarisKeyTheme(...))`
+(UI-KITS §3.1). The legacy `theme:` argument still maps `branding` (to the preset) and `accent`;
+its `palette`, `typography`, `copy`, `logo` and `accentOn` have no counterpart there and are
+ignored, so move them to `PolarisKeyTheme`'s `colors`, `typography`, `copy` and `product`.
 
-| Option                    | Default                     | What it does                                                                                                                        |
-| ------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `showsKeyEntry`           | `true`                      | The license-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
-| `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                            |
-| `offersFreeTier`          | `false`                     | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                     |
-| `returnURL`               | none                        | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                     |
-| `renewURL`                | none                        | Your renewal or account page. An expired license then leads with **Renew or manage**; without it, with **Try again**.               |
-| `blockedAction`           | none                        | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.          |
+A blocking state always has a way out, and the product leads every screen: your
+`PolarisKeyTheme.product`, else the product's presentation (name, developer, accent and the
+verified icon, through `.polarisKeyPresentation(_:)`), else your app's icon, else a monogram.
+An accent goes through the contrast resolver (`PolarisAccent`): the button fill and its label
+clear 4.5:1, and so does the accent text, in both color schemes.
 
-A blocking state always has a way out (one filled action, the rest quiet): **expired** offers Renew
-or manage (when `renewURL` is set), Try again, Use a different key and Sign in; **revoked** offers
-Use a different key and Sign in; a version block offers Try again and your own action. **Use a
-different key** shows the activation form on the same screen and **Cancel** goes back, so nothing
-needs a relaunch. The explanation is worded for the controls the gate really has.
+**"Powered by Polaris Locker" is optional and off by default**, and never on the gate (UI-KITS
+§1.6). The account pane draws the line as its last section footer when the theme opts in
+(`poweredBy`). On your about or credits screen place `PolarisPoweredByAttribution(style: .badge)`:
+the Locker `powered-by` badge (320 × 104 points, never narrower) where 320 points are free, else
+the line. `PolarisPoweredByBadge` draws the badge alone.
 
-An accent you pass (`accent:`) goes through the same contrast resolver as a product's registered
-accent: the button fill and its label clear 4.5:1 and so does the accent text, in both color
-schemes (white on `#FF6A3D` is 2.85:1 as given).
-
-**Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
-your app's tint (`.tint(_:)` / the asset catalog accent), system colors that follow dark and
-light, system button shapes, and no Polaris Key branding. The product leads every screen: your
-`logo:`, else the product's presentation icon (below), else your app's icon from the bundle, else
-a monogram tile of the product's initial.
-
-**Every screen lays out for the space it gets**, not for a device: the gate's Welcome, the
-device-code sign-in (`PolarisSignIn`) and offline activation are one centered column on a phone in
-portrait and in narrow windows; in landscape and short windows the form, or the code and its
-actions, sit beside the welcome; and on iPad and roomy Mac windows (760 × 520 pt and up) they use
-the split Welcome, the product's identity pane beside the form. When a column is taller than the
-screen (the largest accessibility sizes on a small phone), the code and the primary action move up
-under the heading and the rest scrolls, so the action is never below the fold. The user code stays
-on one line (it shrinks rather than wrap), a long license key gives way in the middle, and the
-device-code view shows a QR code on TV screens only. The grace banner sits on the native bar
-material. On macOS the kit's sheets size to their content and fit a 480 × 520 window.
-
-**Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
-
-```swift
-import PolarisKey
-import PolarisKeyUI
-import SwiftUI
-
-struct BrandedRoot: View {
-    let client: PolarisKeyClient
-
-    var body: some View {
-        Text("Licensed")
-            .polarisKey(client)
-            .polarisKeyBranding(.polarisKey)
-    }
-}
-```
-
-(or `PolarisTheme(branding: .polarisKey)` for one gate). That switches to the Polaris Key design
-system (`docs/design/BRAND.md`), read from the generated `PolarisBrand` tokens in
-`BrandTokens.generated.swift`: the brand's dark or light palette from the `colorScheme`
-environment with the core violet accent; Rubik (Bold for headings, Regular for body), bundled
-unchanged with its SIL Open Font License (`Resources/Brand/fonts/OFL.txt`) and registered for your
-process only the first time a branded gate draws, falling back to the system font if it cannot
-register. The product stays the hero there too: no Polaris Key mark on the gate (UI-KITS §1.6).
-
-**The product's presentation** (discovery `core.presentation`: name, developer, accent and the
-verified icon) reaches the kit through `.polarisKeyPresentation(_:)`, the seam the SDK's
-accessor fills once the product's presentation arrives. Under `.polarisKey` branding its accent (`accentDark` in the dark
-scheme) colors the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
-still leads. Your theme wins over the presentation field by field.
-
-Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
-primary button in both schemes, `palette:` replaces every color per scheme, `typography:` picks
-`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the product icon.
-
-**"Powered by Polaris Locker" is optional and off by default** in both modes, and never on the gate
-(UI-KITS §1.6). The kit's account pane draws the line (the Locker micro mark, which grows with Dynamic
-Type from 16 points, and the phrase) as its last section footer when the theme opts in. On your
-about or credits screen place `PolarisPoweredByAttribution(style: .badge)`: the Locker `powered-by`
-badge (320 × 104 points, never narrower) where 320 points are free, else the line. `PolarisPoweredByBadge`
-draws the badge alone.
-
-Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
-light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. The layout tests
-host the gate, the device-code sign-in and offline activation at iPhone SE, 440 × 956 and iPad
-sizes in both orientations and in 480 × 520, 900 × 640 and 1440 × 900 Mac windows, at Dynamic Type
-L and AX3, native and branded, and assert the code and the primary action are on screen without
-scrolling (run it on an iOS simulator for the phone and tablet type sizes; `PKEY_KIT_SNAPSHOTS=<dir>`
-writes the renders).
+Release note: the 0.8 gate family is gone. `PolarisGate`, `PolarisLoginView`, `PolarisGateModel`,
+`PolarisSignIn`, `PolarisOfflineActivation` and `GateOptions` are replaced by `PolarisKeyGate`,
+`KitGateOptions` and the kit's own screens; see the [CHANGELOG](CHANGELOG.md).
 
 ## Updates (macOS)
 

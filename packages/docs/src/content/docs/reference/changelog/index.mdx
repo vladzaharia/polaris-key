@@ -22,6 +22,12 @@ Exit codes: 0 success; 1 failure (an invalid manifest, a network or server error
 
 ## 0.9.18
 
+### Swift has one gate
+
+Breaking · 2026-10-24 · swift
+
+`.polarisKey(client)` now draws the same gate as `.polarisKeyGate(client)` and still puts the model in the environment and syncs when the scene becomes active. `PolarisTheme` maps `branding` and `accent` onto the kit theme; its other fields are ignored, so set `.polarisKeyTheme(PolarisKeyTheme(...))`.
+
 ### pkey feeds fdroid moved
 
 Removed · 2026-10-24 · distribution

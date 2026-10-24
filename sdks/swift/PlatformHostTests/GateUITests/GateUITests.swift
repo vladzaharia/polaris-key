@@ -1,11 +1,21 @@
 // @pkey-feature ui.kit
 //
-// The drop-in gate driven like a person drives it, in the iOS simulator, over the scripted host
-// (GateHost/GateHostApp.swift): a licence that has expired or been revoked reaches the activation
-// form through "Use a different key" and through "Sign in" without relaunching; a device-limit
-// refusal shows a working "Replace a device"; Return submits; the signed-in screen names who
-// signed in and offers "Not you?". Every state is attached as a screenshot, and every button is
-// asserted to carry a name VoiceOver can read.
+// The drop-in kit gate (`.polarisKey(client)` draws PolarisKeyGate) driven like a person drives it,
+// in the iOS simulator, over the scripted host (GateHost/GateHostApp.swift). Copy and ids are the
+// kit's own (packages/brand/kit-copy/en.json, conformance/parity/copy.en.json): Welcome, the key
+// form, the Expired and Revoked status screens, the device-limit callout, the sign-in hand-off.
+// Every state is attached as a screenshot and every button is asserted to carry a name VoiceOver
+// can read.
+//
+// Dropped with the 0.8 gate (D-17), no counterpart in the kit gate:
+//  - "Renew or manage" / -pkRenewURL: the kit's Expired screen offers "Use another license" and
+//    never a renewal button the host can hang a page on.
+//  - "Try again" on Expired and "Contact support": the kit's Expired screen carries neither.
+//  - "Replace a device" through a Welcome-card sign-in refusal and the device-code screen ("Sign-in
+//    code: ..."): sign-in is a browser hand-off now, so the test follows it to the app instead.
+//  - "Signed in as" / "Not you?" / "Continue" screen: the kit finishes a sign-in by opening the app
+//    (or its license choice); a signed-in summary and sign-out live in the Settings drop-in, not
+//    in the gate.
 import XCTest
 
 final class GateUITests: XCTestCase {
@@ -50,100 +60,132 @@ final class GateUITests: XCTestCase {
         }
     }
 
-    /// The user code, read by VoiceOver as "Sign-in code: A B C D …".
-    private var signInCode: XCUIElement {
-        app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "Sign-in code")).firstMatch
-    }
 
     private var keyField: XCUIElement { app.textFields["License key"] }
 
+    private var content: XCUIElement { app.staticTexts["licensed-content"] }
+
+    // Well-formed keys, `pkey_<slug>_` and 22 characters, because the kit checks the shape on
+    // the device before it asks the server; the scripted server tells them apart by the secret.
+    private static let goodKey = "pkey_djdl_goodGoodGoodGoodGoodGo"
+    private static let fullKey = "pkey_djdl_fullFullFullFullFullFu"
+    private static let unknownKey = "pkey_djdl_nopeNopeNopeNopeNopeNo"
+
+    private func openKeyForm() {
+        waitFor(button("Use a license key"), "Use a license key")
+        button("Use a license key").tap()
+        waitFor(keyField, "the license-key field")
+    }
+
+    private func enter(_ key: String) {
+        keyField.tap()
+        keyField.typeText(key)
+    }
+
+    // ── welcome and the key form ─────────────────────────────────────────────────────────
+
+    func testWelcomeOffersSignInAndAKeyAndTheKeyFormActivates() {
+        launch("needsActivation")
+        waitFor(app.staticTexts["Welcome to Tidewater Studio"], "Welcome")
+        XCTAssertTrue(button("Sign in").exists)
+        XCTAssertFalse(content.exists)
+        assertButtonsAreNamed()
+        shot("welcome")
+
+        button("Use a license key").tap()
+        waitFor(keyField, "the license-key field")
+        XCTAssertTrue(button("Cancel").exists, "the form can be backed out of")
+        shot("key-form")
+
+        // Cancel returns to Welcome with the choice intact.
+        button("Cancel").tap()
+        waitFor(button("Use a license key"), "Welcome after Cancel")
+        openKeyForm()
+        enter(Self.goodKey)
+        button("Activate license").tap()
+        waitFor(content, "the app after activating")
+    }
+
+    func testRefusalsSitUnderTheFieldAndReturnSubmits() {
+        launch("needsActivation")
+        openKeyForm()
+        // Not a key at all: the kit says so on the device, before it asks the server.
+        enter("not-a-key")
+        keyField.typeText("\n")
+        waitFor(
+            app.staticTexts["That doesn't look like a license key. Keys start with pkey_."],
+            "the malformed-key refusal")
+        shot("key-malformed")
+        clearKey("not-a-key")
+
+        // A well-formed key the server does not know. Return submits (no tap on Activate license).
+        keyField.typeText(Self.unknownKey + "\n")
+        let refusal = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS %@", "That license key wasn't accepted")
+        ).firstMatch
+        waitFor(refusal, "the server's refusal")
+        XCTAssertFalse(content.exists)
+        shot("key-refused")
+        clearKey(Self.unknownKey)
+        keyField.typeText(Self.goodKey + "\n")
+        waitFor(content, "the app after Return")
+    }
+
+    private func clearKey(_ typed: String) {
+        keyField.tap()
+        keyField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count))
+    }
+
     // ── expired ──────────────────────────────────────────────────────────────────────────
 
-    func testExpiredOffersEveryWayOutAndReachesTheFormWithoutRelaunching() {
-        launch("expired", extra: ["-pkRenewURL", "1"])
-        waitFor(button("Renew or manage"), "Renew or manage")
-        XCTAssertTrue(button("Try again").exists)
-        XCTAssertTrue(button("Use a different key").exists)
-        XCTAssertTrue(button("Sign in").exists)
-        XCTAssertTrue(app.links["Contact support"].exists || button("Contact support").exists)
-        XCTAssertFalse(app.staticTexts["licensed-content"].exists)
+    func testExpiredOffersUseAnotherLicenseAndReachesTheFormWithoutRelaunching() {
+        launch("expired")
+        waitFor(app.staticTexts["License expired"], "the Expired screen")
+        waitFor(button("Use another license"), "Use another license")
+        XCTAssertFalse(button("Try again").exists, "Expired offers no Try again")
+        XCTAssertFalse(content.exists)
         assertButtonsAreNamed()
         shot("expired")
 
-        button("Use a different key").tap()
-        waitFor(keyField, "the licence-key field")
+        button("Use another license").tap()
+        waitFor(keyField, "the license-key field")
         XCTAssertTrue(button("Cancel").exists, "the form can be backed out of")
-        XCTAssertFalse(button("Sign in").exists, "Sign in is one step back, not repeated")
         shot("expired-different-key")
 
         // Cancel returns to the blocking state; the form is one tap away again.
         button("Cancel").tap()
-        waitFor(button("Use a different key"), "Use a different key after Cancel")
-        button("Use a different key").tap()
-        waitFor(keyField, "the licence-key field again")
-        keyField.tap()
-        keyField.typeText("pkey_good")
-        button("Activate").tap()
-        waitFor(app.staticTexts["licensed-content"], "the app after activating")
-    }
-
-    func testExpiredWithoutARenewalPageLeadsWithTryAgain() {
-        launch("expired")
-        waitFor(button("Try again"), "Try again")
-        XCTAssertFalse(button("Renew or manage").exists)
-        XCTAssertTrue(button("Use a different key").exists)
-    }
-
-    func testExpiredReachesSignInWithoutRelaunching() {
-        launch("expired")
-        waitFor(button("Sign in"), "Sign in")
-        button("Sign in").tap()
-        waitFor(signInCode, "the sign-in code")
-        shot("expired-sign-in")
-        XCTAssertTrue(button("Cancel").exists)
-        button("Cancel").tap()
-        waitFor(button("Use a different key"), "the gate after Cancel")
+        waitFor(button("Use another license"), "Use another license after Cancel")
+        button("Use another license").tap()
+        waitFor(keyField, "the license-key field again")
+        enter(Self.goodKey)
+        button("Activate license").tap()
+        waitFor(content, "the app after activating")
     }
 
     // ── revoked ──────────────────────────────────────────────────────────────────────────
 
-    func testRevokedLeadsWithAKeyAndReachesTheFormAndSignInWithoutRelaunching() {
+    func testRevokedLeadsWithSignInAndReachesTheFormWithoutRelaunching() {
         launch("revoked")
-        waitFor(button("Use a different key"), "Use a different key")
-        XCTAssertTrue(button("Sign in").exists)
-        XCTAssertFalse(button("Renew or manage").exists, "a revoked device is not renewed")
+        waitFor(app.staticTexts["Signed out"], "the Revoked screen")
+        waitFor(button("Sign in"), "Sign in")
+        XCTAssertTrue(button("Use a different key").exists)
+        XCTAssertFalse(content.exists)
         shot("revoked")
 
-        button("Sign in").tap()
-        waitFor(signInCode, "the sign-in code")
-        button("Cancel").tap()
-
-        waitFor(button("Use a different key"), "Use a different key after sign-in")
         button("Use a different key").tap()
-        waitFor(keyField, "the licence-key field")
-        keyField.tap()
-        keyField.typeText("not-a-key")
-        // Return submits the form (no tap on Activate).
-        keyField.typeText("\n")
-        let refusal = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS[c] %@", "key")
-        ).firstMatch
-        waitFor(refusal, "the refusal")
-        shot("revoked-refused")
-        keyField.tap()
-        keyField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 9))
-        keyField.typeText("pkey_good\n")
-        waitFor(app.staticTexts["licensed-content"], "the app after Return")
+        waitFor(keyField, "the license-key field")
+        enter(Self.goodKey)
+        button("Activate license").tap()
+        waitFor(content, "the app after activating")
     }
 
     // ── device limit ─────────────────────────────────────────────────────────────────────
 
     func testADeviceLimitRefusalShowsAWorkingReplaceADevice() {
-        launch("deviceLimit")
-        waitFor(keyField, "the licence-key field")
-        keyField.tap()
-        keyField.typeText("pkey_full")
-        button("Activate").tap()
+        launch("needsActivation")
+        openKeyForm()
+        enter(Self.fullKey)
+        button("Activate license").tap()
         waitFor(button("Replace a device"), "Replace a device")
         shot("device-limit")
         button("Replace a device").tap()
@@ -156,33 +198,29 @@ final class GateUITests: XCTestCase {
 
     // ── sign-in ──────────────────────────────────────────────────────────────────────────
 
-    func testTheSignedInScreenNamesWhoSignedInAndOffersNotYou() {
+    func testSignInHandsOffToTheBrowserAndFinishesInTheApp() {
         launch("signedIn")
         waitFor(button("Sign in"), "Sign in")
         button("Sign in").tap()
-        waitFor(app.staticTexts["Signed in as"], "the signed-in heading", timeout: 30)
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Ada Lovelace")).firstMatch.exists)
-        XCTAssertTrue(button("Not you?").exists)
-        XCTAssertTrue(button("Continue").exists)
-        shot("signed-in")
-        button("Continue").tap()
-        waitFor(app.staticTexts["licensed-content"], "the app after Continue")
+        shot("sign-in")
+        // The kit opens the verification page in the browser, then the poll answers ready.
+        app.activate()
+        waitFor(content, "the app after the sign-in finished", timeout: 60)
     }
 
     // ── a licensed launch, the defaults ──────────────────────────────────────────────────
 
     func testALicensedLaunchShowsTheAppAndNoActivationCard() {
         launch("licensed")
-        waitFor(app.staticTexts["licensed-content"], "the app")
+        waitFor(content, "the app")
         XCTAssertFalse(app.staticTexts["Welcome to Tidewater Studio"].exists)
         XCTAssertFalse(keyField.exists)
     }
 
     func testActivateOfflineIsOffByDefaultOnIOSAndAvailableWhenAsked() {
         launch("needsActivation")
-        waitFor(keyField, "the licence-key field")
+        waitFor(button("Use a license key"), "Welcome")
         XCTAssertFalse(button("Activate offline").exists)
-        shot("welcome")
         app.terminate()
         launch("needsActivation", extra: ["-pkOffline", "1"])
         waitFor(button("Activate offline"), "Activate offline when asked")

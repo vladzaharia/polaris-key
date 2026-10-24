@@ -6,7 +6,7 @@
 //   -pkScenario needsActivation no licence
 //   -pkScenario expired         a licence past its grace
 //   -pkScenario revoked         the server refuses the device's token
-//   -pkScenario deviceLimit     like needsActivation; the key `pkey_full` is refused with a manage link
+//   -pkScenario deviceLimit     like needsActivation; the key `pkey_djdl_full…` is refused with a manage link
 //   -pkScenario signedIn        needsActivation; the sign-in poll answers ready with an identity
 //
 //   -pkPreset native|polaris    the branding (default polaris)
@@ -14,12 +14,13 @@
 //   -pkRenewURL 1               give the gate a renewal page
 //   -pkOffline 1                offer offline activation (off on iOS by default)
 //
-// The scripted keys: `pkey_good` activates; `pkey_full` is refused with `device_limit` and a
-// manage link; any other key is refused as unknown. The stub, signer and fixtures are the test
+// The scripted keys: `pkey_djdl_good…` activates; `pkey_djdl_full…` is refused with `device_limit` and a
+// manage link; any other well-formed key (`pkey_<slug>_` and 22 characters, the kit's own check) is refused as unknown. The stub, signer and fixtures are the test
 // target's own (Tests/PolarisKeyTests/TestSupport.swift), compiled into this app, not copied.
 import CryptoKit
 import Foundation
 import PolarisKey
+import PolarisKeyUICore
 import PolarisKeyUI
 import SwiftUI
 
@@ -99,11 +100,11 @@ struct ScriptedWorld {
             let body = (try? JSONDecoder().decode(JSONValue.self, from: request.body ?? Data()))?
                 .objectValue
             let key = request.headers["authorization"] ?? body?["key"]?.stringValue ?? ""
-            if key.contains("pkey_good") {
+            if key.contains("djdl_good") {
                 activated.set()
                 return StubServer.Reply(body: #"{"token":"pkeyt_new","schemaVersion":1}"#)
             }
-            if key.contains("pkey_full") {
+            if key.contains("djdl_full") {
                 return StubServer.Reply(
                     status: 403,
                     body: #"{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"https://key.plrs.im/activate?product=djdl&next=free-device"}"#)
@@ -161,13 +162,10 @@ struct ScenarioRoot: View {
             branding: branding, accent: accent, copy: PolarisCopy(productName: "Tidewater Studio"))
     }
 
-    private var options: GateOptions {
-        GateOptions(
-            offersOfflineActivation: defaults.bool(forKey: "pkOffline")
-                || GateOptions.defaultOffersOfflineActivation,
-            returnURL: "tidewater://activated",
-            renewURL: defaults.bool(forKey: "pkRenewURL") ? URL(string: "https://example.com/renew") : nil,
-            blockedAction: { _ in AnyView(Link("Contact support", destination: URL(string: "https://example.com/help")!)) })
+    private var options: KitGateOptions {
+        KitGateOptions(
+            offlineActivation: defaults.bool(forKey: "pkOffline")
+                || KitGateOptions().offlineActivation)
     }
 
     var body: some View {
