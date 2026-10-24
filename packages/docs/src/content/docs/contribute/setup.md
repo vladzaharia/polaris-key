@@ -83,7 +83,7 @@ trivial or docs-only commit you can skip it with `git commit --no-verify`.
 
 Each language's lint ledger (`lint-debt.json` in its lane) holds the findings that existed when the lane was adopted, and only shrinks.
 A new finding, or a recorded one the tool no longer reports, fails the lane's `tools/lint.sh check`, locally in `pnpm gate` and in CI.
-Fix a finding, then re-record the ledger with `<lane script> record`, for example `sdks/python/tools/lint.sh record`. TypeScript has no `lint.sh`: `pnpm lint:ts` checks it, and `pnpm lint:knip:record` and `node tools/lint/dupes.mjs record` re-record.
+Fix a finding, then re-record the ledger with `<lane script> record`, for example `sdks/python/tools/lint.sh record`. TypeScript has no `lint.sh`: `pnpm lint:ts` checks it, and `pnpm lint:knip:record`, `node tools/lint/dupes.mjs record` and `pnpm lint:size:record` (the 800-line budget for `packages/worker/src`) re-record.
 Tool versions are pinned (the Swift lane to the 6.3 toolchain), and an upgrade is its own PR.
 
 ## 4. Fixture SQL for a product
