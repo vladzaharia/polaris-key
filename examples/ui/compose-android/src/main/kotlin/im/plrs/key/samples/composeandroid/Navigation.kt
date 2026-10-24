@@ -18,7 +18,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
@@ -33,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -60,6 +65,12 @@ internal const val RETURN_URI = "tidewater://polaris"
 
 private const val HOME = "home"
 
+/** Fixtures only: the check the install is handed, then the offer the prompt draws (without the check, "Update now" does nothing). */
+internal fun Tidewater.offerUpdate(update: PolarisUpdateState) {
+    update.show(check())
+    update.show(offer())
+}
+
 /** The product's own screen, shown once the licence allows it: home, and the kit's screens as destinations. */
 @Composable
 internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: Options, link: String?, onLinkHandled: () -> Unit) {
@@ -79,7 +90,7 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
         update.follow(actions, this)
         if (options.start == Start.Update || options.start == Start.Progress) {
             delay(1_500)
-            update.show(world.offer())
+            world.offerUpdate(update)
             if (options.start == Start.Progress) update.install(actions, scope)
         }
     }
@@ -103,7 +114,7 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
                 true
             }
             // Fixtures only: the live kit offers the real update by itself.
-            PolarisKeyRoute.Update -> world?.let { update.show(it.offer()) } != null
+            PolarisKeyRoute.Update -> world?.offerUpdate(update) != null
             // Already signed in: the kit's sign-in belongs to the gate and has nothing to open here.
             PolarisKeyRoute.SignIn, null -> false
         }
@@ -116,11 +127,12 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
 
     val start = if (options.start == Start.Account) PolarisKeyRoute.Account.wire else HOME
     Column(Modifier.fillMaxSize()) {
+        val back: @Composable () -> Unit = { IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back)) } }
         NavHost(nav, startDestination = start, modifier = Modifier.weight(1f)) {
-            composable(HOME) { Home(world, onAccount = { nav.go(PolarisKeyRoute.Account) }, onCheck = { world?.let { update.show(it.offer()) } }) }
-            composable(PolarisKeyRoute.Account.wire) { PolarisAccount(settings, devices) }
-            composable(PolarisKeyRoute.Devices.wire) { PolarisDevices(devices) }
-            composable(PolarisKeyRoute.Settings.wire) { PolarisSettings(settings) }
+            composable(HOME) { Home(world, onAccount = { nav.go(PolarisKeyRoute.Account) }, onCheck = { world?.offerUpdate(update) }) }
+            composable(PolarisKeyRoute.Account.wire) { PolarisAccount(settings, devices, navigationIcon = back) }
+            composable(PolarisKeyRoute.Devices.wire) { PolarisDevices(devices, navigationIcon = back) }
+            composable(PolarisKeyRoute.Settings.wire) { PolarisSettings(settings, navigationIcon = back) }
         }
         SnackbarHost(snackbar, Modifier.safeDrawingPadding())
     }
@@ -137,7 +149,7 @@ private fun Home(world: Tidewater?, onAccount: () -> Unit, onCheck: () -> Unit) 
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(stringResource(R.string.licensed_title), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onBackground)
-        Text(stringResource(R.string.licensed_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.licensed_body), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
         Button(onClick = onAccount) { Text(stringResource(R.string.open_account)) }
         if (world != null) {

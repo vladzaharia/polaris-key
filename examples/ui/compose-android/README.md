@@ -8,9 +8,10 @@ Build it from `sdks/kotlin/` with JDK 17:
 
 ```sh
 export ANDROID_HOME=$HOME/Library/Android/sdk
-./gradlew :sample-compose-android:assembleDebug        # the debug APK
-./gradlew :sample-compose-android:installDebug         # on a running emulator or device
-./gradlew :sample-compose-android:testDebugUnitTest    # the smoke test (Robolectric)
+./gradlew :sample-compose-android:assembleDirectDebug  # the debug APK
+./gradlew :sample-compose-android:installDirectDebug   # on a running emulator or device
+./gradlew :sample-compose-android:testDirectDebugUnitTest    # the smoke test (Robolectric)
+./gradlew :sample-compose-android:connectedDirectDebugAndroidTest   # the launch smoke, on a running emulator
 ```
 
 ## Fixtures and live
@@ -22,8 +23,9 @@ server runs and nothing leaves the process.
 - "Sign In" shows the code `WDJB-MJHT`; the scripted Worker approves it 12 seconds later.
 - "Check for updates" (and the `update` start) offers 2.5.0. "Update now" runs a fake installer that
   downloads 48 MB in about 9 seconds.
-- The Account screen shows the roster of three devices. The scripted Worker serves no config
-  document, so its settings list shows the kit's error and Retry.
+- The Account screen shows the roster of three devices and the release channel (a direct install, with
+  stable and beta to pick). The scripted Worker serves no config document, so its settings list shows the
+  kit's error and Retry.
 
 `pkey.live` builds the real client instead (`PolarisKeyAndroid`: the Android Keystore, the direct
 installer). It reads `BuildConfig`, set from Gradle properties:
