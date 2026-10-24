@@ -116,7 +116,7 @@ export const TARGETS: Target[] = [
     rootScripts: [
       [
         "skills:check",
-        "Check every skill's frontmatter, links and references, and the router in `AGENTS.md`.",
+        "Check every skill's frontmatter, links and references.",
       ],
       [
         "skills:validate",

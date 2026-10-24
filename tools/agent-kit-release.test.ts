@@ -7,6 +7,7 @@ import {
   buildKit,
   claudeCommand,
   PINNED_CLAUDE_CODE,
+  PINNED_CLAUDE_COMMAND,
 } from "./agent-kit-release.js";
 import { ZipReader } from "../packages/cli/src/zip.js";
 
@@ -104,5 +105,21 @@ describe("claudeCommand", () => {
     expect(claudeCommand({ CI: "true" }, () => false)?.join(" ")).toContain(
       `@anthropic-ai/claude-code@${PINNED_CLAUDE_CODE}`,
     );
+  });
+});
+
+describe("the workflows' Claude Code command", () => {
+  it("is PINNED_CLAUDE_COMMAND exactly (npx runs the package's one bin; a trailing word becomes its first argument)", () => {
+    for (const file of ["ci.yml", "deploy.yml"]) {
+      const text = readFileSync(
+        join(import.meta.dirname, "..", ".github", "workflows", file),
+        "utf8",
+      );
+      const values = [...text.matchAll(/PKEY_CLAUDE_BIN:\s*(.+)$/gm)].map((m) =>
+        m[1]!.trim(),
+      );
+      expect(values.length, file).toBeGreaterThan(0);
+      for (const v of values) expect(v, file).toBe(PINNED_CLAUDE_COMMAND);
+    }
   });
 });

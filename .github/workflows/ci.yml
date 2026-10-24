@@ -132,7 +132,7 @@ jobs:
       - run: pnpm skills:check
       - name: Validate the agent kit
         env:
-          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296 claude
+          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296
         run: pnpm skills:validate
       # P0-30.3: the 800-line budget for packages/worker/src, against tools/lint/debt/size.json.
       - name: Size budget

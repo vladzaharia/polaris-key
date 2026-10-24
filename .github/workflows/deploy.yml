@@ -171,7 +171,7 @@ jobs:
         run: pnpm exec tsx tools/agent-kit-release.ts --kit packages/agent-kit --version "$KIT_VERSION" --out dist/agent-kit
       - name: Validate the agent kit
         env:
-          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296 claude
+          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296
         run: pnpm skills:validate
       - name: Upload the agent kit
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -545,7 +545,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --title "$TAG" --notes "Agent kit for $TAG"
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "Agent kit for $TAG" $([[ "$TAG" == *-* ]] && echo --prerelease)
           fi
           gh release upload "$TAG" agent-kit/polaris-key-*.zip agent-kit/marketplace.json --clobber
 

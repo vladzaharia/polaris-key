@@ -4,12 +4,14 @@ The Polaris Key skills for coding agents, packaged as a Claude Code plugin named
 
 ## Where it sits
 
-The package is private and is never published to a registry. A release builds it into a zip and a marketplace file (`tools/agent-kit-release.ts`); the repository's own `.claude/skills/` links back to the skills here, so an agent working in this repository loads the same text a user installs.
+The package is private and not published. A release builds it into a zip and a marketplace file (`tools/agent-kit-release.ts`); an agent working in this repository loads the same skills through `.claude/skills/`.
 
-To try the built kit in Claude Code, install the plugin from its marketplace:
+To try the built kit in Claude Code, build a local marketplace and install from it:
 
 ```
-/plugin install polaris-key --marketplace <owner>/<repo>
+pnpm exec tsx tools/agent-kit-release.ts --kit packages/agent-kit --version 0.0.0-local --out /tmp/kit --local
+/plugin marketplace add /tmp/kit/local
+/plugin install polaris-key@polaris-key
 ```
 
 ## Layout
@@ -33,7 +35,7 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../../AGENTS.md)).
 
 | Command                | Does                                                                                    |
 | ---------------------- | --------------------------------------------------------------------------------------- |
-| `pnpm skills:check`    | Check every skill's frontmatter, links and references, and the router in `AGENTS.md`.   |
+| `pnpm skills:check`    | Check every skill's frontmatter, links and references.                                  |
 | `pnpm skills:validate` | Build the kit and run `claude plugin validate --strict` on it (needs the `claude` CLI). |
 
 Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
