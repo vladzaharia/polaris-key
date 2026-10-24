@@ -1245,4 +1245,58 @@ describe("promptMultiSelect", () => {
     expect(t.text()).toContain("A rather");
     expect(t.text()).toContain("◻ B");
   });
+
+  it("marks the focused row, locked rows included, in Unicode and ASCII", async () => {
+    const lockedB = (v: string) => (v === "b" ? [{ text: "Needs A" }] : null);
+    const u = setup([key("down"), key("return")]);
+    await promptMultiSelect(u.ctx, prompt({ locked: lockedB }));
+    expect(u.text()).toContain("› ◻ A");
+    expect(u.text()).toContain("› ◻ B");
+    expect(u.text()).toContain("  ◻ C");
+    const a = setup([key("down"), key("return")], { unicode: false });
+    await promptMultiSelect(a.ctx, prompt({ locked: lockedB }));
+    expect(a.text()).toContain("> [ ] B");
+    expect(a.text()).toContain("  [ ] C");
+  });
+
+  it("draws the lock reason as the option's own line and Space shows lockedNote", async () => {
+    const t = setup([key("down"), key("space"), key("return")]);
+    await promptMultiSelect(
+      t.ctx,
+      prompt({
+        locked: (v) => (v === "b" ? [{ text: "Needs A" }] : null),
+        lockedNote: () => [{ text: "Tick A first." }],
+      }),
+    );
+    expect(t.text()).toContain("\n│      Needs A");
+    expect(t.text()).toContain("Tick A first.");
+  });
+
+  it("Enter shows the check note and does not confirm until it passes", async () => {
+    const t = setup([key("return"), key("space"), key("return")]);
+    const r = await promptMultiSelect(
+      t.ctx,
+      prompt({
+        check: (c) => (c.length ? null : [{ text: "Tick at least one." }]),
+      }),
+    );
+    expect(r).toEqual(["a"]);
+    expect(t.text()).toContain("Tick at least one.");
+  });
+
+  it("on a short screen keeps the question and the hints and crops the list", async () => {
+    const t = setup([key("up"), key("return")]);
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      value: `v${i}`,
+      label: [{ text: `Option ${i}` }],
+    }));
+    await promptMultiSelect(
+      t.ctx,
+      prompt({ options: many, hints: [{ text: "Space toggle" }] }),
+    );
+    const first = t.text().split("Space toggle")[0]!;
+    expect(first).toContain("Pick");
+    expect(first).toContain("› ◻ Option 0");
+    expect(first).not.toContain("Option 39");
+  });
 });

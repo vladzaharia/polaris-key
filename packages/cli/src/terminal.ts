@@ -63,8 +63,9 @@ export function termFor(
   out: TermOut,
   env: TermEnv,
   flags: TermFlags = {},
+  stdin?: { isTTY?: boolean },
 ): Term {
-  const caps = detectTerminal({ env, stdout: out, flags });
+  const caps = detectTerminal({ env, stdout: out, stdin, flags });
   return {
     caps,
     painter: new Painter(caps, null, {}, true),

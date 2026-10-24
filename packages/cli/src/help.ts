@@ -248,7 +248,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         text:
           "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file " +
-          "that exists is kept unless you pass --force.",
+          "that exists is kept unless you pass --force. On a terminal it asks what the product " +
+          "is for and whether to start with a Free tier; --modules and --starter-tier answer instead.",
       },
       {
         text:

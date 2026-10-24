@@ -101,8 +101,8 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 ## Acceptance criteria
 
-- [ ] pkey init writes the same choices as the console wizard
-- [ ] No manifest key renamed
+- [x] pkey init writes the same choices as the console wizard
+- [x] No manifest key renamed
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -128,3 +128,4 @@ What downstream work packages rely on from this one is named in their briefs (th
 - S6. `pkey agents` (AX-08) and the no-TTY code rule (AX-16) are todo; init cannot offer them yet (D-S6).
 - S7. Fixed: the help said "feature slugs" for service slugs; `build/manifest/index.md` named seven slugs and omitted `commerce`.
 - S8. The manifest is unchanged: `modules` stays, so no validator, schema or rule 9 change.
+- ST-46.3 (built): `pkey init` asks "What is it for?" (Licensing and Ship builds preselected) and, with Licensing, "Start with a Free tier?" on a terminal only; the flags answer instead; no terminal, CI or TERM=dumb leaves init byte-for-byte as before. `pkey agents --write` (AX-08) is not offered until AX-08 lands: add that line to `initPrompt.ts` then.
