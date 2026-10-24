@@ -203,12 +203,13 @@ jobs:
         id: publish
         uses: ./actions/publish
         with:
-          product: polaris-key
-          deliverable: ${{ inputs.deliverable }}
-          version: ${{ inputs.version }}
-          channel: ${{ inputs.channel }}
-          dir: dist-feed/${{ inputs.dir }}
+          args: >-
+            --deliverable ${{ inputs.deliverable }}
+            --version ${{ inputs.version }}
+            --channel ${{ inputs.channel }}
+            --dir dist-feed/${{ inputs.dir }}
           base-url: ${{ inputs.base-url }}
+          channels: none
       - name: Summary
         env:
           DELIVERABLE: ${{ inputs.deliverable }}

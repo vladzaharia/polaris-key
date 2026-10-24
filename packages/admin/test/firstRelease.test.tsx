@@ -178,7 +178,9 @@ describe("Releases → guided first release (UX-23)", () => {
       await screen.findByRole("button", { name: "Copy workflow step" }),
     );
     expect(await navigator.clipboard.readText()).toBe(workflowStep("tonebox"));
-    expect(workflowStep("tonebox")).toContain("product: tonebox");
+    expect(workflowStep("tonebox")).toContain("Publishes tonebox");
+    expect(workflowStep("tonebox")).toContain("args: --tag ");
+    expect(workflowStep("tonebox")).not.toContain("product:");
     expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Release docs/ }).getAttribute("href"),
