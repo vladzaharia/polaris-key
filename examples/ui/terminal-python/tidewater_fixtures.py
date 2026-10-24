@@ -168,7 +168,7 @@ class _Config:
     def local_values(self) -> Dict[str, Any]:
         return dict(self.c.state.get("local", {}))
 
-    def get_config(self, key: str, fallback: Any = None) -> Any:
+    def get(self, key: str, fallback: Any = None) -> Any:
         if key in self.c.state.get("local", {}):
             return self.c.state["local"][key]
         return self.VALUES.get(key, (fallback, ""))[0]

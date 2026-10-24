@@ -19,13 +19,14 @@ CLASSES = {
 ATTRS = [
     ("client.create", "PolarisKeyClient", "create"),
     ("client.boot", "PolarisKeyClient", "boot"),
-    ("config.get", "ConfigClient", "get_config"),
+    ("config.get", "ConfigClient", "get"),
     ("config.getConfigSource", "ConfigClient", "get_config_source"),
     ("config.getSecret", "ConfigClient", "get_secret"),
     ("config.mintToken", "ConfigClient", "mint_token"),
     ("config.set", "ConfigClient", "set"),
     ("config.clear", "ConfigClient", "clear"),
-    ("config.onConfigChange", "ConfigClient", "on_change"),
+    ("config.clearAll", "ConfigClient", "clear_all"),
+    ("config.onConfigChange", "ConfigClient", "on_config_change"),
     ("config.setting", "ConfigClient", "setting"),
     ("config.setting.value", "ConfigSetting", "value"),
     ("config.setting.source", "ConfigSetting", "source"),
@@ -92,7 +93,12 @@ OPTION_PARAMS = [
     ("options.baseUrl", "base_url"),
     ("options.expectedServices", "expected_services"),
 ]
-
+REMOVED = [
+    ("config.get_config", "ConfigClient", "get_config"),
+    ("client.get_config", "PolarisKeyClient", "get_config"),
+    ("client.on_config_change", "PolarisKeyClient", "on_config_change"),
+    ("config.on_change", "ConfigClient", "on_change"),
+]
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)
 def test_present(concept, cls, name):
@@ -102,3 +108,8 @@ def test_present(concept, cls, name):
 @pytest.mark.parametrize("concept,name", OPTION_PARAMS)
 def test_option(concept, name):
     assert name in inspect.signature(PolarisKeyClient.__init__).parameters, concept
+
+
+@pytest.mark.parametrize("concept,cls,name", REMOVED)
+def test_removed(concept, cls, name):
+    assert not hasattr(CLASSES[cls], name), concept

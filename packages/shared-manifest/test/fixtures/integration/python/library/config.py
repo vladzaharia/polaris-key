@@ -6,8 +6,8 @@ import polaris_config
 client = PolarisKeyClient.create(**polaris_config.CONFIG, version="1.4.2")  # your app's version
 
 client.sync()
-value = client.config.get_config("audio.musicVolume", 0.8)
+value = client.config.get("audio.musicVolume", 0.8)
 secret = client.config.get_secret("api.token")
 minted = client.config.mint_token("cdn")
-client.config.on_change("audio.musicVolume", lambda v: print("changed", v))
+client.config.on_config_change("audio.musicVolume", lambda v: print("changed", v))
 print(value, secret, minted)
