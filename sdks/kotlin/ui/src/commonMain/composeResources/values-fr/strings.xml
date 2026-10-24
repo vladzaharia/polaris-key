@@ -1188,6 +1188,10 @@
     <string name="signin_signout_title">Se déconnecter de %1$s sur cet appareil ?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
     <string name="signin_signout_released">%1$s cesse d’utiliser votre licence %2$s ici et libère de la place pour un autre appareil.</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_titleMac">Se déconnecter de %1$s sur ce Mac ?</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_signout_releasedMac">Cela libère votre licence %1$s pour un autre appareil.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="one">%1$d modification n’a pas encore été synchronisée.</item>

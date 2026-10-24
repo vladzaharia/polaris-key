@@ -120,6 +120,30 @@
         }
     }
 
+    /// A Mac control for a Form: the system's 28 pt `.bordered` button at regular size (capsule and
+    /// the accent under the Polaris look, the plain system one under `native`), never the 36 pt
+    /// kit capsule.
+    private struct PaneButton: View {
+        let line: CopyLine
+        let style: KitResolvedStyle
+        var glyph: String?
+        let action: () -> Void
+        @Environment(\.polarisKeyStrings) private var strings
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: style.space(.xxs)) {
+                    Text(strings.string(line))
+                    if let glyph { Image(systemName: glyph).accessibilityHidden(true) }
+                }
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(style.isNative ? .roundedRectangle : .capsule)
+            .controlSize(.regular)
+            .tint(style.isNative ? nil : style.palette.accentFg)
+        }
+    }
+
     /// The pane's two pages: the account, and the in-pane device list behind Devices.
     private enum AccountPage { case account, devices }
 
@@ -203,7 +227,13 @@
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityHint(strings.string("account.devices"))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(
+                            strings.string("account.devices") + ", "
+                                + strings.string(
+                                    "part.seatMeter.caption",
+                                    ["used": .number(counts.used), "limit": .number(counts.limit)]))
+                        .accessibilityAddTraits(.isButton)
                     }
                     if let cloudSync {
                         LabeledContent {
@@ -221,13 +251,11 @@
                     options: model.selectOptions, onRetry: { Task { await model.retryConfig() } },
                     onReset: { key in Task { await model.resetValue(key) } })
                 if model.account.shows("common.signOut") {
+                    // No box of its own: the bare button, as the mockup has it.
                     Section {
-                        HStack {
-                            Spacer()
-                            KitButton(
-                                line: CopyLine("menu.signOut"), kind: .secondary, fullWidth: false,
-                                compact: true
-                            ) { confirmingSignOut = true }
+                    } footer: {
+                        PaneButton(line: CopyLine("menu.signOut"), style: style) {
+                            confirmingSignOut = true
                         }
                     }
                     .confirmationDialog(
@@ -249,11 +277,12 @@
             HStack(spacing: style.space(.sm)) {
                 ProductIcon(size: 40)
                 VStack(alignment: .leading, spacing: style.space(.xxs)) {
-                    Text(style.identity.name).fontWeight(.medium)
+                    // The window's own header: the tier, then who, not the product name again.
                     if model.account.shows("account.tier") {
                         PaneText(
-                            CopyLine("account.tier", ["tier": .text(model.tier ?? "")]), .meta,
-                            color: .muted)
+                            CopyLine("account.tier", ["tier": .text(model.tier ?? "")]), .body,
+                            color: .default)
+                        .fontWeight(.medium)
                     }
                     if model.account.shows("account.holder"), let holder = model.holder {
                         PaneText(
@@ -267,9 +296,8 @@
                 .accessibilityElement(children: .combine)
                 Spacer()
                 if model.account.shows("common.manage"), model.canManage {
-                    KitButton(
-                        line: CopyLine("common.manage"), kind: .secondary,
-                        glyph: PolarisKitGlyph.newWindow, fullWidth: false, compact: true
+                    PaneButton(
+                        line: CopyLine("common.manage"), style: style, glyph: PolarisKitGlyph.newWindow
                     ) { model.handlers.manage?() }
                 }
             }
@@ -295,10 +323,7 @@
                             .accessibilityLabel(strings.string("a11y.busy"))
                     }
                     if model.account.shows("update.checkNow") {
-                        KitButton(
-                            line: CopyLine("update.checkNow"), kind: .secondary, fullWidth: false,
-                            compact: true
-                        ) { check() }
+                        PaneButton(line: CopyLine("update.checkNow"), style: style) { check() }
                     }
                 }
             }
@@ -420,12 +445,11 @@
     /// Wait for Sync wait for it.
     enum SignOutCopy {
         static func title(_ strings: KitStrings, product: String) -> String {
-            strings.string("signin.signout.title", ["product": .text(product)])
+            strings.string("signin.signout.titleMac", ["product": .text(product)])
         }
 
-        static func message(_ strings: KitStrings, product: String, tier: String?) -> String {
-            strings.string(
-                "signin.signout.released", ["product": .text(product), "tier": .text(tier ?? "")])
+        static func message(_ strings: KitStrings, product _: String, tier: String?) -> String {
+            strings.string("signin.signout.releasedMac", ["tier": .text(tier ?? "")])
         }
     }
 #endif

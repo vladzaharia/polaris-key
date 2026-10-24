@@ -3193,6 +3193,16 @@ msgstr "Se déconnecter de {product} sur cet appareil ?"
 msgid "signin.signout.released"
 msgstr "{product} cesse d’utiliser votre licence {tier} ici et libère de la place pour un autre appareil."
 
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr "Se déconnecter de {product} sur ce Mac ?"
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
+msgstr "Cela libère votre licence {tier} pour un autre appareil."
+
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
 #. Plural on {n}.

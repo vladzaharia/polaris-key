@@ -511,6 +511,8 @@
   "signin.identityOff.lede": "Melden Sie sich hier an, um {product} in Ihrer Bibliothek zu sehen.",
   "signin.signout.title": "Auf diesem Gerät von {product} abmelden?",
   "signin.signout.released": "{product} verwendet Ihre {tier}-Lizenz auf diesem Gerät nicht mehr und schafft Platz für ein weiteres Gerät.",
+  "signin.signout.titleMac": "Auf diesem Mac von {product} abmelden?",
+  "signin.signout.releasedMac": "Dadurch wird Ihre {tier}-Lizenz für ein anderes Gerät frei.",
   "signin.signout.unsynced": "{n, plural, one {# Änderung wurde noch nicht synchronisiert.} other {# Änderungen wurden noch nicht synchronisiert.}}",
   "signin.signout.waitSync": "Auf Synchronisierung warten",
   "signin.session.toastTitle": "Sie wurden abgemeldet",

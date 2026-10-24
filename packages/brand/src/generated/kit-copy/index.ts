@@ -525,6 +525,8 @@ export type KitCopyKey =
   | "signin.identityOff.lede"
   | "signin.signout.title"
   | "signin.signout.released"
+  | "signin.signout.titleMac"
+  | "signin.signout.releasedMac"
   | "signin.signout.unsynced"
   | "signin.signout.waitSync"
   | "signin.session.toastTitle"

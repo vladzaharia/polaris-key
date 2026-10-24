@@ -2591,6 +2591,16 @@
       "role": "body",
       "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated)."
     },
+    "signin.signout.titleMac": {
+      "value": "Sign out of {product} on this Mac?",
+      "role": "title",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.signout.releasedMac": {
+      "value": "This frees your {tier} license for another device.",
+      "role": "body",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated)."
+    },
     "signin.signout.unsynced": {
       "value": "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",
       "role": "body",
