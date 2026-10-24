@@ -99,10 +99,27 @@ step names it and links to it.
 A link step stays done once it is done: a later check replays the recorded result, even if the
 object was removed on the store since.
 
+## Other store tools in CI
+
+`pkey storefront exec` runs any other allow-listed command, with its arguments after `--`, and
+reports it the same way (`pkey storefront allow-list` prints every list):
+
+```sh title="Terminal"
+node pkey.mjs storefront exec steam run-app-build --op uploadBuild -- \
+  +login "$STEAM_BUILDER" +run_app_build build/app_480.vdf +quit
+node pkey.mjs storefront exec msstore publish --op uploadBuild -- \
+  publish build/Dice.msixupload --appId 9NBLGGH4R315
+```
+
+A Steam build script may set a build live only on a named branch, never `default` or `public`.
+`msstore publish` is refused while the console has a Microsoft Store draft staged for the product.
+Epic's `BuildPatchTool` may only `-mode=UploadBinary`, with its secret passed by
+`-ClientSecretEnvVar`.
+
 ## The slot board
 
 Every image slot of the listing, grouped by store, from what
-[`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) registered:
+[`pkey listing assets`](/docs/features/ship-builds/channels/polaris-key/#listing-assets) registered:
 
 - **Masters** a person makes (icon master, key art, wordmark, screenshots). A missing one is marked
   **Needed** with the store's exact specification, such as "1024×1024 PNG" or "16:9, at least

@@ -70,7 +70,7 @@ row when that row holds the same file.
 ## From CI
 
 `pkey assets push <file> --slot <slot>` and the publish Action's `assets` input send files from a
-CI job; see [Hosted assets](/docs/features/ship-builds/ci-stores/#hosted-assets). The CI token needs the opt-in
+CI job; see [Hosted assets](/docs/features/ship-builds/channels/polaris-key/#hosted-assets). The CI token needs the opt-in
 `assets:write` scope, which you grant on **Keys and secrets → CI publishing**.
 
 ## Hosting and quotas

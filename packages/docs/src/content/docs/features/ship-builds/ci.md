@@ -397,8 +397,7 @@ fingerprint is not in the product's key inventory is flagged and exits 1. See
 commands need `distribution:rollout`, which an operator adds deliberately; see
 [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/).
 
-Store feeds, listing assets, hosted assets, itch.io and Snap pushes and package-manager pull
-requests are on [Publish to stores from CI](/docs/features/ship-builds/ci-stores/).
+itch.io and Snap pushes and package-manager pull requests are on [Channels that run in CI](/docs/features/ship-builds/channels/#channels-that-run-in-ci); listing and hosted assets are on [Polaris Key](/docs/features/ship-builds/channels/polaris-key/#listing-assets).
 
 ## Other CI systems
 

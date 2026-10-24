@@ -144,7 +144,7 @@ fun ApplicationScope.MyWindows(client: PolarisKeyClient, settingsWindow: Polaris
 
 Feed `update` the decision of a check (`update.show(client.update.decide())`) and call `settingsWindow.open(PolarisSettingsPane.Account)` from your own menu item. The screens inside the windows are the ones in the next section, and the Android `PolarisGate`, `PolarisDevices` and the rest are the same composables on the desktop.
 
-## Piecemeal screens
+## Piecemeal
 
 `PolarisKeyApp(client) { }` is the one call. To place the screens yourself, hold a
 `PolarisGateState(client.gateActions(), scope)` and call its `start()`; then:
