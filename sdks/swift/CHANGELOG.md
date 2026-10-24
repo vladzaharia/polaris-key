@@ -15,6 +15,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Entitlements are a namespace (SP-35b).** `client.entitlements` has `has(_:)`, `value(_:)` and `all()`. `has` and `value` answer false and nil whenever the licence gate is not usable (S-19 G11); `all()` reads the held document. `license.isEntitled`, `license.entitlementValue`, `license.entitlements()` and `client.isEnabled(flag:)` are removed. No aliases.
+  Migrating: `client.license.isEntitled(n)` and `client.isEnabled(flag: n)` become `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`.
+
 - **The setting handle is async properties (SP-35b).** `client.config.setting(key)` exposes `value` (nil when no layer has one, source `fallback`), `source`, `locked` and the new `visibility` (`SettingVisibility`: `editable`, `readonly` for `enforced`, `hidden`) as `async` properties, and `on(_:)` subscribes. `value(default:)`, `source()`, `isLocked()` and `onChange(_:)` are removed. No aliases.
   Migrating: `await setting.value(default: d)` becomes `await setting.value ?? d` (or `config.get(k, default: d)`); `await setting.source()` becomes `await setting.source`; `await setting.isLocked()` becomes `await setting.locked`; `setting.onChange { ... }` becomes `setting.on { ... }`.
 

@@ -213,9 +213,9 @@ public final class PolarisKeyModel {
         await reload()
     }
 
-    /// Whether `flag` is on (`isEnabled(flag:)`; false whenever the gate is not usable).
+    /// Whether `flag` is on (`entitlements.has`; false whenever the gate is not usable).
     public func isEnabled(flag: String) async -> Bool {
-        await client.isEnabled(flag: flag)
+        await client.entitlements.has(flag)
     }
 
     /// The portal link that frees a seat after the last activation was refused with `device_limit`

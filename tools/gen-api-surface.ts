@@ -314,6 +314,7 @@ const SWIFT_TYPE: Record<string, string> = {
   client: "PolarisKeyClient",
   config: "ConfigClient",
   license: "LicenseClient",
+  entitlements: "EntitlementsClient",
   identity: "IdentityClient",
   events: "PolarisKeyClient",
   devices: "DevicesClient",

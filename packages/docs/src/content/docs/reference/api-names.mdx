@@ -57,7 +57,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.register` | — | — | `client.register` | `client.register` | `client.register` | — | — |
 | `client.currentDevice` | `client.currentDevice` | — | `client.current_device` | `client.currentDevice` | `client.currentDevice` | `devices.get_current_device` (planned: SP-35b) | — |
 | `client.deactivate` | — | — | `client.deactivate` | `client.deactivate` | `client.deactivate` | — | — |
-| `client.isEnabled` | — | — | — | `client.isEnabled` | — | — | — |
 | `client.start` | — | — | — | `client.start` | `client.start` | `client.start` | — |
 | `client.storeFailure` | — | — | — | `client.storeFailure` | — | — | — |
 | `client.createLocal` | — | — | — | `client.createLocal` | `client.createLocal` | — | — |
@@ -174,9 +173,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
-| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
-| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.has` | `entitlements.has` | `useEntitlement` | `entitlements.has` | `entitlements.has` | `license.isEntitled` (planned: SP-35b) | `license.is_entitled` (planned: SP-35b) | `license.entitlements` |
+| `entitlements.value` | `entitlements.value` | planned (LX-19) | `entitlements.value` | `entitlements.value` | `license.entitlementValue` (planned: SP-35b) | planned (SP-35b) | `license.entitlements` |
+| `entitlements.all` | `entitlements.all` | planned (LX-19) | `entitlements.all` | `entitlements.all` | `license.entitlements` (planned: SP-35b) | `license.get_entitlements` (planned: SP-35b) | `license.entitlements` |
 | `entitlements.quantity` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.grants` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `entitlements.consume` | reserved for LX-42 | | | | | | `license.entitlements` |
@@ -393,6 +392,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Swift | `ConfigSetting.source()` | `config.setting.source` | SP-35b |
 | Swift | `ConfigSetting.isLocked()` | `config.setting.locked` | SP-35b |
 | Swift | `ConfigSetting.onChange(_:)` | `config.setting.on` | SP-35b |
+| Swift | `license.isEntitled` | `entitlements.has` | SP-35b |
+| Swift | `license.entitlementValue` | `entitlements.value` | SP-35b |
+| Swift | `license.entitlements()` | `entitlements.all` | SP-35b |
+| Swift | `client.isEnabled(flag:)` | `entitlements.has` | SP-35b |
 | Node | `config.getConfig` | `config.get` | SP-35 |
 | Node | `PolarisKeyClient.getConfig` | `config.get` | SP-35 |
 | Python | `config.get_config` | `config.get` | SP-35 |

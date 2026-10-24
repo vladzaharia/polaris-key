@@ -104,7 +104,7 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 | Surface                                                                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
-| `isEnabled(flag:)`, `license.isEntitled(_:)`                               | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `entitlements.has(_:)`, `entitlements.value(_:)`, `entitlements.all()`     | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `licenseInfo()`                                                            | License id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `config.set(_:_:)`, `clear(_:)`, `localValues()`                           | The user's own values, persisted in UserDefaults (an app-group suite with `appGroup`). They beat the environment and a remote `default`, never `enforced` or `hidden`, and are checked against the catalog's `type` and `enum`.                                                                                                                                                                                                                                                                          |
@@ -144,7 +144,7 @@ let client = try await PolarisKeyClient.create(options: .init(
 if await client.isLicensed() {
     let concurrency = await client.config.get("run.concurrency", default: .int(4))
     let vpnUrl = await client.config.getSecret("proxy.subscriptionUrl")
-    let hasVpn = await client.license.isEntitled("polarisVpn")
+    let hasVpn = await client.entitlements.has("polarisVpn")
 }
 
 // Activate with a license key (key → token, persisted, then a forced sync).
@@ -163,7 +163,7 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{get,
+entitledChannels,profile,deactivate}`, `client.entitlements.{has,value,all}`, `client.config.{get,
 getConfigSource,getSecret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
 `client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
 installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
@@ -667,7 +667,7 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
     let update = UpdateClient(core: client.core)
     let feed = await update.feed(
         channel: "stable",
-        entitlements: await client.license.entitlements())
+        entitlements: await client.entitlements.all())
 
     // Sparkle holds its delegate weakly: keep both objects for the app's lifetime.
     let delegate = PolarisSparkleUpdaterDelegate(feed: feed)

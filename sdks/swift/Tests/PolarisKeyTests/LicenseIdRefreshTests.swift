@@ -66,7 +66,7 @@ final class LicenseIdRefreshTests: XCTestCase {
         XCTAssertEqual(activated, .ok(token: "pkeyt_lx17", schemaVersion: 4))
         let before = await c.license.licenseId()
         XCTAssertEqual(before, "lic_trial")
-        let proBefore = await c.license.isEntitled("pro")
+        let proBefore = await c.entitlements.has("pro")
         XCTAssertFalse(proBefore)
         let activationsBefore = await server.requests(forPath: activatePath).count
         let reportsBefore = await server.requests(forPath: reportPath).count
@@ -80,9 +80,9 @@ final class LicenseIdRefreshTests: XCTestCase {
         XCTAssertEqual(result.documents[.license], .applied)
         let after = await c.license.licenseId()
         XCTAssertEqual(after, "lic_pro")
-        let proAfter = await c.license.isEntitled("pro")
+        let proAfter = await c.entitlements.has("pro")
         XCTAssertTrue(proAfter)
-        let tier = await c.license.entitlements()["license.tier"]
+        let tier = await c.entitlements.all()["license.tier"]
         XCTAssertEqual(tier, .string("pro"))
         // activation state
         let activationsAfter = await server.requests(forPath: activatePath).count
@@ -121,7 +121,7 @@ final class LicenseIdRefreshTests: XCTestCase {
                 fingerprint: false))
         let restored = await offline.license.licenseId()
         XCTAssertEqual(restored, "lic_pro")
-        let restoredPro = await offline.license.isEntitled("pro")
+        let restoredPro = await offline.entitlements.has("pro")
         XCTAssertTrue(restoredPro)
         let restoredStatus = await offline.status().status
         XCTAssertEqual(restoredStatus, .ok)

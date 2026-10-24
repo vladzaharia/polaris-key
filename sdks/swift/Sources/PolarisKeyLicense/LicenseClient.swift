@@ -129,23 +129,6 @@ public actor LicenseClient {
         await core.cache().license?.doc
     }
 
-    /// True iff the gate is usable AND the named entitlement is present with `value == true`.
-    ///
-    /// S-19 G11: a revoked, expired, blocked or never-activated install answers false even while a
-    /// cached document still lists the flag. (Before this it read the cached document alone, so a
-    /// revoked licence kept unlocking its features until the cache was cleared.)
-    public func isEntitled(_ name: String, now: Int? = nil) async -> Bool {
-        guard isUsable(await status(now: now)) else { return false }
-        return await doc()?.entitlements[name]?.value.boolValue == true
-    }
-
-    /// The raw value of an entitlement (a tier string, a seat count, a channel list), or nil
-    /// when absent. Gated like `isEntitled`: nil while the gate is not usable.
-    public func entitlementValue(_ name: String, now: Int? = nil) async -> JSONValue? {
-        guard isUsable(await status(now: now)) else { return nil }
-        return await doc()?.entitlements[name]?.value
-    }
-
     /// A summary of the verified licence for an account or settings screen, or nil when no
     /// licence document is held. Read from the enforced entitlements the Worker signs
     /// (`license.tier`, `license.tierLabel`, `deviceLimit`, `channels`).
@@ -161,7 +144,9 @@ public actor LicenseClient {
             entitledChannels: await entitledChannels())
     }
 
-    public func entitlements() async -> [String: JSONValue] {
+    /// The held document's entitlement values, ungated: the raw read `EntitlementsClient` builds
+    /// its gated reads on.
+    func documentEntitlements() async -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         for (key, entry) in await doc()?.entitlements ?? [:] { out[key] = entry.value }
         return out

@@ -29,9 +29,9 @@ func apiSurface() async {
     _ = ConfigSetting.clear  // config.setting.clear
     _ = ConfigSetting.on  // config.setting.on
     _ = LicenseClient.activate(key:)  // license.activateWithKey
-    _ = LicenseClient.isEntitled  // entitlements.has
-    _ = LicenseClient.entitlementValue  // entitlements.value
-    _ = LicenseClient.entitlements  // entitlements.all
+    _ = EntitlementsClient.has  // entitlements.has
+    _ = EntitlementsClient.value  // entitlements.value
+    _ = EntitlementsClient.all  // entitlements.all
     _ = IdentityClient.signOut  // identity.signOut
     _ = \PolarisKeyClient.changes  // events
     _ = PolarisKeyClient.discover  // client.discover
@@ -109,7 +109,6 @@ func apiSurface() async {
     _ = IdentityClient.acceptSignIn  // identity.acceptSignIn
     _ = LicenseClient.status  // license.status
     _ = LicenseClient.isLicensed  // license.isLicensed
-    _ = PolarisKeyClient.isEnabled  // client.isEnabled
     _ = PolarisKeyClient.start  // client.start
     _ = PolarisKeyClient.storeFailure  // client.storeFailure
     _ = PolarisKeyClient.createLocal  // client.createLocal

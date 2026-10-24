@@ -272,6 +272,11 @@
         "file": "sdks/swift/Sources/PolarisKeyLicense/LicenseClient.swift"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/swift/Sources/PolarisKeyLicense/EntitlementsClient.swift"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "sdks/swift/Sources/PolarisKeyIdentity/IdentityClient.swift"
@@ -1179,6 +1184,11 @@
       "sdk": "swift",
       "path": "client.pinnedReleaseKeys",
       "reason": "the option echoed back; the row is options.pinnedReleaseKeys"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
       "sdk": "swift",
@@ -2753,10 +2763,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
@@ -2785,10 +2792,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
@@ -2811,10 +2815,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "license.entitlements",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "license.entitlements",
           "planned": "SP-35b"
@@ -4381,17 +4382,6 @@
       "layer": "client"
     },
     {
-      "id": "client.isEnabled",
-      "kind": "method",
-      "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
       "id": "client.start",
       "kind": "method",
       "sdks": {
@@ -5608,6 +5598,46 @@
       "package": "SP-35b",
       "scan": {
         "pattern": "\\.setting\\([^)]*\\)\\s*\\.onChange\\s*[({]",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.isEntitled\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlementValue\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "license.entitlements()",
+      "to": "entitlements.all",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.entitlements\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "client.isEnabled(flag:)",
+      "to": "entitlements.has",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.isEnabled\\(flag:",
         "files": ["*.swift", "fence:swift"]
       }
     },

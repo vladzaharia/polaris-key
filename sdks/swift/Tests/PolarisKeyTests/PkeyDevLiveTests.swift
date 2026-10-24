@@ -161,7 +161,7 @@ final class PkeyDevLiveTests: XCTestCase {
 
             // `ok` is the key with `exportPro` entitled (docs: Run Polaris Key locally, Test keys).
             if name == "ok" {
-                let pro = await client.isEnabled(flag: "exportPro")
+                let pro = await client.entitlements.has("exportPro")
                 XCTAssertTrue(pro, "ok: exportPro is entitled")
             }
 

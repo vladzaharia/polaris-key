@@ -171,6 +171,8 @@ public actor PolarisKeyClient {
     public nonisolated let product: String
     public nonisolated let core: CoreContext
     public nonisolated let license: LicenseClient
+    /// Entitlement reads, gated by the licence (`has`, `value`); `all()` is ungated.
+    public nonisolated let entitlements: EntitlementsClient
     public nonisolated let config: ConfigClient
     public nonisolated let release: ReleaseClient
     /// Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity.
@@ -294,6 +296,7 @@ public actor PolarisKeyClient {
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
             onReleased: { await publisher.publish() })
+        self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
         let devices = DevicesClient(
@@ -326,7 +329,7 @@ public actor PolarisKeyClient {
         let status = await license?.status().status ?? .notApplicable
         var entitlements: [String: JSONValue] = [:]
         if let license, isUsable(status) {
-            entitlements = await license.entitlements()
+            entitlements = await EntitlementsClient(license: license).all()
         }
         return ChangeObservation(
             status: status, entitlements: entitlements, config: await config.snapshot(),
@@ -638,13 +641,6 @@ public actor PolarisKeyClient {
 
     public func isLicensed(now: Int? = nil) async -> Bool {
         await license.isLicensed(now: now)
-    }
-
-    /// Whether a catalog `flag` is on for this install. Flags are entitlements and ride the
-    /// licence document only, so this is `license.isEntitled(flag)`: false whenever the gate is
-    /// not usable (S-19 G11).
-    public func isEnabled(flag: String) async -> Bool {
-        await license.isEntitled(flag)
     }
 
     /// The verified licence, summarised (`license.licenseInfo()`).
