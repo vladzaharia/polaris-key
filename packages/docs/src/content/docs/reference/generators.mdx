@@ -75,6 +75,17 @@ Roles matrix: the docs page and the console's Roles tab data.
 - Reads: `packages/worker/src/core/rbac/matrix.ts`, `packages/worker/src/core/rbac/areas.ts`, `tools/gen-roles-matrix.ts`.
 - Writes: `packages/docs/src/content/docs/reference/roles.mdx`, `packages/admin/src/console/access/rolesMatrix.generated.ts`.
 
+### skills
+
+Agent-kit skill references (manifest validation codes).
+
+- Run: default, pre-commit.
+- Regenerate: `pnpm gen skills`.
+- Check: `pnpm gen skills --check`.
+- Underlying: `pnpm exec tsx tools/gen-skills.ts`.
+- Reads: `tools/gen-skills.ts`, `packages/shared-manifest/src/{index,distribution,spellings,descriptor}.ts`, `packages/docs/scripts/gen-reference.mjs`.
+- Writes: `packages/agent-kit/skills/*/references/*.md`.
+
 ### transcripts
 
 HTTP transcripts recorded through the Worker router, and their Godot mirror.

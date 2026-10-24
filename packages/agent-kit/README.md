@@ -40,6 +40,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family           | Here it | Run                       |
 | ---------------- | ------- | ------------------------- |
+| `skills`         | writes  | `pnpm gen skills`         |
 | `constants`      | reads   | `pnpm gen constants`      |
 | `docs-reference` | reads   | `pnpm gen docs-reference` |
 | `registry-docs`  | reads   | `pnpm gen registry-docs`  |

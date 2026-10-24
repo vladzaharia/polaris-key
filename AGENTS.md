@@ -155,6 +155,7 @@ every SDK's conformance runner; detail: `conformance/README.md`.
 - `services`: Service table in every language
 - `channels`: Distribution-channel catalogue
 - `roles-matrix`: Roles matrix: the docs page and the console's Roles tab data
+- `skills`: Agent-kit skill references (manifest validation codes)
 - `transcripts`: HTTP transcripts recorded through the Worker router, and their Godot mirror
 - `constants`: SDK constants: error codes, headers, enums, feature ids, core copy
 - `platform-inventory`: Platform inventory from the tagged Env members

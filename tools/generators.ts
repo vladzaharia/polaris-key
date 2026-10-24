@@ -129,6 +129,19 @@ export const GENERATORS: Generator[] = [
     fast: true,
   },
   {
+    id: "skills",
+    title: "Agent-kit skill references (manifest validation codes)",
+    order: 23,
+    inputs: [
+      "tools/gen-skills.ts",
+      "packages/shared-manifest/src/{index,distribution,spellings,descriptor}.ts",
+      "packages/docs/scripts/gen-reference.mjs",
+    ],
+    outputs: ["packages/agent-kit/skills/*/references/*.md"],
+    write: [tsx("tools/gen-skills.ts")],
+    fast: true,
+  },
+  {
     id: "transcripts",
     title:
       "HTTP transcripts recorded through the Worker router, and their Godot mirror",

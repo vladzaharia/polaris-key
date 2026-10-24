@@ -21,6 +21,7 @@
     "packages/admin/src/console/access/rolesMatrix.generated.ts",
     "packages/admin/src/console/settings.generated.ts",
     "packages/admin/src/services.generated.ts",
+    "packages/agent-kit/skills/*/references/*.md",
     "packages/brand/css/*.css",
     "packages/brand/src/generated/**",
     "packages/brand/test/kit-copy-golden/**",
