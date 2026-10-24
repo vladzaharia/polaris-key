@@ -221,9 +221,9 @@ describe("per-command help", () => {
       "pkey release keys generate --content --out file",
     );
 
-    const feeds = await run(["feeds", "-h"]);
-    for (const sub of ["fdroid", "setup", "prune"])
-      expect(feeds.out).toContain(`pkey feeds ${sub}`);
+    const feeds = await run(["storefront", "-h"]);
+    for (const sub of ["fdroid", "itch push", "snap upload"])
+      expect(feeds.out).toContain(`pkey storefront ${sub}`);
 
     const bundle = await run(["help", "bundle"]);
     expect(bundle.out).toContain("PKEY_ADMIN_TOKEN");

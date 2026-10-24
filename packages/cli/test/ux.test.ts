@@ -388,11 +388,12 @@ describe("CI never waits on a prompt", () => {
       );
     for (const f of files(src)) {
       const text = readFileSync(f, "utf8");
-      // `pkey login` alone reads keys (Enter, c, Esc), from a TTY and never under CI or --json.
-      const pattern =
-        path.basename(f) === "login.ts"
-          ? /node:readline|createInterface/
-          : /node:readline|process\.stdin|createInterface/;
+      // `pkey login` and `pkey init`'s questions (initPrompt.ts) alone read keys, from a TTY and
+      // never under CI or --json: init asks only when mayPrompt holds (a TTY, not CI, not
+      // TERM=dumb); the "never prompts under CI" cases are in init.test.ts / initPrompt.test.ts.
+      const pattern = ["login.ts", "initPrompt.ts"].includes(path.basename(f))
+        ? /node:readline|createInterface/
+        : /node:readline|process\.stdin|createInterface/;
       expect(text, f).not.toMatch(pattern);
     }
   });

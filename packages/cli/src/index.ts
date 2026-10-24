@@ -95,7 +95,7 @@ import {
   type Line,
   type TerminalInput,
 } from "@polaris-key/node/terminal";
-import { askInit, mayPrompt, type InitKeys } from "./initPrompt.js";
+import { askInit, initInput, mayPrompt, type InitKeys } from "./initPrompt.js";
 import {
   guardOutput,
   untrusted,
@@ -723,7 +723,7 @@ async function runCommand(
 /** What a command handler gets besides its parsed arguments. */
 interface Runtime {
   cwd: string;
-  /** Keys for the prompts (`pkey init`); default `process.stdin`. */
+  /** Keys for the prompts (`pkey init`); default is the terminal. */
   stdin?: TerminalInput;
   /** A scripted key reader (tests). */
   keys?: InitKeys;
@@ -1003,7 +1003,7 @@ async function cmdInit(parsed: ParsedArgs, rt: Runtime): Promise<number> {
     throw new UsageError("--starter-tier takes free or none.");
   let starterTier: "free" | "none" | undefined = tierFlag;
   // On a terminal, ask for what the flags did not give (ST-46.3); anywhere else, none of this runs.
-  const stdin = rt.stdin ?? process.stdin;
+  const stdin = initInput(rt.stdin);
   const term = termFor(stdout, rt.ci.env, rt.g, stdin);
   if (mayPrompt(term, stdin)) {
     // Refuse before asking anything when the files are there (the write would refuse anyway).
