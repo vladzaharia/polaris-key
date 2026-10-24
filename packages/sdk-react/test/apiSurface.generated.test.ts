@@ -33,6 +33,7 @@ export type Surface = [
   ReturnType<typeof useConfigSetting>["value"],
   ReturnType<typeof useConfigSetting>["source"],
   ReturnType<typeof useConfigSetting>["locked"],
+  ReturnType<typeof useConfigSetting>["visibility"],
   ReturnType<typeof useConfigSetting>["set"],
   ReturnType<typeof useConfigSetting>["clear"],
   ReturnType<typeof usePolarisAuth>["signOut"],
