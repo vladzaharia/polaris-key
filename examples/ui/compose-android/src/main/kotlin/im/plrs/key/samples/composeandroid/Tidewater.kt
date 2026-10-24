@@ -10,7 +10,16 @@
 package im.plrs.key.samples.composeandroid
 
 import im.plrs.key.core.CoreOptions
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.os.Build
 import im.plrs.key.core.DecisionRelease
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.core.PresentationIcon
+import im.plrs.key.core.PresentationRules
 import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
@@ -37,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 
 internal const val PRODUCT = "tidewater"
@@ -61,7 +71,7 @@ internal class FixtureInstaller : ProgressiveInstallDriver {
             stage.value = InstallStage.Downloading(INSTALLER_BYTES * i / steps, INSTALLER_BYTES)
             delay(250)
         }
-        stage.value = InstallStage.Idle
+        stage.value = InstallStage.ReadyToRestart
         return InstallResult.Started
     }
 
@@ -76,6 +86,11 @@ internal class Tidewater(private val start: Start) {
     private val activated = start !in setOf(Start.Walk, Start.Activate, Start.Limit)
     private val signInStartedAt = AtomicLong(0)
 
+    private val art = TidewaterArt.make()
+    private val icon = PresentationIcon(
+        sha256 = art.sha256, contentType = "image/png", width = ART_PX, height = ART_PX,
+        original = "https://img.plrs.im/$PRODUCT/a/${art.sha256}",
+    )
     private val transport = ScriptedTransport { handle(it) }
     val installer = FixtureInstaller()
 
@@ -84,13 +99,13 @@ internal class Tidewater(private val start: Start) {
             core = CoreOptions(
                 productSlug = PRODUCT, version = "2.4.0", pinnedKeys = product.trust, trustRefresh = false,
                 store = InMemoryStore(PRODUCT, DEVICE_ID).also { store -> if (activated) runBlocking { store.setToken(TOKEN) } },
-                transport = transport, clock = now, deviceName = "Pixel Tablet",
+                transport = transport, clock = now, deviceName = Build.MODEL,
                 expectedServices = listOf(ServiceSlug.license, ServiceSlug.identity, ServiceSlug.release, ServiceSlug.distribution, ServiceSlug.update),
             ),
             license = LicenseClientOptions(fingerprint = false),
-            update = UpdateClientOptions(pinnedReleaseKeys = release.trust, installDriver = installer),
+            update = UpdateClientOptions(pinnedReleaseKeys = release.trust, installDriver = installer, outlet = HostOutlet.Kind("direct")),
         ),
-    ).also { runBlocking { it.core.presentation.accept(Presentation(PRODUCT_NAME, "Harbor Audio", accent = "#26847a", accentDark = "#4fc4b8")) } }
+    ).also { runBlocking { it.core.presentation.accept(Presentation(PRODUCT_NAME, "Harbor Audio", accent = "#26847a", accentDark = "#4fc4b8", icon = icon)) } }
 
     /** The update on offer, as the kit's update prompt draws it: 2.5.0, optional. */
     fun offer(): PolarisUpdateUi = PolarisUpdateUi(
@@ -127,7 +142,8 @@ internal class Tidewater(private val start: Start) {
                         200,
                         product.licenseDoc(
                             PRODUCT, DEVICE_ID, now(), licenseId = "lic_tidewater",
-                            entitlements = mapOf("license.tier" to JsonPrimitive("studio"), "license.tierLabel" to JsonPrimitive("Studio"), "deviceLimit" to JsonPrimitive(3)),
+                            entitlements = mapOf("license.tier" to JsonPrimitive("studio"), "license.tierLabel" to JsonPrimitive("Studio"), "deviceLimit" to JsonPrimitive(3),
+                                "channels" to JsonArray(listOf(JsonPrimitive("stable"), JsonPrimitive("beta")))),
                         ),
                         mapOf("etag" to "\"v1\""),
                     )
@@ -138,7 +154,7 @@ internal class Tidewater(private val start: Start) {
                 signInStartedAt.set(now())
                 respond(
                     200,
-                    """{"deviceCode":"dc_tidewater","userCode":"WDJB-MJHT","verificationUri":"https://polaris.locker/device","verificationUriComplete":"https://polaris.locker/device?code=WDJB-MJHT","expiresIn":600,"interval":2,"deviceName":"Pixel Tablet"}""",
+                    """{"deviceCode":"dc_tidewater","userCode":"WDJB-MJHT","verificationUri":"https://polaris.locker/device","verificationUriComplete":"https://polaris.locker/device?code=WDJB-MJHT","expiresIn":600,"interval":2,"deviceName":"${Build.MODEL}"}""",
                 )
             }
             "/$PRODUCT/identity/auth/device/poll" ->
@@ -148,6 +164,7 @@ internal class Tidewater(private val start: Start) {
                     respond(200, """{"status":"pending"}""")
                 }
             "/$PRODUCT/devices" -> respond(200, roster())
+            "/$PRODUCT/a/${art.sha256}" -> PolarisResponse(200, art.bytes, mapOf("content-type" to "image/png"))
             else ->
                 if (r.path.startsWith("/$PRODUCT/devices/")) respond(200, "{}") else respond(404)
         }
@@ -156,8 +173,40 @@ internal class Tidewater(private val start: Start) {
     private fun roster(): String {
         val t = now()
         return """{"devices":[
-            {"id":"$DEVICE_ID","label":"Pixel Tablet","platform":"android","lastSeen":${t - 30}},
-            {"id":"dev-laptop","label":"Mira's Pixel 9","platform":"android","lastSeen":${t - 3 * 3600}},
+            {"id":"$DEVICE_ID","label":"${Build.MODEL}","platform":"android","lastSeen":${t - 30}},
+            {"id":"dev-laptop","label":"Mira’s Pixel 9","platform":"android","lastSeen":${t - 3 * 3600}},
             {"id":"dev-bench","label":"Bench PC","platform":"windows","lastSeen":${t - 5 * 86_400}}]}"""
+    }
+}
+
+private const val ART_PX = 256
+
+/** The product's icon, drawn here (a teal tide over a deep ground) and served by the scripted Worker under its hash. */
+internal class TidewaterArt(val bytes: ByteArray, val sha256: String) {
+    companion object {
+        fun make(): TidewaterArt {
+            val bitmap = Bitmap.createBitmap(ART_PX, ART_PX, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            paint.color = Color.parseColor("#0d2a33")
+            canvas.drawRect(0f, 0f, ART_PX.toFloat(), ART_PX.toFloat(), paint)
+            for ((i, hex) in listOf("#26847a", "#4fc4b8", "#c8f2ec").withIndex()) {
+                val y = 110f + i * 40f
+                val wave = Path().apply {
+                    moveTo(0f, y)
+                    quadTo(64f, y - 36f, 128f, y)
+                    quadTo(192f, y + 36f, 256f, y)
+                    lineTo(256f, 256f)
+                    lineTo(0f, 256f)
+                    close()
+                }
+                paint.color = Color.parseColor(hex)
+                canvas.drawPath(wave, paint)
+            }
+            val out = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            val bytes = out.toByteArray()
+            return TidewaterArt(bytes, PresentationRules.sha256Hex(bytes))
+        }
     }
 }

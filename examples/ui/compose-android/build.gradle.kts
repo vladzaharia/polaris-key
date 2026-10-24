@@ -3,7 +3,8 @@
 //
 //   ./gradlew :sample-compose-android:assembleDebug                installable debug APK
 //   ./gradlew :sample-compose-android:installDebug                 on a running emulator or device
-//   ./gradlew :sample-compose-android:testDebugUnitTest            the smoke test (Robolectric)
+//   ./gradlew :sample-compose-android:testDirectDebugUnitTest      the smoke test (Robolectric)
+//   ./gradlew :sample-compose-android:connectedDirectDebugAndroidTest  the launch smoke on an emulator
 //
 // Live values come from Gradle properties (-Ppkey.product=, -Ppkey.baseUrl=, -Ppkey.trust=k1=<key>,
 // -Ppkey.releaseKeys=), baked into BuildConfig; nothing secret is involved.
@@ -25,6 +26,7 @@ android {
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         applicationId = "im.plrs.key.samples.composeandroid"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
@@ -78,6 +80,7 @@ dependencies {
     implementation(testFixtures(project(":core")))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
     implementation(libs.androidx.activity.compose)
     // Navigation lives in the host, never in the kit (UK-09b.3): kit screens are destinations here.
     implementation(libs.androidx.navigation.compose)
@@ -88,4 +91,9 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(platform(libs.compose.bom))
+    // Compose test brings Espresso 3.5, which calls InputManager.getInstance (gone on API 34+).
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.compose.ui.test.junit4)
 }

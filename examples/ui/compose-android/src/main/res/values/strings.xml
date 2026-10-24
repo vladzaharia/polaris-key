@@ -5,5 +5,6 @@
     <string name="licensed_body">Licensed. Open your account or check for updates.</string>
     <string name="open_account">Account</string>
     <string name="check_updates">Check for updates</string>
+    <string name="back">Back</string>
     <string name="live_needs_product">Live mode needs a product. Build with -Ppkey.product=&lt;slug&gt; and -Ppkey.trust=k1=&lt;key&gt;.</string>
 </resources>
