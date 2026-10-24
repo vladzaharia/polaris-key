@@ -1126,7 +1126,22 @@ describe("workflow hardening", () => {
       for (const [id, job] of Object.entries(workflow(file).jobs ?? {})) {
         // A job that calls a reusable workflow cannot set it; the called jobs do.
         if (job.uses) continue;
-        expect(job["timeout-minutes"], `${file} ${id}`).toBeGreaterThan(0);
+        // A bound read from the matrix (`${{ matrix.timeout }}`) must be a positive number on
+        // every leg.
+        const t = job["timeout-minutes"];
+        const ref =
+          typeof t === "string"
+            ? /^\$\{\{\s*matrix\.(\w+)\s*\}\}$/.exec(t)
+            : null;
+        if (ref) {
+          const legs = (job.strategy?.matrix?.include ?? []) as Record<
+            string,
+            unknown
+          >[];
+          expect(legs.length, `${file} ${id}`).toBeGreaterThan(0);
+          for (const leg of legs)
+            expect(leg[ref[1] as string], `${file} ${id}`).toBeGreaterThan(0);
+        } else expect(t, `${file} ${id}`).toBeGreaterThan(0);
       }
   });
 

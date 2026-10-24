@@ -46,6 +46,22 @@ Compose kit: Android sample, tabs, M3 Expressive, navigation, tablet list-detail
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (2026-10-24)
+
+The code is the fact; these replace what the sections above say where they differ. Sliced in `_lead/plans/UK-09b-UK-31-SP-52b-slices.md` (UK-09b.2 to .8).
+
+- **C1. The ChannelPicker exists.** `PolarisChannelPicker` (`sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisChannelPicker.kt`) has default, locked and licence-locked states and an error line; its model is `PolarisChannelUi` (`ui-core/.../PolarisSettingsState.kt`), Settings draws it and `ChannelPickerTest.kt` tests it. What is left is a parity check against React, elements and Swift, and its place in the tablet list-detail's end pane. It has no ui-matrix family (`packages/brand/kit-copy/components.json` says `family: null`); its Compose snapshots come from `KitSamples.kt`. No corpus change.
+- **C2. The self-starting gate exists under another name.** `PolarisKeyApp(client) { App() }` already calls `client.start()`. No `PolarisKeyGate` composable exists in Kotlin (the name lives only in ui-core's `gate("PolarisKeyGate")`). The one-liner named in UK-09 is added in UK-09b.3, with `PolarisKeyApp` kept as a deprecated wrapper.
+- **C3. There are 23 component pages, not 25.** `build/ui/components/` holds 25 files, and two are `_template.mdx` and `index.mdx`. No page has a Compose tab yet (0 of 23). Tabs are Starlight `<Tabs syncKey="ui-kit">`, the label comes from `uiKits.ts`, and a `kotlin android` fence compiles in `:docs-snippets-android`.
+- **C4. M3 Expressive is mostly out of reach on the pinned toolchain.** `:ui` follows Godot 4.7.2's template (AGP 8.6.1, compileSdk 36, Kotlin 2.1.21; Compose BOM 2026.06.01 brings Material 3 1.4.0). Available: `MaterialExpressiveTheme` and the `motionScheme` overload of `MaterialTheme`. Internal: `MotionScheme.expressive()`. Absent: `LoadingIndicator`, `ButtonGroup`, `MaterialShapes` and the wavy progress composables (they need BOM 2026.08.00 or later, compileSdk 37 and AGP 9.1). Until the kit has a version line decoupled from the Godot template pins, those are recorded as blocked and the kit draws its own.
+- **C5. No navigation or deep links exist.** The kit navigates by state (`rememberSaveable` plus `PolarisBackHandler`); there is no navigation-compose, `NavHost`, `material3-adaptive` or `WindowSizeClass`, and no deep-link copy key. The only `pkey://` is a URI the desktop opener must refuse. UK-09b.3 adds `PolarisKeyRoute` and `PolarisKeyLinks` (an allow-list parser), and wires navigation-compose in the sample only.
+- **C6. The sample folder.** `examples/ui/compose-android/` is the Gradle module `:sample-compose-android` in `sdks/kotlin/settings.gradle.kts`, inside the Android include block, like UK-10.10's `:sample-compose-desktop`. `examples/ui/README.md` has two rows, "Compose (Android)" and "Compose Desktop".
+- **C7. UK-09 silently dropped two items.** "Credential Manager first" (no code exists) and "Material Symbols Rounded" (`PolarisSymbols.kt` exists; whether it is the Rounded set is unverified). UK-09b.4 and the plan's D-7 decide both.
+- **C8. Naming drift on an end-user surface.** `sdks/kotlin/ui/src/androidMain/res/values/strings.xml` `pkey_ui_polaris_key_mark` reads "Polaris Key", and this legacy `PolarisCopy` label reaches TalkBack. It must read "Polaris Locker". The catalog itself is clean. Fixed in UK-09b.4 (the sample, UK-09b.2, does not touch `:ui`).
+- **C9. Slice 1 is merged.** `PolarisTwoPane` and `PolarisAccount` / `PolarisAccountScreen` (list-detail at 840 dp or wider, `ListDetailTest.kt`). "Tablet list-detail" only needs the ChannelPicker in its end pane and the BUILT review.
+- **C10. UK-09's BUILT verdict is still owed.** UK-09 stays in review until a verdict is recorded. The BUILT review in UK-09b.7 records both.
+- **C11. Local emulators exist.** `~/Library/Android/sdk/emulator` has android-24, -34 and -36.1 images and AVDs (pk-s06, titan2, s04lowend). Export `ANDROID_HOME`, use JDK 17 through mise, and run Gradle with `--no-daemon` through heavy.sh.
+
 ## Acceptance criteria
 
 - [ ] `examples/ui/compose-android` builds and runs

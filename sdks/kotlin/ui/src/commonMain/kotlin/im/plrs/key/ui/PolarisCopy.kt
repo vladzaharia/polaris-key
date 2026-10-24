@@ -275,7 +275,7 @@ public data class PolarisCopy(
     /** The "Powered by Polaris Locker" phrase: the line's text and the badge's accessible name. */
     val poweredBy: String = "Powered by Polaris Locker",
     /** The accessible name of the Pinned K when branding is on. */
-    val polarisKeyMark: String = "Polaris Key",
+    val polarisKeyMark: String = "Polaris Locker",
 ) {
     public companion object {
         /** The resource name for a field: `pkey_ui_` + its name in snake case. */

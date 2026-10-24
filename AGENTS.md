@@ -108,6 +108,7 @@ then fails to collect instead of failing at the relevant change.
 | 20  | lint-swift        | lane `swift-floor`                | `sdks/swift/tools/lint.sh check-or-skip`                                         |
 | 21  | lint-kotlin       | lane `kotlin` (heavy)             | `sdks/kotlin/tools/lint.sh check`                                                |
 | 22  | lint-godot        | lane `godot`                      | `sdks/godot/tools/lint.sh check`                                                 |
+| 23  | skills            | always                            | `pnpm skills:all`                                                                |
 
 <!-- gate:end -->
 

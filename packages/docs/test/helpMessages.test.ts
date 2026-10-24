@@ -522,6 +522,7 @@ describe("the words", () => {
     commands: new Map(),
     commonFlags: new Set(),
     routes: [],
+    removed: [],
   };
 
   it("pass the prose rules the pages pass", () => {

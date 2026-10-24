@@ -86,6 +86,8 @@ export interface LintArgs {
   html?: string[];
   /** Window sizes for `html` pages, `WIDTHxHEIGHT[@ratio]`: `1920x1080`, `320x256@4` (400 % zoom). */
   sizes?: string[];
+  /** Colour schemes for `html` pages (`prefers-color-scheme`); each page runs once per scheme. */
+  schemes?: Array<"dark" | "light">;
   strings?: boolean;
   kits?: boolean;
   recordStringDebt?: boolean;
@@ -156,20 +158,24 @@ export async function runLint(
         options: { allRules: true, refusals },
       });
     for (const page of args.html ?? [])
-      for (const size of args.sizes?.length ? args.sizes : [undefined]) {
-        const s = size ? parseSize(size) : undefined;
-        targets.push({
-          name: s ? `${page} @ ${size}` : page,
-          options: { refusals },
-          url: /^https?:/.test(page)
-            ? page
-            : `${srv.base}/${page.replace(/^\/+/, "")}`,
-          ...(s && {
-            viewport: { width: s.width, height: s.height },
-            deviceScaleFactor: s.ratio,
-          }),
-        });
-      }
+      for (const size of args.sizes?.length ? args.sizes : [undefined])
+        for (const scheme of args.schemes?.length
+          ? args.schemes
+          : [undefined]) {
+          const s = size ? parseSize(size) : undefined;
+          targets.push({
+            name: s ? `${page} @ ${size}` : page,
+            options: { refusals },
+            ...(scheme && { scheme, theme: scheme }),
+            url: /^https?:/.test(page)
+              ? page
+              : `${srv.base}/${page.replace(/^\/+/, "")}`,
+            ...(s && {
+              viewport: { width: s.width, height: s.height },
+              deviceScaleFactor: s.ratio,
+            }),
+          });
+        }
     const results = await lintTargets(br, targets);
     for (const r of results) {
       const board = boards.find((b) => b.name === r.target.name);

@@ -40,6 +40,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -117,12 +120,17 @@ public fun PolarisLicenseChoice(
             }
             Spacer(Modifier.height(PolarisSpace.controls))
             PolarisSection(title = lines.text("signin.choice.group")) {
+                // Android (Expressive): a connected group, large outer corners, small inner ones, a 2 dp gap.
+                val connected = polarisConnectedRows
+                val outer = MaterialTheme.shapes.medium
                 choices.choices.forEachIndexed { i, choice ->
-                    if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    if (i > 0 && connected) Spacer(Modifier.height(PolarisConnectedGap))
+                    if (i > 0 && !connected) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     PolarisLicenseRow(
                         choice = choice,
                         title = choice.name ?: product.ifEmpty { choice.tierName },
                         selected = choice.id == selected,
+                        shape = if (connected) polarisConnectedShape(i, choices.choices.size, outer) else RectangleShape,
                         lines = lines,
                         developer = developer,
                         store = STORE_NAME,
@@ -175,6 +183,7 @@ internal fun PolarisLicenseRow(
     choice: KitLicenseChoice,
     title: String,
     selected: Boolean,
+    shape: Shape = RectangleShape,
     lines: KitLines,
     developer: String,
     store: String,
@@ -190,7 +199,12 @@ internal fun PolarisLicenseRow(
         choice.current -> lines.format("signin.choice.tag.current")
         else -> null
     }
-    val base = Modifier.fillMaxWidth().heightIn(min = 64.dp).background(if (selected) scheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent) // polaris-lint: allow-colour (no fill)
+    val fill = when {
+        selected -> scheme.primaryContainer
+        shape !== RectangleShape -> scheme.surfaceContainerHigh
+        else -> androidx.compose.ui.graphics.Color.Transparent // polaris-lint: allow-colour (no fill)
+    }
+    val base = Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(shape).background(fill) // polaris-lint: allow-colour (no fill)
     // A full license is a row without a radio: readable, not selectable.
     val clickable = if (choice.isFull) {
         base.semantics(mergeDescendants = true) {}
