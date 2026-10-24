@@ -156,6 +156,11 @@
         "file": "sdks/python/src/polaris_key/license/client.py"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "sdks/python/src/polaris_key/license/entitlements.py"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "sdks/python/src/polaris_key/identity/client.py"
@@ -695,21 +700,6 @@
       "sdk": "python",
       "path": "license.doc",
       "reason": "the licence document property read through the entitlement rows; not an app verb"
-    },
-    {
-      "sdk": "python",
-      "path": "license.is_entitled",
-      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "python",
-      "path": "license.entitlement_value",
-      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "python",
-      "path": "license.get_entitlements",
-      "reason": "row entitlements.has/value/all (planned SP-35); rule 1 matches rows by the surface namespace"
     },
     {
       "sdk": "python",
@@ -1918,10 +1908,7 @@
           "spelling": "license.isEntitled",
           "planned": "SP-35"
         },
-        "python": {
-          "spelling": "license.is_entitled",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "license.isEntitled",
           "planned": "SP-35b"
@@ -1956,10 +1943,7 @@
           "spelling": "license.entitlementValue",
           "planned": "SP-35"
         },
-        "python": {
-          "spelling": "license.entitlement_value",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "license.entitlementValue",
           "planned": "SP-35b"
@@ -1984,10 +1968,7 @@
           "spelling": "license.getEntitlements",
           "planned": "SP-35"
         },
-        "python": {
-          "spelling": "license.get_entitlements",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "license.entitlements",
           "planned": "SP-35b"
@@ -3863,6 +3844,33 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "license.is_entitled",
+      "to": "entitlements.has",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.is_entitled\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "license.entitlement_value",
+      "to": "entitlements.value",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.entitlement_value\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "license.get_entitlements",
+      "to": "entitlements.all",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\blicense\\.get_entitlements\\s*\\("
       }
     }
   ]

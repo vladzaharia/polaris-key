@@ -158,7 +158,7 @@ def _run_gate(
         if status not in _DECIDED:
             raise ValueError("unknown status " + status)
         usable = status in USABLE
-        entitled = entitlement is None or bool(client.license.is_entitled(entitlement))
+        entitled = entitlement is None or bool(client.entitlements.has(entitlement))
         return status, usable, entitled
 
     status, usable, entitled = check()

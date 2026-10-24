@@ -7,6 +7,7 @@ from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.identity.client import IdentityClient
 from polaris_key.license.client import LicenseClient
+from polaris_key.license.entitlements import EntitlementsClient
 
 CLASSES = {
     "PolarisKeyClient": PolarisKeyClient,
@@ -14,6 +15,7 @@ CLASSES = {
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
     "LicenseClient": LicenseClient,
+    "EntitlementsClient": EntitlementsClient,
 }
 
 ATTRS = [
@@ -36,9 +38,9 @@ ATTRS = [
     ("config.setting.clear", "ConfigSetting", "clear"),
     ("config.setting.on", "ConfigSetting", "on"),
     ("license.activateWithKey", "LicenseClient", "activate_with_key"),
-    ("entitlements.has", "LicenseClient", "is_entitled"),
-    ("entitlements.value", "LicenseClient", "entitlement_value"),
-    ("entitlements.all", "LicenseClient", "get_entitlements"),
+    ("entitlements.has", "EntitlementsClient", "has"),
+    ("entitlements.value", "EntitlementsClient", "value"),
+    ("entitlements.all", "EntitlementsClient", "all"),
     ("identity.signOut", "IdentityClient", "sign_out"),
     ("client.discover", "PolarisKeyClient", "discover"),
     ("client.init", "PolarisKeyClient", "init"),
@@ -99,6 +101,9 @@ REMOVED = [
     ("client.get_config", "PolarisKeyClient", "get_config"),
     ("client.on_config_change", "PolarisKeyClient", "on_config_change"),
     ("config.on_change", "ConfigClient", "on_change"),
+    ("license.is_entitled", "LicenseClient", "is_entitled"),
+    ("license.entitlement_value", "LicenseClient", "entitlement_value"),
+    ("license.get_entitlements", "LicenseClient", "get_entitlements"),
 ]
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)

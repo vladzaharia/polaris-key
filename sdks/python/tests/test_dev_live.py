@@ -370,7 +370,7 @@ def test_first_activation(dev: Dev, lifecycle: Lifecycle) -> None:
     # The licence document came down and verified against the generated pins: the `ok` key
     # carries `exportPro`.
     assert client.license.doc is not None
-    assert client.license.is_entitled("exportPro")
+    assert client.entitlements.has("exportPro")
     profile = client.license.get_profile()
     assert profile is not None and profile.name == dev.person.name
 

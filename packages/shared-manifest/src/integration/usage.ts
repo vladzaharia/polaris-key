@@ -633,7 +633,7 @@ const PY_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       `client.sync()`,
       `if not client.is_licensed():`,
       `    print(client.status().status)`,
-      `pro = client.license.is_entitled(${q(c.entitlement)})`,
+      `pro = client.entitlements.has(${q(c.entitlement)})`,
     ),
   }),
   config: (c) => ({
@@ -714,7 +714,7 @@ const PY_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
       `# Steam shown; claim_app_store and claim_play take their store's fields.`,
       `def claim(ticket_hex: str, dlc_app_id: str) -> str:`,
       `    r = client.commerce.claim_steam(ticket_hex, dlc_app_id)`,
-      `    return "unlocked" if client.license.is_entitled(${q(c.commerceFlag)}) else str(r)`,
+      `    return "unlocked" if client.entitlements.has(${q(c.commerceFlag)}) else str(r)`,
     ),
   }),
 };

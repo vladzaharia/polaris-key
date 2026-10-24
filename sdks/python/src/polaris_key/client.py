@@ -79,6 +79,7 @@ from .discovery import (
     discover_product,
 )
 from .license.client import LicenseClient
+from .license.entitlements import EntitlementsClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
 from .core.portal import PortalStore
@@ -232,6 +233,8 @@ class PolarisKeyClient:
             # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
             on_changed=lambda: self._license_changed(),
         )
+        #: ``client.entitlements`` (SP-35.20): a thin view over the licence gate above.
+        self.entitlements = EntitlementsClient(self.license)
         #: ``client.events`` (SDK parity pass §3.11): license, entitlement, config,
         #: updateAvailable, packs and store changes, to any number of subscribers.
         self.events = EventBus()
@@ -292,7 +295,7 @@ class PolarisKeyClient:
             self.core,
             self._tokens,
             sync=lambda: self.sync(force=True),
-            is_entitled=lambda flag: self.license.is_entitled(flag),
+            is_entitled=lambda flag: self.entitlements.has(flag),
             outlet_kind=lambda: self.update.outlet.kind if self.update.outlet is not None else None,
         )
 
@@ -602,7 +605,7 @@ class PolarisKeyClient:
             names = sorted(doc.entitlements) if doc is not None else []
             return {
                 "status": self.license.status().status,
-                "ents": {n: self.license.entitlement_value(n) for n in names},
+                "ents": {n: self.entitlements.value(n) for n in names},
                 "config": self.config.snapshot(),
             }
         except Exception:

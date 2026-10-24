@@ -264,7 +264,7 @@ def test_a_slow_check_says_it_is_checking(monkeypatch: pytest.MonkeyPatch) -> No
 
     class Slow:
         product = "tidewater"
-        license = SimpleNamespace(is_entitled=lambda n: False)
+        entitlements = SimpleNamespace(has=lambda n: False)
 
         def status(self) -> Any:
             return SimpleNamespace(status=state["s"])

@@ -157,9 +157,9 @@ def test_activation_then_reads_across_both_documents() -> None:
     assert c.config.get_secret("proxy.subscriptionUrl") == "https://vpn.example.com/sub/abc"
     assert c.config.get_secret("missing") is None
     assert c.config.schema_version() == 4
-    assert c.license.is_entitled("polarisVpn") is True
-    assert c.license.is_entitled("nope") is False
-    assert c.license.get_entitlements() == {"polarisVpn": True, "license.tier": "pro"}
+    assert c.entitlements.has("polarisVpn") is True
+    assert c.entitlements.has("nope") is False
+    assert c.entitlements.all() == {"polarisVpn": True, "license.tier": "pro"}
     assert c.license.get_license_id() == "lic_v3"
     profile = c.license.get_profile()
     assert profile is not None and profile.firstName == "Grace"

@@ -233,6 +233,7 @@ const PY_CLASS: Record<string, string> = {
   client: "PolarisKeyClient",
   config: "ConfigClient",
   license: "LicenseClient",
+  entitlements: "EntitlementsClient",
   identity: "IdentityClient",
 };
 
@@ -270,6 +271,7 @@ from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.identity.client import IdentityClient
 from polaris_key.license.client import LicenseClient
+from polaris_key.license.entitlements import EntitlementsClient
 
 CLASSES = {
     "PolarisKeyClient": PolarisKeyClient,
@@ -277,6 +279,7 @@ CLASSES = {
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
     "LicenseClient": LicenseClient,
+    "EntitlementsClient": EntitlementsClient,
 }
 
 ${list("ATTRS", attrs)}

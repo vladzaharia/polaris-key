@@ -432,7 +432,7 @@ def test_c2_cache_is_no_longer_a_key_source(tmp_path) -> None:
     assert c._trust.effective == TRUST
     assert c.sync(force=True).applied is False, "a forged doc must not be applied"
     assert c.status().status == "needs-activation"
-    assert c.license.is_entitled("polarisVpn") is False
+    assert c.entitlements.has("polarisVpn") is False
     assert c.config.get_secret("proxy.subscriptionUrl") is None
     c.close()
 
@@ -569,7 +569,7 @@ def test_r4_01_hand_written_cache_grants_nothing(tmp_path) -> None:
         )
         assert c.status().status == "needs-activation"
         assert c.is_licensed() is False
-        assert c.license.is_entitled("polarisVpn") is False
+        assert c.entitlements.has("polarisVpn") is False
         assert c.config.get_secret("proxy.subscriptionUrl") is None
         c.close()
 
