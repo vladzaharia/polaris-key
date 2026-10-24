@@ -234,7 +234,12 @@ private fun PolarisUpdatePromptCard(
                     if (downloading) {
                         // Counted bytes only: the bar and "Downloading · 38 of 61 MB" (UI-KITS.md 4.3).
                         val (done, total) = ui.progress!!
-                        val line = copy.format(copy.updateDownloading, copy.bytes(done), copy.bytes(total))
+                        // An unknown total (0) is an indeterminate bar and the bytes so far, never "of 0 B".
+                        val line = if (total > 0) {
+                            copy.format(copy.updateDownloading, copy.bytes(done), copy.bytes(total))
+                        } else {
+                            "${copy.packsDownloading} · ${copy.bytes(done)}"
+                        }
                         Spacer(Modifier.height(16.dp))
                         PolarisProgressBar(if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else null, line)
                         Spacer(Modifier.height(8.dp))

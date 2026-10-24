@@ -36,6 +36,9 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 /** Opens a verified installer with the OS. */
@@ -85,13 +88,33 @@ public class DesktopInstallDriver(
     private val dir: File,
     private val opener: InstallerOpener = SystemInstallerOpener(),
     /** Download progress: (received, total) bytes. */
-    private val progress: ((Long, Long) -> Unit)? = null,
-) : InstallDriver {
+    private val onBytes: ((Long, Long) -> Unit)? = null,
+) : InstallDriver, InstallProgressSource {
+    private val stage = MutableStateFlow<InstallStage>(InstallStage.Idle)
+
+    /**
+     * The download's bytes ([InstallStage.Downloading]), then [InstallStage.Idle] once the verified
+     * installer is open, or [InstallStage.Failed] (which carries no bytes). Progress only: what
+     * opens, and when, is decided by [install] alone.
+     */
+    override val progress: StateFlow<InstallStage> = stage.asStateFlow()
+
     /** The installer the last successful [install] opened, or null. */
     @Volatile public var lastInstaller: File? = null
         private set
 
     override suspend fun install(check: UpdateCheck): InstallResult {
+        val result = try {
+            run(check)
+        } catch (e: CancellationException) {
+            stage.value = InstallStage.Idle
+            throw e
+        }
+        stage.value = (result as? InstallResult.Failed)?.let { InstallStage.Failed(it.code, it.detail) } ?: InstallStage.Idle
+        return result
+    }
+
+    private suspend fun run(check: UpdateCheck): InstallResult {
         val d = check.decision
         return when {
             d is UpdateDecision.Binary && (d.method == BinaryMethod.download || d.method == BinaryMethod.native) -> installBuild(d)
@@ -128,7 +151,11 @@ public class DesktopInstallDriver(
         val installer = File(dir, name)
         try {
             ensureDir()
-            fetch.fetch(url, part, artifact.size, progress)
+            stage.value = InstallStage.Downloading(0, artifact.size)
+            fetch.fetch(url, part, artifact.size) { done, total ->
+                stage.value = InstallStage.Downloading(done, total)
+                onBytes?.invoke(done, total)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: PolarisException) {
