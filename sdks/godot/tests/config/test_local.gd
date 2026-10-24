@@ -78,7 +78,10 @@ func _clear(t: PKeyTestContext) -> void:
 	var seen: Array = []
 	cfg.config_changed.connect(func(keys): seen.append(keys))
 
+	var events: Array = []
+	sdk.event.connect(func(k, d): events.append([k, d]))
 	var r := cfg.clear("dice.animSpeed")
+	t.check("clear: one config event with value, previous and source", events == [[PKeyConstants.EventKind.CONFIG, {"key": "dice.animSpeed", "value": 1.25, "previous": 3.0, "source": "remote-default"}]], str(events))
 	t.check("clear: the override is gone and the remote default answers", r.ok and cfg.get_value("dice.animSpeed") == 1.25 and cfg.get_config_source("dice.animSpeed") == &"remote-default")
 	t.check("clear: removed from the file", not _has(path, "dice", "animSpeed"))
 	t.check("clear: one config_changed", seen == [PackedStringArray(["dice.animSpeed"])], str(seen))

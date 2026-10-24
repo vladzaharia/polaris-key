@@ -185,7 +185,10 @@ func _happy(t: PKeyTestContext) -> void:
 	var sdk: Node = got[0]
 	var seen: Array = []
 	sdk.update.update_available.connect(func(c): seen.append(c))
+	var events: Array = []
+	sdk.event.connect(func(k, d): events.append([k, d]))
 	var r: PKeyUpdateCheck = await sdk.update.decide()
+	t.check("decide: the event stream carries updateAvailable once beside the signal", events == [[PKeyConstants.EventKind.UPDATEAVAILABLE, {"version": "1.5.0", "action": "binary", "mandatory": false, "channel": "stable"}]], str(events))
 	var want := {
 		"action": "binary", "method": "download",
 		"release": {"version": "1.5.0", "seq": 15, "sha256": BASE_RECORD},

@@ -57,6 +57,15 @@ signal input_captured(captured: bool)
 ## The kit has a sound to play: `open`, `close`, `focus` (navigation only), `confirm`, `back` or
 ## `error` (PKeyUiFeedback). The game plays its own sound. Survives `configure()`.
 signal ui_sound(event: StringName)
+## One stream of what changed (the `events` stream every SDK has), emitted beside the signals above
+## once `configure()` has run. `kind` is a `PKeyConstants.EventKind` value; `data` has snake_case keys:
+##   license          {status, previous}                      beside `state_changed`
+##   config           {key, value, previous, source}          one per key of `config.config_changed`
+##   updateAvailable  {version, action, mandatory, channel}   beside `update.update_available` (decide())
+##   packs            {pack, phase, done, total}              pack progress, every phase
+##   store            {reason, detail}                        beside `store_error`
+## `entitlement` and `cloudSync` follow with their features. Payloads carry no token or raw hardware value.
+signal event(kind: String, data: Dictionary)
 ## `in_play` changed.
 signal in_play_changed(playing: bool)
 
@@ -410,6 +419,9 @@ func _init() -> void:
 	# The kit's nodes keep running while the game pauses the tree (a sign-in opened from a pause
 	# menu must not freeze). Children inherit it; a game overrides it by setting `process_mode`.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	config.config_changes.connect(_on_config_changes)
+	update.update_available.connect(_on_update_available)
+	update.packs.pack_phase.connect(_on_pack_phase)
 
 
 ## The one toast host the kit's screens share (the update prompt in play, the gate's and boot's
@@ -482,13 +494,44 @@ func _on_verify_progress(fraction: float) -> void:
 func _on_store_error(err: Dictionary) -> void:
 	last_store_error = err
 	store_error.emit(err)
+	_emit_event(PKeyConstants.EventKind.STORE, {"reason": PKeyConstants.ErrorCode.STORE_FAILED, "detail": str(err.get("message", ""))})
+
+
+## Raise `event` once the SDK is configured.
+func _emit_event(kind: String, data: Dictionary) -> void:
+	if core != null:
+		event.emit(kind, data)
+
+
+func _on_config_changes(changes: Array) -> void:
+	for c in changes:
+		_emit_event(PKeyConstants.EventKind.CONFIG, c)
+
+
+func _on_update_available(result: PKeyResult) -> void:
+	if not (result is PKeyUpdateCheck):
+		return
+	var d: Dictionary = result.decision
+	var release = d.get("release")
+	_emit_event(PKeyConstants.EventKind.UPDATEAVAILABLE, {
+		"version": release["version"] if release is Dictionary and release.get("version") is String else "",
+		"action": String(d.get("action", "")),
+		"mandatory": d.get("mandatory") == true,
+		"channel": result.channel,
+	})
+
+
+func _on_pack_phase(info: Dictionary) -> void:
+	_emit_event(PKeyConstants.EventKind.PACKS, info)
 
 
 func _emit_state() -> void:
 	var s := status()
 	if s != _last_state:
+		var previous = _last_state.get("status")
 		_last_state = s
 		state_changed.emit(s)
+		_emit_event(PKeyConstants.EventKind.LICENSE, {"status": s.get("status"), "previous": previous})
 
 
 func _start_timer() -> void:

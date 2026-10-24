@@ -42,6 +42,8 @@ extends RefCounted
 ## Dictionaries). Usable before configure(): every call then answers `not-configured`.
 
 signal pack_progress(id: String, bytes: int, total: int)
+## Every phase of a pack's progress: {pack, phase, done, total}. PolarisKey's `event` stream reads it.
+signal pack_phase(info: Dictionary)
 signal pack_ready(id: String)
 signal pack_failed(id: String, err: String)
 signal set_changed(activation: String)
@@ -291,6 +293,8 @@ static func _granted(core: PKeyCore) -> Variant:
 
 
 func _on_progress(e: Dictionary) -> void:
+	if String(e.get("packId", "")) != "":
+		pack_phase.emit({"pack": String(e["packId"]), "phase": String(e.get("phase", "")), "done": int(e.get("done", 0)), "total": int(e.get("total", 0))})
 	if e.get("phase") == "download" or e.get("phase") == "apply":
 		pack_progress.emit(String(e["packId"]), int(e["done"]), int(e["total"]))
 

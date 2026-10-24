@@ -112,6 +112,23 @@ richer result class; nothing throws. The autoload's signals are `state_changed(s
 `sync_finished(result)`, `store_error(err)`, `boot_finished(result)` and
 `verify_progress(fraction)`.
 
+`event(kind, data)` is the one stream of what changed, raised beside those signals once
+`configure()` has run. `kind` is a `PKeyConstants.EventKind` value and `data` a Dictionary:
+
+| kind              | `data`                                  | beside                                 |
+| ----------------- | --------------------------------------- | -------------------------------------- |
+| `license`         | `{status, previous}`                    | `state_changed`                        |
+| `config`          | `{key, value, previous, source}`        | `config.config_changed`, one per key   |
+| `updateAvailable` | `{version, action, mandatory, channel}` | `update.update_available` (`decide()`) |
+| `packs`           | `{pack, phase, done, total}`            | `update.packs.pack_progress`           |
+| `store`           | `{reason, detail}`                      | `store_error`                          |
+
+```gdscript
+PolarisKey.event.connect(func(kind, data): print(kind, data))
+```
+
+`entitlement` and `cloudSync` follow with their features.
+
 ## A tour
 
 One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK

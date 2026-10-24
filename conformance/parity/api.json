@@ -1766,6 +1766,16 @@
     },
     {
       "sdk": "godot",
+      "path": "config.config_changes",
+      "reason": "the detail behind config_changed that the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pack_phase",
+      "reason": "the pack progress the client's event signal reads; not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "config.attach",
       "reason": "internal wiring or the override-store hook the host sets; not an app verb"
     },
@@ -2914,8 +2924,10 @@
         },
         "kotlin": {},
         "godot": {
-          "planned": "SP-35b",
-          "reason": "gains signal event(kind, data)"
+          "spelling": "event",
+          "path": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         },
         "react": {
           "spelling": "hooks and subscribe",
