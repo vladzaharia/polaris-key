@@ -15,7 +15,6 @@
 
 package im.plrs.key.ui
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -28,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import im.plrs.key.core.PRESENTATION_ICON_MAX_DIMENSION
@@ -83,14 +81,12 @@ internal fun rememberPresentationArt(source: PresentationSource?, member: Presen
  */
 internal fun decodePresentationArt(bytes: ByteArray, targetPx: Int): PresentationArt? {
     val image = decodeIcon(bytes, targetPx, PRESENTATION_ICON_MAX_DIMENSION) ?: return null
-    return PresentationArt(image, deriveAccent(image.asAndroidBitmap()))
+    return PresentationArt(image, deriveAccent(image))
 }
 
 /** PolarisAccent.derive over a 32 × 32 thumbnail's RGBA bytes. */
-private fun deriveAccent(bitmap: Bitmap): String? {
-    val thumb = Bitmap.createScaledBitmap(bitmap, 32, 32, true)
-    val argb = IntArray(32 * 32)
-    thumb.getPixels(argb, 0, 32, 0, 0, 32, 32)
+private fun deriveAccent(image: ImageBitmap): String? {
+    val argb = thumbnailArgb32(image)
     val rgba = ByteArray(argb.size * 4)
     for ((i, p) in argb.withIndex()) {
         rgba[i * 4] = (p shr 16 and 0xFF).toByte()

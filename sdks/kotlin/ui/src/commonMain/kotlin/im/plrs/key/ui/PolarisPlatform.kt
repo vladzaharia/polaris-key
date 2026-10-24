@@ -61,3 +61,43 @@ internal expect fun PolarisQr(content: String, contentDescription: String, modif
 /** The font scale the person set (1f is the default; the desktop has none). */
 @Composable
 internal fun polarisFontScale(): Float = androidx.compose.ui.platform.LocalDensity.current.fontScale
+
+// ── Moved to commonMain with the kit (UK-10.3) ──────────────────────────────────────────────────
+
+/** The locale tag the catalog formats in: the device's first locale (Android), the JVM default (desktop). */
+@Composable
+internal expect fun systemLocaleTag(): String
+
+/** What this screen is, for "This device": "tv", "tablet" or "phone" on Android, "desktop" on the desktop. */
+@Composable
+internal expect fun ownFormFactor(): String
+
+/** Speaks [message] once to the screen reader (TalkBack); the desktop has no such one-off call yet and says nothing. */
+@Composable
+internal expect fun rememberPolarisAnnouncer(): (String) -> Unit
+
+/** The update version the person chose to skip, kept across launches, and how to keep a new one. */
+internal class PolarisUpdatePrefs(val skippedVersion: String?, val saveSkipped: (String) -> Unit)
+
+/** The update prefs of the host: Android shared preferences, the desktop's `java.util.prefs` node. */
+@Composable
+internal expect fun rememberUpdatePrefs(): PolarisUpdatePrefs
+
+/** The kit's copy from the host's string resources (an app's `values-<locale>` on Android); the English defaults elsewhere. */
+@Composable
+internal expect fun polarisLocalizedCopy(): PolarisCopy
+
+/** A 32 x 32 ARGB thumbnail of [image] (the input of the icon's accent derivation). */
+internal expect fun thumbnailArgb32(image: ImageBitmap): IntArray
+
+/** Dims what is behind the enclosing dialog window by [amount] (0..1). Android sets the window's dim; the desktop draws no window dim. */
+@Composable
+internal expect fun PolarisDialogDim(amount: Float)
+
+/**
+ * The sign-in state for [key] (the client), kept across a recreation where the platform has one
+ * (Android: the Activity's ViewModel store, so a rotation keeps the same code); [onSignedIn] runs
+ * while this composition is attached.
+ */
+@Composable
+internal expect fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState

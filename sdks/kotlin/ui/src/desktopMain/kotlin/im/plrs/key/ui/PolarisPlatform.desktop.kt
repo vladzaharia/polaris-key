@@ -14,7 +14,15 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.toAwtImage
 import java.awt.GraphicsEnvironment
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import java.util.prefs.Preferences
 import java.awt.Toolkit
 import java.awt.datatransfer.Clipboard
 import java.awt.datatransfer.DataFlavor
@@ -112,3 +120,54 @@ internal actual fun decodeIcon(bytes: ByteArray, targetPx: Int, maxSide: Int): I
 
 @Composable
 internal actual fun PolarisQr(content: String, contentDescription: String, modifier: Modifier) = Unit
+
+@Composable
+internal actual fun systemLocaleTag(): String = java.util.Locale.getDefault().toLanguageTag()
+
+@Composable
+internal actual fun ownFormFactor(): String = "desktop"
+
+// No one-off announcement call on the desktop yet: the live regions the screens carry are the channel.
+@Composable
+internal actual fun rememberPolarisAnnouncer(): (String) -> Unit = remember { { _: String -> } }
+
+@Composable
+internal actual fun rememberUpdatePrefs(): PolarisUpdatePrefs = remember {
+    // The user's preferences node; where it cannot be read or written the choice lasts for the run.
+    val node = runCatching { Preferences.userRoot().node("im/plrs/key/ui/update") }.getOrNull()
+    PolarisUpdatePrefs(
+        skippedVersion = runCatching { node?.get("skipped_version", null) }.getOrNull(),
+        saveSkipped = { version ->
+            runCatching { node?.put("skipped_version", version) }
+        },
+    )
+}
+
+// The desktop has no string resources to translate from: the English defaults.
+@Composable
+internal actual fun polarisLocalizedCopy(): PolarisCopy = remember { PolarisCopy() }
+
+internal actual fun thumbnailArgb32(image: ImageBitmap): IntArray {
+    val thumb = BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB)
+    val g = thumb.createGraphics()
+    try {
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.drawImage(image.toAwtImage(), 0, 0, 32, 32, null)
+    } finally {
+        g.dispose()
+    }
+    return thumb.getRGB(0, 0, 32, 32, null, 0, 32)
+}
+
+// A Compose dialog draws no window dim on the desktop; the kit's own scrim is inside the dialog.
+@Composable
+internal actual fun PolarisDialogDim(amount: Float) = Unit
+
+@Composable
+internal actual fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
+    val scope = rememberCoroutineScope()
+    val latest by rememberUpdatedState(onSignedIn)
+    val state = remember(key, scope) { PolarisSignInState(actions, scope, onSignedIn = { latest() }) }
+    DisposableEffect(state) { onDispose { state.cancel() } }
+    return state
+}

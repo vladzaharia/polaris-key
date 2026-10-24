@@ -93,7 +93,7 @@ const FILE_SEED: Record<string, { file: string; text: string }> = {
     text: "struct Gate: View { var body: some View { Text(x) } }",
   },
   "compose-initial-focus": {
-    file: "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
+    file: "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
     text: "@Composable fun Gate() { Button(onClick = {}) {} }",
   },
   "godot-initial-focus": {

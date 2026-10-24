@@ -52,7 +52,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -68,11 +67,7 @@ import kotlinx.serialization.json.JsonPrimitive
 /** The locale tag the catalog formats in: the device's first locale. */
 @Composable
 internal fun kitLocale(): String {
-    val configuration = LocalConfiguration.current
-    return remember(configuration) {
-        val locales = configuration.locales
-        if (locales.isEmpty) "en" else locales[0].toLanguageTag()
-    }
+    return systemLocaleTag()
 }
 
 /** What a line is on screen: a control, an announcement for assistive tech only, or text. */

@@ -396,8 +396,7 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
         // The sheet and the card span the window: the dialog's own width would cap them.
         properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory, usePlatformDefaultWidth = false),
     ) {
-        val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
-        androidx.compose.runtime.SideEffect { dialogWindow?.setDimAmount(if (dark) 0.6f else 0.32f) }
+        PolarisDialogDim(if (dark) 0.6f else 0.32f)
         PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)
     }
 }
