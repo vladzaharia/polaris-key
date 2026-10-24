@@ -25,6 +25,7 @@ import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
 import { listAudit } from "../src/core/audit.js";
 import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
 import { SERVICES } from "../src/mount.js";
+import { RETIRED_TABLES } from "../src/db/owners.js";
 import { auditStatementFor } from "../src/core/audit.js";
 import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
@@ -58,7 +59,6 @@ const LICENSE_KEYED = [
   // U-03: Config's licence-override migration report. Nothing deletes its rows with the licence
   // yet (U-27b erases them); the list claims the table so the suite sees it.
   "override_migration_report",
-  "portal_license_links",
   // U-27.6: the provisioned-secret backfill ledger; Core deletes the row (`core/licensing/grants.ts`).
   "provisioned_secret_moves",
   "registry_tokens",
@@ -189,19 +189,6 @@ async function seedEverything(
     NOW,
   );
   await db.run(
-    "INSERT INTO portal_accounts (id, created_at, modified_at) VALUES ('pa_1', ?, ?)",
-    NOW,
-    NOW,
-  );
-  await db.run(
-    `INSERT INTO portal_license_links (account_id, product, license_id, source, created_at, last_seen_at)
-     VALUES ('pa_1', ?, ?, 'oidc', ?, ?)`,
-    SLUG,
-    licenseId,
-    NOW,
-    NOW,
-  );
-  await db.run(
     `INSERT INTO license_relinks (product, id, license_id, to_subject, reason, actor_sub, created_at, undo_until)
      VALUES (?, 'rl_1', ?, 'ps_to', 'support ticket', 'u1', ?, ?)`,
     SLUG,
@@ -265,7 +252,13 @@ describe("licence deletion: the claimed tables", () => {
       `SELECT m.name FROM sqlite_master m JOIN pragma_table_info(m.name) p
         WHERE m.type = 'table' AND p.name = 'license_id' ORDER BY m.name`,
     );
-    expect(rows.map((r) => r.name).sort()).toEqual(LICENSE_KEYED);
+    // A retired table (no reader or writer since I-28; I-28b drops it) is covered by that fact.
+    expect(
+      rows
+        .map((r) => r.name)
+        .filter((n) => !RETIRED_TABLES.includes(n))
+        .sort(),
+    ).toEqual(LICENSE_KEYED);
   });
 });
 

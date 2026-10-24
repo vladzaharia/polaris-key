@@ -68,11 +68,7 @@ import {
   openAccountSessionRow,
   sessionIdHash,
 } from "./portal/accountSessions.js";
-import {
-  portalIdentityIssuerKey,
-  recordLinkGroups,
-  rekeyLegacyPortalIdentities,
-} from "./portal/repo.js";
+import { portalIdentityIssuerKey, recordLinkGroups } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
 import { handleAccountPasskeys } from "./passkeys/routes.js";
 import {
@@ -146,7 +142,6 @@ export async function consoleSignIn(
   const issuerKey = portalIdentityIssuerKey(rp.issuer);
   // A pre-I-01 row keyed by the literal `oidc` is this IdP's subject: re-key before the lookup, or
   // the operator would get a second account (as the portal callback does).
-  await rekeyLegacyPortalIdentities(db, issuerKey);
   await rekeyLegacyAccountLinks(db, issuerKey);
 
   const asserted = identity.email?.trim()

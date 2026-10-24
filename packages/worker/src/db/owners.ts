@@ -209,3 +209,15 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "portal_audit",
   ],
 };
+
+/**
+ * The four pre-I-05 portal contract tables: no reader or writer in `src/` since I-28; I-28b drops
+ * them (and the `TABLE_OWNERS` rows above, with this list). Their owner rows stay while the tables
+ * exist, so the completeness tests treat these as covered.
+ */
+export const RETIRED_TABLES: readonly string[] = [
+  "portal_accounts",
+  "portal_account_emails",
+  "portal_account_identities",
+  "portal_license_links",
+];

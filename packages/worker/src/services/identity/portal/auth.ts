@@ -32,11 +32,7 @@ import {
   getArtefact,
   putArtefact,
 } from "../../../core/singleUse.js";
-import {
-  portalIdentityIssuerKey,
-  rekeyLegacyPortalIdentities,
-  portalAuthCapabilities,
-} from "./repo.js";
+import { portalIdentityIssuerKey, portalAuthCapabilities } from "./repo.js";
 import { type SignInResult } from "../accounts/signIn.js";
 import { findLink, rekeyLegacyAccountLinks } from "../accounts/repo.js";
 import {
@@ -508,8 +504,7 @@ async function completeConnectionCallback(
   const issuerKey = portalIdentityIssuerKey(conn.issuer);
   if (conn.source === "env") {
     // A pre-I-01 row still keyed by the literal `oidc` is this IdP's subject: re-key it before
-    // the lookup, or the person would get a second account (until I-28 removes the helpers).
-    await rekeyLegacyPortalIdentities(db, issuerKey);
+    // the lookup, or the person would get a second account.
     await rekeyLegacyAccountLinks(db, issuerKey);
   }
   const known = await findLink(db, {

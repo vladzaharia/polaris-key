@@ -1,6 +1,6 @@
 // I-01 (S-16 G14): migrations/0059 keys portal identities by issuer. The migration itself only
-// guards new rows (D1 SQL cannot read the platform issuer, a Worker secret); the backfill is
-// `rekeyLegacyPortalIdentities`. The guard is expand-only: it still admits the legacy literal a
+// guards new rows (D1 SQL cannot read the platform issuer, a Worker secret); the Worker's backfill
+// went with I-28. The guard is expand-only: it still admits the legacy literal a
 // pre-I-01 Worker writes, because deploy.yml migrates before deploying and a Worker rollback runs
 // no SQL. Driven here against a database migrated to just before 0059, so
 // the legacy row is written exactly as production holds it.
@@ -10,11 +10,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { SqliteDb } from "../src/db/sqlite.js";
-import {
-  portalIdentityIssuerKey,
-  rekeyLegacyPortalIdentities,
-} from "../src/services/identity/portal/repo.js";
+import { portalIdentityIssuerKey } from "../src/services/identity/portal/repo.js";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 const MIGRATION = "0059_portal_identity_issuer.sql";
@@ -75,7 +71,7 @@ describe("migrations/0059 portal identities keyed by issuer", () => {
     insert.run("http://localhost:8787", "sub-3", NOW, NOW);
   });
 
-  it("stays expand-only: a pre-I-01 Worker's first-time sign-in insert still succeeds", async () => {
+  it("stays expand-only: a pre-I-01 Worker's first-time sign-in insert still succeeds", () => {
     const sqlite = migratedTo(MIGRATION);
     apply(sqlite, MIGRATION);
     sqlite
@@ -91,13 +87,11 @@ describe("migrations/0059 portal identities keyed by issuer", () => {
       )
       .run(NOW, NOW);
 
-    // The I-01 Worker re-keys it at that user's next sign-in.
-    await rekeyLegacyPortalIdentities(new SqliteDb(sqlite), ISSUER);
     expect(
       sqlite
         .prepare("SELECT provider, subject FROM portal_account_identities")
         .all(),
-    ).toEqual([{ provider: ISSUER, subject: "sub-old" }]);
+    ).toEqual([{ provider: "oidc", subject: "sub-old" }]);
   });
 
   it("keys identities by the issuer without a trailing slash", () => {
@@ -111,26 +105,13 @@ describe("migrations/0059 portal identities keyed by issuer", () => {
     expect(() => apply(sqlite, MIGRATION)).not.toThrow();
   });
 
-  it("the Worker backfill re-keys legacy rows to the configured issuer, idempotently", async () => {
-    const sqlite = migratedTo(MIGRATION);
-    seedLegacy(sqlite);
-    apply(sqlite, MIGRATION);
-    const db = new SqliteDb(sqlite);
-
-    await rekeyLegacyPortalIdentities(db, ISSUER);
-    await rekeyLegacyPortalIdentities(db, ISSUER);
-    expect(
-      await db.all(
-        "SELECT provider, subject, account_id FROM portal_account_identities",
-      ),
-    ).toEqual([{ provider: ISSUER, subject: "sub-1", account_id: "pa_1" }]);
-  });
-
   it("the optional rollback statements restore the pre-0059 shape", async () => {
     const sqlite = migratedTo(MIGRATION);
     seedLegacy(sqlite);
     apply(sqlite, MIGRATION);
-    await rekeyLegacyPortalIdentities(new SqliteDb(sqlite), ISSUER);
+    sqlite.exec(
+      `UPDATE portal_account_identities SET provider = '${ISSUER}' WHERE provider = 'oidc'`,
+    );
 
     sqlite.exec.bind(sqlite)(
       `DROP TRIGGER IF EXISTS trg_portal_identities_issuer_ins;

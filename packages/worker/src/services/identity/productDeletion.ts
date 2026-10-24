@@ -8,8 +8,6 @@ import type { ProductDeletionContributor } from "../../core/contributions.js";
 
 /** Tables keyed by `product` that go whole, in the order the product's deletion removed them. */
 const PRODUCT_KEYED = [
-  // The portal's links to the product's licences (erased with their holders).
-  "portal_license_links",
   // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants.
   "account_product_subject_aliases",
   "account_product_subjects",

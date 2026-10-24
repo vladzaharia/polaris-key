@@ -340,21 +340,6 @@ export async function mergeAccounts(
       params: [A, S, now],
     },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [A] },
-    // The pre-I-05 tables: the absorbed account's rows go (a rollback re-creates the survivor's
-    // from the moved links and licences, scripts/rollback/0068_accounts.down.sql).
-    {
-      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
-      params: [A],
-    },
-    {
-      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
-      params: [A],
-    },
-    {
-      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
-      params: [A],
-    },
-    { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [A] },
     {
       sql: `INSERT INTO portal_audit (id, account_id, at, action, product, target_kind, target_id, summary)
             VALUES (?, ?, ?, 'account.merge', NULL, 'account', ?, ?)`,
