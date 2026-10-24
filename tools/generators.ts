@@ -324,12 +324,13 @@ export const GENERATORS: Generator[] = [
   {
     id: "registry-docs",
     title:
-      "This registry as a docs page and the AGENTS.md generated-files table",
+      "This registry as a docs page, the AGENTS.md generated-files table and the lint-debt exclusion snapshot",
     order: 110,
     inputs: ["tools/generators.ts", "tools/gen-generators-doc.ts"],
     outputs: [
       "packages/docs/src/content/docs/reference/generators.mdx",
       "AGENTS.md",
+      "tools/lint/generated.json",
     ],
     write: [tsx("tools/gen-generators-doc.ts")],
     fast: true,
