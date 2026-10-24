@@ -16,8 +16,7 @@ export function kitStylesCss(): string {
   return (css ??= lightDomWebCss());
 }
 
-const desktopDone = new WeakSet<Document>();
-let desktopSheet: CSSStyleSheet | null = null;
+export const desktopDone = new WeakSet<Document>();
 
 /** Whether `doc` has the desktop chrome's rules (or needs none: no constructable sheets, so the
  *  host links `styles.css`, which has them). */
@@ -30,28 +29,8 @@ export function hasDesktopStyles(doc: Document | undefined): boolean {
 export function adoptDesktopStyles(doc: Document | undefined): Promise<void> {
   if (!doc || desktopDone.has(doc)) return Promise.resolve();
   return import("./desktopCss.js").then(
-    (m) => {
-      if (desktopDone.has(doc)) return;
-      desktopDone.add(doc);
-      if (
-        !("adoptedStyleSheets" in doc) ||
-        typeof CSSStyleSheet !== "function" ||
-        !("replaceSync" in CSSStyleSheet.prototype)
-      )
-        return;
-      try {
-        desktopSheet ??= new CSSStyleSheet();
-        if (desktopSheet.cssRules.length === 0)
-          desktopSheet.replaceSync(m.lightDomDesktopCss());
-        doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, desktopSheet];
-      } catch {
-        // A document of another realm: it links styles.css.
-      }
-    },
-    () => {
-      // Never arrives: the kit keeps the web chrome.
-      desktopDone.add(doc);
-    },
+    (m) => m.adoptDesktop(doc),
+    () => void desktopDone.add(doc), // never arrives: the kit keeps the web chrome
   );
 }
 

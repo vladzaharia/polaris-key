@@ -1637,16 +1637,6 @@ dialog.sheet .identity {
   .field input:focus-visible {
     outline-color: Highlight;
   }
-  .pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
-    outline-color: Highlight;
-    box-shadow: none;
-  }
-  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
-    border-block-start-color: CanvasText;
-  }
-  .pk-root[data-pk-platform="windows"] .btn[data-variant="link"] {
-    color: LinkText;
-  }
   .seat-bar span[data-used],
   .progress > span {
     forced-color-adjust: none;

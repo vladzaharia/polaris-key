@@ -487,4 +487,16 @@ export const DESKTOP_CSS = String.raw`
     --pk-border-strong: var(--pk-text-strong);
   }
 }
+@media (forced-colors: active) {
+  .pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
+    outline-color: Highlight;
+    box-shadow: none;
+  }
+  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:not([data-group]) {
+    border-block-start-color: CanvasText;
+  }
+  .pk-root[data-pk-platform="windows"] .btn[data-variant="link"] {
+    color: LinkText;
+  }
+}
 `;
