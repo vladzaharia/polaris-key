@@ -44,6 +44,10 @@ internal class PolarisWindow(
     val height: Dp,
     /** Android TV (the UI mode, not the size). */
     val tv: Boolean = false,
+    /** The chrome this window is drawn for; the desktop answers from `os.name`. */
+    val variant: PolarisPlatformVariant = autoPlatformVariant(),
+    /** Touch is the active input (desktop only; Android's target is 48 dp regardless). */
+    val touch: Boolean = false,
 ) {
     /** Under 480 dp tall. */
     val compactHeight: Boolean get() = height < COMPACT_HEIGHT

@@ -154,3 +154,5 @@ internal actual fun PolarisDialogDim(amount: Float) {
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect { dialogWindow?.setDimAmount(amount) }
 }
+
+internal actual fun autoPlatformVariant(): PolarisPlatformVariant = PolarisPlatformVariant.Android

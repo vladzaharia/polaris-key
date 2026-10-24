@@ -432,7 +432,7 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
         interactionSource = interaction,
         modifier = Modifier
             .polarisFocusIndication(interaction, PolarisTheme.buttonShape)
-            .size(PolarisMinTouchTarget)
+            .size(polarisWindow.minTarget)
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         Icon(

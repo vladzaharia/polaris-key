@@ -131,7 +131,10 @@ internal val PolarisTwoPaneMaxWidth: Dp = 1040.dp
 internal val PolarisMessageBlockWidth: Dp = 560.dp
 
 /** The kit's button height: 56 dp (UI-KITS.md §2.1 Android `controlHeight`), 60 on TV. */
-internal val PolarisWindow.controlHeight: Dp get() = if (tv) 60.dp else 56.dp
+internal val PolarisWindow.controlHeight: Dp get() = if (tv) 60.dp else variant.controlHeight
+
+/** The smallest target of a control: 48 dp on Android (60 on TV); 24 dp under a mouse and 44 dp under touch on the desktop (U6). */
+internal val PolarisWindow.minTarget: Dp get() = if (tv) 60.dp else if (!variant.isDesktop) PolarisMinTouchTarget else if (touch) 44.dp else 24.dp
 
 /** How a single column places its content on a tall window. */
 internal enum class PolarisAnchor {
@@ -192,17 +195,18 @@ internal fun PolarisSurface(
     content: @Composable (window: PolarisWindow, maxHeight: Dp) -> Unit,
 ) {
     val tv = isTelevision()
+    val touch = LocalPolarisTouchInput.current
     if (LocalPolarisEmbedded.current) {
         // A pane of a list-detail screen: the host surface already set the background and the insets.
         BoxWithConstraints(modifier.fillMaxSize()) {
-            val window = PolarisWindow(maxWidth, maxHeight, tv)
+            val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
             CompositionLocalProvider(LocalPolarisWindow provides window) { content(window, maxHeight) }
         }
         return
     }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            val window = PolarisWindow(maxWidth, maxHeight, tv)
+            val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
             val height = maxHeight
             CompositionLocalProvider(LocalPolarisWindow provides window) {
                 if (window.textScale == 1f) {
@@ -623,7 +627,8 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
     val focused by interaction.collectIsFocusedAsState()
     val window = polarisWindow
     val keyboard = LocalInputModeManager.current.inputMode == InputMode.Keyboard
-    val show = focused && (window.tv || keyboard)
+    // The desktop shows the ring on any focus from launch: a window opens with the keyboard in play.
+    val show = focused && (window.tv || keyboard || window.variant.isDesktop)
     val color = PolarisTheme.focusColor
     val ring = if (window.tv) 3.dp else 2.dp
     val scale by animateFloatAsState(if (window.tv && focused) 1.05f else 1f, label = "PolarisFocusScale")
@@ -632,7 +637,7 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
     var placed by remember { mutableStateOf(false) }
     if (initialFocus && placed) {
         LaunchedEffect(Unit) {
-            if (window.tv || keyboard) runCatching { requester.requestFocus() }
+            if (window.tv || keyboard || window.variant.isDesktop) runCatching { requester.requestFocus() }
         }
     }
     Modifier
@@ -787,7 +792,7 @@ public fun PolarisTextButton(
         interactionSource = interaction,
         modifier = modifier
             .polarisFocusIndication(interaction, shape, initialFocus)
-            .heightIn(min = if (tv) 60.dp else PolarisMinTouchTarget),
+            .heightIn(min = polarisWindow.minTarget),
     ) { Text(text, textAlign = TextAlign.Center) }
 }
 
