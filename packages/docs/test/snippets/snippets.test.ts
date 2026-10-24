@@ -343,7 +343,9 @@ for (const lang of NATIVE_LANGS) {
     it("names only symbols the SDK exports, or labels them planned", () => {
       const known = exportsOf(lang);
       const missing: string[] = [];
-      for (const c of COVERED_PAGES.filter((c) => c.language === lang)) {
+      for (const c of COVERED_PAGES.filter(
+        (c) => c.language === lang && c.prose !== false,
+      )) {
         const prose = proseOf(readFileSync(join(REPO, c.path), "utf8"));
         for (const m of nativeMentions(prose, lang))
           if (!known.has(m.name))

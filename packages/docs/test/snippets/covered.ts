@@ -8,6 +8,11 @@ export interface Covered {
   /** Repo-relative path, or a directory prefix ending in `/`. */
   path: string;
   language: "ts" | "python" | "swift" | "kotlin" | "gdscript";
+  /**
+   * False on a page that holds several kits' tabs: its fences compile, but its prose names other
+   * kits' symbols, so the code-span check skips it.
+   */
+  prose?: false;
 }
 
 const BUILD = "packages/docs/src/content/docs/build/";
@@ -27,6 +32,58 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}quickstart/kotlin.mdx`, language: "kotlin" },
   { path: `${BUILD}sdks/kotlin/your-own-ui.md`, language: "kotlin" },
   { path: `${BUILD}ui/frameworks/compose.mdx`, language: "kotlin" },
+  { path: `${BUILD}ui/components/about.mdx`, language: "kotlin", prose: false },
+  {
+    path: `${BUILD}ui/components/account-and-license.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/activate.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  { path: `${BUILD}ui/components/boot.mdx`, language: "kotlin", prose: false },
+  {
+    path: `${BUILD}ui/components/channel-picker.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/cloud-sync-status.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/device-limit.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/devices.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/entitlement-gate.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/grace-banner.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/license-choice.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
+  {
+    path: `${BUILD}ui/components/offline-activation.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
   { path: `${BUILD}quickstart/swift.mdx`, language: "swift" },
   { path: `${BUILD}sdks/swift/your-own-ui.md`, language: "swift" },
   { path: `${BUILD}ui/frameworks/swiftui.mdx`, language: "swift" },

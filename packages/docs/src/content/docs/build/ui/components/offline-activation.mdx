@@ -80,6 +80,34 @@ The request QR shows wherever it fits, phones included, so another phone can sca
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate offers it when the device cannot reach the server; Copy code puts the request code on the clipboard.
+
+    **Styled part.** `PolarisKitScreen`, given the `KitStates` answer for OfflineActivation and the `requestCode` to show.
+
+    **Headless.** `KitStates.resolve(KitComponent.offlineActivation, inputs)` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisKitScreen
+
+    @Composable
+    fun OfflineActivation(inputs: KitInputs, requestCode: String) {
+        PolarisKitScreen(
+            KitStates.resolve(KitComponent.offlineActivation, inputs),
+            requestCode = requestCode,
+        )
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

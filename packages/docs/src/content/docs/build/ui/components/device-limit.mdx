@@ -80,6 +80,31 @@ The focused Replace a device flow: the device count, the devices as radio rows w
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate shows it when activation hits the seat limit.
+
+    **Styled part.** `PolarisKitScreen`, given the `KitStates` answer for the DeviceLimit component.
+
+    **Headless.** `KitStates.resolve(KitComponent.deviceLimit, inputs)` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisKitScreen
+
+    @Composable
+    fun DeviceLimit(inputs: KitInputs) {
+        PolarisKitScreen(KitStates.resolve(KitComponent.deviceLimit, inputs))
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

@@ -88,7 +88,28 @@ The device list: an icon for the form factor, the name, platform and last seen, 
 
     **Headless.** `PolarisDevicesState` in `polaris-key-ui-core`.
 
-    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisDevices
+    import im.plrs.key.ui.PolarisDevicesState
+    import im.plrs.key.ui.devicesActions
+
+    @Composable
+    fun MyDevices(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisDevicesState(client.devicesActions(), scope) }
+        LaunchedEffect(state) { state.load() }
+        PolarisDevices(state)
+    }
+    ```
+
+    On Compose Desktop the Settings window shows it as its Devices pane.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
 
   </TabItem>
   <TabItem label="Godot">

@@ -51,6 +51,29 @@ Renders its children only while an entitlement holds; otherwise a slot of the ho
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisEntitlementGate(name) { … }` shows its content while the entitlement holds.
+
+    **Styled part.** The same call with `tier`, `onUnlock` and a `locked` slot for your own locked card.
+
+    **Headless.** `rememberPolarisEntitled(name)` returns the live answer; the boolean overload takes it.
+
+    ```kotlin android
+    import androidx.compose.material3.Text
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisEntitlementGate
+
+    @Composable
+    fun ProFeature(unlock: () -> Unit) {
+        PolarisEntitlementGate("pro", tier = "Pro", onUnlock = unlock) { Text("Pro feature") }
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
