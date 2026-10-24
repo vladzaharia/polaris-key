@@ -7,6 +7,7 @@
 
 import type { Out, Sleep } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
+import type { Term, TermOut } from "./terminal.js";
 import { UsageError } from "./errors.js";
 import { channelAdd } from "./channelAdd.js";
 import { channelSync } from "./channelSync.js";
@@ -29,6 +30,8 @@ export interface ChannelIo {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: Sleep;
+  /** The terminal behind a stream (colour, symbols, width), honouring --no-color and --ascii. */
+  term?: (out: TermOut) => Term;
 }
 
 /** `pkey channel …`. */

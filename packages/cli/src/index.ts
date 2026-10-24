@@ -807,7 +807,13 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   channel: (p, rt) =>
     cmdChannel(
       { positional: p.positional, flags: p.flags, multi: p.multi },
-      { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
+      {
+        cwd: rt.cwd,
+        stdout: rt.stdout,
+        stderr: rt.stderr,
+        term: rt.term,
+        ...rt.ci,
+      },
     ),
 };
 

@@ -1050,7 +1050,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     json: true,
     summary: "Add a delivery channel to .pkey/distribution, and sync its steps",
     rows: [
-      ["channel add <id>", "Add a channel to .pkey/distribution"],
+      ["channel add <id>", "Append the channel to .pkey/distribution"],
       ["channel sync", "Run the PR steps the declared channels have"],
     ],
     tree: { add: [], sync: [] },
@@ -1067,6 +1067,17 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "sets an identity field; a value starting [ or { is JSON. The outlet is named for " +
           "the channel unless --outlet-id says otherwise. Nothing is written if the id is " +
           "taken or .pkey/ would stop validating.",
+      },
+      {
+        subs: ["sync"],
+        text:
+          "channel sync plans one step per declared pr or ci channel (and F-Droid) and runs " +
+          "the pull-request ones as pkey storefront <store> pr does, reported into the " +
+          "store's ledger. A channel whose secret is unset is skipped with the variable's " +
+          "name (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, " +
+          "PKEY_FDROID_KS_PASS); a failed step fails the command after the rest ran. " +
+          "--channel is the release channel (default stable). --dry-run plans and runs " +
+          "nothing.",
       },
     ],
   },
