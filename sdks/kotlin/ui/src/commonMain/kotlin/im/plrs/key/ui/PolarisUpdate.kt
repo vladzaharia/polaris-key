@@ -206,8 +206,11 @@ private fun PolarisUpdatePromptCard(
         tonalElevation = if (gnome) 0.dp else 6.dp,
     ) {
         Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // GNOME: the header leads on the notes' edge (an AdwDialog's content is start-aligned), not centred above them.
+            val headAlign = if (gnome) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.Center
+            val headHorizontal = if (gnome) Alignment.Start else Alignment.CenterHorizontally
             val content: @Composable () -> Unit = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = headHorizontal) {
                     val kind = if (ui.critical) PolarisMessageKind.Warning else PolarisMessageKind.Info
                     if (productName(copy) != null || PolarisTheme.current.logo != null) {
                         PolarisProductIcon(56.dp)
@@ -218,23 +221,23 @@ private fun PolarisUpdatePromptCard(
                     Text(
                         title,
                         style = MaterialTheme.typography.headlineSmall,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = headAlign,
                         modifier = Modifier.fillMaxWidth().semantics { heading() },
                     )
                     Spacer(Modifier.height(8.dp))
-                    if (body != null) PolarisBody(body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    if (body != null) PolarisBody(body, textAlign = headAlign)
                     if (ui.kind == PolarisUpdateUi.Kind.Install) {
-                        copy.updateCurrentLine(ui)?.let { PolarisBody(it, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                        copy.updateCurrentLine(ui)?.let { PolarisBody(it, textAlign = headAlign) }
                         // A short window keeps the title, version and actions on screen: no room for the notes.
                         if (!window.compactHeight) PolarisUpdateNotes(ui)
                     }
                     if (ui.critical) {
                         Spacer(Modifier.height(8.dp))
-                        PolarisBody(copy.updateCritical, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        PolarisBody(copy.updateCritical, textAlign = headAlign)
                     }
                     ui.error?.let {
                         Spacer(Modifier.height(8.dp))
-                        PolarisBody(copy.updateFailureMessage(it), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        PolarisBody(copy.updateFailureMessage(it), textAlign = headAlign)
                     }
                     if (downloading) {
                         // Counted bytes only: the bar and "Downloading · 38 of 61 MB" (UI-KITS.md 4.3).

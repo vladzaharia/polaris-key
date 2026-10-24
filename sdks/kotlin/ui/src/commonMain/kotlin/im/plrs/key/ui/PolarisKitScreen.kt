@@ -245,7 +245,7 @@ private fun KitScreenBody(
         val offered = all.filterNot { it.key == "update.restartWhenReady" && screen.state != "downloading" }.filterNot { it.key == "update.skipVersion" }
         offered.filterNot { catalog.isDangling(it) }
     }
-    val lines = remember(kept, screen, catalog, locale) {
+    val shapedLines = remember(kept, screen, catalog, locale) {
         val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale), line.args) }
         // A state whose every sentence lost an argument still says what happened, without the name.
         val fallback = screen.copy.firstOrNull { it.key in sentenceWithoutName }
@@ -254,6 +254,20 @@ private fun KitScreenBody(
             return@remember listOf(KitLine(fallback.key, KitLineRole.Text, catalog.format(CopyLine(fallback.key, args), locale).sentenceStart(), args)) + formatted
         }
         formatted
+    }
+    // GNOME (SIGN-IN.md D-80): the Replace confirm is an AdwAlertDialog, not the inline block. The sign-in
+    // step's "Replace…" opens it; the confirm state (replace-open) is the alert itself.
+    val onGnome = autoPlatformVariant() == PolarisPlatformVariant.Gnome
+    val gnomeReplace = onGnome && component == KitComponent.signIn && screen.state == "replace" &&
+        shapedLines.any { it.key == "signin.replace.title" }
+    val gnomeConfirm = onGnome && component == KitComponent.licenseChoice && screen.state == "replace-open"
+    var replaceOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val lines = if (gnomeReplace || gnomeConfirm) {
+        val drop = setOf("signin.replace.title", "signin.replace.consequence", "signin.replace.confirm", "signin.replace.back")
+        val rest = shapedLines.filterNot { it.key in drop }
+        if (gnomeReplace) rest + KitLine("signin.replace.openSystem", KitLineRole.Control, catalog.format("signin.replace.openSystem", locale), emptyMap()) else rest
+    } else {
+        shapedLines
     }
     // OfflineActivation's Copy code sits with step 1 (it copies the request code), not in the dock.
     val offline = screen.component == KitComponent.offlineActivation
@@ -312,11 +326,12 @@ private fun KitScreenBody(
             }
             buttons.forEachIndexed { index, line ->
                 val action = KitAction.forCopyKey(line.key)
+                val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onAction(action) })
                 // One primary, then tonal secondaries (a lone action is always the primary, DL4).
                 if (index == 0) {
-                    PolarisPrimaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
+                    PolarisPrimaryButton(line.text, onClick = click, external = KitAction.leavesApp(line.key))
                 } else {
-                    PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
+                    PolarisSecondaryButton(line.text, onClick = click, external = KitAction.leavesApp(line.key))
                 }
                 if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
             }
@@ -398,18 +413,41 @@ private fun KitScreenBody(
         }
     }
     val asColumn = component in centredComponents
-    CompositionLocalProvider(LocalPolarisArtName provides (productName ?: product)) {
-    if (!asColumn) {
-        PolarisScaffold(
-            modifier = semanticsModifier,
-            anchor = PolarisAnchor.Top,
-            contentAlign = TextAlign.Start,
-            actions = actions,
-            content = body,
-        )
-    } else {
-        PolarisScreen(modifier = semanticsModifier, showLogo = false, actions = actions, content = body)
+    val screenContent: @Composable () -> Unit = {
+        CompositionLocalProvider(LocalPolarisArtName provides (productName ?: product)) {
+        if (!asColumn) {
+            PolarisScaffold(
+                modifier = semanticsModifier,
+                anchor = PolarisAnchor.Top,
+                contentAlign = TextAlign.Start,
+                actions = actions,
+                content = body,
+            )
+        } else {
+            PolarisScreen(modifier = semanticsModifier, showLogo = false, actions = actions, content = body)
+        }
+        }
     }
+    if (gnomeReplace || gnomeConfirm) {
+        // The alert's names: the device in the title's argument, this device in the lede's.
+        fun arg(key: String, name: String): String =
+            ((shapedLines.firstOrNull { it.key == key }?.args?.get(name)) as? CopyArgument.Text)?.value.orEmpty()
+        val device = arg("signin.replace.title", "device")
+        val thisDevice = arg("signin.replace.lede", "thisDevice").ifEmpty { arg("signin.replace.consequence", "thisDevice") }
+        val confirm = KitAction.forCopyKey("signin.replace.confirm")
+        val back = KitAction.forCopyKey("signin.replace.back")
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+            screenContent()
+            if (gnomeConfirm || replaceOpen) {
+                PolarisReplaceAlertOverlay(
+                    device, thisDevice, product.orEmpty(),
+                    onReplace = { replaceOpen = false; onAction(confirm) },
+                    onBack = { replaceOpen = false; if (gnomeConfirm) onAction(back) },
+                )
+            }
+        }
+    } else {
+        screenContent()
     }
 }
 
