@@ -105,11 +105,16 @@ import {
   PACKAGES_READ_SCOPE,
   PERSONAL_TOKEN_LABEL_MAX,
   mintAccountToken,
+  revokeReplacedCliPackagesTokens,
+  CLI_PACKAGES_TOKEN_MARK,
 } from "../../../core/accounts/personalTokens.js";
 import { registryOrigin } from "../../../core/hosts.js";
 import { REGISTRY_TOKEN_USERNAME } from "../../../core/registry/registryVocabulary.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
-import { newDeviceSignInNotice } from "../../../core/notify/templates.js";
+import {
+  newDeviceSignInNotice,
+  packagesTokenNotice,
+} from "../../../core/notify/templates.js";
 import { type DeviceLoginLocation, requestLocation } from "../place.js";
 export { requestLocation, type DeviceLoginLocation };
 
@@ -423,6 +428,14 @@ export async function handleDeviceLoginStart(
       ErrorCode.BadRequest,
       'scope must be "admin" or "packages:read"',
     );
+  // F-37.1b: a packages token is only useful with a registry to use it on. Refused here, before the
+  // person is sent to a browser, rather than after they approved a token nothing can spend.
+  if (cli && cliScope === PACKAGES_READ_SCOPE && registryOrigin(env) === null)
+    return err(
+      409,
+      "unavailable",
+      "this deployment has no package registry configured",
+    );
   if (!cli && (await portalAuthCapabilities(db)).portalEnabled !== true)
     return err(404, "auth_method_disabled", "the portal is off");
 
@@ -470,7 +483,7 @@ export async function handleDeviceLoginStart(
     record.purpose === "cli" && record.scope === ADMIN_SCOPE;
   const approveUrl = consoleApproves
     ? `${origin}/manage/device?code=${display}`
-    : `${origin}/#/account/approve?code=${display}`;
+    : `${origin}/approve?code=${display}`;
   const svg = consoleApproves
     ? null
     : qrSvg(approveUrl, "QR code to approve this sign-in");
@@ -612,10 +625,30 @@ export async function handleDeviceLoginPoll(
       targetKind: "account_token",
       targetId: minted.view.id,
       summary: packages
-        ? `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, by pkey approved in Polaris Locker`
+        ? `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, ${CLI_PACKAGES_TOKEN_MARK}`
         : `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, by pkey login approved in the console (${memberId})`,
       now,
     });
+    // F-37.1b: a rerun replaces the earlier token for this label rather than leaving it live.
+    let replaced: string | null = null;
+    if (packages) {
+      const hints = await revokeReplacedCliPackagesTokens(
+        db,
+        account.id,
+        minted.view.label,
+        minted.view.id,
+        now,
+      );
+      replaced = hints[0] ?? null;
+      for (const hint of hints)
+        await portalAudit(db, {
+          accountId: account.id,
+          action: "portal.personal_token.revoke",
+          targetKind: "account_token",
+          summary: `Revoked personal token “${minted.view.label}” (…${hint}), replaced by a newer one from pkey`,
+          now,
+        });
+    }
     return json(
       {
         status: "approved",
@@ -628,6 +661,7 @@ export async function handleDeviceLoginPoll(
               registryOrigin: registryOrigin(env),
               username: REGISTRY_TOKEN_USERNAME,
               feeds: await feeds(account.id),
+              replaced,
             }
           : {}),
       },
@@ -808,6 +842,8 @@ export async function handleDeviceLoginApprove(
   if (!moved.ok) return expired();
 
   const where = record.location.label ? ` near ${record.location.label}` : "";
+  const packages = isPackagesRequest(record);
+  const verb = decision === "approve" ? "Approved" : "Denied";
   await portalAudit(db, {
     accountId: session.accountId,
     action:
@@ -816,21 +852,31 @@ export async function handleDeviceLoginApprove(
         : "portal.device_login.deny",
     targetKind: "device_login",
     targetId: ref.id.slice(0, 16),
-    summary: `${decision === "approve" ? "Approved" : "Denied"} a sign-in on ${record.device.label}${where}`,
+    summary: packages
+      ? `${verb} personal token “${cliTokenLabel(record.client!)}” for pkey`
+      : `${verb} a sign-in on ${record.device.label}${where}`,
     now,
   });
   if (decision === "approve") {
+    const origin = new URL(req.url).origin;
     await sendSecurityNotice(
       env,
       db,
       session.accountId,
       session.email,
-      newDeviceSignInNotice({
-        deviceLabel: record.device.label,
-        location: record.location.label,
-        at: now,
-        origin: new URL(req.url).origin,
-      }),
+      packages
+        ? packagesTokenNotice({
+            host: record.client!.host,
+            location: record.location.label,
+            at: now,
+            origin,
+          })
+        : newDeviceSignInNotice({
+            deviceLabel: record.device.label,
+            location: record.location.label,
+            at: now,
+            origin,
+          }),
       now,
     );
   }

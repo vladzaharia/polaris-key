@@ -66,6 +66,8 @@ export type Route =
   | { kind: "deviceEntry"; tv: boolean }
   | { kind: "deviceApprove" }
   | { kind: "signInEntry" }
+  /** F-37.1b: the key host's hop into Polaris Locker (`/approve?code=`, `/account/packages`). */
+  | { kind: "lockerLink"; to: "approve" | "packages" }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
   | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
@@ -214,6 +216,9 @@ export function matchRoute(pathname: string): Route {
   if (path === "/tv") return { kind: "deviceEntry", tv: true };
   // The approval after sign-in, on the customer host only (the product is found by the binder).
   if (path === "/device/approve") return { kind: "deviceApprove" };
+  if (path === "/approve") return { kind: "lockerLink", to: "approve" };
+  if (path === "/account/packages")
+    return { kind: "lockerLink", to: "packages" };
   // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
   // slug), and I-30's `/login/sso/<connection id>` (finished by `/callback`). The provider, step
   // and connection are validated by the handler; any other shape under `/login/` is its

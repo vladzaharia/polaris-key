@@ -19,7 +19,8 @@
 
 import type { Env } from "../platform/env.js";
 import { methodNotAllowed, notFound } from "./errors.js";
-import { hostOrigin, usableOrigin } from "./hosts.js";
+import { hostOrigin, usableOrigin, customerSiteOrigin } from "./hosts.js";
+import { USER_CODE_ALPHABET } from "./deviceCodeIndex.js";
 
 /** The route kinds the customer host serves: the root portal and the platform entry pages. */
 export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
@@ -291,4 +292,48 @@ export function relatedOriginsResponse(req: Request, env: Env): Response {
       },
     },
   );
+}
+
+/** The device code in its display form (`BCDF-GHJK`): exactly this, nothing looser. */
+const APPROVE_CODE = new RegExp(
+  `^[${USER_CODE_ALPHABET}]{4}-[${USER_CODE_ALPHABET}]{4}$`,
+);
+
+/**
+ * F-37.1b: the key host's hops into Polaris Locker, for links a terminal prints. `/approve?code=`
+ * (the approval a `pkey` packages sign-in sends the person to) and `/account/packages` answer a 302
+ * to the portal's hash route. The portal is the customer origin when `CUSTOMER_ORIGIN` is usable,
+ * else this host's own portal (its `/` is still the portal then). The target origin is fixed
+ * configuration (or the request's own origin); the only request data in the `Location` is a code
+ * that matched the exact display form above, percent-encoded, so there is no open redirect. Any
+ * other code is a 400 and nothing is echoed. The code rides in the fragment so the portal's
+ * access logs never see it.
+ */
+export function lockerLink(
+  req: Request,
+  env: Env,
+  to: "approve" | "packages",
+  url: URL,
+): Response {
+  if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
+  const base = customerSiteOrigin(env) ?? url.origin;
+  let hash: string;
+  if (to === "approve") {
+    const code = url.searchParams.get("code");
+    if (code === null || !APPROVE_CODE.test(code))
+      return new Response("Bad Request", {
+        status: 400,
+        headers: { "cache-control": "no-store" },
+      });
+    hash = `/account/approve?code=${encodeURIComponent(code)}`;
+  } else hash = "/account/packages";
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `${base}/#${hash}`,
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+    },
+  });
 }

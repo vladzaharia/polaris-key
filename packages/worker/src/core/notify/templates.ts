@@ -504,6 +504,34 @@ export function newDeviceSignInNotice(input: {
 }
 
 /**
+ * F-37.1b: a read-only personal token was handed to `pkey` (`pkey feeds setup --write`), approved
+ * in Polaris Locker. The remedy is Locker's Packages page. `host` is the CLI's own words (unverified).
+ */
+export function packagesTokenNotice(input: {
+  host: string | null | undefined;
+  location?: string | null;
+  at?: number;
+  origin: string;
+}): NoticeMessage {
+  const host = displayValue(input.host, "a computer");
+  const location = input.location ? displayValue(input.location, "") : "";
+  const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
+  const where = location ? ` from about ${location}` : "";
+  return buildNotice({
+    subject: "A personal token was created for your Polaris Locker account",
+    paragraphs: [
+      `pkey on ${host} got a read-only personal token${when}${where}. If this wasn't you, revoke it in Polaris Locker, under Packages.`,
+    ],
+    action: {
+      label: "Open Polaris Locker",
+      url: appLink(input.origin, "account/packages"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/**
  * ST-34.6 (D-17): a command line (`pkey login`) was approved as the person in the Polaris Key
  * console (an operator notice, not a Locker one). The remedy is the console's Personal
  * tokens (or a Superadmin), never Locker's sessions page. `origin` is the console's.

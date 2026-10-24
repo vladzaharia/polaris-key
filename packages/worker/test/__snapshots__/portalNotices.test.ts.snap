@@ -314,6 +314,21 @@ You are receiving this because of a change to your Polaris Locker account. We se
 }
 `;
 
+exports[`notice templates: copy > packagesToken: subject and plain text 1`] = `
+{
+  "subject": "A personal token was created for your Polaris Locker account",
+  "text": "A personal token was created for your Polaris Locker account
+
+pkey on build-box got a read-only personal token from about Lisbon, Portugal. If this wasn't you, revoke it in Polaris Locker, under Packages.
+
+Open Polaris Locker: https://key.plrs.im/#/account/packages
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+}
+`;
+
 exports[`notice templates: copy > reassignedAway: subject and plain text 1`] = `
 {
   "subject": "The developer assigned your Mossgarden license to someone else",
