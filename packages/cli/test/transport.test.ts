@@ -1121,23 +1121,9 @@ describe("pkey transport (command line)", () => {
 
 // ── The Action ───────────────────────────────────────────────────────────────────────────────
 
-describe("the Action's transport input (P5-08)", () => {
-  const input = (o: Record<string, string>) =>
-    Object.fromEntries(
-      Object.entries(o).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
-    );
-
-  it("runs a transport step for a published pack and refuses publish-only inputs", async () => {
+describe("the Action's transport step (P5-08, A-25.5)", () => {
+  it("runs a transport command from command and args; the transport input is refused", async () => {
     const w = await published();
-    const base = {
-      product: SLUG,
-      deliverable: "diceroll.core3d",
-      version: "1.0.0",
-      dir: "cache",
-      "dry-run": "false",
-      "transport-report": "true",
-      "base-url": BASE,
-    };
     const io = capture();
     const code = await runAction({
       cwd: w.cwd,
@@ -1145,13 +1131,10 @@ describe("the Action's transport input (P5-08)", () => {
       stderr: io.stderr,
       env: {
         ...actionsEnv({ PKEY_CI_TOKEN: CI_TOKEN }),
-        ...input({
-          ...base,
-          transport: "steam-depot-vdf",
-          "steam-depot": "481",
-          channel: "beta",
-          "steam-setlive": "true",
-        }),
+        INPUT_COMMAND: "transport steam-depot vdf",
+        INPUT_ARGS:
+          "--deliverable diceroll.core3d --release 1.0.0 --from cache --depot 481 --channel beta --setlive",
+        "INPUT_BASE-URL": BASE,
       },
       fetchImpl: w.pk,
       sleep: instant,
@@ -1168,32 +1151,24 @@ describe("the Action's transport input (P5-08)", () => {
       ),
     ).toMatch(/"SetLive" "beta"/);
 
-    for (const [over, msg] of [
-      [
-        { transport: "steam-depot-vdf", "steam-depot": "481", out: "cache" },
-        "out does not apply to a transport step",
-      ],
-      [{ transport: "nope" }, "transport must be one of apple-ba-package"],
-      [
-        { "steam-depot": "481" },
-        "steam-depot applies only with the transport input",
-      ],
-      [
-        { transport: "play-pad-modules" },
-        "play-pad-modules needs gradle-project",
-      ],
-    ] as const) {
-      const e = capture();
-      const c = await runAction({
-        cwd: w.cwd,
-        stdout: e.stdout,
-        stderr: e.stderr,
-        env: { ...actionsEnv(), ...input({ ...base, ...over }) },
-        fetchImpl: w.pk,
-        sleep: instant,
-      });
-      expect(c).toBe(1);
-      expect(e.err()).toContain(msg);
-    }
+    const e = capture();
+    const c = await runAction({
+      cwd: w.cwd,
+      stdout: e.stdout,
+      stderr: e.stderr,
+      env: {
+        ...actionsEnv(),
+        INPUT_COMMAND: "release publish",
+        INPUT_TRANSPORT: "steam-depot-vdf",
+        "INPUT_STEAM-DEPOT": "481",
+      },
+      fetchImpl: w.pk,
+      sleep: instant,
+    });
+    expect(c).toBe(1);
+    expect(e.err()).toContain(
+      "Input steam-depot was removed in 0.9. Put --depot <value> in args.",
+    );
+    expect(e.err()).toContain("Input transport was removed in 0.9.");
   });
 });

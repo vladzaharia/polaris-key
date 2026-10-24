@@ -419,13 +419,11 @@ describe("publishing a godot.pck pack", () => {
     const acode = await runAction({
       env: {
         ...actionsEnv(),
-        INPUT_PRODUCT: SLUG,
-        INPUT_DELIVERABLE: "diceroll.core3d",
-        INPUT_VERSION: "1.0.0",
-        INPUT_DIR: "dist",
+        INPUT_COMMAND: "release publish",
+        INPUT_ARGS:
+          "--deliverable diceroll.core3d --version 1.0.0 --dir dist --script-extensions lua",
         "INPUT_BASE-URL": BASE,
         "INPUT_RELEASE-KEY": key.pem,
-        "INPUT_SCRIPT-EXTENSIONS": "lua",
         "INPUT_DRY-RUN": "true",
       },
       cwd,
@@ -433,7 +431,6 @@ describe("publishing a godot.pck pack", () => {
       stderr: aio.stderr,
       fetchImpl: server.fetchImpl,
       sleep: instant,
-      exec: () => "v1.5.7",
     });
     expect(acode).toBe(1);
     expect(aio.err()).toMatch(lua);
@@ -905,40 +902,31 @@ describe("the CLI", () => {
     expect(server.calls).toEqual([]);
   });
 
-  it("the Action refuses inputs that do not apply", async () => {
+  it("the Action's args reach the CLI's refusals of flags that do not apply", async () => {
     const { cwd, server } = await setup();
-    const input = (o: Record<string, string>) =>
-      Object.fromEntries(
-        Object.entries(o).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
-      );
-    for (const [over, msg] of [
+    for (const [args, msg] of [
       [
-        { deliverable: "diceroll.core3d", pins: "diceroll.l10n@1.0.0" },
-        "pins does not apply to a pack deliverable",
+        "--deliverable diceroll.core3d --pin diceroll.l10n@1.0.0",
+        "--pin does not apply here",
       ],
       [
-        { deliverable: "app", out: "cache", bases: "cache" },
-        "out, bases do not apply to the app",
+        "--deliverable app --out cache --bases cache",
+        "--out, --bases do not apply here",
       ],
     ] as const) {
       const io = capture();
       const code = await runAction({
         env: {
           ...actionsEnv(),
-          ...input({
-            product: SLUG,
-            dir: "dist",
-            version: "1.0.0",
-            "base-url": BASE,
-            ...over,
-          }),
+          INPUT_COMMAND: "release publish",
+          INPUT_ARGS: `${args} --dir dist --version 1.0.0`,
+          "INPUT_BASE-URL": BASE,
         },
         cwd,
         stdout: io.stdout,
         stderr: io.stderr,
         fetchImpl: server.fetchImpl,
         sleep: instant,
-        exec: () => "v1.5.7",
       });
       expect(code).toBe(1);
       expect(io.err()).toContain(msg);
@@ -951,31 +939,21 @@ describe("the CLI", () => {
     const output = path.join(cwd, "gh_output");
     await writeFile(output, "");
     const io = capture();
-    const input = (o: Record<string, string>) =>
-      Object.fromEntries(
-        Object.entries(o).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
-      );
     const code = await runAction({
       env: {
         ...actionsEnv({ GITHUB_OUTPUT: output }),
-        ...input({
-          product: SLUG,
-          deliverable: "diceroll.core3d",
-          version: "1.0.0",
-          dir: "dist",
-          out: "cache",
-          bases: "cache",
-          "base-url": BASE,
-          "release-key": key.pem,
-          "dry-run": "false",
-        }),
+        INPUT_COMMAND: "release publish",
+        INPUT_ARGS:
+          "--deliverable diceroll.core3d --version 1.0.0 --dir dist --out cache --bases cache",
+        "INPUT_BASE-URL": BASE,
+        "INPUT_RELEASE-KEY": key.pem,
+        "INPUT_DRY-RUN": "false",
       },
       cwd,
       stdout: io.stdout,
       stderr: io.stderr,
       fetchImpl: server.fetchImpl,
       sleep: instant,
-      exec: () => "v1.5.7",
     });
     expect(io.err()).toBe("");
     expect(code).toBe(0);

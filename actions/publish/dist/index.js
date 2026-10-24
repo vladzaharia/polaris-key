@@ -13551,6 +13551,25 @@ function read() {
 }
 var CLI_VERSION = read();
 
+// src/actionOutputs.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { appendFile } from "node:fs/promises";
+var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
+var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
+async function writeOutputs(io, releaseId, server) {
+  const outputFile = io.env.GITHUB_OUTPUT;
+  if (!outputFile) return;
+  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
+  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
+  await appendFile(
+    outputFile,
+    `release-id=${id}
+outcome=${outcome}
+`,
+    "utf8"
+  );
+}
+
 // src/migrate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MIGRATE_USAGE = "Usage: pkey migrate list | dry-run <job> | report <run> [--base-url <url>] [--json]";
@@ -24088,7 +24107,7 @@ function add4(list3, file, path35, code, message) {
 
 // src/oidc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { appendFile } from "node:fs/promises";
+import { appendFile as appendFile2 } from "node:fs/promises";
 
 // src/ci.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -24366,7 +24385,7 @@ async function authGithubOidc(opts) {
       `pkey auth github-oidc runs inside a GitHub Actions job with \`permissions: id-token: write\`. Elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued.`
     );
   const issued = await exchangeGithubOidc(opts);
-  await appendFile(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
+  await appendFile2(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
 `, "utf8");
   return issued;
 }
@@ -24780,9 +24799,6 @@ var COMMANDS = [
       dir: "--dir",
       source: "--source",
       meta: "--meta",
-      "base-url": "--base-url",
-      "release-key": "--release-key-file",
-      "content-key": "--content-key-file",
       delegation: "--delegation",
       "min-supported-seq": "--min-supported-seq",
       "content-stamp": "--content-stamp",
@@ -24791,8 +24807,7 @@ var COMMANDS = [
       out: "--out",
       bases: "--bases",
       "script-extensions": "--script-extensions",
-      "script-types": "--script-types",
-      "dry-run": "--dry-run"
+      "script-types": "--script-types"
     },
     summary: "Publish, sign and move releases from CI",
     rows: [
@@ -26240,7 +26255,7 @@ function fixableSpellings() {
 var segments = (pointer) => pointer.split("/").slice(1).map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
 var isSet = (v) => v !== void 0 && v !== null;
 function jsonEditable(value) {
-  const walk3 = (p) => {
+  const walk2 = (p) => {
     let cur = value;
     for (const k of p) {
       if (cur === null || typeof cur !== "object") return void 0;
@@ -26249,8 +26264,8 @@ function jsonEditable(value) {
     return cur;
   };
   return {
-    get: walk3,
-    take: walk3,
+    get: walk2,
+    take: walk2,
     set(p, v) {
       let cur = value;
       for (const k of p.slice(0, -1)) {
@@ -26261,7 +26276,7 @@ function jsonEditable(value) {
       cur[p.at(-1)] = v;
     },
     remove(p) {
-      const parent = walk3(p.slice(0, -1));
+      const parent = walk2(p.slice(0, -1));
       if (Array.isArray(parent)) parent.splice(Number(p.at(-1)), 1);
       else if (parent && typeof parent === "object")
         delete parent[p.at(-1)];
@@ -35857,7 +35872,7 @@ function containerPayload(bytes, dir) {
 async function readTree(root) {
   const files = [];
   const errors = [];
-  async function walk3(dir, prefix) {
+  async function walk2(dir, prefix) {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
       const rel = prefix ? `${prefix}/${e.name}` : e.name;
@@ -35871,7 +35886,7 @@ async function readTree(root) {
         continue;
       }
       if (st.isDirectory()) {
-        await walk3(full, rel);
+        await walk2(full, rel);
         continue;
       }
       if (!st.isFile()) {
@@ -35888,7 +35903,7 @@ async function readTree(root) {
     }
   }
   try {
-    await walk3(root, "");
+    await walk2(root, "");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${root} does not exist.`);
@@ -36235,17 +36250,17 @@ var CONTENT_STAMP_USAGE = "Usage: pkey release content-stamp --product <slug> --
 var VERSION_RE4 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 async function findMarkers(dir) {
   const out = [];
-  async function walk3(d) {
+  async function walk2(d) {
     const entries = await readdir2(d, { withFileTypes: true });
     for (const e of entries) {
       const full = path8.join(d, e.name);
-      if (e.isDirectory()) await walk3(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path8.basename(d) === ".pkey"))
         out.push(full);
     }
   }
   try {
-    await walk3(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new UsageError(`--embedded ${dir} does not exist.`);
@@ -36624,17 +36639,17 @@ var SIDECARS = [
 ];
 async function scanDir(dir) {
   const out = [];
-  async function walk3(d) {
+  async function walk2(d) {
     const entries = await readdir3(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
       const full = path9.join(d, e.name);
-      if (e.isDirectory()) await walk3(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
   }
   try {
-    await walk3(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new UsageError(`--dir ${dir} does not exist.`);
@@ -39312,7 +39327,7 @@ async function goModuleFiles(root) {
     () => null
   );
   const go = rootMod === null ? void 0 : parseGoMod(rootMod).go;
-  async function walk3(dir, rel) {
+  async function walk2(dir, rel) {
     const entries = await readdir4(dir, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
@@ -39322,11 +39337,11 @@ async function goModuleFiles(root) {
         if ([".bzr", ".git", ".hg", ".svn"].includes(e.name)) continue;
         const nested = await lstat2(path11.join(full, "go.mod")).catch(() => null);
         if (nested?.isFile()) continue;
-        await walk3(full, r);
+        await walk2(full, r);
       } else if (e.isFile() && !goVendored(r, go)) out.push(r);
     }
   }
-  await walk3(root, "");
+  await walk2(root, "");
   return out;
 }
 async function goZipFromDir(root, module, version) {
@@ -52010,89 +52025,6 @@ async function pushAssets(opts) {
   );
   return result;
 }
-function parseAssetMap(input2) {
-  const out = [];
-  for (const [i, raw] of input2.split(/\r?\n/).entries()) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const at = line.lastIndexOf(": ");
-    if (at <= 0)
-      throw new Error(
-        `assets line ${i + 1} must be "<glob>: <slot>[@<locale>]" (got ${JSON.stringify(line)}).`
-      );
-    const glob = line.slice(0, at).trim();
-    const target = line.slice(at + 2).trim();
-    const [slot, locale, extra] = target.split("@");
-    if (!glob || !slot || extra !== void 0 || locale === "")
-      throw new Error(
-        `assets line ${i + 1} must be "<glob>: <slot>[@<locale>]" (got ${JSON.stringify(line)}).`
-      );
-    out.push({ glob, slot, ...locale !== void 0 ? { locale } : {} });
-  }
-  if (out.length === 0) throw new Error("The assets input names no file.");
-  return out;
-}
-function globToRegExp(glob) {
-  let re = "";
-  const g = glob.replace(/\\/g, "/").replace(/^\.\//, "");
-  for (let i = 0; i < g.length; i++) {
-    const c = g[i];
-    if (c === "*") {
-      if (g[i + 1] === "*") {
-        if (g[i + 2] === "/") {
-          re += "(?:.*/)?";
-          i += 2;
-        } else {
-          re += ".*";
-          i += 1;
-        }
-      } else re += "[^/]*";
-    } else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  }
-  return new RegExp(`^${re}$`);
-}
-async function walk2(dir, rel = "") {
-  const out = [];
-  for (const e of await readdir12(path32.join(dir, rel), { withFileTypes: true })) {
-    if (e.name === ".git" || e.name === "node_modules") continue;
-    const child = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...await walk2(dir, child));
-    else if (e.isFile()) out.push(child);
-  }
-  return out;
-}
-async function resolveAssetMap(base, lines4) {
-  const files = (await walk2(base)).sort();
-  const out = [];
-  for (const l of lines4) {
-    const re = globToRegExp(l.glob);
-    const hits = files.filter((f) => re.test(f));
-    const loc = l.locale !== void 0 ? { locale: l.locale } : {};
-    if (l.slot === "listing.screenshot") {
-      if (hits.length === 0)
-        throw new Error(`assets: ${l.glob} matches no file.`);
-      if (hits.length > MAX_SCREENSHOTS)
-        throw new Error(
-          `assets: ${l.glob} matches ${hits.length} screenshots; the listing holds ${MAX_SCREENSHOTS}.`
-        );
-      hits.forEach(
-        (f, i) => out.push({
-          file: path32.join(base, f),
-          slot: `listing.screenshot:${i + 1}`,
-          ...loc
-        })
-      );
-      continue;
-    }
-    if (hits.length !== 1)
-      throw new Error(
-        hits.length === 0 ? `assets: ${l.glob} matches no file.` : `assets: ${l.glob} matches ${hits.length} files (${hits.slice(0, 5).join(", ")}); ${l.slot} takes exactly one.`
-      );
-    out.push({ file: path32.join(base, hits[0]), slot: l.slot, ...loc });
-  }
-  return out;
-}
 
 // src/index.ts
 function globalFlags(argv2) {
@@ -53203,7 +53135,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
         "--no-record does not apply to a package: a package release never carries a record."
       );
     progress.stage(`Publishing ${deliverable}`);
-    await publishPackage({
+    const result2 = await publishPackage({
       ...common,
       cwd,
       product,
@@ -53213,6 +53145,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       channel: flagString(parsed, "channel"),
       dryRun: flagBool(parsed, "dry-run")
     });
+    await writeOutputs(common, result2.releaseId, result2.server);
     return 0;
   }
   if (deliverable && deliverable !== "app") {
@@ -53238,7 +53171,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       parsed.multi["script-extensions"] ?? []
     );
     const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
-    await publishPack({
+    const result2 = await publishPack({
       ...common,
       progress,
       cwd,
@@ -53261,6 +53194,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       ...scriptExtensions.length ? { scriptExtensions } : {},
       ...scriptTypes.length ? { scriptTypes } : {}
     });
+    await writeOutputs(common, result2.releaseId, result2.server);
     return 0;
   }
   refuseFlags(
@@ -53283,7 +53217,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
     ["content-key-file", "delegation"],
     "a content key signs only data-only pack releases, never an app record"
   );
-  await publishRelease({
+  const result = await publishRelease({
     ...common,
     progress,
     cwd,
@@ -53305,6 +53239,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
     ...flagString(parsed, "content-interface") !== void 0 ? { contentInterface: flagString(parsed, "content-interface") } : {},
     strict: flagBool(parsed, "strict")
   });
+  await writeOutputs(common, result.releaseId, result.server);
   return 0;
 }
 async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
@@ -53770,583 +53705,194 @@ async function cmdListingImport(parsed, cwd, stdout, ci, token) {
 
 // src/action.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { execFileSync as execFileSync3 } from "node:child_process";
-import { appendFile as appendFile2 } from "node:fs/promises";
 import path34 from "node:path";
+import { stat as stat12 } from "node:fs/promises";
 var ACTION_INPUTS = [
-  "product",
-  "deliverable",
-  "version",
-  "tag",
-  "channel",
-  "dir",
-  "source",
-  "meta",
-  "base-url",
+  "command",
+  "args",
   "release-key",
   "content-key",
-  "delegation",
-  "min-supported-seq",
-  "content-stamp",
-  "embedded",
-  "pins",
-  "out",
-  "bases",
-  "script-extensions",
-  "script-types",
+  "base-url",
+  "working-directory",
   "dry-run",
-  "transport",
-  "content-api",
-  "variant",
-  "transport-out",
-  "gradle-project",
-  "pad-delivery",
-  "steam-depot",
-  "steam-branch",
-  "steam-setlive",
-  "asc-expect-resource",
-  "transport-report",
-  "storefront",
-  "itch-platform",
-  "storefront-outlet",
-  "assets"
+  "channels"
 ];
-var ACTION_STOREFRONT_STEPS = [
-  "itch-push",
-  "snap-metadata",
-  "snap-upload",
-  "snap-upload-metadata"
-];
-var ACTION_TRANSPORT_STEPS = [
-  "apple-ba-package",
-  "apple-ba-upload",
-  "play-pad-modules",
-  "steam-depot-vdf"
-];
+var REMOVED_INPUTS = (() => {
+  const out = {};
+  for (const c of COMMANDS)
+    for (const [input2, flag] of Object.entries(c.action ?? {}))
+      out[input2] ??= flag;
+  return out;
+})();
+var REMOVED_STEP = {
+  storefront: "Use channels: auto, or command: storefront <store> <step> …",
+  transport: "Use command: transport <step> …, with its flags in args.",
+  assets: "Use command: assets push, with the file and --slot in args."
+};
 function actionInput(env, name) {
   const value = env[`INPUT_${name.toUpperCase()}`]?.trim();
   return value ? value : void 0;
 }
 function isActionInvocation(argv2, env) {
-  return argv2.length === 0 && env.GITHUB_ACTIONS === "true" && env.INPUT_PRODUCT !== void 0;
+  return argv2.length === 0 && env.GITHUB_ACTIONS === "true" && env.INPUT_COMMAND !== void 0;
 }
-function listInput(value) {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-function pinsInput(value) {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-function ensureZstd(io) {
-  const exec = io.exec ?? ((cmd, args) => execFileSync3(cmd, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  }));
-  const version = () => {
-    try {
-      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
-    } catch {
-      return null;
+function splitArgs(text3) {
+  const words2 = [];
+  let word = "";
+  let started = false;
+  let quote = null;
+  for (const ch of text3) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else word += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started) words2.push(word);
+      word = "";
+      started = false;
+    } else {
+      word += ch;
+      started = true;
     }
-  };
-  const ok = (v) => v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
-  const found = version();
-  if (ok(found)) return;
-  const need2 = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
-  if ((io.platform ?? process.platform) !== "linux")
-    throw new Error(
-      `${need2}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`
-    );
-  io.stdout.write(
-    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get
+  }
+  if (quote) throw new Error(`args has an unterminated ${quote} quote.`);
+  if (started) words2.push(word);
+  return words2;
+}
+function refusals(env) {
+  const kept = new Set(ACTION_INPUTS);
+  const lines4 = [];
+  for (const key of Object.keys(env).sort()) {
+    if (!key.startsWith("INPUT_")) continue;
+    const name = key.slice("INPUT_".length).toLowerCase();
+    if (kept.has(name)) continue;
+    const shown4 = untrusted(name, env);
+    const flag = REMOVED_INPUTS[name];
+    if (REMOVED_STEP[name])
+      lines4.push(`Input ${shown4} was removed in 0.9. ${REMOVED_STEP[name]}`);
+    else if (flag)
+      lines4.push(
+        VALUELESS_FLAGS.has(flag.slice(2)) ? `Input ${shown4} was removed in 0.9. Put ${flag} in args.` : `Input ${shown4} was removed in 0.9. Put ${flag} <value> in args.`
+      );
+    else lines4.push(`Input ${shown4} is not an input of this Action.`);
+  }
+  return lines4;
+}
+function flagValue(argv2, name) {
+  for (let i = 0; i < argv2.length; i += 1) {
+    const a = argv2[i];
+    if (a === `--${name}`) return argv2[i + 1];
+    if (a.startsWith(`--${name}=`)) return a.slice(name.length + 3);
+  }
+  return void 0;
+}
+function isAppPublish(argv2) {
+  if (argv2[0] !== "release" || argv2[1] !== "publish") return false;
+  const deliverable = flagValue(argv2, "deliverable");
+  return deliverable === void 0 || deliverable === "app";
+}
+function syncArgv(argv2, dryRun) {
+  const out = ["channel", "sync"];
+  const version = flagValue(argv2, "version") ?? flagValue(argv2, "tag")?.replace(/^v/, "");
+  const forward = [
+    ["product", flagValue(argv2, "product")],
+    ["base-url", flagValue(argv2, "base-url")],
+    ["channel", flagValue(argv2, "channel")],
+    ["version", version],
+    ["dir", flagValue(argv2, "dir")]
+  ];
+  for (const [k, v] of forward) if (v !== void 0) out.push(`--${k}`, v);
+  if (dryRun) out.push("--dry-run");
+  return out;
+}
+async function runAction(io) {
+  const annotate = (title2, message) => io.stdout.write(
+    `::error title=${escapeData(untrusted(title2, io.env))}::${escapeData(untrustedLines(message, io.env))}
 `
   );
-  try {
-    exec("sudo", ["-n", "apt-get", "update", "-q"]);
-    exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
-  } catch (e) {
-    throw new Error(
-      `${need2}, and installing it with apt-get failed (${e.message.split("\n")[0]}). Install it before this step.`
-    );
-  }
-  const after = version();
-  if (!ok(after))
-    throw new Error(
-      `${need2}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`
-    );
-}
-async function runAction(given) {
-  const stdout = guardOutput(given.stdout, given.env);
-  const stderr = guardOutput(given.stderr, given.env);
-  try {
-    return await runActionSteps({
-      ...given,
-      stdout: stdout.stream,
-      stderr: stderr.stream
-    });
-  } finally {
-    stdout.flush();
-    stderr.flush();
-  }
-}
-async function runActionSteps(io) {
-  const input2 = (name) => actionInput(io.env, name);
-  try {
-    const product = input2("product");
-    const dir = input2("dir");
-    if (!product) throw new Error("The product input is required.");
-    const assets = input2("assets");
-    if (assets !== void 0) {
-      if (input2("storefront") !== void 0 || input2("transport") !== void 0)
-        throw new Error(
-          "assets is a step of its own: set it without storefront or transport."
-        );
-      await runAssetsStep(io, input2, product, dir, assets);
-      return 0;
-    }
-    if (!dir) throw new Error("The dir input is required.");
-    const dryRun = input2("dry-run");
-    if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
-      throw new Error(
-        `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
-      );
-    const deliverable = input2("deliverable");
-    const releaseKeyPem = input2("release-key");
-    const contentKeyPem = input2("content-key");
-    const delegation = input2("delegation");
-    if (contentKeyPem && releaseKeyPem)
-      throw new Error(
-        "release-key and content-key are exclusive: a pack release is signed by one or the other."
-      );
-    if ((contentKeyPem || delegation) && (!deliverable || deliverable === "app"))
-      throw new Error(
-        "content-key and delegation apply only to a pack deliverable: a content key never signs an app record."
-      );
-    const transport = input2("transport");
-    const given0 = (names) => names.filter((n) => input2(n) !== void 0);
-    const storefront = input2("storefront");
-    if (storefront !== void 0) {
-      if (transport !== void 0)
-        throw new Error(
-          "storefront and transport are separate steps: set one per step."
-        );
-      await runStorefrontStep(io, input2, given0, product, dir, storefront);
-      return 0;
-    }
-    const storefrontOnly = given0(["itch-platform", "storefront-outlet"]);
-    if (storefrontOnly.length)
-      throw new Error(
-        `${storefrontOnly.join(", ")} ${storefrontOnly.length === 1 ? "applies" : "apply"} only with the storefront input.`
-      );
-    if (transport !== void 0) {
-      await runTransportStep(io, input2, given0, product, dir, transport);
-      return 0;
-    }
-    const transportOnly = given0([
-      "content-api",
-      "variant",
-      "transport-out",
-      "gradle-project",
-      "pad-delivery",
-      "steam-depot",
-      "steam-branch",
-      "steam-setlive",
-      "asc-expect-resource"
-    ]);
-    if (input2("transport-report") === "false")
-      transportOnly.push("transport-report");
-    if (transportOnly.length)
-      throw new Error(
-        `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`
-      );
-    const minSupportedSeq = input2("min-supported-seq") !== void 0 ? Number(input2("min-supported-seq")) : void 0;
-    const given = (names) => names.filter((n) => input2(n) !== void 0);
-    if (deliverable && deliverable !== "app" && await isPackageDeliverable(io.cwd, deliverable)) {
-      const wrong2 = given([
-        "tag",
-        "source",
-        "meta",
-        "content-stamp",
-        "embedded",
-        "pins",
-        "out",
-        "bases",
-        "script-extensions",
-        "script-types",
-        "min-supported-seq"
-      ]);
-      if (wrong2.length || releaseKeyPem || contentKeyPem || delegation)
-        throw new Error(
-          `${[...wrong2, ...releaseKeyPem ? ["release-key"] : [], ...contentKeyPem ? ["content-key"] : [], ...delegation ? ["delegation"] : []].join(", ")} do not apply to a package deliverable (${deliverable}): a package's files are extracted from dir, and it is never signed.`
-        );
-      const result2 = await publishPackage({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input2("version"),
-        channel: input2("channel"),
-        baseUrl: input2("base-url"),
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep
-      });
-      await writeOutputs(io, result2.releaseId, result2.server);
-      return 0;
-    }
-    if (deliverable && deliverable !== "app") {
-      const wrong2 = given(["content-stamp", "embedded", "pins"]);
-      const scriptExtensions = listInput(input2("script-extensions"));
-      const scriptTypes = listInput(input2("script-types"));
-      if (wrong2.length)
-        throw new Error(
-          `${wrong2.join(", ")} ${wrong2.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`
-        );
-      ensureZstd(io);
-      const result2 = await publishPack({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input2("version"),
-        tag: input2("tag"),
-        channel: input2("channel"),
-        out: input2("out"),
-        bases: input2("bases"),
-        baseUrl: input2("base-url"),
-        ...releaseKeyPem ? { releaseKeyPem } : {},
-        ...contentKeyPem ? { contentKeyPem } : {},
-        ...delegation ? { delegation } : {},
-        ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-        // P4-28: another script language for the PCK lint.
-        ...scriptExtensions.length ? { scriptExtensions } : {},
-        ...scriptTypes.length ? { scriptTypes } : {},
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep
-      });
-      await writeOutputs(io, result2.releaseId, result2.server);
-      return 0;
-    }
-    const wrong = given(["out", "bases", "script-extensions", "script-types"]);
-    if (wrong.length)
-      throw new Error(
-        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases or configure a pack's lint.`
-      );
-    const result = await publishRelease({
-      cwd: io.cwd,
-      product,
-      dir,
-      deliverable,
-      version: input2("version"),
-      tag: input2("tag"),
-      channel: input2("channel"),
-      // `r2` unless set. action.yml gives `source` no `default:`: GitHub passes every defaulted
-      // input, so a default there would reach the package and transport paths, which refuse it.
-      source: input2("source") ?? "r2",
-      meta: input2("meta"),
-      baseUrl: input2("base-url"),
-      // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
-      // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
-      ...releaseKeyPem ? { releaseKeyPem } : {},
-      ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-      // P4-03: the packs an app release pins and its builds embed.
-      contentStamp: input2("content-stamp"),
-      embedded: input2("embedded"),
-      pins: pinsInput(input2("pins")),
-      dryRun: dryRun === "true",
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep
-    });
-    await writeOutputs(io, result.releaseId, result.server);
-    return 0;
-  } catch (e) {
-    const message = untrustedLines(e.message, io.env);
-    io.stdout.write(
-      `::error title=pkey release publish::${escapeData(message)}
-`
-    );
-    io.stderr.write(`${message}
+  const fail4 = (message) => {
+    annotate("pkey", message);
+    io.stderr.write(`${untrustedLines(message, io.env)}
 `);
     return 1;
-  }
-}
-async function runTransportStep(io, input2, given, product, dir, step) {
-  if (!ACTION_TRANSPORT_STEPS.includes(step))
-    throw new Error(
-      `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
-    );
-  const deliverable = input2("deliverable");
-  const version = input2("version");
-  if (!deliverable || deliverable === "app")
-    throw new Error(
-      "transport needs a pack deliverable: set deliverable to the pack id."
-    );
-  if (!version)
-    throw new Error("transport needs version: the pack release to package.");
-  const wrong = given([
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types"
-  ]);
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`
-    );
-  const dryRun = input2("dry-run");
-  if (dryRun !== void 0 && dryRun !== "false")
-    throw new Error("dry-run does not apply to a transport step.");
-  const report2 = input2("transport-report");
-  if (report2 !== void 0 && report2 !== "true" && report2 !== "false")
-    throw new Error(
-      `transport-report must be true or false (got ${JSON.stringify(report2)}).`
-    );
-  const setlive = input2("steam-setlive");
-  if (setlive !== void 0 && setlive !== "true" && setlive !== "false")
-    throw new Error(
-      `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`
-    );
-  const common = {
-    cwd: io.cwd,
-    deliverable,
-    version,
-    product,
-    baseUrl: input2("base-url"),
-    env: io.env,
-    stdout: io.stdout,
-    stderr: io.stderr,
-    fetchImpl: io.fetchImpl,
-    sleep: io.sleep,
-    report: report2 !== "false"
   };
-  const platform = io.platform ?? process.platform;
-  switch (step) {
-    case "apple-ba-package":
-      await baPackage({
-        ...common,
-        from: dir,
-        out: input2("transport-out"),
-        contentApi: input2("content-api"),
-        variant: input2("variant"),
-        platform
-      });
-      return;
-    case "apple-ba-upload":
-      if (input2("transport-out") !== void 0)
-        throw new Error(
-          "apple-ba-upload reads the package step's output from dir; transport-out does not apply."
-        );
-      await baUpload({
-        ...common,
-        dir,
-        contentApi: input2("content-api"),
-        expectResource: input2("asc-expect-resource")
-      });
-      return;
-    case "play-pad-modules": {
-      const project = input2("gradle-project");
-      if (!project)
-        throw new Error(
-          "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build)."
-        );
-      await padModules({
-        ...common,
-        from: dir,
-        project,
-        delivery: input2("pad-delivery"),
-        variant: input2("variant")
-      });
-      return;
+  const input2 = (name) => actionInput(io.env, name);
+  const removed = refusals(io.env);
+  if (removed.length) return fail4(removed.join("\n"));
+  let argv2;
+  let dryRun = false;
+  let channelsAuto = false;
+  let cwd = io.cwd;
+  try {
+    const dry = input2("dry-run");
+    if (dry !== void 0 && dry !== "true" && dry !== "false")
+      throw new Error("dry-run must be true or false.");
+    dryRun = dry === "true";
+    const channels2 = input2("channels") ?? "auto";
+    if (channels2 !== "auto" && channels2 !== "none")
+      throw new Error("channels must be auto or none.");
+    channelsAuto = channels2 === "auto";
+    argv2 = [
+      ...splitArgs(input2("command") ?? "release publish"),
+      ...splitArgs(io.env["INPUT_ARGS"] ?? "")
+    ];
+    if (!argv2.length) throw new Error("command is empty.");
+    const wd = input2("working-directory");
+    if (wd !== void 0) {
+      cwd = path34.resolve(io.cwd, wd);
+      const isDir = await stat12(cwd).then(
+        (s) => s.isDirectory(),
+        () => false
+      );
+      if (!isDir) throw new Error("working-directory is not a directory.");
     }
-    default: {
-      const depot = input2("steam-depot");
-      if (!depot)
-        throw new Error(
-          "steam-depot-vdf needs steam-depot: the pack's depot id."
-        );
-      await steamVdf({
-        ...common,
-        from: dir,
-        depot,
-        branch: input2("steam-branch"),
-        channel: input2("channel"),
-        setlive: setlive === "true",
-        out: input2("transport-out"),
-        variant: input2("variant")
-      });
-    }
+  } catch (e) {
+    return fail4(e.message);
   }
-}
-async function runStorefrontStep(io, input2, given, product, dir, step) {
-  if (!ACTION_STOREFRONT_STEPS.includes(step))
-    throw new Error(
-      `storefront must be one of ${ACTION_STOREFRONT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
-    );
-  const wrong = given([
-    "deliverable",
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types",
-    "content-api",
-    "variant",
-    "transport-out",
-    "gradle-project",
-    "pad-delivery",
-    "steam-depot",
-    "steam-branch",
-    "steam-setlive",
-    "asc-expect-resource"
-  ]).filter((n) => !(n === "deliverable" && input2(n) === "app"));
-  if (input2("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a storefront step (${step}).`
-    );
-  if (step !== "itch-push" && input2("itch-platform") !== void 0)
-    throw new Error("itch-platform applies only to itch-push.");
-  const dryRun = input2("dry-run");
-  const flags = {
-    product,
-    ...input2("base-url") ? { "base-url": input2("base-url") } : {},
-    ...dryRun === "true" ? { "dry-run": true } : {},
-    ...input2("storefront-outlet") ? { outlet: input2("storefront-outlet") } : {}
+  if (dryRun && !argv2.includes("--dry-run")) argv2.push("--dry-run");
+  const env = { ...io.env };
+  const releaseKey = input2("release-key");
+  const contentKey = input2("content-key");
+  const baseUrl = input2("base-url");
+  if (releaseKey) env[RELEASE_KEY_ENV] = releaseKey;
+  if (contentKey) env[CONTENT_KEY_ENV] = contentKey;
+  if (baseUrl) env[BASE_URL_ENV] = baseUrl;
+  let errText = "";
+  const stderr = {
+    write(chunk, ...rest) {
+      errText += typeof chunk === "string" ? chunk : Buffer.from(chunk);
+      return io.stderr.write(chunk, ...rest);
+    },
+    get isTTY() {
+      return io.stderr.isTTY;
+    },
+    get columns() {
+      return io.stderr.columns;
+    }
   };
-  let positional;
-  switch (step) {
-    case "itch-push": {
-      const platform = input2("itch-platform");
-      const version = input2("version") ?? input2("tag")?.replace(/^v/, "");
-      if (!platform)
-        throw new Error(
-          "itch-push needs itch-platform: windows, linux, mac or android."
-        );
-      if (!version)
-        throw new Error("itch-push needs version: butler's --userversion.");
-      positional = ["itch", "push"];
-      Object.assign(flags, { dir, platform, version });
-      if (input2("channel")) flags.channel = input2("channel");
-      break;
-    }
-    case "snap-upload": {
-      const channel = input2("channel");
-      if (!channel)
-        throw new Error(
-          "snap-upload needs channel: the release channel the outlet's channels map onto snap channels."
-        );
-      positional = ["snap", "upload"];
-      Object.assign(flags, { snap: dir, channel });
-      break;
-    }
-    case "snap-upload-metadata":
-      positional = ["snap", "upload-metadata"];
-      flags.snap = dir;
-      break;
-    default:
-      positional = ["snap", "metadata"];
-      flags.yaml = dir;
-  }
-  const code = await cmdStorefront(
-    { positional, flags, rest: [] },
-    {
-      cwd: io.cwd,
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep
-    }
-  );
-  if (code !== 0) throw new Error(`storefront ${step} failed.`);
-}
-async function runAssetsStep(io, input2, product, dir, assets) {
-  const wrong = ACTION_INPUTS.filter(
-    (n) => ![
-      "product",
-      "dir",
-      "base-url",
-      "dry-run",
-      "assets",
-      "deliverable",
-      "transport-report"
-    ].includes(n) && input2(n) !== void 0
-  );
-  if (input2("deliverable") !== void 0 && input2("deliverable") !== "app")
-    wrong.push("deliverable");
-  if (input2("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to an assets step.`
-    );
-  const dryRun = input2("dry-run");
-  if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
-    throw new Error(
-      `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
-    );
-  const base = dir ? path34.resolve(io.cwd, dir) : io.cwd;
-  const entries = await resolveAssetMap(base, parseAssetMap(assets));
-  const answer = await pushAssets({
-    cwd: io.cwd,
-    product,
-    entries,
-    baseUrl: input2("base-url"),
-    dryRun: dryRun === "true",
-    env: io.env,
+  const cli = {
+    cwd,
+    env,
     stdout: io.stdout,
-    stderr: io.stderr,
+    stderr,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep
-  });
-  if (answer && answer.refused.length > 0)
-    throw new Error(
-      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map(
-        (r) => `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`
-      ).join(", ")}.`
-    );
-}
-var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
-var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
-async function writeOutputs(io, releaseId, server) {
-  const outputFile = io.env.GITHUB_OUTPUT;
-  if (!outputFile) return;
-  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
-  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
-  await appendFile2(
-    outputFile,
-    `release-id=${id}
-outcome=${outcome}
-`,
-    "utf8"
+  };
+  let title = `pkey ${argv2.filter((w) => !w.startsWith("-")).slice(0, 2).join(" ")}`;
+  let code = await runPkey(argv2, cli);
+  if (code === 0 && channelsAuto && isAppPublish(argv2)) {
+    errText = "";
+    title = "pkey channel sync";
+    code = await runPkey(syncArgv(argv2, dryRun), cli);
+  }
+  if (code === 0) return 0;
+  annotate(
+    title,
+    errText.trim().slice(-2e3) || `pkey exited with code ${code}.`
   );
+  return 1;
 }
 
 // src/bin/standalone.ts

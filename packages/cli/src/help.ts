@@ -71,9 +71,9 @@ export interface PkeyCommand {
    */
   context?: readonly ContextKey[];
   /**
-   * The publish Action's inputs this command receives, as input name to the flag it becomes.
-   * `action.ts` runs the Action's steps through these commands; a test holds the union to
-   * `ACTION_INPUTS` and each flag to the command's usage.
+   * The publish Action's inputs 0.9 removed that this command used to receive, as input name to the
+   * flag that replaces it. `action.ts` refuses each with that flag (`REMOVED_INPUTS`); a test holds
+   * each flag to the command's usage and keeps the eight current inputs out of the table.
    */
   action?: Readonly<Record<string, string>>;
   /** One line: what the command is for (its help's header, and completion's description). */
@@ -576,9 +576,6 @@ export const COMMANDS: readonly PkeyCommand[] = [
       dir: "--dir",
       source: "--source",
       meta: "--meta",
-      "base-url": "--base-url",
-      "release-key": "--release-key-file",
-      "content-key": "--content-key-file",
       delegation: "--delegation",
       "min-supported-seq": "--min-supported-seq",
       "content-stamp": "--content-stamp",
@@ -588,7 +585,6 @@ export const COMMANDS: readonly PkeyCommand[] = [
       bases: "--bases",
       "script-extensions": "--script-extensions",
       "script-types": "--script-types",
-      "dry-run": "--dry-run",
     },
     summary: "Publish, sign and move releases from CI",
     rows: [

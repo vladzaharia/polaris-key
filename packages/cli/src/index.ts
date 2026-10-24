@@ -15,6 +15,7 @@ import {
   UsageError,
 } from "./errors.js";
 import { CLI_VERSION } from "./version.js";
+import { writeOutputs } from "./actionOutputs.js";
 import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
 import {
   COMPLETION_SHELLS,
@@ -2105,7 +2106,7 @@ async function releasePublish(
         "--no-record does not apply to a package: a package release never carries a record.",
       );
     progress.stage(`Publishing ${deliverable}`);
-    await publishPackage({
+    const result = await publishPackage({
       ...common,
       cwd,
       product,
@@ -2115,6 +2116,7 @@ async function releasePublish(
       channel: flagString(parsed, "channel"),
       dryRun: flagBool(parsed, "dry-run"),
     });
+    await writeOutputs(common, result.releaseId, result.server);
     return 0;
   }
   if (deliverable && deliverable !== "app") {
@@ -2141,7 +2143,7 @@ async function releasePublish(
     );
     const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
     // P4-03: a pack release.
-    await publishPack({
+    const result = await publishPack({
       ...common,
       progress,
       cwd,
@@ -2166,6 +2168,7 @@ async function releasePublish(
       ...(scriptExtensions.length ? { scriptExtensions } : {}),
       ...(scriptTypes.length ? { scriptTypes } : {}),
     });
+    await writeOutputs(common, result.releaseId, result.server);
     return 0;
   }
   refuseFlags(
@@ -2188,7 +2191,7 @@ async function releasePublish(
     ["content-key-file", "delegation"],
     "a content key signs only data-only pack releases, never an app record",
   );
-  await publishRelease({
+  const result = await publishRelease({
     ...common,
     progress,
     cwd,
@@ -2212,6 +2215,7 @@ async function releasePublish(
       : {}),
     strict: flagBool(parsed, "strict"),
   });
+  await writeOutputs(common, result.releaseId, result.server);
   return 0;
 }
 

@@ -441,10 +441,8 @@ describe("pkey release publish with a content key", () => {
     const io = capture();
     const code = await runAction({
       env: actionsEnv({
-        INPUT_PRODUCT: SLUG,
-        INPUT_DIR: "dist",
-        INPUT_DELIVERABLE: PACK,
-        INPUT_VERSION: "1.0.0",
+        INPUT_COMMAND: "release publish",
+        INPUT_ARGS: `--dir dist --deliverable ${PACK} --version 1.0.0`,
         "INPUT_RELEASE-KEY": key.pem,
         "INPUT_CONTENT-KEY": "x",
       }),
@@ -455,7 +453,7 @@ describe("pkey release publish with a content key", () => {
       sleep: instant,
     });
     expect(code).toBe(1);
-    expect(io.err()).toContain("release-key and content-key are exclusive");
+    expect(io.err()).toMatch(/Both a release key .* and a content key/);
   });
 });
 
