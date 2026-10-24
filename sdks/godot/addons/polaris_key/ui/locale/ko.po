@@ -132,6 +132,11 @@ msgstr "닫기"
 msgid "common.byDeveloper"
 msgstr "{developer} 제작"
 
+#. That link doesn't open anything here.
+#. Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed.
+msgid "common.linkUnavailable"
+msgstr "이 링크로는 여기서 열 수 있는 것이 없어요."
+
 #. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
 #. The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
 msgid "part.thisDevice"

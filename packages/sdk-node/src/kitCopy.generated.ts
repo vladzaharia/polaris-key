@@ -49,6 +49,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Reconnect",
     "common.dismiss": "Dismiss",
     "common.byDeveloper": "by {developer}",
+    "common.linkUnavailable": "That link doesn't open anything here.",
     "part.thisDevice":
       "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
     "part.thisDeviceTitle":
@@ -1636,6 +1637,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Neu verbinden",
     "common.dismiss": "Ausblenden",
     "common.byDeveloper": "von {developer}",
+    "common.linkUnavailable": "Dieser Link öffnet hier nichts.",
     "part.thisDevice":
       "{formFactor, select, iphone {dieses iPhone} ipad {dieses iPad} mac {diesen Mac} phone {dieses Telefon} tablet {dieses Tablet} computer {diesen Computer} tv {diesen Fernseher} other {dieses Gerät}}",
     "part.thisDeviceTitle":
@@ -3337,6 +3339,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Se reconnecter",
     "common.dismiss": "Ignorer",
     "common.byDeveloper": "par {developer}",
+    "common.linkUnavailable": "Ce lien n’ouvre rien ici.",
     "part.thisDevice":
       "{formFactor, select, iphone {cet iPhone} ipad {cet iPad} mac {ce Mac} phone {ce téléphone} tablet {cette tablette} computer {cet ordinateur} tv {ce téléviseur} other {cet appareil}}",
     "part.thisDeviceTitle":
@@ -5021,6 +5024,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Reconectar",
     "common.dismiss": "Descartar",
     "common.byDeveloper": "de {developer}",
+    "common.linkUnavailable": "Este enlace no abre nada aquí.",
     "part.thisDevice":
       "{formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este teléfono} tablet {esta tableta} computer {esta computadora} tv {este televisor} other {este dispositivo}}",
     "part.thisDeviceTitle":
@@ -6691,6 +6695,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Reconectar",
     "common.dismiss": "Dispensar",
     "common.byDeveloper": "por {developer}",
+    "common.linkUnavailable": "Este link não abre nada aqui.",
     "part.thisDevice":
       "{formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este celular} tablet {este tablet} computer {este computador} tv {esta TV} other {este dispositivo}}",
     "part.thisDeviceTitle":
@@ -8329,6 +8334,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "Riconnetti",
     "common.dismiss": "Ignora",
     "common.byDeveloper": "di {developer}",
+    "common.linkUnavailable": "Questo link qui non apre nulla.",
     "part.thisDevice":
       "{formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}",
     "part.thisDeviceTitle":
@@ -9986,6 +9992,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "再接続",
     "common.dismiss": "閉じる",
     "common.byDeveloper": "開発：{developer}",
+    "common.linkUnavailable": "このリンクでは、ここで開けるものがありません。",
     "part.thisDevice":
       "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}",
     "part.thisDeviceTitle":
@@ -11663,6 +11670,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "다시 연결",
     "common.dismiss": "닫기",
     "common.byDeveloper": "{developer} 제작",
+    "common.linkUnavailable": "이 링크로는 여기서 열 수 있는 것이 없어요.",
     "part.thisDevice":
       "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}",
     "part.thisDeviceTitle":
@@ -13260,6 +13268,7 @@ export const KIT_COPY: Readonly<
     "common.reconnect": "重新连接",
     "common.dismiss": "忽略",
     "common.byDeveloper": "开发者：{developer}",
+    "common.linkUnavailable": "此链接在这里无法打开任何内容。",
     "part.thisDevice":
       "{formFactor, select, iphone {这台iPhone} ipad {这台iPad} mac {这台Mac} phone {这部手机} tablet {这台平板电脑} computer {这台电脑} tv {这台电视} other {这台设备}}",
     "part.thisDeviceTitle":

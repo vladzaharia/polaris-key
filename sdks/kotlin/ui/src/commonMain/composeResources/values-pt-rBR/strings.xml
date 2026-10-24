@@ -55,6 +55,8 @@
     <string name="common_dismiss">Dispensar</string>
     <!-- Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
     <string name="common_byDeveloper">por %1$s</string>
+    <!-- Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed. -->
+    <string name="common_linkUnavailable">Este link não abre nada aqui.</string>
     <!-- The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDevice">este dispositivo</string>
     <string name="part_thisDevice__iphone">este iPhone</string>

@@ -55,6 +55,8 @@
     <string name="common_dismiss">忽略</string>
     <!-- Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
     <string name="common_byDeveloper">开发者：%1$s</string>
+    <!-- Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed. -->
+    <string name="common_linkUnavailable">此链接在这里无法打开任何内容。</string>
     <!-- The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDevice">这台设备</string>
     <string name="part_thisDevice__iphone">这台iPhone</string>

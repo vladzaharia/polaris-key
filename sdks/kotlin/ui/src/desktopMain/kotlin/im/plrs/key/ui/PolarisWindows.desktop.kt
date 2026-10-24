@@ -112,7 +112,7 @@ private fun PolarisWindowRoot(
 }
 
 /**
- * The gate window: [PolarisKeyApp]'s boot and gate over [client], then [content]. Closing it, whatever the gate
+ * The gate window: [PolarisKeyGate]'s boot and gate over [client], then [content]. Closing it, whatever the gate
  * shows, calls [onCloseRequest] (exit by default). An optional update opens [PolarisUpdateWindow]; a mandatory
  * one is a dialog inside this window with no close. "Manage license" opens [PolarisSettingsWindow].
  *

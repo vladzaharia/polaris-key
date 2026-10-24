@@ -26,6 +26,7 @@
     "common.reconnect": "Riconnetti",
     "common.dismiss": "Ignora",
     "common.byDeveloper": "di {developer}",
+    "common.linkUnavailable": "Questo link qui non apre nulla.",
     "part.thisDevice": "{formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}",
     "part.thisDeviceTitle": "{formFactor, select, iphone {Questo iPhone} ipad {Questo iPad} mac {Questo Mac} phone {Questo telefono} tablet {Questo tablet} computer {Questo computer} tv {Questa TV} other {Questo dispositivo}}",
     "part.platform.macos": "macOS",

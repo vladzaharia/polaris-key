@@ -54,6 +54,7 @@ The code is the fact; these replace what the sections above say where they diffe
 - **C2. The self-starting gate exists under another name.** `PolarisKeyApp(client) { App() }` already calls `client.start()`. No `PolarisKeyGate` composable exists in Kotlin (the name lives only in ui-core's `gate("PolarisKeyGate")`). The one-liner named in UK-09 is added in UK-09b.3, with `PolarisKeyApp` kept as a deprecated wrapper.
 - **C3. There are 23 component pages, not 25.** `build/ui/components/` holds 25 files, and two are `_template.mdx` and `index.mdx`. No page has a Compose tab yet (0 of 23). Tabs are Starlight `<Tabs syncKey="ui-kit">`, the label comes from `uiKits.ts`, and a `kotlin android` fence compiles in `:docs-snippets-android`.
 - **C4. M3 Expressive is mostly out of reach on the pinned toolchain.** `:ui` follows Godot 4.7.2's template (AGP 8.6.1, compileSdk 36, Kotlin 2.1.21; Compose BOM 2026.06.01 brings Material 3 1.4.0). Available: `MaterialExpressiveTheme` and the `motionScheme` overload of `MaterialTheme`. Internal: `MotionScheme.expressive()`. Absent: `LoadingIndicator`, `ButtonGroup`, `MaterialShapes` and the wavy progress composables (they need BOM 2026.08.00 or later, compileSdk 37 and AGP 9.1). Until the kit has a version line decoupled from the Godot template pins, those are recorded as blocked and the kit draws its own.
+  - **C4 was wrong on one point (UK-09b.4).** `MaterialExpressiveTheme` is `internal` in material3 1.4.0's Kotlin metadata, so the theme seam keeps plain `MaterialTheme` on the pinned line. The rest of C4 stands.
 - **C5. No navigation or deep links exist.** The kit navigates by state (`rememberSaveable` plus `PolarisBackHandler`); there is no navigation-compose, `NavHost`, `material3-adaptive` or `WindowSizeClass`, and no deep-link copy key. The only `pkey://` is a URI the desktop opener must refuse. UK-09b.3 adds `PolarisKeyRoute` and `PolarisKeyLinks` (an allow-list parser), and wires navigation-compose in the sample only.
 - **C6. The sample folder.** `examples/ui/compose-android/` is the Gradle module `:sample-compose-android` in `sdks/kotlin/settings.gradle.kts`, inside the Android include block, like UK-10.10's `:sample-compose-desktop`. `examples/ui/README.md` has two rows, "Compose (Android)" and "Compose Desktop".
 - **C7. UK-09 silently dropped two items.** "Credential Manager first" (no code exists) and "Material Symbols Rounded" (`PolarisSymbols.kt` exists; whether it is the Rounded set is unverified). UK-09b.4 and the plan's D-7 decide both.
@@ -66,7 +67,7 @@ The code is the fact; these replace what the sections above say where they diffe
 
 - [ ] `examples/ui/compose-android` builds and runs
 - [ ] Compose tab on each of the 25 component pages
-- [ ] M3 Expressive applied; nav graph, deep links and self-starting gate work
+- [ ] M3 Expressive applied; nav graph, deep links and self-starting gate work (UK-09b.3: `PolarisKeyGate`, `PolarisKeyRoute`, `PolarisKeyLinks`, the sample's navigation-compose 2.9.8 graph and intent filter)
 - [ ] Tablet list-detail layout; ChannelPicker
 - [ ] `pkey-ux-reviewer` passes the built screens (BUILT mode)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.

@@ -19,6 +19,7 @@
   "common.reconnect": "Reconectar",
   "common.dismiss": "Descartar",
   "common.byDeveloper": "de {developer}",
+  "common.linkUnavailable": "Este enlace no abre nada aquí.",
   "part.thisDevice": "{formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este teléfono} tablet {esta tableta} computer {esta computadora} tv {este televisor} other {este dispositivo}}",
   "part.thisDeviceTitle": "{formFactor, select, iphone {Este iPhone} ipad {Este iPad} mac {Este Mac} phone {Este teléfono} tablet {Esta tableta} computer {Esta computadora} tv {Este televisor} other {Este dispositivo}}",
   "part.platform.macos": "macOS",

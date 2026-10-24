@@ -2419,6 +2419,11 @@
       "ktlint:standard:function-signature": 3,
       "ktlint:standard:import-ordering": 1
     },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKeyGate.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 1,
+      "ktlint:standard:function-naming": 1
+    },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt": {
       "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.CyclomaticComplexMethod": 2,

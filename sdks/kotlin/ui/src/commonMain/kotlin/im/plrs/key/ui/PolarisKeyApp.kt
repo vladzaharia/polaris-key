@@ -1,8 +1,8 @@
-// One-call wiring for a Compose app (SP-K06, notes/SDK-PARITY-PASS.md §2.5, §3.4):
+// The wiring behind PolarisKeyGate (SP-K06, notes/SDK-PARITY-PASS.md §2.5, §3.4; renamed in UK-09b.3):
 //
-//   setContent { PolarisKeyApp(client) { App() } }
+//   setContent { PolarisKeyGate(client) { App() } }
 //
-// PolarisKeyApp composes the kit's existing pieces, unchanged: the boot shell over
+// PolarisKeyGate (PolarisKeyGate.kt) composes the kit's existing pieces, unchanged: the boot shell over
 // `client.bootHost()` (guard, sync, gate, decide, pack fetch, mount, launch confirmation), the gate
 // for its activation stop, pack progress, and the update sheet or card (the banner only for "Restart to finish") over `client.updateActions()` (a
 // Play flexible update's progress and "Restart to finish" included). It also provides the client
@@ -42,20 +42,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 
-/** The client PolarisKeyApp (or PolarisKeyProvider) provides; null outside one. */
+/** The client PolarisKeyGate (or PolarisKeyProvider) provides; null outside one. */
 public val LocalPolarisKey: androidx.compose.runtime.ProvidableCompositionLocal<PolarisKeyClient?> =
     staticCompositionLocalOf { null }
 
-/** Provide [client] to [content] (PolarisKeyApp does this itself). */
+/** Provide [client] to [content] (PolarisKeyGate does this itself). */
 @Composable
 public fun PolarisKeyProvider(client: PolarisKeyClient, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalPolarisKey provides client, content = content)
 }
 
-/** The provided client; throws outside PolarisKeyApp or PolarisKeyProvider. */
+/** The provided client; throws outside PolarisKeyGate or PolarisKeyProvider. */
 @Composable
 public fun polarisKey(): PolarisKeyClient =
-    LocalPolarisKey.current ?: error("polarisKey() needs PolarisKeyApp or PolarisKeyProvider above it")
+    LocalPolarisKey.current ?: error("polarisKey() needs PolarisKeyGate or PolarisKeyProvider above it")
 
 // The live helpers are cold flows collected with collectAsState: the first read, then every
 // change. (Not produceState: the Compose lint run by AGP 8.6 reports ProduceStateDoesNotAssignValue
@@ -86,13 +86,11 @@ public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = pola
 public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polarisKey()): State<JsonElement?> =
     remember(client, key) { flow { emitAll(client.config.setting(key)) } }.collectAsState(null)
 
-/**
- * The whole kit wired to [client]: boot (with the gate, pack progress and the update banner) and
- * then [content]. [onSignIn] starts sign-in from the activation screen (null hides the button);
- * [signIn] runs the device-code sign-in inside the gate instead, whose "Use a license key instead"
- * and Cancel come back to the key field; [onQuit] is the host's quit, called once a desktop installer
- * is open (the kit never quits by itself); [packs] shows per-pack progress during the boot fetch.
- */
+/** The old name of [PolarisKeyGate], kept for one release. */
+@Deprecated(
+    "Renamed: PolarisKeyGate is the one-liner.",
+    ReplaceWith("PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content)", "im.plrs.key.ui.PolarisKeyGate"),
+)
 @Composable
 public fun PolarisKeyApp(
     client: PolarisKeyClient,
@@ -104,13 +102,11 @@ public fun PolarisKeyApp(
     onQuit: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val update = remember(client) { PolarisUpdateState() }
-    val updateActions = remember(client) { client.updateActions() }
-    PolarisKeyAppHost(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions, optionalUpdateInDialog = true, content)
+    PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content)
 }
 
 /**
- * [PolarisKeyApp] over an update state the caller holds. The desktop window ([PolarisKeyWindow]) shows an
+ * [PolarisKeyGate] over an update state the caller holds. The desktop window ([PolarisKeyWindow]) shows an
  * optional update in its own window, so it turns [optionalUpdateInDialog] off; a mandatory update is
  * always a dialog inside this window (UK-10.8, K3).
  */

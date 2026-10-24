@@ -30,7 +30,7 @@ dependencies {
 
 ## The one-line flow
 
-On Android, `PolarisKeyApp(client) { }` gates your content. On the desktop, `PolarisKeyWindow(client) { }` is the same call as a window: it opens the gate window, shows your content once the license allows it, and opens the update and Settings windows when they are needed.
+On Android, `PolarisKeyGate(client) { }` gates your content. On the desktop, `PolarisKeyWindow(client) { }` is the same call as a window: it opens the gate window, shows your content once the license allows it, and opens the update and Settings windows when they are needed.
 
 ```kotlin desktop title="Main.kt"
 import androidx.compose.material3.Text
@@ -146,7 +146,7 @@ Feed `update` the decision of a check (`update.show(client.update.decide())`) an
 
 ## Piecemeal
 
-`PolarisKeyApp(client) { }` is the one call. To place the screens yourself, hold a
+`PolarisKeyGate(client) { }` is the one call. To place the screens yourself, hold a
 `PolarisGateState(client.gateActions(), scope)` and call its `start()`; then:
 
 - `PolarisGate(state) { }` gates your content and shows the right screen for the license.
@@ -155,7 +155,7 @@ Feed `update` the decision of a check (`update.show(client.update.decide())`) an
 - `PolarisDevices(PolarisDevicesState(client.devicesActions(), scope))` lists, renames and signs out
   devices.
 - `PolarisGraceBanner` is the offline-grace banner, for a screen that shows it over your content.
-- `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyApp` or
+- `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyGate` or
   `PolarisKeyProvider`.
 
 ```kotlin android

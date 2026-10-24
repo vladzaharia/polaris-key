@@ -116,7 +116,7 @@ You should see the client create with no network request.
 <Lanes intro="The Compose kit gates an Android app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
   <Fragment slot="kit">
 
-`PolarisKeyApp` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.
+`PolarisKeyGate` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.
 
 ```kotlin android title="MainActivity.kt"
 import android.os.Bundle
@@ -124,14 +124,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import im.plrs.key.ui.PolarisKeyApp
+import im.plrs.key.ui.PolarisKeyGate
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                PolarisKeyApp(client, signIn = true) { Text("Licensed") }
+                PolarisKeyGate(client, signIn = true) { Text("Licensed") }
             }
         }
     }
