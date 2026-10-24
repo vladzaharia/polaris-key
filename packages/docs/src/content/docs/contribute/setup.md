@@ -79,6 +79,13 @@ pnpm typecheck
 It is intentionally lightweight — the full cross-language matrix runs in CI, not locally. For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.
 
+## Lint debt
+
+Each language's lint ledger (`lint-debt.json` in its lane) holds the findings that existed when the lane was adopted, and only shrinks.
+A new finding, or a recorded one the tool no longer reports, fails the lane's `tools/lint.sh check`, locally in `pnpm gate` and in CI.
+Fix a finding, then re-record the ledger with `<lane script> record`, for example `sdks/python/tools/lint.sh record`.
+Tool versions are pinned (the Swift lane to the 6.3 toolchain), and an upgrade is its own PR.
+
 ## 4. Fixture SQL for a product
 
 For local fixtures, generate SQL from a product's files in `products/<slug>/`. This is a fixture tool only: it can't mint a sealed signing key or store product secret values, so a live product is registered through the console ([Register a product from its repo](/docs/build/manifest/register/)).

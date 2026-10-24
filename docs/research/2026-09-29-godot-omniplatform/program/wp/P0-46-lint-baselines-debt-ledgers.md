@@ -53,9 +53,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Each language has a committed baseline
-- [ ] New code is blocked on new findings
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Each language has a committed baseline
+- [x] New code is blocked on new findings
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

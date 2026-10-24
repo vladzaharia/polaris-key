@@ -15,7 +15,15 @@ import {
   type GateIo,
 } from "./gate.mjs";
 
-const ALWAYS = ["install", "build", "gen", "typecheck", "test", "lint"];
+const ALWAYS = [
+  "install",
+  "build",
+  "gen",
+  "typecheck",
+  "test",
+  "lint",
+  "lint-ts",
+];
 const ran = (files: string[] | null, flags = {}) =>
   plan(files, flags)
     .steps.filter((s) => s.run)
@@ -29,7 +37,7 @@ describe("STEPS", () => {
     expect(STEPS.slice(0, 17).map((s) => s.id)).toEqual([
       ...ALWAYS.slice(0, 2),
       "docs-build",
-      ...ALWAYS.slice(2),
+      ...ALWAYS.slice(2, 6),
       "admin-build",
       "assemble",
       "check-links",
@@ -40,6 +48,15 @@ describe("STEPS", () => {
       "godot",
       "format",
       "admin-e2e",
+    ]);
+  });
+  it("appends the P0-46 lint steps as 18-22 with their lanes", () => {
+    expect(STEPS.slice(17).map((s) => [s.n, s.id, s.lane, !!s.heavy])).toEqual([
+      [18, "lint-ts", null, false],
+      [19, "lint-python", "python", false],
+      [20, "lint-swift", "swift-floor", false],
+      [21, "lint-kotlin", "kotlin", true],
+      [22, "lint-godot", "godot", false],
     ]);
   });
 });
@@ -66,8 +83,11 @@ describe("plan", () => {
     for (const x of ["python", "swift", "godot", "admin-e2e"])
       expect(ids).not.toContain(x);
   });
-  it("a Python change runs python only beyond the always steps", () => {
-    expect(beyondAlways(["sdks/python/x.py"])).toEqual(["python"]);
+  it("a Python change runs python and lint-python only beyond the always steps", () => {
+    expect(beyondAlways(["sdks/python/x.py"])).toEqual([
+      "python",
+      "lint-python",
+    ]);
   });
   it("a shared input runs every lane step, format excepted", () => {
     const all = STEPS.map((s) => s.id).filter((id) => id !== "format");
@@ -91,7 +111,10 @@ describe("plan", () => {
   });
   it("--only and --from select by number", () => {
     expect(ran(null, { only: [3, 6] })).toEqual(["docs-build", "test"]);
-    expect(ran(["docs/a.md"], { from: 10 })).toEqual(["check-links"]);
+    expect(ran(["docs/a.md"], { from: 10 })).toEqual([
+      "check-links",
+      "lint-ts",
+    ]);
   });
   it("names the lanes CI runs that have no local step", () => {
     const { lanes } = plan(["packages/sdk-react/x.ts"]);
