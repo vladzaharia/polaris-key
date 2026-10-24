@@ -744,6 +744,36 @@ function lazyDeltas(over: Setting = {}): Setting {
   };
 }
 
+/** PX-W13c: the extra reserved display terms, a list row in Sign-in. */
+function reservedTerms(over: Setting = {}): Setting {
+  return {
+    key: "identity.reservedDisplayTerms",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    kind: "list",
+    max: 64,
+    maxLength: 64,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: [],
+    deployValue: null,
+    value: ["Zephyr", "Acme Store"],
+    source: "runtime",
+    forcedOff: false,
+    stored: {
+      value: ["Zephyr", "Acme Store"],
+      valid: true,
+      updatedAt: 1_790_000_000,
+      updatedBy: "ops@x.io",
+    },
+    version: 1,
+    confirm: { change: "L1" },
+    ...over,
+  };
+}
+
 /** ST-16: the product defaults the Worker lists under Platform → Settings. */
 function keyEntryCeiling(over: Setting = {}): Setting {
   return {
@@ -983,6 +1013,7 @@ function view(over: Record<string, unknown> = {}) {
       grace(),
       cloudSyncDefault(),
       cloudSyncPause(),
+      reservedTerms(),
     ],
     storeAvailable: true,
     propagationSeconds: 30,

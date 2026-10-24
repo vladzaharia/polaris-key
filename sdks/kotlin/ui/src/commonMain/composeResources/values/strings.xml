@@ -417,7 +417,7 @@
     <string name="update_skipVersion__macos">Skip This Version</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_install">Update now</string>
-    <string name="update_install__macos">Update Now</string>
+    <string name="update_install__macos">Install and Relaunch</string>
     <!-- UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="common_updateDownload">Download %1$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->

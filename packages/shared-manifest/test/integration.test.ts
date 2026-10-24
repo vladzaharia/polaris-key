@@ -190,7 +190,7 @@ describe("renderUsage", () => {
     expect(
       renderUsage("config", "python", "library", null, { configFallback: true })
         ?.code,
-    ).toContain('get_config("audio.musicVolume", True)');
+    ).toContain('get("audio.musicVolume", True)');
   });
 
   it("renders null where an SDK has no such code, never a guess", () => {

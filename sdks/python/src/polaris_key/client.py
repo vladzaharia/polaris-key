@@ -596,10 +596,6 @@ class PolarisKeyClient:
         ``kinds``). Returns the unsubscribe function."""
         return self.events.subscribe(listener, kinds)
 
-    def on_config_change(self, key: str, listener: Callable[[Any], None]) -> Callable[[], None]:
-        """Call ``listener(event)`` when ``key``'s effective value changes (``"*"``: any)."""
-        return self.config.on_change(key, listener)
-
     def _observe(self) -> Dict[str, Any]:
         try:
             doc = self.license.doc
@@ -759,9 +755,6 @@ class PolarisKeyClient:
         except Exception:
             return None
         return result if isinstance(result, StoreStatus) else None
-
-    def get_config(self, key: str, fallback: Any = None) -> Any:
-        return self.config.get_config(key, fallback)
 
     def register(self) -> RegisterResult:
         return self.devices.register()

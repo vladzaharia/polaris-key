@@ -43,7 +43,7 @@ __all__ = ["PolarisError", "create_local_client", "create_bundle_client"]
 def create_local_client(**opts: Any) -> PolarisKeyClient:
     """A client that never touches the network.
 
-    Everything offline still works: ``client.config.get_config(...)`` resolves over a
+    Everything offline still works: ``client.config.get(...)`` resolves over a
     cached or imported config document, ``client.license.status()`` gates on a cached or
     imported licence, and ``client.import_bundle(...)`` provisions one. Anything that
     would dial — activation, enrolment, registration, ``sync()``, discovery, the

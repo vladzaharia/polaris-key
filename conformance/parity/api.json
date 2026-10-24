@@ -546,16 +546,6 @@
     },
     {
       "sdk": "python",
-      "path": "client.on_config_change",
-      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
-    },
-    {
-      "sdk": "python",
-      "path": "client.get_config",
-      "reason": "facade of the config namespace; follows its SP-35 rename (client.get_config -> config.get, on_config_change -> config.on_change)"
-    },
-    {
-      "sdk": "python",
       "path": "config.doc",
       "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"
     },
@@ -1027,10 +1017,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "spelling": "get_config",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "config",
           "planned": "SP-35b",
@@ -1174,10 +1161,7 @@
       "feature": "config.local",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "python": {},
         "react": {},
         "swift": {},
         "kotlin": {},
@@ -1202,10 +1186,7 @@
       "sdks": {
         "node": {},
         "swift": {},
-        "python": {
-          "spelling": "on_change",
-          "planned": "SP-35"
-        },
+        "python": {},
         "kotlin": {
           "spelling": "changes",
           "shape": "flow",
@@ -2850,6 +2831,33 @@
       "package": "SP-35",
       "scan": {
         "pattern": "(?<![\\w.])(?:client|mirrored)\\.getConfig\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.get_config",
+      "to": "config.get",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "client.on_config_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "python",
+      "from": "config.on_change",
+      "to": "config.onConfigChange",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bconfig\\.on_change\\s*\\("
       }
     },
     {

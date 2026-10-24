@@ -279,6 +279,26 @@ describe("no view writes around mutate()", () => {
     }
   });
 
+  it("no console/api/* module imports the barrel", () => {
+    const offenders = sources(API_DIR).flatMap((file) => {
+      const sf = ts.createSourceFile(
+        file,
+        readFileSync(file, "utf8"),
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      return sf.statements.flatMap((stmt) =>
+        (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) &&
+        stmt.moduleSpecifier &&
+        join(dirname(file), (stmt.moduleSpecifier as ts.StringLiteral).text) ===
+          join(src, "api.js")
+          ? [relative(src, file)]
+          : [],
+      );
+    });
+    expect(offenders, "import the sibling module instead").toEqual([]);
+  });
+
   it("the check catches the shapes a regex would miss", () => {
     // Any directory one level under src/ (src/views/ is gone since the area chunks).
     const probe = join(src, "lib", "__probe__.ts");

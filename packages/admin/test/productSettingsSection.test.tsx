@@ -6,7 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, within } from "@testing-library/react";
 import type { ProductSetting } from "../src/api.js";
-import { renderAt, resetCore } from "./coreTestUtils.js";
+import { renderAt, resetCore, testQueryClient } from "./coreTestUtils.js";
+import { qk } from "../src/console/data/queries.js";
 
 const fns = vi.hoisted(() => ({ productSettings: vi.fn() }));
 
@@ -140,5 +141,64 @@ describe("ProductSettingsSection", () => {
     expect(field.getAttribute("placeholder")).toBe(
       "Platform default: 200 a day",
     );
+  });
+
+  it("PX-W13c: a platform-only key is read-only for a product admin, editable for a platform admin", async () => {
+    const approval = setting("identity.displayNameApproved", {
+      label: "Approved display name",
+      spec: { kind: "boolean" },
+      confirm: { on: "L1", off: "L0" },
+      value: false,
+      defaultValue: false,
+      rbacArea: "signin",
+      platformOnly: true,
+      ownership: "operator",
+    });
+    fns.productSettings.mockResolvedValue({ settings: [approval] });
+    const me = (platform: string[]) => ({
+      sub: "s",
+      name: "N",
+      email: "n@x.io",
+      csrf: "c",
+      platformAdmin: false,
+      products: [],
+      permissions: {
+        roles: [],
+        platform: { view: platform, edit: platform },
+        products: { djdl: { view: ["signin"], edit: ["signin"] } },
+      },
+    });
+    testQueryClient().setQueryData(qk.me(), me(["console"]));
+    const { unmount } = renderAt(
+      "#/p/djdl/app-sign-in",
+      <ProductSettingsSection
+        slug="djdl"
+        area="identity.signIn"
+        id="s"
+        title="Display name"
+      />,
+    );
+    const card = await screen.findByRole("region", { name: "Display name" });
+    await within(card).findByText("Approved display name");
+    expect(within(card).queryByRole("switch")).toBeNull();
+    expect(
+      within(card).getByText(/^Only platform admins change this\./),
+    ).toBeTruthy();
+    unmount();
+
+    testQueryClient().setQueryData(qk.me(), me(["console", "platform"]));
+    renderAt(
+      "#/p/djdl/app-sign-in",
+      <ProductSettingsSection
+        slug="djdl"
+        area="identity.signIn"
+        id="s"
+        title="Display name"
+      />,
+    );
+    const open = await screen.findByRole("region", { name: "Display name" });
+    expect(
+      (await within(open).findByRole("switch")).hasAttribute("disabled"),
+    ).toBe(false);
   });
 });

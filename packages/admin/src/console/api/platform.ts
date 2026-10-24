@@ -3,7 +3,7 @@
  * alerts, platform settings, operations, connections and store connections. Types and the
  * `platformApi` methods live together; `api.ts` re-exports the types and spreads the methods.
  */
-import type { ActivityFilters } from "../../api.js";
+import type { ActivityFilters } from "./activity.js";
 import { call, enc, p } from "./transport.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
@@ -466,10 +466,22 @@ export interface PlatformChoiceSetting extends PlatformSettingBase {
   confirm: Record<string, PlatformConfirmLevel>;
 }
 
+/** A list of short terms (PX-W13c: `identity.reservedDisplayTerms`). */
+export interface PlatformListSetting extends PlatformSettingBase {
+  kind: "list";
+  /** At most this many terms, each at most `maxLength` characters. */
+  max: number;
+  maxLength: number;
+  default: string[];
+  value: string[];
+  confirm: { change: PlatformConfirmLevel };
+}
+
 export type PlatformSetting =
   | PlatformSwitchSetting
   | PlatformIntegerSetting
-  | PlatformChoiceSetting;
+  | PlatformChoiceSetting
+  | PlatformListSetting;
 
 /** `GET /manage/api/platform/reserved-names` (LX-05, worker `console/handlers/reservedNames.ts`). */
 export interface PlatformReservedNames {
@@ -575,7 +587,7 @@ export interface PlatformSettingsView {
 
 /** `PATCH /manage/api/platform/settings/<key>`. `confirm` echoes the key for an L2+ change. */
 export interface PlatformSettingWrite {
-  value: string | number;
+  value: string | number | string[];
   expectedVersion: number;
   confirm?: string;
   /** Why (a critical setting needs one; the Worker records it in the trail). */

@@ -167,8 +167,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "identity",
     rbacArea: "platform",
     label: "Extra reserved display terms",
-    description:
-      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    description: "Names to treat like the built-in reserved list.",
     keywords: ["reserved", "display name", "spoofing"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
@@ -1871,7 +1870,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Approved display name",
     description:
-      "Lets this product use a name that matches a reserved term. Covers every name the product uses. Only platform admins can set it.",
+      "Lets this product use a name that matches a reserved term. Covers every name the product uses.",
     keywords: ["reserved", "display name", "reserved_display_name"],
     docs: "/docs/build/manifest/product/",
     ownership: "operator",

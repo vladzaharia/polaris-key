@@ -51,7 +51,13 @@ const BINARY = {
   discardStaged: false,
 };
 
-function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
+function mount(o: {
+  newer: boolean;
+  withOpen?: boolean;
+  install?: unknown;
+  desktop?: boolean;
+  manageUrl?: string;
+}) {
   const openers = new Set<(v: KitView) => void>();
   const progress = new Set<(p: BridgeUpdateProgress) => void>();
   const calls: string[] = [];
@@ -59,10 +65,32 @@ function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
     ...makeFakeBridge(
       okBridgeState({
         capabilities: services("license", "config", "update", "release"),
+        ...(o.desktop
+          ? {
+              host: { os: "macos" },
+              capabilities: services(
+                "license",
+                "config",
+                "update",
+                "release",
+                "identity",
+              ),
+              profile: { name: "Mara Lindqvist" },
+            }
+          : {}),
         config: makeConfig({ "audio.dither": entry("default", true) }),
       }),
     ),
     version: 4,
+    ...(o.manageUrl
+      ? {
+          submitKey: async () => ({
+            kind: "device-limit" as const,
+            limit: 3,
+            manageUrl: o.manageUrl,
+          }),
+        }
+      : {}),
     ...(o.withOpen === false
       ? {}
       : {
@@ -100,7 +128,7 @@ function mount(o: { newer: boolean; withOpen?: boolean; install?: unknown }) {
     <PolarisKeyProvider
       config={{ productSlug: "acme", adapter, version: "2.4.1" }}
     >
-      <PolarisKeyGate>
+      <PolarisKeyGate {...(o.desktop ? { theme: { platform: "auto" } } : {})}>
         <button data-testid="app">APP</button>
       </PolarisKeyGate>
     </PolarisKeyProvider>,
@@ -202,5 +230,108 @@ describe("the host opens a view in the gate's window", () => {
     await m.findByTestId("app");
     m.open("settings");
     expect(dialog(m.container)).toBeNull();
+  });
+});
+
+describe("the menu-opened dialogs on a desktop host (UK-06-KITFIX)", () => {
+  it("the update offer is the in-app install, not the web download", async () => {
+    const m = mount({ newer: true, desktop: true });
+    await m.findByTestId("app");
+    m.open("update");
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('button[data-key="update.install"]'),
+      ).not.toBeNull(),
+    );
+    const d = dialog(m.container)!;
+    expect(
+      [...m.container.querySelectorAll("[data-pk-platform]")].map((e) =>
+        e.getAttribute("data-pk-platform"),
+      ),
+    ).toEqual(["macos"]);
+    expect(d.textContent).toContain("Install and Relaunch");
+    expect(d.textContent).not.toContain("Opens in your browser");
+    expect(d.textContent).not.toMatch(/Download 2\.5\.0/);
+  });
+
+  it("Settings has a Done, a click on the scrim closes it, and focus returns", async () => {
+    const m = mount({ newer: false, desktop: true });
+    const app = await m.findByTestId("app");
+    app.focus();
+    m.open("settings");
+    const done = await waitFor(() => {
+      const b = m.container.querySelector('button[data-key="common.done"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    fireEvent.click(done);
+    await waitFor(() => expect(dialog(m.container)).toBeNull());
+    expect(document.activeElement).toBe(app);
+    m.open("settings");
+    const d = await waitFor(() => {
+      const x = dialog(m.container);
+      expect(x).not.toBeNull();
+      return x!;
+    });
+    fireEvent.click(d);
+    await waitFor(() => expect(dialog(m.container)).toBeNull());
+  });
+
+  it("Manage License shows the account group, and Sign Out signs out", async () => {
+    const m = mount({ newer: false, desktop: true });
+    await m.findByTestId("app");
+    m.open("settings");
+    const out = await waitFor(() => {
+      const b = m.container.querySelector('button[data-key="common.signOut"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    const d = dialog(m.container)!;
+    expect(d.querySelector('[data-key="account.devices"]')).not.toBeNull();
+    expect(
+      d.querySelector('[data-key="account.version"]')?.textContent,
+    ).toContain("2.4.1");
+    fireEvent.click(out);
+    await waitFor(() =>
+      expect(
+        m.container
+          .querySelector('[data-component="PolarisKeyGate"]')
+          ?.getAttribute("data-state"),
+      ).toBe("needs-activation"),
+    );
+    expect(dialog(m.container)).toBeNull();
+  });
+
+  it("Manage shows in the account group only with a page to open, and opens it", async () => {
+    const none = mount({ newer: false, desktop: true });
+    await none.findByTestId("app");
+    none.open("settings");
+    await waitFor(() =>
+      expect(
+        none.container.querySelector('[data-key="account.devices"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      none.container.querySelector('[data-key="common.manage"]'),
+      "a button that does nothing",
+    ).toBeNull();
+    cleanup();
+
+    const url = "https://key.plrs.im/portal/free?x=1";
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const m = mount({ newer: false, desktop: true, manageUrl: url });
+    await m.findByTestId("app");
+    await act(async () => {
+      await m.adapter.submitKey("pkey_x").catch(() => undefined);
+    });
+    m.open("settings");
+    const manage = await waitFor(() => {
+      const b = m.container.querySelector('[data-key="common.manage"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    fireEvent.click(manage);
+    expect(open).toHaveBeenCalled();
+    expect(String(open.mock.calls[0]![0])).toContain("key.plrs.im/portal/free");
   });
 });

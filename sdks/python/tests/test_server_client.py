@@ -55,7 +55,7 @@ def test_reads_config_under_the_env_id_and_key() -> None:
     seen: Dict[str, List[str]] = {}
     with start(seen) as c:
         assert c.core.device_id == DEVICE
-        assert c.config.get_config("run.concurrency", 1) == 4
+        assert c.config.get("run.concurrency", 1) == 4
     assert {d for d in seen["devices"] if d} == {DEVICE}
     assert f"/{PRODUCT}/license/activate" in seen["paths"]
 

@@ -82,7 +82,7 @@ def test_a_valid_bundle_activates_with_zero_network(tmp_path) -> None:
     assert imported.imported == ["license", "config"]
     assert client.status().status == "ok"
     assert client.get_sync_state().activation == "bundle"
-    assert client.config.get_config("run.concurrency") == 4
+    assert client.config.get("run.concurrency") == 4
     # No token is created — a bundle-activated install has no credential.
     assert client.core.store.get_token() is None
     client.close()
@@ -160,7 +160,7 @@ def test_a_config_only_bundle_grants_nothing() -> None:
     assert result.imported == ["config"]
     assert client.get_sync_state().activation is None
     assert client.status().status == "needs-activation"
-    assert client.config.get_config("run.concurrency") == 4, "settings still landed"
+    assert client.config.get("run.concurrency") == 4, "settings still landed"
     client.close()
 
 
@@ -380,8 +380,8 @@ def test_local_only_reads_still_work() -> None:
     client.import_bundle(
         sign_bundle(device_id, docs={"config": sign_config(device_id)}), NOW
     )
-    assert client.config.get_config("run.concurrency") == 4
-    assert client.config.get_config("ui.theme") == "solarized"
+    assert client.config.get("run.concurrency") == 4
+    assert client.config.get("ui.theme") == "solarized"
     assert client.config.get_secret("proxy.subscriptionUrl") is not None
     client.close()
 

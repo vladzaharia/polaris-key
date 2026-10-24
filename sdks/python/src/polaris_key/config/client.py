@@ -86,14 +86,14 @@ class ConfigClient:
             env_prefix=self._env_prefix,
         )
 
-    def get_config(self, key: str, fallback: Any = None) -> Any:
+    def get(self, key: str, fallback: Any = None) -> Any:
         """Resolve the effective value for a key, honouring management state + the
         override layers."""
         value, _source = resolve(self._context(), key, fallback)
         return value
 
     def get_config_source(self, key: str) -> str:
-        """Where :meth:`get_config` would source its value from (for diagnostics /
+        """Where :meth:`get` would source its value from (for diagnostics /
         settings UIs)."""
         return resolve_source(self._context(), key)
 
@@ -172,6 +172,12 @@ class ConfigClient:
         fallback) applies again."""
         self._change(key, lambda: self._local_overrides.pop(key, None))
 
+    def clear_all(self) -> None:
+        """Forget every value the player chose; each key's next layer applies again. Emits a
+        ``config`` event for each key whose effective value changes."""
+        for key in list(self._local_overrides):
+            self.clear(key)
+
     def local_values(self) -> Dict[str, Any]:
         """The persisted settings the player chose (a copy)."""
         persisted = self._local_store.load()
@@ -182,7 +188,7 @@ class ConfigClient:
         ``subscribe(fn)`` for its changes."""
         return ConfigSetting(self, key, fallback)
 
-    def on_change(self, key: str, listener: Callable[[Any], None]) -> Callable[[], None]:
+    def on_config_change(self, key: str, listener: Callable[[Any], None]) -> Callable[[], None]:
         """Call ``listener(event)`` when ``key``'s effective value changes (``"*"``: any key).
         Returns the unsubscribe function."""
         if self._events is None:
@@ -201,11 +207,11 @@ class ConfigClient:
         doc = self.doc
         if doc is not None:
             keys.update(doc.config)
-        return {k: self.get_config(k) for k in sorted(keys)}
+        return {k: self.get(k) for k in sorted(keys)}
 
     def _change(self, key: str, mutate: Callable[[], Any]) -> None:
         with self._local_lock:
-            before = self.get_config(key)
+            before = self.get(key)
             mutate()
             persisted = self.local_values()
             if key in self._local_overrides:
@@ -213,7 +219,7 @@ class ConfigClient:
             else:
                 persisted.pop(key, None)
             self._local_store.save({"overrides": persisted})
-            after = self.get_config(key)
+            after = self.get(key)
         if self.changed is not None:
             self.changed()
             return
@@ -264,7 +270,7 @@ class ConfigSetting:
 
     @property
     def value(self) -> Any:
-        return self._client.get_config(self.key, self.fallback)
+        return self._client.get(self.key, self.fallback)
 
     @property
     def source(self) -> str:
@@ -281,7 +287,7 @@ class ConfigSetting:
         self._client.clear(self.key)
 
     def subscribe(self, listener: Callable[[Any], None]) -> Callable[[], None]:
-        return self._client.on_change(self.key, listener)
+        return self._client.on_config_change(self.key, listener)
 
 
 def _schema_for(catalog: Optional[Mapping[str, Any]], key: str) -> Optional[Mapping[str, Any]]:

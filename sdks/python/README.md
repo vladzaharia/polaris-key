@@ -89,7 +89,7 @@ client.devices.register()
 
 # Offline-first gate.
 if client.is_licensed():
-    concurrency = client.config.get_config("run.concurrency", 4)
+    concurrency = client.config.get("run.concurrency", 4)
     vpn_url = client.config.get_secret("proxy.subscriptionUrl")
     if client.license.is_entitled("polarisVpn"):
         ...
@@ -320,7 +320,7 @@ can show which license was revoked.
 
 ```python
 unsubscribe = client.subscribe(lambda e: print(e.kind, e.data), kinds=["license", "config"])
-client.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))  # your own function
+client.config.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))  # your own function
 client.config.set("ui.theme", "dark")    # a persisted local override (config.local)
 client.config.clear("ui.theme")
 ```
@@ -570,7 +570,7 @@ Django and DRF, is [Gate a Python route with the license](https://key.plrs.im/do
 
 ## Layered config
 
-`client.config.get_config(key, fallback)` resolves a value through the **same precedence**
+`client.config.get(key, fallback)` resolves a value through the **same precedence**
 as every Polaris Key SDK; `get_config_source(key)` returns which layer won:
 
 ```
@@ -579,7 +579,7 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 
 `enforced`/`hidden` remote values are **locked to the server** — `local_overrides` and env
 vars are ignored for those keys; `hidden` keys are additionally withheld from
-`list_user_config()` (but still applied by `get_config`). A `default` (or absent) key falls
+`list_user_config()` (but still applied by `get`). A `default` (or absent) key falls
 through local → env → remote value → your `fallback`.
 
 ```python

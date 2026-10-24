@@ -1153,7 +1153,7 @@ msgstr "Salta questa versione"
 msgid "update.install"
 msgstr "Aggiorna ora"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "Aggiorna ora"

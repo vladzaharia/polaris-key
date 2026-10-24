@@ -27,6 +27,7 @@ import { mutate } from "../../../data/mutations.js";
 import { reads } from "../../../data/reads.js";
 import { signInSettingsQuery } from "../data.js";
 import { qk } from "../../../data/queries.js";
+import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
@@ -385,6 +386,33 @@ export function TermsSection({
 }
 
 /** Presentation is Core's: read-only here. */
+/** The operator's approval of a name that matches a reserved term (PX-W13c). */
+export const APPROVAL_KEY = "identity.displayNameApproved";
+const APPROVAL_COPY = {
+  [APPROVAL_KEY]: {
+    confirm: (to: unknown, who: { name: string }) =>
+      to === true
+        ? {
+            title: `Approve ${who.name}'s display name?`,
+            confirmLabel: "Approve display name",
+          }
+        : {
+            title: `Remove approval of ${who.name}'s display name?`,
+            confirmLabel: "Remove approval",
+          },
+    consequences: (to: unknown, who: { name: string; slug: string }) =>
+      to === true
+        ? [
+            `${who.name}'s names are accepted even if they match a reserved term, and its sign-in card shows the name instead of ${who.slug}. This product only.`,
+          ]
+        : [
+            `A name that matches a reserved term is flagged again, and the sign-in card shows ${who.slug}.`,
+          ],
+    saved: (to: unknown) =>
+      to === true ? "Display name approved" : "Approval removed",
+  },
+};
+
 export function PresentationSection({
   slug,
   product,
@@ -433,6 +461,15 @@ export function PresentationSection({
           </span>
         ) : null}
       </SettingsRow>
+      <ProductSettingsSection
+        bare
+        slug={slug}
+        area="identity.signIn"
+        keys={[APPROVAL_KEY]}
+        id="display-name"
+        title="Display name"
+        copy={APPROVAL_COPY}
+      />
     </SettingsSection>
   );
 }
