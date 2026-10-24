@@ -72,7 +72,7 @@ describe("userConfigPlan", () => {
 
   it("matches the golden", async () => {
     await expect(JSON.stringify(plan, null, 2) + "\n").toMatchFileSnapshot(
-      join(FIXTURES, "combined-plan.json"),
+      join(FIXTURES, "combined-plan.txt"),
     );
   });
 
