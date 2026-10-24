@@ -82,3 +82,6 @@ packages/admin/e2e/__baselines__/portal/*
 # Kit baselines are named <Component>.<state>/; a contributor's global `*.key` ignore would hide
 # the SignIn.key states from `git add` (it did once: ELEM-base's four elements baselines).
 !SignIn.key/
+
+# Local review renders and transcripts (agents write them; never commit)
+/_shots/
