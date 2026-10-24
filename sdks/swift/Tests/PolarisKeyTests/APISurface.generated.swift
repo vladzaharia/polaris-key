@@ -33,7 +33,7 @@ func apiSurface() async {
     _ = EntitlementsClient.value  // entitlements.value
     _ = EntitlementsClient.all  // entitlements.all
     _ = IdentityClient.signOut  // identity.signOut
-    _ = \PolarisKeyClient.changes  // events
+    _ = \PolarisKeyClient.events  // events
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon
@@ -43,7 +43,7 @@ func apiSurface() async {
     _ = PolarisKeyClient.supports  // client.supports
     _ = PolarisKeyClient.caps  // client.caps
     _ = PolarisKeyClient.sync  // client.sync
-    _ = PolarisKeyClient.syncState  // client.getSyncState
+    _ = PolarisKeyClient.getSyncState  // client.getSyncState
     _ = PolarisKeyClient.importBundle  // client.importBundle
     _ = PolarisKeyClient.crashTags  // client.crashTags
     _ = PolarisKeyClient.status  // client.status
@@ -52,7 +52,7 @@ func apiSurface() async {
     _ = PolarisKeyClient.listDevices  // client.listDevices
     _ = PolarisKeyClient.deauthorizeDevice  // client.deauthorizeDevice
     _ = PolarisKeyClient.renameDevice  // client.renameDevice
-    _ = PolarisKeyClient.startRefreshLoop  // client.startRefresh
+    _ = PolarisKeyClient.startRefresh  // client.startRefresh
     _ = PolarisKeyClient.close  // client.close
     _ = ConfigClient.listUserConfig  // config.listUserConfig
     _ = ConfigClient.schemaVersion  // config.schemaVersion
@@ -61,8 +61,8 @@ func apiSurface() async {
     _ = LicenseClient.activation  // license.activation
     _ = LicenseClient.licenseInfo  // license.licenseInfo
     _ = LicenseClient.entitledChannels  // license.entitledChannels
-    _ = LicenseClient.profile  // license.getProfile
-    _ = LicenseClient.licenseId  // license.getLicenseId
+    _ = LicenseClient.getProfile  // license.getProfile
+    _ = LicenseClient.getLicenseId  // license.getLicenseId
     _ = LicenseClient.enroll  // license.enroll
     _ = LicenseClient.deactivate  // license.deactivate
     _ = IdentityClient.current  // identity.current
@@ -75,15 +75,15 @@ func apiSurface() async {
     _ = DevicesClient.deauthorize  // devices.deauthorize
     _ = UpdateClient.fetch  // release.fetch
     _ = ReleaseClient.changelog  // release.changelog
-    _ = ReleaseClient.installURL  // release.installUrl
-    _ = ReleaseClient.downloadURL  // release.downloadUrl
+    _ = ReleaseClient.installUrl  // release.installUrl
+    _ = ReleaseClient.downloadUrl  // release.downloadUrl
     _ = UpdateClient.install  // update.install
     _ = UpdateClient.check  // update.check
     _ = UpdateClient.feedUrl  // update.feedUrl
     _ = UpdateClient.decide  // update.decide
     _ = UpdateClient.feed  // update.feed
     _ = UpdateClient.releaseRecord  // update.releaseRecord
-    _ = UpdateClient.buildURL  // update.buildUrl
+    _ = UpdateClient.buildUrl  // update.buildUrl
     _ = PolarisKeyClient.confirmBoot  // update.confirmBoot
     _ = PolarisKeyClient.markBootAttempt  // update.markBootAttempt
     _ = DistributionClient.downloadModel  // distribution.downloadModel
@@ -105,7 +105,7 @@ func apiSurface() async {
     _ = PolarisKeyClient.register  // client.register
     _ = PolarisKeyClient.currentDevice  // client.currentDevice
     _ = PolarisKeyClient.deactivate  // client.deactivate
-    _ = LicenseClient.licenseUser  // license.getLicenseUser
+    _ = LicenseClient.getLicenseUser  // license.getLicenseUser
     _ = IdentityClient.acceptSignIn  // identity.acceptSignIn
     _ = LicenseClient.status  // license.status
     _ = LicenseClient.isLicensed  // license.isLicensed

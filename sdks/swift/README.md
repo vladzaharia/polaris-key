@@ -163,11 +163,11 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-entitledChannels,profile,deactivate}`, `client.entitlements.{has,value,all}`, `client.config.{get,
+entitledChannels,getProfile,deactivate}`, `client.entitlements.{has,value,all}`, `client.config.{get,
 getConfigSource,getSecret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
 `client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
-installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
-activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
+installUrl,downloadUrl(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
+activate,enroll,register,report,sync,deactivate,importBundle,getSyncState}` are convenience
 passthroughs for the calls a host makes before it knows which service it is talking to.
 
 `client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
@@ -298,7 +298,7 @@ attach opt-in is retired). A Deny on the approval page ends as `.error(message:c
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.
 `.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
-(or `LicenseClient.profile()`) returns the signed license profile too. Show "Signed in as Ada
+(or `LicenseClient.getProfile()`) returns the signed license profile too. Show "Signed in as Ada
 Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
@@ -748,7 +748,7 @@ func checkForUpdate(_ client: PolarisKeyClient) async throws {
         // open listingUrl, or the page you compiled in when it is nil (AltStore, iOS web distribution)
         _ = listingUrl
     case .binary(_, let release, let build, _, _, _, _, _):
-        let url = await update.buildURL(version: release.version, buildId: build)
+        let url = await update.buildUrl(version: release.version, buildId: build)
         _ = url  // download, check the payload's `size` and `sha256` against the record, then stage
     case .none, .codeReady, .platform, .blocked, .packs:
         break
@@ -834,7 +834,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 - `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
   without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
   `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
-  feed pins it); `buildURL(version:buildId:)` is the `distribution/builds` route, never the
+  feed pins it); `buildUrl(version:buildId:)` is the `distribution/builds` route, never the
   R2-only blob route.
 
 ## Packs (`update.packs`)

@@ -828,10 +828,10 @@ final class UpdateDecideTests: XCTestCase {
         let store = InMemoryStore(productSlug: "djdl", deviceId: "dev-1")
         let core = try await makeCore(store: store, clock: ReplayClock(t0))
         let client = try UpdateClient(core: core, options: options())
-        let v18 = await client.buildURL(version: "1.3.0", buildId: "macos")
+        let v18 = await client.buildUrl(version: "1.3.0", buildId: "macos")
         XCTAssertNil(v18)  // no discovery yet
         await core.discover()
-        let v19 = await client.buildURL(version: "1.3.0+46", buildId: "macos")?.absoluteString
+        let v19 = await client.buildUrl(version: "1.3.0+46", buildId: "macos")?.absoluteString
         XCTAssertEqual(
             v19,
             "https://key.example/djdl/distribution/builds/1.3.0%2B46/macos")

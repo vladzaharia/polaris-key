@@ -15,6 +15,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **`events` is the stream; getters take `get` (SP-35b).** `PolarisKeyClient.changes` is removed (`events` is the one stream). Renamed: `syncState()` is `getSyncState()`, `startRefreshLoop(onChange:)` is `startRefresh(onChange:)`, `LicenseClient.profile()` is `getProfile()`, `licenseId()` is `getLicenseId()`, `licenseUser()` is `getLicenseUser()`, `ReleaseClient.installURL()`/`downloadURL(...)` are `installUrl()`/`downloadUrl(...)`, and `UpdateClient.buildURL(...)` is `buildUrl(...)`. Core's top-level `licenseUser(_:)` helpers stay. No aliases.
+  Migrating: `client.changes` becomes `client.events`; rename each call to the new spelling, e.g. `await client.license.profile()` becomes `await client.license.getProfile()`.
+
 - **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key:)` is renamed `activateWithKey(_:)`, and the `PolarisKeyClient.activate(key:)` facade is removed. No aliases.
   Migrating: `client.activate(key: k)` and `client.license.activate(key: k)` become `client.license.activateWithKey(k)`.
 

@@ -1217,33 +1217,28 @@
     },
     {
       "sdk": "swift",
-      "path": "client.events",
-      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "swift",
-      "path": "client.changes",
-      "reason": "row events (spelling changes, planned SP-35b); rule 1 matches rows by the surface namespace"
-    },
-    {
-      "sdk": "swift",
       "path": "client.emit",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.events",
+      "reason": "row events (the AsyncStream of PolarisKeyEvent); rule 1 matches rows by the surface namespace"
     },
     {
       "sdk": "swift",
       "path": "events.emit",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
       "path": "events.stream",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
       "path": "events.subscriberCount",
-      "reason": "the in-process event hub behind client.changes; not an app verb"
+      "reason": "the in-process event hub behind client.events; not an app verb"
     },
     {
       "sdk": "swift",
@@ -2894,10 +2889,7 @@
       "enum": "eventKind",
       "sdks": {
         "node": {},
-        "swift": {
-          "spelling": "changes",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {
           "planned": "SP-35b",
@@ -3139,10 +3131,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "syncState",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "syncState",
           "planned": "SP-35b"
@@ -3254,10 +3243,7 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "swift": {
-          "spelling": "startRefreshLoop",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "startRefreshLoop",
           "planned": "SP-35b"
@@ -3363,10 +3349,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "profile",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "profile",
           "planned": "SP-35b"
@@ -3381,10 +3364,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "licenseId",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "licenseId",
           "planned": "SP-35b"
@@ -3571,10 +3551,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "installURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3586,10 +3563,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "downloadURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3728,10 +3702,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "spelling": "buildURL",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {}
       },
       "layer": "client"
@@ -4120,10 +4091,7 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {
-          "spelling": "licenseUser",
-          "planned": "SP-35b"
-        },
+        "swift": {},
         "kotlin": {
           "spelling": "licenseUser",
           "planned": "SP-35b"
@@ -5829,6 +5797,96 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\.getCurrentDevice\\s*\\("
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.changes",
+      "to": "client.events",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "client\\.changes\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.syncState()",
+      "to": "client.getSyncState",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\.syncState\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "PolarisKeyClient.startRefreshLoop(onChange:)",
+      "to": "client.startRefresh",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bstartRefreshLoop\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.profile()",
+      "to": "license.getProfile",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.profile\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseId()",
+      "to": "license.getLicenseId",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseId\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "LicenseClient.licenseUser()",
+      "to": "license.getLicenseUser",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\blicense\\.licenseUser\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.installURL()",
+      "to": "release.installUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\binstallURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "ReleaseClient.downloadURL(version:binary:arch:checksum:dmg:)",
+      "to": "release.downloadUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bdownloadURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "UpdateClient.buildURL(version:buildId:)",
+      "to": "update.buildUrl",
+      "package": "SP-35b",
+      "scan": {
+        "pattern": "\\bbuildURL\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
       }
     }
   ]

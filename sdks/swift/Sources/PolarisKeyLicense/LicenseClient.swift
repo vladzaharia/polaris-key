@@ -153,17 +153,17 @@ public actor LicenseClient {
     }
 
     /// The signed greeting block, or nil. Signed so it cannot be spoofed locally.
-    public func profile() async -> DocProfile? {
+    public func getProfile() async -> DocProfile? {
         await doc()?.profile
     }
 
     /// The account signed in on this device (`profile.user`, SP-54), or nil. A key-activated
     /// device (a holder email, no `user`) is nil. Total: never throws.
-    public func licenseUser() async -> SignedInUser? {
+    public func getLicenseUser() async -> SignedInUser? {
         PolarisKeyCore.licenseUser(await doc())
     }
 
-    public func licenseId() async -> String? {
+    public func getLicenseId() async -> String? {
         await doc()?.licenseId
     }
 

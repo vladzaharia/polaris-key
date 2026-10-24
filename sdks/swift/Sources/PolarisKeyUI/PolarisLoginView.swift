@@ -105,7 +105,7 @@ public final class PolarisGateModel: ObservableObject {
     /// Pull the latest gate state from the client (no network).
     public func reload() async {
         state = await client.status()
-        profile = await client.profile()
+        profile = await client.getProfile()
         if let facade { identityEnabled = await facade.core.enabled(.identity) }
         hasLoaded = true
     }

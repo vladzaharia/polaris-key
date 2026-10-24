@@ -64,7 +64,7 @@ final class LicenseIdRefreshTests: XCTestCase {
         let c = try await PolarisKeyClient.create(options: options)
         let activated = await c.license.activateWithKey("pkey_djdl_test")
         XCTAssertEqual(activated, .ok(token: "pkeyt_lx17", schemaVersion: 4))
-        let before = await c.license.licenseId()
+        let before = await c.license.getLicenseId()
         XCTAssertEqual(before, "lic_trial")
         let proBefore = await c.entitlements.has("pro")
         XCTAssertFalse(proBefore)
@@ -78,7 +78,7 @@ final class LicenseIdRefreshTests: XCTestCase {
 
         // cache
         XCTAssertEqual(result.documents[.license], .applied)
-        let after = await c.license.licenseId()
+        let after = await c.license.getLicenseId()
         XCTAssertEqual(after, "lic_pro")
         let proAfter = await c.entitlements.has("pro")
         XCTAssertTrue(proAfter)
@@ -108,7 +108,7 @@ final class LicenseIdRefreshTests: XCTestCase {
         // The following refresh revalidates the new licence's document normally.
         let again = await c.sync()
         XCTAssertEqual(again.documents[.license], .unchanged)
-        let still = await c.license.licenseId()
+        let still = await c.license.getLicenseId()
         XCTAssertEqual(still, "lic_pro")
         await c.close()
 
@@ -119,7 +119,7 @@ final class LicenseIdRefreshTests: XCTestCase {
                 pinnedKeys: [kid: signer.publicKeyB64], trustRefresh: false, store: store,
                 transport: ExplodingTransport(), expectedServices: [.license],
                 fingerprint: false))
-        let restored = await offline.license.licenseId()
+        let restored = await offline.license.getLicenseId()
         XCTAssertEqual(restored, "lic_pro")
         let restoredPro = await offline.entitlements.has("pro")
         XCTAssertTrue(restoredPro)

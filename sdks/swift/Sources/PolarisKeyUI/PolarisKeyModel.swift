@@ -111,7 +111,7 @@ public final class PolarisKeyModel {
         let client = self.client
         state = await client.status()
         info = await client.licenseInfo()
-        profile = await client.license.profile()
+        profile = await client.license.getProfile()
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
         licenseEnabled = await client.core.licenseGateEnabled()

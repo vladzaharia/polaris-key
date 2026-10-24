@@ -397,7 +397,7 @@ final class TransportTests: XCTestCase {
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
                 pinnedKeys: signer.trust, trustRefresh: false, store: store,
                 transport: ExplodingTransport(), expectedServices: [.license]))
-        let state = await c.syncState()
+        let state = await c.getSyncState()
         XCTAssertEqual(state.activation, .token)
         XCTAssertEqual(state.doc?.issuedAt, t)
         XCTAssertFalse(state.lastSyncUnauthorized)

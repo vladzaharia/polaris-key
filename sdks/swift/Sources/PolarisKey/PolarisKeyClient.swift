@@ -365,7 +365,7 @@ public actor PolarisKeyClient {
         if let degraded = await core.storeStatus()?.degraded {
             eventHub.emit(.store(reason: degraded.reason.rawValue, detail: degraded.detail))
         }
-        startRefreshLoop()
+        startRefresh()
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────
@@ -598,7 +598,7 @@ public actor PolarisKeyClient {
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.
-    public func syncState() async -> SyncState {
+    public func getSyncState() async -> SyncState {
         let cache = await core.cache()
         return SyncState(
             activation: await license.activation(),
@@ -703,7 +703,7 @@ public actor PolarisKeyClient {
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────
     /// Start polling, invoking `onChange` when a sync actually changes a document.
-    public func startRefreshLoop(onChange: (@Sendable (LicenseState) -> Void)? = nil) {
+    public func startRefresh(onChange: (@Sendable (LicenseState) -> Void)? = nil) {
         if let onChange { self.onChange = onChange }
         // A local-only client's timer could only ever throw at the dial, so it is not started at
         // all (§7.3).

@@ -40,7 +40,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.supports` | `client.supports` | — | `client.supports` | `client.supports` | `client.supports` | `client.supports` | — |
 | `client.caps` | `client.caps` | — | `client.caps` | `client.caps` | `client.caps` | `client.caps` | — |
 | `client.sync` | `client.sync` | — | `client.sync` | `client.sync` | `client.sync` | `client.sync` | — |
-| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | `syncState` (planned: SP-35b) | `syncState` (planned: SP-35b) | `client.get_sync_state` | — |
+| `client.getSyncState` | `client.getSyncState` | — | `client.get_sync_state` | `client.getSyncState` | `syncState` (planned: SP-35b) | `client.get_sync_state` | — |
 | `client.importBundle` | `client.importBundle` | `useImportBundle` | `client.import_bundle` | `client.importBundle` | `client.importBundle` | `client.import_bundle` | — |
 | `client.crashTags` | `client.crashTags` | — | `client.crash_tags` | `client.crashTags` | `client.crashTags` | `client.crash_tags` | — |
 | `client.status` | `client.status` | — | `client.status` | `client.status` | `client.status` | `client.status` | — |
@@ -49,7 +49,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `client.listDevices` | `client.listDevices` | — | `client.list_devices` | `client.listDevices` | `client.listDevices` | — | — |
 | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | `client.deauthorize_device` | `client.deauthorizeDevice` | `client.deauthorizeDevice` | — | — |
 | `client.renameDevice` | `client.renameDevice` | — | `client.rename_device` | `client.renameDevice` | `client.renameDevice` | — | — |
-| `client.startRefresh` | `client.startRefresh` | — | — | `startRefreshLoop` (planned: SP-35b) | `startRefreshLoop` (planned: SP-35b) | — | — |
+| `client.startRefresh` | `client.startRefresh` | — | — | `client.startRefresh` | `startRefreshLoop` (planned: SP-35b) | — | — |
 | `client.close` | `client.close` | — | `client.close` | `client.close` | `client.close` | — | — |
 | `client.tryDiscover` | — | — | `client.try_discover` | — | — | — | — |
 | `client.subscribe` | — | — | `client.subscribe` | — | — | — | — |
@@ -161,11 +161,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | `license.activation` | `license.activation` | — |
 | `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | `license.licenseInfo` | — | — |
 | `license.entitledChannels` | `license.entitledChannels` | — | `license.entitled_channels` | `license.entitledChannels` | `license.entitledChannels` | `license.entitled_channels` | — |
-| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | `profile` (planned: SP-35b) | `profile` (planned: SP-35b) | `license.get_profile` | — |
-| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | `licenseId` (planned: SP-35b) | `licenseId` (planned: SP-35b) | `license.get_license_id` | — |
+| `license.getProfile` | `license.getProfile` | — | `license.get_profile` | `license.getProfile` | `profile` (planned: SP-35b) | `license.get_profile` | — |
+| `license.getLicenseId` | `license.getLicenseId` | — | `license.get_license_id` | `license.getLicenseId` | `licenseId` (planned: SP-35b) | `license.get_license_id` | — |
 | `license.enroll` | `license.enroll` | — | `license.enroll` | `license.enroll` | `license.enroll` | `license.enroll` | — |
 | `license.deactivate` | `license.deactivate` | — | `license.deactivate` | `license.deactivate` | `license.deactivate` | `license.deactivate` | — |
-| `license.getLicenseUser` | — | — | `license.get_license_user` | `licenseUser` (planned: SP-35b) | `licenseUser` (planned: SP-35b) | `license.get_license_user` | — |
+| `license.getLicenseUser` | — | — | `license.get_license_user` | `license.getLicenseUser` | `licenseUser` (planned: SP-35b) | `license.get_license_user` | — |
 | `license.status` | `license.status` | `useLicense` | `license.status` | `license.status` | `license.status` | `license.status` | — |
 | `license.isLicensed` | `license.isLicensed` | — | `license.is_licensed` | `license.isLicensed` | `license.isLicensed` | `license.is_licensed` | — |
 
@@ -210,7 +210,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `events` | `events` | `hooks and subscribe` | — | `changes` (planned: SP-35b) | `events` | planned (SP-35b) | — |
+| `events` | `events` | `hooks and subscribe` | — | `events` | `events` | planned (SP-35b) | — |
 
 ## cloudSync
 
@@ -251,8 +251,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `release.fetch` | `release.fetch` | — | `release.fetch` | `update.fetch` | `release.fetch` | `release.fetch` | — |
 | `release.changelog` | `release.changelog` | `useChangelog` | `release.changelog` | `release.changelog` | `release.changelog` | `release.changelog` | — |
-| `release.installUrl` | `release.installUrl` | — | `release.install_url` | `installURL` (planned: SP-35b) | `release.installUrl` | `release.install_url` | — |
-| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | `downloadURL` (planned: SP-35b) | `release.downloadUrl` | `release.download_url` | — |
+| `release.installUrl` | `release.installUrl` | — | `release.install_url` | `release.installUrl` | `release.installUrl` | `release.install_url` | — |
+| `release.downloadUrl` | `release.downloadUrl` | — | `release.download_url` | `release.downloadUrl` | `release.downloadUrl` | `release.download_url` | — |
 | `release.verifyRecord` | — | — | — | — | `release.verifyRecord` | — | — |
 
 ## update
@@ -268,7 +268,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `update.decide` | `update.decide` | `useUpdateDecision` | `update.decide` | `update.decide` | `update.decide` | `update.decide` | — |
 | `update.feed` | `update.feed` | — | `update.feed` | `update.feed` | — | `update.feed` | — |
 | `update.releaseRecord` | `update.releaseRecord` | — | `update.release_record` | `update.releaseRecord` | `update.releaseRecord` | `update.release_record` | — |
-| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | `buildURL` (planned: SP-35b) | `update.buildUrl` | — | — |
+| `update.buildUrl` | `update.buildUrl` | — | `update.build_url` | `update.buildUrl` | `update.buildUrl` | — | — |
 | `update.ensureDiscovery` | `update.ensureDiscovery` | — | — | — | — | — | — |
 | `update.reload` | `update.reload` | — | `update.reload` | — | — | — | — |
 | `update.useDriver` | `update.useDriver` | — | `set_driver` | — | — | — | — |
@@ -420,3 +420,12 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | React | `usePolarisKey().isEntitled` | `entitlements.has` | SP-35 |
 | Python | `trust` | `options.pinnedKeys` | SP-35 |
 | Node | `PolarisKeyClient.getCurrentDevice` | `client.currentDevice` | SP-35 |
+| Swift | `PolarisKeyClient.changes` | `client.events` | SP-35b |
+| Swift | `PolarisKeyClient.syncState()` | `client.getSyncState` | SP-35b |
+| Swift | `PolarisKeyClient.startRefreshLoop(onChange:)` | `client.startRefresh` | SP-35b |
+| Swift | `LicenseClient.profile()` | `license.getProfile` | SP-35b |
+| Swift | `LicenseClient.licenseId()` | `license.getLicenseId` | SP-35b |
+| Swift | `LicenseClient.licenseUser()` | `license.getLicenseUser` | SP-35b |
+| Swift | `ReleaseClient.installURL()` | `release.installUrl` | SP-35b |
+| Swift | `ReleaseClient.downloadURL(version:binary:arch:checksum:dmg:)` | `release.downloadUrl` | SP-35b |
+| Swift | `UpdateClient.buildURL(version:buildId:)` | `update.buildUrl` | SP-35b |
