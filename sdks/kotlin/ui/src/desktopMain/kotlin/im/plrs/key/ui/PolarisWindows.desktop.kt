@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
@@ -59,6 +60,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import im.plrs.key.core.BootOptions
+import im.plrs.key.core.UpdateCheck
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,6 +76,13 @@ internal val SettingsWindowHeight = 600.dp
 /** The update window's column width. */
 internal val UpdateWindowWidth = 440.dp
 
+/**
+ * The update window's opening height, until its content has measured itself. `DpSize.Unspecified` (pack to the
+ * content) opens a screen-sized window on macOS, because the kit's screens measure the window they are in
+ * (UK-10.10, the first real run), so the window is given a size and then follows its content's height.
+ */
+internal val UpdateWindowOpeningHeight = 320.dp
+
 /** The Mac window's minimum size (S7): the floor [PolarisMacFloor] lays out at. */
 internal val MacWindowMinimum: Dimension
     get() = Dimension(PolarisMac.floorWidth.value.toInt(), PolarisMac.floorHeight.value.toInt())
@@ -84,11 +93,21 @@ private val isMacHost: Boolean get() = autoPlatformVariant() == PolarisPlatformV
 
 /** The kit's theme and client around one window's content (each window is its own root for composition locals). */
 @Composable
-private fun PolarisWindowRoot(client: PolarisKeyClient, branding: PolarisBranding, fullSizeContent: Boolean, content: @Composable () -> Unit) {
+private fun PolarisWindowRoot(
+    client: PolarisKeyClient,
+    branding: PolarisBranding,
+    fullSizeContent: Boolean,
+    darkTheme: Boolean?,
+    copy: PolarisCopy?,
+    content: @Composable () -> Unit,
+) {
     CompositionLocalProvider(LocalPolarisKey provides client, LocalPolarisMacFullSizeContent provides fullSizeContent) {
-        PolarisTheme(branding = branding) {
+        val surface: @Composable () -> Unit = {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, content = content)
         }
+        // null follows the OS (and the kit's copy); true or false is the host's own scheme (a sample's --scheme, an app's setting).
+        val words = copy ?: PolarisCopy.localized()
+        if (darkTheme == null) PolarisTheme(branding = branding, copy = words, content = surface) else PolarisTheme(branding = branding, copy = words, darkTheme = darkTheme, content = surface)
     }
 }
 
@@ -101,6 +120,9 @@ private fun PolarisWindowRoot(client: PolarisKeyClient, branding: PolarisBrandin
  * @param onSignOut signs this device out after the person confirms; null hides Sign out everywhere.
  * @param menu the window's menu bar; the default is one menu named [title] holding [PolarisMenuItems]. Null has none.
  * @param onQuit the host's quit, called once a verified installer is open; exits by default.
+ * @param darkTheme the host's own scheme for every window of the kit; null follows the OS.
+ * @param copy the host's words for every window of the kit (its `productName` above all); null is the catalog's own.
+ * @param decide the manual "Check for updates" decision; the client's own `update.decide()` by default.
  */
 @Composable
 public fun ApplicationScope.PolarisKeyWindow(
@@ -126,6 +148,9 @@ public fun ApplicationScope.PolarisKeyWindow(
             )
         }
     },
+    darkTheme: Boolean? = null,
+    copy: PolarisCopy? = null,
+    decide: suspend () -> UpdateCheck = { client.update.decide() },
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -135,7 +160,7 @@ public fun ApplicationScope.PolarisKeyWindow(
     val devices = remember(client) { PolarisDevicesState(client.devicesActions(), scope) }
     state.checkAction = {
         scope.launch {
-            state.checkForUpdates(update) { withContext(Dispatchers.IO) { client.update.decide() } }
+            state.checkForUpdates(update) { withContext(Dispatchers.IO) { decide() } }
             if (state.check == PolarisCheckStatus.Offered) update.loadFacts(client)
         }
     }
@@ -152,7 +177,7 @@ public fun ApplicationScope.PolarisKeyWindow(
             }
         }
         if (menu != null) MenuBar { menu(state) }
-        PolarisWindowRoot(client, branding, fullSizeContent && mac) {
+        PolarisWindowRoot(client, branding, fullSizeContent && mac, darkTheme, copy) {
             PolarisKeyAppHost(
                 client = client,
                 modifier = Modifier,
@@ -180,7 +205,7 @@ public fun ApplicationScope.PolarisKeyWindow(
             }
         }
     }
-    PolarisUpdateWindow(client, update, onUpdate = { update.install(updateActions, scope, onQuit) }, branding = branding)
+    PolarisUpdateWindow(client, update, onUpdate = { update.install(updateActions, scope, onQuit) }, branding = branding, darkTheme = darkTheme, copy = copy)
     PolarisSettingsWindow(
         client,
         state.settings,
@@ -189,6 +214,8 @@ public fun ApplicationScope.PolarisKeyWindow(
         // The question is asked in the gate window; the Settings window's button raises it there.
         onSignOut = if (onSignOut != null) state::requestSignOut else null,
         branding = branding,
+        darkTheme = darkTheme,
+        copy = copy,
     )
 }
 
@@ -203,15 +230,17 @@ public fun ApplicationScope.PolarisUpdateWindow(
     update: PolarisUpdateState,
     onUpdate: () -> Unit,
     branding: PolarisBranding = PolarisBranding.PolarisKey,
-    windowState: WindowState = rememberWindowState(size = DpSize.Unspecified),
+    windowState: WindowState = rememberWindowState(size = DpSize(UpdateWindowWidth, UpdateWindowOpeningHeight)),
+    darkTheme: Boolean? = null,
+    copy: PolarisCopy? = null,
 ) {
     val offer by update.offer.collectAsState()
     val ui = offer?.takeIf { updateRoute(it) == PolarisUpdateRoute.Window } ?: return
-    val copy = remember { PolarisCopy().let { if (isMacHost) it.forMac() else it } }
+    val titles = remember(copy) { (copy ?: PolarisCopy()).let { if (isMacHost) it.forMac() else it } }
     Window(
         onCloseRequest = update::dismiss,
         state = windowState,
-        title = copy.updatePromptText(ui).first,
+        title = titles.updatePromptText(ui).first,
         resizable = false,
         onPreviewKeyEvent = {
             if (it.isEscapeDown()) {
@@ -222,18 +251,32 @@ public fun ApplicationScope.PolarisUpdateWindow(
             }
         },
     ) {
-        PolarisWindowRoot(client, branding, fullSizeContent = false) {
-            PolarisUpdateWindowContent(ui, onUpdate, onLater = update::dismiss, onSkip = update::skip)
+        PolarisWindowRoot(client, branding, fullSizeContent = false, darkTheme = darkTheme, copy = copy) {
+            PolarisUpdateWindowContent(ui, onUpdate, onLater = update::dismiss, onSkip = update::skip) { content ->
+                // Sized to the content: the window's frame (title bar) is added to what the column measured.
+                val insets = window.insets
+                windowState.size = DpSize(UpdateWindowWidth + (insets.left + insets.right).dp, content + (insets.top + insets.bottom).dp)
+            }
         }
     }
 }
 
 /** The update column: the kit's update card at [UpdateWindowWidth], with no dialog, scrim or sheet around it. */
 @Composable
-internal fun PolarisUpdateWindowContent(ui: PolarisUpdateUi, onUpdate: () -> Unit, onLater: () -> Unit, onSkip: () -> Unit) {
+internal fun PolarisUpdateWindowContent(
+    ui: PolarisUpdateUi,
+    onUpdate: () -> Unit,
+    onLater: () -> Unit,
+    onSkip: () -> Unit,
+    onHeight: (androidx.compose.ui.unit.Dp) -> Unit = {},
+) {
     val window = remember { PolarisWindow(UpdateWindowWidth, 600.dp) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
     CompositionLocalProvider(LocalPolarisWindow provides window) {
-        Box(Modifier.width(UpdateWindowWidth).padding(16.dp), contentAlignment = Alignment.TopCenter) {
+        Box(
+            Modifier.width(UpdateWindowWidth).onSizeChanged { onHeight(with(density) { it.height.toDp() }) }.padding(16.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             PolarisUpdatePromptCard(ui, Modifier, onUpdate, onLater, footer = false, onSkip = if (ui.mandatory) null else onSkip)
         }
     }
@@ -259,13 +302,15 @@ public fun ApplicationScope.PolarisSettingsWindow(
     onSignOut: (() -> Unit)? = null,
     branding: PolarisBranding = PolarisBranding.PolarisKey,
     windowState: WindowState = rememberWindowState(size = DpSize(SettingsWindowWidth, SettingsWindowHeight)),
+    darkTheme: Boolean? = null,
+    copy: PolarisCopy? = null,
 ) {
     val pane = state.pane ?: return
-    val copy = remember { PolarisCopy().let { if (isMacHost) it.forMac() else it } }
+    val titles = remember(copy) { (copy ?: PolarisCopy()).let { if (isMacHost) it.forMac() else it } }
     Window(
         onCloseRequest = state::close,
         state = windowState,
-        title = settingsWindowTitle(pane, copy, java.util.Locale.getDefault().toLanguageTag()),
+        title = settingsWindowTitle(pane, titles, java.util.Locale.getDefault().toLanguageTag()),
         onPreviewKeyEvent = {
             if (it.isEscapeDown()) {
                 state.close()
@@ -276,7 +321,7 @@ public fun ApplicationScope.PolarisSettingsWindow(
         },
     ) {
         SideEffect { window.minimumSize = Dimension(SettingsWindowWidth.value.toInt(), 360) }
-        PolarisWindowRoot(client, branding, fullSizeContent = false) {
+        PolarisWindowRoot(client, branding, fullSizeContent = false, darkTheme = darkTheme, copy = copy) {
             PolarisSettingsWindowContent(pane, state::open, settings, devices, onSignOut)
         }
     }
