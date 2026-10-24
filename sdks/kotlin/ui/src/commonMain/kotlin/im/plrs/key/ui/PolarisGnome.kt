@@ -153,7 +153,11 @@ internal fun polarisButtonPadding(): PaddingValues =
 internal fun Modifier.polarisGnomeDialogChrome(): Modifier {
     val shape = polarisRadiusShape(PolarisGnome.dialogRadius)
     val dark = PolarisTheme.current.dark
-    val edge = if (dark) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = PolarisGnome.EDGE_ALPHA_LIGHT), shape)
+    // The portal's high contrast draws the edge in full, in either scheme.
+    val contrast = rememberThemeHostFacts()?.highContrast == true
+    val edge = if (contrast) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, shape)
+    else if (dark) Modifier
+    else Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = PolarisGnome.EDGE_ALPHA_LIGHT), shape)
     return this
         .shadow(if (dark) 24.dp else 16.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)) // polaris-lint: allow-colour (a shadow is black)
         .then(edge)
@@ -421,6 +425,7 @@ internal fun PolarisGnomeEntry(
     val outline = when {
         isError -> scheme.error
         focused -> PolarisTheme.focusColor
+        rememberThemeHostFacts()?.highContrast == true -> scheme.onSurface
         else -> scheme.onSurface.copy(alpha = 0.2f)
     }
     Column(Modifier.fillMaxWidth()) {
