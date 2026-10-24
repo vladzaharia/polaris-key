@@ -473,8 +473,10 @@ jobs:
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install -e ".[dev]"
       # P0-46.4: ruff and mypy (pinned in the dev extras) against sdks/python/lint-debt.json. A new
-      # finding fails, and so does debt a tool no longer reports. The 3.9 and 3.14 legs print the same.
+      # finding fails, and so does debt a tool no longer reports. One leg only (D-L5): the ledger is
+      # recorded on 3.14, and 3.9 resolves older dependencies whose stubs differ (mypy import-untyped).
       - name: Lint (ruff, mypy)
+        if: matrix.python == '3.14' && matrix.os == 'ubuntu-latest'
         working-directory: sdks/python
         run: tools/lint.sh check
       - name: pytest
