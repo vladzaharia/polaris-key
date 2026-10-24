@@ -30,7 +30,19 @@ dependencies {
 
 ## The one-line flow
 
-On Android, `PolarisKeyGate(client) { }` gates your content. On the desktop, `PolarisKeyWindow(client) { }` is the same call as a window: it opens the gate window, shows your content once the license allows it, and opens the update and Settings windows when they are needed.
+On Android, `PolarisKeyGate(client) { App() }` gates your content. It starts the client once, shows boot, the gate, pack progress and the update prompt, provides the client to the tree and composes `content` once the license allows it. It adds no look of its own; `PolarisKeyApp` is the deprecated name. On the desktop, `PolarisKeyWindow(client) { }` is the same call as a window: it opens the gate window, shows your content once the license allows it, and opens the update and Settings windows when they are needed.
+
+```kotlin android title="MainActivity.kt"
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisKeyGate
+
+@Composable
+fun Root(client: PolarisKeyClient) {
+    PolarisKeyGate(client) { Text("Licensed") }
+}
+```
 
 ```kotlin desktop title="Main.kt"
 import androidx.compose.material3.Text
@@ -214,6 +226,25 @@ Every message screen (blocked, offline, device limit, boot) carries the same pro
 a product with no name reads "Welcome". Boot draws a loading shimmer after a short delay, held
 still under the system's reduce-motion setting.
 
+## Routes and deep links
+
+The kit owns no navigation: keep your own (navigation-compose in the sample). `PolarisKeyRoute` names the places a link may open: `Account`, `Devices`, `Settings`, `Update` and `SignIn`. `PolarisKeyLinks(returnUri, client).handle(uri)` answers the route a link opens, or null. It accepts only the declared return URI, exactly (scheme, host and path prefix), followed by one route name as the path or as the one query value `route`. It ignores every other query value and the fragment, refuses everything else, and syncs the client once for an accepted link. The kit never puts a token, code or key in a link; `uriFor(route)` builds one from a route alone.
+
+```kotlin android title="Links.kt"
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisKeyLinks
+import im.plrs.key.ui.PolarisKeyRoute
+
+suspend fun openFromLink(client: PolarisKeyClient, uri: String?): PolarisKeyRoute? =
+    PolarisKeyLinks("tidewater://polaris", client).handle(uri)
+```
+
+The sample declares `tidewater://polaris/<route>`, for example `tidewater://polaris/account`.
+
+## Expressive
+
+The kit draws the license choice and the Replace pair as connected button rows on the Expressive shape rules. The rest of Material 3 Expressive waits on the toolchain: the Expressive theme entry point is internal in the pinned material3 1.4.0, so Material's button groups, loading indicator, shape morphs and wavy progress are not used. Inline waits keep the kit's countdown ring and shimmer. The planned Compose toolchain move unlocks them.
+
 ## Powered by Polaris Locker
 
 `PolarisTheme(showPoweredBy = true)` opts in; `poweredByStyle` is `PolarisPoweredByStyle.Line` (the Locker micro mark, 16 dp and growing with the text, and the phrase) by default. `PolarisSettingsScreen` and the kit's account pane draw it as their last item, after the controls; never the gate or a message screen. Place `PolarisPoweredBy` on your about or credits screen: with `PolarisPoweredByStyle.Badge` it draws the 320 × 104 dp badge where 320 dp are free, else the line.
@@ -243,6 +274,8 @@ Whatever the screens, the app has to handle these gate states. If you draw your 
 ## Sample
 
 `examples/ui/compose-desktop/` is Tidewater Studio on the real desktop windows, in the module `:sample-compose-desktop`. `./gradlew :sample-compose-desktop:run` walks the flow on scripted fixtures with no server; `--state`, `--scheme`, `--preset`, `--platform` and `--size` pin a screen, a scheme, a look, a chrome and a size, and `--live` runs against a real Worker with `PKEY_PRODUCT` and `PKEY_TRUST`. Its README lists every flag, `--smoke` and `--shots`.
+
+`examples/ui/compose-android/` is Tidewater Studio on Android, in the module `:sample-compose-android`: `PolarisKeyGate` around a product screen, the update prompt, and the Account screen with navigation-compose and deep links. `./gradlew :sample-compose-android:installDebug` runs it on scripted fixtures with no server; `-Ppkey.product` and `-Ppkey.trust` with the `pkey.live` extra build the real client instead, and the `pkeyState`, `pkeyScheme`, `pkeyPreset` and `pkeyAccent` extras pin a state, a scheme, a look and an accent. Its README lists every extra.
 
 ## Reference
 

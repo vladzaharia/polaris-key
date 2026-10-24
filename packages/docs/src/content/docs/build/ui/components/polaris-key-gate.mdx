@@ -90,7 +90,21 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
 
     **Headless.** `PolarisGateState` in `polaris-key-ui-core`.
 
-    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+    ```kotlin android
+    import androidx.compose.material3.Text
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisKeyGate
+
+    @Composable
+    fun App(client: PolarisKeyClient) {
+        PolarisKeyGate(client) { Text("Licensed") }
+    }
+    ```
+
+    `PolarisKeyApp` is the deprecated name of `PolarisKeyGate`.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

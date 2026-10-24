@@ -90,7 +90,21 @@ Compact download and install progress for app updates and content packs, as a to
 
     **Headless.** `PolarisUpdateState`, and `PolarisPackProgressState(client.packProgressSource())` for packs.
 
-    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisPackProgress
+    import im.plrs.key.ui.PolarisPackProgressState
+    import im.plrs.key.ui.packProgressSource
+
+    @Composable
+    fun MyPackProgress(client: PolarisKeyClient) {
+        PolarisPackProgress(remember(client) { PolarisPackProgressState(client.packProgressSource()) })
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

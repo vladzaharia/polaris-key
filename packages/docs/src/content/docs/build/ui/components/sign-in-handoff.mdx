@@ -81,6 +81,29 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate shows the hand-off after Sign in: the code and its countdown, or Finish in your browser.
+
+    **Styled part.** `PolarisSignInScreen(ui)` draws the hand-off, and `PolarisUserCode(code)` the code on its own. On Android TV the QR code leads and `onUseKey` offers a license key.
+
+    **Headless.** `PolarisSignInUi` from `PolarisSignInState.ui`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisSignInScreen
+    import im.plrs.key.ui.PolarisSignInUi
+
+    @Composable
+    fun MyHandoff(ui: PolarisSignInUi, cancel: () -> Unit, restart: () -> Unit) {
+        PolarisSignInScreen(ui, onCancel = cancel, onRestart = restart)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

@@ -88,7 +88,28 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
 
     **Headless.** `PolarisUpdateState` in `polaris-key-ui-core`.
 
-    [Compose](/docs/build/ui/frameworks/compose/) has the desktop windows and the sample.
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.collectAsState
+    import androidx.compose.runtime.getValue
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisUpdateBanner
+    import im.plrs.key.ui.PolarisUpdateState
+    import im.plrs.key.ui.updateActions
+
+    @Composable
+    fun MyUpdateBanner(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisUpdateState() }
+        val actions = remember(client) { client.updateActions() }
+        val offer by state.offer.collectAsState()
+        offer?.let { PolarisUpdateBanner(it, onUpdate = { state.install(actions, scope) }) }
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

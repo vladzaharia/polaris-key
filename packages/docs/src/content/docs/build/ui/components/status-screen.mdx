@@ -83,6 +83,32 @@ Tell the kit how to renew: SwiftUI draws Renew from the https `url` of `KitOffer
     [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
 
   </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate draws the blocking state with its primary fix; nothing to place.
+
+    **Styled part.** `PolarisKitScreen(screen, onAction)`, or `PolarisMessageScreen(message, actions)` for a message of your own.
+
+    **Headless.** `KitStates.resolve(KitComponent.statusScreen, inputs)`; `KitAction` is the closed set of fixes.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitAction
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisKitScreen
+
+    @Composable
+    fun MyStatus(inputs: KitInputs, onAction: (KitAction?) -> Unit) {
+        PolarisKitScreen(KitStates.resolve(KitComponent.statusScreen, inputs), onAction = onAction)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
