@@ -8,6 +8,9 @@
 //   macOS only: -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
 //   (hands the activation to Finder once the window is up, so the window is on screen but not
 //   active: the inactive look, UK-08.1 S2)
+//   macOS only: ⌘, opens Settings on Account (UK-08.4), over a still fixture model (Pro license,
+//   2 of 3 devices, a locked managed row), and the app menu has Check for Updates…, Manage
+//   License… and Sign Out… (PolarisKeyCommands).
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -51,20 +54,36 @@ struct TidewaterKitApp: App {
         }
         #if os(macOS)
             .windowResizability(MacWindow.size == nil ? .automatic : .contentSize)
+            .commands {
+                PolarisKeyCommands(model: SampleSettings.commandsModel, theme: SampleArgs.theme)
+            }
+        #endif
+        #if os(macOS)
+            // The two lines a host writes: this scene, and `.commands` above.
+            Settings {
+                PolarisKeySettingsPane(model: SampleSettings.paneModel, cloudSync: "Synced 2 min ago")
+                    .polarisKeyTheme(SampleArgs.theme(iconData: TidewaterIcon.png))
+                    .environment(\.polarisKeyMaterialFallback, SampleArgs.has("-pkeyMaterial"))
+            }
         #endif
     }
 }
 
-struct Root: View {
-    private let args = ProcessInfo.processInfo.arguments
+enum SampleArgs {
+    static let args = ProcessInfo.processInfo.arguments
 
-    private func value(_ flag: String) -> String? {
+    static func has(_ flag: String) -> Bool { args.contains(flag) }
+
+    static func value(_ flag: String) -> String? {
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
         return args[i + 1]
     }
 
-    private var theme: PolarisKeyTheme {
+    static var theme: PolarisKeyTheme { theme(iconData: nil) }
+
+    static func theme(iconData: Data?) -> PolarisKeyTheme {
         var theme = PolarisKeyTheme()
+        if let iconData { theme.product = PolarisKeyTheme.Product(iconData: iconData) }
         if value("-pkeyPreset") == "native" { theme.preset = .native }
         switch value("-pkeyScheme") {
         case "dark": theme.colorScheme = .dark
@@ -76,6 +95,39 @@ struct Root: View {
         if let locale = value("-pkeyLocale") { theme.locale = locale }
         return theme
     }
+}
+
+#if os(macOS)
+    /// The still model behind the sample's Settings pane and menu: the fixture product, signed in.
+    enum SampleSettings {
+        @MainActor static func make() -> PolarisKeySettingsModel {
+            func inputs(_ id: String) -> KitInputs {
+                PolarisKeyPreviewState.all.first { $0.id == id }!.inputs
+            }
+            var pane = inputs("AccountAndLicense.signed-in.pane")
+            pane.platform = PolarisKeyPreviewState.mac
+            // Only the managed row: the mockup's pane has no other catalog settings.
+            pane.config = inputs("Settings.locked").config?.filter { $0.locked }
+            return PolarisKeySettingsModel(
+                preview: pane, tier: "Pro", holder: "Mara Lindqvist",
+                channel: .choose(current: "stable", options: ["stable", "beta"]), seats: "2 of 3",
+                seatCounts: (2, 3),
+                handlers: KitSettingsHandlers(
+                    manage: {}, autoUpdate: { _ in }, selectChannel: { _ in }),
+                options: KitSettingsOptions(version: "2.4.1"))
+        }
+
+        @MainActor static let paneModel = make()
+        @MainActor static let commandsModel = make()
+    }
+#endif
+
+struct Root: View {
+    private let args = SampleArgs.args
+
+    private func value(_ flag: String) -> String? { SampleArgs.value(flag) }
+
+    private var theme: PolarisKeyTheme { SampleArgs.theme }
 
     var body: some View {
         Group {

@@ -66,7 +66,7 @@ targets:
     platform: iOS
     sources:
       - path: UITests
-        excludes: [KitRenderMacTests.swift]
+        excludes: [KitRenderMacTests.swift, KitSettingsMacTests.swift]
     dependencies:
       - target: TidewaterKit
       - package: SnapshotTesting
@@ -104,7 +104,8 @@ targets:
   TidewaterKitMacUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [UITests/KitRenderMacTests.swift]
+    sources:
+      [UITests/KitRenderMacTests.swift, UITests/KitSettingsMacTests.swift]
     dependencies:
       - target: TidewaterKitMac
       - package: SnapshotTesting

@@ -479,6 +479,14 @@
     <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="menu_manageLicense">라이선스 관리</string>
     <string name="menu_manageLicense__macos">라이선스 관리</string>
+    <!-- App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71). -->
+    <string name="menu_signOut">로그아웃</string>
+    <string name="menu_signOut__macos">로그아웃</string>
+    <!-- The Account tab of the macOS Settings window, and the window's title while it is selected. -->
+    <string name="menu_account">계정</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out. -->
+    <string name="signin_signout_confirm">로그아웃</string>
+    <string name="signin_signout_confirm__macos">로그아웃</string>
     <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
     <string name="notify_updateReady_title">업데이트 준비 완료</string>
     <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->

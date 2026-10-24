@@ -1022,6 +1022,27 @@
         "macos": "Manage License…"
       }
     },
+    "menu.signOut": {
+      "value": "Sign out",
+      "role": "menu",
+      "note": "App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).",
+      "variants": {
+        "macos": "Sign Out…"
+      }
+    },
+    "menu.account": {
+      "value": "Account",
+      "role": "windowTitle",
+      "note": "The Account tab of the macOS Settings window, and the window's title while it is selected."
+    },
+    "signin.signout.confirm": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.",
+      "variants": {
+        "macos": "Sign Out"
+      }
+    },
     "notify.updateReady.title": {
       "value": "Update ready",
       "role": "title",

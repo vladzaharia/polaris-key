@@ -1320,6 +1320,31 @@ msgctxt "macos"
 msgid "menu.manageLicense"
 msgstr "管理许可证"
 
+#. Sign out
+#. App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).
+msgid "menu.signOut"
+msgstr "退出登录"
+
+#. macos: Sign Out…
+msgctxt "macos"
+msgid "menu.signOut"
+msgstr "退出登录"
+
+#. Account
+#. The Account tab of the macOS Settings window, and the window's title while it is selected.
+msgid "menu.account"
+msgstr "账户"
+
+#. Sign out
+#. Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.
+msgid "signin.signout.confirm"
+msgstr "退出登录"
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "signin.signout.confirm"
+msgstr "退出登录"
+
 #. Update ready
 #. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
 msgid "notify.updateReady.title"
