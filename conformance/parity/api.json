@@ -32,6 +32,11 @@
         "file": "packages/sdk-node/src/license/client.ts"
       },
       {
+        "ns": "entitlements",
+        "type": "EntitlementsClient",
+        "file": "packages/sdk-node/src/license/entitlements.ts"
+      },
+      {
         "ns": "identity",
         "type": "IdentityClient",
         "file": "packages/sdk-node/src/identity/client.ts"
@@ -408,6 +413,11 @@
     },
     {
       "sdk": "node",
+      "path": "client.entitlements",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
       "path": "client.config",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
@@ -648,18 +658,8 @@
     },
     {
       "sdk": "node",
-      "path": "license.isEntitled",
-      "reason": "row entitlements.has (spelling license.isEntitled, planned SP-35); rule 1 matches rows by the surface namespace only"
-    },
-    {
-      "sdk": "node",
-      "path": "license.entitlementValue",
-      "reason": "row entitlements.value (planned SP-35); see license.isEntitled"
-    },
-    {
-      "sdk": "node",
-      "path": "license.getEntitlements",
-      "reason": "row entitlements.all (planned SP-35); see license.isEntitled"
+      "path": "license.documentEntitlements",
+      "reason": "the raw document read the entitlements view builds its gated reads on; not an app verb"
     },
     {
       "sdk": "node",
@@ -1914,10 +1914,7 @@
       "returns": "bool",
       "layer": "client",
       "sdks": {
-        "node": {
-          "spelling": "license.isEntitled",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.is_entitled",
           "planned": "SP-35"
@@ -1952,10 +1949,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "spelling": "license.entitlementValue",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.entitlement_value",
           "planned": "SP-35"
@@ -1980,10 +1974,7 @@
       "kind": "method",
       "feature": "license.entitlements",
       "sdks": {
-        "node": {
-          "spelling": "license.getEntitlements",
-          "planned": "SP-35"
-        },
+        "node": {},
         "python": {
           "spelling": "license.get_entitlements",
           "planned": "SP-35"
@@ -3864,6 +3855,24 @@
       "scan": {
         "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
       }
+    },
+    {
+      "sdk": "node",
+      "from": "license.isEntitled",
+      "to": "entitlements.has",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.entitlementValue",
+      "to": "entitlements.value",
+      "package": "SP-35"
+    },
+    {
+      "sdk": "node",
+      "from": "license.getEntitlements",
+      "to": "entitlements.all",
+      "package": "SP-35"
     }
   ]
 }

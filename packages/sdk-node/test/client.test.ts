@@ -257,9 +257,9 @@ describe("PolarisKeyClient — activation + reads", () => {
     expect(client.isLicensed()).toBe(true);
 
     // …from the LICENSE document
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
-    expect(client.license.isEntitled("notAThing")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({ polarisVpn: true });
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("notAThing")).toBe(false);
+    expect(client.entitlements.all()).toEqual({ polarisVpn: true });
     expect(client.license.getProfile()?.firstName).toBe("Ada");
     expect(client.license.getLicenseId()).toBe("lic_1");
     expect(client.license.activation()).toBe("token");
@@ -287,8 +287,8 @@ describe("PolarisKeyClient — activation + reads", () => {
     expect(client.config.get("quality.floor", "def")).toBe("def");
     expect(client.config.getSecret("x")).toBeNull();
     expect(client.config.schemaVersion()).toBeNull();
-    expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.license.getEntitlements()).toEqual({});
+    expect(client.entitlements.has("polarisVpn")).toBe(false);
+    expect(client.entitlements.all()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
     expect(client.license.getLicenseId()).toBeNull();
     expect(client.license.activation()).toBeNull();
@@ -329,7 +329,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
 
     // …and the derived state still round-trips through the public surface.
     expect(client.config.get("quality.floor", "x")).toBe("flac");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
 
     // §6 — the report goes to `POST /<p>/devices/report` (not `/config/report`), bearing the
@@ -423,7 +423,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(m.count("/license/token")).toBe(1);
     // BOTH documents recovered on the shared re-acquire.
     expect(client.status().status).toBe("ok");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.config.get("quality.floor", "x")).toBe("flac");
     const cache = await store.readCache();
     expect(cache?.docs?.license).toBeDefined();
@@ -535,7 +535,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     m.opts.notModified = false;
     const res2 = await client.sync({ force: true });
     expect(res2.documents.license?.kind).toBe("applied");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.status().status).toBe("ok");
   });
 });
@@ -583,7 +583,7 @@ describe("PolarisKeyClient — offline-first init", () => {
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
     expect(client.config.get("quality.floor", "x")).toBe("flac");
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.license.getLicenseId()).toBe("lic_cached");
     // §4.2 — every counter is recomputed from what just re-verified, not read off the file.
     expect(client.getSyncState().highWaterMark).toBe(now);

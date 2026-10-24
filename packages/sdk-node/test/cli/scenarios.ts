@@ -224,7 +224,7 @@ const gateRefusal = (
     await runGate({
       client: stubClient({
         status: typeof status === "function" ? status : () => ({ status }),
-        license: { isEntitled: () => entitled },
+        entitlements: { has: () => entitled },
       }),
       command: "export",
       entitlement: "export.pdf",

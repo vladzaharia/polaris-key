@@ -614,7 +614,7 @@ describe("the Node SDK against a live pkey dev server", () => {
       expect(result.token, key).toMatch(/^pkeyt_/);
       expect(client.hasToken, key).toBe(true);
       expect(client.isLicensed(), key).toBe(true);
-      expect(client.license.isEntitled("exportPro"), key).toBe(want.exportPro);
+      expect(client.entitlements.has("exportPro"), key).toBe(want.exportPro);
     }
   });
 

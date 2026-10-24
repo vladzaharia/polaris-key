@@ -529,7 +529,7 @@ describe("importBundle — the imported install is gated, offline", () => {
     await client.init();
     await client.importBundle(FULL.bundleJws, NOW);
 
-    expect(client.license.isEntitled("polarisVpn", NOW)).toBe(true);
+    expect(client.entitlements.has("polarisVpn", NOW)).toBe(true);
     expect(client.license.getLicenseId()).toBe(
       decode<LicenseDoc>(decode<BundleDoc>(FULL.bundleJws).docs.license!)
         .licenseId,

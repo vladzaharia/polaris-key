@@ -232,7 +232,7 @@ describe("createLocalClient — everything offline still works", () => {
 
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
-    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    expect(client.entitlements.has("polarisVpn")).toBe(true);
     expect(client.license.getLicenseId()).toBe("lic-local");
     expect(client.config.get("run.mode", "??")).toBe("offline");
     expect(client.config.getSecret("proxy.url")).toBe("https://p/1");

@@ -121,7 +121,7 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
     });
     await client.license.activateWithKey("pkey_djdl_test");
     expect(client.license.getLicenseId()).toBe("lic_trial");
-    expect(client.license.isEntitled("pro")).toBe(false);
+    expect(client.entitlements.has("pro")).toBe(false);
 
     // The server re-anchors this device on another license. Nothing on the client asks for it:
     // the next plain sync just receives a document with a different licenseId.
@@ -138,8 +138,8 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
     // cache
     expect(r.documents.license?.kind).toBe("applied");
     expect(client.license.getLicenseId()).toBe("lic_pro");
-    expect(client.license.isEntitled("pro")).toBe(true);
-    expect(client.license.getEntitlements()["license.tier"]).toBe("pro");
+    expect(client.entitlements.has("pro")).toBe(true);
+    expect(client.entitlements.all()["license.tier"]).toBe("pro");
     expect(changes).toHaveLength(1);
     // activation state
     expect(paths.some((p) => p.endsWith("/license/activate"))).toBe(false);
@@ -169,7 +169,7 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
       }) as typeof fetch,
     });
     expect(offline.license.getLicenseId()).toBe("lic_pro");
-    expect(offline.license.isEntitled("pro")).toBe(true);
+    expect(offline.entitlements.has("pro")).toBe(true);
     expect(offline.license.status().status).toBe("ok");
     offline.close();
   });

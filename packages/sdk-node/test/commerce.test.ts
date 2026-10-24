@@ -85,7 +85,7 @@ describe("commerce", () => {
         "POST /djdl/devices/report": () => json({}),
       },
     });
-    expect(client.license.isEntitled("extras.skins")).toBe(false);
+    expect(client.entitlements.has("extras.skins")).toBe(false);
     const r = await client.commerce.claimSteam("abcd", "1");
     expect(r).toMatchObject({
       kind: "ok",
@@ -94,6 +94,6 @@ describe("commerce", () => {
     });
     expect(bodies).toEqual([{ store: "steam", ticket: "abcd", dlcAppId: "1" }]);
     expect(seen.map((s) => s.path)).toContain("/djdl/license/document");
-    expect(client.license.isEntitled("extras.skins")).toBe(true);
+    expect(client.entitlements.has("extras.skins")).toBe(true);
   });
 });
