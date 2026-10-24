@@ -37,6 +37,15 @@ import {
   schemeFromOsc11,
 } from "../../src/cli/term/caps.js";
 import { Painter } from "../../src/cli/term/paint.js";
+import {
+  CANCEL,
+  INTERRUPT,
+  promptMultiSelect,
+  type MultiSelectPrompt,
+  type PromptContext,
+} from "../../src/cli/term/prompt.js";
+import { railLines, symbolsFor } from "../../src/cli/term/layout.js";
+import type { Key } from "../../src/cli/term/keys.js";
 import { hasLogCommand } from "../../src/cli/term/sanitize.js";
 import {
   truncateMiddle,
@@ -1074,5 +1083,166 @@ describe("faint text on the Solarized QA palettes", () => {
       expect(fills).toHaveLength(2);
       expect(fills[0]).not.toBe(fills[1]);
     }
+  });
+});
+
+describe("promptMultiSelect", () => {
+  const key = (name: string, extra: Partial<Key> = {}): Key => ({
+    name,
+    sequence: name === "space" ? " " : name,
+    ctrl: false,
+    meta: false,
+    ...extra,
+  });
+  const opts = ["a", "b", "c"].map((v) => ({
+    value: v,
+    label: [{ text: v.toUpperCase() }],
+  }));
+  const prompt = (
+    over: Partial<MultiSelectPrompt<string>> = {},
+  ): MultiSelectPrompt<string> => ({
+    title: [{ text: "Pick" }],
+    options: opts,
+    hints: [{ text: "Space toggle" }],
+    toggle: (chosen, v) => ({
+      chosen: chosen.includes(v)
+        ? chosen.filter((c) => c !== v)
+        : [...chosen, v],
+      note: null,
+    }),
+    done: (c) => [{ mark: "done", spans: [{ text: `got ${c.join(",")}` }] }],
+    cancelled: () => [{ mark: "fail", spans: [{ text: "cancelled" }] }],
+    ...over,
+  });
+  function setup(
+    keys: Array<Key | null>,
+    o: { unicode?: boolean; columns?: number; color?: boolean } = {},
+  ) {
+    const unicode = o.unicode ?? true;
+    const columns = o.columns ?? 80;
+    const writes: string[] = [];
+    const out = {
+      isTTY: true,
+      columns,
+      rows: 24,
+      write: (s: string) => (writes.push(s), true),
+      on: () => undefined,
+      off: () => undefined,
+    };
+    const caps = {
+      unicode,
+      color: o.color ? "basic" : "none",
+      animate: true,
+      rows: 24,
+      columns,
+    };
+    const painter = new Painter(caps as never);
+    const symbols = symbolsFor(caps);
+    const render = (rows: never) => railLines(rows, painter, symbols, columns);
+    const host = {
+      caps,
+      refreshSize: () => undefined,
+      render,
+      fit: (rows: never) => ({ lines: render(rows), head: 0 }),
+    };
+    const queue = [...keys];
+    const ctx = {
+      caps,
+      painter,
+      symbols,
+      out,
+      host,
+      keys: { next: async () => (queue.length ? queue.shift()! : null) },
+    } as unknown as PromptContext;
+    return { ctx, text: () => stripAnsi(writes.join("")) };
+  }
+  const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
+
+  it("moves with arrows and j/k, Space toggles, Enter confirms in option order", async () => {
+    const t = setup([
+      key("down"),
+      key("space"),
+      key("j"),
+      key("space"),
+      key("k"),
+      key("up"),
+      key("space"),
+      key("return"),
+    ]);
+    // b ticked, c ticked, then k -> b, up -> a, space ticks a
+    expect(await promptMultiSelect(t.ctx, prompt())).toEqual(["a", "b", "c"]);
+    expect(t.text()).toContain("got a,b,c");
+  });
+
+  it("Enter with nothing ticked answers an empty list; initial ticks open pre-ticked", async () => {
+    expect(
+      await promptMultiSelect(setup([key("return")]).ctx, prompt()),
+    ).toEqual([]);
+    expect(
+      await promptMultiSelect(
+        setup([key("return")]).ctx,
+        prompt({ initial: ["c", "a"] }),
+      ),
+    ).toEqual(["a", "c"]);
+  });
+
+  it("cancels on Esc and interrupts on Ctrl-C, with the cancelled rows", async () => {
+    const e = setup([key("space"), key("escape")]);
+    expect(await promptMultiSelect(e.ctx, prompt())).toBe(CANCEL);
+    expect(e.text()).toContain("cancelled");
+    const c = setup([key("c", { ctrl: true })]);
+    expect(await promptMultiSelect(c.ctx, prompt())).toBe(INTERRUPT);
+    expect(await promptMultiSelect(setup([null]).ctx, prompt())).toBe(CANCEL);
+  });
+
+  it("the caller's toggle rule and note apply, and a locked option cannot be ticked", async () => {
+    const p = prompt({
+      toggle: (chosen, v) => ({
+        chosen: [...chosen, v],
+        note: [{ text: `ticked ${v}` }],
+      }),
+      locked: (v, chosen) =>
+        v === "b" && !chosen.includes("a") ? [{ text: "Needs A" }] : null,
+    });
+    const t = setup([
+      key("down"),
+      key("space"),
+      key("up"),
+      key("space"),
+      key("down"),
+      key("space"),
+      key("return"),
+    ]);
+    expect(await promptMultiSelect(t.ctx, p)).toEqual(["a", "b"]);
+    expect(t.text()).toContain("Needs A");
+    expect(t.text()).toContain("ticked a");
+  });
+
+  it("draws checkboxes in Unicode and ASCII, with no colour under NO_COLOR", async () => {
+    const u = setup([key("return")]);
+    await promptMultiSelect(u.ctx, prompt({ initial: ["a"] }));
+    expect(u.text()).toContain("◼ A");
+    expect(u.text()).toContain("◻ B");
+    const a = setup([key("return")], { unicode: false });
+    await promptMultiSelect(a.ctx, prompt({ initial: ["a"] }));
+    expect(a.text()).toContain("[x] A");
+    expect(a.text()).toContain("[ ] B");
+    expect(a.text()).not.toMatch(/[^\x00-\x7f]/);
+  });
+
+  it("stays readable at 24 columns", async () => {
+    const t = setup([key("return")], { columns: 24 });
+    await promptMultiSelect(
+      t.ctx,
+      prompt({
+        options: [
+          { value: "a", label: [{ text: "A rather long feature label" }] },
+          { value: "b", label: [{ text: "B" }] },
+        ],
+        initial: ["a"],
+      }),
+    );
+    expect(t.text()).toContain("A rather");
+    expect(t.text()).toContain("◻ B");
   });
 });

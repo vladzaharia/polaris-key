@@ -262,6 +262,127 @@ export async function promptSelect<T>(
   }
 }
 
+export interface MultiSelectPrompt<T> {
+  title: Line;
+  options: readonly SelectOption<T>[];
+  /** The values ticked when the prompt opens. */
+  initial?: readonly T[];
+  hints: Line;
+  /**
+   * Space on an option: the new selection and a note to show, or null. The caller owns the rules
+   * (ticking one option may tick or clear another).
+   */
+  toggle(
+    chosen: readonly T[],
+    value: T,
+  ): { chosen: readonly T[]; note: Line | null };
+  /** A muted reason an option cannot be ticked now (Space shows it as the note), or null. */
+  locked?(value: T, chosen: readonly T[]): Line | null;
+  done(chosen: readonly T[]): RailRow[];
+  cancelled(): RailRow[];
+}
+
+/** Checkbox glyphs in the symbol set's spelling (Unicode, or ASCII under TERM=dumb and --ascii). */
+function boxes(symbols: Symbols): { on: string; off: string } {
+  return symbols.rail === "|"
+    ? { on: "[x]", off: "[ ]" }
+    : { on: "◼", off: "◻" };
+}
+
+/**
+ * A checkbox list: ↑↓ or j/k move, Space toggles, Enter confirms (zero ticked is an answer), Esc
+ * cancels. Resolves with the ticked values in option order.
+ */
+export async function promptMultiSelect<T>(
+  ctx: PromptContext,
+  p: MultiSelectPrompt<T>,
+): Promise<T[] | Cancel> {
+  const live = region(ctx);
+  const box = boxes(ctx.symbols);
+  let at = 0;
+  let chosen: readonly T[] = p.initial ?? [];
+  let note: Line | null = null;
+  const ordered = () =>
+    p.options.map((o) => o.value).filter((v) => chosen.includes(v));
+  const render = () => {
+    const rows: RailRow[] = [{ mark: "active", spans: p.title }];
+    p.options.forEach((o, i) => {
+      const focus = i === at;
+      const ticked = chosen.includes(o.value);
+      const lock = p.locked?.(o.value, chosen) ?? null;
+      const label = o.label.map((s) =>
+        lock
+          ? { ...s, style: ["muted"] }
+          : focus
+            ? { ...s, style: [...(s.style ?? []), "strong"] }
+            : s,
+      );
+      rows.push({
+        mark: "rail",
+        spans: [
+          {
+            text: `${ticked ? box.on : box.off} `,
+            style: lock ? ["muted"] : focus || ticked ? ["accent"] : ["muted"],
+          },
+          ...label,
+          ...(lock
+            ? [
+                { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
+                ...lock.map((s) => ({ ...s, style: ["muted"] })),
+              ]
+            : []),
+        ],
+      });
+      if (o.meta)
+        rows.push({
+          mark: "rail",
+          spans: [
+            { text: "    " },
+            ...o.meta.map((s) => ({ ...s, style: ["muted"] })),
+          ],
+        });
+    });
+    if (note)
+      rows.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
+    rows.push({ mark: "end", spans: p.hints });
+    live.draw(frame(ctx, rows));
+  };
+  try {
+    render();
+    for (;;) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      if (k.name === "up" || k.name === "k")
+        at = (at - 1 + p.options.length) % p.options.length;
+      else if (k.name === "down" || k.name === "j")
+        at = (at + 1) % p.options.length;
+      else if (k.name === "space" || k.sequence === " ") {
+        const v = p.options[at]!.value;
+        const lock = p.locked?.(v, chosen) ?? null;
+        if (lock) note = lock;
+        else {
+          const r = p.toggle(chosen, v);
+          chosen = r.chosen;
+          note = r.note;
+        }
+        render();
+        continue;
+      } else if (k.name === "return" || k.name === "enter") {
+        const out = ordered();
+        live.commit(frame(ctx, p.done(out)));
+        return out;
+      }
+      note = null;
+      render();
+    }
+  } finally {
+    live.close();
+  }
+}
+
 /**
  * A question on a terminal that takes no cursor control (TERM=dumb, SIGN-IN.md D-77): the label
  * as a plain line, then the answer read in raw mode with no echo at all, ended by Enter. Nothing
