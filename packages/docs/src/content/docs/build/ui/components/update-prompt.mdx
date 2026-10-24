@@ -65,6 +65,18 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<UpdatePrompt />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider>`: given no `input`, it reads the bridge itself. **Check for updates** in the app menu opens it over the app; the install shows progress from the main process, and macOS says **Install and Relaunch**.
+
+    **Styled part.** The React kit's `<UpdatePrompt />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("UpdatePrompt", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

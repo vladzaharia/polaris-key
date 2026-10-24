@@ -42,6 +42,18 @@ The product, its version and build, the open-source notices, the optional Powere
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<About />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider>`: given no `input`, it reads the bridge itself.
+
+    **Styled part.** The React kit's `<About />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("About", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

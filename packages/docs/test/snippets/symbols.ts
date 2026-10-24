@@ -45,6 +45,9 @@ const NOT_EXPORTS = new Set([
   "createPolarisKey",
   "createNextPolarisKey",
   "createTestKit",
+  // Methods on the handle `exposePolarisBridge` returns (`menuItems` for the app menu, `open` to show a view).
+  "menuItems",
+  "open",
   "PolarisKeyError",
   "PolarisKeyConfigError",
   "GetPolarisAuth",

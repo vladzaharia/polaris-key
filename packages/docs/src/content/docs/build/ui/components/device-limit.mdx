@@ -68,6 +68,18 @@ The focused Replace a device flow: the device count, the devices as radio rows w
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<DeviceLimit />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("DeviceLimit", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

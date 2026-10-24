@@ -67,6 +67,18 @@ The device list: an icon for the form factor, the name, platform and last seen, 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<Devices />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider>`: given no `input`, it reads the bridge itself.
+
+    **Styled part.** The React kit's `<Devices />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Devices", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 
