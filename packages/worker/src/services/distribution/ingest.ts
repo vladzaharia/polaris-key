@@ -5,7 +5,7 @@
  * must already hold the manifest's answer when an operator turns Distribution on).
  *
  * It also PROVISIONS package feeds (F-34.2): for each ecosystem the manifest declares a package
- * in, one insert-only feed row at Customers with the exact namespace derived from the declared
+ * in, one insert-only feed row at Licensed with the exact namespace derived from the declared
  * names, and the owner row when the product has neither an owner nor a feed row. Written whether
  * Distribution is on or off (F-34 decision F1; the ladder refuses reads while it is off) and
  * never for the system product (F14: its bootstrap is the one writer). An ecosystem whose names
@@ -134,7 +134,7 @@ export function feedProvisionStatements(
           action: FEED_PROVISION_ACTION,
           target_kind: "registry-feed",
           target_id: f.ecosystem,
-          summary: `Provisioned the ${f.ecosystem} package feed from the manifest (Customers)`,
+          summary: `Provisioned the ${f.ecosystem} package feed from the manifest (Licensed)`,
           after_json: JSON.stringify({
             ecosystem: f.ecosystem,
             access: "licensed",

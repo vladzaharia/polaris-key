@@ -115,7 +115,7 @@ export function feedAccessLabel(modeOrChoice: string): string {
 /** A feed's access as text: an old `entitled` feed also says its packages are gated one by one. */
 export function feedAccessText(mode: string): string {
   return mode === "entitled"
-    ? `${feedAccessLabel(mode)}, packages gated individually`
+    ? `${feedAccessLabel(mode)}, gated per package`
     : feedAccessLabel(mode);
 }
 

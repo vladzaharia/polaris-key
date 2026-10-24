@@ -126,8 +126,8 @@ function bootSettings(
         accessMode === "public"
           ? "public"
           : accessMode === "entitled"
-            ? "customers, packages gated individually"
-            : "customers",
+            ? "licensed, gated per package"
+            : "licensed",
       ...patch,
     },
   };
@@ -230,7 +230,7 @@ describe("registry auth (F-21)", () => {
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
   });
 
-  it("an entitled feed reads Licensed, packages gated individually, and is not rewritten", async () => {
+  it("an entitled feed reads Licensed, gated per package, and is not rewritten", async () => {
     const log = bootSettings("entitled");
     const form = await general();
     expect(

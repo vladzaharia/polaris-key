@@ -42,7 +42,7 @@ release:
         tarball: { match: "tidewater-sdk-*.tgz" }
 ```
 
-Sync the manifest and the feed exists: there is no console step. The namespace is exactly the names you declare, so a second package in the same ecosystem is covered only if it falls inside it (an npm package in the same `@scope`, a Maven group under the declared groupId). Otherwise declare it, then widen the namespace in the console. The feed is Customers until you set it to Public.
+Sync the manifest and the feed exists: there is no console step. The namespace is exactly the names you declare, so a second package in the same ecosystem is covered only if it falls inside it (an npm package in the same `@scope`, a Maven group under the declared groupId). Otherwise declare it, then widen the namespace in the console. The feed is Licensed until you set it to Public.
 
 Each `match` is a file-name glob over the publish step's `--dir`. An OCI deliverable matches an image layout, a Cargo one the `.crate`, a Go one a module zip or a `go.mod`.
 

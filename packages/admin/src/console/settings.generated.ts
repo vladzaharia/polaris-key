@@ -1642,7 +1642,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Package feeds",
     description:
-      "Per ecosystem: whether the product's feed answers, who may read it (Public or Licensed), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Customers feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off.",
+      "Per ecosystem: whether the product's feed answers, who may read it (Public or Licensed), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Licensed feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off.",
     keywords: ["npm", "pypi", "registry", "packages"],
     docs: "/docs/features/ship-builds/channels/",
     ownership: "operator",

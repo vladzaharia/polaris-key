@@ -6,7 +6,7 @@
  * (platform scope only) is its own resource and its own section.
  *
  * - **General:** enabled, and Access: Public or Licensed (F-34; `ACCESS_LABELS`). An old
- *   `entitled` feed reads "Licensed, packages gated individually" and is not
+ *   `entitled` feed reads "Licensed, gated per package" and is not
  *   rewritten unless the operator picks again. Turning a feed off, and moving access either way,
  *   is L1: Public to Licensed refuses anonymous clients within 30 seconds; Licensed to Public
  *   opens the feed to everyone.
@@ -369,7 +369,7 @@ const WIDEN_LINES = [
 ];
 const TIGHTEN_LINES = [
   "Clients without a registry token are refused within 30 seconds.",
-  "Each client then needs the authenticated setup from the Tokens page.",
+  "Each client then needs a registry token, set up from the Tokens page.",
   "Bytes already installed or cached by clients stay where they are.",
 ];
 // Switched off in the same save, the access change takes effect when the feed is on again.
@@ -381,7 +381,7 @@ const OFF_WIDEN_LINES = [
 const OFF_TIGHTEN_LINES = [
   "Every client install and update gets not-found within 30 seconds; nothing is deleted.",
   "When it is switched on again, clients without a registry token are refused.",
-  "Each client then needs the authenticated setup from the Tokens page.",
+  "Each client then needs a registry token, set up from the Tokens page.",
 ];
 
 function confirmTitle(label: string, ask: GeneralAsk | null): string {

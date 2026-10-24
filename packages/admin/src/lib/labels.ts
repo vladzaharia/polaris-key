@@ -28,10 +28,10 @@ export const ACCESS_LABELS: Record<string, string> = {
 /** What each access mode means, for `RadioCards` and `Select` option descriptions. */
 export const ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Anyone, with no device token.",
-  authenticated: "A device with a valid token and a usable license.",
+  authenticated: "Same as Licensed today: a device whose license is usable.",
   licensed: "A device whose license is usable.",
   entitled:
-    "A device whose own license covers the requested channel and version.",
+    "A device whose own license covers the requested release track and version.",
 };
 
 /** The same, for a pack: its `entitled` is the pack's gate flag, not the channel and version. */
