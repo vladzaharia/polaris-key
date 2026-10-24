@@ -4253,9 +4253,6 @@
     "packages/zstd-wasm/test/zstd.test.ts": {
       "jscpd:duplicate": 1
     },
-    "tools/agents-md.test.ts": {
-      "jscpd:duplicate": 1
-    },
     "tools/api-check.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -4336,9 +4333,6 @@
     },
     "tools/corpus/update.ts": {
       "jscpd:duplicate": 3
-    },
-    "tools/gate-lists.test.ts": {
-      "jscpd:duplicate": 1
     },
     "tools/gate.mjs": {
       "jscpd:duplicate": 1
