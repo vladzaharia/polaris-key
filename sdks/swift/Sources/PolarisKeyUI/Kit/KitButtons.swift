@@ -28,6 +28,10 @@ struct KitButton: View {
     var fullWidth = true
     /// A banner's or a row's button: about 36 pt, beside text rather than under it.
     var compact = false
+    /// The Welcome hero's capsule: `.extraLarge` at 36 pt on macOS; a plain control elsewhere.
+    var hero = false
+    /// A leading-slot button of a Mac action row (Paste), kept at the row's left edge.
+    var leading = false
     let action: () -> Void
 
     @Environment(\.polarisKeyStrings) private var strings
@@ -39,7 +43,13 @@ struct KitButton: View {
             } label: {
                 label(style)
             }
-            .modifier(KitButtonSkin(kind: kind, style: style, compact: compact))
+            .modifier(KitButtonSkin(kind: kind, style: style, compact: compact, hero: hero))
+            .modifier(
+                KitMacKeys(
+                    defaultAction: kind == .primary && !busy,
+                    cancelAction: kind == .quiet && line.key == "common.cancel")
+            )
+            .layoutValue(key: KitActionSlotKey.self, value: KitActionSlot(kind: kind, leading: leading))
             .accessibilityAddTraits(busy ? .updatesFrequently : [])
             .accessibilityValue(busy ? Text(strings.string("a11y.busy")) : Text(""))
             .accessibilityHint(
@@ -77,7 +87,13 @@ struct KitButton: View {
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(labelColor(style.palette))
+        .modifier(
+            KitLabelTint(
+                color: labelColor(style.palette),
+                // On macOS a filled button's label is not forced: an inactive window drops the
+                // tint, and a forced light label is then left on grey (S2).
+                inactiveFollowsSystem: kind == .primary || kind == .destructive)
+        )
         .frame(maxWidth: fullWidth && kind != .quiet && !compact ? .infinity : nil)
         .frame(minHeight: labelHeight(style))
         .contentShape(Rectangle())
@@ -87,11 +103,16 @@ struct KitButton: View {
     /// 7 pt a side, the large glass control its own 14.5 pt a side (measured on the simulator).
     private func labelHeight(_ style: KitResolvedStyle) -> CGFloat {
         if kind == .quiet { return 44 }
-        let height = compact ? KitButtonSkin.compactHeight : style.controlHeight
-        if style.usesGlass, kind == .primary || kind == .destructive, !compact {
-            return max(0, height - 29)
-        }
-        return max(0, height - 14)
+        let height =
+            compact ? KitButtonSkin.compactHeight : (hero ? style.heroControlHeight : style.controlHeight)
+        #if os(macOS)
+            return max(0, height - 14)
+        #else
+            if style.usesGlass, kind == .primary || kind == .destructive, !compact {
+                return max(0, height - 29)
+            }
+            return max(0, height - 14)
+        #endif
     }
 }
 
@@ -100,13 +121,20 @@ struct KitButtonSkin: ViewModifier {
     let kind: KitButtonKind
     let style: KitResolvedStyle
     var compact = false
+    var hero = false
 
     /// A banner button's height.
     static let compactHeight: CGFloat = 36
 
     func body(content: Content) -> some View {
         let p = style.palette
-        let height = compact ? Self.compactHeight : style.controlHeight
+        let height =
+            compact ? Self.compactHeight : (hero ? style.heroControlHeight : style.controlHeight)
+        #if os(macOS)
+            let largeSize: ControlSize = hero ? .extraLarge : .large
+        #else
+            let largeSize: ControlSize = .large
+        #endif
         switch kind {
         case .quiet:
             content
@@ -119,16 +147,17 @@ struct KitButtonSkin: ViewModifier {
                 content
                     .buttonStyle(.glassProminent)
                     .buttonBorderShape(.capsule)
-                    .controlSize(compact ? .regular : .large)
+                    .controlSize(compact ? .regular : largeSize)
                     .tint(kind == .destructive ? fill : p.primaryGlassFill)
-                    .foregroundStyle(label)
+                    .modifier(KitLabelTint(color: label, inactiveFollowsSystem: true))
                 #endif
             } else {
                 content
                     .buttonStyle(
                         KitCapsuleStyle(
                             fill: AnyShapeStyle(fill), label: label,
-                            reduceMotion: style.reduceMotion, height: height))
+                            reduceMotion: style.reduceMotion, height: height,
+                            inactive: KitInactiveLook(fill: p.raised, label: p.textStrong, hairline: p.border)))
             }
         case .secondary:
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
@@ -161,6 +190,55 @@ struct KitButtonSkin: ViewModifier {
     }
 }
 
+/// Return goes to the one prominent button and Escape to Cancel (macOS; iOS has neither key).
+struct KitMacKeys: ViewModifier {
+    let defaultAction: Bool
+    let cancelAction: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        #if os(macOS)
+            if defaultAction {
+                content.keyboardShortcut(.defaultAction)
+            } else if cancelAction {
+                content.keyboardShortcut(.cancelAction)
+            } else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
+}
+
+/// The neutral look of a filled capsule in an inactive Mac window.
+struct KitInactiveLook {
+    let fill: Color
+    let label: Color
+    let hairline: Color
+}
+
+/// Sets a button label's colour. On macOS, a filled button's label follows the system while the
+/// window is inactive (the system drops the tint then); everywhere else it is always set.
+struct KitLabelTint: ViewModifier {
+    let color: Color
+    var inactiveFollowsSystem = false
+    #if os(macOS)
+        @Environment(\.appearsActive) private var appearsActive
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+            if inactiveFollowsSystem && !appearsActive {
+                content
+            } else {
+                content.foregroundStyle(color)
+            }
+        #else
+            content.foregroundStyle(color)
+        #endif
+    }
+}
+
 /// The iOS 18 capsule: solid or material, pressed at 0.98, dimmed to 42 % when disabled.
 struct KitCapsuleStyle: ButtonStyle {
     let fill: AnyShapeStyle
@@ -168,18 +246,35 @@ struct KitCapsuleStyle: ButtonStyle {
     let reduceMotion: Bool
     let height: CGFloat
     var hairline: Color?
+    /// A filled button's look in an inactive window (macOS): the neutral fill with the strong
+    /// text colour, so the label never sits white on grey (S2).
+    var inactive: KitInactiveLook?
 
     @Environment(\.isEnabled) private var isEnabled
+    #if os(macOS)
+        @Environment(\.appearsActive) private var appearsActive
+    #endif
+
+    private var showsInactive: Bool {
+        #if os(macOS)
+            return inactive != nil && !appearsActive
+        #else
+            return false
+        #endif
+    }
 
     func makeBody(configuration: Configuration) -> some View {
+        let look = showsInactive ? inactive : nil
         configuration.label
-            .foregroundStyle(label)
+            .foregroundStyle(look?.label ?? label)
             .padding(.horizontal, 20)
             .padding(.vertical, 7)
             .frame(minHeight: height)
-            .background(Capsule().fill(fill))
+            .background(Capsule().fill(look.map { AnyShapeStyle($0.fill) } ?? fill))
             .overlay {
-                if let hairline { Capsule().strokeBorder(hairline, lineWidth: 1) }
+                if let line = look?.hairline ?? hairline {
+                    Capsule().strokeBorder(line, lineWidth: 1)
+                }
             }
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
@@ -237,17 +332,94 @@ struct KitQuietStyle: ButtonStyle {
     }
 }
 
+/// What a button is in an action row, for the Mac order.
+struct KitActionSlot: Equatable {
+    var kind: KitButtonKind = .quiet
+    var leading = false
+}
+
+struct KitActionSlotKey: LayoutValueKey {
+    static let defaultValue = KitActionSlot()
+}
+
+/// The Mac button order (HIG): the leading slot (Paste) at the left edge, then the quiet extras,
+/// Cancel and secondaries, and the one default last, so Cancel sits directly left of it.
+enum KitActionOrder {
+    /// Display positions, left to right, as indices into `slots` (source order within a rank).
+    static func order(_ slots: [KitActionSlot]) -> [Int] {
+        func rank(_ s: KitActionSlot) -> Int {
+            if s.leading { return 0 }
+            switch s.kind {
+            case .quiet: return 1
+            case .secondary: return 2
+            case .primary, .destructive: return 3
+            }
+        }
+        return slots.indices.sorted {
+            let (a, b) = (rank(slots[$0]), rank(slots[$1]))
+            return a == b ? $0 < $1 : a < b
+        }
+    }
+}
+
+#if os(macOS)
+    /// A trailing-aligned horizontal row in `KitActionOrder`; the leading slot hugs the left edge.
+    struct KitMacActionRow: Layout {
+        var spacing: CGFloat
+
+        private func sizes(_ subviews: Subviews) -> [CGSize] {
+            subviews.map { $0.sizeThatFits(.unspecified) }
+        }
+
+        func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+            let s = sizes(subviews)
+            let w = s.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(0, s.count - 1))
+            return CGSize(
+                width: max(w, proposal.width ?? 0), height: s.map(\.height).max() ?? 0)
+        }
+
+        func placeSubviews(
+            in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
+        ) {
+            let s = sizes(subviews)
+            let slots = subviews.map { $0[KitActionSlotKey.self] }
+            let order = KitActionOrder.order(slots)
+            let lead = order.filter { slots[$0].leading }
+            let rest = order.filter { !slots[$0].leading }
+            var x = bounds.minX
+            for i in lead {
+                subviews[i].place(
+                    at: CGPoint(x: x, y: bounds.midY), anchor: .leading, proposal: .unspecified)
+                x += s[i].width + spacing
+            }
+            var right = bounds.maxX
+            for i in rest.reversed() {
+                right -= s[i].width
+                subviews[i].place(
+                    at: CGPoint(x: right, y: bounds.midY), anchor: .leading, proposal: .unspecified)
+                right -= spacing
+            }
+        }
+    }
+#endif
+
 /// A group of buttons per §1.5 rule 10: on phones and in cards up to 440 pt, full width and
-/// stacked, primary first; a group that does not fit stacks whole, never 2 + 1.
+/// stacked, primary first; a group that does not fit stacks whole, never 2 + 1. On macOS it is
+/// one row, Cancel directly left of the default (`KitActionOrder`).
 struct KitActionStack<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         kitStyle { style in
-            VStack(spacing: style.space(.sm)) {
-                content()
-            }
-            .frame(maxWidth: .infinity)
+            #if os(macOS)
+                KitMacActionRow(spacing: style.space(.sm)) { content() }
+                    .frame(maxWidth: .infinity)
+            #else
+                VStack(spacing: style.space(.sm)) {
+                    content()
+                }
+                .frame(maxWidth: .infinity)
+            #endif
         }
     }
 }

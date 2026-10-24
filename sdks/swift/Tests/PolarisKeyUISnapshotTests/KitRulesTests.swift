@@ -84,6 +84,52 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(style.groupRadius, 24)
     }
 
+    // MARK: Mac measures (UK-08.1)
+
+    func testTheMacMeasuresAreTheMacColumn() {
+        #if os(macOS)
+            let style = KitResolvedStyle.fallback
+            XCTAssertEqual(style.controlHeight, 28)
+            XCTAssertEqual(style.heroControlHeight, 36)
+            XCTAssertEqual(style.fieldRadius, 10)
+            XCTAssertEqual(style.sheetRadius, 18)
+            XCTAssertEqual(style.cardPad, 24)
+            XCTAssertEqual(KitTextRole.body.spec.size, 13)
+            XCTAssertEqual(KitTextRole.title.spec.size, 22)
+            XCTAssertEqual(KitTextRole.display.spec.size, 26)
+        #else
+            XCTAssertEqual(KitResolvedStyle.fallback.controlHeight, 52)
+            XCTAssertEqual(KitTextRole.body.spec.size, 17)
+        #endif
+    }
+
+    func testAnInactiveFilledButtonsLabelKeepsContrastOnTheNeutralFill() {
+        // The inactive look is the raised fill under the strong text colour (S2): 4.5:1 or more
+        // in both schemes, for any accent (the fill and label do not depend on it).
+        for dark in [true, false] {
+            let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+            let p = KitPaletteResolver.palette(
+                identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                increaseContrast: false)
+            let fill = dark ? PolarisBrand.Dark.textStrong : PolarisBrand.Light.textStrong
+            let raised = dark ? "#16181d" : "#ffffff"
+            let ratio = PolarisAccent.contrast(String(format: "#%06x", fill.hex), raised)
+            XCTAssertGreaterThanOrEqual(ratio, 4.5, "dark: \(dark)")
+            XCTAssertEqual(p.textStrong, fill.color)
+        }
+    }
+
+    func testTheMacButtonRowPutsCancelDirectlyLeftOfTheDefault() {
+        let slots: [KitActionSlot] = [
+            KitActionSlot(kind: .primary),
+            KitActionSlot(kind: .quiet, leading: true),  // Paste
+            KitActionSlot(kind: .quiet),  // key instead
+            KitActionSlot(kind: .quiet),  // Cancel
+        ]
+        XCTAssertEqual(KitActionOrder.order(slots), [1, 2, 3, 0])
+        XCTAssertEqual(KitActionOrder.order([KitActionSlot(kind: .quiet), KitActionSlot(kind: .secondary), KitActionSlot(kind: .primary)]), [0, 1, 2])
+    }
+
     // MARK: Layout
 
     func testTheArrangementComesFromTheShape() {
