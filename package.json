@@ -23,6 +23,7 @@
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo run clean && rm -rf node_modules",
+    "lint:dupes": "node tools/lint/dupes.mjs check",
     "ui:lint": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/lint.ts",
     "ui:report": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/report.ts"
   },
@@ -31,6 +32,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "husky": "^9.1.7",
+    "jscpd": "5.4.0",
     "prettier": "^3.5.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.0",

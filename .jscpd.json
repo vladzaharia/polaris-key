@@ -1,0 +1,23 @@
+{
+  "format": ["typescript", "tsx", "javascript"],
+  "reporters": ["json"],
+  "gitignore": true,
+  "silent": true,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.venv/**",
+    "**/*.generated.*",
+    "**/test/**/fixtures/**",
+    "**/__snapshots__/**",
+    "**/*.snap",
+    "**/*.d.ts",
+    "docs/design/**",
+    "docs/research/**",
+    "conformance/corpus/**",
+    "conformance/transcripts/**",
+    "sdks/godot/tests/**",
+    "actions/publish/dist/**"
+  ]
+}
