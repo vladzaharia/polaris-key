@@ -30,16 +30,17 @@ runs and nothing leaves the process.
 
 ## Flags
 
-| Flag                                                                       | Meaning                                                                                   |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `--state walk\|activate\|limit\|gate\|update\|progress\|settings\|devices` | Where it starts; `walk` is not activated, with every step by hand.                        |
-| `--scheme light\|dark`                                                     | The host's scheme; the OS's when omitted.                                                 |
-| `--preset polaris\|native`                                                 | The Polaris Key look, or the platform's own layers.                                       |
-| `--platform macos\|windows\|gnome`                                         | Force a chrome; the real OS otherwise. The window frame stays this OS's.                  |
-| `--size WxH`                                                               | The gate window's size in dp, 960x640 by default.                                         |
-| `--plain`                                                                  | No full-size content view on macOS.                                                       |
-| `--shots <dir>`                                                            | Walks the flow and writes a window-only PNG per window to `<dir>/<variant>/`, then exits. |
-| `--smoke`                                                                  | Starts on an activated product, reaches the gate, exits 0 (1 after 60 seconds).           |
+| Flag                                                                       | Meaning                                                                                           |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `--state walk\|activate\|limit\|gate\|update\|progress\|settings\|devices` | Where it starts; `walk` is not activated, with every step by hand.                                |
+| `--scheme light\|dark`                                                     | The host's scheme; the OS's when omitted.                                                         |
+| `--preset polaris\|native`                                                 | The Polaris Key look, or the platform's own layers.                                               |
+| `--platform macos\|windows\|gnome`                                         | Force a chrome; the real OS otherwise. The window frame stays this OS's.                          |
+| `--size WxH`                                                               | The gate window's size in dp, 960x640 by default.                                                 |
+| `--plain`                                                                  | No full-size content view on macOS.                                                               |
+| `--shots <dir>`                                                            | Walks the flow and writes a window-only PNG per window to `<dir>/<variant>/`, then exits.         |
+| `--smoke`                                                                  | Starts on an activated product, reaches the gate, exits 0 (1 after 60 seconds).                   |
+| `--open-link <url>`                                                        | With `--smoke`: opens the https link through the kit's opener, then waits 2 s for the host reads. |
 
 ## Screenshots
 
@@ -52,3 +53,14 @@ walk calls the two menu actions on the window state (`requestCheck`, `manageLice
 
 `nativeDistributions` in `build.gradle.kts` lists `modules("jdk.accessibility")`, which puts the Java Access
 Bridge in the packaged runtime so Windows screen readers see the window.
+
+The Windows leg of the `compose-desktop` CI job builds the runtime image (`createRuntimeImage`) and fails when its
+`release` file lacks `jdk.accessibility`.
+
+## Flatpak
+
+`flatpak/im.plrs.key.samples.ComposeDesktop.yml` packages the sample's uber jar on `org.freedesktop.Platform` 24.08
+with the OpenJDK 17 extension (also 24.08). The `Flatpak (Compose desktop sample)` workflow builds it and runs
+`flatpak/portal-check.sh`: `--smoke --open-link <https url>` in the sandbox against a mock portal
+(`flatpak/mock-portal.py`), which must have seen the link on `org.freedesktop.portal.OpenURI` and the
+`color-scheme`, `accent-color` and `contrast` reads on `Settings.ReadOne`.

@@ -889,6 +889,16 @@ jobs:
         if: runner.os != 'Linux'
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon :sample-compose-desktop:smoke
+      # UK-10.13 (K7): the Java Access Bridge must be in the packaged runtime, or Windows screen readers see nothing.
+      - name: Packaged runtime has jdk.accessibility (Windows)
+        if: runner.os == 'Windows'
+        working-directory: sdks/kotlin
+        run: |
+          ./gradlew --no-daemon :sample-compose-desktop:createRuntimeImage
+          release="$(find ../../examples/ui/compose-desktop/build/compose -name release -path '*runtime*' | head -n 1)"
+          test -n "$release"
+          cat "$release"
+          grep -q 'jdk.accessibility' "$release"
       - name: Sample --shots
         if: runner.os != 'Linux'
         working-directory: sdks/kotlin
