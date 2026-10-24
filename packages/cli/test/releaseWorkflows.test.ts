@@ -425,9 +425,10 @@ describe("publish-package.yml (the trusted publisher)", () => {
     expect(guard.run).toContain("exit 1");
     const publish = steps.find((s) => s.uses === "./actions/publish");
     expect(publish?.with).toMatchObject({
-      product: "polaris-key",
-      dir: "dist-feed/${{ inputs.dir }}",
-      channel: "${{ inputs.channel }}",
+      channels: "none",
+      args: expect.stringContaining(
+        "--channel ${{ inputs.channel }} --dir dist-feed/${{ inputs.dir }}",
+      ),
     });
     expect(raw("publish-package.yml")).toContain(
       'git merge-base --is-ancestor "$GITHUB_SHA" origin/main',

@@ -40,6 +40,49 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 <!-- /GENERATED:upgrade-cli -->
 <!-- prettier-ignore-end -->
 
+## Action
+
+<!-- prettier-ignore-start -->
+<!-- GENERATED:upgrade-action — do not edit; regenerate with `pnpm --filter @polaris-key/docs gen` from packages/docs/changelog and conformance/parity/api.json -->
+
+| Removed | Use instead | Since |
+| --- | --- | --- |
+| `with: product` | `--product <value>` in `args` | 0.9.18 |
+| `with: deliverable` | `--deliverable <value>` in `args` | 0.9.18 |
+| `with: version` | `--version <value>` in `args` | 0.9.18 |
+| `with: tag` | `--tag <value>` in `args` | 0.9.18 |
+| `with: channel` | `--channel <value>` in `args` | 0.9.18 |
+| `with: dir` | `--dir <value>` in `args` | 0.9.18 |
+| `with: source` | `--source <value>` in `args` | 0.9.18 |
+| `with: meta` | `--meta <value>` in `args` | 0.9.18 |
+| `with: delegation` | `--delegation <value>` in `args` | 0.9.18 |
+| `with: min-supported-seq` | `--min-supported-seq <value>` in `args` | 0.9.18 |
+| `with: content-stamp` | `--content-stamp <value>` in `args` | 0.9.18 |
+| `with: embedded` | `--embedded <value>` in `args` | 0.9.18 |
+| `with: pins` | `--pin <value>` in `args` | 0.9.18 |
+| `with: out` | `--out <value>` in `args` | 0.9.18 |
+| `with: bases` | `--bases <value>` in `args` | 0.9.18 |
+| `with: script-extensions` | `--script-extensions <value>` in `args` | 0.9.18 |
+| `with: script-types` | `--script-types <value>` in `args` | 0.9.18 |
+| `with: assets` | `command: assets push`, with the file and `--slot` in `args` | 0.9.18 |
+| `with: transport` | `command: transport <step> …`, with its flags in `args` | 0.9.18 |
+| `with: content-api` | `--content-api <value>` in `args` | 0.9.18 |
+| `with: variant` | `--variant <value>` in `args` | 0.9.18 |
+| `with: transport-out` | `--out <value>` in `args` | 0.9.18 |
+| `with: gradle-project` | `--project <value>` in `args` | 0.9.18 |
+| `with: pad-delivery` | `--delivery <value>` in `args` | 0.9.18 |
+| `with: steam-depot` | `--depot <value>` in `args` | 0.9.18 |
+| `with: steam-branch` | `--branch <value>` in `args` | 0.9.18 |
+| `with: steam-setlive` | `--setlive` in `args` | 0.9.18 |
+| `with: asc-expect-resource` | `--expect-resource <value>` in `args` | 0.9.18 |
+| `with: transport-report` | `--no-report` in `args` | 0.9.18 |
+| `with: storefront` | `channels: auto`, or `command: storefront <store> <step> …` | 0.9.18 |
+| `with: itch-platform` | `--platform <value>` in `args` | 0.9.18 |
+| `with: storefront-outlet` | `--outlet <value>` in `args` | 0.9.18 |
+
+<!-- /GENERATED:upgrade-action -->
+<!-- prettier-ignore-end -->
+
 ## Console and API
 
 <!-- prettier-ignore-start -->

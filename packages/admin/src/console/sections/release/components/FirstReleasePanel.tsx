@@ -44,19 +44,16 @@ export const FIRST_RELEASE_POLL_MS = 10_000;
 const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
 
 /**
- * The publish step for a release job, with the product's slug filled in. It follows the CI guide
+ * The publish step for a release job, named for the product's slug. It follows the CI guide
  * (`/docs/build/ci/`): the Action is referenced by commit until it is listed as `@v1`.
  */
 export function workflowStep(slug: string): string {
   return [
-    "# In the release job, after the steps that build your files.",
+    `# Publishes ${slug} (the slug in .pkey/product). Put it in the release job, after the steps that build your files.`,
     "# The job needs `permissions: id-token: write` (and `release-key` if .pkey/release declares releaseKeys).",
     "- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>",
     "  with:",
-    `    product: ${slug}`,
-    "    tag: ${{ github.ref_name }}",
-    "    channel: stable",
-    "    dir: dist",
+    "    args: --tag ${{ github.ref_name }} --channel stable --dir dist",
   ].join("\n");
 }
 
