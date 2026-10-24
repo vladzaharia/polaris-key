@@ -212,7 +212,7 @@ enum BrandFonts {
     }
 
     /// The variable Rubik instance names. CoreText's names are intentionally read from the font:
-    /// its regular and bold instances are `Rubik-Light_Regular` and `Rubik-Light_Bold`, not the
+    /// its instances are `Rubik-Regular`, `Rubik-Regular_Medium` and `Rubik-Regular_SemiBold` (the kit subset), not the
     /// static-font names this package used to carry.
     static let rubikFaces: [String: String] = {
         guard let url = url(rubikFile) else { return [:] }
