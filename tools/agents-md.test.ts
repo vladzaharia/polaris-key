@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { missingPaths, missingPnpmScripts } from "./repo-names.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (...path: string[]) => readFileSync(join(ROOT, ...path), "utf8");
@@ -427,44 +428,6 @@ const INTENTIONALLY_ABSENT = new Set([
 ]);
 
 describe("names cited by AGENTS.md exist", () => {
-  const generatorFamilies = new Set(
-    [...read("tools/generators.ts").matchAll(/^\s*id:\s*"([^"]+)"/gm)].map(
-      (match) => match[1],
-    ),
-  );
-  const packageScripts = (dir: string): Record<string, string> => {
-    const file = join(ROOT, dir, "package.json");
-    if (!existsSync(file)) return {};
-    return JSON.parse(readFileSync(file, "utf8")).scripts ?? {};
-  };
-  const packageDirs = (): Map<string, string> => {
-    const out = new Map<string, string>();
-    for (const parent of ["packages", "tools", "products", "conformance"]) {
-      const candidates = [parent];
-      for (const entry of existsSync(join(ROOT, parent))
-        ? execFileSync("ls", [join(ROOT, parent)])
-            .toString()
-            .split("\n")
-        : []) {
-        if (entry) candidates.push(`${parent}/${entry}`);
-      }
-      for (const dir of candidates) {
-        const file = join(ROOT, dir, "package.json");
-        if (!existsSync(file)) continue;
-        const name = JSON.parse(readFileSync(file, "utf8")).name;
-        if (typeof name === "string") out.set(name, dir);
-      }
-    }
-    return out;
-  };
-  const packages = packageDirs();
-
-  const looksLikePath = (token: string): boolean => {
-    if (/\s|[<>*{}|$:]|^@|^-|^\.\.\.|…/.test(token)) return false;
-    if (/^~|^\/|\$/.test(token)) return false;
-    return token.includes("/") || /\.(md|ts|mjs|json|yaml|sh)$/.test(token);
-  };
-
   for (const dir of INSTRUCTION_ROOTS) {
     const file = join(dir, "AGENTS.md");
     const text = read(file);
@@ -479,47 +442,16 @@ describe("names cited by AGENTS.md exist", () => {
     );
 
     it(`${file}: every backticked repo path resolves`, () => {
-      const missing = spans
-        .filter(looksLikePath)
-        .map((token) => token.replace(/[.,;:]+$/, "").replace(/\/+$/, ""))
-        .filter((token) => !INTENTIONALLY_ABSENT.has(token))
-        .filter(
-          (token) =>
-            !PATH_BASES.some((base) => existsSync(join(ROOT, base, token))) &&
-            !existsSync(join(ROOT, dir, token)),
-        );
+      const missing = missingPaths(spans, {
+        dir,
+        bases: PATH_BASES,
+        absent: INTENTIONALLY_ABSENT,
+      });
       expect(missing, `${file} cites paths that do not exist`).toEqual([]);
     });
 
     it(`${file}: every pnpm script exists`, () => {
-      const bad: string[] = [];
-      for (const span of spans) {
-        const filtered = span.match(/^pnpm --filter (\S+) (?:run )?([\w:.-]+)/);
-        if (filtered && filtered[2] === "exec") continue;
-        if (filtered) {
-          const pkgDir = packages.get(filtered[1] as string);
-          const script = filtered[2] as string;
-          if (!pkgDir || !(script in packageScripts(pkgDir))) bad.push(span);
-          continue;
-        }
-        const gen = span.match(/^pnpm gen(?: ([a-z][\w-]*))?/);
-        if (gen) {
-          if (gen[1] && !generatorFamilies.has(gen[1])) bad.push(span);
-          continue;
-        }
-        const plain = span.match(/^pnpm (?:run )?([\w:.-]+)/);
-        if (plain) {
-          const script = plain[1] as string;
-          const builtin = ["install", "exec", "add", "audit", "dlx", "turbo"];
-          if (
-            !builtin.includes(script) &&
-            !(script in packageScripts(".")) &&
-            !(script in packageScripts(dir))
-          ) {
-            bad.push(span);
-          }
-        }
-      }
+      const bad = missingPnpmScripts(spans, dir);
       expect(bad, `${file} cites pnpm commands that do not exist`).toEqual([]);
     });
 

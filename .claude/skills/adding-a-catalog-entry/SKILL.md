@@ -9,8 +9,8 @@ A product's config catalog is the `schema` document of its `.pkey/` manifest: a 
 plus one `ConfigEntry` per declarable key. It is **data** — never add a product-specific key to
 worker or SDK code.
 
-Reference: `packages/docs/src/content/docs/build/manifest/authoring.md` (the `.pkey/` convention,
-formerly `docs/CONFIG-AUTHORING.md`), `packages/shared-catalog/src/types.ts`, and the generated
+Reference: `packages/docs/src/content/docs/build/manifest/product.md` (the `.pkey/`
+convention), `packages/shared-catalog/src/types.ts`, and the generated
 field table at `packages/docs/src/content/docs/reference/config-entry.mdx`.
 
 ## Checklist
