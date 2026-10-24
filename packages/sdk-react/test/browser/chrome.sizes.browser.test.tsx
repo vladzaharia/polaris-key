@@ -242,6 +242,25 @@ describe("the desktop chromes at the plan's window sizes and zoom", () => {
                     "card centred",
                   ).toBeLessThanOrEqual(24);
               }
+              // Focus order follows the eye (WCAG 2.4.3): on a Mac's short window the buttons of a
+              // row read left to right in DOM order (the primary last), never row-reversed.
+              if (
+                chrome.name === "macos" &&
+                kit.getAttribute("data-shape") === "short"
+              )
+                for (const row of kit.querySelectorAll<HTMLElement>(
+                  ".actions",
+                )) {
+                  const lefts = [...row.querySelectorAll(".btn")]
+                    .filter(visible)
+                    .map((b) => b.getBoundingClientRect())
+                    .filter((r, _i, all) => Math.abs(r.top - all[0]!.top) < 4)
+                    .map((r) => r.left);
+                  expect(
+                    lefts,
+                    "focus order runs against the visual order",
+                  ).toEqual([...lefts].sort((x, y) => x - y));
+                }
               // A landscape window draws the landscape (or the short) layout.
               if (
                 scene.id === "Welcome.default" &&

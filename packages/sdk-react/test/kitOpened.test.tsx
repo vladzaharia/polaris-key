@@ -56,6 +56,7 @@ function mount(o: {
   withOpen?: boolean;
   install?: unknown;
   desktop?: boolean;
+  manageUrl?: string;
 }) {
   const openers = new Set<(v: KitView) => void>();
   const progress = new Set<(p: BridgeUpdateProgress) => void>();
@@ -81,6 +82,15 @@ function mount(o: {
       }),
     ),
     version: 4,
+    ...(o.manageUrl
+      ? {
+          submitKey: async () => ({
+            kind: "device-limit" as const,
+            limit: 3,
+            manageUrl: o.manageUrl,
+          }),
+        }
+      : {}),
     ...(o.withOpen === false
       ? {}
       : {
@@ -290,5 +300,38 @@ describe("the menu-opened dialogs on a desktop host (UK-06-KITFIX)", () => {
       ).toBe("needs-activation"),
     );
     expect(dialog(m.container)).toBeNull();
+  });
+
+  it("Manage shows in the account group only with a page to open, and opens it", async () => {
+    const none = mount({ newer: false, desktop: true });
+    await none.findByTestId("app");
+    none.open("settings");
+    await waitFor(() =>
+      expect(
+        none.container.querySelector('[data-key="account.devices"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      none.container.querySelector('[data-key="common.manage"]'),
+      "a button that does nothing",
+    ).toBeNull();
+    cleanup();
+
+    const url = "https://key.plrs.im/portal/free?x=1";
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const m = mount({ newer: false, desktop: true, manageUrl: url });
+    await m.findByTestId("app");
+    await act(async () => {
+      await m.adapter.submitKey("pkey_x").catch(() => undefined);
+    });
+    m.open("settings");
+    const manage = await waitFor(() => {
+      const b = m.container.querySelector('[data-key="common.manage"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    fireEvent.click(manage);
+    expect(open).toHaveBeenCalled();
+    expect(String(open.mock.calls[0]![0])).toContain("key.plrs.im/portal/free");
   });
 });

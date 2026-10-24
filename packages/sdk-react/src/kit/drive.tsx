@@ -287,6 +287,9 @@ function OpenedAccount(props: {
   const caps = state.capabilities;
   const name = state.profile?.name ?? state.profile?.email;
   const tier = state.entitlements.tier;
+  // "Manage" opens the page a refusal handed over (the device-limit `manageUrl`); the SDK has
+  // no other account page, so without one the button is left out.
+  const manageUrl = safeLink(state.error?.license?.manageUrl);
   const input: UiInput = {
     services: (Object.keys(caps) as (keyof typeof caps)[]).filter(
       (s) => caps[s].enabled,
@@ -296,6 +299,7 @@ function OpenedAccount(props: {
       signedIn: caps.identity.enabled && name !== undefined,
       ...(name !== undefined ? { holder: name } : {}),
       ...(typeof tier === "string" ? { tier } : {}),
+      canManage: manageUrl !== null,
       ...(used !== null ? { devices: { used, limit: null } } : {}),
     },
     ...(props.version ? { bundle: { slug: "", version: props.version } } : {}),
@@ -311,6 +315,7 @@ function OpenedAccount(props: {
         if (a.key === "common.signOut")
           void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
         else if (a.key === "update.checkNow") props.onCheckUpdates?.();
+        else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
       }}
     />
   );
