@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import {
   Glasses,
   Info,
@@ -26,7 +27,6 @@ import {
   TaskFrameSkeleton,
 } from "../components/FocusedFlow.js";
 import { SeatMeter } from "../components/SeatMeter.js";
-import { ErrorPanel } from "../components/States.js";
 import {
   capabilitiesOrNone,
   useCapabilities,
@@ -128,7 +128,7 @@ export function FreeDevicePage({
       ) : q.error && isNotFound(q.error) ? (
         <NotFoundProduct email={account.email} />
       ) : q.error || !p ? (
-        <ErrorPanel error={q.error} onRetry={() => void q.refetch()} asPage />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} asPage />
       ) : (
         <FreeDevice
           product={p}

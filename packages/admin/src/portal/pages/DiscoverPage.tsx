@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { LayoutGrid } from "lucide-react";
 import { t } from "../../lib/copy.js";
 import { cn } from "../../lib/cn.js";
@@ -16,7 +17,6 @@ import {
   DiscoverTile,
   type DiscoverTileState,
 } from "../components/DiscoverTile.js";
-import { ErrorPanel } from "../components/States.js";
 import { discoverGrid } from "../components/tileGrid.js";
 import { useClaimDiscover, useDiscover, useLibraryView } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
@@ -207,7 +207,7 @@ export function DiscoverPage({
           <Skeleton className="hidden h-72 rounded-xl wide:block" />
         </div>
       ) : discover.error ? (
-        <ErrorPanel
+        <ErrorState
           error={discover.error}
           onRetry={() => void discover.refetch()}
           message={t("locker.error.loadFailedDiscover")}

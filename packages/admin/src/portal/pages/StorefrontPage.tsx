@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Compass, ExternalLink, LayoutGrid } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -14,7 +15,6 @@ import {
 import { ProductArt } from "../components/ProductArt.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { SectionCard } from "../components/product/Card.js";
-import { ErrorPanel } from "../components/States.js";
 import {
   useClaimDiscover,
   useLibraryView,
@@ -76,7 +76,7 @@ export function StorefrontPage({
   if (notFound) return <NotOffered />;
   if (q.error || !q.data)
     return (
-      <ErrorPanel error={q.error} onRetry={() => void q.refetch()} asPage />
+      <ErrorState error={q.error} onRetry={() => void q.refetch()} asPage />
     );
   return <StorefrontBody product={q.data} />;
 }

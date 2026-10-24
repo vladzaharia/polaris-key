@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -9,7 +10,6 @@ import { LicenseCard } from "../components/product/LicenseCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
 import { SectionNav } from "../components/product/SectionNav.js";
 import { WhatsNew } from "../components/product/WhatsNew.js";
-import { ErrorPanel } from "../components/States.js";
 import {
   capabilitiesOrNone,
   useCapabilities,
@@ -80,7 +80,7 @@ export function ProductPage({
   if (lib.isPending) return <ProductSkeleton />;
   if (lib.error)
     return (
-      <ErrorPanel
+      <ErrorState
         error={lib.error}
         onRetry={lib.retry}
         asPage
@@ -88,7 +88,7 @@ export function ProductPage({
         message={t("locker.error.loadFailed", {
           name: product?.name ?? t("locker.error.thisProduct"),
         })}
-        backToLibrary
+        backTo={{ href: href.library(), label: t("locker.library.title") }}
       />
     );
   if (!product) return <NotFoundProduct email={account.email} />;
