@@ -115,7 +115,7 @@ public fun PolarisAccountScreen(
         val item = chosen?.let { runCatching { AccountItem.valueOf(it) }.getOrNull() }?.takeIf { it in entries }
         val open = item ?: if (split) AccountItem.Settings else null
         val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
-        val detailTitle = when (open) { AccountItem.Devices -> copy.devicesTitle; AccountItem.Channel -> channelTitle; else -> copy.settingsTitle }
+        val detailTitle = detailPaneTitle(open, copy, channelTitle)
         val list: @Composable () -> Unit = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.group)) {
                 navigationIcon?.let {
@@ -128,16 +128,8 @@ public fun PolarisAccountScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight)) {
                     for (entry in entries) {
                         AccountListItem(
-                            title = when (entry) {
-                                AccountItem.Settings -> copy.settingsTitle
-                                AccountItem.Channel -> channelRowTitle
-                                AccountItem.Devices -> copy.devicesTitle
-                            },
-                            supporting = when (entry) {
-                                AccountItem.Devices -> copy.devicesSubtitle
-                                AccountItem.Channel -> channelUi?.let { channelLabel(it.current, it.labels) }
-                                AccountItem.Settings -> null
-                            },
+                            title = if (entry == AccountItem.Settings) copy.settingsTitle else if (entry == AccountItem.Channel) channelRowTitle else copy.devicesTitle,
+                            supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
                             selected = split && open == entry,
                             onClick = { chosen = entry.name },
                         )
@@ -160,11 +152,7 @@ public fun PolarisAccountScreen(
                         onReset = onReset,
                         onChannel = onChannel,
                     )
-                    AccountItem.Channel -> if (channelUi != null) {
-                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PolarisSpace.group)) {
-                            PolarisChannelPicker(channelUi, onSelect = onChannel, error = channelError)
-                        }
-                    }
+                    AccountItem.Channel -> ChannelPane(channelUi, onChannel, channelError)
                     AccountItem.Devices -> PolarisDevicesScreen(
                         devicesUi,
                         onRename = onRename,
@@ -196,6 +184,18 @@ public fun PolarisAccountScreen(
                 if (open == null) list() else detail()
             }
         }
+    }
+}
+
+private fun detailPaneTitle(open: AccountItem?, copy: PolarisCopy, channelTitle: String): String =
+    if (open == AccountItem.Devices) copy.devicesTitle else if (open == AccountItem.Channel) channelTitle else copy.settingsTitle
+
+/** The channel row's end pane: the picker alone, scrolling with the pane. */
+@Composable
+private fun ChannelPane(channel: PolarisChannelUi?, onChannel: ((String) -> Unit)?, error: String?) {
+    if (channel == null) return
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PolarisSpace.group)) {
+        PolarisChannelPicker(channel, onSelect = onChannel, error = error)
     }
 }
 

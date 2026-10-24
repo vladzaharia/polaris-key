@@ -29,12 +29,14 @@ class ListDetailTest {
         rule.setContent {
             StockHost(false) {
                 PolarisTheme(branding = PolarisBranding.PolarisKey, copy = copy, darkTheme = false) {
-                    PolarisAccountScreen(settings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {}, onChannel = {})
+                    PolarisAccountScreen(settings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {}, onChannel = ::noop)
                 }
             }
         }
         rule.waitForIdle()
     }
+
+    private fun noop(@Suppress("UNUSED_PARAMETER") id: String) = Unit
 
     private fun back() {
         rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
