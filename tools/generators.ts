@@ -329,6 +329,8 @@ export const GENERATORS: Generator[] = [
     inputs: [
       "tools/generators.ts",
       "tools/gen-generators-doc.ts",
+      "tools/gate.mjs",
+      "tools/gate.d.mts",
       "pnpm-workspace.yaml",
       "{packages,sdks}/*/README.md",
       "{conformance,tools,products,examples,docs}/README.md",

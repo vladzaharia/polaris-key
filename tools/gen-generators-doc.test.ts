@@ -15,7 +15,9 @@ import {
   readmeSummary,
   repoMap,
   spliceBlocks,
+  gateTable,
 } from "./gen-generators-doc.js";
+import { STEPS } from "./gate.mjs";
 import { GENERATORS } from "./generators.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -94,5 +96,11 @@ describe("AGENTS.md generated blocks", () => {
     const long = readmeSummary(`# t\n\n${"word ".repeat(40)}end.\n`);
     expect(long.line.length).toBeLessThanOrEqual(101);
     expect(long.line.endsWith("…")).toBe(true);
+  });
+
+  it("lists every gate step, with the full gen form", () => {
+    const table = gateTable();
+    for (const s of STEPS) expect(table).toContain(`| ${s.n} | ${s.id} `);
+    expect(table).toContain("`pnpm gen --check`");
   });
 });

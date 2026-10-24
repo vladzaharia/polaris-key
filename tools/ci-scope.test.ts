@@ -1,6 +1,6 @@
 /**
  * P0-43: the one CI scope (tools/ci-scope.mjs over tools/ci-scope.json). The `changes` job of
- * ci.yml and gate.sh read it, so these tests pin what a change runs (a rename at both of its paths,
+ * ci.yml and `pnpm gate` read it, so these tests pin what a change runs (a rename at both of its paths,
  * a sample or a fixture at the lane that reads it, everything when the changed files cannot be
  * read), that every lane and matrix the workflow names exists here, that the workflow wires each
  * one, that the Swift SDK keeps a build on its oldest toolchain, and that a workflow's path filter
@@ -106,7 +106,7 @@ function repo(files: Record<string, string>) {
   return { dir, git, write, move };
 }
 
-/** `node tools/ci-scope.mjs <args>` run inside `cwd`, the way ci.yml and gate.sh run it. */
+/** `node tools/ci-scope.mjs <args>` run inside `cwd`, the way ci.yml and `pnpm gate` run it. */
 const cli = (cwd: string, ...args: string[]) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: "utf8" });
 

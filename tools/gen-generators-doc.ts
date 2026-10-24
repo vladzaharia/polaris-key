@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
 import { GENERATORS, type Cmd, type Generator } from "./generators.js";
+import { STEPS, type GateContext, type GateStep } from "./gate.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PAGE_PATH =
@@ -188,10 +189,61 @@ export function repoMap(root = ROOT): string {
   return Buffer.byteLength(full) <= REPO_MAP_BUDGET ? full : wrap(rows(false));
 }
 
+/** The scoped and full command of a gate step, with `<base>` and `<files>` standing for the run's values. */
+export function gateCommands(s: GateStep): { scoped: string; full: string } {
+  const ctx: GateContext = {
+    root: ".",
+    mergeBase: "<base>",
+    files: ["<files>"],
+    existing: ["<files>"],
+    full: false,
+  };
+  const show = (argv: string[] | null): string =>
+    argv === null ? "-" : argv.join(" ");
+  const scoped = show(s.argv(ctx));
+  const fullCtx = { ...ctx, full: true };
+  const full = show((s.argvFull ?? s.argv)(fullCtx));
+  const cwd = s.cwd ? `(cd ${s.cwd} && ` : "";
+  const wrap = (c: string): string => (cwd ? `${cwd}${c})` : c);
+  return { scoped: wrap(scoped), full: wrap(full) };
+}
+
+/** The gate's steps as a table, from `STEPS` (tools/gate.mjs). */
+export function gateTable(): string {
+  const { start, end } = markers("gate");
+  const rows = STEPS.map((s) => {
+    const { scoped, full } = gateCommands(s);
+    const when = s.fullOnly
+      ? "`--full` only"
+      : s.lane === null
+        ? "always"
+        : `lane \`${s.lane}\``;
+    const narrowed = !s.fullOnly && scoped !== full;
+    const flags = [
+      narrowed ? "scoped to the diff" : "",
+      s.heavy ? "heavy" : "",
+      s.slot ? "slot" : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return `| ${s.n} | ${s.id} | ${when}${flags ? ` (${flags})` : ""} | \`${full}\` |`;
+  });
+  return [
+    start,
+    "",
+    "| n | id | runs when | command (the `--full` form) |",
+    "| --- | --- | --- | --- |",
+    ...rows,
+    "",
+    end,
+  ].join("\n");
+}
+
 /** Every generated block of AGENTS.md. A new block is one entry here and a marker pair in the file. */
 export const BLOCKS: Block[] = [
   { name: "generators", render: () => agentsTable() },
   { name: "repo-map", render: (root) => repoMap(root) },
+  { name: "gate", render: () => gateTable() },
 ];
 
 /** Splice every block's output between its markers. A missing marker pair throws. */

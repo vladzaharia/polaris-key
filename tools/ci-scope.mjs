@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * The one CI scope (P0-43): which lanes a change needs, and each matrix's pull-request and main
- * shapes, read from tools/ci-scope.json. `.github/workflows/ci.yml`'s `changes` job and the lead's
- * gate.sh both ask this script, so a lane runs for the same files in CI and in the local gate.
+ * shapes, read from tools/ci-scope.json. `.github/workflows/ci.yml`'s `changes` job and `pnpm gate`
+ * (tools/gate.mjs) both ask this script, so a lane runs for the same files in CI and in the local gate.
  *
  *   node tools/ci-scope.mjs ci [--event <name>] [--base <rev>] [--head <rev>] [--github-output]
  *       print (or append to $GITHUB_OUTPUT) `<lane>=true|false` for every lane, `full`, and
