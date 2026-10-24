@@ -162,13 +162,6 @@ internal fun windowsContrastScheme(dark: Boolean): ColorScheme {
     )
 }
 
-/** What the host says about itself, when a host or a test pins it; null reads the desktop (see [rememberThemeHostFacts]). */
-internal val LocalPolarisHostFacts = staticCompositionLocalOf<PolarisHostFacts?> { null }
-
-/** The host facts the theme reads: the desktop's real reads on the desktop, the defaults on Android. */
-@Composable
-internal expect fun rememberThemeHostFacts(): PolarisHostFacts
-
 // ── The focus ring ──────────────────────────────────────────────────────────────────────────────
 
 /**

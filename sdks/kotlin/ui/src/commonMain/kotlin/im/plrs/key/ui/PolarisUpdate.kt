@@ -48,7 +48,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -202,7 +201,7 @@ private fun PolarisUpdatePromptCard(
         // A bottom sheet rounds its top edge only (radius 28); a card rounds all four.
         shape = if (gnome) polarisRadiusShape(PolarisGnome.dialogRadius) else if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
         // One step lower than the tonal Later button's container, so Later stays visible.
-        color = if (gnome) scheme.surface else scheme.surfaceContainerLow,
+        color = if (gnome) polarisGnomeDialogColor() else scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
         tonalElevation = if (gnome) 0.dp else 6.dp,
     ) {
@@ -405,7 +404,8 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
     Dialog(
         onDismissRequest = { if (!ui.mandatory) onLater() },
         // The sheet and the card span the window: the dialog's own width would cap them.
-        properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory, usePlatformDefaultWidth = false),
+        // A Windows or GNOME dialog carries its own dim and the Mac sheet none; the window's 60 % black must not stack on it.
+        properties = polarisPromptDialogProperties(dismissible = !ui.mandatory, scrim = dialogWindowDraws(autoPlatformVariant())),
     ) {
         PolarisDialogDim(if (dark) 0.6f else 0.32f)
         PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)

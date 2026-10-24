@@ -617,6 +617,9 @@ public fun PolarisBody(text: String, modifier: Modifier = Modifier, textAlign: T
     )
 }
 
+/** Whether a screen's first control takes focus as it opens; a test or a board render turns it off to draw a frame at rest. */
+internal val LocalPolarisInitialFocus = androidx.compose.runtime.staticCompositionLocalOf { true }
+
 /**
  * The kit's focus indication (UI-KITS.md §1.5 rule 7, §3.3): a ring in the accent's focus colour,
  * 2 dp wide at a 2 dp offset (3 dp on TV), shown on keyboard focus and always on TV, where a
@@ -639,7 +642,7 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
     val requester = remember { FocusRequester() }
     // The first focus goes in once the control is placed (a request before that has nothing to land on).
     var placed by remember { mutableStateOf(false) }
-    if (initialFocus && placed) {
+    if (initialFocus && placed && LocalPolarisInitialFocus.current) {
         LaunchedEffect(Unit) {
             if (window.tv || keyboard || window.variant.isDesktop) runCatching { requester.requestFocus() }
         }

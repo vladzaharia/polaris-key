@@ -198,8 +198,10 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  * @param logo the product's icon: the hero of the welcome, beside the product name on focused
  *   steps, on the update prompt. Null (the default) draws a monogram tile of the product's
  *   initial (when the copy names the product) in either preset; never a Polaris Key mark.
- * @param darkTheme the branded palette's theme; follows the system. Neutral, the host's
- *   MaterialTheme decides and this only picks the dark or light badge artwork.
+ * @param darkTheme the branded palette's theme; follows the system (on Windows and GNOME, the host
+ *   facts read once before the first frame). Neutral, the host's MaterialTheme decides and this only
+ *   picks the dark or light badge artwork, except on Windows and GNOME, where the native preset draws
+ *   the platform's own neutral layers in this theme.
  * @param accent the product's colour. Null (the default) keeps the host's primary neutral and uses ink
  *   (the strongest text colour) branded, never the core violet; a colour replaces the primary roles in
  *   either mode, resolved for contrast against the surfaces it sits on (the host's, neutral).
@@ -228,7 +230,7 @@ public fun PolarisTheme(
     content: @Composable () -> Unit,
 ) {
     // GNOME: the portal's accent-color is the native preset's accent (UK-10.6); null elsewhere and for an integrator's own.
-    val hostAccent = if (branding == PolarisBranding.None && accent == null) gnomeHostAccent() else null
+    val hostAccent = if (branding == PolarisBranding.None && accent == null) themeHostAccent() else null
     val member = rememberPresentation(presentation)
     // The icon is fetched only for what it fills: the logo, or a branded accent nothing else gives.
     val wantsArt = logo == null || (branding == PolarisBranding.PolarisKey && accent == null && member?.accentFor(darkTheme) == null)
@@ -263,14 +265,27 @@ private fun PolarisThemeResolved(
 ) {
     when (branding) {
         PolarisBranding.None -> {
-            val host = MaterialTheme.colorScheme
-            val dark = remember(host.background) { host.background.luminance() < 0.5f }
+            // Windows and GNOME: the native preset is the platform's own neutral layers (mica and layer,
+            // libadwaita's page and card), light or dark as the host says. Elsewhere it is the host's scheme.
+            val variant = autoPlatformVariant()
+            val platform = followsHostFacts(variant)
+            val contrast = variant == PolarisPlatformVariant.Windows && rememberThemeHostFacts()?.highContrast == true
+            val host = when {
+                contrast -> windowsContrastScheme(darkTheme)
+                platform -> platformNeutralScheme(variant, darkTheme)
+                else -> MaterialTheme.colorScheme
+            }
+            val dark = if (platform) darkTheme else remember(host.background) { host.background.luminance() < 0.5f }
             // The accent is resolved against the host's own grounds, so it keeps 3:1 (fills) and
             // 4.5:1 (text) on them, not on the brand's.
             val resolved = remember(accent, dark, host) {
-                accent?.let {
-                    val grounds = listOf(host.background, host.surface, host.surfaceContainerLow, host.surfaceContainerHigh, host.surfaceContainerHighest)
-                    PolarisAccent.resolve(it.toHex(), dark, grounds.map { g -> g.toHex() })
+                if (contrast) {
+                    null
+                } else {
+                    accent?.let {
+                        val grounds = listOf(host.background, host.surface, host.surfaceContainerLow, host.surfaceContainerHigh, host.surfaceContainerHighest)
+                        PolarisAccent.resolve(it.toHex(), dark, grounds.map { g -> g.toHex() })
+                    }
                 }
             }
             val scheme = remember(host, resolved) { resolved?.let { host.withAccent(it) } ?: host }
@@ -288,7 +303,7 @@ private fun PolarisThemeResolved(
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
             )
-            if (resolved == null) {
+            if (resolved == null && !platform) {
                 // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
             } else {
@@ -301,7 +316,7 @@ private fun PolarisThemeResolved(
             val resolved = remember(accent, darkTheme) { accent?.let { PolarisAccent.resolve(it.toHex(), darkTheme) } }
             // Windows (UK-10.5): a contrast theme draws the system colours, whatever the product accent.
             val fluent = autoPlatformVariant() == PolarisPlatformVariant.Windows
-            val contrast = fluent && rememberThemeHostFacts().highContrast
+            val contrast = fluent && rememberThemeHostFacts()?.highContrast == true
             val scheme = remember(darkTheme, resolved, contrast) {
                 if (contrast) {
                     windowsContrastScheme(darkTheme)
@@ -522,6 +537,40 @@ public fun polarisBrandColorScheme(dark: Boolean): ColorScheme {
             surfaceContainerHigh = t.surfaceSunken, surfaceContainerHighest = t.surfaceSunken,
         )
     }
+}
+
+/** An opaque colour from 0xRRGGBB (the platform neutrals below). */
+private fun neutral(rgb: Long): Color = Color(0xFF000000L or rgb) // polaris-lint: allow-colour (the platform neutrals)
+
+/**
+ * The native preset's scheme on Windows and GNOME: the platform's neutral layers, not the brand's
+ * surfaces. Windows 11 mica 202227 with the layer 2b2d33 (dark), eef1f4 and f9f9fb (light);
+ * libadwaita's page 222226 with the card 2e2e32 (dark), fafafb and ffffff (light). An
+ * overlay (a dialog) sits on the layer or card, never on the page. Primary is ink until an accent
+ * (the host's, the product's) replaces it.
+ */
+internal fun platformNeutralScheme(variant: PolarisPlatformVariant, dark: Boolean): ColorScheme {
+    val gnome = variant == PolarisPlatformVariant.Gnome
+    val page = neutral(if (dark) (if (gnome) 0x222226 else 0x202227) else (if (gnome) 0xFAFAFB else 0xEEF1F4))
+    val layer = neutral(if (dark) (if (gnome) 0x2E2E32 else 0x2B2D33) else (if (gnome) 0xFFFFFF else 0xF9F9FB))
+    val raised = neutral(if (dark) (if (gnome) 0x3A3A3F else 0x363941) else (if (gnome) 0xEBEBED else 0xFFFFFF))
+    val text = neutral(if (dark) 0xFFFFFF else (if (gnome) 0x2E2E32 else 0x1A1A1A))
+    val muted = neutral(if (dark) 0xC4C6CC else 0x5C5F66)
+    val edge = neutral(if (dark) 0x45464D else 0xD0D3D9)
+    val danger = neutral(if (dark) 0xFF7B63 else 0xC01C28)
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = text, onPrimary = page, primaryContainer = raised, onPrimaryContainer = text,
+        secondary = muted, onSecondary = page, secondaryContainer = raised, onSecondaryContainer = text,
+        background = page, onBackground = text,
+        surface = page, onSurface = text, surfaceVariant = layer, onSurfaceVariant = muted,
+        surfaceTint = Color.Transparent,
+        error = danger, onError = page,
+        outline = muted, outlineVariant = edge,
+        surfaceBright = layer, surfaceDim = page,
+        surfaceContainerLowest = page, surfaceContainerLow = layer, surfaceContainer = layer,
+        surfaceContainerHigh = layer, surfaceContainerHighest = raised,
+    )
 }
 
 /** The Windows controls' shape: radius 4 (`PolarisKitTokens.Windows`). */

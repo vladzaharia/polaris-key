@@ -28,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -104,6 +103,14 @@ internal fun Modifier.polarisGnomeDialogChrome(): Modifier {
         .then(edge)
 }
 
+/**
+ * An AdwDialog's colour: the page in light, the raised card tone in dark (a dark dialog on the page
+ * colour has no edge to read against, and it draws none), one step under the tonal buttons on it.
+ */
+@Composable
+internal fun polarisGnomeDialogColor(): Color =
+    MaterialTheme.colorScheme.let { if (PolarisTheme.current.dark) it.surfaceContainerLow else it.surface }
+
 /** The scrim behind an AdwDialog: the host window dims, it does not blur. */
 @Composable
 internal fun Modifier.polarisGnomeScrim(): Modifier =
@@ -127,7 +134,7 @@ internal fun PolarisAlertCard(title: String, body: String?, responses: List<Pola
     Surface(
         modifier = modifier.widthIn(max = PolarisGnome.alertWidth).fillMaxWidth().polarisGnomeDialogChrome(),
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        color = polarisGnomeDialogColor(),
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(Modifier.padding(PolarisGnome.pad), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -222,28 +229,3 @@ internal fun PolarisReplaceAlertOverlay(device: String, thisDevice: String, prod
         }
     }
 }
-
-// ── Host facts in the theme (GNOME) ─────────────────────────────────────────────────────────────
-
-/** Host facts a caller (a test, a host that already knows them) provides instead of asking the desktop. */
-internal val LocalPolarisHostFacts = staticCompositionLocalOf<PolarisHostFacts?> { null }
-
-/** The desktop's own facts (read once per process, off the UI thread); null on Android and until the read ends. */
-@Composable
-internal expect fun rememberDesktopHostFacts(): PolarisHostFacts?
-
-/** The facts the GNOME chrome follows: provided, else the portal's; null for every other variant. */
-@Composable
-internal fun rememberGnomeHostFacts(): PolarisHostFacts? {
-    val provided = LocalPolarisHostFacts.current
-    if (provided != null) return provided
-    return if (autoPlatformVariant() == PolarisPlatformVariant.Gnome) rememberDesktopHostFacts() else null
-}
-
-/** Dark when the host says so (GNOME's portal `color-scheme`), else the system's own answer. */
-@Composable
-internal fun polarisSystemDark(): Boolean = rememberGnomeHostFacts()?.dark ?: androidx.compose.foundation.isSystemInDarkTheme()
-
-/** The system accent (portal `accent-color`) as an opaque colour, or null when there is none. */
-@Composable
-internal fun gnomeHostAccent(): Color? = rememberGnomeHostFacts()?.accent?.let { Color(0xFF000000L or (it.toLong() and 0xFFFFFFL)) } // polaris-lint: allow-colour (the OS accent, opaque)

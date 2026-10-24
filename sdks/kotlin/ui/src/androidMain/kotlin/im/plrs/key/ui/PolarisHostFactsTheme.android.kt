@@ -1,4 +1,4 @@
-// The Android actual of the GNOME host facts (UK-10.6): there are none; the theme follows the system.
+// The Android actual of the host-facts seam: there are none; the theme follows the system.
 
 package im.plrs.key.ui
 
