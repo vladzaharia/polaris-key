@@ -104,11 +104,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `value` (planned: SP-35b) | `value` (planned: U-07) | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `source` (planned: SP-35b) | planned (U-07) | `config.setting.source` | `config.resolve` |
-| `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `enforced` (planned: SP-35) | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
-| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35) | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
+| `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `config.setting.locked` | `isLocked` (planned: SP-35b) | planned (U-07) | `config.setting.locked` | `config.resolve` |
+| `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | planned (SP-35b) | planned (U-07) | planned (SP-35b) | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
-| `config.setting.on` | `config.setting.on` | — | `subscribe` (planned: SP-35) | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | — | `config.setting.on` | `onChange` (planned: SP-35b) | planned (U-07) | `changed` | `config.resolve` |
 | `config.setting.sync` | reserved for U-06 | | | | | | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | — | — | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | — | — | — |
@@ -320,3 +320,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Node | `ConfigSetting.get` | `config.setting.value` | SP-35 |
 | Node | `ConfigSetting.source()` | `config.setting.source` | SP-35 |
 | Node | `ConfigSetting.locked()` | `config.setting.locked` | SP-35 |
+| Python | `config.setting.enforced` | `config.setting.locked` | SP-35 |
+| Python | `config.setting.subscribe` | `config.setting.on` | SP-35 |
+| Python | `config.setting(key, fallback)` | `config.get` | SP-35 |

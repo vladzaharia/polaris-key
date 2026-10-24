@@ -1764,10 +1764,7 @@
       "feature": "config.resolve",
       "sdks": {
         "node": {},
-        "python": {
-          "spelling": "enforced",
-          "planned": "SP-35"
-        },
+        "python": {},
         "react": {},
         "swift": {
           "spelling": "isLocked",
@@ -1788,10 +1785,7 @@
       "enum": "settingVisibility",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "SP-35",
-          "reason": "absent today; SP-35 adds it"
-        },
+        "python": {},
         "react": {},
         "swift": {
           "planned": "SP-35b",
@@ -1857,10 +1851,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "spelling": "subscribe",
-          "planned": "SP-35"
-        },
+        "python": {},
         "swift": {
           "spelling": "onChange",
           "planned": "SP-35b"
@@ -3845,6 +3836,33 @@
       "package": "SP-35",
       "scan": {
         "pattern": "\\b(?:setting|theme|volume)\\w*\\.locked\\(\\)"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.enforced",
+      "to": "config.setting.locked",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.enforced\\b"
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting.subscribe",
+      "to": "config.setting.on",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\bsetting(?:\\([^)]*\\))?\\.subscribe\\s*\\("
+      }
+    },
+    {
+      "sdk": "python",
+      "from": "config.setting(key, fallback)",
+      "to": "config.get",
+      "package": "SP-35",
+      "scan": {
+        "pattern": "\\.config\\.setting\\(\\s*[^),\\s][^),]*,"
       }
     }
   ]
