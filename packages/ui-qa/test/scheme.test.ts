@@ -1,4 +1,5 @@
 // `--scheme` renders an --html page under each prefers-color-scheme (lintTargets' `scheme`).
+import { existsSync } from "node:fs";
 import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
 import { lintTargets, type PageTarget } from "../src/run.ts";
@@ -10,8 +11,11 @@ const url = page(
   `console.error(matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")`,
 );
 
+// The JS job installs no browser; the ui-kits job (which has Chromium) runs it.
+const hasChromium = existsSync(chromium.executablePath());
+
 describe("lintTargets scheme", () => {
-  it("emulates each colour scheme", async () => {
+  it.skipIf(!hasChromium)("emulates each colour scheme", async () => {
     const browser = await chromium.launch();
     try {
       const targets: PageTarget[] = (["light", "dark"] as const).map((s) => ({
