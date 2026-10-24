@@ -427,6 +427,64 @@
         "type": "PresentationSource",
         "file": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Presentation.kt"
       }
+    ],
+    "godot": [
+      {
+        "ns": "client",
+        "file": "sdks/godot/addons/polaris_key/polaris_key.gd"
+      },
+      {
+        "ns": "config",
+        "file": "sdks/godot/addons/polaris_key/services/config.gd"
+      },
+      {
+        "ns": "config",
+        "file": "sdks/godot/addons/polaris_key/services/config/setting.gd"
+      },
+      {
+        "ns": "license",
+        "file": "sdks/godot/addons/polaris_key/services/license.gd"
+      },
+      {
+        "ns": "identity",
+        "file": "sdks/godot/addons/polaris_key/services/identity.gd"
+      },
+      {
+        "ns": "devices",
+        "file": "sdks/godot/addons/polaris_key/services/devices.gd"
+      },
+      {
+        "ns": "release",
+        "file": "sdks/godot/addons/polaris_key/services/release.gd"
+      },
+      {
+        "ns": "distribution",
+        "file": "sdks/godot/addons/polaris_key/services/distribution.gd"
+      },
+      {
+        "ns": "update",
+        "file": "sdks/godot/addons/polaris_key/services/update.gd"
+      },
+      {
+        "ns": "commerce",
+        "file": "sdks/godot/addons/polaris_key/services/commerce.gd"
+      },
+      {
+        "ns": "backend",
+        "file": "sdks/godot/addons/polaris_key/services/backend.gd"
+      },
+      {
+        "ns": "packs",
+        "file": "sdks/godot/addons/polaris_key/services/packs.gd"
+      },
+      {
+        "ns": "store",
+        "file": "sdks/godot/addons/polaris_key/core/store/store.gd"
+      },
+      {
+        "ns": "presentation",
+        "file": "sdks/godot/addons/polaris_key/core/presentation.gd"
+      }
     ]
   },
   "ignore": [
@@ -1701,6 +1759,411 @@
       "sdk": "kotlin",
       "path": "client.updateEvents",
       "reason": "the update event journal the update flows write; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.attach",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.set_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.is_default_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.get_override_store",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "config.set_compiled_catalog",
+      "reason": "internal wiring or the override-store hook the host sets; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.install",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.license_user_of",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "license.unverified",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.default_device_name",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.poll_delay",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.install",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.request_registration",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.snapshot",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.report",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "devices.attest_outlet_detail",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.builds_url",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "release.download_artifact",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "distribution.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "distribution.page_platform",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.channel_path",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.adapter",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.plan",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.run_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.note_boot_outcome",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.installed_build",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.feed_url_for",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.canonical_channel",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.outlet",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "update.detected",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.product_for",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.steam_ticket",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "commerce.hidden_on",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.normalize_origin",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "backend.action",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.configured",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.prefs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.read_stamp",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.feed_menu",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.remember_feed_content",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.stamp_named_packs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.ensure_releases",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.content_input",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.record_revocations",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pack_set_id",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.recover_state",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.pending_for_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.roll_back_for_guard",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.boot_options",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.prefetch_packs",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.boot_fetch",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "packs.after_first_frame",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.get_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.set_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.clear_token",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.get_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.has_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.bindable",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.set_device_id",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.read_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.write_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.clear_cache",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.status",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.failed",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.attach",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.accept",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.redirect_rule",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.decode",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.decode_image",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.within_budget",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.inspect",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.prune",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.named",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.cached_files",
+      "reason": "wiring the boot and update flows call; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "presentation.same",
+      "reason": "wiring the boot and update flows call; not an app verb"
     }
   ],
   "concepts": [
@@ -2508,7 +2971,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2545,7 +3009,8 @@
           "shape": "property",
           "reason": "a stored property in Swift"
         },
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2556,7 +3021,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2627,7 +3093,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2638,7 +3105,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2649,7 +3117,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2660,7 +3129,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2677,7 +3147,8 @@
         "kotlin": {
           "spelling": "syncState",
           "planned": "SP-35b"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2693,7 +3164,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2704,7 +3176,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2715,7 +3188,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2726,7 +3200,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2737,7 +3212,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2819,7 +3295,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2830,7 +3307,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2841,7 +3319,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2850,7 +3329,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "swift": {}
+        "swift": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2861,7 +3341,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2883,7 +3364,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2900,7 +3382,8 @@
         "kotlin": {
           "spelling": "profile",
           "planned": "SP-35b"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2917,7 +3400,8 @@
         "kotlin": {
           "spelling": "licenseId",
           "planned": "SP-35b"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2928,7 +3412,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2939,7 +3424,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2949,7 +3435,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2970,7 +3457,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2981,7 +3469,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2992,7 +3481,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3003,7 +3493,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3013,7 +3504,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3024,7 +3516,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3035,7 +3528,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3046,7 +3540,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3060,7 +3555,8 @@
           "spelling": "update.fetch",
           "reason": "the verified build download lives on UpdateClient in Swift"
         },
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3076,7 +3572,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3090,7 +3587,8 @@
           "spelling": "installURL",
           "planned": "SP-35b"
         },
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3104,7 +3602,8 @@
           "spelling": "downloadURL",
           "planned": "SP-35b"
         },
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3120,6 +3619,11 @@
           "spelling": "offers",
           "shape": "flow",
           "reason": "Kotlin observes a SharedFlow"
+        },
+        "godot": {
+          "spelling": "update_available",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"
@@ -3142,7 +3646,11 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "apply",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -3158,7 +3666,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3168,7 +3677,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3179,7 +3689,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3195,7 +3706,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3205,7 +3717,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3216,7 +3729,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3274,7 +3788,8 @@
         "swift": {
           "spelling": "client.confirmBoot",
           "reason": "a client method in Swift (ClientUpdate.swift)"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3298,7 +3813,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3309,7 +3825,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3320,7 +3837,11 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "get_binding",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -3331,7 +3852,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3342,7 +3864,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3353,7 +3876,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3364,7 +3888,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3375,7 +3900,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3386,7 +3912,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3397,7 +3924,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3408,7 +3936,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3430,7 +3959,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3441,7 +3971,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3452,7 +3983,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3463,7 +3995,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3474,7 +4007,12 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
       },
       "layer": "client"
     },
@@ -3496,7 +4034,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3569,7 +4108,11 @@
       "sdks": {
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "devices.get_current_device",
+          "planned": "SP-35b"
+        }
       },
       "layer": "client"
     },
@@ -3595,7 +4138,8 @@
         "kotlin": {
           "spelling": "licenseUser",
           "planned": "SP-35b"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3604,7 +4148,8 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {}
+        "swift": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3612,11 +4157,9 @@
       "id": "commerce.hiddenHere",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        },
-        "kotlin": {}
+        "python": {},
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3624,11 +4167,9 @@
       "id": "commerce.isUnlocked",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        },
-        "kotlin": {}
+        "python": {},
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3636,10 +4177,8 @@
       "id": "presentation.loadCached",
       "kind": "method",
       "sdks": {
-        "python": {
-          "sdkOnly": true,
-          "reason": "Python-only today (SP-35.10 inventory); another SDK that ships it promotes the row"
-        }
+        "python": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3666,7 +4205,8 @@
           "reason": "a hook returns a render value"
         },
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3677,7 +4217,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3688,7 +4229,8 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3857,7 +4399,8 @@
       "kind": "method",
       "sdks": {
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4058,7 +4601,8 @@
       "kind": "method",
       "sdks": {
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4101,7 +4645,8 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4112,7 +4657,8 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4153,9 +4699,11 @@
       "id": "packs.progress",
       "kind": "method",
       "sdks": {
-        "swift": {
-          "sdkOnly": true,
-          "reason": "Swift-only today (SP-35.11 inventory); another SDK that ships it promotes the row"
+        "swift": {},
+        "godot": {
+          "spelling": "pack_progress",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"
@@ -4229,9 +4777,10 @@
       "id": "client.setChannel",
       "kind": "method",
       "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
+        "kotlin": {},
+        "godot": {
+          "spelling": "update.set_channel",
+          "reason": "a method on the update service in Godot"
         }
       },
       "layer": "client"
@@ -4295,10 +4844,8 @@
       "id": "config.catalog",
       "kind": "property",
       "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4306,10 +4853,8 @@
       "id": "backend.origins",
       "kind": "property",
       "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4317,10 +4862,8 @@
       "id": "backend.headers",
       "kind": "method",
       "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4383,10 +4926,8 @@
       "id": "packs.estimate",
       "kind": "method",
       "sdks": {
-        "kotlin": {
-          "sdkOnly": true,
-          "reason": "Kotlin-only today (SP-35.12 inventory); another SDK that ships it promotes the row"
-        }
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4397,6 +4938,596 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Kotlin-only host bootstrap (SP-35.12 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.useFriendlyDeviceName",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.buildInfo",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.toasts",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.isInputCaptured",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.captureInput",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.enabled",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.catalogEntry",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.refresh",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.bindProperty",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.mintAvailable",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.clearMinted",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "config.setting.isLocal",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isAvailable",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isSigningIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.cancel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.openInBrowser",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.copyLink",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signedInIdentity",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.requestSignIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "devices.fingerprint",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.restartToUpdate",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.dropStaged",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.getChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.preferredChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelLock",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.clearChannel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.currentStore",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.watchAppStoreUpdates",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.request",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "backend.headersFor",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.start",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.mount",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.background",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "presentation.iconTo",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.stateChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.syncFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.storeError",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.bootFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.verifyProgress",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.inputCaptured",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.uiSound",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "client.inPlayChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInPending",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInConfirm",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInFinished",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.updateStaged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.downloadProgress",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "update.channelChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "commerce.appStoreUpdateClaimed",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packReady",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.packFailed",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "packs.setChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
         }
       },
       "layer": "client"
