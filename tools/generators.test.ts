@@ -190,6 +190,14 @@ describe("pnpm gen selection", () => {
     ]);
   });
 
+  it("--base is its own flag and --changed diffs from it", () => {
+    const o = parseArgs(["--changed", "--check", "--base", "integ/next-stage"]);
+    expect(o).toMatchObject({ changed: true, base: "integ/next-stage" });
+    expect(o.forward).toEqual([]);
+    expect(parseArgs([]).base).toBeUndefined();
+    expect(() => parseArgs(["--base"])).toThrow(/needs a revision/);
+  });
+
   it("--changed selects the families whose inputs or outputs changed", () => {
     const ids = (files: string[]) =>
       select(parseArgs(["--changed"]), () => files).map((g) => g.id);
