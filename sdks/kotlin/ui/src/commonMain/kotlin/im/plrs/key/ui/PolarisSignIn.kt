@@ -260,6 +260,11 @@ private fun PolarisCodeView(
                 deviceLine()
             } else {
                 PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
+                if (autoPlatformVariant() == PolarisPlatformVariant.Android && !polarisWindow.compactHeight) {
+                    // Android: the screen is waiting on the person; an indeterminate indicator says so (the draining ring alone reads as a radio button).
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisWaitingLine(copy.signInWaiting)
+                }
                 countdown()
                 deviceLine()
             }
@@ -454,6 +459,21 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
             tint = PolarisTheme.accentText,
             modifier = Modifier.size(20.dp),
         )
+    }
+}
+
+/** "Waiting for you to finish signing in…" beside a small indeterminate indicator, announced politely. */
+@Composable
+internal fun PolarisWaitingLine(label: String) {
+    Row(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalAlignment = Alignment.CenterVertically) {
+        // The busy ring of a label (rule 4's small ring beside text), not a stock spinner on its own.
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        )
+        Spacer(Modifier.width(PolarisSpace.tight))
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

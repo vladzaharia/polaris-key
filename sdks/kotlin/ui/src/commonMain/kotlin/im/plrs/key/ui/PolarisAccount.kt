@@ -19,6 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +51,9 @@ import kotlinx.serialization.json.JsonElement
 /** What the account list opens. */
 internal enum class AccountItem { Settings, Channel, Devices }
 
+/** The gap between the rows of a connected group. */
+private val ConnectedGap = 2.dp
+
 /** The list pane's width on a tablet (the board's 412 dp). */
 private val ListPaneWidth = 412.dp
 
@@ -61,6 +69,8 @@ public fun PolarisAccount(
     modifier: Modifier = Modifier,
     entitlementLabel: (String) -> String? = { null },
     navigationIcon: (@Composable () -> Unit)? = null,
+    onManageLicense: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
 ) {
     val settingsUi by settings.ui.collectAsState()
     val devicesUi by devices.ui.collectAsState()
@@ -72,6 +82,8 @@ public fun PolarisAccount(
         modifier = modifier,
         entitlementLabel = entitlementLabel,
         navigationIcon = navigationIcon,
+        onManageLicense = onManageLicense,
+        onSignOut = onSignOut,
         onRetrySettings = settings::load,
         onSet = settings::set,
         onReset = settings::reset,
@@ -91,6 +103,8 @@ public fun PolarisAccountScreen(
     modifier: Modifier = Modifier,
     entitlementLabel: (String) -> String? = { null },
     navigationIcon: (@Composable () -> Unit)? = null,
+    onManageLicense: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
     onRetrySettings: () -> Unit = {},
     onSet: ((String, JsonElement) -> Unit)? = null,
     onReset: ((String) -> Unit)? = null,
@@ -116,29 +130,56 @@ public fun PolarisAccountScreen(
         val open = item ?: if (split) AccountItem.Settings else null
         val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
         val detailTitle = detailPaneTitle(open, copy, channelTitle)
+        val manageLabel = KitCopy.bundled.format("menu.manageLicense", kitLocale())
+        val signOutLabel = KitCopy.bundled.format("common.signOut", kitLocale())
         val list: @Composable () -> Unit = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.group)) {
                 navigationIcon?.let {
                     it()
                     Spacer(Modifier.height(PolarisSpace.tight))
                 }
-                PolarisProductHeader()
                 CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) { PolarisTitle(accountTitle) }
                 Spacer(Modifier.height(window.section))
-                Column(verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight)) {
+                AccountHeaderCard(settingsUi.license)
+                Spacer(Modifier.height(PolarisSpace.controls))
+                // One connected group: the outer corners round, the inner ones square, a 2 dp gap between.
+                val rows = buildList<@Composable (Shape) -> Unit> {
                     for (entry in entries) {
-                        AccountListItem(
-                            title = if (entry == AccountItem.Settings) copy.settingsTitle else if (entry == AccountItem.Channel) channelRowTitle else copy.devicesTitle,
-                            supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
-                            selected = split && open == entry,
-                            onClick = { chosen = entry.name },
-                        )
+                        add { shape ->
+                            AccountListItem(
+                                title = if (entry == AccountItem.Settings) copy.settingsTitle else if (entry == AccountItem.Channel) channelRowTitle else copy.devicesTitle,
+                                supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
+                                icon = if (entry == AccountItem.Settings) PolarisSymbols.Tune else if (entry == AccountItem.Channel) PolarisSymbols.Refresh else PolarisSymbols.Devices,
+                                chevron = !split,
+                                selected = split && open == entry,
+                                shape = shape,
+                                onClick = { chosen = entry.name },
+                            )
+                        }
                     }
+                    if (onManageLicense != null) add { shape -> AccountListItem(manageLabel, null, PolarisSymbols.OpenInNew, chevron = false, selected = false, shape = shape, onClick = onManageLicense) }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(ConnectedGap)) {
+                    rows.forEachIndexed { i, row -> row(polarisConnectedShape(i, rows.size, PolarisTheme.cardShape)) }
+                }
+                if (onSignOut != null) {
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    AccountListItem(signOutLabel, null, PolarisSymbols.Logout, chevron = false, selected = false, shape = PolarisTheme.cardShape, tint = PolarisTheme.status.danger, onClick = onSignOut)
                 }
             }
         }
         val detail: @Composable () -> Unit = {
-            CompositionLocalProvider(LocalPolarisEmbedded provides true, LocalPolarisArtInPane provides true) {
+            // A phone's item is the whole screen: it keeps the window's margin, and a kit Back above the title when the host has one.
+            val itemBack: (@Composable () -> Unit)? = if (!split && navigationIcon != null) {
+                { PolarisBackArrow { chosen = null } }
+            } else {
+                null
+            }
+            CompositionLocalProvider(
+                LocalPolarisEmbedded provides true,
+                LocalPolarisArtInPane provides true,
+                LocalPolarisEmbeddedInset provides (if (split) PolarisSpace.gutter else window.horizontalPadding),
+            ) {
                 when (open) {
                     AccountItem.Settings -> PolarisSettingsScreen(
                         // The channel has its own row, so its picker and its refusal leave this pane.
@@ -151,14 +192,16 @@ public fun PolarisAccountScreen(
                         onSet = onSet,
                         onReset = onReset,
                         onChannel = onChannel,
+                        navigationIcon = itemBack,
                     )
-                    AccountItem.Channel -> ChannelPane(channelUi, onChannel, channelError)
+                    AccountItem.Channel -> ChannelPane(channelUi, onChannel, channelError, itemBack)
                     AccountItem.Devices -> PolarisDevicesScreen(
                         devicesUi,
                         onRename = onRename,
                         onDeauthorize = onDeauthorize,
                         onRetry = onRetryDevices,
                         onDismissError = onDismissDeviceError,
+                        navigationIcon = itemBack,
                     )
                     null -> Unit
                 }
@@ -180,8 +223,9 @@ public fun PolarisAccountScreen(
                 ) { detail() }
             }
         } else {
-            Box(Modifier.fillMaxSize().then(back).padding(horizontal = window.horizontalPadding)) {
-                if (open == null) list() else detail()
+            // The list is capped at 560 dp (a phone in landscape); an item pane insets itself.
+            Box(Modifier.fillMaxSize().then(back).then(if (open == null) Modifier.padding(horizontal = window.horizontalPadding) else Modifier)) {
+                if (open == null) Box(Modifier.widthIn(max = 560.dp)) { list() } else detail()
             }
         }
     }
@@ -192,19 +236,65 @@ private fun detailPaneTitle(open: AccountItem?, copy: PolarisCopy, channelTitle:
 
 /** The channel row's end pane: the picker alone, scrolling with the pane. */
 @Composable
-private fun ChannelPane(channel: PolarisChannelUi?, onChannel: ((String) -> Unit)?, error: String?) {
+private fun ChannelPane(channel: PolarisChannelUi?, onChannel: ((String) -> Unit)?, error: String?, navigationIcon: (@Composable () -> Unit)?) {
     if (channel == null) return
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PolarisSpace.group)) {
+    // The same inset as the Settings and Devices panes beside it.
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = LocalPolarisEmbeddedInset.current, vertical = polarisWindow.section)) {
+        navigationIcon?.let {
+            it()
+            Spacer(Modifier.height(PolarisSpace.tight))
+        }
         PolarisChannelPicker(channel, onSelect = onChannel, error = error)
     }
 }
 
-/** One row of the account list: a 56 dp target, the chosen one on the accent's subtle fill. */
+/** The account's header card: the product's icon and name, the licence status and its holder. */
 @Composable
-private fun AccountListItem(title: String, supporting: String?, selected: Boolean, onClick: () -> Unit) {
-    val shape = PolarisTheme.cardShape
+private fun AccountHeaderCard(license: PolarisLicenseSummary?) {
+    val copy = PolarisTheme.copy
+    val name = productName(copy)
+    if (name == null && license == null) return
+    val support = listOfNotNull(license?.let { copy.entitlementLabel(it.status) }, license?.holder?.takeIf { it.isNotBlank() }).joinToString(" \u2022 ")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(PolarisTheme.cardShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(PolarisSpace.group)
+            .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PolarisProductIcon(64.dp, name = name)
+        Column(Modifier.weight(1f)) {
+            if (name != null) Text(name, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (support.isNotEmpty()) Text(support, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** The kit's Back above an item pane: returns to the account list. */
+@Composable
+internal fun PolarisBackArrow(onBack: () -> Unit) {
+    PolarisIconButton(onClick = onBack) {
+        Icon(PolarisSymbols.ArrowBack, contentDescription = KitCopy.bundled.format("common.back", kitLocale()), tint = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/** One row of the account list: a 64 dp target with its icon, the chosen one on the accent's subtle fill. */
+@Composable
+private fun AccountListItem(
+    title: String,
+    supporting: String?,
+    icon: ImageVector,
+    chevron: Boolean,
+    selected: Boolean,
+    shape: Shape,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+) {
     val fill = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .clip(shape)
@@ -213,11 +303,16 @@ private fun AccountListItem(title: String, supporting: String?, selected: Boolea
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { this.selected = selected }
             .padding(horizontal = PolarisSpace.group, vertical = PolarisSpace.controls),
-        verticalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-        if (supporting != null) {
-            Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, contentDescription = null, tint = if (tint == MaterialTheme.colorScheme.onSurface) MaterialTheme.colorScheme.onSurfaceVariant else tint, modifier = Modifier.size(24.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = tint)
+            if (supporting != null) {
+                Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+        if (chevron) Icon(PolarisSymbols.ChevronEnd, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
     }
 }

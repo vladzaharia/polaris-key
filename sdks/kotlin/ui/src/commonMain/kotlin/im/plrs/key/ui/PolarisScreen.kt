@@ -258,7 +258,7 @@ internal fun PolarisScaffold(
             // The detail pane of a list-detail screen: one start-aligned column that scrolls on its own.
             CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) {
                 Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = PolarisSpace.gutter, vertical = window.section),
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = LocalPolarisEmbeddedInset.current, vertical = window.section),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     navigationIcon?.let {
@@ -382,6 +382,9 @@ internal fun PolarisScaffold(
         }
     }
 }
+
+/** The side inset of an embedded pane: the pane gutter beside a list, the window's own margin when the item is the whole phone screen. */
+internal val LocalPolarisEmbeddedInset = staticCompositionLocalOf { PolarisSpace.gutter }
 
 /** True inside a list-detail pane: screens draw as a plain column, without their own surface, insets or product header. */
 internal val LocalPolarisEmbedded = staticCompositionLocalOf { false }
@@ -723,6 +726,8 @@ public fun PolarisPrimaryButton(
     initialFocus: Boolean = false,
     /** The action leaves the app (rule 11): the new-window glyph follows the label. */
     external: Boolean = false,
+    /** A destructive confirm (Remove): the error tone instead of the accent. */
+    danger: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = polarisActionShape(suggested = true)
@@ -737,6 +742,7 @@ public fun PolarisPrimaryButton(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = shape,
+        colors = if (danger) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) else ButtonDefaults.buttonColors(),
         contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else polarisButtonPadding(),
         border = if (polarisWindow.isMac) polarisMacControlBorder() else null,
         interactionSource = interaction,

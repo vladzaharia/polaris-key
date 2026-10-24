@@ -24,6 +24,10 @@ internal object PolarisSymbols {
             .addPath(pathData = addPathNodes(path), fill = SolidColor(Color.Black)) // polaris-lint: allow-colour (the Icon tints it)
             .build()
 
+    val ArrowBack: ImageVector by lazy { symbol("PolarisArrowBack", "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z", autoMirror = true) }
+    val ChevronEnd: ImageVector by lazy { symbol("PolarisChevronEnd", "M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", autoMirror = true) }
+    val Tune: ImageVector by lazy { symbol("PolarisTune", "M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z") }
+    val Devices: ImageVector by lazy { symbol("PolarisDevices", "M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z") }
     val Check: ImageVector by lazy { symbol("PolarisCheck", "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z") }
     val Info: ImageVector by lazy { symbol("PolarisInfo", "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z") }
     val Warning: ImageVector by lazy { symbol("PolarisWarning", "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z") }

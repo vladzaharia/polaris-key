@@ -8,6 +8,9 @@ package im.plrs.key.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -217,6 +220,11 @@ internal fun PolarisUpdatePromptCard(
         val headAlign = if (gnome || mac) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.Center
         val headHorizontal = if (gnome || mac) Alignment.Start else Alignment.CenterHorizontally
         Column(Modifier.then(if (mac) Modifier.fillMaxWidth().polarisMacInnerHighlight(PolarisTheme.current.dark) else Modifier).padding(24.dp), horizontalAlignment = if (mac) Alignment.Start else Alignment.CenterHorizontally) {
+            if (sheet) {
+                // The bottom sheet's drag handle (Material 3): a quiet 32 x 4 dp pill at the top edge.
+                Box(Modifier.size(width = 32.dp, height = 4.dp).clip(CircleShape).background(scheme.onSurfaceVariant.copy(alpha = 0.4f)))
+                Spacer(Modifier.height(SheetHandleGap))
+            }
             val content: @Composable () -> Unit = {
                 Column(horizontalAlignment = headHorizontal) {
                     val kind = if (ui.critical) PolarisMessageKind.Warning else PolarisMessageKind.Info
@@ -337,6 +345,18 @@ internal fun PolarisUpdatePromptCard(
                         PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
                     }
                 }
+            } else if (sheet && showLater) {
+                // The bottom sheet: Later and the verb are an equal-width pair; Skip is a text link under them.
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
+                    CompositionLocalProvider(LocalPolarisActionRow provides true) {
+                        PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, modifier = Modifier.weight(1f), initialFocus = laterFirst)
+                        PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, modifier = Modifier.weight(1f), initialFocus = !laterFirst)
+                    }
+                }
+                if (showSkip) {
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                }
             } else {
                 PolarisActionGroup(row = window.compactHeight || gnome) {
                     // While the download runs the primary queues the restart, so it is never disabled.
@@ -427,6 +447,9 @@ internal fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
         }
     }
 }
+
+/** The gap under the bottom sheet's drag handle. */
+private val SheetHandleGap = 16.dp
 
 /** How long the prompt ignores input after it opens on a TV (UI-KITS.md DL9, §4.3). */
 internal const val PolarisPromptInputDelayMs: Long = 250

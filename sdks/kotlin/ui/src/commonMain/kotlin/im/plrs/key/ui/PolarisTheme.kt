@@ -241,7 +241,11 @@ public fun PolarisTheme(
         showPoweredBy = showPoweredBy,
         poweredByStyle = poweredByStyle,
         // macOS: a copy the host built from the defaults reads the Mac wording too; a host's own text stays (S4).
-        copy = if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) copy.forMac() else copy,
+        copy = (if (autoPlatformVariant() == PolarisPlatformVariant.MacOS) copy.forMac() else copy).let { c ->
+            // The presentation names the product when the integrator left the kit's default (fills only what was left out).
+            val named = member?.name?.takeIf { it.isNotBlank() }
+            if (named != null && c.productName == DEFAULT_PRODUCT_NAME) c.copy(productName = named) else c
+        },
         logo = logo ?: art?.let { presentationLogo(it) },
         darkTheme = darkTheme,
         accent = themeAccent(accent ?: hostAccent, branding, member, darkTheme, art?.derivedAccent),

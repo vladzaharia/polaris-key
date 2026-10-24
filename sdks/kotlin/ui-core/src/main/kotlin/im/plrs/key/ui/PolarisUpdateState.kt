@@ -177,7 +177,11 @@ public class PolarisUpdateState {
     public fun install(actions: PolarisUpdateActions, scope: CoroutineScope, onStarted: (() -> Unit)? = null) {
         val finishing = downloaded
         val currentCheck = check
-        if (currentCheck == null && !finishing) return
+        if (currentCheck == null && !finishing) {
+            // An offer shown without a check (show(ui)) has nothing to hand the installer: say so, never nothing.
+            _offer.update { it?.copy(error = PolarisUpdateFailure(im.plrs.key.core.ErrorCode.platformError, "no update check to install")) }
+            return
+        }
         // One install at a time: "Restart when ready" while a desktop download runs queues nothing
         // more, because the running install opens the verified installer and then hands off.
         if (installing != null) return
