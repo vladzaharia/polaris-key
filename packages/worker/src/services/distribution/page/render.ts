@@ -42,6 +42,7 @@ import {
   type PagePlatformGroup,
 } from "./model.js";
 import { BRAND_LOCKUP_HEIGHT } from "../../../core/brandHtml.js";
+import { WORKER_HELP_LINKS } from "../../../core/helpLinks.js";
 import { qrSvg } from "../../../core/qr.js";
 import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
 
@@ -469,6 +470,11 @@ export interface PageExtras {
   iconUrl?: string | null;
   /** The product's cover on the image host, or `null`; drawn as a plain band, same rules. */
   coverUrl?: string | null;
+  /**
+   * The origin the footer's Help links resolve on (the customer site, else the console host;
+   * `feedOriginOf`). `null` leaves the links out: the bytes host serves no docs.
+   */
+  helpOrigin?: string | null;
 }
 
 /** Render the page. */
@@ -478,6 +484,7 @@ export function renderDownloadPage(
   extras: PageExtras = {},
 ): string {
   const name = model.listing.name;
+  const helpOrigin = extras.helpOrigin ?? null;
   const groupOf = (p: PagePlatform | null) =>
     p === null ? undefined : model.platforms.find((g) => g.platform === p);
   const mine = groupOf(detected.platform);
@@ -614,7 +621,15 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p>Polaris Locker · Questions about ${esc(name)}?${
+    `<footer><p>Verify a download's SHA-256 before you install it.${
+      helpOrigin
+        ? ` <a href="${esc(helpOrigin + WORKER_HELP_LINKS.checkADownload)}">Check a download</a>`
+        : ""
+    }</p><p>Polaris Locker${
+      helpOrigin
+        ? ` · <a href="${esc(helpOrigin + WORKER_HELP_LINKS.help)}">Help</a>`
+        : ""
+    } · Questions about ${esc(name)}?${
       model.listing.developerName
         ? ` Contact ${esc(model.listing.developerName)}.`
         : ""

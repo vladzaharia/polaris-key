@@ -34,6 +34,7 @@ import {
   note,
   personRow,
   renderAuthCard,
+  DEVICE_CARD_LINKS,
 } from "../../../core/brandHtml.js";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
@@ -503,6 +504,7 @@ export function deviceDonePage(
     ? `${isolate(view.app.name)} is signed in on ${isolate(label)}`
     : `Signed in on ${isolate(label)}`;
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: view.app?.name ? `${view.app.name} is signed in` : "Signed in",
     heading,
@@ -638,6 +640,7 @@ async function renderApproval(
   const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
   const formId = "pk-approve";
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: `Sign in on ${label}?`,
     heading: `Sign in on ${dev}?`,
     ...(flow.tv ? { variant: "tv" as const } : {}),
@@ -722,6 +725,7 @@ export function deniedPage(
 ): Response {
   const shown = pageApp(view.app ?? { name: "" });
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: "Sign-in denied",
     heading: "Sign-in denied",

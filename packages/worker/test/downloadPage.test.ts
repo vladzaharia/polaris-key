@@ -789,6 +789,28 @@ describe("escaping", () => {
     );
   });
 
+  it("the footer links Check a download and Help on the origin it is given (DOC-06b.2)", async () => {
+    const w = await setup();
+    const m = await model(w);
+    const det = {
+      platform: "android",
+      arch: null,
+      touchAmbiguous: false,
+    } as const;
+    const html = renderDownloadPage(m, det, {
+      helpOrigin: "https://polaris.locker",
+    });
+    const foot = html.slice(html.indexOf("<footer>"));
+    expect(foot).toContain(
+      '<a href="https://polaris.locker/docs/help/check-a-download/">Check a download</a>',
+    );
+    expect(foot).toContain(
+      '<a href="https://polaris.locker/docs/help/">Help</a>',
+    );
+    // No origin to resolve on (the bytes host serves no docs): no links, same text.
+    expect(renderDownloadPage(m, det)).not.toContain("/docs/help/");
+  });
+
   it("a model with hostile values in every string renders inert", () => {
     const evil = `"><script>alert(1)</script>`;
     const m: DownloadModel = {

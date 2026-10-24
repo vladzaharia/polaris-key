@@ -395,6 +395,9 @@ describe("the device pages on the customer host", () => {
     expect(html).toContain("Sign in on");
     // N7: the always-on device check line.
     expect(html).toContain("Check that your device shows this code.");
+    // DOC-06b.2 (D-W3): Help opens "Approve a sign-in"; Privacy is unchanged.
+    expect(html).toContain('<a href="/docs/help/approve-a-sign-in/">Help</a>');
+    expect(html).toContain('<a href="/docs/help/your-data/">Privacy</a>');
   });
 
   it("the API host takes no confirm POST once the customer host is on (N1)", async () => {

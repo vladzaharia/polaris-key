@@ -7,7 +7,11 @@ import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { apiOrigin } from "../../../core/customerHost.js";
-import { renderAuthCard, icon } from "../../../core/brandHtml.js";
+import {
+  renderAuthCard,
+  icon,
+  DEVICE_CARD_LINKS,
+} from "../../../core/brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
@@ -466,6 +470,7 @@ function wellFormed(s: string): string {
  *  link. Not a redirect, so the form's `form-action 'self'` never meets the cross-origin hop. */
 function hopPage(hop: string, cookie: string): Response {
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: "Continuing",
     heading: "Continuing to sign in",
     body: `<a class="button" href="${escapeHtml(hop)}">Continue${icon("arrow-right")}</a>`,
