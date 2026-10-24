@@ -128,7 +128,17 @@ export function FreeDevicePage({
       ) : q.error && isNotFound(q.error) ? (
         <NotFoundProduct email={account.email} />
       ) : q.error || !p ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} asPage />
+        <div className="mx-auto w-full max-w-[40rem]">
+          <ErrorState
+            error={q.error}
+            onRetry={() => void q.refetch()}
+            asPage
+            page={p?.name ?? t("locker.error.productFallback")}
+            message={t("locker.error.loadFailedName", {
+              name: p?.name ?? t("locker.error.thisProduct"),
+            })}
+          />
+        </div>
       ) : (
         <FreeDevice
           product={p}

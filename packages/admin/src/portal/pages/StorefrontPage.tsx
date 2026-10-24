@@ -76,7 +76,15 @@ export function StorefrontPage({
   if (notFound) return <NotOffered />;
   if (q.error || !q.data)
     return (
-      <ErrorState error={q.error} onRetry={() => void q.refetch()} asPage />
+      <ErrorState
+        error={q.error}
+        onRetry={() => void q.refetch()}
+        asPage
+        page={t("locker.error.productFallback")}
+        message={t("locker.error.loadFailedName", {
+          name: t("locker.error.thisProduct"),
+        })}
+      />
     );
   return <StorefrontBody product={q.data} />;
 }

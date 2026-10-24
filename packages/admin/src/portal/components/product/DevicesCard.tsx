@@ -88,6 +88,7 @@ export function DevicesCard({
         <ErrorState
           error={error}
           onRetry={onRetry}
+          message={t("locker.error.loadFailedDevices")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

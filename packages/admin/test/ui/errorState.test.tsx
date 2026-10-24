@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import * as React from "react";
 import { ApiError } from "../../src/api.js";
 import { PortalApiError } from "../../src/portal/api.js";
@@ -120,5 +126,86 @@ describe("ErrorState, portal voice", () => {
       status: 429,
     });
     expect(screen.getByRole("button", { name: /Copy details/ })).toBeTruthy();
+  });
+
+  it("Try again leads and Copy details is the quiet second action, one row", () => {
+    withPortal(
+      <ErrorState error={new Error("boom")} onRetry={() => undefined} />,
+    );
+    const retry = screen.getByRole("button", { name: portalVoice.retryLabel });
+    const copy = screen.getByRole("button", { name: /Copy details/ });
+    expect(retry.getAttribute("data-variant")).toBe("outline");
+    expect(copy.getAttribute("data-variant")).toBe("ghost");
+    expect(retry.parentElement).toBe(copy.closest("div"));
+    expect(
+      retry.compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("alert").className).toContain("max-w-xl");
+  });
+
+  it("after Try again, focus goes to the page h1 once content arrives", async () => {
+    function Page(): React.ReactElement {
+      const [state, setState] = React.useState<"error" | "loading" | "ok">(
+        "error",
+      );
+      return (
+        <main>
+          {state === "error" ? (
+            <ErrorState
+              error={new Error("boom")}
+              asPage
+              page="Diceroll"
+              message="Couldn't load Diceroll."
+              onRetry={() => {
+                setState("loading");
+                setTimeout(() => setState("ok"), 20);
+              }}
+            />
+          ) : state === "loading" ? (
+            <div aria-busy="true">
+              <h1>Loading</h1>
+            </div>
+          ) : (
+            <h1>Diceroll</h1>
+          )}
+        </main>
+      );
+    }
+    withPortal(<Page />);
+    const retry = screen.getByRole("button", { name: portalVoice.retryLabel });
+    retry.focus();
+    fireEvent.click(retry);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 1, name: "Diceroll" }),
+      ),
+    );
+  });
+
+  it("in a card, Try again moves focus to the card's h2", async () => {
+    function Card(): React.ReactElement {
+      const [failed, setFailed] = React.useState(true);
+      return (
+        <section aria-labelledby="section-devices-h">
+          <h2 id="section-devices-h">Devices</h2>
+          {failed ? (
+            <ErrorState
+              error={new Error("boom")}
+              message="Couldn't load your devices."
+              onRetry={() => setFailed(false)}
+            />
+          ) : (
+            <p>none</p>
+          )}
+        </section>
+      );
+    }
+    withPortal(<Card />);
+    const retry = screen.getByRole("button", { name: portalVoice.retryLabel });
+    retry.focus();
+    fireEvent.click(retry);
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("section-devices-h"),
+    );
   });
 });

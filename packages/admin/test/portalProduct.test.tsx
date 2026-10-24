@@ -789,6 +789,9 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       (await screen.findAllByRole("button", { name: "Try again" })).length,
     ).toBeGreaterThan(0);
+    // Each card says what failed (never the catch-all, never "Try again" twice).
+    expect(await screen.findByText("Couldn't load your license.")).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
   });
 
   it("a sign-in licence: Standard pill, its device count, a quiet origin, and its devices with Remove", async () => {

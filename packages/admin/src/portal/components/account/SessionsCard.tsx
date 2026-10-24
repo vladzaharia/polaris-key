@@ -72,6 +72,7 @@ export function SessionsCard(): React.ReactElement | null {
           account
           error={sessions.error}
           onRetry={() => void sessions.refetch()}
+          message={t("locker.error.loadFailedSessions")}
           className="border-0 p-0 shadow-none"
         />
       ) : (
