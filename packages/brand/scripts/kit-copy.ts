@@ -1228,6 +1228,26 @@ export function swiftCoreJson(model: KitCopyModel): string {
   });
 }
 
+/**
+ * Swift's copy of that catalog (SP-52b.5): the same tables without the terminal's \`cli.*\` keys (no
+ * Swift code reads one), written minified (no \`parser\`, so no prettier pass; \`.prettierignore\`
+ * lists the file). Kotlin keeps \`swiftCoreJson\`.
+ */
+export function swiftBundleJson(model: KitCopyModel): string {
+  const lean = (r: Readonly<Record<string, unknown>>) =>
+    Object.fromEntries(
+      Object.entries(r).filter(([k]) => !k.startsWith("cli.")),
+    );
+  return JSON.stringify({
+    $comment: BANNER_LINES.filter((l) => l !== "").join(" "),
+    locales: model.locales,
+    tables: Object.fromEntries(
+      model.locales.map((l) => [l, lean(tableFor(model, l))]),
+    ),
+    variants: lean(variantsFor(model)),
+  });
+}
+
 // Kotlin (Compose Resources strings.xml) -----------------------------------------------------
 
 /** BCP 47 → Compose Resources qualifier (plans/UK-02.md §3.3). */
@@ -1599,8 +1619,7 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   },
   {
     path: "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
-    render: () => swiftCoreJson(model()),
-    parser: "json",
+    render: () => swiftBundleJson(model()),
   },
   {
     path: "sdks/kotlin/ui-core/src/main/resources/kit-copy.json",
