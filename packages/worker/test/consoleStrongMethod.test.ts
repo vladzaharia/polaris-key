@@ -855,8 +855,8 @@ describe("merge, disable and delete end console eligibility", () => {
       return real(stmts);
     }) as typeof db.batch;
     expect((await disableAccount(ctx(env, db, NOW + 2), op)).ok).toBe(true);
-    // One batch holds the status flip, the mirror, the sessions and the strength clear.
-    expect(batches.some((n) => n >= 4)).toBe(true);
+    // One batch holds the status flip, the sessions and the strength clear.
+    expect(batches.some((n) => n >= 3)).toBe(true);
     // A failing batch applies nothing: strength stays with the (still active) account.
     const db2 = makeTestDb();
     const t2 = await signInThrough(env, db2);

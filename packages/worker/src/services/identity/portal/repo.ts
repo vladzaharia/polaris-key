@@ -153,9 +153,6 @@ export async function getOrCreateAccountByEmail(
   );
 }
 
-/** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
-export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
-
 /**
  * The `provider` key for identities minted by `issuer`: the configured issuer without a trailing
  * slash, the same normalisation every issuer URL in the portal flow gets. An operator editing
@@ -163,25 +160,6 @@ export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
  */
 export function portalIdentityIssuerKey(issuer: string): string {
   return issuer.replace(/\/$/, "");
-}
-
-/**
- * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer (S-16 G14,
- * migrations/0059). The portal table is what a Worker rolled back to before I-05 reads; the
- * account links the 0068 backfill copied from it are re-keyed by `rekeyLegacyAccountLinks`, which
- * the portal callback runs right after this. Both must run before the identity lookup, or a
- * legacy user would get a second account. Idempotent; once no legacy row is left it is a single
- * empty search. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row already exists.
- */
-export async function rekeyLegacyPortalIdentities(
-  db: Db,
-  issuer: string,
-): Promise<void> {
-  await db.run(
-    `UPDATE OR IGNORE portal_account_identities SET provider = ? WHERE provider = ?`,
-    issuer,
-    LEGACY_PORTAL_IDENTITY_PROVIDER,
-  );
 }
 
 /**

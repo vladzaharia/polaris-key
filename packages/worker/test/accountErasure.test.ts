@@ -138,7 +138,6 @@ async function rowsNaming(db: Db, id: string): Promise<Record<string, number>> {
     sessions: await q("account_sessions"),
     grants: await q("account_product_grants"),
     passkeys: await q("account_passkeys"),
-    emails: await q("portal_account_emails"),
     erasures: await q("account_erasures"),
     licenses: await count(
       db,

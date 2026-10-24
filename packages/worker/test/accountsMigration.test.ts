@@ -436,17 +436,18 @@ describe("migrations 0068 on a production-shaped copy", () => {
     expect(activated).toEqual({ licenseId: "lic-1" });
   });
 
-  it("a disable reaches the portal tables, and the down script re-applies one", async () => {
+  it("a disable no longer writes the portal tables (I-28); the down script re-applies it", async () => {
     const { raw, db } = await productionShaped();
     applyI05(raw);
     const env = makeEnv(new KvMock(), ["acme"]) as Env;
     const status = (id: string) =>
       raw.prepare("SELECT status FROM portal_accounts WHERE id = ?").get(id);
     await disableAccount({ db, env, now: NOW, origin: "" }, "acct_1");
-    expect(status("acct_1")).toEqual({ status: "disabled" });
-    // A disable whose mirror is missing (written before the fix) is re-applied by the down script.
+    expect(status("acct_1")).toEqual({ status: "active" });
+    // The down script copies the disable across, so a rolled-back Worker still refuses the person.
     raw.exec("UPDATE accounts SET status = 'disabled' WHERE id = 'acct_2'");
     raw.exec(DOWN);
+    expect(status("acct_1")).toEqual({ status: "disabled" });
     expect(status("acct_2")).toEqual({ status: "disabled" });
   });
 

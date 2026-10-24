@@ -191,8 +191,7 @@ export type UnlinkResult =
  * email address while that address is the primary email (`only_email`: notices, passkey enrolment
  * and the licence claim rules need a verified address), guarded in the same DELETE; and removing
  * the primary address while another exists makes the oldest other address primary in the same
- * batch. The matching `portal_*` row goes too, so a Worker rollback never resurrects a removed
- * method.
+ * batch.
  */
 export async function unlinkIdentity(
   ctx: AccountContext,
@@ -267,7 +266,7 @@ export async function unlinkIdentity(
             : "not_found",
     };
   }
-  await mirrorLinkRemoval(db, link);
+  await deletePasskeyMaterial(db, link);
   await portalAudit(db, {
     accountId: proof.accountId,
     action: "account.link.remove",
@@ -292,31 +291,15 @@ export async function unlinkIdentity(
   return { ok: true };
 }
 
-/** Keep the pre-I-05 `portal_*` tables from resurrecting a removed method on a rollback, and a
- *  removed passkey's WebAuthn material from outliving its method (I-16). */
-async function mirrorLinkRemoval(db: Db, link: AccountLinkRow): Promise<void> {
-  if (link.issuer_key === PASSKEY_ISSUER) {
-    await db.run(
-      "DELETE FROM account_passkeys WHERE credential_id = ? AND account_id = ?",
-      link.subject,
-      link.account_id,
-    );
-    return;
-  }
-  if (link.issuer_key === EMAIL_ISSUER) {
-    await db.run(
-      "DELETE FROM portal_account_emails WHERE email = ? AND account_id = ?",
-      link.subject,
-      link.account_id,
-    );
-    return;
-  }
-  if (link.tenant_scope === "") {
-    await db.run(
-      "DELETE FROM portal_account_identities WHERE provider = ? AND subject = ? AND account_id = ?",
-      link.issuer_key,
-      link.subject,
-      link.account_id,
-    );
-  }
+/** A removed passkey's WebAuthn material must not outlive its method (I-16). */
+async function deletePasskeyMaterial(
+  db: Db,
+  link: AccountLinkRow,
+): Promise<void> {
+  if (link.issuer_key !== PASSKEY_ISSUER) return;
+  await db.run(
+    "DELETE FROM account_passkeys WHERE credential_id = ? AND account_id = ?",
+    link.subject,
+    link.account_id,
+  );
 }

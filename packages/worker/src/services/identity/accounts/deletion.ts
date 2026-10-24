@@ -504,14 +504,6 @@ function commitStatements(
       sql: "DELETE FROM account_product_subjects WHERE account_id = ?",
       params: [accountId],
     },
-    // Belt and braces for a link a pre-I-05 Worker wrote since the loop above: none survives.
-    {
-      sql: `DELETE FROM portal_license_links
-             WHERE EXISTS (SELECT 1 FROM licenses x
-                            WHERE x.account_id = ? AND x.product = portal_license_links.product
-                              AND x.id = portal_license_links.license_id)`,
-      params: [accountId],
-    },
     stmtDetachAccountLicenses(accountId),
     // ST-31.7: an invite names an address, not the account, so the cascade misses it. The
     // erased person's VERIFIED addresses (their links' and their primary email) leave every roster.
@@ -570,22 +562,9 @@ function commitStatements(
       params: [accountId, now],
     },
     {
-      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
-      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
-      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
       sql: "DELETE FROM portal_audit WHERE account_id = ?",
       params: [accountId],
     },
-    { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
     // F-21: every registry token this account minted, on every product, stops now.
     stmtRevokeAccountRegistryTokens(accountId, now),
     // F-33: and its personal tokens go, labels included.
@@ -684,17 +663,13 @@ export async function disableAccount(
   const { db, env, now } = ctx;
   const row = await getAccountRow(db, accountId);
   if (!row || row.status !== "active") return { ok: false };
-  // ONE batch (atomic in D1): the status flip, the pre-I-05 mirror (so a Worker rollback does not
-  // re-enable the account), and ST-30's link side: the account's sessions end and no link stays
-  // strong or freshly asserted, so re-enabling does not resurrect console access (the person signs
-  // in through the console IdP again). A crash cannot leave strength set on a disabled account.
+  // ONE batch (atomic in D1): the status flip and ST-30's link side: the account's sessions end
+  // and no link stays strong or freshly asserted, so re-enabling does not resurrect console access
+  // (the person signs in through the console IdP again). A crash cannot leave strength set on a
+  // disabled account.
   await db.batch([
     {
       sql: "UPDATE accounts SET status = 'disabled', modified_at = ? WHERE id = ? AND status = 'active'",
-      params: [now, accountId],
-    },
-    {
-      sql: "UPDATE portal_accounts SET status = 'disabled', modified_at = ? WHERE id = ?",
       params: [now, accountId],
     },
     {

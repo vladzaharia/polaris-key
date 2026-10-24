@@ -95,10 +95,6 @@ export const identityService: ServiceDescriptor = {
   licenseDelete: {
     statements: ({ product, licenseId }) => [
       {
-        sql: "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
-        params: [product, licenseId],
-      },
-      {
         sql: "DELETE FROM license_relinks WHERE product = ? AND license_id = ?",
         params: [product, licenseId],
       },

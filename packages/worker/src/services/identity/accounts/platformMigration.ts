@@ -50,11 +50,7 @@ import { normalizeEmail } from "../../../platform/email.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import {
-  portalIdentityIssuerKey,
-  recordLinkGroups,
-  rekeyLegacyPortalIdentities,
-} from "../portal/repo.js";
+import { portalIdentityIssuerKey, recordLinkGroups } from "../portal/repo.js";
 import { providerVouchesForEmail } from "../providers/vouch.js";
 import {
   EMAIL_ISSUER,
@@ -300,7 +296,6 @@ export async function claimPlatformSubject(
   const issuerKey = portalIdentityIssuerKey(input.issuer);
   // A pre-I-01 row still keyed by the literal `oidc` is the same IdP's subject: re-key it before
   // the lookup, as the portal callback does, or the person would get a second account.
-  await rekeyLegacyPortalIdentities(db, issuerKey);
   await rekeyLegacyAccountLinks(db, issuerKey);
 
   const asserted = input.email?.trim() ? normalizeEmail(input.email) : null;
