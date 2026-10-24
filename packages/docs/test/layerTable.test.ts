@@ -18,7 +18,7 @@ import {
   type NativeLang,
 } from "./snippets/nativeLanes";
 import { IGNORED } from "./snippets/nativeIgnore";
-import { mentions } from "./snippets/symbols";
+import { mentions, NOT_EXPORTS } from "./snippets/symbols";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PAGE = "packages/docs/src/content/docs/build/ui/frameworks/index.mdx";
@@ -92,7 +92,9 @@ function claimed(
   for (const m of cell.matchAll(/`([^`\n]+)`/g))
     for (const name of identifiers(m[1] ?? ""))
       if (!seen.has(name)) seen.set(name, (m[1] ?? "").trim());
-  const ignored = lang === "ts" || lang === "python" ? null : IGNORED[lang];
+  // The snippet lane's list of names that are not exports (methods on a handle, host globals).
+  const ignored =
+    lang === "ts" || lang === "python" ? NOT_EXPORTS : IGNORED[lang];
   return [...seen]
     .filter(([name]) => !ignored?.has(name))
     .map(([name, text]) => ({ name, text }));

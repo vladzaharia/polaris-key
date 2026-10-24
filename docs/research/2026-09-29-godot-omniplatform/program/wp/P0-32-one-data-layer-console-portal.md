@@ -78,7 +78,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art. _Cannot apply: a data-layer change; no screen changes except the ErrorPanel to ErrorState swap, UX-reviewed in P0-32.24._
 - [x] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
-      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths. _Cannot apply: no native kit; this is the console and portal._
+      D-pad focus, TV and title-safe insets, terminal keys with NO*COLOR, ascii and --json paths. \_Cannot apply: no native kit; this is the console and portal.*
 - [x] pkey-ux-reviewer passes the built screens (BUILT mode). Recorded from P0-32.9 and P0-32.24.
 
 ## Corrections (2026-10-22)

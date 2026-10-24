@@ -10,11 +10,11 @@ sidebar:
 The registry row menu opens the product's own pages rather than repeating their forms, so each
 setting has one form with one set of rules:
 
-| Action                                                        | What it does                                                                                                                                                                 |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Action                                                          | What it does                                                                                                                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Open overview**, **Open settings**, **Open keys and secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Keys and secrets](/docs/operate/console/keys-and-secrets/). |
-| **Resync from repo…**                                         | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.                       |
-| **Delete product…** (also the Danger zone on Settings)        | Tombstones the product. See below.                                                                                                                                           |
+| **Resync from repo…**                                           | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.                         |
+| **Delete product…** (also the Danger zone on Settings)          | Tombstones the product. See below.                                                                                                                                             |
 
 ## What resync actually re-applies
 
