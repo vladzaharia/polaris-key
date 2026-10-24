@@ -24389,7 +24389,7 @@ var COMMANDS = [
     tree: { setup: [], prune: [] },
     usage: [
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
-      "pkey feeds setup --write [--owner slug] [--dry-run] [--base-url url] [--json]",
+      "pkey feeds setup --write [--owner slug] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
     ],
     about: [
@@ -24403,7 +24403,7 @@ var COMMANDS = [
       },
       {
         subs: ["setup"],
-        text: "pkey feeds setup --write signs in with a code, as pkey login does, but for a read-only packages token that you approve in Polaris Locker, then sets up the tools it finds on PATH: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc (pip, uv, Poetry, go), ~/.gradle/gradle.properties, ~/.cargo/config.toml, docker, cargo and swift. It changes only the lines it owns, writes files at 0600, keeps the first version of a changed file as <file>.pkey-backup, and never puts the token in a command line or on screen. It does not touch the sign-in pkey login saved. --owner limits it to one product's feeds; --dry-run signs in and shows what would change without writing. It refuses (exit 4) in CI and without a terminal; print the setup there. Godot feeds are skipped: their token is in the editor's URL, which the console shows. A file it cannot merge safely, or that leaves your home directory by a symbolic link, is left alone and exits 4; a command that fails exits 1."
+        text: "pkey feeds setup --write signs in with a code, as pkey login does, but for a read-only packages token that you approve in Polaris Locker, then sets up the tools it finds on PATH: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc (pip, uv, Poetry, go), ~/.gradle/gradle.properties, ~/.cargo/config.toml, docker, cargo and swift. It changes only the lines it owns, writes files at 0600, keeps the first version of a changed file as <file>.pkey-backup, and never puts the token in a command line or on screen. It does not touch the sign-in pkey login saved. --owner limits it to one product's feeds. It refuses (exit 4) in CI and without a terminal; print the setup there. Godot feeds are skipped: their token is in the editor's URL, which the console shows. A file it cannot merge safely, or that leaves your home directory by a symbolic link, is left alone and exits 4; a command that fails exits 1."
       },
       { subs: ["prune"], text: CI_PARA }
     ],
@@ -30026,11 +30026,6 @@ async function apply(io, o, body, gap) {
     const tool = [...new Set(steps.map((s) => s.tool))].join(" ");
     const target = tilde(file);
     try {
-      if (o.dryRun) {
-        safeTarget(realHome, file);
-        outcomes.push({ tool, target, state: "would" });
-        continue;
-      }
       const real = safeTarget(realHome, file);
       const r = writeMerged(
         real,
@@ -30060,10 +30055,6 @@ async function apply(io, o, body, gap) {
       outcomes.push({ tool: absent(s), target, state: "missing" });
       continue;
     }
-    if (o.dryRun) {
-      outcomes.push({ tool: s.tool, target, state: "would" });
-      continue;
-    }
     outcomes.push(await runStep(io, o, s, target, realHome, runner));
   }
   for (const k of plan.skipped)
@@ -30081,7 +30072,6 @@ async function apply(io, o, body, gap) {
       envelope("feeds setup", exit, {
         host,
         registry,
-        dryRun: o.dryRun,
         token: {
           type: "personal",
           scope: "packages:read",
@@ -30104,7 +30094,7 @@ async function apply(io, o, body, gap) {
   ).length;
   const found = outcomes.filter((x) => x.state !== "missing");
   const missing = outcomes.filter((x) => x.state === "missing");
-  const headline = o.dryRun ? "Nothing written (dry run)." : bad || refused ? `Set up ${done} of ${found.length}.` : done ? `Set up ${done} ${done === 1 ? "tool" : "tools"}.` : "Nothing to set up.";
+  const headline = bad || refused ? `Set up ${done} of ${found.length}.` : done ? `Set up ${done} ${done === 1 ? "tool" : "tools"}.` : "Nothing to set up.";
   io.stdout.write(
     `${gap}${block(t, bad || refused ? "warn" : "ok", [[text(headline)]])}
 `
@@ -30113,7 +30103,6 @@ async function apply(io, o, body, gap) {
     created: "created",
     updated: "updated",
     unchanged: "already set",
-    would: "would change",
     missing: "not installed",
     skipped: "skipped",
     refused: "refused",
@@ -51729,7 +51718,6 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci, rt) {
       {
         cwd,
         owner: flagString(parsed, "owner"),
-        dryRun: flagBool(parsed, "dry-run"),
         seams: rt.feedWrite ?? {}
       }
     );

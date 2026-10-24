@@ -77,7 +77,7 @@ import {
 } from "./login.js";
 
 export const FEEDS_WRITE_USAGE =
-  "pkey feeds setup --write [--owner slug] [--dry-run] [--base-url url] [--json]";
+  "pkey feeds setup --write [--owner slug] [--base-url url] [--json]";
 
 const MAX_FEEDS = 64;
 const EXEC_TIMEOUT_MS = 60_000;
@@ -497,8 +497,6 @@ export interface FeedsWriteOptions {
   cwd: string;
   /** Narrow the feeds to one product's. */
   owner?: string;
-  /** Sign in and show what would change; write and run nothing. */
-  dryRun: boolean;
   seams: FeedWriteSeams;
 }
 
@@ -506,7 +504,6 @@ type StepState =
   | "created"
   | "updated"
   | "unchanged"
-  | "would"
   | "missing"
   | "skipped"
   | "refused"
@@ -730,11 +727,6 @@ async function apply(
     const tool = [...new Set(steps.map((s) => s.tool))].join(" ");
     const target = tilde(file);
     try {
-      if (o.dryRun) {
-        safeTarget(realHome, file);
-        outcomes.push({ tool, target, state: "would" });
-        continue;
-      }
       const real = safeTarget(realHome, file);
       const r = writeMerged(
         real,
@@ -775,10 +767,6 @@ async function apply(
       outcomes.push({ tool: absent(s), target, state: "missing" });
       continue;
     }
-    if (o.dryRun) {
-      outcomes.push({ tool: s.tool, target, state: "would" });
-      continue;
-    }
     outcomes.push(await runStep(io, o, s, target, realHome, runner));
   }
   for (const k of plan.skipped)
@@ -798,7 +786,6 @@ async function apply(
       envelope("feeds setup", exit, {
         host,
         registry,
-        dryRun: o.dryRun,
         token: {
           type: "personal",
           scope: "packages:read",
@@ -822,9 +809,8 @@ async function apply(
   ).length;
   const found = outcomes.filter((x) => x.state !== "missing");
   const missing = outcomes.filter((x) => x.state === "missing");
-  const headline = o.dryRun
-    ? "Nothing written (dry run)."
-    : bad || refused
+  const headline =
+    bad || refused
       ? `Set up ${done} of ${found.length}.`
       : done
         ? `Set up ${done} ${done === 1 ? "tool" : "tools"}.`
@@ -836,7 +822,6 @@ async function apply(
     created: "created",
     updated: "updated",
     unchanged: "already set",
-    would: "would change",
     missing: "not installed",
     skipped: "skipped",
     refused: "refused",

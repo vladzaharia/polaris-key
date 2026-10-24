@@ -2382,7 +2382,6 @@ async function cmdFeeds(
       {
         cwd,
         owner: flagString(parsed, "owner"),
-        dryRun: flagBool(parsed, "dry-run"),
         seams: rt.feedWrite ?? {},
       },
     );

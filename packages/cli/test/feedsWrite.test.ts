@@ -467,21 +467,6 @@ describe("pkey feeds setup --write", () => {
     expect(read(s.home, ".npmrc")).toContain("foo=bar");
   });
 
-  it("--dry-run signs in and writes and runs nothing", async () => {
-    const s = setup();
-    const { f } = server(() => approved());
-    const r = await run(["--dry-run", "--owner", "acme"], {
-      f,
-      home: s.home,
-      cwd: s.cwd,
-      seams: s.seams,
-    });
-    expect(r.code).toBe(0);
-    expect(readdirSync(s.home)).toEqual([]);
-    expect(s.ran).toEqual([]);
-    expect(r.out).toContain("would change");
-  });
-
   it("--json is one result line with no token", async () => {
     const s = setup();
     const { f } = server(() => approved());
