@@ -21,7 +21,6 @@ import {
   TOMBSTONE_RETENTION_SECONDS,
   purgePrivacyResidue,
 } from "../src/privacyResidue.js";
-import { catchUpLegacyAccounts } from "../src/services/identity/accounts/legacy.js";
 import {
   ERASURE_PREFIX,
   erasureKey,
@@ -560,16 +559,10 @@ describe("replayErasureLedger: the ledger applied back to D1", () => {
 });
 
 describe("erasure tombstones are never purged", () => {
-  it("a tombstone the replay recreated survives the 90-day purge however old, and the legacy catch-up still cannot copy the account", async () => {
+  it("a tombstone the replay recreated survives the 90-day purge however old", async () => {
     const { db, env } = world();
     await recordErasure(env, "acct_legacy", NOW);
-    // The restore left only the pre-I-05 rows of this person; no account row, no tombstone.
-    await db.run(
-      `INSERT INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)
-       VALUES ('acct_legacy', 'active', 'Ada', 'ada@example.com', ?, ?)`,
-      NOW,
-      NOW,
-    );
+    // The restore left no account row and no tombstone for this person.
     // A merge tombstone past its retention, for contrast.
     await db.run(
       `INSERT INTO account_tombstones (id, email_hash, merged_into, deleted_at)
@@ -583,10 +576,5 @@ describe("erasure tombstones are never purged", () => {
     expect(await column(db, "SELECT id FROM account_tombstones")).toEqual([
       "acct_legacy",
     ]);
-
-    await catchUpLegacyAccounts(db);
-    expect(
-      await db.first("SELECT id FROM accounts WHERE id = 'acct_legacy'"),
-    ).toBeNull();
   });
 });

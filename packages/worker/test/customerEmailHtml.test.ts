@@ -80,7 +80,6 @@ function templates(): Record<string, NoticeMessage> {
     "license-added": T.licenseAddedNotice(P),
     "license-attached": T.licenseAttachedNotice(P),
     "license-key-replaced": T.licenseKeyReplacedNotice(P),
-    "license-link-superseded": T.licenseLinkSupersededNotice(P),
     "license-relinked-away": T.licenseRelinkedAwayNotice(P),
     "license-relinked-in": T.licenseRelinkedInNotice(P),
     "license-relink-undone": T.licenseRelinkUndoneNotice(P),

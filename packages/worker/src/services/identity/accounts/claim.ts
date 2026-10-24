@@ -48,9 +48,42 @@ import {
   getPortalProductSettings,
   portalAudit,
 } from "../portal/repo.js";
-import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
+import { stmtMoveLicenseAccount } from "../../../core/accounts/accountSubjects.js";
 import type { AccountContext } from "./links.js";
 import { verifiedAccountEmails } from "./repo.js";
+
+/**
+ * Move a licence's owner pointer (`from` to `to`) as a compare-and-set: the row changes only while
+ * it still names `from`. Answers whether it moved.
+ */
+async function moveLicenseOwner(
+  ctx: AccountContext,
+  product: string,
+  licenseId: string,
+  from: string | null,
+  to: string | null,
+): Promise<boolean> {
+  const { db, now } = ctx;
+  const statements = [
+    stmtMoveLicenseAccount(product, licenseId, from, to, now),
+  ];
+  if (db.batchChanges) {
+    const changes = await db.batchChanges(statements);
+    return (changes[0] ?? 0) > 0;
+  }
+  // A test double without per-statement counts: the move happened iff the row now carries `to`
+  // and this stamp.
+  await db.batch(statements);
+  const row = await db.first<{
+    account_id: string | null;
+    modified_at: number;
+  }>(
+    "SELECT account_id, modified_at FROM licenses WHERE product = ? AND id = ?",
+    product,
+    licenseId,
+  );
+  return row !== null && row.account_id === to && row.modified_at === now;
+}
 
 /** How a licence reaches an account. */
 export type AttachVia =
@@ -289,9 +322,6 @@ export async function detachLicense(
     args.accountId
   )
     return { ok: false };
-  // Every portal link to the licence ends BEFORE the pointer clears, so the scheduled catch-up
-  // can never re-point the floating licence at a not-yet-settled §8 Q1 loser.
-  await endLicenseLinks(ctx, args.product, args.licenseId, [args.accountId]);
   // LX-26: the block lands BEFORE the pointer clears, so no sweep in between re-attaches it.
   const target = {
     accountId: args.accountId,
@@ -299,7 +329,7 @@ export async function detachLicense(
     licenseId: args.licenseId,
   };
   const undoBlock = await writeAutoAttachBlock(ctx, target);
-  const moved = await moveLicenseOwnerEndingLinks(
+  const moved = await moveLicenseOwner(
     ctx,
     args.product,
     args.licenseId,
@@ -379,11 +409,6 @@ export async function reassignLicense(
       : current;
   if (previous === args.toAccountId)
     return { ok: true, previousAccountId: previous };
-  // As in detachLicense: no portal link to the licence survives the move (§8 Q1 losers settled).
-  await endLicenseLinks(ctx, args.product, args.licenseId, [
-    previous,
-    args.toAccountId,
-  ]);
   // LX-26: as in detachLicense, the previous owner's block lands BEFORE the move.
   const blockTarget = previous
     ? { accountId: previous, product: args.product, licenseId: args.licenseId }
@@ -392,7 +417,7 @@ export async function reassignLicense(
     ? await writeAutoAttachBlock(ctx, blockTarget)
     : null;
   if (
-    !(await moveLicenseOwnerEndingLinks(
+    !(await moveLicenseOwner(
       ctx,
       args.product,
       args.licenseId,
