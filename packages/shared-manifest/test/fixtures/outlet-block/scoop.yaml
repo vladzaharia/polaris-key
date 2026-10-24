@@ -1,0 +1,12 @@
+outlets:
+  # Scoop
+  scoop:
+    kind: direct
+    # Platforms the direct download offers.
+    platforms:
+      - windows
+    # Scoop manifest details (bin, shortcuts).
+    scoop:
+      bin: dice.exe
+    # Your own Scoop bucket, <owner>/<repo> on GitHub.
+    scoopBucket: acme/scoop-bucket

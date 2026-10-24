@@ -1,0 +1,9 @@
+outlets:
+  # Homebrew
+  homebrew:
+    kind: direct
+    # Platforms the direct download offers.
+    platforms:
+      - linux
+    # Homebrew formula name.
+    homebrewFormula: dice

@@ -6752,6 +6752,8 @@ export * from "./productSlug.js";
 export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+// A-25.1: the one `outlets` entry a channel adds to `.pkey/distribution`.
+export * from "./outletBlock.js";
 export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.

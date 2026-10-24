@@ -1,0 +1,8 @@
+{
+  "outlets": {
+    "winget": {
+      "kind": "winget",
+      "packageIdentifier": "Acme.Dice"
+    }
+  }
+}

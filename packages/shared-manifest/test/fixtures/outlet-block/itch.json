@@ -1,0 +1,9 @@
+{
+  "outlets": {
+    "itch": {
+      "kind": "itch",
+      "target": "acme/dice",
+      "gameId": "123456"
+    }
+  }
+}

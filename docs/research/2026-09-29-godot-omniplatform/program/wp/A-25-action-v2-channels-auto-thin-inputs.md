@@ -50,6 +50,21 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **DC-08**; DX consolidation H: Distribution channels, storefronts and commerce.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (2026-10-24)
+
+The code is the fact. Recorded by A-25.1; the slice plan is `pk-wt/_lead/plans/A-25-DOC-12a-DOC-06b-slices.md` (§0, §8).
+
+- **A1. The brief contradicts itself on old inputs.** The Consolidation note and Scope say removed and refused, naming the replacement; the acceptance line says "Old inputs warn through the window". Refusal wins (D-A2): the step fails before any network call with one line naming the replacement. Docs plan §10 amendment 6 removes the deprecation wording.
+- **A2. The registry already maps every old input to a flag.** P0-45's `PkeyCommand.action` (`cli/src/help.ts`; `release`, `storefront`, `assets`, `transport`). `registry.test.ts` and `action.test.ts` hold its union to `ACTION_INPUTS` (`action.ts`, 36 inputs). Each refusal names its flag from this table; no second table.
+- **A3. The CLI already reads the secrets from env** (`PKEY_RELEASE_KEY` in `publish.ts`; the content key in `help.ts`). The Action sets them in the in-process env and never puts a key on argv.
+- **A4. `--product` and `--base-url` already resolve from `.pkey/product` and `PKEY_BASE_URL`** (`help.ts`, `context`). The Action just stops sending them.
+- **A5. The Action is detected by `INPUT_PRODUCT`** (`action.ts`, `bin/standalone.ts`). With `product` gone, detection moves to `INPUT_COMMAND` (D-A6).
+- **A6. External users pin a commit SHA, not a tag** (`action.yml`, README, docs `ci.md`, `ci-stores.md`). An old pin keeps its old bundle; only a repo that bumps its pin meets the change. In-repo users: `publish-package.yml` and the console's `workflowStep` (`FirstReleasePanel.tsx`).
+- **A7. Nothing of UX-56 existed.** `renderOutletBlock` was only a comment (`shared-manifest/src/integration/index.ts`); there is no `pkey channel` command. Built on: `OUTLET_IDENTITY_FIELDS`, the catalogue's `plane` per channel, `loadStepProduct`/`pickOutlet`, the PR and CI step runners, `scanDir`/`matchArtifacts`, and the CLI's `yaml` dependency. A-25.1 adds `renderOutletBlock` in `shared-manifest/src/outletBlock.ts`. In `.pkey/distribution`, `outlets` is an object keyed by outlet id (not an array); the block is one such entry.
+- **A8. Vocabulary.** The glossary calls a Channel the delivery place; a Storefront is never one. The command is `pkey channel add` / `pkey channel sync` (D-A1), not `pkey storefronts sync`.
+- **A9. Implied transport steps belong to P4-33** (`transports.packs: auto`; runner-specific inputs). Their Action inputs are removed; `command: transport <step>` with `args` replaces them (D-A4).
+- **A10. Rule 9 is not triggered.** `channel add` validates with the existing validator; no new rule code.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

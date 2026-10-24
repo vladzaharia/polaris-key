@@ -1,0 +1,10 @@
+{
+  "outlets": {
+    "homebrew": {
+      "kind": "direct",
+      "platforms": ["macos"],
+      "homebrewCask": "dice",
+      "homebrewTap": "acme/homebrew-tap"
+    }
+  }
+}
