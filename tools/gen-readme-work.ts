@@ -111,6 +111,20 @@ export const TARGETS: Target[] = [
     ],
   },
   {
+    dir: "packages/agent-kit",
+    packages: [],
+    rootScripts: [
+      [
+        "skills:check",
+        "Check every skill's frontmatter, links and references, and the router in `AGENTS.md`.",
+      ],
+      [
+        "skills:validate",
+        "Build the kit and run `claude plugin validate --strict` on it (needs the `claude` CLI).",
+      ],
+    ],
+  },
+  {
     dir: "packages/docs",
     packages: [
       {

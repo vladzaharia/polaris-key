@@ -1,0 +1,24 @@
+{
+  "name": "@polaris-key/agent-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Polaris Key agent kit: skills for coding agents, shipped as a Claude Code plugin and a release zip. Never published to a registry.",
+  "keywords": [
+    "polaris-key",
+    "agent",
+    "claude-code",
+    "skills"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/agent-kit"
+  },
+  "homepage": "https://key.plrs.im/docs/agents",
+  "license": "MIT",
+  "files": [
+    ".claude-plugin",
+    "skills",
+    "README.md"
+  ]
+}

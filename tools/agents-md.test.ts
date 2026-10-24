@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -323,7 +323,10 @@ describe("instruction-file hygiene", () => {
       file === "AGENTS.md" ||
       file === "CLAUDE.md" ||
       /^\.claude\/agents\/[^/]+\.md$/.test(file) ||
-      /^\.claude\/skills\/.+/.test(file),
+      // The kit's skills are linked from .claude/skills (AX-07.3): read them where they live.
+      (/^\.claude\/skills\/.+/.test(file) &&
+        !lstatSync(join(ROOT, file)).isSymbolicLink()) ||
+      /^packages\/agent-kit\/skills\/.+/.test(file),
   );
 
   it("does not put machine paths in tracked instructions", () => {

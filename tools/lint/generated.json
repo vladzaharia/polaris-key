@@ -56,7 +56,7 @@
     "packages/worker/src/docsCsp.generated.ts",
     "packages/worker/src/docsTiers.generated.ts",
     "packages/worker/src/platformInventory.generated.ts",
-    "packages/{worker,admin,docs,elements,ui-qa}/README.md",
+    "packages/{worker,admin,docs,elements,ui-qa,agent-kit}/README.md",
     "products/README.md",
     "sdks/godot/addons/polaris_key/brand/**",
     "sdks/godot/addons/polaris_key/core/constants_generated.gd",
