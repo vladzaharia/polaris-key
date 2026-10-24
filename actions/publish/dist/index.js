@@ -43514,17 +43514,84 @@ var CI_PLANE = {
             ],
             confirm: "plain",
             why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          },
+          "formula-pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "the formula in the product's own tap; never homebrew/core, which has notability rules and needs the owner"
+          },
+          "formula-status": {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
           }
         }
       },
       commandOps: {
         "pull-request": ["uploadBuild", "release", "writeListingText"],
-        status: ["status"]
+        status: ["status"],
+        "formula-pull-request": ["uploadBuild", "release", "writeListingText"],
+        "formula-status": ["status"]
       },
       paths: [
         {
           template: "Casks/{cask}.rb",
           why: "the cask"
+        },
+        {
+          command: "formula-pull-request",
+          template: "Formula/{formula}.rb",
+          why: "the formula"
         }
       ],
       naturalKey: ["cask", "version"],
@@ -43548,6 +43615,44 @@ var CI_PLANE = {
           "--repo",
           "homebrew/homebrew-core",
           "--cask",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "Homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "formula-pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--cask",
+          "dice",
+          "--formula",
           "dice",
           "--version",
           "1.0.0"
@@ -43928,17 +44033,22 @@ function prParams(list2, command, argv2) {
   });
   return out;
 }
-function prPathAllowed(store, argv2, path32) {
-  if (path32.length > 512 || path32.includes("..") || path32.startsWith("/"))
+function prPathAllowed(store, argv2, path32, command = "pull-request") {
+  if (!prWritesFiles(command) || path32.length > 512 || path32.includes("..") || path32.includes("\\") || path32.startsWith("/"))
     return false;
-  const values = prParams(store.list, "pull-request", argv2);
+  const values = prParams(store.list, command, argv2);
   return store.paths.some(
-    (rule) => prPathPattern(rule.template, values)?.test(path32) ?? false
+    (rule) => (rule.command ?? "pull-request") === command && (prPathPattern(rule.template, values)?.test(path32) ?? false)
   );
+}
+function prWritesFiles(command) {
+  return command === "pull-request" || command === "formula-pull-request";
 }
 function prNaturalKey(store, command, argv2) {
   const values = prParams(store.list, command, argv2);
-  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  const [pkg, version] = (store.commandKeys?.[command] ?? store.naturalKey).map(
+    (k) => values[k]
+  );
   return pkg && version ? `pr:${pkg}:${version}` : null;
 }
 function prVerdict(store, pr) {
@@ -43966,9 +44076,9 @@ function checkPrCommand(store, command, argv2, identity) {
     `Refused by the PR plane's allow-list: ${store.list.tool} ${argv2.join(" ")} ${why[refusal]}.`
   );
 }
-function checkPrPaths(store, argv2, paths) {
+function checkPrPaths(store, argv2, paths, command = "pull-request") {
   for (const p of paths)
-    if (!prPathAllowed(store, argv2, p))
+    if (!prPathAllowed(store, argv2, p, command))
       throw new Error(
         `Refused by the PR plane: ${p} is not a path ${store.label}'s pull request may write (${store.paths.map((r) => r.template).join(", ")}).`
       );

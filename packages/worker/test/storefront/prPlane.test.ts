@@ -35,6 +35,12 @@ import { enableServices } from "../releaseRoutesFixture.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { dispatch } from "../../src/dispatch.js";
+import {
+  HOMEBREW_PR,
+  prNaturalKey,
+  prPathAllowed,
+} from "../../src/core/storefront/prPlane.js";
+import { checkCiCommand } from "../../src/core/storefront/ci.js";
 import { ingestReleaseDescriptor } from "../../src/services/release/descriptor.js";
 import { manifestDeliverableStatements } from "../../src/services/release/deliverables.js";
 import { blobKey, recordObject } from "../../src/core/assets/blobs.js";
@@ -795,5 +801,142 @@ describe("PR-plane report-back (A-18i)", () => {
     expect(await wrongOp.json()).toMatchObject({
       reason: "command_not_allowed",
     });
+  });
+
+  it("homebrew formula: an outlet with a formula and no cask reads macOS then Linux (A-29.1, D-H2)", async () => {
+    const w = await setup();
+    await w.db.run(
+      `UPDATE dist_outlets SET identity_json = ? WHERE product = ? AND outlet_id = 'direct'`,
+      JSON.stringify({
+        platforms: ["macos", "linux"],
+        homebrewFormula: "diceroll",
+        homebrewTap: "vlad/homebrew-games",
+      }),
+      SLUG,
+    );
+    const i = await inputs(w, "pr/homebrew");
+    expect(i.release.version).toBe("1.2.0");
+    expect(i.release.builds.map((b: any) => b.name)).toEqual([
+      "Diceroll-1.2.0-macos.dmg",
+      "Diceroll-1.2.0-linux-x86_64.tar.gz",
+    ]);
+    // `platforms` narrows a formula too: without Linux, only macOS.
+    await w.db.run(
+      `UPDATE dist_outlets SET identity_json = ? WHERE product = ? AND outlet_id = 'direct'`,
+      JSON.stringify({
+        platforms: ["macos"],
+        homebrewFormula: "diceroll",
+        homebrewTap: "vlad/homebrew-games",
+      }),
+      SLUG,
+    );
+    const m = await inputs(w, "pr/homebrew");
+    expect(m.release.builds.map((b: any) => b.name)).toEqual([
+      "Diceroll-1.2.0-macos.dmg",
+    ]);
+  });
+});
+
+describe("Homebrew formula commands on the PR plane (A-29.1)", () => {
+  const TAP = "vlad/homebrew-games";
+  const formula = (name: string, repo = TAP) => [
+    "pull-request",
+    "--repo",
+    repo,
+    "--formula",
+    name,
+    "--version",
+    "1.2.0",
+  ];
+  const cask = (name: string) => [
+    "pull-request",
+    "--repo",
+    TAP,
+    "--cask",
+    name,
+    "--version",
+    "1.2.0",
+  ];
+  const id = {
+    homebrewTap: TAP,
+    homebrewFormula: "dice",
+    homebrewCask: "dice",
+  };
+
+  it("admits the formula's argv as formula-pull-request and formula-status, bound to the identity", () => {
+    const l = HOMEBREW_PR.list;
+    expect(checkCiCommand(l, "formula-pull-request", formula("dice"), id)).toBe(
+      null,
+    );
+    expect(
+      checkCiCommand(
+        l,
+        "formula-status",
+        ["status", "--repo", TAP, "--formula", "dice", "--version", "1.2.0"],
+        id,
+      ),
+    ).toBe(null);
+    expect(
+      checkCiCommand(l, "formula-pull-request", formula("other"), id),
+    ).toBe("identity_mismatch");
+    expect(
+      checkCiCommand(
+        l,
+        "formula-pull-request",
+        formula("dice", "evil/homebrew-x"),
+        id,
+      ),
+    ).toBe("identity_mismatch");
+    expect(
+      checkCiCommand(
+        l,
+        "formula-pull-request",
+        formula("dice", "Homebrew/homebrew-core"),
+        id,
+      ),
+    ).toBe("value_not_allowed");
+    expect(
+      checkCiCommand(l, "formula-pull-request", formula("a/../b"), id),
+    ).toBe("value_not_allowed");
+    // The cask's command is unchanged.
+    expect(checkCiCommand(l, "pull-request", cask("dice"), id)).toBe(null);
+  });
+
+  it("writes Formula/<formula>.rb only; the cask writes Casks/<cask>.rb only", () => {
+    const f = formula("dice");
+    const c = cask("dice");
+    const ok = (argv: string[], path: string, cmd?: string) =>
+      cmd
+        ? prPathAllowed(HOMEBREW_PR, argv, path, cmd)
+        : prPathAllowed(HOMEBREW_PR, argv, path);
+    expect(ok(f, "Formula/dice.rb", "formula-pull-request")).toBe(true);
+    expect(ok(c, "Casks/dice.rb")).toBe(true);
+    // Refused: the other command's directory, other names, traversal, other directories.
+    expect(ok(f, "Casks/dice.rb", "formula-pull-request")).toBe(false);
+    expect(ok(c, "Formula/dice.rb")).toBe(false);
+    expect(ok(f, "Formula/other.rb", "formula-pull-request")).toBe(false);
+    expect(ok(f, "Formula/../Casks/dice.rb", "formula-pull-request")).toBe(
+      false,
+    );
+    expect(ok(f, "Formula/sub/dice.rb", "formula-pull-request")).toBe(false);
+    expect(ok(f, "Formula/dice.rb.bak", "formula-pull-request")).toBe(false);
+    expect(ok(f, "/Formula/dice.rb", "formula-pull-request")).toBe(false);
+    expect(ok(f, "Formula\\dice.rb", "formula-pull-request")).toBe(false);
+    expect(ok(f, ".github/workflows/x.yml", "formula-pull-request")).toBe(
+      false,
+    );
+    expect(ok(f, "Formula/dice.rb", "status")).toBe(false);
+    expect(ok(f, "Formula/dice.rb", "formula-status")).toBe(false);
+    // The formula's argv under the cask command writes nothing.
+    expect(ok(f, "Formula/dice.rb")).toBe(false);
+  });
+
+  it("keys the ledger by formula and version", () => {
+    expect(
+      prNaturalKey(HOMEBREW_PR, "formula-pull-request", formula("dice")),
+    ).toBe("pr:dice:1.2.0");
+    expect(prNaturalKey(HOMEBREW_PR, "pull-request", cask("dice"))).toBe(
+      "pr:dice:1.2.0",
+    );
   });
 });

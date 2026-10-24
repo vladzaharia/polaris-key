@@ -599,10 +599,12 @@ describe("the PR plane in the CLI (A-18i)", () => {
           literals.filter((l) => l.includes(t)),
           t,
         ).toEqual([]);
-      expect(Object.keys(s.list.commands).sort()).toEqual([
-        "pull-request",
-        "status",
-      ]);
+      // Homebrew also declares the formula's pair (A-29.1); the cask's pair is unchanged.
+      expect(Object.keys(s.list.commands).sort()).toEqual(
+        s.store === "homebrew"
+          ? ["formula-pull-request", "formula-status", "pull-request", "status"]
+          : ["pull-request", "status"],
+      );
       expect(s.list.tool).toBe("github");
     });
 
@@ -665,6 +667,36 @@ describe("the PR plane in the CLI (A-18i)", () => {
     expect(() =>
       checkPrPaths(homebrew, argv, [".github/workflows/x.yml"]),
     ).toThrow(/not a path/);
+    // A-29.1: the formula command writes Formula/<formula>.rb, the cask command Casks/<cask>.rb.
+    const fArgv = [
+      "pull-request",
+      "--repo",
+      "vlad/homebrew-games",
+      "--formula",
+      "diceroll",
+      "--version",
+      "1.2.0",
+    ];
+    expect(
+      prPathAllowed(
+        homebrew,
+        fArgv,
+        "Formula/diceroll.rb",
+        "formula-pull-request",
+      ),
+    ).toBe(true);
+    expect(
+      prPathAllowed(
+        homebrew,
+        fArgv,
+        "Casks/diceroll.rb",
+        "formula-pull-request",
+      ),
+    ).toBe(false);
+    expect(prPathAllowed(homebrew, argv, "Formula/diceroll.rb")).toBe(false);
+    expect(
+      prPathAllowed(homebrew, fArgv, "Formula/../x.rb", "formula-pull-request"),
+    ).toBe(false);
     const winget = prStore("winget")!;
     expect(
       prVerdict(winget, {
