@@ -374,4 +374,24 @@ describe("config.local — React", () => {
     expect(getByTestId("v").textContent).toBe("light:remote-default");
     a.dispose();
   });
+
+  it("useConfigSetting.visibility follows the key's state", async () => {
+    const a = browser(memoryStorage(), { catalog: CATALOG });
+    const seen: Record<string, string> = {};
+    function Probe() {
+      seen.enforced = useConfigSetting<string>("theme.mode", "x").visibility;
+      seen.open = useConfigSetting<string>("ui.theme", "x").visibility;
+      seen.none = useConfigSetting<string>("no.such", "x").visibility;
+      return null;
+    }
+    render(
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: a }}>
+        <Probe />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() => expect(seen.enforced).toBe("readonly"));
+    expect(seen.open).toBe("editable");
+    expect(seen.none).toBe("editable");
+    a.dispose();
+  });
 });

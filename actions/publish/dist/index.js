@@ -34311,7 +34311,7 @@ var NODE_LIBRARY = {
       `// later: today the value stays on this device.`,
       `const volume = client.config.setting<${tsType(c.configFallback)}>(${q2(c.configKey)});`,
       `await volume.set(${q2(c.configFallback)});`,
-      `console.log(volume.get(${q2(c.configFallback)}));`
+      `console.log(volume.value);`
     )
   }),
   commerce: (c) => ({
