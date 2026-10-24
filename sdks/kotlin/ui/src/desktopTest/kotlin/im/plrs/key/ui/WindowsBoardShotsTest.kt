@@ -14,6 +14,18 @@ import im.plrs.key.core.LicenseStatus
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.isRoot
+import javax.imageio.ImageIO
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.runDesktopComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -70,5 +82,44 @@ class WindowsBoardShotsTest {
             }
         }
         assertTrue(rendered >= screens.size * 4)
+    }
+
+    /** The high-contrast frames (windows.html adopts one): the stock black and white contrast themes over both presets; the accent is ignored. */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theContrastFramesRender() = withPlatform("Windows") {
+        val out = System.getenv("PKEY_KIT_SHOTS")?.takeIf { it.isNotBlank() }?.let(::File)
+        var rendered = 0
+        for ((name, screen) in screens.filter { it.first in listOf("gate", "sign-in", "sheet", "device-limit") }) for (dark in listOf(true, false)) {
+            runDesktopComposeUiTest(width = 900, height = 600) {
+                setContent {
+                    CompositionLocalProvider(LocalPolarisHostFacts provides PolarisHostFacts(dark = dark, highContrast = true)) {
+                        PolarisTheme(
+                            darkTheme = dark,
+                            copy = PolarisCopy(productName = BoardFixtures.PRODUCT),
+                            accent = BoardFixtures.tidewaterAccent,
+                            logo = { BoardFixtures.TidewaterIcon() },
+                            developer = BoardFixtures.DEVELOPER,
+                        ) {
+                            CompositionLocalProvider(LocalPolarisInitialFocus provides false) {
+                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { screen() }
+                            }
+                        }
+                    }
+                }
+                waitForIdle()
+                mainClock.advanceTimeBy(800)
+                waitForIdle()
+                if (out != null) {
+                    val roots = onAllNodes(isRoot())
+                    val image = roots[roots.fetchSemanticsNodes().size - 1].captureToImage()
+                    val file = File(out, "windows.$name/900x600-${if (dark) "dark" else "light"}-contrast.png")
+                    file.parentFile.mkdirs()
+                    ImageIO.write(image.toAwtImage(), "png", file)
+                }
+            }
+            rendered++
+        }
+        assertTrue(rendered == 8)
     }
 }

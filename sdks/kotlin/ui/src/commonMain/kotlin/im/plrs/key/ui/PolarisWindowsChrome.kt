@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -47,10 +48,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Typography
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.luminance
+import im.plrs.key.ui.brand.KitTypeRole
+import im.plrs.key.ui.brand.PolarisKitGlyphs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -170,8 +192,17 @@ internal fun windowsContrastScheme(dark: Boolean): ColorScheme {
  * colour) around it, so the ring holds 3:1 against the accent fill and the page alike.
  */
 internal fun DrawScope.drawFluentFocusRing(shape: Shape, outer: Color, inner: Color) {
+    // Concentric: each line's corner radius is the control's plus its distance out, so the ring
+    // keeps one gap to the control all the way round (radius + offset).
     fun ring(width: Float, expand: Float, color: Color) {
-        val outline = shape.createOutline(Size(size.width + expand * 2, size.height + expand * 2), layoutDirection, this)
+        val grown = Size(size.width + expand * 2, size.height + expand * 2)
+        val ringShape: Shape = if (shape is CornerBasedShape) {
+            val r = shape.topStart.toPx(size, this) + expand
+            polarisRadiusShape(r.coerceAtLeast(0f).toDp())
+        } else {
+            shape
+        }
+        val outline = ringShape.createOutline(grown, layoutDirection, this)
         translate(-expand, -expand) { drawOutline(outline, color, style = Stroke(width)) }
     }
     val i = PolarisFluent.ringInner.toPx()
@@ -179,6 +210,44 @@ internal fun DrawScope.drawFluentFocusRing(shape: Shape, outer: Color, inner: Co
     ring(i, i / 2, inner)
     ring(o, i + o / 2, outer)
 }
+
+// ── Type ────────────────────────────────────────────────────────────────────────────────────────
+
+private fun TextStyle.fluent(role: KitTypeRole, weight: Int = role.weight): TextStyle = copy(
+    fontSize = role.size.sp,
+    lineHeight = role.lineHeight.sp,
+    fontWeight = FontWeight(weight),
+    letterSpacing = role.tracking.sp,
+)
+
+/**
+ * [base] with the Windows type scale (`PolarisKitTokens.Windows.Typography`): display 28/36 at 600,
+ * title 20/28, body 14/20, button 14/500, no tracking. The family stays the base's.
+ */
+internal fun windowsTypography(base: Typography): Typography {
+    val t = PolarisKitTokens.Windows.Typography
+    return base.copy(
+        displayLarge = base.displayLarge.fluent(t.display),
+        displayMedium = base.displayMedium.fluent(t.display),
+        displaySmall = base.displaySmall.fluent(t.display),
+        headlineLarge = base.headlineLarge.fluent(t.display),
+        headlineMedium = base.headlineMedium.fluent(t.title),
+        headlineSmall = base.headlineSmall.fluent(t.title),
+        titleLarge = base.titleLarge.fluent(t.title),
+        titleMedium = base.titleMedium.fluent(t.label, 600),
+        titleSmall = base.titleSmall.fluent(t.label, 600),
+        bodyLarge = base.bodyLarge.fluent(t.body),
+        bodyMedium = base.bodyMedium.fluent(t.body),
+        bodySmall = base.bodySmall.fluent(t.meta),
+        labelLarge = base.labelLarge.fluent(t.button),
+        labelMedium = base.labelMedium.fluent(t.label),
+        labelSmall = base.labelSmall.fluent(t.meta, 500),
+    )
+}
+
+/** True while a Windows contrast theme is on (the kit draws the system colours). */
+@Composable
+internal fun fluentContrast(): Boolean = rememberThemeHostFacts()?.highContrast == true
 
 // ── Buttons ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -205,20 +274,41 @@ internal fun PolarisFluentButton(
     val hovered by interaction.collectIsHoveredAsState()
     val pressed by interaction.collectIsPressedAsState()
     val shape = PolarisFluent.controlShape
-    val (fill, label) = when (kind) {
+    val contrast = fluentContrast()
+    val sys = if (contrast) FluentSystemColors.forTheme(dark) else null
+    val live = enabled && !busy
+    val over = (hovered || pressed) && live
+    val accentText = PolarisTheme.accentText
+    var (fill, label) = when (kind) {
         FluentButtonKind.Accent -> scheme.primary to scheme.onPrimary
         FluentButtonKind.Standard -> (if (dark) scheme.secondaryContainer else scheme.surfaceContainerLow) to scheme.onSurface
-        FluentButtonKind.Subtle -> Color.Transparent to PolarisTheme.accentText
+        FluentButtonKind.Subtle -> Color.Transparent to accentText
+    }
+    var edge: BorderStroke? = if (kind == FluentButtonKind.Standard) BorderStroke(1.dp, scheme.outlineVariant) else null
+    if (sys != null) {
+        // A contrast theme: Highlight and HighlightText under the pointer (an accent button inverts),
+        // GrayText when disabled, never a tint of the label.
+        when {
+            !live -> {
+                fill = if (kind == FluentButtonKind.Subtle) Color.Transparent else sys.buttonFace
+                label = sys.grayText
+                edge = if (kind == FluentButtonKind.Subtle) null else BorderStroke(1.dp, sys.grayText)
+            }
+            over && kind == FluentButtonKind.Accent -> { fill = sys.highlightText; label = sys.highlight; edge = BorderStroke(1.dp, sys.highlight) }
+            over -> { fill = sys.highlight; label = sys.highlightText; edge = BorderStroke(1.dp, sys.highlightText) }
+            kind == FluentButtonKind.Accent -> edge = BorderStroke(1.dp, sys.highlightText)
+        }
     }
     // Hover and press lay the label colour over the fill at 8 % and 12 %: no new colours.
-    val state = when {
+    val state = if (sys != null) 0f else when {
         pressed -> 0.12f
         hovered -> 0.08f
         else -> 0f
     }
     val fillNow = if (state > 0f) label.copy(alpha = state).compositeOver(fill.takeIf { it.alpha > 0f } ?: scheme.surface) else fill
-    val live = enabled && !busy
-    val edge = if (kind == FluentButtonKind.Standard) BorderStroke(1.dp, scheme.outlineVariant) else null
+    // Links read as links when the accent is plain text colour (ink) or a contrast theme draws them.
+    val underline = kind == FluentButtonKind.Subtle &&
+        (contrast || kotlin.math.abs(accentText.luminance() - scheme.onSurface.luminance()) < 0.05f)
     Row(
         modifier = modifier
             .height(PolarisFluent.controlHeight)
@@ -236,21 +326,22 @@ internal fun PolarisFluentButton(
         horizontalArrangement = Arrangement.spacedBy(PolarisFluent.gap, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val content = if (live || busy) label else label.copy(alpha = 0.4f)
+        val content = if (live || busy || sys != null) label else label.copy(alpha = 0.4f)
         // The glyph and the busy ring follow the label's colour (they read LocalContentColor).
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides content) {
             if (busy) androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier.height(16.dp).widthIn(max = 16.dp), strokeWidth = 2.dp, color = content,
             )
+            // The new-window glyph leads the label, one 8 dp gap from it (the row's spacing).
+            if (external) Icon(PolarisKitGlyphs.NewWindow, contentDescription = null, modifier = Modifier.size(16.dp))
             Text(
                 text,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(textDecoration = if (underline) TextDecoration.Underline else null),
                 color = content,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (external) PolarisNewWindowGlyph(Modifier)
         }
     }
 }
@@ -282,15 +373,20 @@ internal fun PolarisFluentTextField(
     val dark = PolarisTheme.current.dark
     val fill = if (dark) scheme.surfaceContainerLow else scheme.surfaceContainerLowest
     val line = if (isError) scheme.error else PolarisTheme.accentText
+    // WCAG 1.4.11: at rest the box is found by its 1 dp foot line in onSurfaceVariant (the hairline
+    // around it is decoration); focused it is the 2 dp accent line.
+    val rest = if (isError) scheme.error else scheme.onSurfaceVariant
+    val contrast = fluentContrast()
+    val gray = if (contrast) FluentSystemColors.forTheme(dark).grayText else null
     Column(modifier) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = gray?.takeIf { !enabled } ?: scheme.onSurface)
         Spacer(Modifier.height(PolarisFluent.labelGap))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             enabled = enabled,
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onSurface),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = gray?.takeIf { !enabled } ?: scheme.onSurface),
             cursorBrush = SolidColor(scheme.onSurface),
             interactionSource = interaction,
             keyboardOptions = keyboardOptions,
@@ -306,10 +402,12 @@ internal fun PolarisFluentTextField(
                         .height(PolarisFluent.controlHeight)
                         .clip(shape)
                         .background(fill)
-                        .border(1.dp, if (isError) scheme.error else scheme.outlineVariant, shape)
-                        .drawBehind {
-                            if (focused) drawRect(line, Offset(0f, size.height - 2.dp.toPx()), Size(size.width, 2.dp.toPx()))
+                        .drawWithContent {
+                            drawContent()
+                            val h = (if (focused) 2.dp else 1.dp).toPx()
+                            drawRect(if (focused) line else rest, Offset(0f, size.height - h), Size(size.width, h))
                         }
+                        .border(1.dp, if (isError) scheme.error else gray?.takeIf { !enabled } ?: scheme.outlineVariant, shape)
                         .padding(start = PolarisFluent.fieldInset),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -335,21 +433,53 @@ internal class FluentFooterButton(val text: String, val kind: FluentButtonKind, 
  * A ContentDialog on a smoke layer (windows.html `.smoke` and `.dialog`): the window dims, the dialog
  * sits in the middle at 480 dp wide and radius 8 on an opaque layer, its body padded 24 dp, and its
  * footer a band of buttons at equal width with the primary first. [onDismissOutside] runs on a tap on
- * the smoke (null: the dialog is modal and stays).
+ * the smoke (null: the dialog is modal and stays); [onEscape] runs on Escape (the optional dialog's
+ * Later; null for a mandatory one). The primary takes focus as the dialog opens, and Tab wraps
+ * inside it: first to last and back, never out to the page behind.
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun PolarisFluentContentDialog(
     footer: List<FluentFooterButton>,
     modifier: Modifier = Modifier,
     onDismissOutside: (() -> Unit)? = null,
+    onEscape: (() -> Unit)? = onDismissOutside,
     body: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = PolarisTheme.current.dark
+    val first = remember { FocusRequester() }
+    val last = remember { FocusRequester() }
+    val initialFocus = LocalPolarisInitialFocus.current
+    LaunchedEffect(initialFocus) {
+        if (initialFocus) {
+            // The buttons are placed on the first frame; a request before that has nothing to land on.
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { first.requestFocus() }
+        }
+    }
     Box(
         modifier
             .fillMaxSize()
             .background(scheme.scrim.copy(alpha = PolarisFluent.smokeAlpha(dark)))
+            .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown && e.key == Key.Escape && onEscape != null) {
+                    onEscape()
+                    true
+                } else {
+                    false
+                }
+            }
+            .focusProperties {
+                exit = { dir ->
+                    when (dir) {
+                        FocusDirection.Next -> first
+                        FocusDirection.Previous -> last
+                        else -> FocusRequester.Cancel
+                    }
+                }
+            }
+            .focusGroup()
             .then(
                 if (onDismissOutside != null) {
                     Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismissOutside)
@@ -365,7 +495,7 @@ internal fun PolarisFluentContentDialog(
                 .padding(PolarisFluent.dialogMargin)
                 .widthIn(max = PolarisFluent.dialogWidth)
                 .fillMaxWidth()
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
+                .pointerInput(Unit) { detectTapGestures { } },
             shape = PolarisFluent.overlayShape,
             color = scheme.surfaceContainerLow,
             contentColor = scheme.onSurface,
@@ -383,12 +513,12 @@ internal fun PolarisFluentContentDialog(
                         .padding(PolarisFluent.dialogPad),
                     horizontalArrangement = Arrangement.spacedBy(PolarisFluent.gap),
                 ) {
-                    for (b in footer) {
+                    footer.forEachIndexed { i, b ->
                         val interaction = remember { MutableInteractionSource() }
-                        PolarisFluentButton(
-                            b.kind, b.text, b.onClick, interaction,
-                            Modifier.weight(1f).fluentFocusRing(interaction),
-                        )
+                        var m: Modifier = Modifier.weight(1f).fluentFocusRing(interaction)
+                        if (i == 0) m = m.focusRequester(first)
+                        if (i == footer.lastIndex) m = m.focusRequester(last)
+                        PolarisFluentButton(b.kind, b.text, b.onClick, interaction, m)
                     }
                 }
             }

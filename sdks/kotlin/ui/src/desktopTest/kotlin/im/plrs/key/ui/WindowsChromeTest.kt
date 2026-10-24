@@ -34,8 +34,26 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.moveTo
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.requestFocus
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.text.font.FontWeight
 import im.plrs.key.ui.brand.PolarisBrandTokens
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -232,5 +250,249 @@ class WindowsChromeTest {
         val s = polarisBrandColorScheme(dark = true)
         for (c in listOf(s.surfaceContainerLow, s.surfaceDim, s.background, s.scrim)) assertEquals(1f, c.alpha)
         assertTrue(PolarisFluent.smokeAlpha(true) in 0.2f..0.45f && PolarisFluent.smokeAlpha(false) in 0.2f..0.45f)
+    }
+
+    // ── UX fix round (UK-10.5-r2) ─────────────────────────────────────────────────────────────────
+
+    private fun contrastRatio(a: Color, b: Color): Double {
+        val l1 = a.luminance().toDouble()
+        val l2 = b.luminance().toDouble()
+        return (maxOf(l1, l2) + 0.05) / (minOf(l1, l2) + 0.05)
+    }
+
+    @Test
+    fun theTextBoxRestStrokeHolds3To1AndFocusIsA2DpAccentLine() {
+        for (dark in listOf(false, true)) for (branding in listOf(PolarisBranding.PolarisKey, PolarisBranding.None)) {
+            runDesktopComposeUiTest(width = 300, height = 140) {
+                setContent {
+                    PolarisTheme(branding = branding, darkTheme = dark, accent = Color(0xFF26847A), copy = PolarisCopy(productName = "Diceroll")) {
+                        CompositionLocalProvider(LocalPolarisWindow provides windowOf(PolarisPlatformVariant.Windows), LocalPolarisInitialFocus provides false) {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp)) {
+                                PolarisTextField("", {}, "License key")
+                            }
+                        }
+                    }
+                }
+                waitForIdle()
+                val box = onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
+                val px = onNode(isRoot()).captureToImage().toPixelMap()
+                val x = (box.left + box.width / 2).toInt()
+                val rest = px[x, box.bottom.toInt() - 1]
+                val fill = px[x, box.top.toInt() + 8]
+                val ratio = contrastRatio(rest, fill)
+                assertTrue(ratio >= 3.0, "rest stroke $ratio:1 on the field ($branding, dark=$dark)")
+                // The box holds the stroke for its whole width, not a corner.
+                assertEquals(rest.toArgb(), px[box.left.toInt() + 10, box.bottom.toInt() - 1].toArgb())
+            }
+        }
+    }
+
+    @Test
+    fun aFocusedTextBoxDrawsATwoDpAccentFoot() = runDesktopComposeUiTest(width = 300, height = 140) {
+        val requester = FocusRequester()
+        setContent {
+            Themed(PolarisPlatformVariant.Windows) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp)) {
+                    PolarisTextField("", {}, "License key", focusRequester = requester)
+                }
+            }
+        }
+        waitForIdle()
+        runOnIdle { requester.requestFocus() }
+        waitForIdle()
+        val box = onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
+        val px = onNode(isRoot()).captureToImage().toPixelMap()
+        val x = (box.left + box.width / 2).toInt()
+        val a = px[x, box.bottom.toInt() - 1]
+        val b = px[x, box.bottom.toInt() - 2]
+        assertEquals(a.toArgb(), b.toArgb(), "two rows of the same line")
+        assertNotEquals(px[x, box.bottom.toInt() - 3].toArgb(), a.toArgb())
+    }
+
+    @Composable
+    private fun DialogWithOutsideFocusable(ui: PolarisUpdateUi, onLater: () -> Unit) {
+        Themed(PolarisPlatformVariant.Windows, dark = true) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                Box(Modifier.size(40.dp).testTag("outside").focusable())
+                PolarisUpdatePromptHosted(ui, onUpdate = {}, onLater = onLater, onSkip = {})
+            }
+        }
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.focusedText(): String? =
+        onAllNodes(isFocused()).fetchSemanticsNodes().firstOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
+
+    @Test
+    fun theContentDialogFocusesThePrimaryEscapeIsLaterAndTabStaysInside() = runDesktopComposeUiTest(width = 900, height = 600) {
+        var laters = 0
+        setContent { DialogWithOutsideFocusable(PolarisUpdateUi("2.5.0", currentVersion = "2.4.1"), onLater = { laters++ }) }
+        waitForIdle()
+        mainClock.advanceTimeBy(500)
+        waitForIdle()
+        val primary = copyOf { updateVerb(PolarisUpdateUi("2.5.0")) }
+        assertEquals(primary, focusedText(), "initial focus is on the primary")
+        // Tab wraps over the two buttons and never reaches the page behind.
+        val seen = mutableListOf<String?>()
+        repeat(5) {
+            onRoot().performKeyInput { pressKey(Key.Tab) }
+            waitForIdle()
+            seen += focusedText()
+        }
+        onNodeWithTag("outside").assertIsNotFocused()
+        assertTrue(seen.all { it != null }, "focus stays on a dialog button: $seen")
+        val later = copyOf { updateLater }
+        val skip = copyOf { updateSkip }
+        assertEquals(listOf<String?>(later, skip, primary, later, skip), seen)
+        // Shift+Tab from the first (four presses from Skip: Later, Update, the scrolling body, then round) wraps to the last.
+        repeat(4) {
+            onRoot().performKeyInput { keyDown(Key.ShiftLeft); pressKey(Key.Tab); keyUp(Key.ShiftLeft) }
+            waitForIdle()
+        }
+        assertEquals(skip, focusedText(), "Shift+Tab wraps from the primary to the last")
+        onNodeWithTag("outside").assertIsNotFocused()
+        onRoot().performKeyInput { pressKey(Key.Escape) }
+        waitForIdle()
+        assertEquals(1, laters, "Escape is Later")
+    }
+
+    @Test
+    fun escapeDoesNothingOnAMandatoryDialog() = runDesktopComposeUiTest(width = 900, height = 600) {
+        var later = 0
+        setContent { DialogWithOutsideFocusable(PolarisUpdateUi("2.5.0", mandatory = true), onLater = { later++ }) }
+        waitForIdle()
+        mainClock.advanceTimeBy(500)
+        waitForIdle()
+        onRoot().performKeyInput { pressKey(Key.Escape) }
+        waitForIdle()
+        assertEquals(0, later)
+    }
+
+    @Test
+    fun aContrastThemeAppliesToEveryPreset() {
+        for (branding in listOf(PolarisBranding.PolarisKey, PolarisBranding.None)) for (dark in listOf(false, true)) {
+            runDesktopComposeUiTest(width = 300, height = 200) {
+                lateinit var scheme: androidx.compose.material3.ColorScheme
+                var link = Color.Unspecified
+                var ring = Color.Unspecified
+                setContent {
+                    CompositionLocalProvider(LocalPolarisHostFacts provides PolarisHostFacts(dark = dark, highContrast = true, accent = 0xE91E63)) {
+                        PolarisTheme(branding = branding, darkTheme = dark, accent = Color(0xFF26847A)) {
+                            scheme = MaterialTheme.colorScheme
+                            link = PolarisTheme.accentText
+                            ring = PolarisTheme.focusColor
+                        }
+                    }
+                }
+                waitForIdle()
+                val c = FluentSystemColors.forTheme(dark)
+                assertEquals(c.window, scheme.background, "$branding dark=$dark")
+                assertEquals(c.windowText, scheme.onSurface)
+                assertEquals(c.highlight, scheme.primary)
+                assertEquals(c.hotlight, link, "links are Hotlight")
+                assertEquals(c.windowText, ring, "the ring is WindowText")
+            }
+        }
+    }
+
+    @Test
+    fun aContrastButtonIsGrayTextWhenDisabledAndHighlightUnderThePointer() {
+        for (dark in listOf(false, true)) {
+            runDesktopComposeUiTest(width = 400, height = 200) {
+                setContent {
+                    CompositionLocalProvider(LocalPolarisHostFacts provides PolarisHostFacts(dark = dark, highContrast = true)) {
+                        PolarisTheme(branding = PolarisBranding.None, darkTheme = dark) {
+                            CompositionLocalProvider(LocalPolarisWindow provides windowOf(PolarisPlatformVariant.Windows), LocalPolarisInitialFocus provides false) {
+                                Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp)) {
+                                    PolarisSecondaryButton("Hover me", onClick = {}, modifier = Modifier.testTag("hover"))
+                                    PolarisSecondaryButton("Off", onClick = {}, enabled = false, modifier = Modifier.testTag("off"))
+                                }
+                            }
+                        }
+                    }
+                }
+                waitForIdle()
+                val c = FluentSystemColors.forTheme(dark)
+                val off = onNodeWithTag("off").fetchSemanticsNode().boundsInRoot
+                val offPx = onNode(isRoot()).captureToImage().toPixelMap()
+                assertEquals(c.grayText.toArgb(), offPx[off.left.toInt(), off.center.y.toInt()].toArgb(), "a disabled button's edge is GrayText")
+                onNodeWithTag("hover").performMouseInput { moveTo(center) }
+                waitForIdle()
+                val hov = onNodeWithTag("hover").fetchSemanticsNode().boundsInRoot
+                val hovPx = onNode(isRoot()).captureToImage().toPixelMap()
+                assertEquals(c.highlight.toArgb(), hovPx[hov.left.toInt() + 4, hov.top.toInt() + 6].toArgb(), "hover fills with Highlight")
+            }
+        }
+    }
+
+    @Test
+    fun theWindowsTypeTokensApplyOnBothPresets() {
+        for (branding in listOf(PolarisBranding.PolarisKey, PolarisBranding.None)) {
+            runDesktopComposeUiTest(width = 200, height = 100) {
+                lateinit var t: androidx.compose.material3.Typography
+                setContent {
+                    PolarisTheme(branding = branding) {
+                        CompositionLocalProvider(LocalPolarisWindow provides windowOf(PolarisPlatformVariant.Windows)) { t = MaterialTheme.typography }
+                    }
+                }
+                waitForIdle()
+                assertEquals(28.sp, t.displaySmall.fontSize, "$branding")
+                assertEquals(36.sp, t.displaySmall.lineHeight)
+                assertEquals(FontWeight(600), t.displaySmall.fontWeight)
+                assertEquals(20.sp, t.titleLarge.fontSize)
+                assertEquals(28.sp, t.titleLarge.lineHeight)
+                assertEquals(14.sp, t.bodyMedium.fontSize)
+                assertEquals(20.sp, t.bodyMedium.lineHeight)
+                assertEquals(FontWeight(500), t.labelLarge.fontWeight)
+                assertEquals(14.sp, t.labelLarge.fontSize)
+                assertEquals(0.sp, t.labelLarge.letterSpacing)
+            }
+        }
+    }
+
+    @Test
+    fun theExternalGlyphLeadsTheLabelWithAnEightDpGap() = runDesktopComposeUiTest(width = 400, height = 120) {
+        setContent {
+            Themed(PolarisPlatformVariant.Windows) {
+                // In an action row a button is as wide as its label, so the label's offset is the glyph's.
+                CompositionLocalProvider(LocalPolarisActionRow provides true) {
+                    Column(Modifier.padding(20.dp)) {
+                        PolarisPrimaryButton("Open the portal", onClick = {}, external = true)
+                        PolarisPrimaryButton("Plain", onClick = {})
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        val buttons = onAllNodes(isButton).fetchSemanticsNodes()
+        val ext = buttons[0].boundsInRoot
+        val label = onNode(hasText("Open the portal"), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        // 12 dp inset, a 16 dp glyph, the 8 dp gap, then the label.
+        assertEquals(12f + 16f + 8f, label.left - ext.left, 1.5f)
+    }
+
+    @Test
+    fun theFocusRingCornersAreConcentric() = runDesktopComposeUiTest(width = 200, height = 120) {
+        val requester = FocusRequester()
+        setContent {
+            Themed(PolarisPlatformVariant.Windows) {
+                val interaction = remember { MutableInteractionSource() }
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceDim)) {
+                    Box(
+                        Modifier.padding(20.dp).size(60.dp, 32.dp)
+                            .polarisFocusIndication(interaction, PolarisTheme.buttonShape)
+                            .focusRequester(requester).focusable(interactionSource = interaction),
+                    )
+                }
+            }
+        }
+        waitForIdle()
+        runOnIdle { requester.requestFocus() }
+        waitForIdle()
+        val px = onNode(isRoot()).captureToImage().toPixelMap()
+        val page = px[2, 2]
+        // The control's corner is at (20,20); the outer line sits 3 dp out with a 7 dp radius, so the
+        // diagonal pixel one past the outer line's curve is still page, where a square-cornered ring would draw.
+        assertEquals(page.toArgb(), px[17, 17].toArgb(), "the outer line rounds at the corner (radius 4 + 3)")
+        assertNotEquals(page.toArgb(), px[17, 28].toArgb(), "and runs straight down the side")
     }
 }

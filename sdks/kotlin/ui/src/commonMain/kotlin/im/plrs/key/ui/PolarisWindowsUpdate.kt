@@ -50,6 +50,7 @@ internal fun PolarisFluentUpdateDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit
     PolarisFluentContentDialog(
         footer = footer,
         onDismissOutside = if (ui.mandatory) null else onLater,
+        onEscape = if (ui.mandatory) null else onLater,
     ) {
         CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PolarisFluent.gap)) {

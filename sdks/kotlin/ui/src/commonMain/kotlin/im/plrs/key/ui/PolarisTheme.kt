@@ -298,8 +298,9 @@ private fun PolarisThemeResolved(
                 dark = dark,
                 status = PolarisStatusColors.from(scheme),
                 controlShape = null,
-                accentText = resolved?.let { colorOf(it.fg) },
-                focus = resolved?.let { colorOf(it.focus) },
+                // A Windows contrast theme: links are Hotlight, the ring WindowText, whatever the host accent.
+                accentText = if (contrast) FluentSystemColors.forTheme(darkTheme).hotlight else resolved?.let { colorOf(it.fg) },
+                focus = if (contrast) FluentSystemColors.forTheme(darkTheme).windowText else resolved?.let { colorOf(it.focus) },
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
             )
@@ -307,7 +308,12 @@ private fun PolarisThemeResolved(
                 // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
             } else {
-                MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+                val fluent = variant == PolarisPlatformVariant.Windows
+                MaterialTheme(
+                    colorScheme = scheme,
+                    typography = if (fluent) windowsTypography(MaterialTheme.typography) else MaterialTheme.typography,
+                    shapes = MaterialTheme.shapes,
+                ) {
                     CompositionLocalProvider(LocalPolarisUi provides config, content = content)
                 }
             }
@@ -326,7 +332,7 @@ private fun PolarisThemeResolved(
             }
             val system = if (contrast) FluentSystemColors.forTheme(darkTheme) else null
             val inkText = if (darkTheme) PolarisBrandTokens.Dark.textStrong else PolarisBrandTokens.Light.textStrong
-            val typography = polarisBrandTypography(MaterialTheme.typography)
+            val typography = polarisBrandTypography(MaterialTheme.typography).let { if (fluent) windowsTypography(it) else it }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
