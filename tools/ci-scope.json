@@ -133,7 +133,12 @@
       "paths": ["sdks/kotlin/"]
     },
     "android": {
-      "paths": ["sdks/kotlin/", "sdks/godot/", "packages/ui-qa/"]
+      "paths": [
+        "sdks/kotlin/",
+        "sdks/godot/",
+        "packages/ui-qa/",
+        "examples/ui/compose-android/"
+      ]
     },
     "godot": {
       "paths": ["sdks/godot/", "packages/ui-qa/"]
