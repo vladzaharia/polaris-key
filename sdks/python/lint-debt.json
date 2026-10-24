@@ -1,0 +1,667 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    "sdks/python/src/polaris_key/__init__.py": {
+      "mypy:no-redef": 1,
+      "ruff:F401": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/aio.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/backend.py": {
+      "ruff:B018": 1,
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/boot.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/cli/argparse_cli.py": {
+      "mypy:assignment": 1,
+      "mypy:has-type": 1,
+      "mypy:operator": 1,
+      "mypy:union-attr": 1,
+      "ruff:B904": 1,
+      "ruff:E501": 7
+    },
+    "sdks/python/src/polaris_key/cli/click_cli.py": {
+      "ruff:B904": 2,
+      "ruff:E501": 12,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/cli/core.py": {
+      "mypy:assignment": 1,
+      "ruff:E501": 1,
+      "ruff:F822": 1
+    },
+    "sdks/python/src/polaris_key/cli/gate.py": {
+      "mypy:assignment": 1,
+      "mypy:misc": 1,
+      "ruff:E501": 4
+    },
+    "sdks/python/src/polaris_key/cli/mount.py": {
+      "ruff:E501": 4,
+      "ruff:F822": 1
+    },
+    "sdks/python/src/polaris_key/cli/typer_cli.py": {
+      "mypy:no-redef": 2,
+      "ruff:B904": 2,
+      "ruff:E402": 3,
+      "ruff:E501": 9
+    },
+    "sdks/python/src/polaris_key/cli/verbs.py": {
+      "mypy:arg-type": 1,
+      "ruff:E501": 5,
+      "ruff:F841": 1
+    },
+    "sdks/python/src/polaris_key/client.py": {
+      "mypy:arg-type": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/config/client.py": {
+      "mypy:index": 2,
+      "mypy:operator": 1
+    },
+    "sdks/python/src/polaris_key/core/__init__.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/bundle.py": {
+      "mypy:arg-type": 2,
+      "mypy:union-attr": 3,
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/core/cache.py": {
+      "mypy:assignment": 1,
+      "mypy:union-attr": 2
+    },
+    "sdks/python/src/polaris_key/core/check.py": {
+      "ruff:B023": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/context.py": {
+      "mypy:union-attr": 2,
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/decide.py": {
+      "mypy:arg-type": 3,
+      "mypy:assignment": 1,
+      "mypy:index": 4,
+      "mypy:operator": 2,
+      "mypy:union-attr": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/feed.py": {
+      "mypy:arg-type": 2,
+      "ruff:E501": 1,
+      "ruff:F401": 2
+    },
+    "sdks/python/src/polaris_key/core/jws.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/release_record.py": {
+      "mypy:arg-type": 1,
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/core/stages.py": {
+      "mypy:arg-type": 4,
+      "mypy:operator": 1
+    },
+    "sdks/python/src/polaris_key/core/telemetry.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/core/trust.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/devices/client.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/devices/deviceid.py": {
+      "mypy:attr-defined": 3
+    },
+    "sdks/python/src/polaris_key/devices/fingerprint.py": {
+      "mypy:attr-defined": 3,
+      "mypy:call-overload": 1
+    },
+    "sdks/python/src/polaris_key/distribution/__init__.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/identity/client.py": {
+      "mypy:arg-type": 2
+    },
+    "sdks/python/src/polaris_key/license/__init__.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/license/client.py": {
+      "ruff:F401": 1
+    },
+    "sdks/python/src/polaris_key/license/endpoints.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/qr.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/release/client.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/release/fetch.py": {
+      "ruff:F401": 1
+    },
+    "sdks/python/src/polaris_key/server/_copy.py": {
+      "ruff:E501": 20
+    },
+    "sdks/python/src/polaris_key/server/_core.py": {
+      "ruff:E501": 4
+    },
+    "sdks/python/src/polaris_key/server/_problem.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/server/django.py": {
+      "ruff:E501": 2
+    },
+    "sdks/python/src/polaris_key/server/fastapi.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/server/flask.py": {
+      "ruff:E501": 1,
+      "ruff:F401": 2
+    },
+    "sdks/python/src/polaris_key/server/starlette.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/server/testing.py": {
+      "ruff:E501": 2
+    },
+    "sdks/python/src/polaris_key/ui/accent.py": {
+      "ruff:E741": 3
+    },
+    "sdks/python/src/polaris_key/ui/core/copy.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/ui/core/identity.py": {
+      "mypy:index": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/ui/core/models.py": {
+      "mypy:arg-type": 1,
+      "ruff:E501": 5
+    },
+    "sdks/python/src/polaris_key/ui/core/ui_choice.py": {
+      "ruff:E501": 4
+    },
+    "sdks/python/src/polaris_key/ui/core/ui_gate.py": {
+      "mypy:arg-type": 1
+    },
+    "sdks/python/src/polaris_key/ui/core/ui_paywall.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/ui/core/ui_signin.py": {
+      "mypy:arg-type": 6,
+      "mypy:return-value": 1,
+      "ruff:E501": 9
+    },
+    "sdks/python/src/polaris_key/ui/core/ui_update.py": {
+      "mypy:arg-type": 2,
+      "mypy:assignment": 1
+    },
+    "sdks/python/src/polaris_key/ui/terminal/device.py": {
+      "ruff:E501": 3
+    },
+    "sdks/python/src/polaris_key/ui/terminal/env.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/ui/terminal/flows.py": {
+      "mypy:arg-type": 4,
+      "mypy:misc": 4,
+      "mypy:operator": 1,
+      "ruff:E501": 46,
+      "ruff:F401": 3
+    },
+    "sdks/python/src/polaris_key/ui/terminal/parts.py": {
+      "ruff:E501": 11
+    },
+    "sdks/python/src/polaris_key/ui/terminal/screen.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/ui/terminal/screens.py": {
+      "mypy:arg-type": 1,
+      "mypy:assignment": 1,
+      "mypy:index": 1,
+      "mypy:list-item": 1,
+      "ruff:B023": 2,
+      "ruff:E501": 26
+    },
+    "sdks/python/src/polaris_key/ui/terminal/settings_rows.py": {
+      "mypy:index": 2,
+      "mypy:union-attr": 6,
+      "ruff:E501": 3,
+      "ruff:F401": 1
+    },
+    "sdks/python/src/polaris_key/ui/terminal/text.py": {
+      "ruff:E501": 2
+    },
+    "sdks/python/src/polaris_key/ui/terminal/textual_app.py": {
+      "mypy:call-arg": 1,
+      "ruff:E501": 25,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/__init__.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/bootguard.py": {
+      "mypy:arg-type": 5,
+      "mypy:operator": 2
+    },
+    "sdks/python/src/polaris_key/update/client.py": {
+      "mypy:union-attr": 1
+    },
+    "sdks/python/src/polaris_key/update/outlet.py": {
+      "mypy:assignment": 1,
+      "mypy:misc": 3
+    },
+    "sdks/python/src/polaris_key/update/packs/__init__.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/chunk_apply.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/chunks.py": {
+      "mypy:arg-type": 1,
+      "mypy:operator": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/engine.py": {
+      "mypy:arg-type": 1,
+      "mypy:assignment": 1,
+      "mypy:attr-defined": 2,
+      "mypy:index": 6,
+      "mypy:misc": 1,
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/handlers.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/ports.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/revocations.py": {
+      "mypy:assignment": 1
+    },
+    "sdks/python/src/polaris_key/update/packs/select.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/cli/fixtures.py": {
+      "ruff:E501": 48
+    },
+    "sdks/python/tests/cli/golden_support.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/cli/pty_flow.py": {
+      "ruff:E501": 7
+    },
+    "sdks/python/tests/cli/ptyrun.py": {
+      "ruff:E501": 2
+    },
+    "sdks/python/tests/cli/stdin_flow.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/cli/svg.py": {
+      "ruff:E501": 14
+    },
+    "sdks/python/tests/cli/test_cli_contract.py": {
+      "ruff:E501": 10,
+      "ruff:F402": 1
+    },
+    "sdks/python/tests/cli/test_cli_dx.py": {
+      "ruff:E501": 4
+    },
+    "sdks/python/tests/cli/test_cli_gate.py": {
+      "ruff:E501": 5
+    },
+    "sdks/python/tests/cli/test_cli_hardening.py": {
+      "ruff:B023": 2,
+      "ruff:E501": 1,
+      "ruff:F401": 1
+    },
+    "sdks/python/tests/cli/test_cli_mount.py": {
+      "ruff:E501": 4,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/cli/test_cli_review.py": {
+      "ruff:E501": 8,
+      "ruff:F401": 3,
+      "ruff:I001": 3
+    },
+    "sdks/python/tests/cli/test_cli_scenes.py": {
+      "ruff:E501": 6
+    },
+    "sdks/python/tests/cli/test_flows.py": {
+      "ruff:F401": 1
+    },
+    "sdks/python/tests/cli/test_golden.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/cli/test_hostile.py": {
+      "ruff:E501": 13,
+      "ruff:F541": 1
+    },
+    "sdks/python/tests/cli/test_kit_core.py": {
+      "ruff:E501": 6,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/cli/test_lint.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/cli/test_osc11_late.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/cli/test_powered_by.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/cli/test_pty.py": {
+      "ruff:E402": 2
+    },
+    "sdks/python/tests/cli/test_responsive.py": {
+      "ruff:E402": 2,
+      "ruff:E501": 28,
+      "ruff:E741": 1,
+      "ruff:F401": 1
+    },
+    "sdks/python/tests/cli/test_textual.py": {
+      "ruff:E501": 5,
+      "ruff:E741": 6,
+      "ruff:F401": 2
+    },
+    "sdks/python/tests/cli/test_textual_settings.py": {
+      "ruff:E501": 8
+    },
+    "sdks/python/tests/pack_fixtures.py": {
+      "ruff:E501": 2
+    },
+    "sdks/python/tests/test_activation_kinds.py": {
+      "ruff:E501": 3,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_async_client.py": {
+      "ruff:E501": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_auto_discover.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_backend.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_boot.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_bundle_local.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_capabilities.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_catalog.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_cli_hooks.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_cli_verbs.py": {
+      "ruff:E402": 3,
+      "ruff:E501": 7,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_client.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_commerce.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_config_local_events.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_conformance.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_content_conformance.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_content_decision.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_copy_crash.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_coverage_gaps.py": {
+      "ruff:E402": 7,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_delegation.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_devices.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_drivers.py": {
+      "ruff:E501": 1,
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_e2e_live.py": {
+      "ruff:B008": 4,
+      "ruff:F401": 1
+    },
+    "sdks/python/tests/test_entitlements_g11.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_error_model.py": {
+      "ruff:E501": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_fail_closed.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_feed_url_matrix.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_headers.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_identity_mint.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_license_events.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_license_id_refresh.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_local_trust.py": {
+      "ruff:F401": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_outlet_readers.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_pack_types.py": {
+      "ruff:B023": 1,
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_chunks.py": {
+      "ruff:E501": 5,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_client.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_engine.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_feed_delta.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_provides.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_packs_zstd.py": {
+      "ruff:B017": 5,
+      "ruff:E501": 2
+    },
+    "sdks/python/tests/test_portal_matrix.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/test_redaction.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_release_fetch.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_release_update.py": {
+      "ruff:I001": 2
+    },
+    "sdks/python/tests/test_reregister.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_revocations.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_samples.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/test_sdk_config_sample.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_server_client.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_server_core.py": {
+      "ruff:E501": 5,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_server_dx.py": {
+      "ruff:B008": 12,
+      "ruff:E501": 5,
+      "ruff:F401": 1,
+      "ruff:I001": 3
+    },
+    "sdks/python/tests/test_server_fastapi.py": {
+      "ruff:B008": 1,
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_server_flask_django.py": {
+      "ruff:E501": 4
+    },
+    "sdks/python/tests/test_server_starlette.py": {
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_sign_in_conveniences.py": {
+      "ruff:E501": 3,
+      "ruff:F811": 7,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_stage_matrix.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_store_status.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_supports.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_transcripts.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_trust_custody.py": {
+      "ruff:F401": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_ui_lint_qt.py": {
+      "ruff:E501": 3,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_update_journal.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_wire_contract_v3.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_wire_v4.py": {
+      "ruff:B017": 1
+    },
+    "sdks/python/tests/ui/conftest.py": {
+      "ruff:E501": 1
+    },
+    "sdks/python/tests/ui/qt_fixtures.py": {
+      "ruff:E501": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_dropin.py": {
+      "ruff:E501": 5,
+      "ruff:F401": 2,
+      "ruff:I001": 2
+    },
+    "sdks/python/tests/ui/test_qt_gate.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_gate_flow.py": {
+      "ruff:E501": 7,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_kit_spec.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_layout.py": {
+      "ruff:I001": 2
+    },
+    "sdks/python/tests/ui/test_qt_lint.py": {
+      "ruff:E501": 3,
+      "ruff:F401": 1
+    },
+    "sdks/python/tests/ui/test_qt_paywall_choice.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_rerender.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_rows.py": {
+      "ruff:E501": 23,
+      "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_snapshots.py": {
+      "ruff:B018": 1,
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui/test_qt_theme.py": {
+      "ruff:E501": 17,
+      "ruff:E731": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/ui_lint_qt.py": {
+      "ruff:E501": 1
+    }
+  }
+}
