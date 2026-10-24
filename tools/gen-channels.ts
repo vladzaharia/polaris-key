@@ -106,6 +106,8 @@ export interface ChannelRow {
   platforms: string[];
   /** Platform -> accepted CPU arches; absent means any. */
   arches?: Record<string, string[]>;
+  /** Platform -> the outlet identity field a declared outlet must name for the platform to count. */
+  platformNeeds?: Record<string, string>;
   formats: string[];
   deliverableKinds: string[];
   customerAction: (typeof CUSTOMER_ACTIONS)[number];
@@ -216,6 +218,22 @@ export function validateTable(table: unknown): string[] {
                 errors.push(`${at}.arches.${plat}: "${x}" is not an arch`);
         }
     }
+    if (row.platformNeeds !== undefined) {
+      const n = row.platformNeeds as unknown;
+      if (!n || typeof n !== "object" || Array.isArray(n))
+        errors.push(`${at}.platformNeeds: must be an object`);
+      else
+        for (const [plat, v] of Object.entries(n)) {
+          if (!strings(row.platforms) || !row.platforms.includes(plat))
+            errors.push(
+              `${at}.platformNeeds: "${plat}" is not one of the platforms`,
+            );
+          if (typeof v !== "string" || !/^[a-zA-Z][a-zA-Z0-9]*$/.test(v))
+            errors.push(
+              `${at}.platformNeeds.${plat}: must be an identity field name`,
+            );
+        }
+    }
     const sf = row.storefront;
     if (sf !== null) {
       if (!sf || typeof sf !== "object" || typeof sf.adapter !== "string") {
@@ -281,6 +299,13 @@ export function renderManifestTs(table: ChannelTable): string {
       .map(([p, v]) => `${q(p)}: ${list(v)}`)
       .join(", ")} },`
         : ""
+    }${
+      c.platformNeeds
+        ? `
+    platformNeeds: { ${Object.entries(c.platformNeeds)
+      .map(([p, v]) => `${q(p)}: ${q(v)}`)
+      .join(", ")} },`
+        : ""
     }
     formats: ${list(c.formats)},
     deliverableKinds: ${list(c.deliverableKinds)},
@@ -327,6 +352,8 @@ export interface ChannelEntry {
   platforms: readonly string[];
   /** Platform -> the CPU arches the channel accepts there; absent means any. */
   arches?: Readonly<Partial<Record<string, readonly string[]>>>;
+  /** Platform -> the outlet identity field a declared outlet must name before the platform counts. */
+  platformNeeds?: Readonly<Partial<Record<string, string>>>;
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;

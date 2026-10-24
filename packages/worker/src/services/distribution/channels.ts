@@ -107,7 +107,10 @@ function subkindOf(o: DistOutletRow): string | null {
   if (o.kind !== "direct") return null;
   const id = identityOf(o);
   if (typeof id.subkind === "string") return id.subkind;
-  return typeof id.homebrewCask === "string" ? "homebrew" : null;
+  return typeof id.homebrewCask === "string" ||
+    typeof id.homebrewFormula === "string"
+    ? "homebrew"
+    : null;
 }
 
 function declaresChannel(o: DistOutletRow, c: ChannelEntry): boolean {
@@ -187,9 +190,12 @@ export async function deliveryFacets(
   for (const c of CHANNELS) {
     const mine = outlets.filter((o) => declaresChannel(o, c));
     const declared = mine.length > 0;
-    const shared = facts.platforms.filter((p) =>
-      c.platforms.includes(p.platform),
-    );
+    // A platform with a need (`platformNeeds`) stays only while a declared outlet meets it.
+    const served = c.platforms.filter((p) => {
+      const need = c.platformNeeds?.[p];
+      return !need || mine.some((o) => typeof identityOf(o)[need] === "string");
+    });
+    const shared = facts.platforms.filter((p) => served.includes(p.platform));
     const kindOk =
       facts.kinds.length === 0 ||
       c.deliverableKinds.some((k) => facts.kinds.includes(k));
@@ -199,7 +205,7 @@ export async function deliveryFacets(
     const attentions: DeliveryAttention[] = [];
     if (!inScope) attentions.push(attention("out_of_scope"));
 
-    const fit = channelFit(c, builds);
+    const fit = channelFit({ ...c, platforms: served }, builds);
     const anyFit = fit.some((f) => f.fits);
     if (inScope && fit.length > 0 && !anyFit)
       attentions.push(

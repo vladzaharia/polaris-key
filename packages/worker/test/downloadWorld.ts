@@ -139,6 +139,8 @@ export const OUTLETS: Array<[string, string, Record<string, unknown>]> = [
     {
       platforms: ["macos", "windows", "linux"],
       homebrewCask: "diceroll",
+      homebrewFormula: "dice",
+      homebrewTap: "vlad/homebrew-games",
       scoop: { bin: "Diceroll/diceroll.exe" },
     },
   ],

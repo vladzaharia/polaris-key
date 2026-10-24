@@ -199,6 +199,8 @@ and writes the step into the store's operation ledger with `plane = ci`, so CI s
 the console's; refusals add `command_not_allowed`, `worker_draft_staged` and `step_conflict`. A
 store step changes no availability record: report `live` as above once the store shows it. See
 [Storefront steps](/docs/features/ship-builds/ci-stores/#storefront-steps-itchio-and-snap).
+Homebrew takes `dmg`, `tar.gz` and `zip` builds. Linux counts only once a `direct` outlet names `homebrewFormula`.
+
 A pull-request step (`pkey storefront winget|homebrew|scoop|flathub pr` and `status`) is
 reported the same way with `plane = pr`: Polaris Key checks the repository against the channel's
 identity and every file the pull request wrote against the store's paths, and records the files'

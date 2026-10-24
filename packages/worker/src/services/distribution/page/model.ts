@@ -45,6 +45,8 @@
 import {
   APP_DELIVERABLE_ID,
   HOMEBREW_CASK_PATTERN,
+  HOMEBREW_FORMULA_PATTERN,
+  HOMEBREW_TAP_PATTERN,
   NUMERIC_ID_PATTERN,
   channelLabel,
 } from "@polaris-key/manifest";
@@ -781,6 +783,7 @@ export async function buildDownloadModel(
           : // A direct outlet that names no platforms offers what can be installed from a file:
             // an iOS build cannot (it goes through AltStore or a store), unless named.
             PAGE_PLATFORMS.filter((p) => p !== "ios");
+        const formulaPlatforms: PagePlatform[] = [];
         for (const platform of offered) {
           const sel = await one(outlet, platform, { allBuilds: true });
           if (!sel?.entries.length) continue;
@@ -800,6 +803,11 @@ export async function buildDownloadModel(
               }),
             );
           }
+          // The product's own tap, `<owner>/homebrew-<name>`, is spelled `<owner>/<name>` in a
+          // command; without one the bare token resolves against homebrew/cask only.
+          const tap = idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN);
+          const tapped = (token: string) =>
+            tap ? `${tap.replace("/homebrew-", "/")}/${token}` : token;
           const cask = idOf(
             outlet.identity.homebrewCask,
             HOMEBREW_CASK_PATTERN,
@@ -813,9 +821,38 @@ export async function buildDownloadModel(
                 label: channelLabel("homebrew"),
                 url: null,
                 deepLink: null,
-                command: `brew install --cask ${cask}`,
+                command: `brew install --cask ${tapped(cask)}`,
                 version: null,
               }),
+            );
+          const formula = idOf(
+            outlet.identity.homebrewFormula,
+            HOMEBREW_FORMULA_PATTERN,
+          );
+          if ((platform === "macos" || platform === "linux") && formula && tap)
+            formulaPlatforms.push(platform);
+        }
+        if (formulaPlatforms.length > 0) {
+          const formula = idOf(
+            outlet.identity.homebrewFormula,
+            HOMEBREW_FORMULA_PATTERN,
+          );
+          const tap = idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN);
+          if (formula && tap)
+            actions.push(
+              action(
+                {
+                  kind: "homebrew",
+                  outletId: outlet.id,
+                  platforms: formulaPlatforms,
+                  label: channelLabel("homebrew"),
+                  url: null,
+                  deepLink: null,
+                  command: `brew install ${tap.replace("/homebrew-", "/")}/${formula}`,
+                  version: null,
+                },
+                ":formula",
+              ),
             );
         }
         break;

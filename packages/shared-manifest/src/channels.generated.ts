@@ -66,6 +66,8 @@ export interface ChannelEntry {
   platforms: readonly string[];
   /** Platform -> the CPU arches the channel accepts there; absent means any. */
   arches?: Readonly<Partial<Record<string, readonly string[]>>>;
+  /** Platform -> the outlet identity field a declared outlet must name before the platform counts. */
+  platformNeeds?: Readonly<Partial<Record<string, string>>>;
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;
@@ -423,7 +425,8 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "pr",
     outlet: { kind: "direct", subkind: "homebrew" },
     platforms: ["macos", "linux"],
-    formats: ["tar.gz", "zip"],
+    platformNeeds: { linux: "homebrewFormula" },
+    formats: ["dmg", "tar.gz", "zip"],
     deliverableKinds: ["app", "package"],
     customerAction: "run-command",
     verbs: ["submit", "status"],

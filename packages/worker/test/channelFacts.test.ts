@@ -320,6 +320,36 @@ describe("channelFacts: states (A-20.3)", () => {
     ]);
   });
 
+  it("a dmg-only Mac app fits Homebrew", async () => {
+    const w = await world();
+    const out = await facts(
+      w,
+      hooksOf({ stable: [releaseOf(["macos", "arm64", "dmg"])] }),
+    );
+    expect(out.find((f) => f.channel === "homebrew")!.attention).toEqual([]);
+  });
+
+  it("Homebrew serves Linux only once a direct outlet names a formula", async () => {
+    const w = await world();
+    const linux = hooksOf({
+      stable: [releaseOf(["linux", "x86_64", "tar.gz"])],
+    });
+    expect(
+      (await facts(w, linux)).find((f) => f.channel === "homebrew"),
+    ).toBeUndefined();
+    await outlet(w.db, "hb", "direct", { homebrewCask: "dice" });
+    expect(
+      (await facts(w, linux)).find((f) => f.channel === "homebrew")!.platforms,
+    ).toEqual([]);
+    await w.db.run(
+      "UPDATE dist_outlets SET identity_json = ? WHERE outlet_id = 'hb'",
+      JSON.stringify({ homebrewFormula: "dice" }),
+    );
+    const f = (await facts(w, linux)).find((x) => x.channel === "homebrew")!;
+    expect(f).toMatchObject({ declared: true, inScope: true });
+    expect(f.platforms.map((p) => p.platform)).toEqual(["linux"]);
+  });
+
   it("a declared outlet outside the product's platforms is listed with out_of_scope", async () => {
     const w = await world();
     await outlet(w.db, "as", "app-store", { appleId: "1" });
