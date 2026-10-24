@@ -9,8 +9,10 @@ import "./app.css";
 // ?theme=dark|light picks the scheme; anything else follows the system.
 const params = new URLSearchParams(location.search);
 const scheme = params.get("theme");
+if (scheme === "dark" || scheme === "light")
+  document.body.style.colorScheme = scheme;
 
-// The host's brand colour goes in as theme.accent. The kit resolves it for contrast in the
+// The host's brand color goes in as theme.accent. The kit resolves it for contrast in the
 // scheme in effect (DL13); a raw --pk-accent from the host would skip that.
 document.getElementById("provider").theme = {
   colorScheme: scheme === "dark" || scheme === "light" ? scheme : "system",

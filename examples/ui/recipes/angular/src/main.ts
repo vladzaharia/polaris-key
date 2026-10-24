@@ -6,6 +6,9 @@ import { App } from "./app/app";
 
 // ?theme=dark|light picks the scheme; anything else follows the system.
 const theme = new URLSearchParams(location.search).get("theme");
+if (theme === "dark" || theme === "light")
+  document.body.style.colorScheme = theme;
+PolarisKey.fonts(false);
 PolarisKey.theme({
   colorScheme: theme === "dark" || theme === "light" ? theme : "system",
   product: {

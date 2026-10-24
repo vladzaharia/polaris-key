@@ -37,12 +37,14 @@ button:disabled {
   cursor: default;
 }
 .own {
-  padding: 0 2rem 2rem;
+  border-block-start: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  padding: 2rem;
+}
+button[data-primary] {
+  background: CanvasText;
+  color: Canvas;
 }
 .own h2 {
   font-size: 1.125rem;
   font-weight: 600;
-}
-.own code {
-  font-size: 1em;
 }

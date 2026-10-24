@@ -1,3 +1,4 @@
+@import "../../../../../packages/elements/dist/fonts/fonts.css";
 body {
   color-scheme: light dark;
   background: Canvas;
@@ -49,4 +50,12 @@ ul {
 h1,
 h2 {
   font-weight: 600;
+}
+.own {
+  border-block-start: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  padding: 2rem;
+}
+button[data-primary] {
+  background: CanvasText;
+  color: Canvas;
 }

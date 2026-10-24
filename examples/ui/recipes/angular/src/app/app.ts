@@ -14,9 +14,9 @@ import { OwnUi } from "./own-ui";
       <main>
         <h1>Tidewater Studio</h1>
         <p>The license holds. This is the app.</p>
-        <app-own-ui />
       </main>
     </pk-gate>
+    <app-own-ui (action)="onAction($any($event))" />
   `,
 })
 export class App {
@@ -27,7 +27,7 @@ export class App {
   );
 
   // Welcome's buttons raise pk-action; a real app hands it to the SDK. Here either one grants.
-  onAction(e: CustomEvent<{ key: string }>) {
+  onAction(e: { detail: { key: string } }) {
     const { key } = e.detail;
     if (key === "welcome.signIn" || key === "welcome.useKey")
       this.input.set(gateInput("ok"));
