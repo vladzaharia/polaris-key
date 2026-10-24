@@ -84,3 +84,8 @@ Verified against the code (plan `P0-30-AX-07-slices.md` §0):
 - The admin harness is half there (`consoleSessionHelper.ts`); `makeEnv(kv, _slugs)` has an unused parameter, made optional rather than swept (263 files).
 - `presentationInsert` can go (migration 0106 shipped from v0.8.33); the migration tests that seed older schemas prove it.
 - Shared helpers are imported from outside `test/` (`dev/world.ts`, admin e2e, `turbo.json`), so only `*.test.ts` files move.
+- Some test paths are referenced by tooling and stay put (T9): `tools/generators.ts:138-139` and `tools/gen-transcripts.mjs:41` (transcripts), `ci.yml:319` (`docsSearchBrowser.test.ts`), root `AGENTS.md` (`routeCoverage`, `tableCrossings`). `tools/lint/debt/jscpd.json` keys 429 lines by worker test path, so a move re-records it.
+- 131 test files build paths from `import.meta.url` (fixtures, `../migrations`); moving them needs a path rewrite (T10).
+- Layout target is `cq-worker-services.md` §5.10; by direct `../src/` imports: core 61, one service 99, console only 29, console + one service 46, two or more services 84, a composition module 134, no `src` import 36. A classification job with a reviewed map, not a blind move (T11).
+- Verify matters (T12): the transcripts family runs the worker scenario tests, which call `makeTestDb`; a template change must keep every transcript byte-identical.
+- P0-30.1 landed: `makeTestDb()` clones a serialized template cached at `os.tmpdir()/pkey-test-db/<sha256 of migration bytes>.sqlite` (temp name + `renameSync`; an unopenable file is rebuilt; no `globalSetup`).
