@@ -33,6 +33,8 @@ import PackageDescription
 //   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
 //                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
 //                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
+//   PolarisKeyUpdateUI the SwiftUI Sparkle user driver and the Mac update window (UK-08.6): macOS
+//                   ONLY, like PolarisKeyUpdate.   (deps UI, UICore, Update, Sparkle)
 //   PolarisKeyUICore   the presentation core (UK-07; UI-KITS §1.3 layer c): every kit component's
 //                   state machine, copy keys and actions over plain inputs, the ICU copy catalog,
 //                   the product identity and theme resolution, public preview states and the
@@ -94,6 +96,8 @@ let package = Package(
         .library(name: "PolarisKeyUICore", targets: ["PolarisKeyUICore"]),
         // Brandable SwiftUI login/gate components layered over the services.
         .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
+        // The SwiftUI user driver for Sparkle and the macOS update window (UK-08.6): macOS only.
+        .library(name: "PolarisKeyUpdateUI", targets: ["PolarisKeyUpdateUI"]),
         // The Apple platform edges (P5-05), and their C surface for native hosts (only a native
         // host links PolarisKeyPlatformC, so Swift consumers export no `pkp_*` symbols).
         .library(name: "PolarisKeyPlatform", targets: ["PolarisKeyPlatform"]),
@@ -211,12 +215,26 @@ let package = Package(
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // `PolarisSparkleUserDriver: SPUUserDriver` and its window (UK-08.6). Every source is
+        // `#if os(macOS)`, and the Sparkle product is conditioned like PolarisKeyUpdate's, so an iOS
+        // or Catalyst build links nothing.
+        .target(
+            name: "PolarisKeyUpdateUI",
+            dependencies: [
+                "PolarisKey", "PolarisKeyCore", "PolarisKeyUICore", "PolarisKeyUI",
+                "PolarisKeyUpdate",
+                .product(
+                    name: "Sparkle", package: "Sparkle",
+                    condition: .when(platforms: [.macOS])),
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(
             name: "PolarisKeyTests",
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
-                "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "libzstd",
+                "PolarisKeyUpdateUI", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "libzstd",
             ],
             // No resources: the tests read the SAME cross-language corpus the Node and Python
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts

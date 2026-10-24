@@ -616,13 +616,15 @@ public struct StatusPill: View {
 /// A determinate bar, only for counted bytes (DL7: never an invented percentage).
 public struct ProgressBar: View {
     let fraction: Double
+    @Environment(\.polarisKeyStrings) private var strings
     public init(fraction: Double) { self.fraction = fraction }
 
     public var body: some View {
         kitStyle { style in
             ProgressView(value: max(0, min(1, fraction)))
                 .tint(style.palette.accentSolid)
-                .accessibilityLabel(KitFormat.percent(fraction))
+                .accessibilityLabel(Text(strings.string("common.updateProgressLabel")))
+                .accessibilityValue(Text(KitFormat.percent(fraction)))
         }
     }
 }

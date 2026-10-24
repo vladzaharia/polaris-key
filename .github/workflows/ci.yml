@@ -651,7 +651,7 @@ jobs:
         # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
         run: |
           for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey; do
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO -quiet build
           done
@@ -665,9 +665,18 @@ jobs:
         # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
         run: |
           for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform; do
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey PolarisKeyPlatform; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
               CODE_SIGNING_ALLOWED=NO -quiet build
+          done
+      - name: macOS build of the update and UI libraries
+        working-directory: sdks/swift
+        # UK-08.6: PolarisKeyUpdateUI is macOS only (the SwiftUI Sparkle user driver); it and the
+        # libraries it sits on build for the Mac with warnings as errors.
+        run: |
+          for scheme in PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS' \
+              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy

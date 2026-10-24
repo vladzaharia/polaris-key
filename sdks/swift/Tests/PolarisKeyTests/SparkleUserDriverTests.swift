@@ -79,11 +79,22 @@
             }
         }
 
+        /// SPUUpdater has no public `delegate`, so the wiring is proved by its effect: the updater's
+        /// feed URL is the one the delegate was given, and nothing else supplies one.
+        private func assertWired(_ sparkle: PolarisSparkle) throws {
+            XCTAssertNil(sparkle.updater.feedURL)
+            let url = try XCTUnwrap(URL(string: "https://feed.example/appcast.xml?arch=arm64"))
+            sparkle.delegate.apply(
+                UpdateFeed(url: url, channel: "stable", arch: nil, allowedChannels: ["stable"]))
+            XCTAssertEqual(sparkle.updater.feedURL, url)
+        }
+
         func testNoDriverKeepsTheStandardController() throws {
             let c = try client()
             let sparkle = PolarisSparkle(client: c, channel: "stable", delegate: delegate(c))
             XCTAssertNotNil(sparkle.controller)
             XCTAssertTrue(sparkle.controller?.updater === sparkle.updater)
+            try assertWired(sparkle)
         }
 
         func testADriverBuildsAnUpdaterWithoutAController() throws {
@@ -91,6 +102,7 @@
             let sparkle = PolarisSparkle(
                 client: c, channel: "stable", delegate: delegate(c), userDriver: RecordingDriver())
             XCTAssertNil(sparkle.controller)
+            try assertWired(sparkle)
         }
 
         /// A bundle carrying the anchor, so `start` gets past the assertion.
@@ -120,10 +132,9 @@
             await fulfillment(of: [driver.checked], timeout: 10)
             // The stubbed discovery has no appcast, so Sparkle reports a missing feed to the
             // driver (it skips the "checking" call): the feed comes from the delegate only.
-            if let erred = driver.erred as NSError? {
-                XCTAssertEqual(erred.domain, "SUSparkleErrorDomain")
-                XCTAssertTrue(erred.localizedDescription.contains("SUFeedURL"))
-            }
+            let erred = try XCTUnwrap(driver.erred as NSError?)
+            XCTAssertEqual(erred.domain, "SUSparkleErrorDomain")
+            XCTAssertTrue(erred.localizedDescription.contains("SUFeedURL"))
             sparkle.stop()
         }
     }
