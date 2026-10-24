@@ -134,7 +134,7 @@ class MainSafetyTest {
         if (unbuildable.isNotEmpty()) fail("cannot build the arguments of: $unbuildable")
         // The surface really was enumerated.
         val labels = calls.map { it.label }.toSet()
-        for (must in listOf("client.activate", "client.sync", "client.status", "license.deactivate", "config.set", "update.decide", "packs.ensure", "core.start")) {
+        for (must in listOf("license.activateWithKey", "client.sync", "client.status", "license.deactivate", "config.set", "update.decide", "packs.ensure", "core.start")) {
             assertTrue("$must was not swept ($labels)", must in labels)
         }
 

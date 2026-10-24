@@ -205,6 +205,12 @@ release:
       name: "im.plrs.key:polaris-key-ui-android"
       artifacts:
         files: { match: "polaris-key-ui-android-*" }
+    maven.ui-desktop:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-ui-desktop"
+      artifacts:
+        files: { match: "polaris-key-ui-desktop-*" }
     maven.ui-core:
       kind: package
       ecosystem: maven
