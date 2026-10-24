@@ -48,7 +48,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -190,15 +189,21 @@ private fun PolarisUpdatePromptCard(
     val window = polarisWindow
     val (title, body) = copy.updatePromptText(ui)
     val downloading = ui.progress != null && ui.kind == PolarisUpdateUi.Kind.Install
+    // GNOME: the sheet is an AdwDialog (opaque, radius 12, a soft shadow, a 7 % edge in light), never a bottom sheet.
+    val gnome = window.isGnome
     Surface(
         // A card (not the phone's sheet) is the 560 dp message block, so its three actions fit one row.
-        modifier = modifier.widthIn(max = if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth(),
+        modifier = if (gnome) {
+            modifier.widthIn(max = PolarisGnome.dialogWidth).fillMaxWidth().polarisGnomeDialogChrome()
+        } else {
+            modifier.widthIn(max = if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth()
+        },
         // A bottom sheet rounds its top edge only (radius 28); a card rounds all four.
-        shape = if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
+        shape = if (gnome) polarisRadiusShape(PolarisGnome.dialogRadius) else if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
         // One step lower than the tonal Later button's container, so Later stays visible.
-        color = scheme.surfaceContainerLow,
+        color = if (gnome) polarisGnomeDialogColor() else scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
-        tonalElevation = 6.dp,
+        tonalElevation = if (gnome) 0.dp else 6.dp,
     ) {
         Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val content: @Composable () -> Unit = {
@@ -293,7 +298,7 @@ private fun PolarisUpdatePromptCard(
                     }
                 }
             } else {
-                PolarisActionGroup(row = window.compactHeight) {
+                PolarisActionGroup(row = window.compactHeight || gnome) {
                     // While the download runs the primary queues the restart, so it is never disabled.
                     PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
                     if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, initialFocus = laterFirst)
@@ -348,7 +353,7 @@ private fun PolarisSkipRow(content: @Composable () -> Unit) {
  * No lines hides the label; no page hides the link (UI-KITS.md 4.3 UpdatePrompt).
  */
 @Composable
-private fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
+internal fun PolarisUpdateNotes(ui: PolarisUpdateUi) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
     val opener = rememberPolarisOpener()
@@ -399,7 +404,8 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
     Dialog(
         onDismissRequest = { if (!ui.mandatory) onLater() },
         // The sheet and the card span the window: the dialog's own width would cap them.
-        properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory, usePlatformDefaultWidth = false),
+        // A Windows or GNOME dialog carries its own dim and the Mac sheet none; the window's 60 % black must not stack on it.
+        properties = polarisPromptDialogProperties(dismissible = !ui.mandatory, scrim = dialogWindowDraws(autoPlatformVariant())),
     ) {
         PolarisDialogDim(if (dark) 0.6f else 0.32f)
         PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)
@@ -416,13 +422,18 @@ internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit
     // the dialog measures its own window, so a short one lays the actions out as a row.
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val window = PolarisWindow(maxWidth, maxHeight, isTelevision())
-        val sheet = maxWidth < PolarisSheetBelow
+        val sheet = maxWidth < PolarisSheetBelow && !window.isGnome
         val available = maxHeight
         CompositionLocalProvider(LocalPolarisWindow provides window) {
+            if (window.fluent) {
+                PolarisFluentUpdateDialog(ui, onUpdate, onLater, onSkip)
+                return@CompositionLocalProvider
+            }
             // The window is the scrim: a tap on it dismisses an optional update; the card takes its own taps.
             // Taps, not click semantics: TalkBack gets no unnamed full-window control (Later and Back dismiss).
             Box(
-                Modifier.fillMaxSize().pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } },
+                Modifier.fillMaxSize().then(if (window.isGnome) Modifier.polarisGnomeScrim() else Modifier)
+                    .pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } },
                 contentAlignment = if (sheet) Alignment.BottomCenter else Alignment.Center,
             ) {
                 if (sheet) {

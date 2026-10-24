@@ -95,6 +95,17 @@ internal expect fun thumbnailArgb32(image: ImageBitmap): IntArray
 internal expect fun PolarisDialogDim(amount: Float)
 
 /**
+ * The dialog properties of a prompt window. [scrim] asks the desktop's `Dialog` for its own dim
+ * (Compose Multiplatform draws a black 60 % one by default); a chrome that draws its own dim (the
+ * Windows smoke, the GNOME scrim) or none (the Mac sheet) passes false, so two never stack. Android
+ * dims through [PolarisDialogDim] and ignores it.
+ */
+internal expect fun polarisPromptDialogProperties(dismissible: Boolean, scrim: Boolean): androidx.compose.ui.window.DialogProperties
+
+/** Whether the prompt's dialog window draws its own dim: only where no desktop chrome owns the dimming. */
+internal fun dialogWindowDraws(variant: PolarisPlatformVariant): Boolean = variant == PolarisPlatformVariant.Android
+
+/**
  * The sign-in state for [key] (the client), kept across a recreation where the platform has one
  * (Android: the Activity's ViewModel store, so a rotation keeps the same code); [onSignedIn] runs
  * while this composition is attached.
