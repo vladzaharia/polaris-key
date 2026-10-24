@@ -205,7 +205,7 @@ internal fun PolarisSurface(
         return
     }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        BoxWithConstraints(Modifier.polarisMacFloor().windowInsetsPadding(WindowInsets.safeDrawing)) {
             val window = PolarisWindow(maxWidth, maxHeight, tv, touch = touch)
             val height = maxHeight
             CompositionLocalProvider(LocalPolarisWindow provides window) {
@@ -674,7 +674,9 @@ private fun PolarisBusyRing() {
 private fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
-    return (if (row) this else this.fillMaxWidth()).heightIn(min = height)
+    val sized = if (row) this else this.fillMaxWidth()
+    // macOS (UK-10.7): the 28 pt control is exactly 28 pt (Material's button holds a 40 dp floor of its own).
+    return if (polarisWindow.isMac) sized.height(height) else sized.heightIn(min = height)
 }
 
 /** The primary action: filled, full round, 56 dp tall (60 on TV), full width in a stacked group. */
@@ -695,7 +697,7 @@ public fun PolarisPrimaryButton(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = shape,
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -754,7 +756,7 @@ public fun PolarisSecondaryButton(
         } else {
             ButtonDefaults.filledTonalButtonColors()
         },
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
@@ -812,9 +814,10 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, con
         ) { content() }
         return
     }
+    val isMac = polarisWindow.isMac
     CompositionLocalProvider(LocalPolarisActionRow provides true) {
         Layout(content = content, modifier = modifier.fillMaxWidth()) { measurables, constraints ->
-            val gap = PolarisSpace.controls.roundToPx()
+            val gap = (if (isMac) PolarisMac.rowGap else PolarisSpace.controls).roundToPx()
             val minWidth = 96.dp.roundToPx()
             val maxWidth = constraints.maxWidth
             val widths = measurables.map { it.maxIntrinsicWidth(Constraints.Infinity).coerceAtLeast(minWidth) }

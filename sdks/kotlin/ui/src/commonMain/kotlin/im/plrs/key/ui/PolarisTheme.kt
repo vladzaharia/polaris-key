@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.ui.brand.BrandAccent
 import im.plrs.key.ui.brand.PolarisAccent
+import im.plrs.key.ui.brand.PolarisKitTokens
 import im.plrs.key.ui.brand.PolarisBrandTokens
 
 /** How the opt-in "Powered by Polaris Locker" attribution is drawn (UI-KITS.md section 1.6). */
@@ -296,11 +297,15 @@ private fun PolarisThemeResolved(
         }
         PolarisBranding.PolarisKey -> {
             val resolved = remember(accent, darkTheme) { accent?.let { PolarisAccent.resolve(it.toHex(), darkTheme) } }
-            val scheme = remember(darkTheme, resolved) {
+            // macOS (UK-10.7): Mac scale type, and Increase Contrast draws full-contrast hairlines.
+            val mac = autoPlatformVariant() == PolarisPlatformVariant.MacOS
+            val macContrast = mac && rememberMacHostFacts().highContrast
+            val scheme = remember(darkTheme, resolved, macContrast) {
                 polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand.withInk(darkTheme) }
+                    .let { if (macContrast) it.withMacContrast() else it }
             }
             val inkText = if (darkTheme) PolarisBrandTokens.Dark.textStrong else PolarisBrandTokens.Light.textStrong
-            val typography = polarisBrandTypography(MaterialTheme.typography)
+            val typography = polarisBrandTypography(MaterialTheme.typography).let { if (mac) it.forMacScale() else it }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
@@ -312,7 +317,7 @@ private fun PolarisThemeResolved(
                 // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields.
                 controlShape = CircleShape,
                 accentText = resolved?.let { colorOf(it.fg) } ?: inkText,
-                fieldShape = RoundedCornerShape(16.dp),
+                fieldShape = if (mac) polarisRadiusShape(PolarisKitTokens.MacOS.radiusForm.dp) else RoundedCornerShape(16.dp),
                 focus = resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
                 developer = developer,
@@ -342,6 +347,9 @@ internal val polarisSheetShape: Shape = RoundedCornerShape(topStart = 28.dp, top
 
 /** The shape a screen rounds to while the back gesture previews the step it returns to (PolarisBack.kt). */
 internal fun polarisPreviewShape(radius: androidx.compose.ui.unit.Dp): Shape = RoundedCornerShape(radius)
+
+/** A rounded-corner shape of [radius] on every corner (the desktop chromes' radii; UK-10.6 adds the same). */
+internal fun polarisRadiusShape(radius: androidx.compose.ui.unit.Dp): Shape = RoundedCornerShape(radius)
 
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)

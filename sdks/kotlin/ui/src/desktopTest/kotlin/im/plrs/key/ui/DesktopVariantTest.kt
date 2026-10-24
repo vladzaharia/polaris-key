@@ -202,7 +202,7 @@ class DesktopVariantTest {
         val opened = mutableListOf<String>()
         runDesktopComposeUiTest(width = 700, height = 900) {
             setContent {
-                PolarisTheme(branding = PolarisBranding.None, darkTheme = false) {
+                PolarisTheme(branding = PolarisBranding.None, darkTheme = false, copy = PolarisCopy()) {
                     PolarisActivationScreen(
                         PolarisActivationUi(
                             key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",

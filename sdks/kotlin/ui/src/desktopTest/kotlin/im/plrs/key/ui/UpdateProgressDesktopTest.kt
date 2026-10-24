@@ -21,7 +21,7 @@ class UpdateProgressDesktopTest {
     private val hasRange = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
 
     private fun androidx.compose.ui.test.ComposeUiTest.render(ui: PolarisUpdateUi) = setContent {
-        PolarisTheme(branding = PolarisBranding.None, darkTheme = false) { PolarisUpdatePrompt(ui, onLater = {}) }
+        PolarisTheme(branding = PolarisBranding.None, darkTheme = false, copy = copy) { PolarisUpdatePrompt(ui, onLater = {}) }
     }
 
     @Test
