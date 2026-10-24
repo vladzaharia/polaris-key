@@ -1992,7 +1992,7 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 | Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                                                                                                                                                                                                                                                                          |
 | Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                                                                                                                                                                                                                                                                        |
 | Standalone licensing tables | The lead  | A second release drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                                                                                                                                                                                                                                                                         |
-| Portal tables               | The lead  | A second release drops the four `portal_*` tables and their views after the check.                                                                                                                                                                                                                                                                                                                                           |
+| Portal tables               | The lead  | Release N: `scripts/portal-contract-check.sql` reads four zeros before the release, and the guarded purge (`0140_a_portal_contract_purge`) empties the four `portal_*` tables. A second release (I-28b) drops them once all four are still empty in production and **14 days** after release N is live.                                                                                                                      |
 | Credential tables           | The lead  | A second release drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                                                                                                                                                                                                                                                                                |
 | Distribution listing        | The lead  | Phase 1: the model is the truth and `dist_listing` the fallback. A production dry run of `distribution.listing-truth` reports no missing and no refused field (or each listed one is accepted), and it is applied. A second release (phase 2) stops reading and writing `dist_listing` and drops it after the check. Then prune the ledger `dist_listing_truth_moves` (it holds listing text and contact emails until then). |
 | Storefront close-out        | The lead  | No code reads `discover_enabled`.                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -2152,6 +2152,25 @@ every license of that entry has its copy back. A copy that an apply removed as h
 account entry is restored from that entry. An account entry edited since stays, and so does one
 whose hidden copy differed from it. If the account row could not be updated after three tries,
 `down` reports a counted retry; run it again.
+
+### Portal tables purge (`0140_a_portal_contract_purge`, I-28.1)
+
+Before the release that carries the purge deploys, run the check on the environment. It is
+read-only:
+
+```sh
+npx wrangler d1 execute <DATABASE> --env <ENV> --remote --file packages/worker/scripts/portal-contract-check.sql
+```
+
+1. Read the row: `unmigrated_accounts`, `identities_without_link`, `emails_without_link` and
+   `unsettled_license_links` must all be 0. Record the result under Entries.
+2. Any value above 0: the purge deletes nothing (its DELETEs are guarded by the sum of the same four
+   counts) and the migration still succeeds. Send the leftovers to the lead before the release.
+3. Note a D1 Time Travel bookmark of the environment's database before the release deploys.
+4. After the deploy, the four tables read 0 rows. I-28b may ship no earlier than 14 days later.
+
+**Roll back.** Roll the Worker back, then run `scripts/rollback/0068_accounts.down.sql`: with the
+tables empty it rebuilds all four exactly from the account model.
 
 ### Entries
 
