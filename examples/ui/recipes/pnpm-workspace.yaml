@@ -4,3 +4,9 @@
 packages:
   - "*"
 minimumReleaseAge: 20160
+# `pnpm audit` reads the lockfile's importer id `angular` (the recipe's directory) as the npm
+# package "angular" (AngularJS 1.x), and reports its advisory against version 1.0.0. The recipe
+# uses @angular/*, not AngularJS; this is the only high finding, and it is this false match.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-89mq-4x47-5v83

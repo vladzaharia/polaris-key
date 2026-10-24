@@ -29,6 +29,7 @@ jobs:
       console: ${{ steps.scope.outputs.console }}
       ui-kits: ${{ steps.scope.outputs.ui-kits }}
       react-kit: ${{ steps.scope.outputs.react-kit }}
+      ui-recipes: ${{ steps.scope.outputs.ui-recipes }}
       python: ${{ steps.scope.outputs.python }}
       swift: ${{ steps.scope.outputs.swift }}
       swift-floor: ${{ steps.scope.outputs.swift-floor }}
@@ -366,6 +367,38 @@ jobs:
             packages/ui-qa/.out
             docs/design/ui-kits/shots
           if-no-files-found: ignore
+
+  # The UI-kit recipes (examples/ui/recipes, UK-31): a standalone pnpm workspace with its own
+  # lockfile. Build @polaris-key/elements, install the recipes frozen, build each, then run the
+  # modernity lint on every built page at a phone and a desktop size in both schemes. The
+  # Tauri recipe's src-tauri/ is reference and is never compiled here. In Playwright's image,
+  # like ui-kits, so the Chromium build is pinned. The audit fails on a high advisory in a
+  # production dependency of any recipe.
+  ui-recipes:
+    name: UI recipes (build, modernity lint, audit)
+    needs: changes
+    if: needs.changes.outputs.ui-recipes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install-args: --frozen-lockfile --filter=@polaris-key/ui-qa... --filter=@polaris-key/elements...
+      - run: pnpm exec turbo run build --filter=@polaris-key/elements...
+      - run: pnpm install --frozen-lockfile --dir examples/ui/recipes
+      - run: pnpm --dir examples/ui/recipes -r build
+      # --html paths are relative to the repository root, which the lint serves.
+      - name: Lint every recipe page
+        run: |
+          pages=()
+          for r in htmx vue svelte solid preact angular tauri byo-design-system; do
+            pages+=("--html=examples/ui/recipes/$r/dist/index.html")
+          done
+          pnpm ui:lint "${pages[@]}" --size=390x844,1440x900 --scheme=dark,light
+      - run: pnpm audit --prod --audit-level high --dir examples/ui/recipes
 
   # The React drop-in kit in real Chromium (packages/sdk-react/test/browser): every screen at 320,
   # 390, 768, 1024, 1440 and 2560 px, a phone on its side (844x390), 200 % zoom and a 24 px root
@@ -1588,6 +1621,7 @@ jobs:
         help-search,
         ui-kits,
         react-kit,
+        ui-recipes,
         browser-firefox,
         browser-webkit,
         python,

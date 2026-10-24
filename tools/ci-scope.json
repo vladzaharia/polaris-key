@@ -73,6 +73,14 @@
     "react-kit": {
       "paths": ["packages/sdk-react/", "packages/ui-core/"]
     },
+    "ui-recipes": {
+      "paths": [
+        "examples/ui/recipes/",
+        "packages/elements/",
+        "packages/ui-core/",
+        "packages/ui-qa/"
+      ]
+    },
     "python": {
       "paths": [
         "sdks/python/",

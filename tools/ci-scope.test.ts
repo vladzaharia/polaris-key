@@ -151,6 +151,17 @@ describe("lane selection", () => {
     ]);
   });
 
+  it("runs the recipes lane for a recipe, the elements, the view models and the lint, and no kit lane for a recipe", () => {
+    expect(on(["examples/ui/recipes/vue/src/App.vue"])).toEqual(["ui-recipes"]);
+    for (const file of [
+      "packages/elements/src/index.ts",
+      "packages/ui-core/src/index.ts",
+      "packages/ui-qa/src/lint.ts",
+    ]) {
+      expect(on([file]), file).toContain("ui-recipes");
+    }
+  });
+
   it("runs nothing for a change no lane reads", () => {
     expect(on(["README.md", "docs/RUNBOOK.md"])).toEqual(["docs"]);
     expect(on(["examples/node-cli/README.md"])).toEqual([]);
