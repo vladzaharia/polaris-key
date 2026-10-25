@@ -420,6 +420,35 @@ const ROUTES: Record<string, unknown> = {
     ],
   },
   "/manage/api/me": ME,
+  // Sign-in methods (ST-30c.4): the linked account, a long-named passkey, one Use for the console can mark.
+  "/manage/api/me/methods": {
+    methods: [
+      {
+        id: "lnk_oidc",
+        kind: "oidc",
+        name: "ada@example.com",
+        createdAt: NOW - 90 * DAY,
+        lastUsedAt: NOW - 3600,
+        strong: true,
+        consoleEligible: false,
+        aaguid: null,
+        addedFrom: null,
+      },
+      {
+        id: "lnk_pk1",
+        kind: "passkey",
+        name: "A deliberately long passkey name for the YubiKey kept in the Tidewater office safe",
+        createdAt: NOW - 30 * DAY,
+        lastUsedAt: null,
+        strong: false,
+        consoleEligible: true,
+        aaguid: null,
+        addedFrom: "Chrome on macOS",
+      },
+    ],
+    canAdd: true,
+    reason: null,
+  },
   "/manage/api/products": { products: PRODUCTS },
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
   "/manage/api/attention": {

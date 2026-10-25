@@ -19153,8 +19153,15 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [methods]
+                required: [methods, canAdd, reason]
                 properties:
+                  canAdd:
+                    type: boolean
+                    description: Whether a passkey can be added now (I-16's own test).
+                  reason:
+                    type: string
+                    nullable: true
+                    enum: [email_unverified, limit, null]
                   methods:
                     type: array
                     items:
@@ -19169,6 +19176,8 @@ paths:
                           lastUsedAt,
                           strong,
                           consoleEligible,
+                          aaguid,
+                          addedFrom,
                         ]
                       properties:
                         id: { type: string }
@@ -19178,6 +19187,8 @@ paths:
                         lastUsedAt: { type: integer, nullable: true }
                         strong: { type: boolean }
                         consoleEligible: { type: boolean }
+                        aaguid: { type: string, nullable: true }
+                        addedFrom: { type: string, nullable: true }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }

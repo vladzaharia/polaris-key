@@ -328,6 +328,8 @@ export interface PasskeyCaller {
   authenticatedAt: number;
   /** The session row's key: a registration ceremony is bound to it. */
   sessionIdHash: string;
+  /** The console's add sends its own notice: skip I-16's "sign-in method added" mail. */
+  quietAdd?: boolean;
 }
 
 export interface PasskeyView {
@@ -615,18 +617,20 @@ async function addPasskey(
     summary: "Connected passkey",
     now,
   });
-  const account = await getAccountRow(db, caller.accountId);
-  await sendSecurityNotice(
-    env,
-    db,
-    caller.accountId,
-    account?.primary_email,
-    signInMethodAddedNotice({
-      method: methodLabel({ kind: "passkey", email: null, subject: "" }),
-      origin: rp.origin,
-    }),
-    now,
-  );
+  if (!caller.quietAdd) {
+    const account = await getAccountRow(db, caller.accountId);
+    await sendSecurityNotice(
+      env,
+      db,
+      caller.accountId,
+      account?.primary_email,
+      signInMethodAddedNotice({
+        method: methodLabel({ kind: "passkey", email: null, subject: "" }),
+        origin: rp.origin,
+      }),
+      now,
+    );
+  }
   const added = (await listAccountPasskeys(db, caller.accountId)).find(
     (p) => p.credential_id === verdict.credentialId,
   );

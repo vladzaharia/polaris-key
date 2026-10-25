@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   BookOpen,
   CloudUpload,
+  Fingerprint,
   Keyboard,
   KeyRound,
   Library,
@@ -158,6 +159,15 @@ export function UserMenu({
               <Library aria-hidden />
               My library
             </a>
+          </DropdownMenuItem>
+        )}
+        {/* The account's own methods; a break-glass session has no account behind it. */}
+        {me.breakGlass ? null : (
+          <DropdownMenuItem asChild>
+            <Link to={r.signInMethods()}>
+              <Fingerprint aria-hidden />
+              Sign-in methods
+            </Link>
           </DropdownMenuItem>
         )}
         {narrow ? (

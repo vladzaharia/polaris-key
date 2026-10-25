@@ -42,6 +42,7 @@ import { prefetchSection, sectionPages } from "../pages/index.js";
 import { Home } from "../sections/global/pages/Home.js";
 import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
+import { SignInMethods } from "../sections/account/SignInMethods.js";
 import { PersonalTokens } from "../sections/global/pages/PersonalTokens.js";
 import { Announcer } from "../../ui/LiveRegion.js";
 import { focusRoute } from "../../ui/focusRoute.js";
@@ -668,6 +669,7 @@ function globalPageFor(
   }
   if (page === "api-tokens") return <ApiTokens />;
   if (page === "personal-tokens") return <PersonalTokens />;
+  if (page === "sign-in-methods") return <SignInMethods />;
   if (page === "product-new") return <ProductNew />;
   return <Home />;
 }

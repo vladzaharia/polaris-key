@@ -82,6 +82,18 @@ const TABLE: [
     { title: "License not found", action: "none" },
   ],
   [
+    "404, a lowercase thing starts the sentence with a capital",
+    api(404, { code: "not_found" }),
+    { thing: "personal tokens" },
+    { title: "Personal tokens not found", action: "none" },
+  ],
+  [
+    "409 in use, a plural thing takes are",
+    Object.assign(api(409, { code: "bad_request" }), { references: ["a"] }),
+    { thing: "sign-in methods" },
+    { title: "Sign-in methods are still in use", action: "none" },
+  ],
+  [
     "409 in use",
     Object.assign(api(409, { code: "bad_request" }), {
       references: ["lic_1", "lic_2", "lic_3"],

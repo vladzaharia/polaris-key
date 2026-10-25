@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  accountSource,
   navigationSource,
   productSource,
 } from "../src/console/shell/palette/navigation.js";
@@ -92,6 +93,16 @@ describe("the sources", () => {
       "Package feeds",
       "Activity",
     ]);
+  });
+
+  it("the account's Sign-in methods is a palette row, and an emergency session has none", () => {
+    const [row] = accountSource(false);
+    expect(row).toMatchObject({
+      label: "Sign-in methods",
+      href: "#/account/sign-in-methods",
+    });
+    expect(row!.keywords).toContain("passkey");
+    expect(accountSource(true)).toEqual([]);
   });
 
   it("products jump to each product's Overview", () => {

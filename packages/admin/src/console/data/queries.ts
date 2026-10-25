@@ -86,6 +86,8 @@ export const qk = {
   /** The admin API tokens (`GET /manage/api/tokens`): the deployment's, so under `platform`. */
   apiTokens: (): QueryKey => ["platform", "api-tokens"],
   personalTokens: (): QueryKey => ["platform", "personal-tokens"],
+  /** The signed-in operator's own sign-in methods (ST-30c.4). */
+  myMethods: (): QueryKey => ["account", "methods"],
   /** Platform → Members: the roster, the root rule and the invites (ST-31.11). */
   members: (): QueryKey => ["platform", "members"],
   /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */

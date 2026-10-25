@@ -262,6 +262,13 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     fate: "live",
   },
 
+  {
+    id: "sign-in-methods",
+    scope: "global",
+    from: "account/sign-in-methods",
+    fate: "live",
+  },
+
   // Pre-0.9 product tabs (the redesign before SH-1): a hash that never matched a page since.
   {
     id: "tab:overview",

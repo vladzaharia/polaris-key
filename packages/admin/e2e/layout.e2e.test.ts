@@ -813,6 +813,8 @@ const TEXT200_CASES = [
   "djdl:sync-usage",
   // ST-31.13: the Roles tab's tiles and one-column matrix.
   "global:platform-members?tab=roles",
+  // ST-30c.4: the rows' name column kept its width at 200 % text.
+  "global:sign-in-methods",
   ...NO_ACCESS_CASES,
   "djdl:settings",
   // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
@@ -993,7 +995,12 @@ const VIEWPORTS: {
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
       // UI-KITS.md §7.1's small landscape (a phone on its side, a split window): 640 × 360.
-      { label: "landscape-small", width: 640, height: 360, only: ZOOM_CASES },
+      {
+        label: "landscape-small",
+        width: 640,
+        height: 360,
+        only: [...ZOOM_CASES, "global:sign-in-methods"],
+      },
       // Reduced transparency: the dialog and drawer backdrops lose their blur (UK-63).
       {
         label: "reduced-transparency",

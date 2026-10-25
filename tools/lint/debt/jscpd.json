@@ -63,13 +63,13 @@
       "jscpd:duplicate": 9
     },
     "packages/admin/e2e/access.e2e.test.ts": {
-      "jscpd:duplicate": 47
+      "jscpd:duplicate": 50
     },
     "packages/admin/e2e/artPng.ts": {
       "jscpd:duplicate": 4
     },
     "packages/admin/e2e/config.e2e.test.ts": {
-      "jscpd:duplicate": 47
+      "jscpd:duplicate": 48
     },
     "packages/admin/e2e/consoleBreakGlassBanner.e2e.test.ts": {
       "jscpd:duplicate": 23
@@ -129,7 +129,7 @@
       "jscpd:duplicate": 19
     },
     "packages/admin/e2e/licenseInviteRecord.e2e.test.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 19
     },
     "packages/admin/e2e/listingSources.e2e.test.ts": {
       "jscpd:duplicate": 7
@@ -144,13 +144,13 @@
       "jscpd:duplicate": 32
     },
     "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 17
     },
     "packages/admin/e2e/pageMoved.e2e.test.ts": {
       "jscpd:duplicate": 10
     },
     "packages/admin/e2e/personalTokens.e2e.test.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 14
     },
     "packages/admin/e2e/pollMotion.e2e.test.ts": {
       "jscpd:duplicate": 11
@@ -215,6 +215,9 @@
     "packages/admin/e2e/shellMotion.e2e.test.ts": {
       "jscpd:duplicate": 14
     },
+    "packages/admin/e2e/signInMethods.e2e.test.ts": {
+      "jscpd:duplicate": 8
+    },
     "packages/admin/e2e/storeCheck.e2e.test.ts": {
       "jscpd:duplicate": 10
     },
@@ -243,7 +246,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/console/api/platform.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/admin/src/console/api/products.ts": {
       "jscpd:duplicate": 2
@@ -491,6 +494,9 @@
     "packages/admin/src/lib/version.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/admin/src/lib/webauthn.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/admin/src/portal/api/library.ts": {
       "jscpd:duplicate": 1
     },
@@ -541,9 +547,6 @@
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {
       "jscpd:duplicate": 3
-    },
-    "packages/admin/src/portal/webauthn.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/admin/src/ui/Dialog.tsx": {
       "jscpd:duplicate": 1
@@ -937,6 +940,9 @@
     },
     "packages/admin/test/shell.test.tsx": {
       "jscpd:duplicate": 7
+    },
+    "packages/admin/test/signInMethods.test.tsx": {
+      "jscpd:duplicate": 5
     },
     "packages/admin/test/storefronts.test.tsx": {
       "jscpd:duplicate": 3
@@ -2655,7 +2661,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/src/services/identity/consoleAccount.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/src/services/identity/passkeys/repo.ts": {
       "jscpd:duplicate": 1

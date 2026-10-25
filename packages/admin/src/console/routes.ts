@@ -442,6 +442,7 @@ export const r = {
   /** Personal tokens: Yours, or the Everyone tab (`?who=everyone`). */
   personalTokens: (who?: "everyone") =>
     globalPage("personal-tokens", who ? { who } : undefined),
+  signInMethods: () => globalPage("sign-in-methods"),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),

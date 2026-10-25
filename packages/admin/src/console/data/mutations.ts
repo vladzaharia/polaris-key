@@ -62,6 +62,9 @@ export type WriteMethod =
   | "deleteAlertDestination"
   | "testAlertDestination"
   | "revokePersonalToken"
+  | "myPasskeyOptions"
+  | "myPasskeyAdd"
+  | "myMethodStrong"
   | "inviteMembers"
   | "inviteProductMembers"
   | "editProductMemberAreas"
@@ -478,6 +481,19 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.personalTokens()),
       prefix(qk.platformActivity()),
     ],
+  },
+  myPasskeyOptions: {
+    label: "passkey challenge",
+    invalidates: () => [],
+    why: "a challenge changes nothing the page shows",
+  },
+  myPasskeyAdd: {
+    label: "passkey add",
+    invalidates: () => [prefix(qk.myMethods())],
+  },
+  myMethodStrong: {
+    label: "passkey set for the console",
+    invalidates: () => [prefix(qk.myMethods())],
   },
   revokeMyPersonalToken: {
     label: "own personal token revoke",

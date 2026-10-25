@@ -149,6 +149,7 @@ the table.
 | `product-new`                 | `#/products/new`                             | New product (`#/products/new`)                                             | live             |
 | `api-tokens`                  | `#/tokens`                                   | API tokens (`#/tokens`)                                                    | live             |
 | `personal-tokens`             | `#/personal-tokens`                          | Personal tokens (`#/personal-tokens`)                                      | live             |
+| `sign-in-methods`             | `#/account/sign-in-methods`                  | Sign-in methods (`#/account/sign-in-methods`)                              | live             |
 | `tab:overview`                | `#/p/<slug>/overview`                        | Core → Overview (`#/p/<slug>`)                                             | moved (P0-31)    |
 | `tab:services`                | `#/p/<slug>/services`                        | Core → Features and general (`#/p/<slug>/settings/features`)               | moved (P0-31)    |
 | `tab:presentation`            | `#/p/<slug>/presentation`                    | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | moved (P0-31)    |

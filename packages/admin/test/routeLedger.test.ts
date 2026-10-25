@@ -29,7 +29,8 @@ const ADDED_PAGE_IDS = [
   "platform-activity",
   "presentation-listing",
   "platform-members",
-]; // ST-51, A-27.11, ST-31.11
+  "sign-in-methods",
+]; // ST-51, A-27.11, ST-31.11, ST-30c.4
 
 const inNav = (id: string): boolean =>
   [...GLOBAL_PAGES, ...PRODUCT_PAGES].some((p) => p.page === id);

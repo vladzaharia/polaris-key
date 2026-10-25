@@ -92,6 +92,7 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "api-tokens": "platform",
   // Every member's own tokens; the Everyone tab asks for `platform` itself.
   "personal-tokens": "console",
+  "sign-in-methods": "console",
   "product-new": "platform",
   "platform-settings": "platform",
   // The Worker gates `/members` on the `members` area (Superadmin and Platform admin hold it).
