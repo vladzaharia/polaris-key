@@ -6,7 +6,7 @@
  *   tsx tools/agent-kit-release.ts --validate [--kit <dir>]
  *
  * The builder copies the kit's plugin files (`.claude-plugin/plugin.json`, `skills/**`,
- * `README.md`, and the repo's root `LICENSE`; never `package.json` or `scripts/`), stamps
+ * `README.dist.md` (shipped as `README.md`: the integrator's, not the maintainer's), and the repo's root `LICENSE`; never `package.json` or `scripts/`), stamps
  * `version` into the copy, writes `polaris-key-<version>.zip` with the CLI's deterministic STORE
  * writer (sorted entries, fixed timestamps: the same tree gives the same bytes) and a
  * `marketplace.json` naming the archive and its sha256. `--local` also writes a directory
@@ -93,7 +93,7 @@ function collect(opts: BuildOptions): Array<{ name: string; data: Buffer }> {
   const skills = join(kit, "skills");
   for (const p of walk(skills))
     files.set(relative(kit, p).split(sep).join("/"), readFileSync(p));
-  files.set("README.md", readFileSync(join(kit, "README.md")));
+  files.set("README.md", readFileSync(join(kit, "README.dist.md")));
   files.set(
     "LICENSE",
     readFileSync(opts.license ?? join(REPO_ROOT, "LICENSE")),

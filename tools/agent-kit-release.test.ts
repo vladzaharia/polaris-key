@@ -58,6 +58,29 @@ describe("agent-kit release builder", () => {
     ).toBeUndefined();
   });
 
+  async function zippedReadme(kitDir: string): Promise<string> {
+    const r = buildKit({ kit: kitDir, version: "1.2.3", out: tmp() });
+    const z = await ZipReader.open(r.zipPath);
+    const readme = await z.read(z.entries.find((e) => e.name === "README.md")!);
+    await z.close();
+    return readme.toString("utf8");
+  }
+
+  it("ships README.dist.md as the zip's README.md; the real kit's is the integrator one, long enough for the validator", async () => {
+    expect(await zippedReadme(kit)).toBe(
+      readFileSync(join(kit, "README.dist.md"), "utf8"),
+    );
+    const readme = await zippedReadme(
+      join(__dirname, "..", "packages", "agent-kit"),
+    );
+    expect(readme.split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(
+      40,
+    );
+    expect(readme).toContain("/plugin marketplace add <source>");
+    expect(readme).toContain("/plugin install polaris-key@polaris-key");
+    expect(readme).not.toContain("AGENTS.md");
+  });
+
   it("honours --base-url", () => {
     const r = buildKit({
       kit,

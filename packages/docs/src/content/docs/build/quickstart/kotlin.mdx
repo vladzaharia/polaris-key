@@ -39,7 +39,7 @@ Then add the artifact for your host. `polaris-key-sdk` comes with each. Add `im.
 dependencies {
     // Android: one flavor per build, play for Google Play or direct for a build you distribute yourself
     implementation("im.plrs.key:polaris-key-android-direct:<version>")
-    implementation("im.plrs.key:polaris-key-ui:<version>") // the Compose screens, Android only
+    implementation("im.plrs.key:polaris-key-ui:<version>") // the Compose screens, Android and Compose Desktop (PolarisKeyWindow)
     // Compose Desktop and JVM tools: the OS keyring is included
     implementation("im.plrs.key:polaris-key-desktop:<version>")
 }
@@ -111,9 +111,9 @@ You should see the client create with no network request.
 
 ## 4. Gate the app
 
-**App** The host decides the lane. Android has the Compose kit. Compose Desktop and a JVM tool use the library.
+**App** The host decides the lane. Android and Compose Desktop have the Compose kit. A JVM tool uses the library.
 
-<Lanes intro="The Compose kit gates an Android app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
+<Lanes intro="The Compose kit gates an Android or Compose Desktop app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
   <Fragment slot="kit">
 
 `PolarisKeyGate` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.

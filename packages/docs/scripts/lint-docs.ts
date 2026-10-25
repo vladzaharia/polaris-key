@@ -71,6 +71,8 @@ export interface RemovedName {
   re: RegExp;
   /** Not a plain word, so prose may match it too. */
   distinct: boolean;
+  /** Fence languages the name was removed in (an `api.json` row's `fence:` scan files); absent: any. */
+  langs?: readonly string[];
 }
 
 /** Pages that name removed things on purpose. */
@@ -107,28 +109,48 @@ const escapeRe = (s: string): string =>
 /** A plain lowercase word (`registration`) is common; anything with structure is distinct. */
 const isPlainWord = (s: string): boolean => /^[a-z]+$/.test(s);
 
+/** The fence languages of each SDK, for a removed name that names its SDK. */
+const SDK_FENCES: Record<string, readonly string[]> = {
+  swift: ["swift"],
+  kotlin: ["kotlin"],
+  python: ["python", "py"],
+  godot: ["gdscript"],
+  node: ["ts", "tsx", "js", "jsx", "typescript", "javascript"],
+  react: ["ts", "tsx", "js", "jsx", "typescript", "javascript"],
+};
+
 /**
  * The removed names: the changelog's `replaces[].old` code spans, `api.json` `removed` rows (their
  * `scan.pattern`, else the qualified name) and the validator's "X is removed" messages.
  */
 export function loadRemoved(): RemovedName[] {
   const out: RemovedName[] = [];
-  const add = (source: string, distinct: boolean): void => {
+  const add = (
+    source: string,
+    distinct: boolean,
+    langs?: readonly string[],
+  ): void => {
     try {
-      out.push({ re: new RegExp(source), distinct });
+      out.push({
+        re: new RegExp(source),
+        distinct,
+        ...(langs !== undefined && langs.length > 0 ? { langs } : {}),
+      });
     } catch {
       /* a pattern written for another engine */
     }
   };
-  const names = (name: string): void => {
+  const names = (name: string, langs?: readonly string[]): void => {
     const word = isPlainWord(name);
-    add(`(?<![\\w.])${escapeRe(name)}(?![\\w])`, !word);
+    add(`(?<![\\w.])${escapeRe(name)}(?![\\w])`, !word, langs);
   };
   const dir = join(docsRoot, "changelog");
   for (const f of readdirSync(dir).filter((n) => n.endsWith(".md"))) {
     const { data } = splitFrontmatter(readFileSync(join(dir, f), "utf8"));
-    const replaces = (data as { replaces?: { old: string }[] }).replaces ?? [];
-    for (const r of replaces)
+    const replaces =
+      (data as { replaces?: { old: string; sdk?: string }[] }).replaces ?? [];
+    for (const r of replaces) {
+      const langs = r.sdk === undefined ? undefined : SDK_FENCES[r.sdk];
       for (const span of r.old.matchAll(/`([^`]+)`/g)) {
         const name = span[1]!.trim();
         // A path or a bare dotted prefix names a place, not a removed name.
@@ -137,17 +159,26 @@ export function loadRemoved(): RemovedName[] {
         // Context in the old text, not removed names: HTTP verbs, literals, query strings.
         if (/^(?:GET|POST|PUT|PATCH|DELETE|null|true|false|\?.*)$/.test(name))
           continue;
-        names(name);
+        names(name, langs);
       }
+    }
   }
   const api = JSON.parse(
     readFileSync(
       join(docsRoot, "..", "..", "conformance", "parity", "api.json"),
       "utf8",
     ),
-  ) as { removed?: { from: string; scan?: { pattern?: string } }[] };
+  ) as {
+    removed?: {
+      from: string;
+      scan?: { pattern?: string; files?: string[] };
+    }[];
+  };
   for (const row of api.removed ?? []) {
-    if (row.scan?.pattern !== undefined) add(row.scan.pattern, false);
+    const langs = (row.scan?.files ?? [])
+      .filter((f) => f.startsWith("fence:"))
+      .map((f) => f.slice("fence:".length));
+    if (row.scan?.pattern !== undefined) add(row.scan.pattern, false, langs);
     else names(row.from);
   }
   const validator = readFileSync(
@@ -210,23 +241,28 @@ export interface Line {
   n: number;
   text: string;
   fence: boolean;
+  /** The info-string language of the fence this line is in (empty when none). */
+  lang?: string;
 }
 
 export function lines(body: string, firstLine: number): Line[] {
   const out: Line[] = [];
   let fence: string | null = null;
+  let lang = "";
   let comment = false;
   body.split("\n").forEach((raw, i) => {
     const n = firstLine + i;
     const m = /^\s*(```+|~~~+)/.exec(raw);
     if (m !== null) {
-      if (fence === null) fence = m[1]!;
-      else if (raw.trim().startsWith(fence)) fence = null;
-      out.push({ n, text: raw, fence: true });
+      if (fence === null) {
+        fence = m[1]!;
+        lang = /^\s*(?:```+|~~~+)\s*([\w+-]*)/.exec(raw)![1]!.toLowerCase();
+      } else if (raw.trim().startsWith(fence)) fence = null;
+      out.push({ n, text: raw, fence: true, lang });
       return;
     }
     if (fence !== null) {
-      out.push({ n, text: raw, fence: true });
+      out.push({ n, text: raw, fence: true, lang });
       return;
     }
     let text = raw;
@@ -331,6 +367,9 @@ function removedHits(l: Line, facts: Facts, hit: HitFn): void {
     : [...l.text.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
   const text = l.text.replace(/\]\([^)]*\)/g, "]");
   for (const r of facts.removed) {
+    // A name removed in one SDK's fences is not removed in another's (Kotlin keeps PolarisSignIn).
+    if (r.langs !== undefined && !(l.fence && r.langs.includes(l.lang ?? "")))
+      continue;
     const found =
       spans.map((c) => r.re.exec(c)).find((m) => m !== null) ??
       (r.distinct && !l.fence ? r.re.exec(text) : null);
