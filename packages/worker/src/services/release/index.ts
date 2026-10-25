@@ -114,7 +114,7 @@ export const releaseService: ServiceDescriptor = {
       // `install`, `download`, `builds` and `blobs` are Distribution's routes since P2b-04, and
       // Distribution's fragment advertises their CANONICAL `/<p>/distribution/…` URLs. These four
       // keys stay because the discovery document is wire (removing a key is a plan-mode change,
-      // `test/discoveryGolden.test.ts`); the URLs they name are permanent router aliases that
+      // `test/core/discoveryGolden.test.ts`); the URLs they name are permanent router aliases that
       // answer byte-identically, so a client reading them keeps working.
       endpoints: {
         changelog: `${base}/release/changelog`,

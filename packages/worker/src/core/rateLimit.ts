@@ -389,7 +389,7 @@ export function clientIp(req: Request): string {
  * budgets. An IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) is unwrapped to its
  * IPv4 form, so it neither collides in one `::/64` bucket nor escapes its IPv4 bucket.
  * Anything that does not parse as IPv6 falls back to `clientIp`. Callers must not key a
- * rate-limit bucket on `clientIp` directly (`test/rateLimitKeys.test.ts` enforces it).
+ * rate-limit bucket on `clientIp` directly (`test/core/rateLimitKeys.test.ts` enforces it).
  */
 export function clientNetwork(req: Request): string {
   const ip = clientIp(req);

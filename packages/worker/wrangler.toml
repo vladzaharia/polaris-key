@@ -100,7 +100,7 @@ new_sqlite_classes = ["CloudSyncDO"]
 # update-telemetry auto-halt (P6-03) for products whose operator turned it on, reading only the
 # UPDATE_HEALTH Durable Objects. `scheduled()`
 # dispatches on `event.cron`; any trigger other than this one runs the maintenance sweep.
-# `test/scheduled.test.ts` pins this list to the two constants.
+# `test/surfaces/scheduled.test.ts` pins this list to the two constants.
 #
 # `triggers` is an INHERITABLE wrangler key, so this one block applies to prod, staging and dev
 # without a per-environment copy; overriding it for one environment means adding
@@ -122,20 +122,20 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # route with custom_domain = true; BLOB_ORIGIN names it so src/core/assets/bytesHost.ts can confine
 # that host to byte routes. dl.plrs.im is same-site with key.plrs.im (an owner decision that
 # deviates from the separate-registrable-domain rule — see docs/security/THREAT-MODEL.md §3);
-# the compensating headers and the cookie rules are test-pinned in test/bytesHost.test.ts.
+# the compensating headers and the cookie rules are test-pinned in test/surfaces/bytesHost.test.ts.
 # `vars` is NOT inheritable, so each environment carries its own BLOB_ORIGIN.
 #
 # The registry host (F-02; docs/DEPLOYMENT.md "Registry host and feeds") is the same Worker on a
 # THIRD custom domain, pkg*.plrs.im, with PKG_ORIGIN naming it so src/core/registry/registryHost.ts can
 # confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
-# every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
+# every bytes-host compensation (test/surfaces/registryHost.test.ts). Its rendered index documents live
 # under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
 #
 # The image host (HA-02; docs/DEPLOYMENT.md "Image host") is the same Worker on a FOURTH custom
 # domain, img*.plrs.im, with IMG_ORIGIN naming it so src/core/assets/imgHost.ts can confine that host to
 # the hosted-image routes (/<p>/a/<sha256>[/<w>.webp] and the /<p>/icon, /<p>/header and
 # /<p>/screenshots/<n> aliases). Public, inline, cookie-less raster images only, read from the
-# same BLOBS bucket under blobs/ (test/imgHost.test.ts). No new bucket and no new Worker: the
+# same BLOBS bucket under blobs/ (test/surfaces/imgHost.test.ts). No new bucket and no new Worker: the
 # deploy attaches the route and creates its DNS record.
 #
 # The customer host (LK-03; plans/LK-00.md §7) is the same Worker on a FIFTH custom domain,
@@ -212,7 +212,7 @@ bucket_name = "polaris-key-blobs-prod"
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-prod"
 # A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
-# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/surfaces/platformOperations.test.ts
 # asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
 # operations").
 [[env.prod.queues.producers]]
@@ -339,7 +339,7 @@ bucket_name = "polaris-key-blobs-staging"
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-staging"
 # A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
-# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/surfaces/platformOperations.test.ts
 # asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
 # operations").
 [[env.staging.queues.producers]]
@@ -448,7 +448,7 @@ bucket_name = "polaris-key-blobs-dev"
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-dev"
 # A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
-# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/surfaces/platformOperations.test.ts
 # asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
 # operations").
 [[env.dev.queues.producers]]

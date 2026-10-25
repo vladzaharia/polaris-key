@@ -12,7 +12,7 @@
  * job first writes, for each package deliverable of that ecosystem, an own `dist_access` row at
  * `entitled` keeping the row's own flag (a null flag stays null), claimed `source = 'admin'` so a
  * resync skips it. Under `licensed` + own `entitled` row the answer is `entitled` + the same
- * flag: identical for every principal, every combination (`test/feedAccessJob.test.ts`).
+ * flag: identical for every principal, every combination (`test/surfaces/feedAccessJob.test.ts`).
  *
  *   - **Units**: products with a feed at `authenticated` or `entitled`, plus products with a
  *     Maven feed holding a stored `yankHidesFromIndex: false` (reporting only, zero changes).

@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── Hosted-asset ingest on miniflare's R2 and D1 (HA-01) ─────────────────────────────────
 //
-// The Node lane (`test/hostedAssets.test.ts`) covers the rules against `test/r2Mock.ts`. This
+// The Node lane (`test/services/distribution/hostedAssets.test.ts`) covers the rules against `test/r2Mock.ts`. This
 // file runs the ingest against the real bindings, which is what proves the parts the fake could
 // get wrong: that R2 stores and returns `httpMetadata.contentType`, that a peeked stream piped
 // through workerd's `FixedLengthStream` still lands byte for byte, that R2 itself refuses a

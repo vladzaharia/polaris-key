@@ -19,7 +19,7 @@
  * Each document is assembled field by field, never by spreading a row, so a column added to a
  * table tomorrow is NOT exported until someone decides it should be. The OpenAPI schemas
  * (`PortalAccountExport`, `PortalProductExport`) declare `additionalProperties: false`, and
- * `test/portalDataExport.test.ts` validates real documents against them, so the schema and this
+ * `test/services/identity/portalDataExport.test.ts` validates real documents against them, so the schema and this
  * module cannot drift apart. What is deliberately absent, and why:
  *
  *   credentials   no session id (hash), device token (hash), licence key (hash or text),

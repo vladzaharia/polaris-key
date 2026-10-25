@@ -381,9 +381,9 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  *
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
- * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
+ * below runs against them unchanged. `test/surfaces/feedAdapters.test.ts` checks each adapter's rows
  * against its own routes. F-23's push rows are Release's (`RELEASE_REGISTRY_OPENAPI`), checked
- * the same way by `test/registryPush.test.ts`.
+ * the same way by `test/surfaces/registryPush.test.ts`.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
 /**

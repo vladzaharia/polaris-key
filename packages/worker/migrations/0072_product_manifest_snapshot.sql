@@ -23,7 +23,7 @@
 --                only, never values, so this column holds no secret material.
 --
 -- Size: each document is capped at MAX_REPO_FILE_BYTES (128 KiB) at the fetch and 64 KiB decoded
--- at the parse; `test/manifestSnapshot.test.ts` stores and reads back a snapshot built from four
+-- at the parse; `test/surfaces/console/manifestSnapshot.test.ts` stores and reads back a snapshot built from four
 -- maximum-size documents.
 --
 -- No ON DELETE, unlike the sketch in S-18 §4.3: like every other product-scoped table, the row

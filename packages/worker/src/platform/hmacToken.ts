@@ -13,7 +13,7 @@
  * to the other), and the tag additionally keeps a token minted for one from verifying in the
  * other, whatever the payload shape.
  * Each realm keeps its own tag, key and payload checks; only the mechanism lives here (P0-15).
- * `test/platformPrimitives.test.ts` pins a token of each realm minted before the move.
+ * `test/services/identity/platformPrimitives.test.ts` pins a token of each realm minted before the move.
  *
  * A leaf module: it imports only `platform/` siblings.
  */

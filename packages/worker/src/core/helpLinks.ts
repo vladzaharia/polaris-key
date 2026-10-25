@@ -3,7 +3,7 @@
  * links under a Locker card. Every value is an absolute `/docs/help/…/` path ending in `/`, public
  * tier, resolved against the origin the message already points at.
  *
- * Drift gate: `test/customerHelpLinks.test.ts` reads this table and the anchor each notice uses,
+ * Drift gate: `test/surfaces/customerHelpLinks.test.ts` reads this table and the anchor each notice uses,
  * and checks both against the built docs site. Renaming a Help page means updating this table
  * in the same change.
  */

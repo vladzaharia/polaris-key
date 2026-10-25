@@ -20,7 +20,7 @@
  * bytes host is `dl.plrs.im`, a sibling of the console at `key.plrs.im`, so the two are
  * SAME-SITE. `SameSite` cookies therefore do not separate them, and anything able to run script
  * as `dl.plrs.im` could make same-site requests to the console; the compensations live here and
- * in `blobs.ts`, and are test-pinned (`test/bytesHost.test.ts`):
+ * in `blobs.ts`, and are test-pinned (`test/surfaces/bytesHost.test.ts`):
  *   - every response carries `X-Content-Type-Options: nosniff` and `BLOB_CSP` (`sandbox`), so
  *     a body a browser chose to render still runs no script and has an opaque origin;
  *   - a byte route's non-error answer must carry a type on the explicit inert allowlist

@@ -4,7 +4,7 @@
 // The brief: "the X.509 code must run in workerd". `core/trust/x509.ts` is a DER interpreter over
 // WebCrypto ECDSA (P-256 and P-384, SHA-256 and SHA-384) and the App Store verification is built
 // on it; the Play push check is jose over a KV-cached JWKS. The Node lane covers the behaviour
-// (`test/x509.test.ts`, `test/commerce.test.ts`); this proves the same code verifies — and
+// (`test/services/commerce/x509.test.ts`, `test/services/commerce/commerce.test.ts`); this proves the same code verifies — and
 // refuses — inside the runtime it ships to, with chains generated in the isolate.
 
 import { env } from "cloudflare:test";

@@ -10,7 +10,7 @@
  * (`updateHealthAdmin.ts`, `POST …/distribution/update-health/settings`: platform-admin session,
  * CSRF, rate limit, one `distribution.auto_halt.settings` audit row with the session's subject).
  * No ingest, resync or manifest field reaches them — a repo push can never switch on an
- * automatic halt (`test/autoHalt.test.ts` pins the writer's reach).
+ * automatic halt (`test/surfaces/autoHalt.test.ts` pins the writer's reach).
  *
  *     enabled               false
  *     windowHours           6      the last N whole hours, up to and including this one
@@ -169,7 +169,7 @@ export function patchAutoHaltSettings(
 
 /**
  * Store validated settings. Its ONE caller is the console's audited control
- * (`updateHealthAdmin.ts`); `test/autoHalt.test.ts` refuses any other file that names it.
+ * (`updateHealthAdmin.ts`); `test/surfaces/autoHalt.test.ts` refuses any other file that names it.
  */
 export async function writeAutoHaltSettings(
   db: Db,

@@ -12,7 +12,7 @@
  *   4. the adapter, with the principal and the feed.
  *
  * Every route built here carries `FEED_PUBLISH_ROUTE`, names `service: "release"` and declares its
- * one write method; `test/registryHost.test.ts` admits exactly these beside the read and
+ * one write method; `test/surfaces/registryHost.test.ts` admits exactly these beside the read and
  * credential routes.
  */
 

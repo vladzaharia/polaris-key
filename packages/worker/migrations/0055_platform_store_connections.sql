@@ -8,7 +8,7 @@
 -- ever for the one app a platform admin assigned to that product (`platform_credential_pins`).
 --
 -- All three tables are Core's (`TABLE_OWNERS.core`) and `core/platformCredentials.ts` /
--- `core/platformStoreSettings.ts` are their only accessors (`test/outletCredentialReach.test.ts`
+-- `core/platformStoreSettings.ts` are their only accessors (`test/core/outletCredentialReach.test.ts`
 -- also guards these names). Rows are written ONLY by a platform admin through
 -- `/manage/api/platform/store-connections/…`, never from a manifest, a resync or a service hook.
 --

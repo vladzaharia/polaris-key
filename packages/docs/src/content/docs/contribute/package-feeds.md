@@ -45,7 +45,7 @@ and a package's mode separately for 30 seconds, so apply writes the package rows
 the feed on a later call: the first answers the retryable `registry_cache_window`; applying
 the same report again finishes it. `dist_registry_access_moves` (migration
 `00XX_registry_access_moves.sql`, owned by `distribution` in `TABLE_OWNERS`) is its ledger, and
-`down` restores from it. `test/feedAccessJob.test.ts` pins `authorizeFeedRead` identical before and
+`down` restores from it. `test/surfaces/feedAccessJob.test.ts` pins `authorizeFeedRead` identical before and
 after, for every principal.
 
 ## What an adapter owns, and what it does not
@@ -87,13 +87,13 @@ An adapter never re-implements the shared pieces:
 base the storefront adapters extend too (`packages/worker/src/core/storefront/adapter.ts`).
 Both families share these pieces:
 
-| Piece                    | Package feeds                                                                            | Storefronts                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| The adapter interface    | `FeedAdapter`, one directory per ecosystem                                               | `StorefrontAdapter`, one declaration per store (`core/storefront/stores/`), one registry line |
-| A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts                 | `capabilities.ops`: one `Support` per store op                                                |
-| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)                                  | the store-agnostic write gate (`core/storefront/gate.ts`) and a rule table per store          |
-| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)                            | `store_operations`                                                                            |
-| A conformance suite      | `test/feedAdapters.test.ts` (and items 3 and 7 of `test/storefront/conformance.test.ts`) | `test/storefront/conformance.test.ts`, over every storefront adapter                          |
+| Piece                    | Package feeds                                                                                     | Storefronts                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| The adapter interface    | `FeedAdapter`, one directory per ecosystem                                                        | `StorefrontAdapter`, one declaration per store (`core/storefront/stores/`), one registry line |
+| A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts                          | `capabilities.ops`: one `Support` per store op                                                |
+| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)                                           | the store-agnostic write gate (`core/storefront/gate.ts`) and a rule table per store          |
+| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)                                     | `store_operations`                                                                            |
+| A conformance suite      | `test/surfaces/feedAdapters.test.ts` (and items 3 and 7 of `test/storefront/conformance.test.ts`) | `test/storefront/conformance.test.ts`, over every storefront adapter                          |
 
 A store that also sells (the App Store, Google Play, Steam) has a second declaration beside its
 `StorefrontAdapter`: a `StoreAdapter` (`core/stores/adapter.ts`); pure data that says which faces
@@ -115,7 +115,7 @@ harness clients. The admin API exposes the result (`feedCapabilityView`), so the
 
 ## The checklist
 
-`packages/worker/test/feedAdapters.test.ts` enforces every item it can; skipping one fails CI.
+`packages/worker/test/surfaces/feedAdapters.test.ts` enforces every item it can; skipping one fails CI.
 
 1. **Ingest rules (rule 9).** Add the ecosystem to `PACKAGE_ECOSYSTEMS` and write
    `packages/shared-manifest/src/ecosystems/<ecosystem>.ts`, exporting one
@@ -163,7 +163,7 @@ harness clients. The admin API exposes the result (`feedCapabilityView`), so the
    script, has no matrix row, and its run is recorded on the PR. The harness runs against a
    local Worker only; nothing is published.
 10. **Conformance data.** Add a sample package to `SAMPLES` and the path-parameter samples to
-    `PARAMS` in `test/feedAdapters.test.ts`.
+    `PARAMS` in `test/surfaces/feedAdapters.test.ts`.
 11. **Golden documents.** Add the feed's tests under `packages/worker/test/registry/`,
     with golden files for every document.
 12. **The console and the docs.** The console's display tables (`packages/admin` `model.ts`:

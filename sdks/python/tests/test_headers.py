@@ -4,7 +4,7 @@
 Runs ``conformance/corpus/v2/headers.json`` through :func:`polaris_key.canonical_platform` and
 :func:`polaris_key.canonical_arch`. The Node (``conformance/runners/node/headers.test.ts``),
 Swift (``HeadersTests.swift``) and Godot (``tests/suite_conformance.gd``) runners and the Worker
-(``test/headersCorpus.test.ts``) run the same rows. The generated tables must equal the map
+(``test/core/headersCorpus.test.ts``) run the same rows. The generated tables must equal the map
 derived from the rows, and a captured request must carry the canonical values.
 """
 

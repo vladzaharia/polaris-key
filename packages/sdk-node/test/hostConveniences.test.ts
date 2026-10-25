@@ -132,7 +132,7 @@ describe("crashTags (SP-N16)", () => {
   });
 
   it("crashTagsFor writes the release the Worker's Sentry hook parses back", () => {
-    // The vectors of packages/worker/test/sentry.test.ts (parseSentryRelease): a release is
+    // The vectors of packages/worker/test/surfaces/console/sentry.test.ts (parseSentryRelease): a release is
     // `<deliverable>@<version>[+<build>]`, the channel is `environment`, the outlet `pkey.outlet`.
     expect(
       crashTagsFor({

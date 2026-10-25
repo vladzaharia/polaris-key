@@ -61,11 +61,11 @@ to another language, the corpus is your acceptance test. The runners a contribut
   `( cd sdks/kotlin && ./gradlew :conformance:test )` runs every suite on the JCA Ed25519 backend
   and again with Tink forced (each suite extends `ConformanceSuite`, which installs the backend
   first).
-- **The Worker** — three slices. `packages/worker/test/headersCorpus.test.ts` runs every
-  `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/fingerprintCorpus.test.ts` covers the
+- **The Worker** — three slices. `packages/worker/test/core/headersCorpus.test.ts` runs every
+  `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/core/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
   rather than trusting the client's copy, so it has to agree with what every SDK computes
-  client-side. `packages/worker/test/gateMatrixCorpus.test.ts` replays every `gate-matrix.json`
+  client-side. `packages/worker/test/core/gateMatrixCorpus.test.ts` replays every `gate-matrix.json`
   row through the server's own `checkBuildGate`, which makes the server the oracle for the
   build-gate ports the Node, Python and Swift runners carry. It is not a runner for the signed
   cases: it is a signer for license, config, and trust documents in production, not an
@@ -271,7 +271,7 @@ reference implementation written for the test.
 | React   | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
 | Godot   | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
 | Kotlin  | `sdks/kotlin/conformance/src/test/…/CorpusV2Test.kt`      | `:core` and the service modules, reading `conformance/corpus/v2/` in place, on JCA and on Tink     |
-| Worker  | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
+| Worker  | `packages/worker/test/core/gateMatrixCorpus.test.ts`      | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
 
 ### Runtimes and version floors
 
@@ -326,7 +326,7 @@ fails on the server side too.
 `canonicalArch`, which React shares), `packages/sdk-react/test/headers.test.ts` (the `web` rows
 against the captured request), `sdks/python/tests/test_headers.py`,
 `sdks/swift/Tests/PolarisKeyTests/HeadersTests.swift`, the `platformCases`/`archCases` section
-of `sdks/godot/tests/suite_conformance.gd`, and `packages/worker/test/headersCorpus.test.ts`,
+of `sdks/godot/tests/suite_conformance.gd`, and `packages/worker/test/core/headersCorpus.test.ts`,
 which runs every row through the normaliser that stores the headers. Each runner also asserts
 that its generated `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` table equals the rows.
 
@@ -335,7 +335,7 @@ that its generated `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` table equals the rows
 which React shares), `sdks/python/tests/test_device_label.py`,
 `sdks/swift/Tests/PolarisKeyTests/DeviceLabelTests.swift`, the device-label section of
 `sdks/godot/tests/suite_conformance.gd`, the Kotlin `DeviceLabelTest`, and
-`packages/worker/test/deviceLabelCorpus.test.ts`, which sends every row through
+`packages/worker/test/services/identity/deviceLabelCorpus.test.ts`, which sends every row through
 `/identity/auth/device/start` and checks the echoed label.
 
 `config-matrix.json` has one runner per SDK: `conformance/runners/node/configMatrix.test.ts`
@@ -352,7 +352,7 @@ correctly rounded.
 `sdks/python/tests/test_fingerprint_conformance.py`,
 `sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift`, and the `deviceIds` section of
 `sdks/godot/tests/suite_conformance.gd` — plus
-`packages/worker/test/fingerprintCorpus.test.ts`, because the server derives the same digests
+`packages/worker/test/core/fingerprintCorpus.test.ts`, because the server derives the same digests
 the clients do.
 
 ## The drift gate

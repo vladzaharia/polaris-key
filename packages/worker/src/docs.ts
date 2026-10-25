@@ -235,7 +235,7 @@ export const SEARCH_BUNDLES: ReadonlyArray<
  * The tier of each resolved docs path (ST-29; docs plan §3.1, D2). A prefix ends in `/`; any other
  * row is one exact file. The longest match wins, and a path no row names is `admin`, so a new
  * top-level directory is gated until someone decides otherwise. The page rows mirror the docs
- * site's `TIER_PREFIXES` (`packages/docs/src/lib/doors.ts`); `test/docsGate.test.ts` pins them.
+ * site's `TIER_PREFIXES` (`packages/docs/src/lib/doors.ts`); `test/surfaces/docsGate.test.ts` pins them.
  */
 export const DOCS_TIERS: ReadonlyArray<
   readonly [path: string, tier: DocsTier]

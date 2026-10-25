@@ -21,12 +21,12 @@
  * it), an entry that names nothing that exists, and a list longer or shorter than
  * `PENDING_CEILING`. ST-25 closes with `PENDING` empty (S-18 §4.13).
  *
- * Data plus pure checks: `test/settings-coverage.test.ts` reads the schema, the inventory and
+ * Data plus pure checks: `test/core/settings-coverage.test.ts` reads the schema, the inventory and
  * the manifest schemas and runs `checkCoverage`; `scripts/gen-settings.ts` publishes
  * `NOT_A_SETTING` on the generated reference page and in the console's search index, so search
  * can explain why a thing is fixed. Nothing here is read at runtime, which is why it lives under
  * `scripts/` and not `src/`: it names every settings-shaped table, the credential tables among
- * them, and only the allowlisted Worker files may name those (`test/outletCredentialReach.test.ts`).
+ * them, and only the allowlisted Worker files may name those (`test/core/outletCredentialReach.test.ts`).
  */
 
 import { DEPRECATED_SPELLINGS, dotted } from "@polaris-key/manifest";

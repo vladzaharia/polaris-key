@@ -3,7 +3,7 @@
  *
  * `core/stores/adapter.ts` declares each store once, as data. This is the service half: the
  * runtimes that already exist for the store, registered by storefront id. Rule 6 forbids a module
- * holding both this and Commerce's facet, so `test/storeAdapters.test.ts` binds the two by id.
+ * holding both this and Commerce's facet, so `test/surfaces/storeAdapters.test.ts` binds the two by id.
  * The facet modules import the connector and flow files where they are (decision P3: no moves).
  */
 

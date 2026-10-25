@@ -7,6 +7,6 @@
 -- HOW. Run once against the database with
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0111_accounts_birthdate_source.down.sql
 -- It is not idempotent: a second run fails with "no such column", changing nothing. Exercised by
--- test/accountBirthdate.test.ts.
+-- test/services/identity/accountBirthdate.test.ts.
 
 ALTER TABLE accounts DROP COLUMN birthdate_source;

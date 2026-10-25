@@ -11,7 +11,7 @@
  *     the row does not list is refused before any handler runs.
  *   - `surface`, the OpenAPI path templates `routeCoverage` pins against the spec. It is derived
  *     from the rows, so a route cannot be served and not declared, or declared and not served.
- *   - the metadata `test/serviceRouteTables.test.ts` walks: every row names its auth, and a row
+ *   - the metadata `test/surfaces/serviceRouteTables.test.ts` walks: every row names its auth, and a row
  *     that takes a CI token names the scope and the body cap.
  *
  * What a row does for the handler that follows it:

@@ -114,7 +114,7 @@ jobs:
         env:
           PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
       # `pnpm test` includes the adapter conformance suites (A-18a, notes/S-15 §6.6: test/storefront/,
-      # test/ascWriteGate.test.ts, test/feedAdapters.test.ts): every storefront and feed adapter
+      # test/services/distribution/ascWriteGate.test.ts, test/surfaces/feedAdapters.test.ts): every storefront and feed adapter
       # against the shared contract, every write of each store's pinned vendor spec classified.
       - name: Stop pkey dev (React live lane)
         if: always()

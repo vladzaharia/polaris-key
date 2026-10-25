@@ -31,7 +31,7 @@
  *     constraint, so the team key can never be aimed at an app another product holds.
  *   - **Platform-admin writes only.** `putPlatformCredential`, `deletePlatformCredential`,
  *     `setPlatformPin` and `clearPlatformPin` are named only by this module and the Core admin
- *     handlers (`test/outletCredentialReach.test.ts`).
+ *     handlers (`test/core/outletCredentialReach.test.ts`).
  *   - **One reader, audited.** `openPlatformCredential` is named only here, in
  *     `core/outletTokens.ts`, and in two reviewed store-client files —
  *     `core/stores/microsoftStore/credentials.ts` (the Entra exchange) and `core/stores/steam/publisher.ts` (the raw

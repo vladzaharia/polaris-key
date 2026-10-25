@@ -12,8 +12,8 @@
  * The opaque `acct_…` surrogate and a timestamp, nothing else: no email, name, product, token or
  * any other personal data, so keeping it indefinitely holds nothing the D1 tombstone did not.
  * No code path deletes a ledger object, and no other key builder can produce the prefix: the blob
- * store refuses the layout (`test/erasureLedger.test.ts`) and the collector sweeps only what D1
- * tracks (`test/scheduled.test.ts`).
+ * store refuses the layout (`test/services/identity/erasureLedger.test.ts`) and the collector sweeps only what D1
+ * tracks (`test/surfaces/scheduled.test.ts`).
  *
  * WRITE-AHEAD AND CREATE-ONLY. `deleteAccount` records the id here BEFORE its first irreversible
  * step (the status flip that closes the account), and the sweeper does the same for an erasure an

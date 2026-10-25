@@ -57,7 +57,7 @@ export interface SubjectStore {
     args: { product: string; subject: string },
   ): Promise<void>;
   /** The subject's data for one product, for a per-product export. Optional in the type until
-   *  I-11 calls it; the registry guard (`test/subjectStores.test.ts`) requires it of every store
+   *  I-11 calls it; the registry guard (`test/surfaces/subjectStores.test.ts`) requires it of every store
    *  that declares a table or a Durable Object class (plans/U-01.md §6.1). */
   export?(
     ctx: SubjectStoreContext,
@@ -93,7 +93,7 @@ function allStores(): Map<string, SubjectStore> {
 
 /**
  * TEST FIXTURES ONLY: add a store beside the contributed ones. Production stores come from a
- * descriptor's `contributes.subjectStores`; `test/contributions.test.ts` fails when any file under
+ * descriptor's `contributes.subjectStores`; `test/core/contributions.test.ts` fails when any file under
  * `src/` calls this. Names are unique: registering one twice throws.
  */
 export function registerSubjectStore(name: string, store: SubjectStore): void {

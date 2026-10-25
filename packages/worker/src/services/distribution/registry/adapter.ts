@@ -19,7 +19,7 @@
  *     switched on the ecosystem name.
  *
  * `registry/index.ts` lists the adapters (`FEED_ADAPTERS`); `mount.ts` spreads their routes into
- * the registry host's allowlist. `test/feedAdapters.test.ts` is the conformance suite every
+ * the registry host's allowlist. `test/surfaces/feedAdapters.test.ts` is the conformance suite every
  * adapter must pass — routes through the ladder, capabilities consistent with routes, settings
  * and renders, deterministic renders, the standard refusals, the OpenAPI rows and the
  * `routeCoverage` table (both derived from `openapi`), and a harness client in the workflow

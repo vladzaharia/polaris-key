@@ -142,7 +142,7 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
   /**
    * The A-16 team credential slot (a `PLATFORM_CREDENTIALS` id, which the conformance suite
    * checks); null for a keyless outlet. A plain string so this module never imports the credential
-   * custody module (`test/outletCredentialReach.test.ts`).
+   * custody module (`test/core/outletCredentialReach.test.ts`).
    */
   readonly credential: string | null;
   /** The Worker-plane gate; null when the adapter has no Worker plane. */

@@ -52,6 +52,8 @@ export const GUARDS = {
   transcripts:
     "tools/generators.ts and tools/gen-transcripts.mjs run it by path (T9)",
   docsSearchBrowser: ".github/workflows/ci.yml runs it by path (T9)",
+  layout:
+    "the layout guard itself (P0-30.5); lives beside the GUARDS list it reads",
   helpers:
     "name kept for the shared helper's sibling test; helpers stay at test/ (T8)",
 };

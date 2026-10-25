@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The storefront's impression count on miniflare's D1 (PS-04) ─────────────────────────────
 //
-// The Node lane (`test/portalStorefront.test.ts`) covers the rules against better-sqlite3. This
+// The Node lane (`test/services/identity/portalStorefront.test.ts`) covers the rules against better-sqlite3. This
 // file runs the one batch `recordImpressions` writes against the real D1, which is what proves the
 // part better-sqlite3 could get wrong: that D1 applies the migration, and that inside a D1 batch
 // each counter upsert's `changes()` reads the dedupe insert just before it, so a product counts

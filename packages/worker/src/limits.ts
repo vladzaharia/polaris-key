@@ -1,7 +1,7 @@
 /**
  * The limits inventory (ST-09): the code constants an operator can be asked about, with the
  * wording the Limits section shows. Every value is imported from the module that owns it, so the
- * page cannot disagree with the code; `test/limits.test.ts` fails when a limit-shaped constant
+ * page cannot disagree with the code; `test/core/limits.test.ts` fails when a limit-shaped constant
  * is added to the Core, platform or console layers without a row here (or an entry in its
  * `INTERNAL` table, which says why it is not listed). Read-only: a limit changes by a code
  * change, where review sees it.

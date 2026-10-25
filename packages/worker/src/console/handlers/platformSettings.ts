@@ -20,7 +20,7 @@
  *                                         code default.
  *
  * Every write appends one `platform_audit` row with the stored and effective value before and
- * after. Safe because the registry holds no secret (`test/platformSettings.test.ts`). A secret is
+ * after. Safe because the registry holds no secret (`test/surfaces/console/platformSettings.test.ts`). A secret is
  * reported as `{ name, set }` and nothing else: never a value, a length, a prefix or a hash.
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's

@@ -10,7 +10,7 @@
 --   - by AAD: `enc_value_json` is sealed under `pkey:v2:<product>:outlet-credential:<credential_id>`,
 --     so a blob copied into `product_secrets` does not open as a `product-secret`;
 --   - by code: `core/outletCredentials.ts` is the only accessor, and
---     `test/outletCredentialReach.test.ts` refuses any importer outside the Distribution service,
+--     `test/core/outletCredentialReach.test.ts` refuses any importer outside the Distribution service,
 --     `core/outletTokens.ts` and the Core admin handler, and any caller of the writers outside
 --     the Core admin handler.
 --

@@ -4,9 +4,8 @@
  * under `core/`, `services/<slug>/` (slug from `tools/services.json`), `surfaces/` or an
  * existing subdirectory.
  *
- * REPORT-ONLY until P0-30.6 moves the tests: the check below logs the flat tests that are not
- * guards and never fails, so in-flight branches that add a flat test stay green. P0-30.6 sets
- * ENFORCE to true.
+ * Blocking since P0-30.6: a flat test that is not a guard, or a services/<slug> that is not in
+ * tools/services.json, fails the suite.
  */
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -14,7 +13,6 @@ import { describe, expect, it } from "vitest";
 import { GUARDS, serviceSlugs } from "../scripts/test-layout.mjs";
 import { TEST_ROOT } from "./paths.js";
 
-const ENFORCE = false;
 const REPO = join(TEST_ROOT, "..", "..", "..");
 
 function testFiles(dir: string): string[] {
@@ -28,7 +26,7 @@ function testFiles(dir: string): string[] {
 }
 
 describe("worker test layout", () => {
-  it("every flat test is a guard, every other sits in the layout (report-only)", () => {
+  it("every flat test is a guard, every other sits in the layout", () => {
     const slugs = serviceSlugs(REPO);
     const problems: string[] = [];
     for (const abs of testFiles(TEST_ROOT)) {
@@ -44,13 +42,7 @@ describe("worker test layout", () => {
           );
       }
     }
-    if (problems.length) {
-      console.info(
-        `test layout (report-only until P0-30.6): ${problems.length} test(s) off layout`,
-      );
-    }
-    if (ENFORCE) expect(problems).toEqual([]);
-    else expect(Array.isArray(problems)).toBe(true);
+    expect(problems).toEqual([]);
   });
 
   it("every guard names a reason", () => {

@@ -323,7 +323,7 @@ jobs:
           # Always the NEWEST *_index_assertion.sql (0018, then 0027_i, ...): each successor
           # DELETEs and re-INSERTs the full list, so re-running an older file would overwrite
           # the row with a shorter list and stop checking the indexes added since.
-          # test/scheduled.test.ts pins this step to that selection.
+          # test/surfaces/scheduled.test.ts pins this step to that selection.
           ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
           echo "Re-asserting required indexes from $ASSERTION"
           npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --file "$ASSERTION"
@@ -496,7 +496,7 @@ jobs:
       # fail the deploy: continue-on-error, and a miss prints a ::warning:: annotation instead.
       # It runs whenever the request Worker deploy succeeded, even if the smoke check failed,
       # because the row records what is live. Same token: it already holds D1 edit (migrations).
-      # test/recordDeploy.test.ts pins this step's position and guards.
+      # test/core/recordDeploy.test.ts pins this step's position and guards.
       - name: Record deploy
         if: ${{ !cancelled() && steps.deploy-main.outcome == 'success' }}
         continue-on-error: true

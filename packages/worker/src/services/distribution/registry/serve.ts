@@ -191,7 +191,7 @@ export interface FeedRouteDef<S = undefined> {
   /**
    * An owner-level LIST document: it runs the ladder with `deliverableId: () => null` (only the
    * feed's mode decides) and so MUST filter what it names to the packages the presenting
-   * principal may read (F-33b.5). `test/feedAdapters.test.ts` runs every marked route over the
+   * principal may read (F-33b.5). `test/surfaces/feedAdapters.test.ts` runs every marked route over the
    * principal matrix and fails a null-deliverable route that is neither marked nor named there as
    * carrying no package names.
    */

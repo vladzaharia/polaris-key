@@ -88,7 +88,7 @@ export async function exportCloudSync(
 /**
  * Join an absorbed subject's export into the SURVIVOR's object (`pin` names the survivor). Only
  * the store's `merge` hook may call this: an absorb is part of an authorised account merge, and
- * nothing else in `src/` names it (`test/cloudSyncMerge.test.ts` pins the call sites).
+ * nothing else in `src/` names it (`test/services/sync/cloudSyncMerge.test.ts` pins the call sites).
  */
 export async function absorbCloudSync(
   env: Pick<Env, "CLOUD_SYNC">,

@@ -5,7 +5,7 @@
  * the one evaluator. It answers `met` and, when not, which requirement descriptors are missing
  * (`{kind, slot}`), and nothing else: no key id, issuer, pin or app name leaves it.
  *
- * Custody rules (security-reviewed; `test/storeRequirements.test.ts` pins them):
+ * Custody rules (security-reviewed; `test/core/storeRequirements.test.ts` pins them):
  *   - METADATA ONLY. A credential counts through `listOutletCredentials` (which never selects
  *     `enc_value_json`) and `resolvePlatformCredential` (which opens nothing). This file never
  *     imports `openOutletCredential`, `openPlatformCredential` or the token helpers.

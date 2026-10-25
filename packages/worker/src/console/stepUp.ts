@@ -4,7 +4,7 @@
  * here. Since ST-29 the route table (`./routes.ts`, `stepUp: true`) is what the dispatcher
  * enforces, before the handler runs. The rows whose step-up depends on the request body (a
  * break-glass key activation; an alert destination PATCH, marked `(body)`) keep their own `requireStepUp` in the handler, and `(a|b)` spells two
- * table rows. `test/rbacRouteMatrix.test.ts` keeps this list and the table's step-up rows in step.
+ * table rows. `test/surfaces/console/rbacRouteMatrix.test.ts` keeps this list and the table's step-up rows in step.
  *
  * A step-up is `session.stepUpAt` (see ./session.ts): set only by a `prompt=login` flow the IdP
  * proved with `auth_time`, never by an ordinary sign-in.

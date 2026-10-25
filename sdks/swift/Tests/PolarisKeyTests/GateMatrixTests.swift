@@ -16,7 +16,7 @@
 //
 // The build-gate half is a PORT: `checkBuildGate` mirrors the Worker's, rebuilt from `Semver.*`,
 // with the fixture as the oracle (the Worker replays the same rows through its real gate in
-// `packages/worker/test/gateMatrixCorpus.test.ts`). The Node and Python runners port the same
+// `packages/worker/test/core/gateMatrixCorpus.test.ts`). The Node and Python runners port the same
 // lines. That duplication is deliberate — the point of the matrix is that independent
 // implementations agree, and a shared helper would prove only that they share a helper.
 

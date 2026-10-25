@@ -388,7 +388,7 @@ If placeholders remain for the target env, `wrangler deploy --env <env>` cannot 
 Each environment's `[env.<env>.vars]` also carries `PKEY_ENVIRONMENT` (`prod`, `staging` or
 `dev`). `/manage/api/me` echoes it so the console shows a "Staging" or "Dev" badge in its top bar;
 production shows none, and so does a Worker without the var (any other value reads as unset).
-A new environment needs the line beside its `BLOB_ORIGIN`; `test/admin.test.ts` checks the three
+A new environment needs the line beside its `BLOB_ORIGIN`; `test/surfaces/admin.test.ts` checks the three
 committed ones.
 
 Apply all D1 migrations:
@@ -457,13 +457,13 @@ Rules for the bucket, each one load-bearing:
   serves the full console on the same-site sibling (host isolation fails open), and a
   `BLOB_ORIGIN` naming the console's own hostname makes every console path answer not-found.
   Add or remove the `[[env.<env>.routes]]` `dl*` entry and the `BLOB_ORIGIN` var in the same
-  change; `test/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
+  change; `test/surfaces/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
   .
 - **`CONSOLE_ORIGIN` names the console host** (`https://key.plrs.im`, `key-staging`, `key-dev`)
   beside each `BLOB_ORIGIN` (P2b-06). The public download page renders on the bytes host and
   links the storefront feeds, which are served on the console host; without the var (or with it
   pointing at the bytes host) the page leaves the AltStore, SideStore, Obtainium, F-Droid and
-  Scoop rows out. `test/downloadPage.test.ts` checks each committed environment.
+  Scoop rows out. `test/surfaces/downloadPage.test.ts` checks each committed environment.
 - **Same-site with the console.** `dl.plrs.im` is a `plrs.im` sibling, so it is same-site with
   `key.plrs.im`. That is an owner decision; the Worker compensates (`sandbox` CSP, `nosniff`,
   no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
@@ -563,7 +563,7 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 | dev     | `pkg-dev.plrs.im`              | `https://pkg-dev.plrs.im`          |
 
 - `vars` is not inheritable, so each environment carries its own `PKG_ORIGIN`. A `pkg` route
-  without it would hand the whole console to the sibling; `test/registryHost.test.ts` refuses
+  without it would hand the whole console to the sibling; `test/surfaces/registryHost.test.ts` refuses
   that, and a `PKG_ORIGIN` equal to `BLOB_ORIGIN`, for every committed environment.
 - Rendered index documents live in the same `BLOBS` bucket under `registry/`. **That prefix gets
   no age lock and no lifecycle rule**: it is rewritten on every publish, yank and channel move,
@@ -629,7 +629,7 @@ in or out. Declared in `wrangler.toml`, beside `dl…` and `pkg…`:
   creates its DNS record and certificate. No new bucket, queue or secret; the host reads the
   same `BLOBS` bucket under `blobs/`, which keeps its age lock.
 - `vars` is not inheritable, so each environment carries its own `IMG_ORIGIN`. An `img` route
-  without it would hand the whole console to the sibling; `test/imgHost.test.ts` checks every
+  without it would hand the whole console to the sibling; `test/surfaces/imgHost.test.ts` checks every
   committed environment, and an `IMG_ORIGIN` equal to `BLOB_ORIGIN` or `PKG_ORIGIN` is refused
   (the host is then off).
 - An image is served only when the product holds a hosted copy of it (`hosted_assets`).
@@ -994,7 +994,7 @@ gh workflow run sync-worker-secrets.yml -f target=prod                    # or t
 read-only `GITHUB_TOKEN`, the environment's `CLOUDFLARE_API_TOKEN`) pushes every one of the six
 names that is set, with `wrangler secret put <NAME> --env <target>` reading the value from stdin,
 and logs only which names it synced or skipped. A static test
-(`packages/worker/test/syncWorkerSecretsWorkflow.test.ts`) keeps values out of argv and the log.
+(`packages/worker/test/core/syncWorkerSecretsWorkflow.test.ts`) keeps values out of argv and the log.
 The `wrangler secret put` lines above are the manual fallback.
 
 None of these is required; a store without one simply has no platform connection. After

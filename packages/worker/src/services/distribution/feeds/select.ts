@@ -23,7 +23,7 @@
  * per scanned release its builds and its artifact records (with their locations) — two queries,
  * one when no build matches. A store outlet's releases with no live report cost nothing. At most
  * `MAX_FEED_SCAN` releases are scanned, so a selection stays a bounded, small number of D1
- * queries whatever the history (`test/storefrontFeeds.test.ts` holds a ceiling), and the routes
+ * queries whatever the history (`test/services/distribution/storefrontFeeds.test.ts` holds a ceiling), and the routes
  * cache what they render (`cache.ts`). Steps 3 and 5 apply the hooks' rules (`availability.ts`'s
  * derived records, stored row winning; `delivery.ts`'s build branch); the test suite checks the
  * two agree.

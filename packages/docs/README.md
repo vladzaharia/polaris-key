@@ -85,7 +85,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 ## Rules here
 
 - Terminology comes from the concepts page (`src/content/docs/start/concepts.md`); `lint:docs` enforces the mechanical writing rules. See [AGENTS.md](../../AGENTS.md).
-- The docs site is tiered: `test/doors.test.ts` pins every content directory to a door and a tier; `../worker/test/docsGate.test.ts` pins the Worker's gate to the same table. See [AGENTS.md](../../AGENTS.md).
+- The docs site is tiered: `test/doors.test.ts` pins every content directory to a door and a tier; `../worker/test/surfaces/docsGate.test.ts` pins the Worker's gate to the same table. See [AGENTS.md](../../AGENTS.md).
 - Generated pages are never hand-edited: `test/generated.test.ts` byte-compares each emitter's output with the committed page, and `pnpm gen --check` covers the docs reference family. See [AGENTS.md](../../AGENTS.md).
 - Code blocks are compiled: `test/snippets/snippets.test.ts` holds covered pages to their SDK lane. See [AGENTS.md](../../AGENTS.md).
 - Console help links live in two tables gated against `dist/docs-slugs.json`: `../worker/test/docsLinks.test.ts`. See [AGENTS.md](../../AGENTS.md).

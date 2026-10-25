@@ -1006,7 +1006,7 @@ kit reads, the accent resolver and the drift gate are UI-KITS §2 and §3.3.
    contrast, hue, gold, rose and distinctness suites must pass unchanged. **Never weaken a
    threshold to make a colour pass**; change the colour.
 3. Update this page's tables (the numbers come from the test data) and rebuild the preview.
-4. A new service in `tools/services.json` fails `test/services.test.ts` until it has an accent
+4. A new service in `tools/services.json` fails `test/core/services.test.ts` until it has an accent
    that passes every rule.
 5. A new kit version: replace `packages/brand/kit/` wholesale (including its `SHA256SUMS.txt`),
    run `gen` (it re-derives and re-verifies every template) and the fidelity suite.
@@ -1285,5 +1285,5 @@ crowded navigation use the mark alone"). Key guide p.2: where the full wordmark 
 the kit's compact lockup as supplied, uncropped (222 × 64 canvas), at 52 px tall (180 px wide) in the
 64 px bar, the size plrs.im draws; its 26 px mark has no room for the section bit. Below the width
 that holds it the Pinned K stands alone at 48 px. The Locker trimmed lockup is at the guide's 180 px floor in a header (its wordmark is 3.7 × the
-lockup height, 122 px at 33 px). `test/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
+lockup height, 122 px at 33 px). `test/core/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
 block that sets the name as text.

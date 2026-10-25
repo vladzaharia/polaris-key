@@ -6,6 +6,6 @@
 -- HOW. Run once against the database with
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0138_license_invited_at.down.sql
 -- It is not idempotent: a second run fails with "no such column", changing nothing. Exercised by
--- test/licenseInvitedAtMigration.test.ts.
+-- test/core/migrations/licenseInvitedAtMigration.test.ts.
 
 ALTER TABLE licenses DROP COLUMN invited_at;
