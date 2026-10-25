@@ -8060,7 +8060,7 @@
       "deps": ["ST-39", "A-25"],
       "planMode": false,
       "gates": ["threat-model"],
-      "humanInputs": [],
+      "humanInputs": ["github-app"],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -8072,7 +8072,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/backlog-sweep.md"
       ],
       "brief": "wp/A-32-github-write-path-publish-from-ci.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "A-33",
