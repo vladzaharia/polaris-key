@@ -109,7 +109,7 @@ optional. A bad value is `invalid_outlet_identity`.
 | `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                                                                                |
 | `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (release track → package flight)                                                                                                             |
 | `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                                                                                         |
-| `steam`                    | `appId` (numeric), `branches` (release track → Steam branch)                                                                                                                                             |
+| `steam`                    | `appId` (numeric), `branches` (release track → Steam branch), `depots` (pack id → depot id, digits)                                                                                                      |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                                                                               |
 | `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                                                                                        |
 | `snap`                     | `name`, `channels` (release track → snap release track, `[<track>/]<risk>[/<branch>]`)                                                                                                                   |
@@ -192,16 +192,21 @@ For each deliverable on each channel, the first of these that applies wins:
 1. `transports.deliverables.<deliverableId>.<outletId>` — a per-deliverable override; the
    deliverable must be declared in `.pkey/release` (`app` always is), or
    `unknown_deliverable_ref`;
-2. `transports.packs.<outletId>` — for pack deliverables only;
+2. `transports.packs` — for pack deliverables only: a map of `<outletId>` to a transport, or the word `auto` for every channel (below);
 3. `transports.default` — applies to every channel, so only `pkey-cdn` or `embedded`;
 4. `pkey-cdn`.
+
+`transports.packs: auto` picks for each pack and channel: `apple-ba` on `app-store` and `testflight`,
+`steam-depot` on a `steam` channel whose `depots` names the pack, otherwise `pkey-cdn`. It never
+picks `play-pad`. Every `depots` key must name a declared pack (`unknown_deliverable_ref`). See
+[Ship a pack through an app store](/docs/features/ship-builds/packs/transports/).
 
 A transport map may only name declared channels (`unknown_outlet_ref`), and only a transport
 that channel's kind can carry (`transport_not_allowed`). The resolved pairs are stored in
 `dist_transports`, one row per declared deliverable (the app and every pack) per live channel.
 Polaris Key delivers by `pkey-cdn`, `web` and `embedded`, and tracks the store transports
 `apple-ba`, `play-pad` and `steam-depot` through reports
-([Platform pack transports](/docs/build/pack-transports/)); any other transport
+([Ship a pack through an app store](/docs/features/ship-builds/packs/transports/)); any other transport
 (`msix-optional`, `flatpak-ext`) is stored and shown "not delivered by Polaris Key", and nothing
 is served or derived for it ([Pack transports](/docs/features/ship-builds/channels/delivery/#pack-transports)).
 

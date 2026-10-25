@@ -98,6 +98,10 @@ release:
 
 Use `--dry-run` first to see the resulting pack sets without writing anything. The `polaris-key/publish` Action runs the same steps. See [CI publishing](/docs/features/ship-builds/ci/).
 
+### Deliver to the stores
+
+With `transports.packs: auto` in `.pkey/distribution`, the Action's `channels: auto` also runs `pkey channel sync --deliverable tidewater.foes` after the publish. It packages and uploads the pack to Apple Background Assets and Steam, and skips any step that lacks a runner or secret. No per-transport CI step remains. See [Ship a pack through an app store](/docs/features/ship-builds/packs/transports/).
+
 A publish is three stages. A preflight asks for each release's `seq` and the pack's gate without a ticket. Stage rounds upload objects in batches of at most 256, and each round verifies the objects, refuses one whose `gated` flag differs from the gate and records a reference. A small pack can carry its objects with the record and publish in one request. Then the submit sends the record.
 
 An object counts as already present only when that pack uploaded it, so two packs sharing bytes each earn their own references.

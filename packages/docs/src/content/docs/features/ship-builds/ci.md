@@ -79,7 +79,7 @@ step.
 | `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                                                                                                        |
 | `working-directory` | the workspace         | Where the command runs.                                                                                                                                                                                        |
 | `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                                                                                                         |
-| `channels`          | `auto`                | `auto` runs `pkey channel sync` once after a successful app publish; a pack or package publish never syncs. `none` skips it.                                                                                   |
+| `channels`          | `auto`                | `auto` runs `pkey channel sync` once after a successful app publish; a pack publish syncs that pack's store transports, and a package publish never syncs. `none` skips it.                                    |
 
 The product comes from `.pkey/product`. Every flag of `pkey release publish` goes in `args`:
 `--tag`, `--version`, `--channel`, `--deliverable`, `--dir`, `--source`, `--meta`,
@@ -309,8 +309,12 @@ expire within the hour). A published pack version is never rewritten: publish a 
 version.
 
 Store builds take packs through the store's own transport (Background Assets, Play Asset
-Delivery, Steam depots): after the publish, a `transport` step packages the cached release for
-it. See [Platform pack transports](/docs/build/pack-transports/).
+Delivery, Steam depots). With `transports.packs: auto`, `channels: auto` runs
+`pkey channel sync --deliverable <packId> --from <out>` after the pack publish, and the Action adds
+`--out $RUNNER_TEMP/pkey-packs` when `args` has none. The sync needs a macOS runner and the
+`ASC_*` secrets for Background Assets, and `STEAM_USERNAME`, `STEAM_CONFIG_VDF` and `steamcmd`
+for a Steam depot; a step without them is skipped and the CDN serves the pack. See
+[Ship a pack through an app store](/docs/features/ship-builds/packs/transports/).
 
 ## App releases with packs
 

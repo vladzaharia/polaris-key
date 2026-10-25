@@ -1,6 +1,6 @@
 ---
 title: "Ship a pack through an app store"
-description: "Package a published pack for Apple Background Assets, Play Asset Delivery or Steam depots with pkey transport, and verify what the store delivered."
+description: "Ship a published pack through Apple Background Assets, Play Asset Delivery or Steam depots with transports.packs: auto, run a step by hand, and verify what the store delivered."
 type: "how-to"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -19,15 +19,72 @@ A store build takes its content through the store's own transport. Polaris Key d
 
 Before you start:
 
-- A pack release already published with `--out`. See [Ship a pack](/docs/features/ship-builds/packs/ship-a-pack/).
-- The transport chosen per channel in `.pkey/distribution`:
+- A pack release you can publish. See [Ship a pack](/docs/features/ship-builds/packs/ship-a-pack/).
+- Your store channels declared in `.pkey/distribution`.
+
+## Let Polaris Key choose
+
+Set `transports.packs: auto` and each pack takes the transport its channel suits:
 
 ```yaml title=".pkey/distribution"
 outlets:
   app-store: { appleId: "1234567890", bundleId: gg.vlad.tidewater }
   testflight: { bundleId: gg.vlad.tidewater }
   play: { packageName: gg.vlad.tidewater }
-  steam: { appId: 480 }
+  steam:
+    appId: 480
+    depots: { tidewater.foes: "481" }
+transports:
+  packs: auto
+```
+
+| Channel                   | Transport                                            |
+| ------------------------- | ---------------------------------------------------- |
+| `app-store`, `testflight` | `apple-ba`                                           |
+| `steam`                   | `steam-depot` for a pack named in `depots`           |
+| every other channel       | `pkey-cdn`, `play` and a pack with no depot included |
+
+`auto` never picks `play-pad`: its modules patch the Gradle build before the bundle exists, so you choose it yourself. A `transports.deliverables` entry overrides `auto` for one pack.
+
+The publish Action does the rest. After a pack publish, `channels: auto` runs `pkey channel sync --deliverable <pack>` on the publish's `--out` cache, which the Action adds when `args` has none. The sync packages and uploads Background Assets and runs the Steam build.
+
+A step that can't run is skipped with its reason, and the Polaris Key CDN serves the pack meanwhile. An `auto` route to Background Assets doesn't hold the App Store release: the CDN serves the pack until its Background Asset is approved in App Store Connect.
+
+| Step                | Needs                                                                                                          | If missing                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Background Assets   | A macOS runner with Xcode 26 or later; `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_PRIVATE_KEY` (or `ASC_KEY_PATH`) | Skipped: needs macOS, or names the variable                  |
+| Steam depot         | The pack in `depots`; `STEAM_USERNAME`, `STEAM_CONFIG_VDF` and `steamcmd` on the runner                        | Skipped: names the variable, the missing depot or `steamcmd` |
+| Play Asset Delivery | `pkey transport play-pad modules` before the build                                                             | Always skipped by the sync                                   |
+
+A skipped step doesn't fail the job. A failed step does, after the rest ran. The sync never prints a secret, only its name. To preview it from your machine, run it with `--from <out> --version <version> --dry-run`.
+
+### Install the Steam login
+
+SteamCMD signs in from a saved login in its config directory, and nothing installs it for you. Before the publish step, write your approved `config.vdf` there from a secret, and pass the same secret as `STEAM_CONFIG_VDF`: the sync only checks that it's set.
+
+```yaml title=".github/workflows/release.yml"
+- name: Install the Steam login
+  run: |
+    mkdir -p ~/Steam/config
+    printf '%s' "$STEAM_CONFIG_VDF" | base64 -d > ~/Steam/config/config.vdf
+  env:
+    STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
+  with:
+    args: --version <version> --deliverable tidewater.foes --dir packs/foes
+    release-key: ${{ secrets.PKEY_RELEASE_KEY }}
+  env:
+    STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+    STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+```
+
+The secret is the file's bytes in base64. The build goes to the Steam branch named by the sync's `--channel`, and a person promotes the default branch in Steamworks.
+
+## Run a step by hand
+
+To use `play-pad`, or to run one step yourself, name the transport per channel instead of `auto`:
+
+```yaml title=".pkey/distribution"
 transports:
   packs:
     app-store: apple-ba
@@ -38,18 +95,18 @@ transports:
 
 Each step re-reads the publish cache, checks every payload against the record it pins and runs the publish lint again, so a pack with scripts never reaches a store. It then writes the platform's files, puts the marker beside the payload and reports the transport's availability to Distribution (`distribution:report`, which the default CI grant includes). Pass `--no-report` to write files only.
 
-## Apple-hosted Background Assets
+### Apple-hosted Background Assets
 
-A live asset-pack version switches every installed app version, so a pack gets one asset pack per content level: `<pack>-c<contentApi>`. App Store Connect accepts only letters, digits and single hyphens, so each `.` in the pack id becomes `-`: `tidewater.foes` at level 3 is `tidewater-foes-c3`. The mapping is lossy and App Store Connect never lets you reuse an archived id, so every `apple-ba` pack of the product is mapped at once, before anything is written. The step fails when two packs map to one asset pack (`asset-pack-id-collision`), when an id breaks the grammar (`asset-pack-id-invalid`) or when it passes 64 characters with its suffix (`asset-pack-id-too-long`).
+A live asset-pack version switches every installed app version, so a pack gets one asset pack per content level: `<pack>-c<contentApi>`. App Store Connect accepts only letters, digits and single hyphens, so each `.` in the pack id becomes `-`: `tidewater.foes` at level 3 is `tidewater-foes-c3`. The mapping is lossy, so every `apple-ba` pack is mapped at once, before anything is written. The step fails when two packs map to one asset pack (`asset-pack-id-collision`), when an id breaks the grammar (`asset-pack-id-invalid`) or when it passes 64 characters with its suffix (`asset-pack-id-too-long`).
 
-1. **CI** Package on a macOS runner with Xcode 26 or later. The content level defaults to the app's `contentApi` and must sit inside the pack's `requires.contentApi` range. A pack with several variants takes `--variant <key>`. Pass `--no-archive` to write the manifest and files without `xcrun ba-package`.
+1. **CI** Package on a macOS runner with Xcode 26 or later. The content level defaults to the app's `contentApi` and must sit inside the pack's `requires.contentApi` range. A pack with several variants takes `--variant <key>`.
 
    ```sh title="Terminal"
    pkey transport apple-ba package --deliverable tidewater.foes \
      --release <version> --from <cache>
    ```
 
-   This writes, under `build/pkey-transport/apple-ba/`, the `Manifest.json` with the download policy (`essential` and `prefetch` on first install and updates, otherwise `onDemand`), the payload and marker, the `.aar` archive and an `.inputs.json` of what it was built from. The archive's bytes are never reproducible, because `ba-package` stamps the time. The inputs are.
+   This writes, under `build/pkey-transport/apple-ba/`, the `Manifest.json` with the download policy (`essential` and `prefetch` on first install and updates, otherwise `onDemand`), the payload and marker, the `.aar` archive and an `.inputs.json` of what it was built from.
 
 2. **CI** Upload with your CI's own App Store Connect API key (Developer role or higher), never the key Polaris Key's connector holds. Set `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_PRIVATE_KEY` (or `ASC_KEY_PATH`) from secrets. The app is the `appleId` of your `apple-ba` channels, or `ASC_APP_ID`.
 
@@ -61,11 +118,9 @@ A live asset-pack version switches every installed app version, so a pack gets o
 3. **Repo** Commit `.pkey/asset-packs.json`. The first upload records the asset pack's resource id there. Every later upload refuses when the asset pack found by id isn't the recorded one (`asset-pack-resource-mismatch`), when one exists that nothing recorded (`asset-pack-unrecorded`: confirm it is yours, then pass `--expect-resource <id>`) or when the recorded one has disappeared (`asset-pack-missing`).
 4. **App Store Connect** Some steps stay yours: submit the pack version for external TestFlight review, which has no API, and add it to an App Store review submission.
 
-The upload re-hashes the packaged files against the package step and, with `--from`, against the signed record. It reports `processing` on your TestFlight channels and `pending` on the App Store, and the App Store Connect connector then follows the version's states. An app release that needs a new content level isn't ready on the App Store until that level's asset pack is approved. The console API lists asset packs whose level no channel uses as retire candidates, with Apple's 200-pack and 200 GB quotas. Archiving can't be undone, so archive them yourself.
+The upload re-hashes the packaged files against the package step and, with `--from`, against the signed record. It reports `processing` on your TestFlight channels and `pending` on the App Store, and the App Store Connect connector then follows the version's states. An app release that needs a new content level isn't ready on the App Store until that level's asset pack is approved.
 
-To test locally, serve the archive with `xcrun ba-serve` and point a device's Background Assets URL override at it.
-
-## Play Asset Delivery
+### Play Asset Delivery
 
 Run this after **Install Android Build Template** and before `godot --export-release` of the AAB.
 
@@ -78,9 +133,9 @@ Run this after **Install Android Build Template** and before `godot --export-rel
 
 The step writes a `com.android.asset-pack` module named after the pack (`.` and `-` become `_`) with delivery `fast-follow` for `essential` and `prefetch` packs, otherwise `on-demand` (override with `--delivery`). It puts the payload and marker in `src/main/assets/pkey/`. When the pack varies by texture, the default variant goes there (`etc2` when published, or `--default-texture`) and each other variant goes in a `pkey#tcf_<format>/` directory so Play delivers each device one. It adds the module to `settings.gradle` and the app's `assetPacks`, and runs again without change.
 
-Play asset packs change only with a new app bundle, so a pack delivered this way is `pinned` on Play. The step reports `pending`, and the bundle's availability moves it on. Test locally with `bundletool build-apks --local-testing`, where fast-follow behaves like on-demand.
+Play asset packs change only with a new app bundle, so a pack delivered this way is `pinned` on Play. The step reports `pending`, and the bundle's availability moves it on.
 
-## Steam depots
+### Steam depots
 
 1. **CI** Write a content-only SteamPipe build, then run SteamCMD with it.
 
@@ -90,11 +145,9 @@ Play asset packs change only with a new app bundle, so a pack delivered this way
      --setlive
    ```
 
-The step writes `app_build_<app>.vdf`, `depot_build_<depot>.vdf` and the depot's content root, which holds `pkey_packs/<packId>/` with the payload and marker. The app comes from your Steam channel's `appId`. `SetLive` is written only for a named branch (`--branch`, or `--channel` through the channel's `branches`). A person promotes Steam's default branch in Steamworks, never CI. A paid pack is a DLC depot under the base app, and the commerce bridge checks ownership. Your build account and Steam Guard stay in your CI.
+The step writes `app_build_<app>.vdf`, `depot_build_<depot>.vdf` and the depot's content root, which holds `pkey_packs/<packId>/` with the payload and marker. The app comes from your Steam channel's `appId`. `SetLive` is written only for a named branch (`--branch`, or `--channel` through the channel's `branches`). A person promotes Steam's default branch in Steamworks, never CI.
 
-## Use the Action
-
-The `polaris-key/publish` Action runs the same steps with `transport` set to `apple-ba-package`, `apple-ba-upload`, `play-pad-modules` or `steam-depot-vdf`. `dir` is the publish cache, or for `apple-ba-upload` the package step's output. The other inputs are `content-api`, `variant`, `transport-out`, `gradle-project`, `pad-delivery`, `steam-depot`, `steam-branch`, `steam-setlive`, `asc-expect-resource` and `transport-report`. Inputs that apply only to a publish are refused with `transport`. See [CI publishing](/docs/features/ship-builds/ci/).
+To run a step in the Action, set `command` to it, such as `transport apple-ba package`, and put its flags in `args`. See [CI publishing](/docs/features/ship-builds/ci/#publishing-a-pack).
 
 ## Verify in the game (Godot)
 

@@ -62,8 +62,8 @@ Verified against the code; the code is the fact. Slices: `P4-33.1` manifest, `.2
 - **T5.** Each transport needs an input the manifest lacked or a runner it may not have: Steam's depot was a flag only (now `depots`, D-P3); Apple's archive needs macOS and the ASC key; Play's modules patch the Gradle build before the AAB exists, so they never run after publish (D-P5: `auto` never picks `play-pad`).
 - **T6.** "Fallback to the CDN" is a readiness rule, not a delivery change: the CDN serves pack objects whatever the transport. `apple-ba` readiness fails closed without an `approved`/`live` availability record, so an `auto` route to Background Assets with no ASC key must not hold the release (D-P2: route `origin`, P4-33.2).
 - **T7.** No wire change. Only `play-pad` narrows a pack to `pinned` in the signed feed, and `auto` never picks it; the corpus reads no `.pkey/distribution`.
-- **T8.** The ASC part is done (A-17e): `distribute/submission-items` lists every COMPLETE asset-pack version in a submittable state and the console's submit step checks each by default. Nothing to build.
-- **T9.** Two docs targets do not exist: `releases/release-tracks` and `help/beta`. This package's part is `packs/*` (`features/ship-builds/packs/transports.mdx`, `ship-a-pack.mdx`) and `ci.md`'s pack job.
+- **T8 (recorded, P4-33.6).** The ASC part is done (A-17e): `distribute/submission-items` lists every COMPLETE asset-pack version in a submittable state and the console's submit step checks each by default. Nothing to build.
+- **T9 (shrunk, P4-33.6).** Two docs targets do not exist: `releases/release-tracks` and `help/beta`. This package's part is `packs/*` (`features/ship-builds/packs/transports.mdx`, `ship-a-pack.mdx`) and `ci.md`'s pack job.
 - **T10.** Verify runs more than the CLI suite: shared-manifest, the Worker and the docs build are touched too.
 
 Settled in P4-33.1 (route shape, for .2 and .3): `ManifestTransportRoute` is `{ deliverableId, outletId, transport, origin }` with `origin: "declared" | "auto" | "default"` (`declared` = a `deliverables` override or an entry of the `packs` map; `auto` = derived by `packs: auto`, including its CDN results; `default` = fell through to `transports.default`). `ManifestTransports.packs` is `Record<string, Transport> | "auto"`. The rule is the exported `autoPackTransport(kind, hasDepot)`. A steam outlet's `depots` is `{ <packId>: "<digits>" }`, keys refused unless they name a declared pack (`unknown_deliverable_ref`).
@@ -76,9 +76,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A pack ships on every channel with no per-transport CI step
-- [ ] Missing credentials degrade to the CDN with a note
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
+- [x] A pack ships on every channel with no per-transport CI step
+- [x] Missing credentials degrade to the CDN with a note
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -93,3 +93,11 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P4-33 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-33 done`.
+
+## Docs (P4-33.6, 2026-10-24)
+
+Written: `features/ship-builds/packs/transports` (leads with `auto`; the per-transport steps are
+"Run a step by hand"; installing the Steam login), `packs/ship-a-pack`, `ci.md`'s pack job,
+`build/manifest/distribution` (`auto`, `depots`) and the changelog entry. T9 shrinks to `packs/*`
+and `ci.md`: `releases/release-tracks` and `help/beta` stay with the packages that own them. The
+retired `transport` input of the Action (v2 has eight inputs) is gone from the transports page.
