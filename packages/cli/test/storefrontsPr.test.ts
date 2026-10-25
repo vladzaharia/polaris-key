@@ -1130,13 +1130,14 @@ describe("pkey storefront <store> pr (A-18i)", () => {
   });
 
   it("refuses with no GitHub token, reports a failure after pending, and writes a dry run's files", async () => {
-    const w = fakeWorld(SCOOP_INPUTS);
+    const w = fakeWorld(WINGET_INPUTS);
     await expect(
       runPrStep(
-        stepOptions("scoop", w.fetchImpl, { env: { PKEY_CI_TOKEN: CI_TOKEN } })
+        stepOptions("winget", w.fetchImpl, { env: { PKEY_CI_TOKEN: CI_TOKEN } })
           .o,
       ),
     ).rejects.toThrow(/PKEY_PR_TOKEN is not set/);
+    expect(w.seen.some((s) => s.url.endsWith("/pr/github-token"))).toBe(false);
 
     const broken = fakeWorld(SCOOP_INPUTS, (s) =>
       s.url.endsWith("/git/trees") ? [422, { message: "tree invalid" }] : null,
@@ -1262,5 +1263,164 @@ describe("the pkey storefront command line (A-18i)", () => {
       }),
     ).not.toBe(0);
     expect(bad.text()).toContain("not a PR-plane store");
+  });
+});
+
+// ── A-32.8: the GitHub App token for a tap or bucket ─────────────────────────────────────────
+
+const APP_TOKEN = "ghs_fakeInstallationToken0123456789";
+const { PKEY_PR_TOKEN: _pr, ...NO_PR_ENV } = ENV;
+
+/** The fake world plus the Worker's `pr/github-token` route, answering `answer`. */
+function withExchange(
+  inputs: PrInputs,
+  answer: [number, unknown],
+  github?: Parameters<typeof fakeWorld>[1],
+) {
+  const w = fakeWorld(inputs, github);
+  const exchanged: Seen[] = [];
+  const fetchImpl = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    if (String(input).endsWith("/diceroll/distribution/pr/github-token")) {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      exchanged.push({ method: "POST", url: String(input), body });
+      w.seen.push(exchanged.at(-1)!);
+      return new Response(JSON.stringify(answer[1]), {
+        status: answer[0],
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return w.fetchImpl(input, init);
+  }) as typeof fetch;
+  return { ...w, fetchImpl, exchanged };
+}
+
+const OK_TOKEN: [number, unknown] = [
+  200,
+  {
+    ok: true,
+    token: APP_TOKEN,
+    expiresAt: 1_900_000_000,
+    repository: "vlad/homebrew-games",
+  },
+];
+
+describe("pkey storefront <store> pr: the GitHub App token (A-32.8)", () => {
+  it("homebrew without PKEY_PR_TOKEN exchanges, masks first and never prints the token", async () => {
+    const w = withExchange(HOMEBREW_INPUTS, OK_TOKEN);
+    const { o, stdout, stderr } = stepOptions("homebrew", w.fetchImpl, {
+      env: { ...NO_PR_ENV, GITHUB_ACTIONS: "true" },
+    });
+    const r = await runPrStep(o);
+    expect(r.outcome).toBe("opened");
+    expect(w.exchanged).toHaveLength(1);
+    expect(w.exchanged[0]!.body).toEqual({
+      outlet: "direct",
+      store: "homebrew",
+    });
+    const out = stdout.text();
+    expect(out).toContain(`::add-mask::${APP_TOKEN}\n`);
+    expect(out.replace(`::add-mask::${APP_TOKEN}\n`, "")).not.toContain(
+      APP_TOKEN,
+    );
+    expect(stderr.text()).not.toContain(APP_TOKEN);
+    // The GitHub calls carry it as a bearer header, nowhere else.
+    const gh = w.seen.filter((s) =>
+      s.url.startsWith("https://api.github.com/"),
+    );
+    expect(gh.length).toBeGreaterThan(0);
+    expect(JSON.stringify(w.seen)).not.toContain(APP_TOKEN);
+    expect(reports(w.seen).length).toBeGreaterThan(0);
+  });
+
+  it("scoop exchanges too; PKEY_PR_TOKEN wins and skips the exchange; winget never exchanges", async () => {
+    const s = withExchange(SCOOP_INPUTS, OK_TOKEN);
+    expect(
+      (await runPrStep(stepOptions("scoop", s.fetchImpl, { env: NO_PR_ENV }).o))
+        .outcome,
+    ).toBe("opened");
+    expect(s.exchanged[0]!.body.store).toBe("scoop");
+
+    const p = withExchange(HOMEBREW_INPUTS, OK_TOKEN);
+    await runPrStep(stepOptions("homebrew", p.fetchImpl).o);
+    expect(p.exchanged).toHaveLength(0);
+
+    const wg = withExchange(WINGET_INPUTS, OK_TOKEN);
+    await expect(
+      runPrStep(stepOptions("winget", wg.fetchImpl, { env: NO_PR_ENV }).o),
+    ).rejects.toThrow(/PKEY_PR_TOKEN is not set/);
+    expect(wg.exchanged).toHaveLength(0);
+  });
+
+  it("a dry run asks for no token", async () => {
+    const w = withExchange(HOMEBREW_INPUTS, OK_TOKEN);
+    const r = await runPrStep(
+      stepOptions("homebrew", w.fetchImpl, { env: NO_PR_ENV, dryRun: true }).o,
+    );
+    expect(r.outcome).toBe("dry-run");
+    expect(w.exchanged).toHaveLength(0);
+  });
+
+  const REFUSALS: [number, string, RegExp][] = [
+    [400, "bad_outlet", /outlet id is not valid/],
+    [400, "bad_store", /homebrew or scoop/],
+    [400, "unknown_outlet", /declares no such outlet/],
+    [400, "outlet_not_supported", /no Homebrew tap or Scoop bucket/],
+    [400, "no_repository", /declares no tap or bucket/],
+    [400, "store_required", /name the store/],
+    [
+      404,
+      "app_not_installed",
+      /Install the Polaris Key GitHub App|install the Polaris Key GitHub App/,
+    ],
+    [429, "rate_limited", /too many tokens/],
+    [503, "app_permission", /lacks Contents or Pull requests write/],
+    [503, "github", /GitHub refused to issue a token/],
+  ];
+  for (const [status, reason, text] of REFUSALS)
+    it(`refusal ${status} ${reason} prints its line and opens nothing`, async () => {
+      const w = withExchange(HOMEBREW_INPUTS, [
+        status,
+        { error: reason, reason },
+      ]);
+      await expect(
+        runPrStep(stepOptions("homebrew", w.fetchImpl, { env: NO_PR_ENV }).o),
+      ).rejects.toThrow(text);
+      expect(
+        w.seen.filter((s) => s.url.startsWith("https://api.github.com/")),
+      ).toEqual([]);
+    });
+
+  it("a missing scope, a Release-off 404 and an empty answer each say so", async () => {
+    const run = (answer: [number, unknown]) =>
+      runPrStep(
+        stepOptions(
+          "homebrew",
+          withExchange(HOMEBREW_INPUTS, answer).fetchImpl,
+          {
+            env: NO_PR_ENV,
+          },
+        ).o,
+      );
+    await expect(run([403, { error: "forbidden" }])).rejects.toThrow(
+      /lacks the distribution:pr scope/,
+    );
+    await expect(run([404, { error: "not_found" }])).rejects.toThrow(
+      /Release is off/,
+    );
+    await expect(run([200, { ok: true }])).rejects.toThrow(/held none/);
+  });
+
+  it("a hostile reason is cleaned and the token is never in an error", async () => {
+    const w = withExchange(HOMEBREW_INPUTS, [
+      500,
+      { error: "x", reason: `bad\u001b[31m${APP_TOKEN}` },
+    ]);
+    const err = await runPrStep(
+      stepOptions("homebrew", w.fetchImpl, { env: NO_PR_ENV }).o,
+    ).catch((e: Error) => e);
+    expect((err as Error).message).not.toContain("\u001b");
   });
 });

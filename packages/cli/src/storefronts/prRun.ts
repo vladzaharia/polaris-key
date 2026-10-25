@@ -22,8 +22,14 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ciClient, type CiClient, type Out, type Sleep } from "../ci.js";
-import { resolveCiToken, type CiEnv } from "../oidc.js";
+import {
+  CiRequestError,
+  ciClient,
+  type CiClient,
+  type Out,
+  type Sleep,
+} from "../ci.js";
+import { mask, resolveCiToken, type CiEnv } from "../oidc.js";
 import { untrusted } from "../untrusted.js";
 import {
   flathubAppId,
@@ -381,8 +387,11 @@ function needStore(id: string): PrPlaneStore {
   return s;
 }
 
-function gitHub(o: PrStepOptions, required: boolean): GitHubClient | null {
-  const token = o.env.PKEY_PR_TOKEN;
+function gitHub(
+  o: PrStepOptions,
+  required: boolean,
+  token = o.env.PKEY_PR_TOKEN,
+): GitHubClient | null {
   if (!token && required)
     throw new Error(
       `${PR_TOKEN_ENV} is not set: the GitHub token that opens the pull request is a CI environment secret (decision 7).`,
@@ -393,6 +402,66 @@ function gitHub(o: PrStepOptions, required: boolean): GitHubClient | null {
     sleep: o.sleep,
     ...(o.githubApi ? { apiBase: o.githubApi } : {}),
   });
+}
+
+/** What each refusal of the token exchange says; the Worker's reason picks the line. */
+const EXCHANGE_REFUSALS: Readonly<Record<string, string>> = {
+  bad_outlet: "the outlet id is not valid.",
+  bad_store: "the store must be homebrew or scoop.",
+  unknown_outlet: "the product declares no such outlet.",
+  outlet_not_supported: "this outlet has no Homebrew tap or Scoop bucket.",
+  no_repository: "the outlet declares no tap or bucket.",
+  store_required: "the outlet declares a tap and a bucket; name the store.",
+  app_not_installed: "install the Polaris Key GitHub App on that repository.",
+  rate_limited: "too many tokens asked for; try again in an hour.",
+  app_permission:
+    "the GitHub App lacks Contents or Pull requests write; approve it on GitHub.",
+  github: "GitHub refused to issue a token; try again.",
+};
+
+/** The one-line reason a refused exchange prints. The Worker's reason is cleaned before it shows. */
+function exchangeRefusal(e: unknown, env: CiEnv): string {
+  if (!(e instanceof CiRequestError)) return (e as Error).message;
+  const known = e.reason ? EXCHANGE_REFUSALS[e.reason] : undefined;
+  if (known) return known;
+  if (e.status === 401 || e.status === 403)
+    return "the CI token lacks the distribution:pr scope. Add it in the console.";
+  if (e.status === 404)
+    return "Release is off for this product, so there is no GitHub App.";
+  return `refused (${e.status}${e.reason ? ` ${untrusted(e.reason, env)}` : ""}).`;
+}
+
+/**
+ * Homebrew and Scoop without `PKEY_PR_TOKEN`: ask Polaris Key for a one-hour GitHub App token
+ * for the outlet's tap or bucket (A-32.7). The token is masked before anything else touches it,
+ * lives in this process only and travels as a header, never argv or a log line.
+ */
+async function exchangeGithubToken(
+  o: PrStepOptions,
+  client: CiClient,
+  outlet: string,
+): Promise<string> {
+  let res: { token?: unknown };
+  try {
+    res = await client.postJson<{ token?: unknown }>(
+      "distribution/pr/github-token",
+      {
+        what: "Asking for a GitHub token",
+        body: { outlet, store: o.store },
+      },
+    );
+  } catch (e) {
+    throw new Error(
+      `No GitHub token for ${untrusted(outlet, o.env)}: ${exchangeRefusal(e, o.env)}`,
+    );
+  }
+  const token = typeof res.token === "string" ? res.token : "";
+  if (!token)
+    throw new Error(
+      `No GitHub token for ${untrusted(outlet, o.env)}: the answer held none.`,
+    );
+  mask(o.env, o.stdout, token);
+  return token;
 }
 
 export interface PrStepOutcome {
@@ -410,13 +479,20 @@ export interface PrStepOutcome {
  */
 export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
   const store = needStore(o.store);
-  const inputs = await fetchPrInputs(
-    await inputsClient(o),
-    store.store,
-    o.channel,
-    o.outlet,
+  const client = await inputsClient(o);
+  const inputs = await fetchPrInputs(client, store.store, o.channel, o.outlet);
+  // No personal token: a tap or bucket takes the GitHub App's, minted for this run.
+  const viaApp =
+    !o.env.PKEY_PR_TOKEN &&
+    !o.dryRun &&
+    (store.store === "homebrew" || store.store === "scoop");
+  const gh = gitHub(
+    o,
+    !o.dryRun,
+    viaApp
+      ? await exchangeGithubToken(o, client, inputs.outlet.id)
+      : o.env.PKEY_PR_TOKEN,
   );
-  const gh = gitHub(o, !o.dryRun);
   const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
   const plans: PrPlan[] = [];
   for (const kind of prKinds(store, inputs))
