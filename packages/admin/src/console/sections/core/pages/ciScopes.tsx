@@ -12,6 +12,7 @@ const SCOPE_TEXT: Record<string, string> = {
   "distribution:rollout": "Start and change rollouts",
   "distribution:feeds": "Publish package feeds",
   "distribution:listing": "Upload listing assets",
+  "distribution:pr": "Open tap and bucket pull requests",
   "assets:write": "Upload hosted assets",
   "packages:read": "Read private package feeds",
 };

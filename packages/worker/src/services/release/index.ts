@@ -23,6 +23,7 @@ import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
 import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
+import { githubPrToken } from "./github/prToken.js";
 import { releaseKeyFingerprints } from "./records.js";
 import { sweepNativeSessions } from "./packages/native/index.js";
 import { sweepPruneNotice } from "./packages/prune.js";
@@ -65,6 +66,8 @@ export const releaseService: ServiceDescriptor = {
    * that Distribution and later consumers read through Core instead of importing this service.
    */
   releaseCatalog,
+  /** `githubPrToken` (A-32.7): a narrowed App token for Distribution's CI exchange. */
+  githubPrToken,
   /**
    * F-22: the connector cron's sweep of native-client upload sessions (twine and Maven send a
    * version as several requests): publish the sessions left idle, fail the abandoned ones, purge

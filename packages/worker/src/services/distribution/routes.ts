@@ -21,6 +21,9 @@
  *     /distribution/pr/:store?channel=c&outlet=id            GET, `pkeyci_` + distribution:report:
  *                                                            a PR-plane generator's inputs (A-18i,
  *                                                            `prInputs.ts`)
+ *     /distribution/pr/github-token                          POST, `pkeyci_` + distribution:pr:
+ *                                                            a GitHub token for the outlet's own
+ *                                                            tap or bucket (A-32.7, `pr/githubToken.ts`)
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
@@ -71,6 +74,10 @@ import {
 import { applyReport } from "./availability.js";
 import { ciListingProjection, ciListingStore } from "./listing/ci.js";
 import { prInputs, prInputStore } from "./prInputs.js";
+import {
+  exchangeGithubToken,
+  MAX_GITHUB_TOKEN_BODY_BYTES,
+} from "./pr/githubToken.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFdroidFeedsCi, serveFeedRead } from "./feeds/index.js";
@@ -339,6 +346,23 @@ export const DISTRIBUTION_ROUTES = serviceRoutes("distribution", [
     accept: (_ctx, p) =>
       Boolean(prInputStore(decodeSegment(p.store as string) ?? "")),
     handler: ciPrInputs,
+  },
+  // A-32.7: the CI run's GitHub token for the outlet's own tap or bucket. `github-token` is no
+  // PR-plane store id, so it never reaches the GET row above.
+  {
+    path: "pr/github-token",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "distribution:pr" },
+    bodyCap: MAX_GITHUB_TOKEN_BODY_BYTES,
+    other: "none",
+    handler: async ({ env, db, product, hooks, now }, m) => {
+      const body = await m.readJson();
+      if (body instanceof Response) return body;
+      return exchangeGithubToken(
+        { env, db, product: product.slug, hooks, now, principal: m.principal! },
+        body,
+      );
+    },
   },
 
   // The Sentry alert hook (P6-03) opens halt candidates; it is not a store connector.

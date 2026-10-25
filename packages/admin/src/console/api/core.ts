@@ -595,6 +595,7 @@ export const CI_SCOPES = [
   "distribution:rollout",
   "distribution:feeds",
   "distribution:listing",
+  "distribution:pr",
   "assets:write",
 ] as const;
 

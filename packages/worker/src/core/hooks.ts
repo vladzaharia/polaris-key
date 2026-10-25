@@ -19,6 +19,10 @@
  *   - `licenseProvenance`   (implemented by License): where each licence came from — the store
  *                            purchases granted onto it, or the developer, a sign-in or a free
  *                            auto-issue that minted it (PX-W6, portal gap G8);
+ *   - `githubPrToken`       (implemented by Release): a GitHub App installation token narrowed to
+ *                            one tap or bucket repository, for Distribution's CI token exchange
+ *                            (A-32.7). Not a read, and the one hook that hands out a credential:
+ *                            see the interface;
  *   - `storeProducts`       (implemented by Commerce): the product's store-product map, read-only,
  *                            for Distribution's App Store Connect catalog flows (CM-29).
  *
@@ -1403,6 +1407,29 @@ export interface StoreProducts {
   ): Promise<StoreProductMapping | null>;
 }
 
+// ── githubPrToken (Release) ─────────────────────────────────────────────────────────────────
+
+/** A GitHub token for a tap or bucket repository: the secret, and when GitHub expires it. */
+export interface GithubPrTokenGrant {
+  token: string;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+/**
+ * Mint a GitHub token for CI to open a pull request on one repository (A-32.7). Release owns the
+ * GitHub App (`services/release/githubApp.ts`), so Distribution's route asks Core for it. It
+ * writes nothing in our database; the token is minted per call, narrowed to the one repository
+ * with Contents and Pull requests write, and is never cached or logged. The caller decides
+ * whether the repository may be asked for (Distribution: the outlet's own tap or bucket).
+ * `mint` answers `null` when the App is not installed on the repository, and throws, with a
+ * message that carries no secret, when GitHub or the App's configuration refuses.
+ * `null` from `ServiceHooks.githubPrToken()` while Release is off.
+ */
+export interface GithubPrToken {
+  mint(owner: string, repo: string): Promise<GithubPrTokenGrant | null>;
+}
+
 // ── The contract ────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -1435,6 +1462,7 @@ export interface DescriptorHooks {
   ): Promise<OutletCapabilities | null>;
   licenseProvenance?(ctx: HookContext): LicenseProvenance;
   storeProducts?(ctx: HookContext): StoreProducts;
+  githubPrToken?(ctx: HookContext): GithubPrToken;
 }
 
 export type HookName = keyof DescriptorHooks;
@@ -1447,6 +1475,8 @@ export interface ServiceHooks {
   licenseProvenance(): LicenseProvenance | null;
   /** Commerce's store-product map; `null` while Commerce is off. */
   storeProducts(): StoreProducts | null;
+  /** Release's GitHub token minting for CI pull requests; `null` while Release is off. */
+  githubPrToken(): GithubPrToken | null;
 }
 
 /** The registry, as far as hooks need it — structural, so this file never imports `registry.ts`. */
@@ -1496,6 +1526,7 @@ export function buildHooks(
     outletCapabilities: hookProvider(registry, "outletCapabilities"),
     licenseProvenance: hookProvider(registry, "licenseProvenance"),
     storeProducts: hookProvider(registry, "storeProducts"),
+    githubPrToken: hookProvider(registry, "githubPrToken"),
   };
   let catalog: ReleaseCatalog | null | undefined;
   let delivery: Delivery | null | undefined;
@@ -1536,6 +1567,10 @@ export function buildHooks(
       storeProducts =
         p?.storeProducts && enabled(p.slug) ? p.storeProducts(ctx) : null;
       return storeProducts;
+    },
+    githubPrToken() {
+      const p = providers.githubPrToken;
+      return p?.githubPrToken && enabled(p.slug) ? p.githubPrToken(ctx) : null;
     },
   };
   const ctx: HookContext = { ...base, hooks };
