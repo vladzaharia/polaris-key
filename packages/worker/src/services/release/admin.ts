@@ -17,6 +17,11 @@
  *
  *     GET    …/release/ci-readiness                     the checks a `v*` tag needs, and the workflow
  *
+ * and the setup pull request (A-32.5, `setupPr.ts`; the one `pkey/setup` branch and PR):
+ *
+ *     GET    …/release/setup/pull-request               the open setup pull request, if any
+ *     POST   …/release/setup/pull-request               { outlets?, workflow? } → write and open or update
+ *
  * and the pack read model (P4-09, `packs/adminView.ts`):
  *
  *     GET    …/release/deliverables                     the app and every pack, with latest release
@@ -103,6 +108,7 @@ import {
   type DeliverableState,
 } from "./resolve.js";
 import { resyncNotes, resyncRepo } from "./resync.js";
+import { handleSetupPullRequest } from "./setupPr.js";
 import {
   linkExistingProduct,
   planResync,
@@ -290,6 +296,8 @@ export async function handleReleaseAdmin(
   if (policyRoute) return policyRoute;
   const packRoute = await handlePackViews(ctx);
   if (packRoute) return packRoute;
+  if (rest.length === 2 && rest[0] === "setup" && rest[1] === "pull-request")
+    return handleSetupPullRequest(ctx);
   if (rest.length !== 1) return null;
   const slug = product.slug;
 
