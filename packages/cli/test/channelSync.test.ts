@@ -11,9 +11,10 @@ import { describe, expect, it } from "vitest";
 import { runPkey } from "../src/index.js";
 import { cmdChannel } from "../src/channel.js";
 import type { SpawnTool } from "../src/storefronts/run.js";
-import { planSync } from "../src/channelSync.js";
+import { planSync, planTransports } from "../src/channelSync.js";
 import type { PrInputs } from "../src/storefronts/prInputs.js";
 import { BASE, FLATHUB_INPUTS, WINGET_INPUTS } from "./prFixtures.js";
+import { packRepo, testReleaseKey } from "./packFixtures.js";
 
 const ENV = {
   PKEY_CI_TOKEN: `pkeyci_${"A".repeat(43)}`,
@@ -651,5 +652,228 @@ describe("pkey channel sync --dir (A-25.4)", () => {
       "fdroid: would run pkey storefront fdroid --product diceroll --channel stable --out fdroid-repo --keystore ci.jks --alias repo",
     );
     expect(a.out + b.out).not.toContain("ks-secret-value");
+  });
+});
+
+describe("pkey channel sync --deliverable (P4-33.3)", () => {
+  const PACK = "diceroll.core3d";
+  const ASC = {
+    ASC_KEY_ID: "k",
+    ASC_ISSUER_ID: "i",
+    ASC_PRIVATE_KEY: "pem-secret-value",
+  };
+  const STEAM = {
+    STEAM_USERNAME: "builder",
+    STEAM_CONFIG_VDF: "vdf-secret-value",
+  };
+  const OUTLETS = [
+    { id: "app-store", kind: "app-store", identity: {} },
+    { id: "play", kind: "play", identity: {} },
+    { id: "steam", kind: "steam", identity: { depots: { [PACK]: "481" } } },
+    { id: "testflight", kind: "testflight", identity: {} },
+    { id: "web", kind: "web", identity: {} },
+  ];
+  const route = (outletId: string, transport: string, origin = "auto") =>
+    ({ deliverableId: PACK, outletId, transport, origin }) as never;
+  const ROUTES = [
+    route("app-store", "apple-ba"),
+    route("play", "play-pad", "declared"),
+    route("steam", "steam-depot"),
+    route("testflight", "apple-ba"),
+    route("web", "pkey-cdn"),
+  ];
+  const plan = (o: Parameters<typeof planTransports>[2], routes = ROUTES) =>
+    planTransports({ outlets: OUTLETS, routes }, PACK, o);
+  const shape = (rows: ReturnType<typeof plan>) =>
+    rows.map((r) => [
+      r.transport,
+      r.part,
+      r.outlets!.join(","),
+      r.state,
+      r.reason ?? null,
+    ]);
+
+  it("auto routes on darwin with every credential: Apple and Steam rows planned, Play skipped pre-build", () => {
+    const rows = plan({
+      platform: "darwin",
+      env: { ...ASC, ...STEAM },
+      hasTool: () => true,
+    });
+    expect(shape(rows)).toEqual([
+      ["apple-ba", "package", "app-store,testflight", "planned", null],
+      ["apple-ba", "upload", "app-store,testflight", "planned", null],
+      ["steam-depot", "vdf", "steam", "planned", null],
+      ["steam-depot", "build", "steam", "planned", null],
+      ["play-pad", "modules", "play", "skipped", "pre-build"],
+    ]);
+    expect(rows.every((r) => r.step === "transport" && r.pack === PACK)).toBe(
+      true,
+    );
+    expect(rows[2]!.depot).toBe("481");
+    // The CDN-only route has no row, and a play-pad skip is not a CDN fallback.
+    expect(rows.some((r) => r.note)).toBe(false);
+  });
+
+  it("off macOS the Apple rows skip and one note says the CDN serves the pack", () => {
+    const rows = plan({ platform: "linux", env: { ...ASC, ...STEAM } });
+    expect(shape(rows).slice(0, 2)).toEqual([
+      ["apple-ba", "package", "app-store,testflight", "skipped", "needs-macos"],
+      ["apple-ba", "upload", "app-store,testflight", "skipped", "needs-macos"],
+    ]);
+    expect(rows.filter((r) => r.note)).toHaveLength(1);
+    expect(rows[0]!.note).toBe(
+      "app-store, testflight: served from the Polaris Key CDN until run on macOS.",
+    );
+  });
+
+  it("each missing credential is named, first unset first; no value is kept", () => {
+    const darwin = { platform: "darwin" as const };
+    const first = (env: Record<string, string>) =>
+      plan({ ...darwin, env: { ...STEAM, ...env } }).find(
+        (r) => r.part === "upload",
+      )!;
+    expect(first({}).secret).toBe("ASC_KEY_ID");
+    expect(first({ ASC_KEY_ID: "k" }).secret).toBe("ASC_ISSUER_ID");
+    expect(first({ ASC_KEY_ID: "k", ASC_ISSUER_ID: "i" }).secret).toBe(
+      "ASC_PRIVATE_KEY",
+    );
+    expect(
+      first({ ASC_KEY_ID: "k", ASC_ISSUER_ID: "i", ASC_KEY_PATH: "k.p8" })
+        .state,
+    ).toBe("planned");
+    expect(plan({ platform: "darwin", env: STEAM })[0]!.note).toBe(
+      "app-store, testflight: served from the Polaris Key CDN until ASC_KEY_ID is set.",
+    );
+    const steam = (env: Record<string, string>) =>
+      plan({ ...darwin, env: { ...ASC, ...env }, hasTool: () => true }).filter(
+        (r) => r.transport === "steam-depot",
+      );
+    expect(steam({}).map((r) => r.secret)).toEqual([
+      "STEAM_USERNAME",
+      "STEAM_USERNAME",
+    ]);
+    expect(steam({ STEAM_USERNAME: "b" })[0]!.secret).toBe("STEAM_CONFIG_VDF");
+    expect(steam({}).filter((r) => r.note)).toHaveLength(1);
+  });
+
+  it("steamcmd missing skips the depot; a declared route without a depot skips and no CDN note", () => {
+    const rows = plan({
+      platform: "darwin",
+      env: { ...ASC, ...STEAM },
+      hasTool: () => false,
+    }).filter((r) => r.transport === "steam-depot");
+    expect(rows.map((r) => r.reason)).toEqual(["no-steamcmd", "no-steamcmd"]);
+    expect(rows[0]!.note).toBe(
+      "steam: served from the Polaris Key CDN until steamcmd is installed.",
+    );
+    const bare = planTransports(
+      {
+        outlets: [{ id: "steam", kind: "steam", identity: {} }],
+        routes: [route("steam", "steam-depot", "declared")],
+      },
+      PACK,
+      { env: { ...STEAM } },
+    );
+    expect(bare.map((r) => r.reason)).toEqual(["no-depot", "no-depot"]);
+    expect(bare.some((r) => r.note)).toBe(false);
+  });
+
+  it("a pack on the CDN everywhere plans nothing", () => {
+    expect(
+      plan({ env: {} }, [route("web", "pkey-cdn"), route("steam", "pkey-cdn")]),
+    ).toEqual([]);
+  });
+
+  describe("through the command", () => {
+    const key = testReleaseKey();
+    const DIST = `outlets:
+  app-store:
+    appleId: "1234567890"
+    bundleId: gg.vlad.diceroll
+  play:
+    packageName: gg.vlad.diceroll
+  steam:
+    appId: 480
+    depots: { ${PACK}: "481" }
+transports:
+  packs: auto
+  deliverables:
+    ${PACK}:
+      play: play-pad
+`;
+    async function packSync(
+      args: string[],
+      env: Record<string, string | undefined> = ENV,
+      dist = DIST,
+    ) {
+      const cwd = await packRepo(key, {});
+      await writeFile(path.join(cwd, ".pkey/distribution.yaml"), dist);
+      return sync(cwd, args, { env });
+    }
+
+    it("--json: the rows carry transport, part and pack; no channel rows; no secret value", async () => {
+      const r = await packSync(["--deliverable", PACK, "--json", "--dry-run"], {
+        ...ENV,
+        ...ASC,
+        ...STEAM,
+        PATH: "",
+      });
+      expect(r.code, r.err + r.out).toBe(0);
+      const data = JSON.parse(r.out);
+      expect(data.steps.map((x: never) => x["step"])).toEqual(
+        Array(data.steps.length).fill("transport"),
+      );
+      const by = (t: string, part: string) =>
+        data.steps.find(
+          (x: never) => x["transport"] === t && x["part"] === part,
+        );
+      expect(by("play-pad", "modules")).toMatchObject({
+        state: "skipped",
+        reason: "pre-build",
+        outlets: ["play"],
+      });
+      // No steamcmd on an empty PATH.
+      expect(by("steam-depot", "build")).toMatchObject({
+        reason: "no-steamcmd",
+        depot: "481",
+      });
+      expect(r.out).not.toContain("pem-secret-value");
+      expect(r.out).not.toContain("vdf-secret-value");
+    });
+
+    it("text: skip lines, the CDN note, a summary; a failure of nothing exits 0", async () => {
+      const r = await packSync(["--deliverable", PACK, "--dry-run"], {
+        ...ENV,
+        PATH: "",
+      });
+      expect(r.code, r.err + r.out).toBe(0);
+      expect(r.out).toContain(
+        "steam-depot vdf (steam): skipped: STEAM_USERNAME is not set",
+      );
+      expect(r.out).toContain(
+        "steam: served from the Polaris Key CDN until STEAM_USERNAME is set.",
+      );
+      expect(r.out).toContain(
+        "play-pad modules (play): skipped: run before the build: pkey transport play-pad modules --deliverable diceroll.core3d",
+      );
+      expect(r.out).not.toContain("flathub");
+    });
+
+    it("an unknown pack is a usage error; --from alone too", async () => {
+      const bad = await packSync(["--deliverable", "nope.pack"]);
+      expect(bad.code).toBe(2);
+      expect(bad.err).toMatch(
+        /not a pack in \.pkey\/release \(packs: diceroll\.core3d/,
+      );
+      const from = await packSync(["--from", "out"]);
+      expect(from.code).toBe(2);
+      expect(from.err).toMatch(/--from needs --deliverable/);
+    });
+
+    it("without --deliverable the plan is the channel plan, unchanged", async () => {
+      const r = await packSync(["--json", "--dry-run"], ENV, DIST);
+      expect(r.code, r.err + r.out).toBe(0);
+      expect(JSON.parse(r.out).steps).toEqual([]);
+    });
   });
 });

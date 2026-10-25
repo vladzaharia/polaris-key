@@ -4,7 +4,11 @@
  * `productId`).
  */
 
-import { effectiveTrackMap, parseManifest } from "@polaris-key/manifest";
+import {
+  effectiveTrackMap,
+  parseManifest,
+  type ManifestTransportRoute,
+} from "@polaris-key/manifest";
 import { loadManifest, validateLoadedManifest } from "../manifest.js";
 import { UsageError } from "../errors.js";
 
@@ -17,6 +21,10 @@ export interface StepOutlet {
 export interface StepProduct {
   slug: string;
   outlets: StepOutlet[];
+  /** The pack deliverables `.pkey/release` declares, by id. */
+  packs: string[];
+  /** Every pack and outlet pair with its resolved transport (`channel sync --deliverable`). */
+  routes: ManifestTransportRoute[];
 }
 
 /** Load, validate and parse `.pkey/`; `product` (a flag) must match its slug when given. */
@@ -50,6 +58,8 @@ export async function loadStepProduct(
     );
   return {
     slug: m.product.slug,
+    packs: (m.release?.packDeliverables ?? []).map((p) => p.id),
+    routes: m.distribution?.routes ?? [],
     outlets: (m.distribution?.outlets ?? []).map((o) => ({
       id: o.id,
       kind: o.kind,

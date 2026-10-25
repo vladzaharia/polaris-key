@@ -11,16 +11,23 @@
  *                matches them; one itch push per matched platform, one snap upload, one F-Droid
  *                build. `snap metadata` stays a pre-build step, outside sync.
  *
+ * `transport` (P4-33.3) is the other kind: with `--deliverable <packId>` the plan is that pack's
+ * routes on apple-ba, steam-depot and play-pad, no channel rows (`planTransports`). Running them is
+ * P4-33.4. Play's modules patch the Gradle build before the bundle exists, so they are always a
+ * pre-build skip (D-P5); Background Assets off macOS or without the ASC key skip too (D-P6).
+ *
  * P4-33 adds `transport` as one more kind (D-A4). A channel whose credential env is absent is
  * skipped with one line naming it (D-A3); a step that fails fails the command after the rest ran.
  * `--dry-run` runs nothing. No secret value is ever printed: only the variable's name.
  */
 
+import { accessSync, constants } from "node:fs";
 import path from "node:path";
 import {
   channelForOutlet,
   findChannel,
   type ChannelEntry,
+  type ManifestTransportRoute,
 } from "@polaris-key/manifest";
 import { cellWidth, wrapSpans, type Line } from "@polaris-key/node/terminal";
 import { envelope } from "./account.js";
@@ -43,7 +50,11 @@ import {
 import { loadManifest } from "./manifest.js";
 import { failLine, type Term, type TermOut } from "./terminal.js";
 import { untrusted } from "./untrusted.js";
-import { loadStepProduct, type StepOutlet } from "./storefronts/outlets.js";
+import {
+  loadStepProduct,
+  type StepOutlet,
+  type StepProduct,
+} from "./storefronts/outlets.js";
 import {
   FirstSubmissionError,
   PR_TOKEN_ENV,
@@ -53,7 +64,7 @@ import { itchPushStep } from "./storefronts/itch.js";
 import { runStoreSteps, commandLine } from "./storefronts/run.js";
 import { snapUploadStep } from "./storefronts/snap.js";
 
-export type StepKind = "pr" | "local-files";
+export type StepKind = "pr" | "local-files" | "transport";
 
 export type RowState =
   | "planned"
@@ -74,7 +85,25 @@ export interface SyncRow {
   state: RowState;
   /** The secret's environment variable when it is what the row waits on (never its value). */
   secret?: string;
-  reason?: "missing-secret" | "needs-dir" | "no-file" | "first-submission";
+  reason?:
+    | "missing-secret"
+    | "needs-dir"
+    | "no-file"
+    | "first-submission"
+    | "needs-macos"
+    | "no-steamcmd"
+    | "no-depot"
+    | "pre-build";
+  /** transport: the transport and the part of it this row is (`package`, `upload`, `vdf`, `build`, `modules`). */
+  transport?: string;
+  part?: string;
+  /** transport: the pack, and every outlet the row serves. */
+  pack?: string;
+  outlets?: string[];
+  /** transport: the Steam depot of a `steam-depot` row. */
+  depot?: string;
+  /** transport: why an `auto` route is served from the CDN meanwhile (one per skipped set). */
+  note?: string;
   /** local-files: the matched build's platform and its file (absolute). */
   platform?: string;
   file?: string;
@@ -129,6 +158,10 @@ function channelsOf(o: StepOutlet): ChannelEntry[] {
 }
 
 export interface PlanOptions {
+  /** The host platform (default: this process's); only Background Assets read it. */
+  platform?: NodeJS.Platform;
+  /** Whether a tool is on PATH (default: assumed); only the Steam build reads it. */
+  hasTool?: (name: string) => boolean;
   dir?: string;
   /** The builds `matchArtifacts` found under `dir`; only read when `dir` is set. */
   builds?: readonly MatchedBuild[];
@@ -204,6 +237,123 @@ export function planSync(
       }
       rows.push(row, ...extras);
     }
+  return rows;
+}
+
+/** The ASC key Background Assets upload with; the first one unset is the one named. */
+function ascMissing(env: PlanOptions["env"]): string | undefined {
+  if (!env.ASC_KEY_ID?.trim()) return "ASC_KEY_ID";
+  if (!env.ASC_ISSUER_ID?.trim()) return "ASC_ISSUER_ID";
+  if (!env.ASC_PRIVATE_KEY?.trim() && !env.ASC_KEY_PATH?.trim())
+    return "ASC_PRIVATE_KEY";
+  return undefined;
+}
+
+export const STEAM_SECRETS = ["STEAM_USERNAME", "STEAM_CONFIG_VDF"] as const;
+
+/** `steamcmd` (or its `steamcmd.sh` wrapper) on the PATH. */
+export function toolOnPath(env: PlanOptions["env"], name: string): boolean {
+  const names = name === "steamcmd" ? ["steamcmd", "steamcmd.sh"] : [name];
+  for (const dir of (env.PATH ?? "").split(path.delimiter))
+    for (const n of names)
+      try {
+        if (dir) accessSync(path.join(dir, n), constants.X_OK);
+        else continue;
+        return true;
+      } catch {
+        // not here
+      }
+  return false;
+}
+
+const cdnNote = (outlets: string[], until: string): string =>
+  `${outlets.join(", ")}: served from the Polaris Key CDN until ${until}.`;
+
+/**
+ * The plan for one pack (`--deliverable`): its routes on apple-ba, steam-depot and play-pad, one
+ * group each. Pure. A route on any other transport has no step. A group that cannot run is
+ * skipped with its reason; an `auto` route that skips says the CDN serves the pack meanwhile.
+ */
+export function planTransports(
+  p: Pick<StepProduct, "outlets" | "routes">,
+  packId: string,
+  o: PlanOptions,
+): SyncRow[] {
+  const routes = p.routes.filter((r) => r.deliverableId === packId);
+  const on = (t: string): ManifestTransportRoute[] =>
+    routes.filter((r) => r.transport === t);
+  const outletOf = (id: string) => p.outlets.find((x) => x.id === id);
+  const base = (transport: string, part: string, ids: string[]): SyncRow => ({
+    outlet: ids.join(","),
+    channel: transport,
+    step: "transport",
+    store: transport,
+    state: "planned",
+    transport,
+    part,
+    pack: packId,
+    outlets: ids,
+  });
+  const skip = (
+    rows: SyncRow[],
+    reason: NonNullable<SyncRow["reason"]>,
+    group: ManifestTransportRoute[],
+    until: string | null,
+    secret?: string,
+  ): void => {
+    for (const r of rows) {
+      r.state = "skipped";
+      r.reason = reason;
+      if (secret) r.secret = secret;
+    }
+    const auto = group
+      .filter((r) => r.origin === "auto")
+      .map((r) => r.outletId);
+    if (auto.length && until) rows[0]!.note = cdnNote(auto, until);
+  };
+  const rows: SyncRow[] = [];
+
+  const ba = on("apple-ba");
+  if (ba.length) {
+    const ids = ba.map((r) => r.outletId);
+    const group = [
+      base("apple-ba", "package", ids),
+      base("apple-ba", "upload", ids),
+    ];
+    const missing = ascMissing(o.env);
+    if ((o.platform ?? process.platform) !== "darwin")
+      skip(group, "needs-macos", ba, "run on macOS");
+    else if (missing)
+      skip(group, "missing-secret", ba, `${missing} is set`, missing);
+    rows.push(...group);
+  }
+
+  for (const r of on("steam-depot")) {
+    const depot = outletOf(r.outletId)?.identity.depots as
+      | Record<string, string>
+      | undefined;
+    const id = depot?.[packId];
+    const group = [
+      { ...base("steam-depot", "vdf", [r.outletId]), depot: id },
+      { ...base("steam-depot", "build", [r.outletId]), depot: id },
+    ];
+    const missing = STEAM_SECRETS.find((e) => !o.env[e]?.trim());
+    const has = o.hasTool ?? (() => true);
+    if (id === undefined) skip(group, "no-depot", [r], null);
+    else if (missing)
+      skip(group, "missing-secret", [r], `${missing} is set`, missing);
+    else if (!has("steamcmd"))
+      skip(group, "no-steamcmd", [r], "steamcmd is installed");
+    rows.push(...group);
+  }
+
+  const pad = on("play-pad");
+  if (pad.length) {
+    const ids = pad.map((r) => r.outletId);
+    const row = base("play-pad", "modules", ids);
+    skip([row], "pre-build", pad, null);
+    rows.push(row);
+  }
   return rows;
 }
 
@@ -317,6 +467,8 @@ async function runRows(
 ): Promise<void> {
   for (const row of rows) {
     if (row.state !== "planned") continue;
+    // Transport rows are planned here; P4-33.4 runs them.
+    if (row.step === "transport") continue;
     if (dryRun && row.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
@@ -380,21 +532,31 @@ async function runRows(
 function describe(r: SyncRow, dryRun: boolean): string {
   switch (r.state) {
     case "planned":
-      return !dryRun
-        ? "pending"
-        : r.command
-          ? `would run ${r.command}`
-          : r.step === "pr"
-            ? "would open a pull request"
-            : "would run";
+      return r.step === "transport"
+        ? `${dryRun ? "would run" : "planned"}: pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`
+        : !dryRun
+          ? "pending"
+          : r.command
+            ? `would run ${r.command}`
+            : r.step === "pr"
+              ? "would open a pull request"
+              : "would run";
     case "skipped":
       return r.reason === "missing-secret"
         ? `skipped: ${r.secret} is not set`
-        : r.reason === "no-file"
-          ? "skipped: no fitting file under --dir"
-          : r.reason === "first-submission"
-            ? "skipped: the first submission is by hand (pkey storefront flathub init)"
-            : "skipped: needs --dir";
+        : r.reason === "needs-macos"
+          ? "skipped: needs macOS"
+          : r.reason === "no-steamcmd"
+            ? "skipped: steamcmd is not installed"
+            : r.reason === "no-depot"
+              ? `skipped: set depots.${r.pack} on the steam outlet`
+              : r.reason === "pre-build"
+                ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}`
+                : r.reason === "no-file"
+                  ? "skipped: no fitting file under --dir"
+                  : r.reason === "first-submission"
+                    ? "skipped: the first submission is by hand (pkey storefront flathub init)"
+                    : "skipped: needs --dir";
     case "done":
       return r.platform && r.store === "itch"
         ? `pushed ${r.platform}`
@@ -414,7 +576,11 @@ function describe(r: SyncRow, dryRun: boolean): string {
 
 /** A row's name: its channel, and its outlet id too when that differs (`scoop (homebrew)`). */
 const labelOf = (r: SyncRow): string =>
-  r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
+  r.step === "transport"
+    ? `${r.transport} ${r.part} (${r.outlets!.join(", ")})`
+    : r.outlet === r.channel
+      ? r.channel
+      : `${r.channel} (${r.outlet})`;
 
 function writeText(
   rows: readonly SyncRow[],
@@ -423,10 +589,17 @@ function writeText(
   dryRun: boolean,
   io: ChannelIo,
   term: Term,
+  pack?: string,
 ): void {
   const { painter, symbols, caps } = term;
   const u = (v: string) => untrusted(v, io.env);
   const out = io.stdout;
+  if (!rows.length && pack) {
+    out.write(
+      `Nothing to sync. ${pack} goes through the Polaris Key CDN on every outlet.\n`,
+    );
+    return;
+  }
   if (!rows.length) {
     out.write(
       "Nothing to sync. Sync covers winget, Homebrew, Scoop, Flathub, itch.io, Snap and F-Droid; add one with pkey channel add <id>.\n",
@@ -438,10 +611,9 @@ function writeText(
   const failed = count(["failed"]);
   const parts = [
     failed && `${failed} failed`,
-    dryRun
-      ? count(["planned"]) && `${count(["planned"])} planned`
-      : count(["opened", "existing", "unchanged", "done"]) &&
-        `${count(["opened", "existing", "unchanged", "done"])} done`,
+    count(["planned"]) && `${count(["planned"])} planned`,
+    count(["opened", "existing", "unchanged", "done"]) &&
+      `${count(["opened", "existing", "unchanged", "done"])} done`,
     count(["skipped"]) && `${count(["skipped"])} skipped`,
   ].filter(Boolean);
   const glyph = failed
@@ -484,7 +656,7 @@ function writeText(
         `${i === 0 ? markOf(r) : " ".repeat(cellWidth(symbols.ok))}  ${painter.line(l)}\n`,
       ),
     );
-    for (const n of r.notes ?? [])
+    for (const n of [...(r.note ? [r.note] : []), ...(r.notes ?? [])])
       out.write(
         `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}\n`,
       );
@@ -518,6 +690,8 @@ const KNOWN_FLAGS = [
   "product",
   "base-url",
   "no-report",
+  "deliverable",
+  "from",
 ];
 
 /** `pkey channel sync`. */
@@ -542,8 +716,20 @@ export async function channelSync(
     return manifestFailure("channel sync", e, io, json);
   }
   const dir = str(a, "dir");
-  const builds = dir ? await matchBuilds(io.cwd, dir) : [];
-  const rows = planSync(product.outlets, { dir, builds, env: io.env });
+  const pack = str(a, "deliverable");
+  if (pack && !product.packs.includes(pack))
+    throw new UsageError(
+      `--deliverable ${pack} is not a pack in .pkey/release${product.packs.length ? ` (packs: ${product.packs.join(", ")})` : ""}.`,
+    );
+  if (str(a, "from") && !pack)
+    throw new UsageError("--from needs --deliverable.");
+  const builds = dir && !pack ? await matchBuilds(io.cwd, dir) : [];
+  const rows = pack
+    ? planTransports(product, pack, {
+        env: io.env,
+        hasTool: (n) => toolOnPath(io.env, n),
+      })
+    : planSync(product.outlets, { dir, builds, env: io.env });
   // One check before any step: every step reports into the ledger with the CI credential.
   if (
     rows.some((r) => r.state === "planned") &&
@@ -573,7 +759,15 @@ export async function channelSync(
       }),
     );
   } else {
-    writeText(rows, product.slug, track, dryRun, io, termOf(io, io.stdout));
+    writeText(
+      rows,
+      product.slug,
+      track,
+      dryRun,
+      io,
+      termOf(io, io.stdout),
+      pack,
+    );
   }
   return failed ? 1 : 0;
 }

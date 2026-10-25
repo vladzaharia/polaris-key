@@ -21,7 +21,7 @@ import { channelSync } from "./channelSync.js";
 export const ADD_USAGE =
   "Usage: pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]";
 export const SYNC_USAGE =
-  "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]";
+  "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--deliverable packId [--from dir]] [--product slug] [--base-url url] [--dry-run] [--json]";
 export const CHANNEL_USAGE = `${ADD_USAGE}\n       ${SYNC_USAGE.replace("Usage: ", "")}`;
 
 export interface ChannelArgs {
