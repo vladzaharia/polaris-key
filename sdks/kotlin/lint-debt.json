@@ -1909,8 +1909,7 @@
       "ktlint:standard:blank-line-between-when-conditions": 8,
       "ktlint:standard:class-signature": 6,
       "ktlint:standard:enum-entry-name-case": 4,
-      "ktlint:standard:function-signature": 8,
-      "ktlint:standard:spacing-between-declarations-with-comments": 1
+      "ktlint:standard:function-signature": 8
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitDeviceStates.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 2,
