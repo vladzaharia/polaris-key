@@ -171,6 +171,19 @@ class DesktopWindowsTest {
     }
 
     @Test
+    fun theUpdateColumnReportsTheHeightItNeedsNotTheHeightTheWindowLeftIt() = runDesktopComposeUiTest(width = 440, height = 120) {
+        // A viewport far shorter than the column: the old onSizeChanged saw the constrained height and never grew the window.
+        var needed = 0.dp
+        setContent {
+            PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {
+                PolarisUpdateWindowContent(PolarisUpdateUi("2.5.0", currentVersion = "2.4.1"), onUpdate = {}, onLater = {}, onSkip = {}) { needed = it }
+            }
+        }
+        waitForIdle()
+        assertTrue(needed > 160.dp, "the column needs $needed, more than the 120 dp it was given")
+    }
+
+    @Test
     fun aMandatoryUpdateColumnOffersNoLaterAndNoSkip() = runDesktopComposeUiTest(width = 440, height = 700) {
         setContent {
             PolarisTheme(branding = PolarisBranding.PolarisKey, darkTheme = false) {

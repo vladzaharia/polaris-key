@@ -3,6 +3,7 @@
 
 package im.plrs.key.samples.composedesktop
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
@@ -31,6 +40,7 @@ import im.plrs.key.ui.PolarisKeyWindowState
 import im.plrs.key.ui.PolarisSettingsPane
 import im.plrs.key.ui.rememberPolarisOpener
 import im.plrs.key.update.UpdateClientOptions
+import java.awt.Desktop
 import kotlin.system.exitProcess
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -72,9 +82,18 @@ fun main(args: Array<String>) {
             onSignOut = { scope.launch { client.license.deactivate() } },
             darkTheme = options.dark,
             copy = PolarisCopy(productName = title),
+            // The product's own art: the mark the kit draws where the icon goes, and the OS window icon (the taskbar,
+            // not the JVM's coffee cup).
+            logo = { Image(TidewaterMark, contentDescription = null, modifier = Modifier.fillMaxSize()) },
+            icon = TidewaterMark,
             decide = { world?.decide() ?: client.update.decide() },
         ) {
             TidewaterApp(title, smoke = options.smoke, openLink = options.openLink)
+        }
+        // A window opened from a background process (a launcher, a terminal) can open behind the others and inactive.
+        LaunchedEffect(Unit) {
+            runCatching { if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.APP_REQUEST_FOREGROUND)) Desktop.getDesktop().requestForeground(true) }
+            java.awt.Window.getWindows().firstOrNull { it.isShowing }?.toFront()
         }
         LaunchedEffect(options.start) {
             when (options.start) {
@@ -83,6 +102,26 @@ fun main(args: Array<String>) {
                 Start.Devices -> windowState.settings.open(PolarisSettingsPane.Devices)
                 else -> Unit
             }
+        }
+    }
+}
+
+/** Tidewater's mark: the harbour teal tile with two waves, drawn at any size (the window icon and the kit's logo). */
+internal object TidewaterMark : Painter() {
+    override val intrinsicSize: Size = Size(256f, 256f)
+
+    override fun DrawScope.onDraw() {
+        drawRoundRect(Color(0xFF26847A), size = size, cornerRadius = CornerRadius(size.minDimension * 0.22f))
+        for ((i, y) in listOf(0.42f, 0.62f).withIndex()) {
+            val w = Path().apply {
+                moveTo(size.width * 0.18f, size.height * y)
+                val step = size.width * 0.16f
+                for (k in 0 until 4) {
+                    val x = size.width * 0.18f + step * k
+                    quadraticTo(x + step / 2, size.height * (y + if (k % 2 == 0) -0.10f else 0.10f), x + step, size.height * y)
+                }
+            }
+            drawPath(w, Color.White.copy(alpha = if (i == 0) 1f else 0.6f), style = Stroke(width = size.minDimension * 0.07f, cap = StrokeCap.Round))
         }
     }
 }

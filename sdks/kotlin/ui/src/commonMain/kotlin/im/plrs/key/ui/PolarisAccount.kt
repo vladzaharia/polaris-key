@@ -250,11 +250,13 @@ private fun ChannelPane(channel: PolarisChannelUi?, onChannel: ((String) -> Unit
 
 /** The account's header card: the product's icon and name, the licence status and its holder. */
 @Composable
-private fun AccountHeaderCard(license: PolarisLicenseSummary?) {
+internal fun AccountHeaderCard(license: PolarisLicenseSummary?, notActivated: Boolean = false) {
     val copy = PolarisTheme.copy
     val name = productName(copy)
-    if (name == null && license == null) return
-    val support = listOfNotNull(license?.let { copy.entitlementLabel(it.status) }, license?.holder?.takeIf { it.isNotBlank() }).joinToString(" \u2022 ")
+    if (name == null && license == null && !notActivated) return
+    // A device with no licence says so in the catalog's words (the desktop Settings window), never "Inactive".
+    val status = if (notActivated) KitCopy.bundled.format("core.codes.no_token.title", kitLocale()) else license?.let { copy.entitlementLabel(it.status) }
+    val support = listOfNotNull(status, license?.holder?.takeIf { it.isNotBlank() }).joinToString(" \u2022 ")
     Row(
         Modifier
             .fillMaxWidth()
@@ -283,7 +285,7 @@ internal fun PolarisBackArrow(onBack: () -> Unit) {
 
 /** One row of the account list: a 64 dp target with its icon, the chosen one on the accent's subtle fill. */
 @Composable
-private fun AccountListItem(
+internal fun AccountListItem(
     title: String,
     supporting: String?,
     icon: ImageVector,
