@@ -8,7 +8,7 @@ Card/Scroll/Body/Actions/Dismiss: Button "Later" [focus 2]
 == v3 up to date (shown) ==
 Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Text/Words/Message: Label "You're up to date."
+Card/Scroll/Body/Text/Words/Message: Label "You’re up to date"
 == code-ready ==
 Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"

@@ -204,7 +204,7 @@ const DEFAULTS := {
 	"update_dismiss": "Later",
 	"status_update": "Update",
 	"channel_not_entitled_title": "Channel not included",
-	"update_up_to_date": "You're up to date.",
+	"update_up_to_date": "You’re up to date",
 	"update_ready_title": "An update is ready",
 	"update_ready_body": "Restart the game to finish updating.",
 	"update_restart": "Restart now",
