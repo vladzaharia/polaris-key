@@ -25448,7 +25448,7 @@ var COMMANDS = [
       },
       {
         subs: STORE_SUBS,
-        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a .tar.gz or .zip build for macOS and Linux, and --command names its executable, default the formula's name), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
+        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a .tar.gz or .zip build for macOS and Linux, and --command names its executable, default the formula's name), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); Homebrew and Scoop, without it, take a one-hour GitHub App token for the tap or bucket (CI token with the distribution:pr scope); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
       },
       { text: CI_PARA }
     ],
@@ -47840,8 +47840,7 @@ function needStore(id) {
   if (!s) throw new Error(`${id} is not a PR-plane store.`);
   return s;
 }
-function gitHub(o, required) {
-  const token = o.env.PKEY_PR_TOKEN;
+function gitHub(o, required, token = o.env.PKEY_PR_TOKEN) {
   if (!token && required)
     throw new Error(
       `${PR_TOKEN_ENV} is not set: the GitHub token that opens the pull request is a CI environment secret (decision 7).`
@@ -47853,15 +47852,61 @@ function gitHub(o, required) {
     ...o.githubApi ? { apiBase: o.githubApi } : {}
   });
 }
+var EXCHANGE_REFUSALS = {
+  bad_outlet: "the outlet id is not valid.",
+  bad_store: "the store must be homebrew or scoop.",
+  unknown_outlet: "the product declares no such outlet.",
+  outlet_not_supported: "this outlet has no Homebrew tap or Scoop bucket.",
+  no_repository: "the outlet declares no tap or bucket.",
+  store_required: "the outlet declares a tap and a bucket; name the store.",
+  app_not_installed: "install the Polaris Key GitHub App on that repository.",
+  rate_limited: "too many tokens asked for; try again in an hour.",
+  app_permission: "the GitHub App lacks Contents or Pull requests write; approve it on GitHub.",
+  github: "GitHub refused to issue a token; try again."
+};
+function exchangeRefusal(e, env) {
+  if (!(e instanceof CiRequestError)) return e.message;
+  const known = e.reason ? EXCHANGE_REFUSALS[e.reason] : void 0;
+  if (known) return known;
+  if (e.status === 401 || e.status === 403)
+    return "the CI token lacks the distribution:pr scope. Add it in the console.";
+  if (e.status === 404)
+    return "Release is off for this product, so there is no GitHub App.";
+  return `refused (${e.status}${e.reason ? ` ${untrusted(e.reason, env)}` : ""}).`;
+}
+async function exchangeGithubToken(o, client, outlet) {
+  let res;
+  try {
+    res = await client.postJson(
+      "distribution/pr/github-token",
+      {
+        what: "Asking for a GitHub token",
+        body: { outlet, store: o.store }
+      }
+    );
+  } catch (e) {
+    throw new Error(
+      `No GitHub token for ${untrusted(outlet, o.env)}: ${exchangeRefusal(e, o.env)}`
+    );
+  }
+  const token = typeof res.token === "string" ? res.token : "";
+  if (!token)
+    throw new Error(
+      `No GitHub token for ${untrusted(outlet, o.env)}: the answer held none.`
+    );
+  mask(o.env, o.stdout, token);
+  return token;
+}
 async function runPrStep(o) {
   const store = needStore(o.store);
-  const inputs = await fetchPrInputs(
-    await inputsClient(o),
-    store.store,
-    o.channel,
-    o.outlet
+  const client = await inputsClient(o);
+  const inputs = await fetchPrInputs(client, store.store, o.channel, o.outlet);
+  const viaApp = !o.env.PKEY_PR_TOKEN && !o.dryRun && (store.store === "homebrew" || store.store === "scoop");
+  const gh = gitHub(
+    o,
+    !o.dryRun,
+    viaApp ? await exchangeGithubToken(o, client, inputs.outlet.id) : o.env.PKEY_PR_TOKEN
   );
-  const gh = gitHub(o, !o.dryRun);
   const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
   const plans = [];
   for (const kind of prKinds(store, inputs))
@@ -49404,6 +49449,7 @@ import path29 from "node:path";
 var FDROID_KEYSTORE_ENV = "PKEY_FDROID_KEYSTORE";
 var FDROID_ALIAS_ENV = "PKEY_FDROID_ALIAS";
 var FDROID_OUT = "fdroid-repo";
+var hasCiIdentity = (env) => Boolean(env[CI_TOKEN_ENV]?.trim()) || canRequestGithubOidc(env);
 var SECRETS = {
   winget: [PR_TOKEN_ENV],
   homebrew: [PR_TOKEN_ENV],
@@ -49472,7 +49518,10 @@ function planSync(outlets, o) {
         state: "planned"
       };
       let extras = [];
-      const secret = (SECRETS[c.id] ?? []).find((e) => !o.env[e]);
+      const app = (c.id === "homebrew" || c.id === "scoop") && hasCiIdentity(o.env);
+      const secret = (SECRETS[c.id] ?? []).find(
+        (e) => !o.env[e] && !(app && e === PR_TOKEN_ENV)
+      );
       if (secret) {
         row2.state = "skipped";
         row2.reason = "missing-secret";
@@ -49844,7 +49893,7 @@ function describe(r, dryRun) {
     case "planned":
       return r.step === "transport" ? `${dryRun ? "would run" : "planned"} ${r.command ?? `pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`}` : !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
     case "skipped":
-      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "earlier-failed" ? "skipped: the step before it failed" : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
+      return r.reason === "missing-secret" ? (r.channel === "homebrew" || r.channel === "scoop") && r.secret === PR_TOKEN_ENV ? `skipped: needs ${PR_TOKEN_ENV} or the GitHub App` : `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "earlier-failed" ? "skipped: the step before it failed" : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
     case "done":
       return r.step === "transport" ? DONE_PART[`${r.transport} ${r.part}`] ?? "done" : r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
     case "opened":

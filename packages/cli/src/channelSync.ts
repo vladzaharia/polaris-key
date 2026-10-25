@@ -131,6 +131,10 @@ export const FDROID_ALIAS_ENV = "PKEY_FDROID_ALIAS";
 /** Where the F-Droid repository is written, relative to the working directory. */
 export const FDROID_OUT = "fdroid-repo";
 
+/** A CI credential the GitHub token exchange can run on: `PKEY_CI_TOKEN`, or an Actions OIDC grant. */
+const hasCiIdentity = (env: PlanOptions["env"]): boolean =>
+  Boolean(env[CI_TOKEN_ENV]?.trim()) || canRequestGithubOidc(env);
+
 /** The credential env each plane's channel needs; the first one unset is the one named. */
 const SECRETS: Readonly<Record<string, readonly string[]>> = {
   winget: [PR_TOKEN_ENV],
@@ -229,7 +233,13 @@ export function planSync(
         state: "planned",
       };
       let extras: SyncRow[] = [];
-      const secret = (SECRETS[c.id] ?? []).find((e) => !o.env[e]);
+      // Homebrew and Scoop open their pull requests with a GitHub App token Polaris Key mints for
+      // a CI identity, so a personal token is one way in, not the only one.
+      const app =
+        (c.id === "homebrew" || c.id === "scoop") && hasCiIdentity(o.env);
+      const secret = (SECRETS[c.id] ?? []).find(
+        (e) => !o.env[e] && !(app && e === PR_TOKEN_ENV),
+      );
       if (secret) {
         row.state = "skipped";
         row.reason = "missing-secret";
@@ -711,7 +721,10 @@ function describe(r: SyncRow, dryRun: boolean): string {
               : "would run";
     case "skipped":
       return r.reason === "missing-secret"
-        ? `skipped: ${r.secret} is not set`
+        ? (r.channel === "homebrew" || r.channel === "scoop") &&
+          r.secret === PR_TOKEN_ENV
+          ? `skipped: needs ${PR_TOKEN_ENV} or the GitHub App`
+          : `skipped: ${r.secret} is not set`
         : r.reason === "needs-macos"
           ? "skipped: needs macOS"
           : r.reason === "no-steamcmd"

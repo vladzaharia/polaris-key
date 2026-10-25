@@ -1229,7 +1229,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "default the formula's name), the Scoop feed's manifest in your own " +
           "bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the " +
           "channel's newest release, and opens one pull request per version with the GitHub " +
-          "token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for " +
+          "token in PKEY_PR_TOKEN (a CI secret, never argv); Homebrew and Scoop, without it, " +
+          "take a one-hour GitHub App token for the tap or bucket (CI token with the " +
+          "distribution:pr scope); a PR already open or merged for " +
           "the version is recorded and nothing is written. status reads the pull request's " +
           "state and review labels. flathub init writes the first submission's files, which a " +
           "person opens against flathub/flathub's new-pr branch.",

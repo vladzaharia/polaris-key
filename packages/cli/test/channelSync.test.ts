@@ -315,6 +315,27 @@ describe("pkey channel sync (A-25.3)", () => {
     );
   });
 
+  it("A-32.8: homebrew and scoop are satisfied by a CI identity; without one the skip names the App", async () => {
+    const cwd = await repo(
+      "outlets:\n  direct:\n    homebrewTap: vlad/homebrew-games\n    scoopBucket: vlad/scoop-games\n",
+    );
+    const { PKEY_PR_TOKEN: _t, ...env } = ENV;
+    const bare = await sync(cwd, ["--dry-run"], {
+      env: { ...env, PKEY_CI_TOKEN: "" },
+    });
+    expect(bare.out).toContain(
+      "homebrew (direct): skipped: needs PKEY_PR_TOKEN or the GitHub App",
+    );
+    expect(bare.out).toContain(
+      "scoop (direct): skipped: needs PKEY_PR_TOKEN or the GitHub App",
+    );
+    const withCi = await sync(cwd, ["--dry-run"], { env });
+    expect(withCi.out).toContain(
+      "homebrew (direct): would open a pull request",
+    );
+    expect(withCi.out).toContain("scoop (direct): would open a pull request");
+  });
+
   it("--json: one object, the rows with their state and reason", async () => {
     const cwd = await repo();
     const { PKEY_PR_TOKEN: _t, ...env } = ENV;
