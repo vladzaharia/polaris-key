@@ -6770,3 +6770,4 @@ export * from "./spellings.js";
 export * from "./licenseKey.js";
 // A-32.2: the release workflow text, one renderer for the console, the setup PR and the docs.
 export * from "./ciWorkflow.js";
+export * from "./setupChange.js";

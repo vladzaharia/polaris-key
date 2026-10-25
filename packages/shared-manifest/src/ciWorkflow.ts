@@ -26,7 +26,11 @@ export interface RenderCiWorkflowInput {
   actionRef: string;
   /** `.pkey/release` declares `releaseKeys`: the step then gets the release key secret. */
   releaseKeys: boolean;
-  /** Data-only packs: each is published by a job of its own with the delegated content key. */
+  /**
+   * Content packs: each is published by a job of its own. A pack release is a signed release
+   * record, so its step always gets the release key (a delegated content key also needs
+   * `--delegation <sha256>`, which a generated workflow cannot know).
+   */
   packs?: readonly CiWorkflowPack[];
   /** Where the build leaves the app's files. Default `dist`. */
   dir?: string;
@@ -95,7 +99,7 @@ export function renderCiWorkflow(input: RenderCiWorkflowInput): string {
       ...job(
         `publish-pack-${pack.id}`,
         `${tag} --channel ${input.channel} --deliverable ${pack.id} --dir ${pack.dir}`,
-        ["          content-key: ${{ secrets.PKEY_CONTENT_KEY }}"],
+        ["          release-key: ${{ secrets.PKEY_RELEASE_KEY }}"],
         input.actionRef,
         `# Build the ${pack.id} pack into ${pack.dir} here, before the publish step.`,
       ),

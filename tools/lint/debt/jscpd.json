@@ -2006,7 +2006,7 @@
     "packages/shared-manifest/test/deviceLimit.test.ts": {
       "jscpd:duplicate": 2
     },
-    "packages/shared-manifest/test/outletBlock.test.ts": {
+    "packages/shared-manifest/test/manifestDocs.ts": {
       "jscpd:duplicate": 1
     },
     "packages/shared-manifest/test/schema-parity.test.ts": {

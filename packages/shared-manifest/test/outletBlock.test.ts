@@ -8,41 +8,13 @@ import {
   parseManifest,
   renderOutletBlock,
 } from "../src/index.js";
+import { product, release } from "./manifestDocs.js";
 
 const dir = join(
   dirname(fileURLToPath(import.meta.url)),
   "fixtures/outlet-block",
 );
 const update = process.env.UPDATE_GOLDENS === "1";
-
-const product = {
-  slug: "dice",
-  name: "Dice",
-  modules: {
-    license: { enabled: true },
-    release: { enabled: true },
-    distribution: { enabled: true },
-  },
-};
-const release = {
-  release: {
-    provider: { type: "github", owner: "acme", repo: "dice" },
-    deliverables: {
-      app: {
-        kind: "app",
-        artifacts: [
-          {
-            id: "apk",
-            platform: "android",
-            arch: "any",
-            format: "apk",
-            match: "Dice-*.apk",
-          },
-        ],
-      },
-    },
-  },
-};
 
 const CASES: {
   name: string;

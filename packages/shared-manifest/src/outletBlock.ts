@@ -190,3 +190,74 @@ export function renderOutletBlock(
   }
   return doc.toString({ lineWidth: 0 });
 }
+
+/** {@link insertOutletBlock} cannot put the entry in this file: the message names why. */
+export class OutletInsertError extends Error {
+  override name = "OutletInsertError";
+}
+
+function isMap(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * `text` (the `.pkey/distribution` file, possibly empty) with `block` added under `outlets`. YAML
+ * goes through the `yaml` Document API so the file's comments and layout survive and the entry
+ * carries the same comments {@link renderOutletBlock} writes; JSON is rewritten with two-space
+ * indent and a trailing newline. Throws {@link OutletInsertError} for a file that is not a
+ * mapping, an `outlets` that is not a mapping, or an outlet id already declared. The caller
+ * validates the whole manifest afterwards.
+ */
+export function insertOutletBlock(
+  text: string,
+  format: "yaml" | "json",
+  block: OutletBlockEntry,
+): string {
+  if (format === "json") {
+    let doc: unknown = {};
+    if (text.trim() !== "") {
+      try {
+        doc = JSON.parse(text) as unknown;
+      } catch (e) {
+        throw new OutletInsertError(
+          `distribution is not valid JSON: ${(e as Error).message}`,
+        );
+      }
+    }
+    if (doc === null) doc = {};
+    if (!isMap(doc))
+      throw new OutletInsertError("distribution must be a mapping.");
+    const outlets = doc.outlets;
+    if (outlets != null && !isMap(outlets))
+      throw new OutletInsertError("outlets in distribution must be a mapping.");
+    if (isMap(outlets) && block.id in outlets)
+      throw new OutletInsertError(`distribution already declares ${block.id}.`);
+    return `${JSON.stringify({ ...doc, outlets: { ...(outlets ?? {}), [block.id]: block.entry } }, null, 2)}\n`;
+  }
+  const doc = YAML.parseDocument(text) as unknown as YAML.Document;
+  if (doc.errors.length > 0)
+    throw new OutletInsertError(
+      `distribution is not valid YAML: ${doc.errors[0]!.message}`,
+    );
+  if (doc.contents === null) doc.contents = doc.createNode({}) as YAML.YAMLMap;
+  if (!YAML.isMap(doc.contents))
+    throw new OutletInsertError("distribution must be a mapping.");
+  let outlets: unknown = doc.contents.get("outlets", true);
+  if (outlets === undefined || outlets === null) {
+    outlets = doc.createNode({}) as YAML.YAMLMap;
+    doc.contents.set("outlets", outlets);
+  }
+  if (!YAML.isMap(outlets))
+    throw new OutletInsertError("outlets in distribution must be a mapping.");
+  if (outlets.has(block.id))
+    throw new OutletInsertError(`distribution already declares ${block.id}.`);
+  const node = doc.createNode(block.entry) as YAML.YAMLMap;
+  for (const p of node.items as YAML.Pair<YAML.Scalar>[]) {
+    const comment = block.comments[String(p.key.value)];
+    if (comment) p.key.commentBefore = ` ${comment}`;
+  }
+  const key = new YAML.Scalar(block.id);
+  key.commentBefore = ` ${block.label}`;
+  outlets.items.push(new YAML.Pair(key, node));
+  return doc.toString({ lineWidth: 0 });
+}
